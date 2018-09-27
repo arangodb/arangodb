@@ -28,21 +28,21 @@
 #include "Auth/UserManager.h"
 
 namespace arangodb {
-  
+
 class AuthenticationFeature final
     : public application_features::ApplicationFeature {
  private:
   const size_t _maxSecretLength = 64;
 
  public:
-  explicit AuthenticationFeature(application_features::ApplicationServer*);
-  ~AuthenticationFeature();
-      
+  explicit AuthenticationFeature(
+    application_features::ApplicationServer& server
+  );
+
   static inline AuthenticationFeature* instance() {
     return INSTANCE;
   }
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -51,29 +51,30 @@ class AuthenticationFeature final
 
   bool isActive() const { return _active && isEnabled(); }
 
- public:
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   std::string jwtSecret() const { return _authCache->jwtSecret(); }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
-      
+
   double authenticationTimeout() const noexcept { return _authenticationTimeout; }
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
-  auth::TokenCache* tokenCache() const noexcept {
+  /// @return Cache to deal with authentication tokens
+  inline auth::TokenCache& tokenCache() const noexcept {
     TRI_ASSERT(_authCache);
-    return _authCache;
+    return *_authCache.get();
   }
-  
-  auth::UserManager* userManager() const noexcept {
-    TRI_ASSERT(_userManager);
-    return _userManager;
+
+  /// @brief user manager may be null on DBServers and Agency
+  /// @return user manager singleton
+  inline auth::UserManager* userManager() const noexcept {
+    return _userManager.get();
   }
-      
+
  private:
-  auth::UserManager* _userManager;
-  auth::TokenCache* _authCache;
+  std::unique_ptr<auth::UserManager> _userManager;
+  std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
   double _authenticationTimeout;
@@ -85,6 +86,7 @@ class AuthenticationFeature final
   static AuthenticationFeature* INSTANCE;
 
 };
-};
+
+} // arangodb
 
 #endif

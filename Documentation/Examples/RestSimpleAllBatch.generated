@@ -1,36 +1,34 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/all</span> &lt;&lt;EOF
 { "collection": "products", "batchSize" : 3 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12195"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12195"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VXCi--B"</span>, 
-      <span class="hljs-string">"Hello2"</span> : <span class="hljs-string">"World2"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104542"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104542"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zUG--_"</span>, 
+      <span class="hljs-string">"Hello4"</span> : <span class="hljs-string">"World4"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12198"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12198"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VXCm--_"</span>, 
-      <span class="hljs-string">"Hello3"</span> : <span class="hljs-string">"World3"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12191"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12191"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VXCi--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104532"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104532"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zUC--_"</span>, 
       <span class="hljs-string">"Hello1"</span> : <span class="hljs-string">"World1"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104545"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104545"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zUG--B"</span>, 
+      <span class="hljs-string">"Hello5"</span> : <span class="hljs-string">"World5"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"12207"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"104548"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -40,9 +38,11 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00021195411682128906</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001571178436279297</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
-  <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span> 
+  <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

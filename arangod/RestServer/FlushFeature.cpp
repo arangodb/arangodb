@@ -23,8 +23,10 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -32,27 +34,27 @@
 #include "Utils/FlushThread.h"
 #include "Utils/FlushTransaction.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 std::atomic<bool> FlushFeature::_isRunning(false);
 
-FlushFeature::FlushFeature(ApplicationServer* server)
+FlushFeature::FlushFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Flush"),
       _flushInterval(1000000) {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("WorkMonitor");
+  setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("StorageEngine");
   startsAfter("MMFilesLogfileManager");
-  // TODO: must start after storage engine
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  options->addOption(
+  options->addHiddenOption(
       "--server.flush-interval",
       "interval (in microseconds) for flushing data",
       new UInt64Parameter(&_flushInterval));
@@ -66,13 +68,21 @@ void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
 }
 
 void FlushFeature::prepare() {
+  // At least for now we need FlushThread for ArangoSearch views
+  // on a DB/Single server only, so we avoid starting FlushThread on
+  // a coordinator and on agency nodes.
+  setEnabled(!arangodb::ServerState::instance()->isCoordinator() && !arangodb::ServerState::instance()->isAgent());
 }
 
 void FlushFeature::start() {
-  _flushThread.reset(new FlushThread(_flushInterval));
+  {
+    WRITE_LOCKER(lock, _threadLock);
+    _flushThread.reset(new FlushThread(_flushInterval));
+  }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback(
     [this]() -> Result {
+      READ_LOCKER(lock, _threadLock);
       if (!this->_flushThread->start()) {
         LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
         FATAL_ERROR_ABORT();
@@ -87,6 +97,7 @@ void FlushFeature::start() {
 
 void FlushFeature::beginShutdown() {
   // pass on the shutdown signal
+  READ_LOCKER(lock, _threadLock);
   if (_flushThread != nullptr) {
     _flushThread->beginShutdown();
   }
@@ -96,13 +107,21 @@ void FlushFeature::stop() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping FlushThread";
   // wait until thread is fully finished
 
-  if (_flushThread != nullptr) {
-    while (_flushThread->isRunning()) {
+  FlushThread* thread = nullptr;
+  {
+    READ_LOCKER(lock, _threadLock);
+    thread = _flushThread.get();
+  }
+  if (thread != nullptr) {
+    while (thread->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
-    _isRunning.store(false);
-    _flushThread.reset();
+    {
+      WRITE_LOCKER(wlock, _threadLock);
+      _isRunning.store(false);
+      _flushThread.reset();
+    }
   }
 }
 
@@ -132,17 +151,16 @@ void FlushFeature::executeCallbacks() {
   std::vector<FlushTransactionPtr> transactions;
 
   READ_LOCKER(locker, _callbacksLock);
-
   transactions.reserve(_callbacks.size());
 
   // execute all callbacks. this will create as many transactions as
   // there are callbacks
   for (auto const& cb : _callbacks) {
+    // copy elision, std::move(..) not required
     transactions.emplace_back(cb.second());
   }
 
   // TODO: make sure all data is synced
-
 
   // commit all transactions
   for (auto const& trx : transactions) {
@@ -156,3 +174,5 @@ void FlushFeature::executeCallbacks() {
     // TODO: honor the commit results here
   }
 }
+
+} // arangodb

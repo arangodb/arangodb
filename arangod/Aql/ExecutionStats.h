@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
 #include "Basics/Common.h"
+#include "ExecutionBlock.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -40,9 +41,23 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
-
+  
+  /// @brief statistics per ExecutionNode
+  struct Node {
+    size_t calls = 0;
+    size_t items = 0;
+    double runtime = 0.0;
+    ExecutionStats::Node& operator+=(ExecutionStats::Node const& other) {
+      calls += other.calls;
+      items += other.items;
+      runtime += other.runtime;
+      return *this;
+    }
+  };
+  
+ public:
   /// @brief convert the statistics to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
   /// @brief create empty statistics for VelocyPack
   static void toVelocyPackStatic(arangodb::velocypack::Builder&);
@@ -51,19 +66,7 @@ struct ExecutionStats {
   void setExecutionTime(double value) { executionTime = value; }
 
   /// @brief sumarize two sets of ExecutionStats
-  void add(ExecutionStats const& summand) {
-    writesExecuted += summand.writesExecuted;
-    writesIgnored += summand.writesIgnored;
-    scannedFull += summand.scannedFull;
-    scannedIndex += summand.scannedIndex;
-    filtered += summand.filtered;
-    httpRequests += summand.httpRequests;
-    if (summand.fullCount > 0) {
-      // fullCount may be negative, don't add it then
-      fullCount += summand.fullCount;
-    }
-    // intentionally no modification of executionTime
-  }
+  void add(ExecutionStats const& summand);
 
   void clear() {
     writesExecuted = 0;
@@ -71,8 +74,9 @@ struct ExecutionStats {
     scannedFull = 0;
     scannedIndex = 0;
     filtered = 0;
-    httpRequests = 0;
-    fullCount = -1;
+    requests = 0;
+    fullCount = 0;
+    count = 0;
     executionTime = 0.0;
   }
 
@@ -90,16 +94,22 @@ struct ExecutionStats {
 
   /// @brief number of documents filtered away
   int64_t filtered;
-  /// @brief total number of HTTP requests made
-
-  int64_t httpRequests;
+  
+  /// @brief total number of requests made
+  int64_t requests;
 
   /// @brief total number of results, before applying last limit
   int64_t fullCount;
   
+  /// @brief total number of results
+  int64_t count;
+  
   /// @brief query execution time (wall-clock time). value will be set from 
   /// the outside
   double executionTime;
+  
+  ///  @brief statistics per ExecutionNodes
+  std::map<size_t, ExecutionStats::Node> nodes;
 };
 }
 }

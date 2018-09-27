@@ -43,6 +43,14 @@ void handleViewsRule(
   arangodb::aql::OptimizerRule const* rule
 );
 
+/// @brief scatter view query in cluster
+/// this rule inserts scatter, gather and remote nodes so operations on sharded views
+void scatterViewInClusterRule(
+  arangodb::aql::Optimizer* opt,
+  std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+  arangodb::aql::OptimizerRule const* rule
+);
+
 } // iresearch
 } // arangodb
 

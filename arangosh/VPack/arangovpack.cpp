@@ -24,6 +24,8 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -39,24 +41,27 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
         argv[0], "Usage: arangovpack [<options>]", "For more information use:", BIN_DIRECTORY));
-
     ApplicationServer server(options, BIN_DIRECTORY);
-
     int ret;
 
-    server.addFeature(new ConfigFeature(&server, "arangovpack"));
-    server.addFeature(new LoggerFeature(&server, false));
-    server.addFeature(new RandomFeature(&server));
-    server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"VPack"}));
-    server.addFeature(new VPackFeature(&server, &ret));
-    server.addFeature(new VersionFeature(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
+
+    // default is to use no config file
+    server.addFeature(new ConfigFeature(server, "arangovpack", "none"));
+    server.addFeature(new LoggerFeature(server, false));
+    server.addFeature(new RandomFeature(server));
+    server.addFeature(new ShellColorsFeature(server));
+    server.addFeature(new ShutdownFeature(server, {"VPack"}));
+    server.addFeature(new VPackFeature(server, &ret));
+    server.addFeature(new VersionFeature(server));
 
     try {
       server.run(argc, argv);

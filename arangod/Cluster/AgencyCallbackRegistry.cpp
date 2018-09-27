@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,7 +102,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
 
 std::string AgencyCallbackRegistry::getEndpointUrl(uint32_t endpoint) {
   std::stringstream url;
-  url << Endpoint::uriForm(ServerState::instance()->getAddress())
+  url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
       << _callbackBasePath << "/" << endpoint;
 
   return url.str();

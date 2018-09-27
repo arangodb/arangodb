@@ -62,7 +62,6 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
 
   IAggregator* aggregator(std::string const& name) const override;
 
-  uint64_t maxGlobalSuperstep() const override { return 1000; }
 };
 }
 }

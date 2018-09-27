@@ -14,6 +14,8 @@
   !include "WinMessages.nsh"
   !include "MUI2.nsh"
   !include "StripSlashes.nsh"
+  !include "xcopy.nsh"
+  !include "Utf8Converter.nsh"
 ;   !include "GetTime.nsh"
 ;--------------------------------
 ; get commandline parameters
@@ -56,27 +58,28 @@ Var ADD_TO_PATH               ; x bool
 Var AUTOMATIC_UPDATE
 Var AUTOMATIC_BACKUP
 
+# determine_possible_install_scope sets:
 Var AllowGlobalInstall
 
 Var ChooseInstallPath
 
 Var BackupPath
 
-
 VAR TRI_INSTALL_SERVICE       ; x bool
 VAR TRI_INSTALL_SCOPE_ALL     ; x bool => All / ThisUser
 Var newCfgValues              ; keep new config file values
+Var newCfgValuesUtf8          ; translated version of the content
 Var newCfgValuesFile          ; write them to a temporary file...
 Var ServiceUp                 ; did the service start?
 !define TEMP1 $R0 ;Temp variable
 
 Var DATADIR
 Var APPDIR
-Var LOGFILE
+; Var LOGFILE
 
 Var ini_DATADIR
 Var ini_APPDIR
-Var ini_LOGFILE
+; Var ini_LOGFILE
 
 Var UpgradeInstall
 Var LaunchAfterInstall
@@ -123,6 +126,17 @@ RequestExecutionLevel highest
 !include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
+
+!macro determine_possible_install_scope
+    UserInfo::GetAccountType
+    pop $0
+    ${If} $0 == "admin"
+      StrCpy $AllowGlobalInstall "1"
+    ${Else}
+      StrCpy $AllowGlobalInstall "0"
+    ${EndIf}
+!macroend
+
 
 !macro determine_install_scope un
   Function ${un}determine_install_scope
@@ -195,24 +209,22 @@ Function un.ReadSettings
 
   ;MessageBox MB_OK "Add to path: $ADD_TO_PATH"
   ReadRegStr $ADD_DESKTOP_ICON         SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
-  ReadINIStr $DATADIR                  "$INSTDIR\${ARANGO_INI}" "database"   "directory"
-  ReadINIStr $APPDIR                   "$INSTDIR\${ARANGO_INI}" "javascript" "app-path"
+  ReadINIStr $newCfgValuesUtf8                  "$INSTDIR\${ARANGO_INI}" "database"   "directory"
+  ${Utf8ToAnsi} $newCfgValuesUtf8 $DATADIR       
+  ReadINIStr $newCfgValuesUtf8                   "$INSTDIR\${ARANGO_INI}" "javascript" "app-path"
+  ${Utf8ToAnsi} $newCfgValuesUtf8 $APPDIR
 
 FunctionEnd
 
 Function check_previous_install
   StrCpy $UpgradeInstall "0"
-
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
+  DetailPrint "This is a fresh install."
   return
 OldFound:
+  DetailPrint "found old installation."
   StrCpy $UpgradeInstall "1"
-FunctionEnd
-
-Function disableBackButton
-     GetDlgItem $0 $HWNDParent 3
-     EnableWindow $0 0
 FunctionEnd
 
 Function stop_old_service
@@ -498,7 +510,6 @@ Function InstallOptionsPage1
 continueUI:
   !insertmacro determineInstallScope 1
   Push ${TEMP1}
-displayAgain:
 
   !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
 
@@ -664,7 +675,7 @@ continueUI:
   ${NSD_CreateLabel} 35% 50 40% 6% "Password (Again)"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the stogare engine to use for this ArangoDB Installation"
+  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the storage engine to use for this ArangoDB installation"
   Pop $0 ; Don't care...
 
   ${NSD_CreateDropList} 5, 110, 30% 6% ""
@@ -715,36 +726,44 @@ FunctionEnd
 
 Function UpgradeExisting
   ; Check whether we acutally should upgrade:
+  !insertmacro StripBackslash DATADIR
+  !insertmacro StripSlash DATADIR
   DetailPrint "Checking whether an existing database needs upgrade: "
+  push ${ARANGO_EXIT_ALREADY_RUNNING}
+  pop $0
+retryDetectUpgradeNeeded:
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
+  ${If} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
+  ${OrIf} $0 == ${ARANGO_EXIT_COULD_NOT_LOCK}
+    MessageBox MB_RETRYCANCEL "Another ArangoDB is currently locking your database, please stop it, and then click retry." IDCANCEL abortUpgrade IDRETRY retryDetectUpgradeNeeded
+  abortUpgrade:
+    Abort
+  ${EndIf}
+
   ${If} $0 != 0
-  ${AndIf} $0 != 11
-    !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade"
-  ${ElseIf} $0 == 11
+  ${AndIf} $0 != ${ARANGO_EXIT_UPGRADE_REQUIRED}
+    !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
+  ${ElseIf} $0 == ${ARANGO_EXIT_UPGRADE_REQUIRED}
   ${AndIf} $AUTOMATIC_UPDATE == "1"
-    DetailPrint "Yes."
+    DetailPrint "Update required."
 
     ${If} $AUTOMATIC_BACKUP == "1"
       ; We should and we should keep a backup:
       StrCpy $BackupPath "$DATADIR"
-      !insertmacro StripBackslash BackupPath
-      !insertmacro StripSlash BackupPath      
       ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
       StrCpy $BackupPath "$BackupPath_$2-$1-$0_$4_$5_$6"
       CreateDirectory "$BackupPath"
-      ClearErrors
-      DetailPrint "Copying old database from $DATADIR to backup directory $BackupPath"
-      CopyFiles "$DATADIR" "$BackupPath"
-      IfErrors 0 +2
-      MessageBox MB_ICONEXCLAMATION "The upgrade failed to copy the files $\r$\nfrom '$DATADIR'$\r$\nto '$BackupPath'; please do it manually.$\r$\n$\r$\nClick OK to continue."
+      DetailPrint "Copying old database from $DATADIR"
+      DetailPrint "to backup directory $BackupPath"
+      !insertmacro xCopyDir "$DATADIR" "$BackupPath"
     ${EndIf}
     DetailPrint "Attempting to run database upgrade: "
     ; Now actually do the upgrade
     ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true" $0
     DetailPrint "Done running database upgrade: $0"
     ${If} $0 != 0
-      !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade"
+      !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade" ""
       Abort
     ${EndIf}
   ${EndIf}
@@ -761,7 +780,7 @@ Function SetDBPassword
   ${If} $0 == 0
     return
   ${Else}
-    !insertmacro printExitCode $0 "Failed to initialize database password.$\r$\nPlease check the Windows event log for more details$\r$\n"
+    !insertmacro printExitCode $0 "Failed to initialize database password$\r$\n" "Please check the Windows event log for more details$\r$\n"
     Abort
   ${EndIf}
   error:
@@ -792,8 +811,9 @@ Function InstallService
          ${If} $2 == "1"
            MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
            Abort
-         ${ElseIf} $2 == "2"
-           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+         ${Else}
+           !insertmacro printExitCode $2 "${SC_WAITED}$\r$\nbut it exited with a fatal error" "$\r$\n${SC_SV}$\r$\n${SC_EVLOG};$\r$\nExit status: $2"
+           ; MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
            Abort
          ${EndIf}
        ${ElseIf} $1 != "0"
@@ -898,8 +918,6 @@ Section "-Core installation"
   CreateShortCut  "$LaunchLink" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMINIMIZED
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
-  ;Read a value from an InstallOptions INI file
-
   StrCmp "0" "$ADD_DESKTOP_ICON" noDesktopIcon
   CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
@@ -921,6 +939,8 @@ Section "-Core installation"
   !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
   !insertmacro AddToRegistry "APPDIR"         "$APPDIR"
 
+  !insertmacro StripBackslash APPDIR
+  !insertmacro StripSlash APPDIR
   ; Create a file containing the settings we want to be overwritten:
   ${If} $DATADIR != ""
     StrCpy $ini_DATADIR "[database]$\r$\ndirectory = $DATADIR$\r$\n"
@@ -928,13 +948,14 @@ Section "-Core installation"
   ${If} $APPDIR != ""
     StrCpy $ini_APPDIR "[javascript]$\r$\napp-path = $APPDIR$\r$\n"
   ${EndIf}
-  ${If} $LOGFILE != ""
-    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE$\r$\n"
-  ${EndIf}
+  ;${If} $LOGFILE != ""
+  ;  StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE$\r$\n"
+  ;${EndIf}
   StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  ${AnsiToUtf8} $newCfgValues $newCfgValuesUtf8
   StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
   FileOpen $4  "$newCfgValuesFile" w
-  FileWrite $4 "$newCfgValues"
+  FileWrite $4 "$newCfgValuesUtf8"
   FileClose $4
   ; Alter the shipped file and insert the values from above:
   push "$newCfgValuesFile"
@@ -1021,13 +1042,8 @@ FunctionEnd
 ;--------------------------------
 ; determine admin versus local install
 Function un.onInit
-  UserInfo::GetAccountType
-  pop $0
-  ${If} $0 == "admin"
-    StrCpy $AllowGlobalInstall "1"
-  ${Else}
-    StrCpy $AllowGlobalInstall "0"
-  ${EndIf}
+  ; are we allowed to un.install admin in first place?
+  !insertmacro determine_possible_install_scope
 
 ; ArangoDB may be installed in different places
 ; Determine if the ArangoDB was installed for a local user
@@ -1131,7 +1147,7 @@ Done:
   StrCmp $PURGE_DB "0" dontDeleteDatabases
   DetailPrint 'Removing database files from $DATADIR: '
   RMDir /r "$DATADIR"
-  DetailPrint 'Removing foxx services files from $APPDIR: '
+  DetailPrint 'Removing Foxx services files from $APPDIR: '
   RMDir /r "$APPDIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
@@ -1227,18 +1243,11 @@ SectionEnd
 ; Choose different default installation folder based on SV_ALLUSERS...
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
 
-var allPathOpts
 var CMDINSTDIR
 
 Function .onInit
-  UserInfo::GetAccountType
-  pop $0
-  ${If} $0 == "admin"
-    StrCpy $AllowGlobalInstall "1"
-  ${Else}
-    StrCpy $AllowGlobalInstall "0"
-  ${EndIf}
-
+  ; are we allowed to install admin in first place?
+  !insertmacro determine_possible_install_scope
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/INSTALL_SCOPE_ALL=" $0

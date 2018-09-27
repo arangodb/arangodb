@@ -27,23 +27,25 @@
 #include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
+
 class ScriptFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ScriptFeature(application_features::ApplicationServer*, int* result);
+  explicit ScriptFeature(
+    application_features::ApplicationServer& server,
+    int* result
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
  private:
   std::vector<std::string> _scriptParameters;
 
- private:
   int runScript(std::vector<std::string> const& scripts);
 
- private:
   int* _result;
 };
+
 }
 
 #endif

@@ -31,27 +31,23 @@ const scriptArguments = {
   'outputFile': fs.join(fs.makeAbsolute(''), "arangosh.examples.js")
 };
 
+const programPaths = [
+  "build/bin/",
+  "build/bin/RelWithDebInfo/",
+  "bin/"
+];
+
 let ARANGOD;
 let ARANGOSH;
 
-function locateArangod() {
-  ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangod");
-  if(!fs.isFile(ARANGOD) && !fs.isFile(ARANGOD + ".exe")) {
-    ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangod");
+function locateProgram(programName, errMsg) {
+  for (let programPath of programPaths) {
+    let path = fs.join(fs.join(fs.makeAbsolute('')), programPath, programName);
+    if (fs.isFile(path) || fs.isFile(path + ".exe")) {
+      return path;
+    }
   }
-  if(!fs.isFile(ARANGOD) && !fs.isFile(ARANGOD + ".exe")) {
-    throw "Cannot find Aarangod to execute tests against";
-  }
-}
-
-function locateArangosh() {
-  ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangosh");
-  if(!fs.isFile(ARANGOSH) && !fs.isFile(ARANGOSH + ".exe")) {
-    ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangosh");
-  }
-  if(!fs.isFile(ARANGOSH) && !fs.isFile(ARANGOSH + ".exe")) {
-    throw "Cannot find arangosh to run tests with";
-  }
+  throw errMsg;
 }
 
 function endpointToURL(endpoint) {
@@ -151,11 +147,12 @@ function main(argv) {
     serverArgs["log.file"] = fs.join(tmpDataDir, "log");
     serverArgs["server.authentication"] = "false";
     serverArgs["server.endpoint"] = serverEndpoint;
+    serverArgs["server.storage-engine"] = "mmfiles"; // examples depend on it
 
     print("================================================================================");
+    ARANGOD = locateProgram("arangod", "Cannot find arangod to execute tests against");
     print(ARANGOD);
     print(toArgv(serverArgs));
-    locateArangod();
     instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs)).pid;
 
     // Wait until the server is up:
@@ -190,8 +187,8 @@ function main(argv) {
     'javascript.execute': scriptArguments.outputFile
   };
 
-  locateArangosh();
   print("--------------------------------------------------------------------------------");
+  ARANGOSH = locateProgram("arangosh", "Cannot find arangosh to run tests with");
   print(ARANGOSH);
   print(internal.toArgv(arangoshArgs));
   res = executeExternalAndWait(ARANGOSH, internal.toArgv(arangoshArgs));

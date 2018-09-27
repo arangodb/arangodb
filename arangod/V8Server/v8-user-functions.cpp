@@ -41,15 +41,14 @@ static void JS_UnregisterAQLUserFunction(v8::FunctionCallbackInfo<v8::Value> con
     TRI_V8_THROW_EXCEPTION_USAGE("UNREGISTER_AQL_USER_FUNCTION(<name>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string functionName = TRI_ObjectToString(args[0]);
-
   Result rv = unregisterUserFunction(vocbase, functionName);
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
   }
+
   TRI_V8_RETURN(v8::Number::New(isolate, 1));
   TRI_V8_TRY_CATCH_END;
 }
@@ -63,15 +62,14 @@ static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Valu
   }
 
   int deleteCount;
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string functionFilterPrefix = TRI_ObjectToString(args[0]);
-
   Result rv = unregisterUserFunctionsGroup(vocbase, functionFilterPrefix, deleteCount);
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
   }
+
   TRI_V8_RETURN(v8::Number::New(isolate, deleteCount));
   TRI_V8_TRY_CATCH_END;
 }
@@ -86,16 +84,18 @@ static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const
 
   TRI_normalize_V8_Obj(args, args[0]);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   VPackBuilder builder;
+
   TRI_V8ToVPack(isolate, builder, args[0], false);
-  bool replacedExisting;
+
+  bool replacedExisting = false;
   Result rv = registerUserFunction(vocbase, builder.slice(), replacedExisting);
-  
+
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
   }
+
   TRI_V8_RETURN(replacedExisting);
   TRI_V8_TRY_CATCH_END;
 }
@@ -107,13 +107,15 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
   if (args.Length() > 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("GET_AQL_USER_FUNCTIONS([<group-filter-string>])");
   }
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  
+
+  auto& vocbase = GetContextVocBase(isolate);
   VPackBuilder result;
   std::string functionFilterPrefix;
+
   if (args.Length() >= 1) {
     functionFilterPrefix = TRI_ObjectToString(args[0]);
   }
+
   Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, result);
 
   if (rv.fail()) {
@@ -145,6 +147,4 @@ void TRI_InitV8UserFunctions(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING(isolate, "GET_AQL_USER_FUNCTIONS"),
                                JS_GetAqlUserFunctions, true);
 
-
-  
 }

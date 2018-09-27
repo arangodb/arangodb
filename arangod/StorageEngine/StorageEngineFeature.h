@@ -29,16 +29,16 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 // a stub class that other features can use to check whether a storage
 // engine (no matter what type) is ready
 class StorageEngineFeature : public application_features::ApplicationFeature {
-
  public:
-  StorageEngineFeature(application_features::ApplicationServer* server)
+  StorageEngineFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature(server, "StorageEngine") {
     setOptional(false);
+    startsAfter("BasicsPhase");
   }
-
 };
 
 }

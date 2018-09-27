@@ -1,5 +1,21 @@
 /* jshint -W051:true */
 /* eslint-disable */
+
+let appendHeaders = function(appender, headers) {
+  var key;
+  // generate header
+  appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+
+  for (key in headers) {
+    if (headers.hasOwnProperty(key)) {
+      if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+          && key !== 'content-length') {
+        appender(key + ': ' + headers[key] + '\n');
+      }
+    }
+  }
+};
+  
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -55,7 +71,7 @@
       if (exports.arango) {
         var wfs = waitForSync ? 'true' : 'false';
         var wfc = waitForCollector ? 'true' : 'false';
-        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, '');
+        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
         return;
       }
 
@@ -65,7 +81,7 @@
     properties: function (value) {
       if (exports.arango) {
         if (value !== undefined) {
-          return exports.arango.PUT('/_admin/wal/properties', JSON.stringify(value));
+          return exports.arango.PUT('/_admin/wal/properties', value);
         }
 
         return exports.arango.GET('/_admin/wal/properties', '');
@@ -76,7 +92,7 @@
 
     transactions: function () {
       if (exports.arango) {
-        return exports.arango.GET('/_admin/wal/transactions', '');
+        return exports.arango.GET('/_admin/wal/transactions', null);
       }
 
       throw 'not connected';
@@ -89,7 +105,7 @@
 
   exports.reloadAqlFunctions = function () {
     if (exports.arango) {
-      exports.arango.POST('/_admin/aql/reload', '');
+      exports.arango.POST('/_admin/aql/reload', null);
       return;
     }
 
@@ -102,32 +118,7 @@
 
   exports.reloadRouting = function () {
     if (exports.arango) {
-      exports.arango.POST('/_admin/routing/reload', '');
-      return;
-    }
-
-    throw 'not connected';
-  };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the routing cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.routingCache = function () {
-    if (exports.arango) {
-      return exports.arango.GET('/_admin/routing/routes', '');
-    }
-
-    throw 'not connected';
-  };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the authentication cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.reloadAuth = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/auth/reload', '');
+      exports.arango.POST('/_admin/routing/reload', null);
       return;
     }
 
@@ -142,12 +133,17 @@
     return function (method, url, body, headers) {
       var response;
       var curl;
-      var i;
       var jsonBody = false;
 
       if ((typeof body !== 'string') && (body !== undefined)) {
         jsonBody = true;
         body = exports.inspect(body);
+      }
+      if (headers === undefined || headers === null || headers === '') {
+        headers = {};
+      }
+      if (!headers.hasOwnProperty('Accept') && !headers.hasOwnProperty('accept')) {
+        headers['accept'] = 'application/json';
       }
 
       curl = 'shell> curl ';
@@ -161,7 +157,7 @@
       } else if (method === 'GET') {
         response = exports.arango.GET_RAW(url, headers);
       } else if (method === 'DELETE') {
-        response = exports.arango.DELETE_RAW(url, headers);
+        response = exports.arango.DELETE_RAW(url, body, headers);
         curl += '-X ' + method + ' ';
       } else if (method === 'PATCH') {
         response = exports.arango.PATCH_RAW(url, body, headers);
@@ -169,12 +165,12 @@
       } else if (method === 'HEAD') {
         response = exports.arango.HEAD_RAW(url, headers);
         curl += '-X ' + method + ' ';
-      } else if (method === 'OPTION') {
+      } else if (method === 'OPTION' || method === 'OPTIONS') {
         response = exports.arango.OPTION_RAW(url, body, headers);
         curl += '-X ' + method + ' ';
       }
       if (headers !== undefined && headers !== '') {
-        for (i in headers) {
+        for (let i in headers) {
           if (headers.hasOwnProperty(i)) {
             curl += "--header '" + i + ': ' + headers[i] + "' ";
           }
@@ -209,21 +205,7 @@
 
   exports.appendRawResponse = function (appender, syntaxAppender) {
     return function (response) {
-      var key;
-      var headers = response.headers;
-
-      // generate header
-      appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
-
-      for (key in headers) {
-        if (headers.hasOwnProperty(key)) {
-          if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-            && key !== 'content-length') {
-            appender(key + ': ' + headers[key] + '\n');
-          }
-        }
-      }
-
+      appendHeaders(appender, response.headers);
       appender('\n');
 
       // append body
@@ -245,12 +227,52 @@
       // copy original body (this is necessary because 'response' is passed by reference)
       var copy = response.body;
       // overwrite body with parsed JSON && append
-      response.body = JSON.parse(response.body);
+      try {
+        response.body = JSON.parse(response.body);
+      }
+      catch (e) {
+        throw ` ${e}: ${JSON.stringify(response)}`;
+      }
       syntaxAppend(response);
       // restore original body
       response.body = copy;
     };
   };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief logs a response in JSON
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.appendJsonLResponse = function (appender, syntaxAppender) {
+    return function (response) {
+      var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
+
+      appendHeaders(appender, response.headers);
+      appender('\n');
+
+      var splitted = response.body.split("\n");
+      splitted.forEach(function(line) {
+        try {
+          if (line.length > 0) {
+            syntaxAppender(exports.inspect(JSON.parse(line)));
+          }
+        }
+        catch (e) {
+          throw ` ${e}: (${line})\n${JSON.stringify(response)}`;
+        }
+      }
+                      );
+    };
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief returns if we are in enterprise version or not
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_IS_ENTERPRISE) {
+    exports.isEnterprise = global.SYS_IS_ENTERPRISE;
+    delete global.SYS_IS_ENTERPRISE;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief log function

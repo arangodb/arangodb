@@ -30,6 +30,7 @@
 #include "Basics/Common.h"
 
 namespace rocksdb {
+
 class TransactionDB;
 }  // namespace rocksdb
 
@@ -39,7 +40,8 @@ class RocksDBRecoveryManager final
     : public application_features::ApplicationFeature {
  public:
   explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer* server);
+    application_features::ApplicationServer& server
+  );
 
   static std::string featureName() { return "RocksDBRecoveryManager"; }
   static RocksDBRecoveryManager* instance();
@@ -59,8 +61,9 @@ class RocksDBRecoveryManager final
   //////////////////////////////////////////////////////////////////////////////
   rocksdb::TransactionDB* _db;
 
-  bool _inRecovery;
+  std::atomic<bool> _inRecovery;
 };
+
 }  // namespace arangodb
 
 #endif

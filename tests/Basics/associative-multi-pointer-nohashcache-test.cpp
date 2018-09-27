@@ -54,13 +54,12 @@ struct data_container_t {
 };
 
 struct AssocMultiTestHelper {
-  static inline uint64_t HashKey(void* userData, void const* e) {
+  static inline uint64_t HashKey(void const* e) {
     int const* key = (int const*) e;
     return fasthash64(key, sizeof(int), 0x12345678);
   }
 
-  static inline uint64_t HashElement(void* userData,
-                                     void const* e, 
+  static inline uint64_t HashElement(void const* e, 
                                      bool byKey) {
     data_container_t const* element = (data_container_t const*) e;
 
@@ -133,7 +132,7 @@ SECTION("tst_init") {
 SECTION("tst_insert_few") {
   INIT_MULTI
 
-  void* r = 0;
+  void* r = nullptr;
 
   ELEMENT(e1, 1, 123);
   CHECK(r == a1.insert(nullptr, &e1, true, false));
@@ -157,7 +156,7 @@ SECTION("tst_insert_delete_many") {
   ELEMENT(e, 0, 0);
   vector<data_container_t*> v;
 
-  data_container_t* n = 0;
+  data_container_t* n = nullptr;
   data_container_t* p;
   data_container_t* one_more;
 

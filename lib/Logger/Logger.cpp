@@ -25,6 +25,7 @@
 #include "Logger.h"
 
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -33,6 +34,7 @@
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogThread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,11 +61,13 @@ bool Logger::_showThreadIdentifier(false);
 bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
 bool Logger::_useColor(true);
+bool Logger::_useEscaped(true);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
 bool Logger::_showRole(false);
 char Logger::_role('\0');
+TRI_pid_t Logger::_cachedPid(0);
 std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
@@ -206,6 +210,15 @@ void Logger::setUseColor(bool value) {
   _useColor = value;
 }
 
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseEscaped(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change escaping if logging is active");
+  }
+
+  _useEscaped = value;
+}
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseLocalTime(bool show) {
@@ -268,7 +281,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
   return UNKNOWN;
 }
 
-void Logger::log(char const* function, char const* file, long int line,
+void Logger::log(char const* function, char const* file, int line,
                  LogLevel level, size_t topicId,
                  std::string const& message) {
 #ifdef _WIN32
@@ -296,7 +309,7 @@ void Logger::log(char const* function, char const* file, long int line,
   if (_useMicrotime) {
     snprintf(buf, sizeof(buf), "%.6f ", TRI_microtime());
   } else {
-    time_t tt = time(0);
+    time_t tt = time(nullptr);
     struct tm tb;
 
     if (!_useLocalTime) {
@@ -317,7 +330,17 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // append the process / thread identifier
-  out << '[' << Thread::currentProcessId();
+
+  // we only determine our pid once, as currentProcessId() will
+  // likely do a syscall.
+  // this read-check-update sequence is not thread-safe, but this
+  // should not matter, as the pid value is only changed from 0 to the
+  // actual pid and never changes afterwards
+  if (_cachedPid == 0) {
+    _cachedPid = Thread::currentProcessId();
+  }
+  TRI_ASSERT(_cachedPid != 0);
+  out << '[' << _cachedPid;
 
   if (_showThreadIdentifier) {
     out << '-' << Thread::currentThreadNumber();
@@ -432,6 +455,8 @@ void Logger::shutdown() {
 
   // cleanup appenders
   LogAppender::shutdown();
+  
+  _cachedPid = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

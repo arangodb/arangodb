@@ -9,6 +9,12 @@
 @RESTQUERYPARAM{includeSystem,boolean,optional}
 Include system collections in the result. The default value is *true*.
 
+@RESTQUERYPARAM{global,boolean,optional}
+Include alll databases in the response. Only works on `_system` The default value is *false*.
+
+@RESTQUERYPARAM{batchId,number,required}
+The RocksDB engine requires a valid batchId for this API call
+
 @RESTDESCRIPTION
 Returns the array of collections and indexes available on the server. This
 array can be used by replication clients to initiate an initial sync with the
@@ -73,6 +79,9 @@ server, the following additional steps need to be carried out:
 *DBserver* which must be an ID of a DBserver.
 The very same request is forwarded synchronously to that DBserver.
 It is an error if this attribute is not bound in the coordinator case.
+
+**Note:**: Using the `global` parameter the top-level object contains a key `databases`
+under which each key represents a datbase name, and the value conforms to the above describtion.
 
 @RESTRETURNCODES
 

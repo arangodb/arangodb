@@ -37,7 +37,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 NS_BEGIN(kludge)
 
-typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr AnalyzerPoolPtr;
+typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool AnalyzerPool;
 
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
@@ -46,8 +46,8 @@ void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 
-void mangleStringField(std::string& name, AnalyzerPoolPtr const& pool);
-void unmangleStringField(std::string& name, AnalyzerPoolPtr const& pool);
+void mangleStringField(std::string& name, AnalyzerPool const& pool);
+void demangleStringField(std::string& name, AnalyzerPool const& pool);
 
 NS_END // kludge
 NS_END // iresearch

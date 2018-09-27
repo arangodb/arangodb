@@ -5,7 +5,6 @@
 @RESTHEADER{PUT /_api/simple/any, Return a random document}
 
 @RESTDESCRIPTION
-
 Returns a random document from a collection. The call expects a JSON object
 as body with the following attributes:
 

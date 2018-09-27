@@ -52,17 +52,6 @@ std::string Builder::toJson() const {
   return buffer;
 }
   
-// Add a subvalue into an object from a Value:
-uint8_t* Builder::add(std::string const& attrName, Value const& sub) {
-  return addInternal<Value>(attrName, sub);
-}
-uint8_t* Builder::add(char const* attrName, Value const& sub) {
-  return addInternal<Value>(attrName, sub);
-}
-uint8_t* Builder::add(char const* attrName, size_t attrLength, Value const& sub) {
-  return addInternal<Value>(attrName, attrLength, sub);
-}
-
 void Builder::doActualSort(std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
   std::sort(entries.begin(), entries.end(),
@@ -101,8 +90,8 @@ uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
 }
 
 void Builder::sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets) {
-  auto cmp = [&](ValueLength a, ValueLength b) -> bool {
+                                   std::vector<ValueLength>& offsets) const {
+  std::sort(offsets.begin(), offsets.end(), [&objBase](ValueLength a, ValueLength b) -> bool {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
     if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
@@ -119,39 +108,29 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
       int c = memcmp(aa, bb, checkOverflow(m));
       return (c < 0 || (c == 0 && lena < lenb));
     }
-  };
-  std::sort(offsets.begin(), offsets.end(), cmp);
+  });
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
-// on some platforms we can use a thread-local vector
-#if __llvm__ == 1
-  // nono thread local
-  std::vector<Builder::SortEntry> entries;
-#elif defined(_WIN32) && defined(_MSC_VER)
-  std::vector<Builder::SortEntry> entries;
-#else
-  // thread local vector for sorting large object attributes
-  thread_local std::vector<Builder::SortEntry> entries;
-  entries.clear();
-#endif
+  _sortEntries.clear();
 
   size_t const n = offsets.size();
-  entries.reserve(n);
+  _sortEntries.reserve(n);
   for (size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = findAttrName(objBase + e.offset, e.nameSize);
-    entries.push_back(e);
+    _sortEntries.push_back(e);
   }
-  VELOCYPACK_ASSERT(entries.size() == n);
-  doActualSort(entries);
+  VELOCYPACK_ASSERT(_sortEntries.size() == n);
+  doActualSort(_sortEntries);
 
   // copy back the sorted offsets
   for (size_t i = 0; i < n; i++) {
-    offsets[i] = entries[i].offset;
+    offsets[i] = _sortEntries[i].offset;
   }
+  _sortEntries.clear();
 }
 
 void Builder::sortObjectIndex(uint8_t* objBase,
@@ -378,7 +357,7 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
 }
 
 Builder& Builder::close() {
-  if (isClosed()) {
+  if (VELOCYPACK_UNLIKELY(isClosed())) {
     throw Exception(Exception::BuilderNeedOpenCompound);
   }
   ValueLength tos = _stack.back();
@@ -457,9 +436,9 @@ Builder& Builder::close() {
   if (index.size() >= 2) {
     sortObjectIndex(_start + tos, index);
   }
-  for (size_t i = 0; i < index.size(); i++) {
+  for (size_t i = 0; i < index.size(); ++i) {
     uint64_t x = index[i];
-    for (size_t j = 0; j < offsetSize; j++) {
+    for (size_t j = 0; j < offsetSize; ++j) {
       _start[tableBase + offsetSize * i + j] = x & 0xff;
       x >>= 8;
     }
@@ -558,10 +537,6 @@ uint8_t* Builder::set(Value const& item) {
   // append position. If this is an array or object, then an index
   // table is created and a new ValueLength is pushed onto the stack.
   switch (item.valueType()) {
-    case ValueType::None: {
-      throw Exception(Exception::BuilderUnexpectedType,
-                      "Cannot set a ValueType::None");
-    }
     case ValueType::Null: {
       appendByte(0x18);
       break;
@@ -696,25 +671,6 @@ uint8_t* Builder::set(Value const& item) {
       addUInt(v);
       break;
     }
-    case ValueType::UTCDate: {
-      int64_t v;
-      switch (ctype) {
-        case Value::CType::Double:
-          v = static_cast<int64_t>(item.getDouble());
-          break;
-        case Value::CType::Int64:
-          v = item.getInt64();
-          break;
-        case Value::CType::UInt64:
-          v = toInt64(item.getUInt64());
-          break;
-        default:
-          throw Exception(Exception::BuilderUnexpectedValue,
-                          "Must give number for ValueType::UTCDate");
-      }
-      addUTCDate(v);
-      break;
-    }
     case ValueType::String: {
       if (ctype == Value::CType::String) {
         std::string const* s = item.getString();
@@ -762,6 +718,25 @@ uint8_t* Builder::set(Value const& item) {
       addObject(item._unindexed);
       break;
     }
+    case ValueType::UTCDate: {
+      int64_t v;
+      switch (ctype) {
+        case Value::CType::Double:
+          v = static_cast<int64_t>(item.getDouble());
+          break;
+        case Value::CType::Int64:
+          v = item.getInt64();
+          break;
+        case Value::CType::UInt64:
+          v = toInt64(item.getUInt64());
+          break;
+        default:
+          throw Exception(Exception::BuilderUnexpectedValue,
+                          "Must give number for ValueType::UTCDate");
+      }
+      addUTCDate(v);
+      break;
+    }
     case ValueType::Binary: {
       if (ctype != Value::CType::String && ctype != Value::CType::CharPtr) {
         throw Exception(
@@ -802,6 +777,10 @@ uint8_t* Builder::set(Value const& item) {
       throw Exception(Exception::BuilderUnexpectedType,
                       "Cannot set a ValueType::Custom with this method");
     }
+    case ValueType::None: {
+      throw Exception(Exception::BuilderUnexpectedType,
+                      "Cannot set a ValueType::None");
+    }
   }
   return _start + oldPos;
 }
@@ -830,6 +809,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
     uint64_t v = pair.getSize();
     reserve(9 + v);
     appendUInt(v, 0xbf);
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
     advance(v);
     return _start + oldPos;
@@ -845,6 +825,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
       reserve(1 + size);
       appendByteUnchecked(static_cast<uint8_t>(0x40 + size));
     }
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
     advance(size);
     return _start + oldPos;
@@ -898,7 +879,7 @@ void Builder::checkAttributeUniqueness(Slice const& obj) const {
 
     while (it.valid()) {
       Slice const key = it.key(true);
-      // key() guarantees a string as returned type
+      // key() guarantees a String as returned type
       VELOCYPACK_ASSERT(key.isString());
       if (!keys.emplace(StringRef(key)).second) {
         throw Exception(Exception::DuplicateAttributeName);
@@ -933,14 +914,6 @@ uint8_t* Builder::add(ObjectIterator&& sub) {
   }
   return _start + oldPos;
 }
-
-uint8_t* Builder::add(Value const& sub) { return addInternal<Value>(sub); }
-
-uint8_t* Builder::add(ValuePair const& sub) {
-  return addInternal<ValuePair>(sub);
-}
-
-uint8_t* Builder::add(Slice const& sub) { return addInternal<Slice>(sub); }
 
 // Add all subkeys and subvalues into an object from an ArrayIterator
 // and leaves open the array intentionally

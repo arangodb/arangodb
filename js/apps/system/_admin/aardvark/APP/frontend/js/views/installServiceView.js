@@ -6,6 +6,7 @@
   window.ServiceInstallView = Backbone.View.extend({
     el: '#content',
     readOnly: false,
+    foxxStoreRetry: 0,
 
     template: templateEngine.createTemplate('serviceInstallView.ejs'),
 
@@ -31,11 +32,17 @@
       }
     },
 
-    waitForResponse: function () {
+    fetchStore: function () {
       var self = this;
-      window.setTimeout(function () {
-        self.render();
-      }, 200);
+      this.foxxStoreRetry = 1;
+      this.collection.fetch({
+        cache: false,
+        success: function () {
+          if (window.location.hash === '#services/install') {
+            self.render();
+          }
+        }
+      });
     },
 
     search: function () {
@@ -90,8 +97,8 @@
       arangoHelper.buildServicesSubNav('Store');
       this.breadcrumb();
 
-      if (this.collection.length === 0) {
-        this.waitForResponse();
+      if (this.collection.length === 0 && this.foxxStoreRetry === 0) {
+        this.fetchStore();
         return;
       }
 

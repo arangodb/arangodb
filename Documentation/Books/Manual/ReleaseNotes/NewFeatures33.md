@@ -31,7 +31,7 @@ the data-centers has enough bandwidth. It is fault-tolerant
 without a single point of failure and includes a lot of
 metrics for monitoring in a production scenario.
 
-[DC2DC](../Deployment/DC2DC.md) is available in the *Enterprise* edition.
+[DC2DC](../Deployment/DC2DC/README.md) is available in the *Enterprise Edition*.
 
 Encrypted backups
 -----------------
@@ -64,10 +64,10 @@ Trying to restore the encrypted dump without specifying the key will fail:
 
 arangorestore will complain with:
 
-> the dump data seems to be encrypted with aes-256-ctr, but no key information
-> was specified to decrypt the dump it is recommended to specify either
-> `--encryption.key-file` or `--encryption.key-generator` when invoking
-> arangorestore with an encrypted dump
+```
+the dump data seems to be encrypted with aes-256-ctr, but no key information was specified to decrypt the dump
+it is recommended to specify either `--encryption.keyfile` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump
+```
 
 It is required to use the exact same key when restoring the data. Again this is
 done by providing the `--encryption.keyfile` parameter:
@@ -80,8 +80,8 @@ Note that encrypted backups can be used together with the already existing
 RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
 engine, which does not have encryption-at-rest.
 
-[Encrypted backups](../Administration/Arangodump.md#encryption) are available
-in the *Enterprise* edition.
+[Encrypted backups](../Programs/Arangodump/Examples.md#encryption) are available
+in the *Enterprise Edition*.
 
 Server-level replication
 ------------------------
@@ -169,8 +169,7 @@ ArangoDB support automatic failover in case the currently accessed server endpoi
 responds with HTTP 503.
 
 Blog article:
-[Introducing the new ArangoDB Java driver with load balancing and advanced fallback
-](https://www.arangodb.com/2017/12/introducing-the-new-arangodb-java-driver-load-balancing/)
+[Introducing the new ArangoDB Java driver with load balancing and advanced fallback](https://www.arangodb.com/2017/12/introducing-the-new-arangodb-java-driver-load-balancing/)
 
 RocksDB throttling
 ------------------
@@ -182,8 +181,8 @@ response times, which is better for client applications and cluster health
 tests, because timeouts caused by write stalls are less likely to occur and
 the server thus not mistakenly assumed to be down.
 
-Blog article: [RocksDB smoothing for ArangoDB customers
-](https://www.arangodb.com/2017/11/rocksdb-smoothing-arangodb-customers/)
+Blog article:
+[RocksDB smoothing for ArangoDB customers](https://www.arangodb.com/2017/11/rocksdb-smoothing-arangodb-customers/)
 
 Faster shard creation in cluster
 --------------------------------
@@ -206,7 +205,7 @@ which speeds up collection creation by roughly 50 to 60 percent.
 LDAP authentication
 -------------------
 
-The LDAP authentication module in the *Enterprise* edition has been enhanced.
+The LDAP authentication module in the *Enterprise Edition* has been enhanced.
 The following options have been added to it:
  
 - the option `--server.local-authentication` controls whether the local *_users*
@@ -218,7 +217,7 @@ The following options have been added to it:
 - the option `--server.authentication-timeout` controls the expiration time for 
   cached LDAP user information entries in arangod.
 
-- basic role support has been added for the LDAP module in the *Enterprise* edition.
+- basic role support has been added for the LDAP module in the *Enterprise Edition*.
   New configuration options for LDAP in 3.3 are:
 
   - `--ldap.roles-attribute-name`
@@ -228,7 +227,7 @@ The following options have been added to it:
   - `--ldap.roles-exclude`
   - `--ldap.superuser-role`
 
-  Please refer to [LDAP](../Administration/Configuration/Ldap.md) for a detailed
+  Please refer to [LDAP](../Programs/Arangod/Ldap.md) for a detailed
   explanation.
 
 

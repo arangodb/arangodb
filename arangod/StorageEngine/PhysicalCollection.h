@@ -33,8 +33,11 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
 namespace transaction {
+
 class Methods;
+
 }
 
 class LocalDocumentId;
@@ -46,12 +49,10 @@ struct OperationOptions;
 class Result;
 
 class PhysicalCollection {
- protected:
-  PhysicalCollection(LogicalCollection* collection,
-                     arangodb::velocypack::Slice const& info);
-
  public:
   virtual ~PhysicalCollection() = default;
+
+  virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
 
   // path to logical collection
   virtual std::string const& path() const = 0;
@@ -61,20 +62,10 @@ class PhysicalCollection {
   virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual arangodb::Result persistProperties() = 0;
-
-  virtual PhysicalCollection* clone(LogicalCollection*) const = 0;
-
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
-  /// @brief used for updating properties
-  virtual void getPropertiesVPackCoordinator(velocypack::Builder&) const = 0;
-
-  /// @brief return the figures for a collection
-  std::shared_ptr<velocypack::Builder> figures();
-
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
 
   virtual int close() = 0;
   virtual void load() = 0;
@@ -97,6 +88,17 @@ class PhysicalCollection {
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
+  
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
+  
+  /// @brief sets the current index selectivity estimates
+  virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  virtual void flushClusterIndexEstimates();
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
   
@@ -111,8 +113,11 @@ class PhysicalCollection {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
                        
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+  void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
+  
+  /// @brief return the figures for a collection
+  virtual std::shared_ptr<velocypack::Builder> figures();
 
   virtual std::shared_ptr<Index> createIndex(
       transaction::Methods* trx, arangodb::velocypack::Slice const& info,
@@ -124,8 +129,7 @@ class PhysicalCollection {
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
-  virtual std::unique_ptr<IndexIterator> getAllIterator(
-      transaction::Methods* trx, bool reverse) const = 0;
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx) const = 0;
   virtual void invokeOnAllElements(
@@ -136,8 +140,16 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual void truncate(transaction::Methods* trx,
-                        OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods* trx,
+                          OperationOptions& options) = 0;
+
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  virtual void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) = 0;
 
   virtual LocalDocumentId lookupKey(
       transaction::Methods*, arangodb::velocypack::Slice const&) const = 0;
@@ -188,9 +200,7 @@ class PhysicalCollection {
                          OperationOptions& options,
                          TRI_voc_tick_t& resultMarkerTick, bool lock,
                          TRI_voc_rid_t& prevRev,
-                         ManagedDocumentResult& previous,
-                         arangodb::velocypack::Slice const fromSlice,
-                         arangodb::velocypack::Slice const toSlice) = 0;
+                         ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const slice,
@@ -200,30 +210,27 @@ class PhysicalCollection {
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
 
-  /// @brief Defer a callback to be executed when the collection
-  ///        can be dropped. The callback is supposed to drop
-  ///        the collection and it is guaranteed that no one is using
-  ///        it at that moment.
-  virtual void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) = 0;
-  
  protected:
+  PhysicalCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
+
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
   // SECTION: Document pre commit preperation
 
   TRI_voc_rid_t newRevisionId() const;
 
+  bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
+
   /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(transaction::Methods* trx,
-                         velocypack::Slice const& value,
-                         velocypack::Slice const& fromSlice,
-                         velocypack::Slice const& toSlice,
-                         bool isEdgeCollection, velocypack::Builder& builder,
-                         bool isRestore,
-                         TRI_voc_rid_t& revisionId) const;
+  Result newObjectForInsert(transaction::Methods* trx,
+                            velocypack::Slice const& value,
+                            bool isEdgeCollection, velocypack::Builder& builder,
+                            bool isRestore,
+                            TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
@@ -232,29 +239,26 @@ class PhysicalCollection {
                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief merge two objects for update
-  void mergeObjectsForUpdate(transaction::Methods* trx,
+  Result mergeObjectsForUpdate(transaction::Methods* trx,
+                               velocypack::Slice const& oldValue,
+                               velocypack::Slice const& newValue,
+                               bool isEdgeCollection,
+                               bool mergeObjects, bool keepNull,
+                               velocypack::Builder& builder,
+                               bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  /// @brief new object for replace
+  Result newObjectForReplace(transaction::Methods* trx,
                              velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection,
-                             bool mergeObjects, bool keepNull,
                              velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
-
-  /// @brief new object for replace
-  void newObjectForReplace(transaction::Methods* trx,
-                           velocypack::Slice const& oldValue,
-                           velocypack::Slice const& newValue,
-                           velocypack::Slice const& fromSlice,
-                           velocypack::Slice const& toSlice,
-                           bool isEdgeCollection,
-                           velocypack::Builder& builder,
-                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found) const;
 
- protected:
-  LogicalCollection* _logicalCollection;
+  LogicalCollection& _logicalCollection;
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;

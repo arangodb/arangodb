@@ -1,14 +1,18 @@
 SmartGraphs
 ===========
 
-__This feature is only available in the Enterprise Edition.__
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
 This chapter describes the [smart-graph](../README.md) module.
 It enables you to manage graphs at scale, it will give a vast performance benefit for all graphs sharded in an ArangoDB Cluster.
 On a single server this feature is pointless, hence it is only available in a cluster mode.
 In terms of querying there is no difference between smart and General Graphs.
 The former are a transparent replacement for the latter.
-So for querying the graph please refer to [AQL Graph Operations](../../AQL/Graphs/index.html) and [Graph Functions](../GeneralGraphs/Functions.md) sections.
+So for querying the graph please refer to [AQL Graph Operations](../../../AQL/Graphs/index.html) 
+and [Graph Functions](../GeneralGraphs/Functions.md) sections.
 The optimizer is clever enough to identify if we are on a SmartGraph or not.
 
 The difference is only in the management section: creating and modifying the underlying collections of the graph.
@@ -25,11 +29,11 @@ Examples for these graphs are:
 * Social Networks
 
   Typically the feature here is the region/country users live in.
-  Every user typicalliy has more contacts in the same region/country then she has in other regions/countries
+  Every user typically has more contacts in the same region/country then she has in other regions/countries
 
 * Transport Systems
 
-  For those also the feature is the region/country. You have many local transportion but only few accross countries.
+  For those also the feature is the region/country. You have many local transportation but only few across countries.
 
 * E-Commerce
 
@@ -53,12 +57,13 @@ Getting started
 ---------------
 
 First of all SmartGraphs *cannot use existing collections*, when switching to SmartGraph from an existing data set you have to import the data into a fresh SmartGraph.
-This switch can be easily achieved with [arangodump](../../Administration/Arangodump.md) and [arangorestore](../../Administration/Arangorestore.md).
+This switch can be easily achieved with [arangodump](../../Programs/Arangodump/README.md)
+and [arangorestore](../../Programs/Arangorestore/README.md).
 The only thing you have to change in this pipeline is that you create the new collections with the SmartGraph before starting `arangorestore`.
 
 * Create a graph
 
-  In comparison to General Graph we have to add more options when creating the graph. The two options `smartGraphAttribute` and `numberOfShards` are required and cannot be modifed later. 
+  In comparison to General Graph we have to add more options when creating the graph. The two options `smartGraphAttribute` and `numberOfShards` are required and cannot be modified later. 
 
 
     @startDocuBlockInline smartGraphCreateGraphHowTo1

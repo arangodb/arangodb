@@ -18,7 +18,15 @@
     },
 
     events: {
-      'click #installNewService': 'installNewService'
+      'click #installNewService': 'installNewService',
+      'keydown input': 'checkValidators'
+    },
+
+    checkValidators: function () {
+      if (window.modalView._validators.length !== 4) {
+        window.modalView.clearValidators();
+        this.setNewAppValidators();
+      }
     },
 
     initialize: function () {
@@ -76,6 +84,10 @@
       window.modalView.hide();
     },
 
+    checkValidation: function () {
+      window.modalView.modalTestAll();
+    },
+
     installCallback: function (result) {
       window.App.navigate('#services', {trigger: true});
       window.App.applicationsView.installCallback(result);
@@ -114,7 +126,7 @@
           return [
             {
               rule: Joi.string().required().regex(/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/),
-              msg: "Can only contain a to z, A to Z, 0-9, '-' and '_'."
+              msg: "Can only contain a to z, A to Z, 0-9, '-' and '_'. Cannot start with a number."
             }
           ];
         }
@@ -138,7 +150,7 @@
           return [
             {
               rule: Joi.string().required().regex(/^[a-zA-Z0-9 .,;-]+$/),
-              msg: 'Has to be non empty.'
+              msg: "Can only contain a to z, A to Z, 0-9, '-', '.', ',' and ';'."
             }
           ];
         }

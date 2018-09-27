@@ -67,6 +67,8 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
       return REPLICATION_COLLECTION_RENAME;
     case RocksDBLogType::CollectionChange:
       return REPLICATION_COLLECTION_CHANGE;
+    case RocksDBLogType::CollectionTruncate:
+      return REPLICATION_COLLECTION_TRUNCATE;
     case RocksDBLogType::IndexCreate:
       return REPLICATION_INDEX_CREATE;
     case RocksDBLogType::IndexDrop:
@@ -89,7 +91,7 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
 }
 
 /// WAL parser
-class WALParser : public rocksdb::WriteBatch::Handler {
+class WALParser final : public rocksdb::WriteBatch::Handler {
   // internal WAL parser states
   enum State : char {
     INVALID = 0,
@@ -183,8 +185,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         }
         break;
       }
-        
-      case RocksDBLogType::IndexCreate: {
+      case RocksDBLogType::CollectionTruncate: {
         resetTransientState(); // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
@@ -192,21 +193,45 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           TRI_ASSERT(_vocbase->id() == dbid);
           LogicalCollection* coll = loadCollection(cid);
           TRI_ASSERT(coll != nullptr);
+          {
+            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(tick)));
+            marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
+            marker->add("database", VPackValue(std::to_string(dbid)));
+            marker->add("cuid", VPackValue(coll->guid()));
+            marker->add("cid", VPackValue(std::to_string(cid)));
+          }
+          updateLastEmittedTick(_currentSequence);
+        }
+        break;
+      }
+      case RocksDBLogType::IndexCreate: {
+        resetTransientState(); // finish ongoing trx
+
+        TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
+        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+
+        if (shouldHandleCollection(dbid, cid)) {
+          TRI_ASSERT(_vocbase->id() == dbid);
+          LogicalCollection* coll = loadCollection(cid);
+          TRI_ASSERT(coll != nullptr);
           VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
           auto stripped = rocksutils::stripObjectIds(indexDef);
-
           uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+
           _builder.openObject();
           _builder.add("tick", VPackValue(std::to_string(tick)));
           _builder.add("type", VPackValue(REPLICATION_INDEX_CREATE));
           _builder.add("database", VPackValue(std::to_string(dbid)));
           _builder.add("cid", VPackValue(std::to_string(cid)));
-          _builder.add("cuid", VPackValue(coll->globallyUniqueId()));
+          _builder.add("cuid", VPackValue(coll->guid()));
           _builder.add("cname", VPackValue(coll->name()));
           _builder.add("data", stripped.first);
           _builder.close();
           updateLastEmittedTick(tick);
         }
+
         break;
       }
       case RocksDBLogType::IndexDrop: {
@@ -236,10 +261,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::ViewCreate:
       case RocksDBLogType::ViewDrop:
-      case RocksDBLogType::ViewChange:
-      case RocksDBLogType::ViewRename: {
+      case RocksDBLogType::ViewChange: {
         resetTransientState(); // finish ongoing trx
-        // TODO
         break;
       }
       case RocksDBLogType::BeginTransaction: {
@@ -395,7 +418,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         marker->add("database", VPackValue(std::to_string(dbid)));
         marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
-        marker->add("cid", VPackValue(cid));
+        marker->add("cid", VPackValue(std::to_string(cid)));
         marker->add("cname", VPackValue(col->name()));
         marker->add("data", RocksDBValue::data(value));
       }
@@ -547,7 +570,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     return false;
   }
-  
+
   LogicalCollection* loadCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid != 0);
     if (_vocbase != nullptr) {
@@ -555,12 +578,15 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       if (it != _collectionCache.end()) {
         return it->second.collection();
       }
-      LogicalCollection* collection = _vocbase->lookupCollection(cid);
+
+      auto* collection = _vocbase->lookupCollection(cid).get();
+
       if (collection != nullptr) {
         _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
         return collection;
       }
     }
+
     return nullptr;
   }
 

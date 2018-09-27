@@ -1,7 +1,17 @@
 Active Failover Administration
 ==============================
 
+This _Section_ includes information related to the administration of an _Active Failover_
+setup.
+
+For a general introduction to the ArangoDB _Active Failover_ setup, please refer
+to the _Active Failover_ [chapter](../../Architecture/DeploymentModes/ActiveFailover/README.md).
+
+Introduction
+------------
+
 The _Active Failover_ setup requires almost no manual administration.
+
 You may still need to replace, upgrade or remove individual nodes
 in an _Active Failover_ setup.
 
@@ -31,6 +41,15 @@ curl http://server.domain.org:8530/_api/cluster/endpoints
 This API will return you all available endpoints, the first endpoint is defined to
 be the current _Leader_. This endpoint is always available and will not be blocked
 with a `HTTP/1.1 503 Service Unavailable` response on a _Follower_
+
+Reading from Follower
+---------------------
+
+Followers in the active-failover setup are in a read-only mode. It is possible to read from these
+followers by adding a `X-Arango-Allow-Dirty-Read` header on each request. Responses will then automatically
+contain the `X-Arango-Potential-Dirty-Read` header so that clients can reject accidental dirty reads.
+
+Depending on the driver support for your specific programming language, you should be able to enable this option.
 
 Upgrading / Replacing / Removing a _Leader_
 -------------------------------------------

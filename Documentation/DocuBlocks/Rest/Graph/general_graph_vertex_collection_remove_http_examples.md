@@ -9,15 +9,15 @@ if it is not used in any other graph.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name, string, required}
+@RESTURLPARAM{collection-name,string,required}
 The name of the vertex collection.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{dropCollection, boolean, optional}
+@RESTQUERYPARAM{dropCollection,boolean,optional}
 Drop the collection as well.
 Collection will only be dropped if it is not used in other graphs.
 

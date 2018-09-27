@@ -9,21 +9,31 @@ Updates the data of the specific edge in the collection.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name, string, required}
+@RESTURLPARAM{collection-name,string,required}
 The name of the edge collection the edge belongs to.
 
-@RESTURLPARAM{edge-key, string, required}
+@RESTURLPARAM{edge-key,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{waitForSync, boolean, optional}
+@RESTQUERYPARAM{waitForSync,boolean,optional}
 Define if the request should wait until synced to disk.
 
-@RESTPARAM{keepNull, boolean, optional}
+@RESTQUERYPARAM{keepNull,boolean,optional}
+Define if values set to null should be stored. By default the key is not removed from the document.
+
+@RESTQUERYPARAM{returnOld,boolean,optional}
+Define if a presentation of the deleted document should
+be returned within the response object.
+
+@RESTQUERYPARAM{returnNew,boolean,optional}
+Define if a presentation of the newly create
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
 Define if values set to null should be stored. By default the key is not removed from the document.
 
 @RESTALLBODYPARAM{updateAttributes,object,required}

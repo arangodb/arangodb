@@ -67,10 +67,10 @@ HttpRequest::HttpRequest(
       _header(nullptr),
       _body(body, contentLength),
       _allowMethodOverride(false),
-      _vpackBuilder(nullptr),
-      _headers(headers) {
+      _vpackBuilder(nullptr) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
+  GeneralRequest::_headers = headers;
 }
 
 void HttpRequest::parseHeader(size_t length) {
@@ -481,7 +481,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       }
 
       keyBegin = key = buffer + 1;
-      valueBegin = value = 0;
+      valueBegin = value = nullptr;
 
       continue;
     } else if (next == PERCENT) {
@@ -565,6 +565,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
       memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentType = ContentType::VPACK;
+    // don't insert this header!!
     return;
   }
 
@@ -742,7 +743,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
 
   if (_contentType == ContentType::JSON) {
     if (!_body.empty()) {
-      if (_vpackBuilder == nullptr) {
+      if (!_vpackBuilder) {
         VPackParser parser(options);
         parser.parse(_body);
         _vpackBuilder = parser.steal();
@@ -750,51 +751,14 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
       return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
-  } else /*VPACK*/ {
+  } else if (_contentType == ContentType::VPACK) {
     VPackOptions validationOptions = *options; // intentional copy
     validationOptions.validateUtf8Strings = true;
     VPackValidator validator(&validationOptions);
     validator.validate(_body.c_str(), _body.length());
     return VPackSlice(_body.c_str());
   }
-}
-
-std::string const& HttpRequest::header(std::string const& key,
-                                       bool& found) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    found = false;
-    return StaticStrings::Empty;
-  }
-
-  found = true;
-  return it->second;
-}
-
-std::string const& HttpRequest::header(std::string const& key) const {
-  bool unused = true;
-  return header(key, unused);
-}
-
-std::string const& HttpRequest::value(std::string const& key,
-                                      bool& found) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      found = true;
-      return it->second;
-    }
-  }
-
-  found = false;
-  return StaticStrings::Empty;
-}
-
-std::string const& HttpRequest::value(std::string const& key) const {
-  bool unused = true;
-  return value(key, unused);
+  return VPackSlice::noneSlice();
 }
 
 HttpRequest* HttpRequest::createHttpRequest(

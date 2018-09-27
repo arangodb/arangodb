@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/lookup-by-keys &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/lookup-by-keys</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"keys"</span> : [ 
     <span class="hljs-string">"test0"</span>, 
@@ -16,7 +16,7 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/l
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -25,61 +25,61 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test0"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test0"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYKu--_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zi6--_"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test1"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYKu--B"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zi6--B"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test2"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test2"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYKy--_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zj---_"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test3"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test3"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYKy--B"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zj---B"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test4"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test4"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYK2--_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zjC--_"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">4</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test5"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test5"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYK2--B"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zjC--B"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">5</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test6"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test6"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYK6--_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zjG--_"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">6</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test7"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test7"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYK6--B"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zjK--_"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">7</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test8"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test8"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYL---_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zjK--B"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">8</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test9"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/test9"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VYL---B"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zjO--_"</span>, 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">9</span> 
     } 
   ], 

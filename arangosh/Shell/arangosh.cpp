@@ -24,12 +24,15 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8ShellPhase.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Logger/Logger.h"
@@ -46,34 +49,36 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
     std::string name = context.binaryName();
-
     std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:", BIN_DIRECTORY));
-
     ApplicationServer server(options, BIN_DIRECTORY);
-
     int ret = EXIT_SUCCESS;
-    
+
     try {
-      server.addFeature(new ClientFeature(&server));
-      server.addFeature(new ConfigFeature(&server, name));
-      server.addFeature(new ConsoleFeature(&server));
-      server.addFeature(new LanguageFeature(&server));
-      server.addFeature(new LoggerFeature(&server, false));
-      server.addFeature(new RandomFeature(&server));
-      server.addFeature(new ShellColorsFeature(&server));
-      server.addFeature(new ShellFeature(&server, &ret));
-      server.addFeature(new ShutdownFeature(&server, {"Shell"}));
-      server.addFeature(new SslFeature(&server));
-      server.addFeature(new TempFeature(&server, name));
-      server.addFeature(new V8PlatformFeature(&server));
-      server.addFeature(new V8ShellFeature(&server, name));
-      server.addFeature(new VersionFeature(&server));
+      server.addFeature(new application_features::BasicFeaturePhase(server, true));
+      server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
+      server.addFeature(new application_features::V8ShellFeaturePhase(server));
+
+      server.addFeature(new ClientFeature(server, true));
+      server.addFeature(new ConfigFeature(server, name));
+      server.addFeature(new ConsoleFeature(server));
+      server.addFeature(new LanguageFeature(server));
+      server.addFeature(new LoggerFeature(server, false));
+      server.addFeature(new RandomFeature(server));
+      server.addFeature(new ShellColorsFeature(server));
+      server.addFeature(new ShellFeature(server, &ret));
+      server.addFeature(new ShutdownFeature(server, {"Shell"}));
+      //server.addFeature(new SslFeature(server));
+      server.addFeature(new TempFeature(server, name));
+      server.addFeature(new V8PlatformFeature(server));
+      server.addFeature(new V8ShellFeature(server, name));
+      server.addFeature(new VersionFeature(server));
 
       server.run(argc, argv);
       if (server.helpShown()) {

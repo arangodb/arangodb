@@ -41,13 +41,11 @@ router.use((req, res, next) => {
   next();
 });
 
-
 router.get('/amICoordinator', function(req, res) {
   res.json(cluster.isCoordinator());
 })
 .summary('Ask the server whether it is a coordinator')
 .description('This will return true if and only if the server is a coordinator.');
-
 
 if (cluster.isCluster()) {
   router.get('/DBServers', function(req, res) {
@@ -71,7 +69,7 @@ if (cluster.isCluster()) {
   })
   .summary('Get all DBServers')
     .description('Get a list of all running and expected DBServers within the cluster');
-  
+
   router.get('/Coordinators', function(req, res) {
     const list = global.ArangoClusterInfo.getCoordinators();
     res.json(list.map(n => { 

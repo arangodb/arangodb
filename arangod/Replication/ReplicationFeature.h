@@ -29,16 +29,15 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class GlobalReplicationApplier;
 class GeneralResponse;
 
 class ReplicationFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationFeature(
-      application_features::ApplicationServer* server);
+  explicit ReplicationFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -47,13 +46,13 @@ class ReplicationFeature final
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
-  
+
   /// @brief return a pointer to the global replication applier
   GlobalReplicationApplier* globalReplicationApplier() const {
     TRI_ASSERT(_globalReplicationApplier != nullptr);
     return _globalReplicationApplier.get();
   }
-  
+
   /// @brief disable replication appliers
   void disableReplicationApplier() {
     _replicationApplierAutoStart = false;
@@ -61,31 +60,33 @@ class ReplicationFeature final
 
   /// @brief start the replication applier for a single database
   void startApplier(TRI_vocbase_t* vocbase);
-  
+
   /// @brief stop the replication applier for a single database
   void stopApplier(TRI_vocbase_t* vocbase);
-      
+
   /// @brief automatic failover of replication using the agency
   bool isActiveFailoverEnabled() const {
     return _enableActiveFailover;
   }
-      
+
+  /// @brief set the x-arango-endpoint header
+  static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
+
   /// @brief fill a response object with correct response for a follower
   static void prepareFollowerResponse(GeneralResponse*,
                                       arangodb::ServerState::Mode);
- 
- public:
+
   static ReplicationFeature* INSTANCE;
-   
+
  private:
-      
   bool _replicationApplierAutoStart;
-      
+
   /// Enable the active failover
   bool _enableActiveFailover;
-      
+
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };
+
 }
 
 #endif

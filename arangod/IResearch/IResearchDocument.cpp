@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchCommon.h"
 #include "IResearchDocument.h"
-#include "IResearchFeature.h"
 #include "IResearchViewMeta.h"
 #include "IResearchKludge.h"
 #include "Misc.h"
@@ -32,7 +32,6 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
 #include "utils/log.hpp"
@@ -341,20 +340,21 @@ bool setStringValue(
   TRI_ASSERT(value.isString());
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "got nullptr analyzer factory";
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "got nullptr analyzer factory";
 
     return false;
   }
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  arangodb::iresearch::kludge::mangleStringField(name, pool);
+  arangodb::iresearch::kludge::mangleStringField(name, *pool);
 
   // init stream
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
     return false;
   }
@@ -425,7 +425,8 @@ NS_BEGIN(iresearch)
 Field::Field(Field&& rhs)
   : _features(rhs._features),
     _analyzer(std::move(rhs._analyzer)),
-    _name(std::move(rhs._name)) {
+    _name(std::move(rhs._name)),
+    _storeValues(std::move(rhs._storeValues)) {
   rhs._features = nullptr;
 }
 
@@ -434,6 +435,7 @@ Field& Field::operator=(Field&& rhs) {
     _features = rhs._features;
     _analyzer = std::move(rhs._analyzer);
     _name = std::move(rhs._name);
+    _storeValues = std::move(rhs._storeValues);
     rhs._features = nullptr;
   }
 
@@ -524,6 +526,8 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
 bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
+  _value._storeValues = context._storeValues;
+
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
@@ -568,7 +572,7 @@ void FieldIterator::next() {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::unmangleStringField(name, *prev);
+    arangodb::iresearch::kludge::demangleStringField(name, **prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, name, _value, *_begin)) {
@@ -708,7 +712,7 @@ bool visitReaderCollections(
     auto* term_reader = segment.field(CID_FIELD);
 
     if (!term_reader) {
-      LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to get term reader for the 'cid' column while collecting CIDs for IResearch reader";
 
       return false;
@@ -717,7 +721,7 @@ bool visitReaderCollections(
     auto term_itr = term_reader->iterator();
 
     if (!term_itr) {
-      LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to get term iterator for the 'cid' column while collecting CIDs for IResearch reader ";
 
       return false;
@@ -727,7 +731,7 @@ bool visitReaderCollections(
       TRI_voc_cid_t cid;
 
       if (!DocumentPrimaryKey::decode(cid, term_itr->value())) {
-        LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failed to decode CID while collecting CIDs for IResearch reader";
 
         return false;

@@ -88,7 +88,12 @@ router.use((req, res, next) => {
   } catch (e) {
     if (e.isArangoError) {
       const status = actions.arangoErrorToHttpCode(e.errorNum);
-      res.throw(status, e.errorMessage, {
+      console.errorStack(e);
+      res.throw(status, (
+        e.codeFrame
+        ? `${e.codeFrame}\n${e}`
+        : String(e)
+      ), {
         errorNum: e.errorNum,
         cause: e
       });
@@ -351,9 +356,10 @@ scriptsRouter.get((req, res) => {
 scriptsRouter.post('/:name', (req, res) => {
   const service = req.service;
   const scriptName = req.pathParams.name;
-  res.json(FoxxManager.runScript(scriptName, service.mount, [req.body]) || null);
+  const result = FoxxManager.runScript(scriptName, service.mount, req.body !== undefined ? [req.body] : undefined);
+  res.json(result !== undefined ? result : null);
 })
-.body(joi.any())
+.body(joi.any().optional())
 .pathParam('name', joi.string().required())
 .response(200, joi.any().default(null));
 

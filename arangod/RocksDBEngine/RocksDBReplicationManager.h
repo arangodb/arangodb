@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 
 struct TRI_vocbase_t;
@@ -72,8 +72,8 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   RocksDBReplicationContext* find(
-      RocksDBReplicationId, bool& isBusy,
-      double ttl = InitialSyncer::defaultBatchTimeout);
+      RocksDBReplicationId, bool& isBusy, bool exclusive = true,
+      double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -110,12 +110,12 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tell the replication manager that a shutdown is in progress
   /// effectively this will block the creation of new contexts
   //////////////////////////////////////////////////////////////////////////////
-    
+
   void beginShutdown();
 
  private:
@@ -131,7 +131,7 @@ class RocksDBReplicationManager {
 
   std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
       _contexts;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a shutdown is in progress
   //////////////////////////////////////////////////////////////////////////////
@@ -141,7 +141,7 @@ class RocksDBReplicationManager {
 
 class RocksDBReplicationContextGuard {
  public:
-  
+
   RocksDBReplicationContextGuard(RocksDBReplicationManager* manager,
                                  RocksDBReplicationContext* ctx)
     : _manager(manager), _ctx(ctx) {
@@ -153,8 +153,8 @@ class RocksDBReplicationContextGuard {
   RocksDBReplicationContextGuard(RocksDBReplicationContextGuard&& other)
     noexcept : _manager(other._manager), _ctx(other._ctx) {
     other._ctx = nullptr;
-  } 
-  
+  }
+
   ~RocksDBReplicationContextGuard()  {
     if (_ctx != nullptr) {
       TRI_ASSERT(_ctx->isUsed());

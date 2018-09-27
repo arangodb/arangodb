@@ -51,7 +51,7 @@ class IndexResult : public Result {
 
       // build fields string
       VPackBuilder builder;
-      index->toVelocyPack(builder, false, false);
+      index->toVelocyPack(builder, Index::makeFlags());
       VPackSlice fields = builder.slice().get("fields");
       if (!fields.isNone()) {
         _errorMessage.append(" over ");

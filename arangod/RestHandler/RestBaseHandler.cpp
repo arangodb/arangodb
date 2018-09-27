@@ -62,6 +62,26 @@ std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success
   return std::make_shared<VPackBuilder>();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the body as VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
+  try {
+    success = true;
+    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+    return _request->payload(&optionsWithUniquenessCheck);
+  } catch (VPackException const& e) {
+    std::string errmsg("VPackError error: ");
+    errmsg.append(e.what());
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  errmsg);
+  }
+  success = false;
+  return VPackSlice::noneSlice();
+}
+
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
@@ -100,10 +120,13 @@ void RestBaseHandler::generateResult(
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
 }
 
+/// convenience function akin to generateError,
+/// renders payload in 'result' field
+/// adds proper `error`, `code` fields
 void RestBaseHandler::generateOk(rest::ResponseCode code,
                                  VPackSlice const& payload) {
   resetResponse(code);
-  
+
   try {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder tmp(buffer);
@@ -112,7 +135,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.add("result", payload);
     tmp.close();
-    
+
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
     writeResult(std::move(buffer), options);
@@ -121,76 +144,26 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   }
 }
 
+/// Add `error` and `code` fields into your response
 void RestBaseHandler::generateOk(rest::ResponseCode code,
                                  VPackBuilder const& payload) {
   resetResponse(code);
-  
+
   try {
     VPackBuilder tmp;
     tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.close();
-    
+
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
-    
+
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
     writeResult(tmp.slice(), options);
   } catch (...) {
     // Building the error response failed
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode) {
-  char const* message = TRI_errno_string(errorCode);
-
-  if (message != nullptr) {
-    generateError(code, errorCode, std::string(message));
-  } else {
-    generateError(code, errorCode, std::string("unknown error"));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
-                                    std::string const& message) {
-  resetResponse(code);
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    if (message.empty()) {
-      // prevent empty error messages
-      builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(errorCode)));
-    } else {
-      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    }
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::ErrorNum, VPackValue(errorCode));
-    builder.close();
-
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(std::move(buffer), options);
-  } catch (...) {
-    // Building the error response failed
-  }
-}
-
-// generates an error
-void RestBaseHandler::generateError(arangodb::Result const& r) {
-  ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
-  generateError(code, r.errorNumber(), r.errorMessage());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

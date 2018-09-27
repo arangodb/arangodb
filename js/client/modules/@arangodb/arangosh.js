@@ -1,4 +1,5 @@
 /* jshint strict: false */
+global.console = global.console || require('console');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoShell client API
@@ -113,8 +114,7 @@ exports.HELP = exports.createHelpHeadline('Help') +
 'Predefined objects:                                                ' + '\n' +
 '  arango:                               ArangoConnection           ' + '\n' +
 '  db:                                   ArangoDatabase             ' + '\n' +
-(internal.printBrowser ? '' :
-  '  fm:                                   FoxxManager                ' + '\n') +
+'  fm:                                   FoxxManager                ' + '\n' +
 'Examples:                                                          ' + '\n' +
 ' > db._collections()                    list all collections       ' + '\n' +
 ' > db._query(<query>).toArray()         execute an AQL query       ' + '\n' +
@@ -125,14 +125,7 @@ exports.HELP = exports.createHelpHeadline('Help') +
 'To refresh the list of collections and their statuses, issue:      ' + '\n' +
 ' > db._collections();                                              ' + '\n' +
 '                                                                   ' + '\n' +
-(internal.printBrowser ?
-  'To cancel the current prompt, press CTRL + z.                      ' + '\n' +
-  '                                                                   ' + '\n' +
-  'Please note that all variables defined with the var keyword will   ' + '\n' +
-  'disappear when the command is finished. To introduce variables that' + '\n' +
-  'are persisting until the next command, omit the var keyword.       ' + '\n\n' +
-  "Type 'tutorial' for a tutorial or 'help' to see common examples" :
-  'To cancel the current prompt, press CTRL + d.                      ' + '\n');
+'To cancel the current prompt, press CTRL + d.                      ' + '\n';
 
 // //////////////////////////////////////////////////////////////////////////////
   // / @brief query help

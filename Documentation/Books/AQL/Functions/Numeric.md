@@ -103,6 +103,10 @@ AVERAGE( [ -3, -5, 2 ] ) // -2
 AVERAGE( [ 999, 80, 4, 4, 4, 3, 3, 3 ] ) // 137.5
 ```
 
+## AVG()
+
+This is an alias for [AVERAGE()](#average).
+
 CEIL()
 ------
 
@@ -459,7 +463,8 @@ ROUND(-2.51) // -3
 
 Rounding towards zero, also known as *trunc()* in C/C++, can be achieved with
 a combination of the [ternary operator](../Operators.md#ternary-operator),
-[CEIL()](#ceil) and [FLOOR()](#floor):
+[CEIL()](#ceil)
+and [FLOOR()](#floor):
 
 ```js
 LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
@@ -542,6 +547,10 @@ Return the sample standard deviation of the values in *array*.
 STDDEV_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 2.0736441353327724
 ```
 
+## STDDEV()
+
+This is an alias for [STDDEV_POPULATION()](#stddevpopulation).
+
 SUM()
 -----
 
@@ -606,3 +615,7 @@ Return the sample variance of the values in *array*.
 ```js
 VARIANCE_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 4.300000000000001
 ```
+
+## VARIANCE()
+
+This is an alias for [VARIANCE_POPULATION()](#variancepopulation).

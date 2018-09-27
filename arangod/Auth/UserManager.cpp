@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,7 @@
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -51,6 +52,28 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
+  if (!feature) {
+    LOG_TOPIC(WARN, arangodb::Logger::AUTHENTICATION)
+      << "failure to find feature '" << arangodb::SystemDatabaseFeature::name() << "' while getting the system database";
+
+    return nullptr;
+  }
+
+  return feature->use();
+}
+
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
@@ -62,17 +85,17 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager()
-    : _outdated(true), _queryRegistry(nullptr) {}
-auth::UserManager::~UserManager() {}
+    : _globalVersion(1), _internalVersion(0), _queryRegistry(nullptr) {}
 #else
 auth::UserManager::UserManager()
-    : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
+    : _globalVersion(1), _internalVersion(0),
+      _queryRegistry(nullptr), _authHandler(nullptr) {}
 
-auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
-    : _outdated(true),
+auth::UserManager::UserManager(std::unique_ptr<auth::Handler> handler)
+    : _globalVersion(1),
+      _internalVersion(0),
       _queryRegistry(nullptr),
-      _authHandler(handler.release()) {}
-auth::UserManager::~UserManager() { delete _authHandler; }
+      _authHandler(std::move(handler)) {}
 #endif
 
 // Parse the users
@@ -100,8 +123,10 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    aql::QueryRegistry* queryRegistry) {
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    aql::QueryRegistry* queryRegistry
+) {
+  auto vocbase = getSystemDatabase();
+
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -112,13 +137,21 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr), emptyBuilder,
-                             emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(queryStr),
+    emptyBuilder,
+    emptyBuilder,
+    arangodb::aql::PART_MAIN
+  );
+  
+  query.queryOptions().cache = false;
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
-  auto queryResult = query.execute(queryRegistry);
+
+  aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -143,7 +176,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 }
 
 /// Convert documents from _system/_users into the format used in
-/// the REST user API and foxx
+/// the REST user API and Foxx
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
@@ -157,20 +190,17 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 }
 
 // private, will acquire _userCacheLock in write-mode and release it.
-// will also aquire _loadFromDBLock and release it
+// will also acquire _loadFromDBLock and release it
 void auth::UserManager::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
-  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
-    _outdated = false;  // should not get here
-    return;
-  }
 
-  if (!_outdated) {
+  if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
     return;
   }
-  MUTEX_LOCKER(guard, _loadFromDBLock);  // must be first
-  if (!_outdated) {                      // double check after we got the lock
+  MUTEX_LOCKER(guard, _loadFromDBLock);
+  uint64_t tmp = globalVersion();
+  if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
   }
 
@@ -185,7 +215,7 @@ void auth::UserManager::loadFromDB() {
           WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
           // never delete non-local users
           for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
-            if (pair->second.source() == auth::Source::LOCAL) {
+            if (pair->second.source() == auth::Source::Local) {
               pair = _userCache.erase(pair);
             } else {
               pair++;
@@ -196,29 +226,23 @@ void auth::UserManager::loadFromDB() {
           applyRolesToAllUsers();
 #endif
         }
-
-        _outdated = false;
-        // cannot hold _userCacheLock while  invalidating token cache
-        AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
+        
+        _internalVersion.store(tmp);
       }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
-    _outdated = true;
-    AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
   } catch (...) {
     LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
-    _outdated = true;
-    AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
   }
 }
 
 // private, must be called with _userCacheLock in write mode
 // this method can only be called by users with access to the _system collection
 Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replace) {
-  if (entry.source() != auth::Source::LOCAL) {
+  if (entry.source() != auth::Source::Local) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
   if (!IsRole(entry.username()) && entry.username() != "root") {
@@ -234,7 +258,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   bool hasRev = data.slice().hasKey(StaticStrings::RevString);
   TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto vocbase = getSystemDatabase();
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
   }
@@ -242,21 +267,27 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (res.ok()) {
     OperationOptions opts;
+
     opts.returnNew = true;
     opts.ignoreRevs = false;
     opts.mergeObjects = false;
+
     OperationResult opres =
         replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), opts)
                 : trx.insert(TRI_COL_NAME_USERS, data.slice(), opts);
+
     res = trx.finish(opres.result);
+
     if (res.ok()) {
       VPackSlice userDoc = opres.slice();
       TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
@@ -264,7 +295,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       if (userDoc.isExternal()) {
         userDoc = userDoc.resolveExternal();
       }
-      
+
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
       TRI_ASSERT(!created.key().empty() && created.rev() != 0);
@@ -281,7 +312,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 #ifdef USE_ENTERPRISE
       if (IsRole(entry.username())) {
         for (UserMap::value_type& pair : _userCache) {
-          if (pair.second.source() != auth::Source::LOCAL &&
+          if (pair.second.source() != auth::Source::Local &&
               pair.second.roles().find(entry.username()) != pair.second.roles().end()) {
             pair.second._dbAccess.clear();
             applyRoles(pair.second);
@@ -291,7 +322,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 #endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
       _userCache.erase(entry.username());
-      _outdated = true;
+      triggerLocalReload();
       LOG_TOPIC(WARN, Logger::AUTHENTICATION)
           << "Cannot update user due to conflict";
     }
@@ -316,7 +347,7 @@ void auth::UserManager::createRootUser() {
   }
   TRI_ASSERT(_userCache.empty());
   LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
-  
+
   try {
     // Attention:
     // the root user needs to have a specific rights grant
@@ -328,7 +359,7 @@ void auth::UserManager::createRootUser() {
     TRI_ASSERT(initDatabaseFeature != nullptr);
 
     auth::User user = auth::User::newUser(
-        "root", initDatabaseFeature->defaultPassword(), auth::Source::LOCAL);
+        "root", initDatabaseFeature->defaultPassword(), auth::Source::Local);
     user.setActive(true);
     user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
     user.grantCollection(StaticStrings::SystemDatabase, "*", auth::Level::RW);
@@ -359,9 +390,11 @@ VPackBuilder auth::UserManager::allUsers() {
 }
 
 /// Trigger eventual reload, user facing API call
-void auth::UserManager::reloadAllUsers() {
+void auth::UserManager::triggerGlobalReload() {
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
+    _globalVersion.fetch_add(1, std::memory_order_release);
+    _internalVersion.fetch_add(1, std::memory_order_release);
     return;
   }
 
@@ -377,6 +410,8 @@ void auth::UserManager::reloadAllUsers() {
     AgencyCommResult result =
         agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
+      _globalVersion.fetch_add(1, std::memory_order_release);
+      _internalVersion.fetch_add(1, std::memory_order_release);
       return;
     }
   }
@@ -408,12 +443,12 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
     oldRev = oldEntry.rev();
-    if (oldEntry.source() != auth::Source::LOCAL) {
+    if (oldEntry.source() != auth::Source::Local) {
       return TRI_ERROR_USER_EXTERNAL;
     }
   }
 
-  auth::User user = auth::User::newUser(username, pass, auth::Source::LOCAL);
+  auth::User user = auth::User::newUser(username, pass, auth::Source::Local);
   user.setActive(active);
   if (extras.isObject() && !extras.isEmptyObject()) {
     user.setUserData(VPackBuilder(extras));
@@ -427,7 +462,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
 
   Result r = storeUserInternal(user, replace);
   if (r.ok()) {
-    reloadAllUsers();
+    triggerGlobalReload();
   }
   return r;
 }
@@ -440,7 +475,7 @@ Result auth::UserManager::enumerateUsers(
   {  // users are later updated with rev ID for consistency
     READ_LOCKER(readGuard, _userCacheLock);
     for (UserMap::value_type& it : _userCache) {
-      if (it.second.source() != auth::Source::LOCAL) {
+      if (it.second.source() != auth::Source::Local) {
         continue;
       }
       auth::User user = it.second; // copy user object
@@ -453,7 +488,7 @@ Result auth::UserManager::enumerateUsers(
   Result res;
   {
     WRITE_LOCKER(writeGuard, _userCacheLock);
-    for (auth::User& u : toUpdate) {
+    for (auth::User const& u : toUpdate) {
       res = storeUserInternal(u, true);
       if (res.fail()) {
         break;  // do not return, still need to invalidate token cache
@@ -463,8 +498,7 @@ Result auth::UserManager::enumerateUsers(
 
   // cannot hold _userCacheLock while  invalidating token cache
   if (!toUpdate.empty()) {
-    AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-    reloadAllUsers();  // trigger auth reload in cluster
+    triggerGlobalReload();  // trigger auth reload in cluster
   }
   return res;
 }
@@ -483,7 +517,7 @@ Result auth::UserManager::updateUser(std::string const& name,
   UserMap::iterator it = _userCache.find(name);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
-  } else if (it->second.source() != auth::Source::LOCAL) {
+  } else if (it->second.source() != auth::Source::Local) {
     return TRI_ERROR_USER_EXTERNAL;
   }
 
@@ -495,16 +529,13 @@ Result auth::UserManager::updateUser(std::string const& name,
     return r;
   }
   r = storeUserInternal(user, /*replace*/ true);
-  
+
   // cannot hold _userCacheLock while  invalidating token cache
   writeGuard.unlock();
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
-    AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-    if (r.ok()) {
-      reloadAllUsers();  // trigger auth reload in cluster
-    }
+    triggerGlobalReload();  // trigger auth reload in cluster
   }
   return r;
 }
@@ -524,9 +555,20 @@ Result auth::UserManager::accessUser(std::string const& user,
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
-VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
+bool auth::UserManager::userExists(std::string const& user) {
+  if (user.empty()) {
+    return false;
+  }
   loadFromDB();
   
+  READ_LOCKER(readGuard, _userCacheLock);
+  UserMap::iterator const& it = _userCache.find(user);
+  return it != _userCache.end();
+}
+
+VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
+  loadFromDB();
+
   READ_LOCKER(readGuard, _userCacheLock);
 
   UserMap::iterator const& it = _userCache.find(user);
@@ -543,7 +585,7 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
 
 static Result RemoveUserInternal(auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
@@ -552,7 +594,7 @@ static Result RemoveUserInternal(auth::User const& entry) {
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
 
@@ -595,7 +637,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
   }
 
   auth::User const& oldEntry = it->second;
-  if (oldEntry.source() != auth::Source::LOCAL) {
+  if (oldEntry.source() != auth::Source::Local) {
     return TRI_ERROR_USER_EXTERNAL;
   }
   Result res = RemoveUserInternal(oldEntry);
@@ -605,8 +647,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
 
   // cannot hold _userCacheLock while  invalidating token cache
   writeGuard.unlock();
-  AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-  reloadAllUsers();  // trigger auth reload in cluster
+  triggerGlobalReload();  // trigger auth reload in cluster
 
   return res;
 }
@@ -622,7 +663,7 @@ Result auth::UserManager::removeAllUsers() {
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
       auto const& oldEntry = pair->second;
-      if (oldEntry.source() == auth::Source::LOCAL) {
+      if (oldEntry.source() == auth::Source::Local) {
         res = RemoveUserInternal(oldEntry);
         if (!res.ok()) {
           break;  // don't return still need to invalidate token cache
@@ -632,20 +673,16 @@ Result auth::UserManager::removeAllUsers() {
         pair++;
       }
     }
-    _outdated = true;
   }
 
-  // cannot hold _userCacheLock while  invalidating token cache
-  AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-  reloadAllUsers();
+  triggerGlobalReload();
   return res;
 }
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  // AuthResult result(username);
   if (username.empty() || IsRole(username)) {
-    return false;
+    return false; // we cannot authenticate during bootstrap
   }
 
   loadFromDB();
@@ -655,12 +692,11 @@ bool auth::UserManager::checkPassword(std::string const& username,
 
   // using local users might be forbidden
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (it != _userCache.end() && (it->second.source() == auth::Source::LOCAL) &&
-      af != nullptr && !af->localAuthentication()) {
-    return false;
-  }
-
-  if (it != _userCache.end() && it->second.source() == auth::Source::LOCAL) {
+  if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
+    if (af != nullptr && !af->localAuthentication()) {
+      LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      return false;
+    }
     auth::User const& user = it->second;
     if (user.isActive()) {
       return user.checkPassword(password);
@@ -674,7 +710,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
     return false;
   }
   // handle authentication with external system
-  if (!userCached || (it->second.source() != auth::Source::LOCAL)) {
+  if (!userCached || (it->second.source() != auth::Source::Local)) {
     return checkPasswordExt(username, password, userCached, readGuard);
   }
 #endif
@@ -688,19 +724,19 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
   if (dbname.empty()) {
     return auth::Level::NONE;
   }
-  
+
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
-  
+
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE;
   }
-  
+
   auth::Level level = it->second.databaseAuthLevel(dbname);
   if (!configured) {
-    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    if (level > auth::Level::RO && ServerState::readOnly()) {
       return auth::Level::RO;
     }
   }
@@ -715,27 +751,28 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   if (coll.empty()) {
     return auth::Level::NONE;
   }
-  
+
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
-  
+
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE; // no user found
   }
-  
+
   auth::Level level;
-  if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+  if (isdigit(coll[0])) {
+    std::string tmpColl =
+        DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);
   }
-  
+
   if (!configured) {
     static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    if (level > auth::Level::RO && ServerState::readOnly()) {
       return auth::Level::RO;
     }
   }
@@ -748,5 +785,5 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   _userCache = newMap;
-  _outdated = false;
+  _internalVersion.store(_globalVersion.load());
 }

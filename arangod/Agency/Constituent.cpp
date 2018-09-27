@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -125,19 +125,21 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
       body.add("voted_for", Value(_votedFor)); }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(*_vocbase);
     SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
-    
     Result res = trx.begin();
+
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     OperationOptions options;
+
     options.waitForSync = _agent->config().waitForSync();
     options.silent = true;
-    
+
     OperationResult result;
+
     if (tmp != t) {
       try {
         result = trx.insert("election", body.slice(), options);
@@ -475,17 +477,16 @@ void Constituent::callElection() {
   auto cc = ClusterComm::instance();
 
   // Ask everyone for their vote
+  std::unordered_map<std::string, std::string> headerFields;
   for (auto const& i : active) {
     if (i != _id) {
-      auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
       if (!isStopping() && cc != nullptr) {
          cc->asyncRequest(
-          "", coordinatorTransactionID, _agent->config().poolAt(i),
+          coordinatorTransactionID, _agent->config().poolAt(i),
           rest::RequestType::GET, path.str(),
           std::make_shared<std::string>(body), headerFields,
           nullptr, 0.9 * _agent->config().minPing() *
-                         _agent->config().timeoutMult(), true);
+                         _agent->config().timeoutMult(), /*single*/true);
       }
     }
   }
@@ -510,8 +511,8 @@ void Constituent::callElection() {
     }
 
     if (!isStopping() && cc != nullptr) {
-      auto res = ClusterComm::instance()->wait(
-        "", coordinatorTransactionID, 0, "",
+      auto res = cc->wait(
+        coordinatorTransactionID, 0, "",
         duration<double>(timeout - steady_clock::now()).count());
       
       if (res.status == CL_COMM_SENT) {
@@ -557,9 +558,8 @@ void Constituent::callElection() {
   
   // Clean up
   if (!isStopping() && cc != nullptr) {
-    ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+    cc->drop(coordinatorTransactionID, 0, "");
   }
-  
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
@@ -595,7 +595,6 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 
 /// Get persisted information and run election process
 void Constituent::run() {
-
   // single instance
   _id = _agent->config().id();
 
@@ -607,10 +606,17 @@ void Constituent::run() {
   // Most recent vote
   {
     std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(
+      false,
+      *_vocbase,
+      arangodb::aql::QueryString(aql),
+      bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
-    auto queryResult = query.execute(_queryRegistry);
+    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }

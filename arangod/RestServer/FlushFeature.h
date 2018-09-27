@@ -27,6 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
+
 class FlushThread;
 class FlushTransaction;
 
@@ -39,11 +40,10 @@ class FlushFeature final
 
   typedef std::function<FlushTransactionPtr()> FlushCallback;
 
- public:
   explicit FlushFeature(
-      application_features::ApplicationServer* server);
+    application_features::ApplicationServer& server
+  );
 
- public:
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -69,10 +69,12 @@ class FlushFeature final
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
   static std::atomic<bool> _isRunning;
+  basics::ReadWriteLock _threadLock;
 
   basics::ReadWriteLock _callbacksLock;
   std::unordered_map<void*, FlushCallback> _callbacks;
 };
+
 }
 
 #endif

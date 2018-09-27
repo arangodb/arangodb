@@ -38,11 +38,11 @@ using namespace arangodb::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralListenTask::GeneralListenTask(EventLoop loop, GeneralServer* server,
+GeneralListenTask::GeneralListenTask(Scheduler* scheduler, GeneralServer* server,
                                      Endpoint* endpoint,
                                      ProtocolType connectionType)
-    : Task(loop, "GeneralListenTask"),
-      ListenTask(loop, endpoint),
+    : Task(scheduler, "GeneralListenTask"),
+      ListenTask(scheduler, endpoint),
       _server(server),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
@@ -52,7 +52,9 @@ GeneralListenTask::GeneralListenTask(EventLoop loop, GeneralServer* server,
 
 void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                         ConnectionInfo&& info) {
-  auto commTask = std::make_shared<HttpCommTask>(_loop, _server, std::move(socket),
+  auto commTask = std::make_shared<HttpCommTask>(_scheduler, _server, std::move(socket),
                                                  std::move(info), _keepAliveTimeout);
-  commTask->start();
+  bool res = commTask->start();
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res) << "Failed to start comm task";
 }

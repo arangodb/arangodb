@@ -26,7 +26,7 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringRef.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/RequestContext.h"
@@ -37,6 +37,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
 namespace velocypack {
 class Builder;
 struct Options;
@@ -80,9 +81,9 @@ class GeneralRequest {
         _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
-        _authenticated(false),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
+        _authenticated(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
         _contentTypeResponse(ContentType::UNSET) {}
@@ -100,29 +101,31 @@ class GeneralRequest {
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
 
   /// Database used for this request, _system by default
-  std::string const& databaseName() const { return _databaseName; }
+  TEST_VIRTUAL std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;
   }
 
   /// @brief User exists on this server or on external auth system
   ///  and password was checked. Must not imply any access rights
-  ///  to any specific resource
+  ///  to any specific resource.
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
-  
+
   // @brief User sending this request
-  std::string const& user() const { return _user; }
+  TEST_VIRTUAL std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
   void setUser(std::string&& user) { _user = std::move(user); }
 
   /// @brief the request context depends on the application
-  RequestContext* requestContext() const { return _requestContext; }
+  TEST_VIRTUAL RequestContext* requestContext() const { return _requestContext; }
+
   /// @brief set request context and whether this requests is allowed
   ///        to delete it
-  void setRequestContext(RequestContext*, bool isOwner);
-  
-  RequestType requestType() const { return _type; }
+  void setRequestContext(RequestContext*, bool);
+
+  TEST_VIRTUAL RequestType requestType() const { return _type; }
+
   void setRequestType(RequestType type) { _type = type; }
 
   std::string const& fullUrl() const { return _fullUrl; }
@@ -146,11 +149,10 @@ class GeneralRequest {
   // with all the remaining arguments.
   std::string prefix() const { return _prefix; }
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
-  void setPrefix(std::string&& prefix) { _prefix = std::move(prefix); }
 
   // Returns the request path suffixes in non-URL-decoded form
-  std::vector<std::string> const& suffixes() const { return _suffixes; }
-  
+  TEST_VIRTUAL std::vector<std::string> const& suffixes() const { return _suffixes; }
+
   // Returns the request path suffixes in URL-decoded form. Note: this will
   // re-compute the suffix list on every call!
   std::vector<std::string> decodedSuffixes() const;
@@ -161,42 +163,51 @@ class GeneralRequest {
   // return 0 for protocols that
   // do not care about message ids
   virtual uint64_t messageId() const { return 1; }
-
   virtual arangodb::Endpoint::TransportType transportType() = 0;
-  virtual int64_t contentLength() const = 0;
+  
   // get value from headers map. The key must be lowercase.
-  virtual std::string const& header(std::string const& key) const = 0;
-  virtual std::string const& header(std::string const& key,
-                                    bool& found) const = 0;
-  // return headers map
-  virtual std::unordered_map<std::string, std::string> const& headers()
-      const = 0;
-
+  std::string const& header(std::string const& key) const;
+  std::string const& header(std::string const& key, bool& found) const;
+  std::unordered_map<std::string, std::string> const& headers() const {
+    return _headers;
+  }
+  
   // the value functions give access to to query string parameters
-  virtual std::string const& value(std::string const& key) const = 0;
-  virtual std::string const& value(std::string const& key,
-                                   bool& found) const = 0;
+  std::string const& value(std::string const& key) const;
+  std::string const& value(std::string const& key, bool& found) const;
+  std::unordered_map<std::string, std::string> const& values() const {
+    return _values;
+  }
+  
+  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
+    return _arrayValues;
+  }
+  
+  /// @brief returns parsed value, returns valueNotFound if parameter was not found
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
-  
-  virtual std::unordered_map<std::string, std::string> values() const = 0;
-  virtual std::unordered_map<std::string, std::vector<std::string>>
-  arrayValues() const = 0;
 
+  /// @brief the content length
+  virtual size_t contentLength() const = 0;
+  /// @brief unprocessed request payload
+  virtual arangodb::StringRef rawPayload() const = 0;
+  /// @brief parsed request payload
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
                              &VPackOptions::Defaults) = 0;
 
-  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
+  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
     VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
-  
+
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
     return std::make_shared<VPackBuilder>(payload());
   };
 
+  /// @brieg should reflect the Content-Type header
   ContentType contentType() const { return _contentType; }
+  /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
 
   rest::AuthenticationMethod authenticationMethod() const {
@@ -215,12 +226,12 @@ class GeneralRequest {
   ConnectionInfo _connectionInfo;
   uint64_t _clientTaskId;
   std::string _databaseName;
-  bool _authenticated;
   std::string _user;
 
   // request context
   RequestContext* _requestContext;
   bool _isRequestContextOwner;
+  bool _authenticated;
 
   rest::AuthenticationMethod _authenticationMethod =
       rest::AuthenticationMethod::NONE;
@@ -233,6 +244,10 @@ class GeneralRequest {
   std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
+  
+  std::unordered_map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _values;
+  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
 }
 

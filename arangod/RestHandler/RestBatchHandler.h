@@ -36,17 +36,18 @@ struct MultipartMessage {
       : boundary(boundary),
         boundaryLength(boundaryLength),
         messageStart(messageStart),
-        messageEnd(messageEnd){};
+        messageEnd(messageEnd) {}
+  MultipartMessage() : MultipartMessage("", 0, "", "") {}
 
   char const* boundary;
-  size_t const boundaryLength;
+  size_t boundaryLength;
   char const* messageStart;
   char const* messageEnd;
 };
 
 // container for search data within multipart message
 struct SearchHelper {
-  MultipartMessage* message;
+  MultipartMessage message;
   char const* searchStart;
   char const* foundStart;
   size_t foundLength;
@@ -63,21 +64,33 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override;
   char const* name() const override final { return "RestBatchHandler"; }
+  // be pessimistic about what this handler does... it may invoke V8
+  // or not, but as we don't know where, we need to assume it
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
  private:
   RestStatus executeHttp();
   RestStatus executeVst();
   // extract the boundary from the body of a multipart message
-  bool getBoundaryBody(std::string*);
+  bool getBoundaryBody(std::string&);
 
   // extract the boundary from the HTTP header of a multipart message
-  bool getBoundaryHeader(std::string*);
+  bool getBoundaryHeader(std::string&);
 
   // extract the boundary of a multipart message
-  bool getBoundary(std::string*);
+  bool getBoundary(std::string&);
 
   // extract the next part from a multipart message
-  bool extractPart(SearchHelper*);
+  bool extractPart(SearchHelper&);
+
+ private:
+  bool executeNextHandler();
+  void processSubHandlerResult(RestHandler const& handler);
+
+  MultipartMessage _multipartMessage;
+  SearchHelper _helper;
+  size_t _errors;
+  std::string _boundary;
 };
 }
 

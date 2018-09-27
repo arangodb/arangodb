@@ -19,7 +19,7 @@ ERROR_CORRUPTED_CSV,13,"csv is corrupt","Will be raised when encountering a corr
 ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not found."
 ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file cannot be written."
 ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
-ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is unencountered."
+ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is encountered."
 ERROR_LOCK_TIMEOUT,18,"lock timeout","Will be raised when there's a timeout waiting for a lock."
 ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when an attempt to create a directory fails."
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
@@ -32,6 +32,10 @@ ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detecte
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enterprise-feature is requested from the community edition."
 ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
+ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations failed"
+ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
+ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
+ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
 
 ################################################################################
 ## HTTP error status codes
@@ -46,6 +50,7 @@ ERROR_HTTP_NOT_ACCEPTABLE,406,"request not acceptable","Will be raised when an u
 ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 ERROR_HTTP_SERVICE_UNAVAILABLE,503,"service unavailable","Will be raised when a service is temporarily unavailable."
+ERROR_HTTP_GATEWAY_TIMEOUT,504,"gateway timeout","Will be raised when a service contacted by ArangoDB does not respond in a timely manner."
 
 ################################################################################
 ## HTTP processing errors
@@ -94,7 +99,7 @@ ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server wa
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
 ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier or handle is unknown."
-ERROR_ARANGO_COLLECTION_NOT_FOUND,1203,"collection not found","Will be raised when a collection with the given identifier or name is unknown."
+ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be raised when a collection with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document handle","Will be raised when a document handle is corrupt."
 ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
@@ -102,7 +107,6 @@ ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name du
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
 ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will be raised when there is a unique constraint violation."
-ERROR_ARANGO_VIEW_NOT_FOUND,1211,"view not found","Will be raised when a view with the given identifier or name is unknown."
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
@@ -160,7 +164,6 @@ ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is runnin
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
 ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication applier is started without a known start tick value."
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
-ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,1415,"the checksum format is wrong", "Will be raised when the format of the checksum is wrong")
 ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
 ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a shard is not empty and the follower tries a shortcut"
 
@@ -211,10 +214,12 @@ ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,1489,"a shard leader refuses to p
 ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation that is not a replication","Will be raised if a non-replication operation is refused by a shard follower."
 ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to perform an operation, because it has resigned in the meantime","Will be raised if a non-replication operation is refused by a former shard leader that has found out that it is no longer the leader."
 ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an agency operation could not be performed successfully."
-ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replication factor with distributeShardsLike parameter assignment","Will be raised if intended replication factor does not match that of the prototype shard given in ditributeShardsLike parameter."
-ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in ditributeShardsLike parameter."
+ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replication factor with distributeShardsLike parameter assignment","Will be raised if intended replication factor does not match that of the prototype shard given in distributeShardsLike parameter."
+ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in distributeShardsLike parameter."
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
+ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create view in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new view in the Plan hierarchy in the agency."
+ERROR_CLUSTER_VIEW_ID_EXISTS,1498,"view ID already exists","Will be raised when a coordinator in a cluster tries to create a view and the view ID already exists."
 
 ################################################################################
 ## ArangoDB query errors
@@ -225,6 +230,7 @@ ERROR_QUERY_PARSE,1501,"%s","Will be raised when query is parsed and is found to
 ERROR_QUERY_EMPTY,1502,"query is empty","Will be raised when an empty query is specified."
 ERROR_QUERY_SCRIPT,1503,"runtime error '%s'","Will be raised when a runtime error is caused by the query."
 ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number out of range","Will be raised when a number is outside the expected range."
+ERROR_QUERY_INVALID_GEO_VALUE,1505,"invalid geo coordinate value","Will be raised when a geo index coordinate is invalid or out of range."
 ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
@@ -251,7 +257,6 @@ ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query","Will be raised when an AQL q
 ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression","Will be raised when an AQL query contains an invalid aggregate expression."
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time","Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected","Will be raised when an AQL data-modification query contains an invalid options specification."
-ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand","Will be raised when a collection is used as an operand in an AQL expression."
 ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."
 
@@ -303,7 +308,7 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is authenicated by an external server."
 
-################################################################################
+###############################################################################
 ## Service management errors (legacy)
 ## These have been superceded by the Foxx management errors in public APIs.
 ################################################################################
@@ -361,7 +366,6 @@ ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the col
 ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
 ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection already used in edge def","The collection is already used in an edge definition of the graph.",
 ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,1930,"edge collection not used in graph","The edge collection is not used in any edge definition of the graph.",
-ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION,1931," is not an ArangoCollection","The collection is not an ArangoCollection.",
 ERROR_GRAPH_NO_GRAPH_COLLECTION,1932,"collection _graphs does not exist","collection _graphs does not exist.",
 ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING,1933,"Invalid example type. Has to be String, Array or Object","Invalid example type. Has to be String, Array or Object.",
 ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,1934,"Invalid example type. Has to be Array or Object","Invalid example type. Has to be Array or Object.",
@@ -371,6 +375,10 @@ ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
 ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
 ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
+ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graphs collection contains invalid data."
+ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,1942,"edge collection already set","Tried to add an edge collection which is already defined."
+ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
+ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 
 ################################################################################
 ## Session errors
@@ -431,6 +439,23 @@ ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and connot be used for sharding. All system attributes are forbidden."
+ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The smart graph attribute of the given collection does not match the smart graph attribute of the graph."
+
+################################################################################
+## Cluster repair errors
+################################################################################
+
+ERROR_CLUSTER_REPAIRS_FAILED,5000,"error during cluster repairs","General error during cluster repairs"
+ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,5001,"not enough (healthy) db servers","Will be raised when, during repairDistributeShardsLike, there must be a free db server to move a shard, but there is no candidate or none is healthy."
+ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,5002,"replication factor violated during cluster repairs","Will be raised on various inconsistencies regarding the replication factor"
+ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,5003,"no dbservers during cluster repairs","Will be raised if a collection that is fixed has some shard without DB Servers"
+ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS,5004,"mismatching leaders during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection have mismatching leaders (when they should already have been fixed)"
+ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS,5005,"mismatching followers during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection don't have the same followers (when they should already have been adjusted)"
+ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES,5006,"inconsistent attributes during cluster repairs","Will be raised if a collection that is fixed does (not) have distributeShardsLike when it is expected, or does (not) have repairingDistributeShardsLike when it is expected"
+ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,5007,"mismatching shards during cluster repairs","Will be raised if in a collection and its distributeShardsLike prototype collection some shard and its prototype have an unequal number of DB Servers"
+ERROR_CLUSTER_REPAIRS_JOB_FAILED,5008,"move shard job failed during cluster repairs","Will be raised if a move shard job in the agency failed during cluster repairs"
+ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED,5009,"move shard job disappeared during cluster repairs","Will be raised if a move shard job in the agency cannot be found anymore before it finished"
+ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"agency transaction failed during cluster repairs","Will be raised if an agency transaction failed during either sending or executing it."
 
 ################################################################################
 ## Agency errors
@@ -461,3 +486,12 @@ ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General s
 ERROR_DISPATCHER_IS_STOPPING,21001,"dispatcher stopped","Will be returned if a shutdown is in progress."
 ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist","Will be returned if a queue with this name does not exist."
 ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."
+
+################################################################################
+## Maintenance errors
+################################################################################
+
+ERROR_ACTION_ALREADY_REGISTERED,6001,"maintenance action already registered","Action with this description has been registered already"
+ERROR_ACTION_OPERATION_UNABORTABLE,6002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"
+ERROR_ACTION_UNFINISHED,6003,"maintenance action still processing","This maintenance action is still processing"
+ERROR_NO_SUCH_ACTION,6004,"no such maintenance action","No such maintenance action exists"

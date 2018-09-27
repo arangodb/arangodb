@@ -16,7 +16,7 @@ new database will be accessible after it is created.
 Each user object can contain the following attributes:
 
 @RESTSTRUCT{username,get_api_database_new_USERS,string,required,string}
-Loginname of the user to be created
+Login name of the user to be created
 
 @RESTSTRUCT{passwd,get_api_database_new_USERS,string,required,string}
 The user password as a string. If not specified, it will default to an empty string.

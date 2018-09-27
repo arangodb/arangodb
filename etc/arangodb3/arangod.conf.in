@@ -33,9 +33,9 @@ storage-engine = auto
 
 authentication = true
 
-# number of server threads. use 0 to make arangod determine the
+# number of maximal server threads. use 0 to make arangod determine the
 # number of threads automatically, based on available CPUs
-# threads = 0
+# maximal-threads = 0
 
 # gather server statistics
 statistics = true

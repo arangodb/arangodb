@@ -45,19 +45,27 @@ struct QueryProfile {
   explicit QueryProfile(Query*);
 
   ~QueryProfile();
+  
+public:
 
-  double setDone(QueryExecutionState::ValueType);
+  double setStateDone(QueryExecutionState::ValueType);
 
   /// @brief sets the absolute end time for an execution state
-  void setEnd(QueryExecutionState::ValueType state, double time);
+  void setStateEnd(QueryExecutionState::ValueType state, double time);
 
+  /// @brief get a timer time
+  inline double timer(QueryExecutionState::ValueType t) const {
+    return _timers[QueryExecutionState::toNumber(t)];
+  }
+  
   /// @brief convert the profile to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
-
-  Query* query;
-  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> timers;
-  double stamp;
-  bool tracked;
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  
+private:
+  Query* _query;
+  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> _timers;
+  double _lastStamp;
+  bool _tracked;
 };
 
 // we want the number of execution states to be quite low

@@ -258,7 +258,7 @@ std::string TRI_LocateBinaryPath(char const* argv0);
 ///    /opt/usr/bin /usr/bin/ => /opt/
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_GetInstallRoot(std::string const& binaryPath, char const *installBinaryPath);
+std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* installBinaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
@@ -322,7 +322,7 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 /// @brief locate the installation directory
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_LocateInstallDirectory(char const* argv_0, const char* binaryPath);
+std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the configuration directory
@@ -350,7 +350,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 /// @brief checks whether path is full qualified or relative
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PathIsAbsolute(const std::string &path);
+bool TRI_PathIsAbsolute(std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the files subsystem
@@ -364,4 +364,9 @@ void TRI_InitializeFiles();
 
 void TRI_ShutdownFiles();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief if which is found, value is overwriten, true returned.
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_GETENV(char const* which, std::string &value);
 #endif

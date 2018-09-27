@@ -67,6 +67,8 @@ int TRI_set_errno(int error) {
 
 /// @brief defines an exit code string
 void TRI_set_exitno_string(int code, char const* msg) {
+  TRI_ASSERT(msg != nullptr);
+
   if (!ExitMessages.emplace(code, msg).second) {
     // logic error, error number is redeclared
     printf("Error: duplicate declaration of exit code %i in %s:%i\n", code,
@@ -77,6 +79,8 @@ void TRI_set_exitno_string(int code, char const* msg) {
 
 /// @brief defines an error string
 void TRI_set_errno_string(int code, char const* msg) {
+  TRI_ASSERT(msg != nullptr);
+
   if (!ErrorMessages.emplace(code, msg).second) {
     // logic error, error number is redeclared
     printf("Error: duplicate declaration of error code %i in %s:%i\n", code,
@@ -86,7 +90,7 @@ void TRI_set_errno_string(int code, char const* msg) {
 }
 
 /// @brief return an error message for an error code
-char const* TRI_errno_string(int code) {
+char const* TRI_errno_string(int code) noexcept {
   auto it = ErrorMessages.find(code);
 
   if (it == ErrorMessages.end()) {

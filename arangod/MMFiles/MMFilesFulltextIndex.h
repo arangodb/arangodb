@@ -41,8 +41,11 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
   MMFilesFulltextIndex() = delete;
 
-  MMFilesFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  MMFilesFulltextIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesFulltextIndex();
 
@@ -50,8 +53,6 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
   IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
 
   char const* typeName() const override { return "fulltext"; }
-
-  bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return true; }
 
@@ -61,9 +62,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures,
-                    bool forPersistence) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -82,7 +81,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override final;
+                                      IndexIteratorOptions const&) override final;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
@@ -113,9 +112,8 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
  public:
   MMFilesFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               MMFilesFulltextIndex const* index,
                                std::set<TRI_voc_rid_t>&& docs)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 
@@ -136,7 +134,7 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
   void reset() override { _pos = _docs.begin(); }
 
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
+    while (_pos != _docs.end() && skipped < count) {
       ++_pos;
       skipped++;
     }

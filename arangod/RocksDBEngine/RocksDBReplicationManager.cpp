@@ -41,8 +41,8 @@ static constexpr size_t maxCollectCount = 32;
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager() 
-    : _lock(), 
+RocksDBReplicationManager::RocksDBReplicationManager()
+    : _lock(),
       _contexts(),
       _isShuttingDown(false) {
   _contexts.reserve(64);
@@ -168,7 +168,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::find(
-    RocksDBReplicationId id, bool& busy, double ttl) {
+    RocksDBReplicationId id, bool& busy, bool exclusive, double ttl) {
   RocksDBReplicationContext* context = nullptr;
   busy = false;
 
@@ -189,12 +189,11 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
       return nullptr;
     }
 
-    if (context->isUsed()) {
+    bool acquired = context->use(ttl, exclusive);
+    if (!acquired) {
       busy = true;
       return nullptr;
     }
-
-    context->use(ttl);
   }
 
   return context;
@@ -211,10 +210,10 @@ void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
     TRI_ASSERT(context->isUsed());
     context->release();
 
-    if (!context->isDeleted()) {
+    if (!context->isDeleted() || context->isUsed()) {
       return;
     }
-      
+
     // remove from the list
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing deleted replication context " << context->id(); 
     _contexts.erase(context->id());
@@ -299,16 +298,16 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
     for (auto it = _contexts.begin(); it != _contexts.end();
          /* no hoisting */) {
       auto context = it->second;
+
+      if (!force && context->isUsed()) {
+        // must not physically destroy contexts that are currently used
+        ++it;
+        continue;
+      }
       
       if (force || context->expires() < now) {
         // expire contexts
         context->deleted();
-      }
-
-      if (context->isUsed()) {
-        // must not physically destroy contexts that are currently used
-        ++it;
-        continue;
       }
 
       if (context->isDeleted()) {
@@ -339,12 +338,12 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief tell the replication manager that a shutdown is in progress
 /// effectively this will block the creation of new contexts
 //////////////////////////////////////////////////////////////////////////////
-    
+
 void RocksDBReplicationManager::beginShutdown() {
   MUTEX_LOCKER(mutexLocker, _lock);
   _isShuttingDown = true;

@@ -96,9 +96,12 @@ MMFilesUnloadCollectionDitch::MMFilesUnloadCollectionDitch(
 MMFilesUnloadCollectionDitch::~MMFilesUnloadCollectionDitch() {}
 
 MMFilesDropCollectionDitch::MMFilesDropCollectionDitch(
-    MMFilesDitches* ditches, arangodb::LogicalCollection* collection,
-    std::function<bool(arangodb::LogicalCollection*)> callback,
-    char const* filename, int line)
+    MMFilesDitches* ditches,
+    arangodb::LogicalCollection& collection,
+    std::function<bool(arangodb::LogicalCollection&)> const& callback,
+    char const* filename,
+    int line
+)
     : MMFilesDitch(ditches, filename, line),
       _collection(collection),
       _callback(callback) {}
@@ -390,8 +393,8 @@ MMFilesUnloadCollectionDitch* MMFilesDitches::createMMFilesUnloadCollectionDitch
 
 /// @brief creates a new datafile drop ditch
 MMFilesDropCollectionDitch* MMFilesDitches::createMMFilesDropCollectionDitch(
-    arangodb::LogicalCollection* collection,
-    std::function<bool(arangodb::LogicalCollection*)> callback,
+    arangodb::LogicalCollection& collection,
+    std::function<bool(arangodb::LogicalCollection&)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch = new MMFilesDropCollectionDitch(this, collection, callback,

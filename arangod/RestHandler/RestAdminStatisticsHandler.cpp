@@ -54,8 +54,7 @@ RestStatus RestAdminStatisticsHandler::execute() {
 void RestAdminStatisticsHandler::getStatistics() {
   stats::Descriptions const* desc = StatisticsFeature::descriptions();
   if (!desc) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_DISABLED, "statistics not enabled");
     return;
   }
   
@@ -91,8 +90,7 @@ void RestAdminStatisticsHandler::getStatistics() {
 void RestAdminStatisticsHandler::getStatisticsDescription() {
   stats::Descriptions const* desc = StatisticsFeature::descriptions();
   if (!desc) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_DISABLED, "statistics not enabled");
     return;
   }
   

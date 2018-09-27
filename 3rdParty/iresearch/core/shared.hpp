@@ -124,6 +124,13 @@
   #define MSVC2013_ONLY(...)
 #endif
 
+// hook for MSVC2015-only code
+#if defined(_MSC_VER) && _MSC_VER == 1900
+  #define MSVC2015_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2015_ONLY(...)
+#endif
+
 // hook for MSVC2015 optimized-only code
 #if defined(_MSC_VER) && !defined(_DEBUG) && _MSC_VER == 1900
   #define MSVC2015_OPTIMIZED_ONLY(...) __VA_ARGS__
@@ -238,6 +245,14 @@
 //////////////////////////////////////////////////////////
 
 #define UNUSED(par) (void)(par)
+
+#ifndef AGB_IGNORE_UNUSED
+#if defined(__GNUC__)
+#define ADB_IGNORE_UNUSED __attribute__((unused))
+#else
+#define ADB_IGNORE_UNUSED /* unused */
+#endif
+#endif
 
 #define NS_BEGIN(ns) namespace ns {
 #define NS_LOCAL namespace {

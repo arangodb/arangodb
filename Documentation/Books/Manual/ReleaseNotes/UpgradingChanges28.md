@@ -171,7 +171,7 @@ modules (e.g. a local file `chai.js` would cause problems when trying to load th
 `chai` module installed in `node_modules`).
 
 For more information see the [blog announcement of this change](https://www.arangodb.com/2015/11/foxx-module-resolution-will-change-in-2-8/)
-and the [upgrade guide](../Administration/Upgrading/Upgrading28.md#upgrading-foxx-apps-generated-by-arangodb-27-and-earlier).
+and the [upgrade guide](../Upgrading/VersionSpecific/Upgrading28.md#upgrading-foxx-apps-generated-by-arangodb-27-and-earlier).
 
 ### Module `org/arangodb/request`
 

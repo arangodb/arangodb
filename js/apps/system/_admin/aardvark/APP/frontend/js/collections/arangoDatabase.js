@@ -10,7 +10,7 @@
       desc: false
     },
 
-    url: arangoHelper.databaseUrl('/_api/database'),
+    url: arangoHelper.databaseUrl('/_api/database/user'),
 
     comparator: function (item, item2) {
       var a = item.get('name').toLowerCase();
@@ -53,7 +53,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: this.url + '/user',
+        url: this.url,
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -104,7 +104,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: this.url + '/current',
+        url: arangoHelper.databaseUrl('/_api/database/current'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {

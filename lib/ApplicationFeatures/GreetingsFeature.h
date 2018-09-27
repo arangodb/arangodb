@@ -26,14 +26,16 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class GreetingsFeature final : public application_features::ApplicationFeature {
  public:
-  explicit GreetingsFeature(application_features::ApplicationServer* server);
+  explicit GreetingsFeature(application_features::ApplicationServer& server);
 
  public:
   void prepare() override final;
   void unprepare() override final;
 };
+
 }
 
 #endif

@@ -27,14 +27,9 @@
 
 #include "Scheduler/Task.h"
 
-#include <boost/asio/ssl.hpp>
-#include <list>
-#include <utility>
-
 #include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/asio-helper.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
@@ -43,7 +38,6 @@ namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
-  
 class SocketTask : virtual public Task {
   friend class HttpCommTask;
 
@@ -54,13 +48,16 @@ class SocketTask : virtual public Task {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(EventLoop, std::unique_ptr<Socket>, ConnectionInfo&&,
+  SocketTask(Scheduler*, std::unique_ptr<Socket>, ConnectionInfo&&,
              double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();
 
  public:
-  void start();
+  bool start();
+  
+  // whether or not this task can mix sync and async I/O
+  virtual bool canUseMixedIO() const = 0;
 
  protected:
   // caller will hold the _lock
@@ -106,30 +103,20 @@ class SocketTask : virtual public Task {
 
     ~WriteBuffer() { release(); }
 
-    bool empty() const noexcept {
-      return _buffer == nullptr;
-    }
-    
+    bool empty() const noexcept { return _buffer == nullptr; }
+
     void clear() noexcept {
       _buffer = nullptr;
       _statistics = nullptr;
     }
 
-    void release() noexcept {
+    void release(SocketTask* task = nullptr) {
       if (_buffer != nullptr) {
-        delete _buffer;
-        _buffer = nullptr;
-      }
-
-      if (_statistics != nullptr) {
-        _statistics->release();
-        _statistics = nullptr;
-      }
-    }
-    
-    void release(SocketTask* task) {
-      if (_buffer != nullptr) {
-        task->returnStringBuffer(_buffer);
+        if (task != nullptr) {
+          task->returnStringBuffer(_buffer);
+        } else {
+          delete _buffer;
+        }
         _buffer = nullptr;
       }
 
@@ -140,57 +127,68 @@ class SocketTask : virtual public Task {
     }
   };
 
-  // will acquire the _lock
+  // will be run in strand
   void addWriteBuffer(WriteBuffer&&);
 
-  // will acquire the _lock
+  // will be run in strand
   void closeStream();
 
-  // caller must hold the _lock
+  // caller must run in _peer->strand()
   void closeStreamNoLock();
 
-  // caller must hold the _lock
+  // starts the keep alive time, no need to run on strand
   void resetKeepAlive();
 
-  // caller must hold the _lock
+  // cancels the keep alive timer
   void cancelKeepAlive();
 
+  // abandon the task. if the task was already abandoned, this
+  // method returns false. if abandoing was successful, this
+  // method returns true. Used for VST upgrade
+  bool abandon() { return !(_abandoned.exchange(true)); }
 
+  // lease a string buffer from pool
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
 
+  bool processAll();
+  void triggerProcessAll();
+
  private:
-  void writeWriteBuffer();
   bool completedWriteBuffer();
 
   bool reserveMemory();
   bool trySyncRead();
-  bool processAll();
+
   void asyncReadSome();
-  bool abandon();
+  void asyncWriteSome();
 
  protected:
-  Mutex _lock;
-  ConnectionStatistics* _connectionStatistics;
+  std::unique_ptr<Socket> _peer;
   ConnectionInfo _connectionInfo;
-  basics::StringBuffer _readBuffer; // needs _lock
-  
+
+  ConnectionStatistics* _connectionStatistics;
+  basics::StringBuffer _readBuffer;
+
  private:
-  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
+  Mutex _bufferLock;
+  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type
+      _stringBuffersArena;
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
 
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
-  std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
-  boost::asio::deadline_timer _keepAliveTimer;
+  std::unique_ptr<asio_ns::deadline_timer> _keepAliveTimer;
   bool const _useKeepAliveTimer;
-  bool _keepAliveTimerActive;
-  bool _closeRequested;
-  bool _abandoned;
-  bool _closedSend;
-  bool _closedReceive;
+
+  std::atomic<bool> _keepAliveTimerActive;
+  std::atomic<bool> _closeRequested;
+
+  std::atomic<bool> _abandoned;  // was task abandoned for another task
+  std::atomic<bool> _closedSend;  // Close socket send
+  std::atomic<bool> _closedReceive;  // Closed socket received
 };
 }
 }

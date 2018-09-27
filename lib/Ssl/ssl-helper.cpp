@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 #include <openssl/err.h>
-#include <boost/asio/ssl.hpp>
+
+#include "Basics/Exceptions.h"
+#include "Basics/asio_ns.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -38,19 +39,17 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::asio::ssl::context arangodb::sslContext(
+asio::ssl::context arangodb::sslContext(
     SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
-  using boost::asio::ssl::context;
+  using asio::ssl::context;
   context::method meth;
 
   switch (protocol) {
-#ifndef OPENSSL_NO_SSL2
     case SSL_V2:
-      meth = context::method::sslv2;
-      break;
-#endif
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "support for SSLv2 has been dropped");
+
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = context::method::sslv3;
@@ -72,7 +71,7 @@ boost::asio::ssl::context arangodb::sslContext(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
   }
 
-  boost::asio::ssl::context sslctx(meth);
+  asio::ssl::context sslctx(meth);
 
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
@@ -125,6 +124,22 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     default:
       return "unknown";
   }
+}
+   
+std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
+  return std::unordered_set<uint64_t>{
+    SslProtocol::SSL_V2, // unsupported! 
+    SslProtocol::SSL_V23, 
+    SslProtocol::SSL_V3, 
+    SslProtocol::TLS_V1, 
+    SslProtocol::TLS_V12
+  };
+}
+
+std::string arangodb::availableSslProtocolsDescription() {
+  return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
+         "(negotiated), 3 = SSLv3, 4 = "
+         "TLSv1, 5 = TLSv1.2)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

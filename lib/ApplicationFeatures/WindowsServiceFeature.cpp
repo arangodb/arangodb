@@ -453,9 +453,9 @@ void WindowsServiceFeature::shutDownFailure () {
 /// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
 ///        starting
 //////////////////////////////////////////////////////////////////////////////
-void WindowsServiceFeature::abortFailure () {
+void WindowsServiceFeature::abortFailure (uint16_t exitCode) {
   // startup finished - signalize we're running.
-  SetServiceStatus(SERVICE_STOP, ERROR_SERVICE_SPECIFIC_ERROR, 0, 0, 2);
+  SetServiceStatus(SERVICE_STOP, ERROR_SERVICE_SPECIFIC_ERROR, 0, 0, exitCode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -495,13 +495,13 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   }
 }
 
-WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer* server)
+WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "WindowsService"),
-    _server(server){
+    _server(&server) {
   _progress = 2;
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("Version");
+  startsAfter("GreetingsPhase");
   ArangoInstance = this;
 
   if (!TRI_InitWindowsEventLog()) {
@@ -549,10 +549,10 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                            new BooleanParameter(&_stopWaitService));
 }
 
-void WindowsServiceFeature::abortService() {
+void WindowsServiceFeature::abortService(uint16_t exitCode) {
   if (ArangoInstance != nullptr) {
     ArangoInstance->_server = nullptr;
-    ArangoInstance->abortFailure();
+    ArangoInstance->abortFailure(exitCode);
   }
   exit(EXIT_FAILURE);
 }

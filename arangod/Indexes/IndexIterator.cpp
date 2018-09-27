@@ -25,11 +25,12 @@
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Slice.h>
+
 using namespace arangodb;
   
 IndexIterator::IndexIterator(LogicalCollection* collection, 
-                             transaction::Methods* trx, 
-                             arangodb::Index const* index)
+                             transaction::Methods* trx)
       : _collection(collection), 
         _trx(trx) { 
   TRI_ASSERT(_collection != nullptr);
@@ -42,7 +43,20 @@ bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   }, limit);
 }
 
-/// @brief default implementation for next
+/// @brief default implementation for nextCovering
+/// specialized index iterators can implement this method with some
+/// sensible behavior
+bool IndexIterator::nextCovering(DocumentCallback const&, size_t) {
+  TRI_ASSERT(!hasCovering());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Requested covering values from an index that "
+                                 "does not support it. This seems to be a bug "
+                                 "in ArangoDB. Please report the query you are "
+                                 "using + the indexes you have defined on the "
+                                 "relevant collections to arangodb.com");
+}
+
+/// @brief default implementation for nextExtra
 bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
   TRI_ASSERT(!hasExtra());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -80,6 +94,33 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
       return false;
     }
     if (!_current->next(cb, limit)) {
+      _currentIdx++;
+      if (_currentIdx >= _iterators.size()) {
+        _current = nullptr;
+        return false;
+      } else {
+        _current = _iterators.at(_currentIdx);
+      }
+    }
+  }
+  return true;
+}
+
+/// @brief Get the next elements
+///        If one iterator is exhausted, the next one is used.
+///        If callback is called less than limit many times
+///        all iterators are exhausted
+bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t limit) {
+  TRI_ASSERT(hasCovering());
+  auto cb = [&limit, &callback] (LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
+    --limit;
+    callback(token, slice);
+  };
+  while (limit > 0) {
+    if (_current == nullptr) {
+      return false;
+    }
+    if (!_current->nextCovering(cb, limit)) {
       _currentIdx++;
       if (_currentIdx >= _iterators.size()) {
         _current = nullptr;

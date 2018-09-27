@@ -52,10 +52,12 @@ class TokenCache {
     friend class auth::TokenCache;
 
    public:
-    Entry() : _authenticated(false), _expiry(0) {}
-
     explicit Entry(std::string const& username, bool a, double t)
         : _username(username), _authenticated(a), _expiry(t) {}
+    
+    static Entry Unauthenticated() {
+      return Entry("", false, 0);
+    }
 
     std::string const& username() const { return _username; }
     bool authenticated() const { return _authenticated; }
@@ -81,7 +83,7 @@ class TokenCache {
   /// set new jwt secret, regenerate _jetToken
   void setJwtSecret(std::string const&);
   std::string jwtSecret() const;
-  /// Get the jwt token, which should be used for communicatin
+  /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtToken.empty());
     return _jwtToken;
@@ -112,13 +114,14 @@ class TokenCache {
   double const _authTimeout;
 
   mutable arangodb::basics::ReadWriteLock _basicLock;
-  mutable arangodb::basics::ReadWriteLock _jwtLock;
-
+  std::atomic<uint64_t> _basicCacheVersion;
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
-  arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
 
   std::string _jwtSecret;
   std::string _jwtToken;
+  
+  mutable arangodb::basics::ReadWriteLock _jwtLock;
+  arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
 };
 }  // auth
 }  // arangodb

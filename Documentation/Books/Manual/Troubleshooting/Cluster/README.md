@@ -1,4 +1,4 @@
-Cluster troubleshooting
+Cluster Troubleshooting
 =======================
 
 * Cluster frontend is unresponsive

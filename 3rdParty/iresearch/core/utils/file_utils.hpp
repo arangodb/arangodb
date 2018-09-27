@@ -40,7 +40,7 @@
   #define file_stat_t struct _stat64
   #define file_no _fileno
   #define mode_t unsigned short
-  #define file_open(name, mode) iresearch::file_utils::open(name, _T(mode))
+  #define file_open(name, mode) iresearch::file_utils::open(name, IR_WSTR(mode))
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
@@ -50,9 +50,10 @@
   #define IR_FADVICE_RANDOM 2
   #define IR_FADVICE_DONTNEED 4
   #define IR_FADVICE_NOREUSE 5
+  #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
 #else
   #include <unistd.h> // close
-  #include <sys/types.h>
+  #include <sys/types.h> // for blksize_t
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
   #define file_path_t char*

@@ -7,17 +7,17 @@ Problem
 I want to compile ArangoDB 3.0 and onwards under Windows.
 
 **Note:** For this recipe you need at least ArangoDB 3.0;
-For ArangoDB version before 3.0 look at the [old Compiling ArangoDB under Windows](Windows.md).
+For ArangoDB version before 3.0 look at the [old Compiling ArangoDB under Windows](https://docs.arangodb.com/2.8/Cookbook/CompilingUnderWindows.html).
 
 Solution
 --------
 
 With ArangoDB 3.0 a complete cmake environment was introduced. This also streamlines the dependencies on windows.
-We sugest to use [chocolatey.org](https://chocolatey.org/) to install most of the dependencies. For sure
+We suggest to use [chocolatey.org](https://chocolatey.org/) to install most of the dependencies. For sure
 most projects offer their own setup & install packages, chocolatey offers a simplified way to install them
-with less userinteractions. You can even use chocolatey via the brand new
+with less user interactions. You can even use chocolatey via the brand new
 [ansibles 2.0 winrm facility](http://docs.ansible.com/ansible/intro_windows.html)
-to do unattended installions of some software on windows - the cool thing linux guys always told you about.
+to do unattended installations of some software on windows - the cool thing linux guys always told you about.
 
 ### Ingredients
 
@@ -47,7 +47,7 @@ Then we fetch the [OpenSSL](https://openssl.org) library via the nuget commandli
 
 #### Optional
 
-If you intend to run the unittests or compile from git, you also need *(needs to be run with Administrator privileges again)*:
+If you intend to run the unit tests or compile from git, you also need *(needs to be run with Administrator privileges again)*:
 
     choco install -y git winflexbison ruby
 
@@ -57,7 +57,7 @@ Close and reopen the Administrator command window in order to continue with the 
 
 And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository *(needs to be run with Administrator privileges)*:
 
-    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/UnitTests/HttpInterface/Gemfile
+    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/tests/HttpInterface/Gemfile
     set PATH=%PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin
     gem install bundler
     bundler
@@ -89,14 +89,14 @@ You can now load these in the Visual Studio IDE or use cmake to start the build:
 The binaries need the ICU datafile `icudt54l.dat`, which is automatically copied into the directory containing the
 executable.
 
-For development, unittests and documentation: Cygwin (Optional)
+For development, unit tests and documentation: Cygwin (Optional)
 ===============================================================
 
-The documentation and unittests still require a [cygwin](https://www.cygwin.com/) environment. Here the hints how to get it properly installed:
+The documentation and unit tests still require a [cygwin](https://www.cygwin.com/) environment. Here are the hints how to get it properly installed:
 
 You need at least `make` from cygwin. Cygwin also offers a `cmake`. Do **not** install the cygwin cmake.
 
-You should also issue these commands to generate user informations for the cygwin commands:
+You should also issue these commands to generate user information for the cygwin commands:
 
     mkpasswd > /etc/passwd
     mkgroup > /etc/group
@@ -154,12 +154,12 @@ right click on `This PC` in the tree on the left, choose `Properties` in the ope
 in the Popup `Environment Variables`, another popup opens, in the `System Variables` part you click `New`, 
 And variable name: `ICU_DATA` to the value: `c:\\Windows`
 
-![HowtoSetEnv](/assets/CompilingUnderWindows/SetEnvironmentVar.png)
+![HowtoSetEnv](../assets/CompilingUnderWindows/SetEnvironmentVar.png)
 
-Running Unitests (Optional)
+Running Unit tests (Optional)
 ---------------------------
 
-You can then run the unittests in the cygwin shell like that:
+You can then run the unit tests in the cygwin shell like that:
 
     build64/bin/RelWithDebInfo/arangosh.exe \
     -c etc/relative/arangosh.conf \

@@ -39,7 +39,7 @@ using namespace arangodb;
 
 // @brief setup
 
-TEST_CASE("IndexEstimator", "[indexestimator]") {
+TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
   // @brief Test insert unique correctness
 
   SECTION("test_unique_values") {
@@ -103,12 +103,12 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
     CHECK(persLength == length);
 
     // We first have an uint64_t representing the length.
-    // This has to be extracted BEFORE initialisation.
+    // This has to be extracted BEFORE initialization.
     StringRef ref(serialization.data() + 8, persLength);
 
     RocksDBCuckooIndexEstimator<uint64_t> copy(seq, ref);
 
-    // After serialisation => deserialisation
+    // After serialization => deserialization
     // both estimates have to be identical
     CHECK(est.nrUsed() == copy.nrUsed());
     CHECK(est.nrCuckood() == copy.nrCuckood());

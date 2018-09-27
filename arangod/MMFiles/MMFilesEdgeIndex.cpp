@@ -40,6 +40,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -55,19 +56,17 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::MMFilesEdgeIndex const* index,
+    ManagedDocumentResult* mdr, arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-    std::unique_ptr<VPackBuilder>& keys)
-    : IndexIterator(collection, trx, index),
+    std::unique_ptr<VPackBuilder> keys)
+    : IndexIterator(collection, trx),
       _index(indexImpl),
-      _mmdr(mmdr),
-      _context(trx, collection, _mmdr, index->fields().size()),
-      _keys(keys.get()),
+      _context(trx, collection, mdr, index->fields().size()),
+      _keys(std::move(keys)),
       _iterator(_keys->slice()),
       _posInBuffer(0),
       _batchSize(1000),
       _lastElement() {
-  keys.release();  // now we have ownership for _keys
 }
 
 MMFilesEdgeIndexIterator::~MMFilesEdgeIndexIterator() {
@@ -119,6 +118,57 @@ bool MMFilesEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
+bool MMFilesEdgeIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  if (limit == 0 || (_buffer.empty() && !_iterator.valid())) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  bool done = false;
+  while (limit > 0) {
+    if (_buffer.empty()) {
+      // We start a new lookup
+      _posInBuffer = 0;
+
+      VPackSlice tmp = _iterator.value();
+      if (tmp.isObject()) {
+        tmp = tmp.get(StaticStrings::IndexEq);
+      }
+      _index->lookupByKey(&_context, &tmp, _buffer, _batchSize);
+    } else if (_posInBuffer >= _buffer.size()) {
+      // We have to refill the buffer
+      _buffer.clear();
+
+      _posInBuffer = 0;
+      _index->lookupByKeyContinue(&_context, _lastElement, _buffer, _batchSize);
+    }
+
+    if (_buffer.empty()) {
+      _iterator.next();
+      _lastElement = MMFilesSimpleIndexElement();
+      if (!_iterator.valid()) {
+        done = true;
+        break;
+      }
+    } else {
+      _lastElement = _buffer.back();
+      // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++].localDocumentId(), nullptr));
+      limit--;
+    }
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
+}
+
 void MMFilesEdgeIndexIterator::reset() {
   _posInBuffer = 0;
   _buffer.clear();
@@ -126,8 +176,10 @@ void MMFilesEdgeIndexIterator::reset() {
   _lastElement = MMFilesSimpleIndexElement();
 }
 
-MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
-                                   arangodb::LogicalCollection* collection)
+MMFilesEdgeIndex::MMFilesEdgeIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection
+)
     : MMFilesIndex(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::FromString,
@@ -136,20 +188,15 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
                                                   false)}}),
             false, false) {
   TRI_ASSERT(iid != 0);
-  size_t indexBuckets = 1;
   size_t initialSize = 64;
+  auto physical = static_cast<MMFilesCollection*>(collection.getPhysical());
+  TRI_ASSERT(physical != nullptr);
+  size_t indexBuckets = static_cast<size_t>(physical->indexBuckets());
 
-  if (collection != nullptr) {
-    // collection is a nullptr in the coordinator case
-    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
-    TRI_ASSERT(physical != nullptr);
-    indexBuckets = static_cast<size_t>(physical->indexBuckets());
-
-    if (collection->isAStub()) {
-      // in order to reduce memory usage
-      indexBuckets = 1;
-      initialSize = 4;
-    }
+  if (collection.isAStub()) {
+    // in order to reduce memory usage
+    indexBuckets = 1;
+    initialSize = 4;
   }
 
   auto context = [this]() -> std::string { return this->context(); };
@@ -159,22 +206,25 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimateLocal(
-    arangodb::StringRef const* attribute) const {
-  if (_edgesFrom == nullptr || _edgesTo == nullptr ||
-      ServerState::instance()->isCoordinator()) {
+double MMFilesEdgeIndex::selectivityEstimate(
+    arangodb::StringRef const& attribute) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
+    return 1.0;
+  }
+  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
   }
 
-  if (attribute != nullptr) {
+  if (!attribute.empty()) {
     // the index attribute is given here
     // now check if we can restrict the selectivity estimation to the correct
     // part of the index
-    if (attribute->compare(StaticStrings::FromString) == 0) {
+    if (attribute.compare(StaticStrings::FromString) == 0) {
       // _from
       return _edgesFrom->selectivity();
-    } else if (attribute->compare(StaticStrings::ToString) == 0) {
+    } else if (attribute.compare(StaticStrings::ToString) == 0) {
       // _to
       return _edgesTo->selectivity();
     }
@@ -196,13 +246,19 @@ size_t MMFilesEdgeIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                    bool forPersistence) const {
+void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   // hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 
@@ -225,9 +281,9 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
                                 OperationMode mode) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
-
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
+  IndexLookupContext context(trx, &_collection, &result, 1);
+
   _edgesFrom->insert(&context, fromElement, true,
                      mode == OperationMode::rollback);
 
@@ -237,10 +293,12 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
   } catch (std::bad_alloc const&) {
     // roll back partial insert
     _edgesFrom->remove(&context, fromElement);
+
     return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
   } catch (...) {
     // roll back partial insert
     _edgesFrom->remove(&context, fromElement);
+
     return IndexResult(TRI_ERROR_INTERNAL, this);
   }
 
@@ -253,18 +311,19 @@ Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
                                 OperationMode mode) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
-
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
+  IndexLookupContext context(trx, &_collection, &result, 1);
 
   try {
     _edgesFrom->remove(&context, fromElement);
     _edgesTo->remove(&context, toElement);
+
     return Result(TRI_ERROR_NO_ERROR);
   } catch (...) {
     if (mode == OperationMode::rollback) {
       return Result(TRI_ERROR_NO_ERROR);
     }
+
     return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
   }
 }
@@ -288,7 +347,8 @@ void MMFilesEdgeIndex::batchInsert(
   // functions that will be called for each thread
   auto creator = [&trx, this]() -> void* {
     ManagedDocumentResult* result = new ManagedDocumentResult;
-    return new IndexLookupContext(trx, _collection, result, 1);
+
+    return new IndexLookupContext(trx, &_collection, result, 1);
   };
   auto destroyer = [](void* userData) {
     IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
@@ -331,7 +391,7 @@ int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
   // set an initial size for the index for some new nodes to be created
   // without resizing
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
+  IndexLookupContext context(trx, &_collection, &result, 1);
   int err = _edgesFrom->resize(&context, size + 2049);
 
   if (err != TRI_ERROR_NO_ERROR) {
@@ -349,6 +409,7 @@ int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
 
 /// @brief checks whether the index supports the condition
 bool MMFilesEdgeIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
@@ -359,11 +420,12 @@ bool MMFilesEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
   TRI_ASSERT(node->numMembers() == 1);
 
   auto comp = node->getMember(0);
@@ -381,21 +443,21 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, mdr, attrNode, valNode);
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
 
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, mdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -406,44 +468,9 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-/// @brief Transform the list of search slices to search values.
-///        This will multiply all IN entries and simply return all other
-///        entries.
-void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
-                                            VPackBuilder& builder) const {
-  TRI_ASSERT(slice.isArray());
-  builder.openArray();
-  for (auto const& side : VPackArrayIterator(slice)) {
-    if (side.isNull()) {
-      builder.add(side);
-    } else {
-      TRI_ASSERT(side.isArray());
-      builder.openArray();
-      for (auto const& item : VPackArrayIterator(side)) {
-        TRI_ASSERT(item.isObject());
-        if (item.hasKey(StaticStrings::IndexEq)) {
-          TRI_ASSERT(!item.hasKey(StaticStrings::IndexIn));
-          builder.add(item);
-        } else {
-          TRI_ASSERT(item.hasKey(StaticStrings::IndexIn));
-          VPackSlice list = item.get(StaticStrings::IndexIn);
-          TRI_ASSERT(list.isArray());
-          for (auto const& it : VPackArrayIterator(list)) {
-            builder.openObject();
-            builder.add(StaticStrings::IndexEq, it);
-            builder.close();
-          }
-        }
-      }
-      builder.close();
-    }
-  }
-  builder.close();
-}
-
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -460,13 +487,19 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
   // _from or _to?
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(), keys);
+  return new MMFilesEdgeIndexIterator(
+    &_collection,
+    trx,
+    mdr,
+    this,
+    isFrom ? _edgesFrom.get() : _edgesTo.get(),
+    std::move(keys)
+  );
 }
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -490,8 +523,14 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(
   // _from or _to?
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(), keys);
+  return new MMFilesEdgeIndexIterator(
+    &_collection,
+    trx,
+    mdr,
+    this,
+    isFrom ? _edgesFrom.get() : _edgesTo.get(),
+    std::move(keys)
+  );
 }
 
 /// @brief add a single value node to the iterator's keys

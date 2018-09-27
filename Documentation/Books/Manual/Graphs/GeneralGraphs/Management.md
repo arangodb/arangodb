@@ -384,7 +384,7 @@ graph with different *from* and/or *to* collections an error is thrown.
 
 Modify an relation definition
 
-`graph_module._editEdgeDefinition(edgeDefinition)`
+`graph_module._editEdgeDefinitions(edgeDefinition)`
 
 Edits one relation definition of a graph. The edge definition used as argument will
 replace the existing edge definition of the graph which has the same collection.
@@ -583,7 +583,7 @@ Optionally the collection can be deleted, if it is not used in any other graph.
 
 
 
-Maniuplating Vertices
+Manipulating Vertices
 ---------------------
 
 ### Save a vertex

@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/batch</span> &lt;&lt;EOF
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 
@@ -12,9 +12,9 @@ DELETE _api/collection/notexisting2 HTTP/1.1
 
 EOF
 
-HTTP/1.1 200 OK
-content-type: 
-x-content-type-options: nosniff
+HTTP/1.1 undefined
+content-type: application/json
 x-arango-errors: 2
+x-content-type-options: nosniff
 
-"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 79\r\n\r\n{\"error\":true,\"errorMessage\":\"collection not found\",\"code\":404,\"errorNum\":1203}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 101\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":404,\"errorMessage\":\"unknown path '_api/collection/notexisting2'\"}\r\n--SomeBoundaryValue--"
+"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 87\r\n\r\n{\"error\":true,\"errorMessage\":\"collection or view not found\",\"code\":404,\"errorNum\":1203}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 101\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":404,\"errorMessage\":\"unknown path '_api/collection/notexisting2'\"}\r\n--SomeBoundaryValue--"

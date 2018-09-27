@@ -47,7 +47,7 @@ struct documents final : attribute {
 struct term_meta final : irs::term_meta {
   term_meta(): e_single_doc(0) {} // GCC 4.9 does not initialize unions properly
 
-  void clear() {
+  void clear() override {
     irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
     pos_end = type_limits<type_t::address_t>::invalid();

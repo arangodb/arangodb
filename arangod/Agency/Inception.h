@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ namespace consensus {
 
 class Agent;
 
-/// @brief This class organises the startup of the agency until the point
+/// @brief This class organizes the startup of the agency until the point
 ///        where the RAFT implementation can commence function
 class Inception : public Thread {
 
@@ -61,19 +61,21 @@ public:
   void beginShutdown() override;
   void run() override;
 
+  void signalConditionVar();
+
  private:
 
   /// @brief We are a restarting active RAFT agent
   ///
-  /// Make sure that majority of agents agrees on pool and active list. 
+  /// Make sure that majority of agents agrees on pool and active list.
   /// Subsequently, start agency. The exception to agreement over active agent
   /// list among peers is if an agent joins with empty active list. This allows
   /// for a peer with empty list to join nevertheless.
   /// The formation of an agency is tried for an hour before giving up.
   bool restartingActiveAgent();
-  
+
   /// @brief Gossip your way into the agency
-  /// 
+  ///
   /// No persistence: gossip an agency together.
   void gossip();
 

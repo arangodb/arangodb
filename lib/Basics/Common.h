@@ -171,14 +171,14 @@ typedef long suseconds_t;
 #include "Basics/voc-errors.h"
 #include "Basics/error.h"
 #include "Basics/debugging.h"
-#include "Basics/make_unique.h"
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
+#include "Basics/ScopeGuard.h"
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
-// some Windows headers define macros named free and small, 
+// some Windows headers define macros named free and small,
 // leading to follow-up compile errors
 #undef free
 #undef small
@@ -197,7 +197,7 @@ typedef long suseconds_t;
 
 #define TRI_ASSERT(expr)                             \
   do {                                               \
-    if (!(TRI_LIKELY(expr))) {                       \
+    if (!(ADB_LIKELY(expr))) {                       \
       TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
       TRI_PrintBacktrace();                          \
       std::abort();                                  \
@@ -214,13 +214,14 @@ typedef long suseconds_t;
 
 /// @brief aborts program execution, returning an error code
 /// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_EXIT_CODE(code)           \
-  do {                                        \
-    TRI_LogBacktrace();                       \
-    arangodb::Logger::flush();                \
-    arangodb::Logger::shutdown();             \
-    TRI_EXIT_FUNCTION(code, nullptr);         \
-    exit(code);                               \
+#define FATAL_ERROR_EXIT_CODE(code)                             \
+  do {                                                          \
+    TRI_LogBacktrace();                                         \
+    ::arangodb::basics::CleanupFunctions::run(code, nullptr);   \
+    ::arangodb::Logger::flush();                                \
+    ::arangodb::Logger::shutdown();                             \
+    TRI_EXIT_FUNCTION(code, nullptr);                           \
+    exit(code);                                                 \
   } while (0)
 
 /// @brief aborts program execution, returning an error code
@@ -232,12 +233,13 @@ typedef long suseconds_t;
 
 /// @brief aborts program execution, calling std::abort
 /// if backtraces are enabled, a backtrace will be printed before
-#define FATAL_ERROR_ABORT(...)                \
-  do {                                        \
-    TRI_LogBacktrace();                       \
-    arangodb::Logger::flush();                \
-    arangodb::Logger::shutdown();             \
-    std::abort();                             \
+#define FATAL_ERROR_ABORT(...)                                 \
+  do {                                                         \
+    TRI_LogBacktrace();                                        \
+    arangodb::basics::CleanupFunctions::run(500, nullptr);     \
+    arangodb::Logger::flush();                                 \
+    arangodb::Logger::shutdown();                              \
+    std::abort();                                              \
   } while (0)
 
 #ifdef _WIN32
@@ -247,42 +249,13 @@ inline void ADB_WindowsEntryFunction() {}
 inline void ADB_WindowsExitFunction(int, void*) {}
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTIONS--                                               deferred execution
-// -----------------------------------------------------------------------------
-
-/// Use in a function (or scope) as:
-///   TRI_DEFER( <ONE_STATEMENT> );
-/// and the statement will be called regardless if the function throws or
-/// returns regularly.
-/// Do not put multiple TRI_DEFERs on a single source code line (will not
-/// compile).
-/// Multiple TRI_DEFERs in one scope will be executed in reverse order of
-/// appearance.
-/// The idea to this is from
-///   http://blog.memsql.com/c-error-handling-with-auto/
-#define TOKEN_PASTE_WRAPPED(x, y) x##y
-#define TOKEN_PASTE(x, y) TOKEN_PASTE_WRAPPED(x, y)
-
-template <typename T>
-struct TRI_AutoOutOfScope {
-  explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) {}
-  ~TRI_AutoOutOfScope() { try { m_destructor(); } catch (...) { } }
-
- private:
-  T& m_destructor;
-};
-
-
-#define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
-  auto funcname = [&]() { Destructor; };                  \
-  TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);
-
-#define TRI_DEFER(Destructor)                                     \
-  TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__), \
-                     TOKEN_PASTE(auto_obj, __LINE__))
 
 #undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
+
+#ifdef sleep
+#undef sleep
+#endif
+#define sleep ERROR_USE_std_this_thread_sleep_for
 
 #endif

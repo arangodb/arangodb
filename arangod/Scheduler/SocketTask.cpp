@@ -24,19 +24,18 @@
 
 #include "SocketTask.h"
 
+#include <thread>
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Logger/Logger.h"
-#include "Scheduler/EventLoop.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/StatisticsFeature.h"
-
-#include <thread>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -45,19 +44,19 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-SocketTask::SocketTask(arangodb::EventLoop loop,
+SocketTask::SocketTask(Scheduler* scheduler,
                        std::unique_ptr<arangodb::Socket> socket,
                        arangodb::ConnectionInfo&& connectionInfo,
                        double keepAliveTimeout, bool skipInit = false)
-    : Task(loop, "SocketTask"),
-      _connectionStatistics(nullptr),
+    : Task(scheduler, "SocketTask"),
+      _peer(std::move(socket)),
       _connectionInfo(std::move(connectionInfo)),
+      _connectionStatistics(nullptr),
       _readBuffer(READ_BLOCK_SIZE + 1, false),
       _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
-      _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
-      _keepAliveTimer(_peer->_ioService, _keepAliveTimeout),
+      _keepAliveTimer(scheduler->newDeadlineTimer(_keepAliveTimeout)),
       _useKeepAliveTimer(keepAliveTimeout > 0.0),
       _keepAliveTimerActive(false),
       _closeRequested(false),
@@ -78,16 +77,17 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
 }
 
 SocketTask::~SocketTask() {
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Shutting down connection "
+                                          << (_peer ? _peer->peerPort() : 0);
+
   if (_connectionStatistics != nullptr) {
     _connectionStatistics->release();
     _connectionStatistics = nullptr;
   }
 
-  MUTEX_LOCKER(locker, _lock);
-  boost::system::error_code err;
-
-  if (_keepAliveTimerActive) {
-    _keepAliveTimer.cancel(err);
+  asio_ns::error_code err;
+  if (_keepAliveTimerActive.load(std::memory_order_relaxed)) {
+    _keepAliveTimer->cancel(err);
   }
 
   if (err) {
@@ -110,16 +110,17 @@ SocketTask::~SocketTask() {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void SocketTask::start() {
-  if (_closedSend || _closedReceive) {
+bool SocketTask::start() {
+  if (_closedSend.load(std::memory_order_acquire) ||
+      _closedReceive.load(std::memory_order_acquire)) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "cannot start, channel closed";
-    return;
+    return false;
   }
 
-  if (_closeRequested) {
+  if (_closeRequested.load(std::memory_order_acquire)) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "cannot start, close alread in progress";
-    return;
+        << "cannot start, close already in progress";
+    return false;
   }
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -130,7 +131,12 @@ void SocketTask::start() {
       << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-  _loop._scheduler->post([self, this]() { asyncReadSome(); });
+
+  _peer->post([self, this]() {
+    asyncReadSome();
+  });
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -139,66 +145,357 @@ void SocketTask::start() {
 
 // caller must hold the _lock
 void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
-  _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->runningInThisThread());
 
-  if (_closedSend || _abandoned) {
+  if (_closedSend.load(std::memory_order_acquire) ||
+      _abandoned.load(std::memory_order_acquire)) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Connection abandoned or closed";
     buffer.release();
     return;
   }
 
-  {
-    auto self = shared_from_this();
-
-    _loop._scheduler->post([self, this]() {
-      MUTEX_LOCKER(locker, _lock);
-      processAll();
-    });
-  }
-
+  TRI_ASSERT(!buffer.empty());
   if (!buffer.empty()) {
     if (!_writeBuffer.empty()) {
       _writeBuffers.emplace_back(std::move(buffer));
       return;
     }
-
     _writeBuffer = std::move(buffer);
   }
 
-  writeWriteBuffer();
+  asyncWriteSome();
 }
 
 // caller must hold the _lock
-void SocketTask::writeWriteBuffer() {
-  _lock.assertLockedByCurrentThread();
+bool SocketTask::completedWriteBuffer() {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+
+  RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
+  _writeBuffer.release(this);  // try to recycle the string buffer
+  if (_writeBuffers.empty()) {
+    if (_closeRequested) {
+      closeStreamNoLock();
+    }
+    return false;
+  }
+
+  _writeBuffer = std::move(_writeBuffers.front());
+  _writeBuffers.pop_front();
+
+  return true;
+}
+
+// caller must not hold the _lock
+void SocketTask::closeStream() {
+  if (_abandoned.load(std::memory_order_acquire)) {
+    return;
+  }
+
+  // strand::dispatch may execute this immediately if this
+  // is called on a thread inside the same strand
+  auto self = shared_from_this();
+
+  _peer->post([self, this] {
+    closeStreamNoLock();
+  });
+}
+
+// caller must hold the _lock
+void SocketTask::closeStreamNoLock() {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+  
+  bool mustCloseSend = !_closedSend.load(std::memory_order_acquire);
+  bool mustCloseReceive = !_closedReceive.load(std::memory_order_acquire);
+
+  if (_peer != nullptr) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing stream";
+    asio_ns::error_code err;  // an error we do not care about
+    _peer->shutdown(err, mustCloseSend, mustCloseReceive);
+  }
+
+  _closedSend.store(true, std::memory_order_release);
+  _closedReceive.store(true, std::memory_order_release);
+  _closeRequested.store(false, std::memory_order_release);
+  _keepAliveTimer->cancel();
+  _keepAliveTimerActive.store(false, std::memory_order_relaxed);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+// will acquire the _lock
+void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+
+  _readBuffer.appendText(data, len);
+}
+
+// does not need lock
+void SocketTask::resetKeepAlive() {
+  if (_useKeepAliveTimer) {
+    asio_ns::error_code err;
+    _keepAliveTimer->expires_from_now(_keepAliveTimeout, err);
+    if (err) {
+      closeStream();
+      return;
+    }
+
+    _keepAliveTimerActive.store(true, std::memory_order_relaxed);
+    auto self = shared_from_this();
+    _keepAliveTimer->async_wait([self, this](const asio_ns::error_code& error) {
+      if (!error) {  // error will be true if timer was canceled
+        LOG_TOPIC(ERR, Logger::COMMUNICATION)
+            << "keep alive timout - closing stream!";
+        closeStream();
+      }
+    });
+  }
+}
+
+// caller must hold the _lock
+void SocketTask::cancelKeepAlive() {
+  if (_useKeepAliveTimer &&
+      _keepAliveTimerActive.load(std::memory_order_relaxed)) {
+    asio_ns::error_code err;
+    _keepAliveTimer->cancel(err);
+    _keepAliveTimerActive.store(false, std::memory_order_relaxed);
+  }
+}
+
+// caller must hold the _lock
+bool SocketTask::reserveMemory() {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+
+  if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "out of memory while reading from client";
+    closeStreamNoLock();
+    return false;
+  }
+
+  return true;
+}
+
+// caller must be on _peer->strand()
+bool SocketTask::trySyncRead() {
+  if (_abandoned.load(std::memory_order_acquire)) {
+    return false;
+  }
+
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+
+  asio_ns::error_code err;
+  TRI_ASSERT(_peer != nullptr);
+  
+  if (0 == _peer->available(err)) {
+    return false;
+  }
+
+  if (err) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with "
+                                            << err.message();
+    return false;
+  }
+
+  if (!reserveMemory()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
+    return false;
+  }
+
+  size_t bytesRead =
+      _peer->readSome(asio_ns::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
+
+  if (0 == bytesRead) {
+    return false;  // should not happen
+  }
+
+  _readBuffer.increaseLength(bytesRead);
+
+  if (!err) {
+    return true;
+  }
+
+  if (err != asio_ns::error::would_block && err != asio_ns::error::try_again) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "trySyncRead failed with: " << err.message();
+  }
+
+  return false;
+}
+
+// caller must hold the _lock
+// runs until _closeRequested or ProcessRead Returns false is true or task
+// becomes abandoned
+// returns bool - true value signals that processRead should continue to run
+// (new read)
+bool SocketTask::processAll() {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+
+  double startTime = StatisticsFeature::time();
+  Result res;
+  bool rv = true;
+  while (rv) {
+    Result result{TRI_ERROR_NO_ERROR};
+    try {
+      rv = processRead(startTime);
+    } catch (arangodb::basics::Exception const& e) {
+      res.reset(e.code(), e.message());
+    } catch (std::bad_alloc const&) {
+      res.reset(TRI_ERROR_OUT_OF_MEMORY);
+    } catch (std::exception const& e) {
+      res.reset(TRI_ERROR_INTERNAL, e.what());
+    } catch (...) {
+      res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    if (_abandoned.load(std::memory_order_acquire)) {
+      return false;
+    }
+
+    if (res.fail()) {
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << res.errorMessage();
+      _closeRequested.store(true, std::memory_order_release);
+      break;
+    }
+
+    if (_closeRequested.load(std::memory_order_acquire)) {
+      break;
+    }
+  }
+
+  // it is too early to close the stream here, as there may
+  // be some writeBuffers which still need to be sent to the client
+  return !_closeRequested;
+}
+
+// must be invoked on strand
+void SocketTask::asyncReadSome() {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
+
+  if (this->canUseMixedIO()) {
+    // try some direct read only for non-SSL mode
+    // in SSL mode it will fall apart when mixing direct reads and async
+    // reads later
+    try {
+      size_t const MAX_DIRECT_TRIES = 2;
+      size_t n = 0;
+
+      while (++n <= MAX_DIRECT_TRIES &&
+            !_abandoned.load(std::memory_order_acquire)) {
+        if (!trySyncRead()) {
+          if (n < MAX_DIRECT_TRIES) {
+            std::this_thread::yield();
+          }
+          continue;
+        }
+
+        if (_abandoned.load(std::memory_order_acquire)) {
+          return;
+        }
+
+        // ignore the result of processAll, try to read more bytes down below
+        processAll();
+        compactify();
+      }
+    } catch (asio_ns::system_error const& err) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
+                                              << err.what();
+      closeStreamNoLock();
+      return;
+    } catch (...) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
+
+      closeStreamNoLock();
+      return;
+    }
+  }
+  
+  // try to read more bytes
+  if (_abandoned.load(std::memory_order_acquire)) {
+    return;
+  } 
+  if (!reserveMemory()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
+    return;
+  }
+
+  auto self = shared_from_this();
+
+  // WARNING: the _readBuffer MUST NOT be changed until the callback
+  // has been called! Otherwise ASIO will get confused and write to
+  // the wrong position.
+
+  TRI_ASSERT(_peer != nullptr);
+  _peer->asyncRead(
+      asio_ns::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
+      [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
+        JobGuard guard(_scheduler);
+        guard.work();
+
+        if (_abandoned.load(std::memory_order_acquire)) {
+          return;
+        } else if (ec) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+              << "read on stream failed with: " << ec.message();
+          closeStream();
+          return;
+        }
+
+        _readBuffer.increaseLength(transferred);
+
+        if (processAll()) {
+          _peer->post([self, this]() {
+            asyncReadSome();
+          });
+        }
+        compactify();
+      });
+}
+
+void SocketTask::asyncWriteSome() {
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->runningInThisThread());
 
   if (_writeBuffer.empty()) {
     return;
   }
 
+  TRI_ASSERT(_writeBuffer._buffer != nullptr);
   size_t total = _writeBuffer._buffer->length();
   size_t written = 0;
 
   TRI_ASSERT(!_abandoned);
-  TRI_ASSERT(_peer != nullptr);
 
-  if (!_peer->isEncrypted()) {
-    boost::system::error_code err;
-    err.clear();
-
+  asio_ns::error_code err;
+  
+  if (this->canUseMixedIO()) {
+    // try some direct writes only for non-SSL mode
+    // in SSL mode it will fall apart when mixing direct writes and async
+    // writes later
     while (true) {
-      RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
-      written = _peer->write(_writeBuffer._buffer, err);
+      TRI_ASSERT(_writeBuffer._buffer != nullptr);
 
-      if (err) {
-        break;
-      }
+      // we can directly skip sending empty buffers
+      if (_writeBuffer._buffer->length() > 0) {
+        RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
+        written = _peer->writeSome(_writeBuffer._buffer, err);
+        
+        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, written);
 
-      RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, written);
+        if (err || written != total) {
+          // unable to write everything at once, might be a lot of data
+          // above code does not update the buffer positon
+          break;
+        }
 
-      if (written != total) {
-        // unable to write everything at once, might be a lot of data
-        // above code does not update the buffer positon
-        break;
+        TRI_ASSERT(written > 0);
       }
 
       if (!completedWriteBuffer()) {
@@ -206,55 +503,64 @@ void SocketTask::writeWriteBuffer() {
       }
 
       // try to send next buffer
+      TRI_ASSERT(_writeBuffer._buffer != nullptr);
       total = _writeBuffer._buffer->length();
-      written = 0;
     }
 
     // write could have blocked which is the only acceptable error
-    if (err && err != ::boost::asio::error::would_block) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "write on stream failed with: "
+    if (err && err != asio_ns::error::would_block && err != asio_ns::error::try_again) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on stream failed with: "
         << err.message();
       closeStreamNoLock();
       return;
     }
-  }
+  } // !_peer->isEncrypted 
 
+  // we will be getting here in the following cases
+  // - encrypted mode (SSL)
+  // - we send only parts of the write buffer, but have more to send
+  // - we got the error would_block/try_again when sending data
+  // in this case we dispatch an async write
+
+  if (_abandoned.load(std::memory_order_acquire)) {
+    return;
+  }
+  
+  TRI_ASSERT(_writeBuffer._buffer != nullptr);
+    
   // so the code could have blocked at this point or not all data
   // was written in one go, begin writing at offset (written)
   auto self = shared_from_this();
-  _peer->asyncWrite(boost::asio::buffer(_writeBuffer._buffer->begin() + written,
-                                        total - written),
-                    [self, this](const boost::system::error_code& ec,
-                                 std::size_t transferred) {
-                      MUTEX_LOCKER(locker, _lock);
 
-                      if (_abandoned) {
-                        return;
-                      }
+  _peer->asyncWrite(
+      asio_ns::buffer(_writeBuffer._buffer->begin() + written, total - written),
+      [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
+        JobGuard guard(_scheduler);
+        guard.work();
 
-                      RequestStatistics::ADD_SENT_BYTES(
-                          _writeBuffer._statistics, transferred);
+        if (_abandoned.load(std::memory_order_acquire)) {
+          return;
+        } 
+        if (ec) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "write on failed with: "
+                                                  << ec.message();
+          closeStream();
+          return;
+        }
 
-                      if (ec) {
-                        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-                            << "write on stream failed with: " << ec.message();
-                        closeStreamNoLock();
-                      } else {
-                        if (completedWriteBuffer()) {
-                          _loop._scheduler->post([self, this]() {
-                            MUTEX_LOCKER(locker, _lock);
-                            if(!_abandoned){
-                              writeWriteBuffer();
-                            }
-                          });
-                        }
-                      }
-                    });
+        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics,
+                                          transferred);
+
+        if (completedWriteBuffer()) {
+          if (!_abandoned.load(std::memory_order_acquire)) {
+            asyncWriteSome();
+          }
+        }
+      });
 }
 
-
 StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
-  _lock.assertLockedByCurrentThread();
+  MUTEX_LOCKER(guard, _bufferLock);
 
   StringBuffer* buffer = nullptr;
   if (!_stringBuffers.empty()) {
@@ -286,7 +592,7 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
 
 void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   TRI_ASSERT(buffer != nullptr);
-  _lock.assertLockedByCurrentThread();
+  MUTEX_LOCKER(guard, _bufferLock);
 
   if (_stringBuffers.size() > 4 || buffer->capacity() >= 4 * 1024 * 1024) {
     // don't keep too many buffers around and don't hog too much memory
@@ -302,291 +608,11 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   }
 }
 
-// caller must hold the _lock
-bool SocketTask::completedWriteBuffer() {
-  _lock.assertLockedByCurrentThread();
+void SocketTask::triggerProcessAll() {
+  // try to process remaining request data
+  auto self = shared_from_this();
 
-  RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
-  // try to recycle the string buffer
-  _writeBuffer.release(this);
-
-  if (_writeBuffers.empty()) {
-    if (_closeRequested) {
-      closeStreamNoLock();
-    }
-
-    return false;
-  }
-
-  _writeBuffer = std::move(_writeBuffers.front());
-  _writeBuffers.pop_front();
-
-  return true;
-}
-
-// caller must not hold the _lock
-void SocketTask::closeStream() {
-  MUTEX_LOCKER(locker, _lock);
-  closeStreamNoLock();
-}
-
-// caller must hold the _lock
-void SocketTask::closeStreamNoLock() {
-  _lock.assertLockedByCurrentThread();
-
-  bool mustCloseSend = !_closedSend;
-  bool mustCloseReceive = !_closedReceive;
-
-  if(_peer != nullptr) {
-    boost::system::error_code err; //an error we do not care about
-    _peer->shutdown(err, mustCloseSend, mustCloseReceive);
-  }
-
-  _closedSend = true;
-  _closedReceive = true;
-  _closeRequested = false;
-  _keepAliveTimer.cancel();
-  _keepAliveTimerActive = false;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-// will acquire the _lock
-void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
-  MUTEX_LOCKER(locker, _lock);
-
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
-  _readBuffer.appendText(data, len);
-}
-
-// caller must hold the _lock
-void SocketTask::resetKeepAlive() {
-  _lock.assertLockedByCurrentThread();
-
-  if (_useKeepAliveTimer) {
-    boost::system::error_code err;
-    _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
-
-    if (err) {
-      closeStreamNoLock();
-      return;
-    }
-
-    _keepAliveTimerActive = true;
-    auto self = shared_from_this();
-
-    _keepAliveTimer.async_wait(
-        [self, this](const boost::system::error_code& error) {
-          LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-              << "keepAliveTimerCallback - called with: " << error.message();
-          if (!error) {
-            LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-                << "keep alive timout - closing stream!";
-            closeStream();
-          }
-        });
-  }
-}
-
-// caller must hold the _lock
-// abandon the task. if the task was already abandoned, this
-// method returns false. if abandoing was successful, this
-// method returns true
-bool SocketTask::abandon() {
-  _lock.assertLockedByCurrentThread();
-
-  bool old = _abandoned;
-  _abandoned = true;
-  return !old;
-}
-
-// caller must hold the _lock
-void SocketTask::cancelKeepAlive() {
-  _lock.assertLockedByCurrentThread();
-
-  if (_useKeepAliveTimer && _keepAliveTimerActive) {
-    boost::system::error_code err;
-    _keepAliveTimer.cancel(err);
-    _keepAliveTimerActive = false;
-  }
-}
-
-// caller must hold the _lock
-bool SocketTask::reserveMemory() {
-  _lock.assertLockedByCurrentThread();
-
-  if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
-    closeStreamNoLock();
-    return false;
-  }
-
-  return true;
-}
-
-// caller must hold the _lock
-bool SocketTask::trySyncRead() {
-  _lock.assertLockedByCurrentThread();
-
-  if (_abandoned) {
-    return false;
-  }
-
-
-  boost::system::error_code err;
-  TRI_ASSERT(_peer != nullptr);
-  if (0 == _peer->available(err)) {
-    return false;
-  }
-
-  if (err) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with "
-                                            << err.message();
-    return false;
-  }
-
-  if (!reserveMemory()) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
-    return false;
-  }
-
-  size_t bytesRead = _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
-
-  if (0 == bytesRead) {
-    return false;  // should not happen
-  }
-
-  _readBuffer.increaseLength(bytesRead);
-
-  if (err) {
-    if (err == boost::asio::error::would_block) {
-      return false;
-    } else {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "trySyncRead failed with: " << err.message();
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// caller must hold the _lock
-// runs until _closeRequested or ProcessRead Returns false is true or task becomes abandoned
-// returns bool - true value signals that processRead should continue to run (new read)
-bool SocketTask::processAll() {
-  _lock.assertLockedByCurrentThread();
-
-  double startTime = StatisticsFeature::time();
-  Result res;
-  bool rv = true;
-  while (rv) {
-    res = catchVoidToResult([&]() -> void {
-      rv = processRead(startTime);
-    });
-
-    if (_abandoned) {
-      return false;
-    }
-
-    if(res.fail()){
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << res.errorMessage();
-      _closeRequested = true;
-      break;
-    }
-
-    if (_closeRequested) {
-      break;
-    }
-  }
-
-  // it is too early to close the stream here, as there may
-  // be some writeBuffers which still need to be sent to the client
-  return !_closeRequested;
-}
-
-// will acquire the _lock
-void SocketTask::asyncReadSome() {
-  MUTEX_LOCKER(locker, _lock);
-  if (_abandoned) {
-    return;
-  }
-
-  TRI_ASSERT(_peer != nullptr);
-  if (!_peer->isEncrypted()) {
-    try {
-      size_t const MAX_DIRECT_TRIES = 2;
-      size_t n = 0;
-
-      while (++n <= MAX_DIRECT_TRIES) {
-        if (!trySyncRead()) {
-          if (n < MAX_DIRECT_TRIES) {
-            std::this_thread::yield();
-          }
-
-          continue;
-        }
-
-        // ignore the result of processAll, try to read more bytes down below
-        processAll();
-        compactify();
-      }
-    } catch (boost::system::system_error const& err) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
-        << err.what();
-
-      closeStreamNoLock();
-      return;
-    } catch (...) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
-
-      closeStreamNoLock();
-      return;
-    }
-  }
-
-  // try to read more bytes
-  if (!_abandoned) {
-    if (!reserveMemory()) {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
-      return;
-    }
-
-    auto self = shared_from_this();
-
-    // WARNING: the _readBuffer MUST NOT be changed until the callback
-    // has been called! Otherwise ASIO will get confused and write to
-    // the wrong position.
-
-    TRI_ASSERT(_peer != nullptr);
-    _peer->asyncRead(
-        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-        [self, this](const boost::system::error_code& ec,
-                     std::size_t transferred) {
-          JobGuard guard(_loop);
-          guard.work();
-
-          MUTEX_LOCKER(locker, _lock);
-
-          if (_abandoned) {
-            return;
-          }
-
-          if (ec) {
-            LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-                << "read on stream failed with: " << ec.message();
-            closeStreamNoLock();
-          } else {
-            _readBuffer.increaseLength(transferred);
-
-            if (processAll()) {
-              _loop._scheduler->post([self, this]() { asyncReadSome(); });
-            }
-
-            compactify();
-          }
-        });
-  }
+  _peer->post([self, this] {
+    processAll();
+  });
 }

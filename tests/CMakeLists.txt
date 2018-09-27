@@ -9,21 +9,31 @@ endforeach()
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
     IResearch/common.cpp
-#    IResearch/AttributeScorer-test.cpp
+    IResearch/AgencyMock.cpp
+    IResearch/AgencyCommManagerMock.cpp
     IResearch/Containers-test.cpp
+    IResearch/ExpressionFilter-test.cpp
+    IResearch/ExecutionBlockMock.cpp
+    IResearch/ExecutionBlockMock-test.cpp
+    IResearch/ExpressionContextMock.cpp
     IResearch/IResearchAnalyzerFeature-test.cpp
     IResearch/IResearchFeature-test.cpp
     IResearch/IResearchOrder-test.cpp
     IResearch/IResearchView-test.cpp
+    IResearch/IResearchViewCoordinator-test.cpp
+    IResearch/IResearchViewDBServer-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
+    IResearch/IResearchFilter-test.cpp
     IResearch/IResearchFilterFunction-test.cpp
     IResearch/IResearchFilterBoolean-test.cpp
     IResearch/IResearchFilterCompare-test.cpp
     IResearch/IResearchFilterIn-test.cpp
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
+    IResearch/IResearchLinkCoordinator-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
+    IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
     IResearch/IResearchQueryBooleanTerm-test.cpp
     IResearch/IResearchQueryComplexBoolean-test.cpp
@@ -41,18 +51,25 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
-    IResearch/ExpressionFilter-test.cpp
+    IResearch/RestHandlerMock.cpp
     IResearch/StorageEngineMock.cpp
-    IResearch/ExpressionContextMock.cpp
+    IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
+    RestHandler/RestUsersHandler-test.cpp
+    RestHandler/RestViewHandler-test.cpp
+    Utils/CollectionNameResolver-test.cpp
+    V8Server/v8-users-test.cpp
+    V8Server/v8-views-test.cpp
+    VocBase/LogicalDataSource-test.cpp
+    VocBase/vocbase-test.cpp
   )
 endif ()
 
-add_executable(
-  arangodbtests
-  ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
+set(ARANGODB_TESTS_SOURCES
+  Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
+  Agency/CleanUpLostCollectionTest.cpp
   Agency/FailedFollowerTest.cpp
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
@@ -60,12 +77,17 @@ add_executable(
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/DateFunctionsTest.cpp
+  Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/RestAqlHandlerTest.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/datetime.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/files-test.cpp
@@ -102,21 +124,47 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
-  Cluster/ShardDistributionReporterTest.cpp
-  Geo/georeg.cpp
+  Cluster/ClusterRepairsTest.cpp
+  Futures/Future-test.cpp
+  Futures/Promise-test.cpp
+  Futures/Try-test.cpp
+  Geo/GeoConstructorTest.cpp
+  Geo/GeoJsonTest.cpp
+  Geo/GeoFunctionsTest.cpp
+  Geo/NearUtilsTest.cpp
+  Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Maintenance/MaintenanceFeatureTest.cpp
+  Maintenance/MaintenanceRestHandlerTest.cpp
+  Maintenance/MaintenanceTest.cpp
   Pregel/typedbuffer.cpp
+  RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
-  RocksDBEngine/TypeConversionTest.cpp
+  Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
+)
+
+if (LINUX)
+  # add "-fno-var-tracking" to the compiler flags
+  # this speeds up the compilation with newer g++ versions and prevents the
+  # "variable tracking size limit exceeded warnings"
+  set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+endif ()
+
+add_executable(
+  arangodbtests
+  ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
+
+SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 
 target_link_libraries(
   arangodbtests
   arangoserver
+  rocksdb
 )
 
 target_include_directories(arangodbtests PRIVATE

@@ -284,7 +284,8 @@ struct IRESEARCH_API column_meta_reader {
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
-    /*out*/ field_id& count
+    size_t& count, // out parameter
+    field_id& max_id // out parameter
   ) = 0;
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;

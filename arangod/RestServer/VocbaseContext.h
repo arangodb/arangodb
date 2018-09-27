@@ -35,32 +35,35 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 /// @brief just also stores the context
-class VocbaseContext final : public arangodb::ExecContext {
- private:
-  VocbaseContext(VocbaseContext const&) = delete;
-  VocbaseContext& operator=(VocbaseContext const&) = delete;
-  VocbaseContext(GeneralRequest*, TRI_vocbase_t*, bool isSuper,
-                 auth::Level systemLevel, auth::Level dbLevel);
-
+class VocbaseContext : public arangodb::ExecContext {
  public:
-  static double ServerSessionTtl;
-  ~VocbaseContext();
+  TEST_VIRTUAL ~VocbaseContext();
 
- public:
-  
-  static VocbaseContext* create(GeneralRequest*, TRI_vocbase_t*);
-  
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-  
+  static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
+  TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
+
   /// @brief upgrade to internal superuser
   void forceSuperuser();
+
   /// @brief upgrade to internal read-only user
   void forceReadOnly();
 
  private:
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
+
+  VocbaseContext(
+    GeneralRequest& req,
+    TRI_vocbase_t& vocbase,
+    ExecContext::Type type,
+    auth::Level systemLevel,
+    auth::Level dbLevel
+  );
+  VocbaseContext(VocbaseContext const&) = delete;
+  VocbaseContext& operator=(VocbaseContext const&) = delete;
 };
+
 }
 
 #endif

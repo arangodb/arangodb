@@ -45,7 +45,7 @@ struct MMFilesReplicationDumpContext {
                          size_t chunkSize, bool includeSystem,
                          TRI_voc_cid_t restrictCollection, bool useVst = false)
       : _transactionContext(transactionContext),
-        _vocbase(transactionContext->vocbase()),
+        _vocbase(&(transactionContext->vocbase())),
         _buffer(nullptr),
         _chunkSize(chunkSize),
         _lastFoundTick(0),

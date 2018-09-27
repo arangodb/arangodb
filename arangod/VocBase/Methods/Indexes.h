@@ -24,6 +24,7 @@
 #define ARANGOD_VOC_BASE_API_INDEXES_H 1
 
 #include "Basics/Result.h"
+#include "Indexes/Index.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -44,16 +45,22 @@ struct Indexes {
                 velocypack::Slice const& indexId,
                 velocypack::Builder&);
 
+  /// @brief get all indexes, skips view links
   static arangodb::Result getAll(LogicalCollection const* collection,
-                                 bool withFigures,
+                                 std::underlying_type<Index::Serialize>::type,
+                                 bool skipLinks,
                                  arangodb::velocypack::Builder&);
+  
+  static arangodb::Result createIndex(LogicalCollection*, Index::IndexType,
+                                      std::vector<std::string> const&,
+                                      bool unique, bool sparse);
 
   static arangodb::Result ensureIndex(
       LogicalCollection* collection,
       velocypack::Slice const& definition, bool create,
       velocypack::Builder& output);
 
-  static arangodb::Result drop(LogicalCollection const* collection,
+  static arangodb::Result drop(LogicalCollection* collection,
                                velocypack::Slice const& indexArg);
 
   static arangodb::Result extractHandle(

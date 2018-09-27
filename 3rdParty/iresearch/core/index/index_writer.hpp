@@ -47,6 +47,7 @@ NS_ROOT
 // --SECTION--                                             forward declarations 
 // ----------------------------------------------------------------------------
 
+class bitvector; // forward declaration
 struct directory;
 class directory_reader;
 
@@ -86,9 +87,17 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   static const size_t THREAD_COUNT = 8;
 
-  typedef std::function<bool(const segment_meta& meta)> consolidation_acceptor_t;
-  typedef std::function<consolidation_acceptor_t(
-    const directory& dir, const index_meta& meta
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief mark consolidation candidate segments matching the current policy
+  /// @param candidates the segments that should be consolidated
+  ///        in: segments selected by previous policies
+  ///        out: additional segments selected by the current policy
+  /// @param dir the segment directory
+  /// @param meta the index meta containing segments to be considered
+  /// @note final candidates are all segments selected by at least some policy
+  ////////////////////////////////////////////////////////////////////////////
+  typedef std::function<void(
+    bitvector& candidates, const directory& dir, const index_meta& meta
   )> consolidation_policy_t;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -481,8 +490,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
     index_meta::index_segment_t& segment, // the newly created segment
     directory& dir, // directory to create merged segment in
     flush_context::segment_mask_t& segments_mask, // list to add masked segments to
-    const index_meta::index_segments_t& segments, // candidates to consider
-    const consolidation_acceptor_t& acceptor // functr dictating which segments to consider
+    const index_meta& meta, // current state to examine for consolidation candidates
+    const consolidation_requests_t& policies // policies dictating which segments to consider
   ); // return if any new records were added (pending_segments_/segment_mask_ modified)
 
   pending_context_t flush_all();

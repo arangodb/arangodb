@@ -3,6 +3,17 @@
   background-color: $c-white !important;
   border: 0 solid $c-semi-transp !important;
 
+  .jsoneditor-sort,
+  .jsoneditor-transform,
+  .jsoneditor-statusbar,
+  .jsoneditor-repair {
+    display: none;
+  }
+
+  .jsoneditor-outer.has-status-bar {
+    padding: 35px 0 0px;
+  }
+
   .jsoneditor-menu {
     background-color: $c-white !important;
     border-bottom: 1px solid $c-c2grey !important;
@@ -10,7 +21,15 @@
     border-right: 0 !important;
     border-top: 0 !important;
 
-    button {
+    .jsoneditor-undo {
+      background-position: -24px -120px;
+    }
+
+    .jsoneditor-redo {
+      background-position: -48px -120px;
+    }
+
+    > button {
       border: 0 !important;
       color: $c-black;
       opacity: .4 !important;

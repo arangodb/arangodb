@@ -8,7 +8,7 @@ arangosh&gt; db.demo.figures()
   <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
   <span class="hljs-string">"alive"</span> : { 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"size"</span> : <span class="hljs-number">192</span> 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">184</span> 
   }, 
   <span class="hljs-string">"dead"</span> : { 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
@@ -17,7 +17,7 @@ arangosh&gt; db.demo.figures()
   }, 
   <span class="hljs-string">"compactionStatus"</span> : { 
     <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-12-19T09:25:22Z"</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-30T14:28:05Z"</span>, 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 

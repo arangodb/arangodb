@@ -103,6 +103,7 @@ class Topics {
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
+LogTopic Logger::AQL("aql", LogLevel::INFO);
 LogTopic Logger::AUTHENTICATION("authentication");
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
@@ -113,11 +114,13 @@ LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
+LogTopic Logger::DUMP("dump", LogLevel::INFO);
 LogTopic Logger::ENGINES("engines", LogLevel::INFO);
 LogTopic Logger::FIXME("general", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
+LogTopic Logger::MAINTENANCE("maintenance", LogLevel::WARN);
 LogTopic Logger::MEMORY("memory", LogLevel::WARN);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
@@ -125,6 +128,7 @@ LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
+LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
 LogTopic Logger::SSL("ssl", LogLevel::WARN);
 LogTopic Logger::STARTUP("startup", LogLevel::INFO);

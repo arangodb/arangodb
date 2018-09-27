@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_READ_WRITE_SPIN_LOCK_H
@@ -34,90 +35,123 @@
 namespace arangodb {
 namespace basics {
 
-template <uint64_t stripes = 64>
-struct ReadWriteSpinLock {
-  typedef std::function<uint64_t()> IdFunc;
+class ReadWriteSpinLock {
+public:
+  ReadWriteSpinLock() : _state(0) {}
 
-  ReadWriteSpinLock() : _writer(false), _readers(SharedCounter<stripes>::DefaultIdFunc) {}
-  ReadWriteSpinLock(IdFunc f) : _writer(false), _readers(f) {}
-  ReadWriteSpinLock(ReadWriteSpinLock const& other) {
-    if (this != &other) {
-      _writer = other._writer;
-      _readers = other._readers;
+  // only needed for cache::Metadata
+  ReadWriteSpinLock(ReadWriteSpinLock&& other) {
+    auto val = other._state.load(std::memory_order_relaxed);
+    TRI_ASSERT(val == 0);
+    _state.store(val, std::memory_order_relaxed);
+  }
+  ReadWriteSpinLock& operator=(ReadWriteSpinLock&& other) {
+    auto val = other._state.load(std::memory_order_relaxed);
+    TRI_ASSERT(val == 0);
+    val = _state.exchange(val, std::memory_order_relaxed);
+    TRI_ASSERT(val == 0);
+    return *this;
+  }
+  
+  bool tryWriteLock() {
+    // order_relaxed is an optimization, cmpxchg will synchronize side-effects
+    auto state = _state.load(std::memory_order_relaxed);    
+    // try to acquire write lock as long as no readers or writers are active,
+    // we might "overtake" other queued writers though.
+    while ((state & ~QUEUED_WRITER_MASK) == 0) {
+      if (_state.compare_exchange_weak(state, state | WRITE_LOCK, std::memory_order_acquire)) {
+        return true; // we successfully acquired the write lock!
+      }
     }
-  }
-
-  bool writeLock(uint64_t maxTries = UINT64_MAX) {
-    uint64_t attempts = 0;
-
-    while (attempts < maxTries) {
-      if (!_writer.load(std::memory_order_relaxed)) {
-        // attempt to get read lock
-        bool expected = false;
-        bool success = _writer.compare_exchange_weak(expected, true,
-                                                     std::memory_order_acq_rel,
-                                                     std::memory_order_relaxed);
-
-        if (success) {
-          // write lock acquired, wait for readers to finish
-          while (attempts++ < maxTries && _readers.nonZero(std::memory_order_acquire)) {
-            cpu_relax();
-          }
-          if (attempts >= maxTries) {
-            // timed out waiting for readers, release write lock
-            _writer.store(false, std::memory_order_release);
-            return false;
-          }
-          // locked!
-          return true;
-        }
-      }
-
-      attempts++;
-      cpu_relax();
-    } // too many attempts
-
     return false;
   }
 
-  void writeUnlock() { _writer.store(false, std::memory_order_release); }
+  bool writeLock(uint64_t maxAttempts = UINT64_MAX) {
+    if (tryWriteLock()) {
+      return true;
+    }
 
-  bool readLock(uint64_t maxTries = UINT64_MAX) {
     uint64_t attempts = 0;
 
-    while (attempts++ < maxTries) {
-      if (!_writer.load(std::memory_order_relaxed)) {
-        _readers.add(1, std::memory_order_acq_rel); // read locked
-
-        // double check writer hasn't stepped in
-        if (_writer.load(std::memory_order_acquire)) {
-          // writer got the lock, go back to waiting
-          _readers.sub(1, std::memory_order_release);
-        } else {
-          // locked!
+    // the lock is either hold by another writer or we have active readers
+    // -> announce that we want to write
+    auto state = _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
+    while (++attempts < maxAttempts) {
+      while ((state & ~QUEUED_WRITER_MASK) == 0) {
+        // try to acquire lock and perform queued writer decrement in one step
+        if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire)) {
           return true;
         }
+        if (++attempts > maxAttempts) {
+          return false;
+        }
       }
-
       cpu_relax();
-    } // too many attempts
-
+      state = _state.load(std::memory_order_relaxed);
+    }
     return false;
   }
 
-  void readUnlock() { _readers.sub(1, std::memory_order_release); }
-
-  bool isLocked() const {
-    return (_readers.nonZero() || _writer.load());
+  bool tryReadLock() {
+    // order_relaxed is an optimization, cmpxchg will synchronize side-effects
+    auto state = _state.load(std::memory_order_relaxed);
+    // try to acquire read lock as long as no writers are active or queued
+    while ((state & ~READER_MASK) == 0) {
+      if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  bool isWriteLocked() const { return _writer.load(); }
+  bool readLock(uint64_t maxAttempts = UINT64_MAX) {
+    uint64_t attempts = 0;
+    while (attempts++ < maxAttempts) {
+      if (tryReadLock()) {
+        return true;
+      }
+      cpu_relax();
+    }
+    return false;
+  }
+
+  void readUnlock() { unlockRead(); }
+  void unlockRead() {
+    _state.fetch_sub(READER_INC, std::memory_order_release);
+  }
+  
+  void writeUnlock() { unlockWrite(); }
+  void unlockWrite() {
+    _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
+  }
+
+  bool isLocked() const { return (_state.load(std::memory_order_relaxed) & ~QUEUED_WRITER_MASK) != 0; }
+  bool isWriteLocked() const { return _state.load(std::memory_order_relaxed) & WRITE_LOCK; }
 
  private:
-  SharedAtomic<bool> _writer;
-  SharedCounter<stripes, true> _readers;
-};
+  /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of queued writers,
+  /// the last 16 bits the number of active readers.  
+  std::atomic<uint32_t> _state;
 
+  static constexpr uint32_t WRITE_LOCK = 1;
+
+  static constexpr uint32_t READER_INC = 1 << 16;
+  static constexpr uint32_t READER_MASK = ~(READER_INC - 1);
+
+  static constexpr uint32_t QUEUED_WRITER_INC = 1 << 1;
+  static constexpr uint32_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
+
+  static_assert((READER_MASK & WRITE_LOCK) == 0, "READER_MASK and WRITE_LOCK conflict");
+  static_assert((READER_MASK & QUEUED_WRITER_MASK) == 0, "READER_MASK and QUEUED_WRITER_MASK conflict");
+  static_assert((QUEUED_WRITER_MASK & WRITE_LOCK) == 0, "QUEUED_WRITER_MASK and WRITE_LOCK conflict");
+
+  static_assert((READER_MASK & READER_INC) != 0 &&
+                  (READER_MASK & (READER_INC >> 1)) == 0,
+                "READER_INC must be first bit in READER_MASK");
+  static_assert((QUEUED_WRITER_MASK & QUEUED_WRITER_INC) != 0 &&
+                  (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
+                "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
+};
 }  // namespace basics
 }  // namespace arangodb
 

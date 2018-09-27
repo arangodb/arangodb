@@ -55,7 +55,7 @@ namespace arangodb {
 ///
 /// To get full performance benefit of this code, the server needs three settings:
 ///
-///  1. /etc/pam.d/login must contain the line "auth	   require    pam_cap.so"
+///  1. /etc/pam.d/login must contain the line "auth   require    pam_cap.so"
 ///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
 ///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
 ///      the arangodb binary executable
@@ -87,24 +87,6 @@ thread_local sPriorityInfo gThreadPriority={false, 0, 0};
 //   one in clang 9.0.0)
 thread_local uint8_t gFlushStart[sizeof(std::chrono::steady_clock::time_point)];
 
-
-///
-/// @brief Object that RocksDBThrottle gives to a compaction thread
-///
-class RocksDBCompactionListener : public rocksdb::CompactionEventListener {
-
-  ///
-  /// @brief This is called for every key in a compaction.  Our code only uses "level"
-  ///  to help manipulate thread priority
-  void OnCompaction(int level, const Slice& key,
-                    CompactionListenerValueType value_type,
-                    const Slice& existing_value,
-                    const SequenceNumber& sn, bool is_new) override
-  {RocksDBThrottle::AdjustThreadPriority( (0==level) ? 2 : 3);};
-
-};// RocksDBCompactionListener
-
-RocksDBCompactionListener gCompactionListener;
 
 
 //
@@ -152,16 +134,6 @@ void RocksDBThrottle::StopThread() {
 
 
 ///
-/// @brief CompactionEventListener::OnCompaction() will get called for every key in a
-///  compaction. We only need the "level" parameter to see if thread priority should change.
-///
-#ifndef _WIN32
-CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return &gCompactionListener;};
-#else
-CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return nullptr;};
-#endif  // _WIN32
-
-///
 /// @brief rocksdb does not track flush time in its statistics.  Save start time in
 ///  a thread specific storage
 ///
@@ -202,10 +174,16 @@ void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobI
 
 
 void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
-                                                 const rocksdb::CompactionJobInfo& ci) {
+                                            const rocksdb::CompactionJobInfo& ci) {
 
   std::chrono::microseconds elapsed(ci.stats.elapsed_micros);
   SetThrottleWriteRate(elapsed, ci.stats.num_output_records, ci.stats.total_output_bytes, false);
+
+  // rocksdb 5.6 had an API call for when a standard compaction started.  5.14 has no such thing.
+  //  this line fakes "compaction start" by making the wild assumption that the next level compacting
+  //  is likely similar to the previous.  This is only for thread priority manipulation, approximate is fine.
+  //  (and you must have used "setcap" on the arangod binary for it to even matter, see comments at top)
+  RocksDBThrottle::AdjustThreadPriority( (0==ci.base_input_level) ? 2 : 3);
 
 } // RocksDBThrottle::OnCompactionCompleted
 
@@ -440,10 +418,24 @@ void RocksDBThrottle::SetThrottle() {
         // hard casting away of "const" ...
         if (((WriteController&)_internalRocksDB->write_controller()).max_delayed_write_rate() < _throttleBps) {
           ((WriteController&)_internalRocksDB->write_controller()).set_max_delayed_write_rate(_throttleBps);
-        } //if
-        _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+        } // if
+
+        // Only replace the token when absolutely necessary.  GetDelayToken()
+        //  also resets internal timers which can result in long pauses if
+        //  flushes/compactions are happening often.
+        if (nullptr == _delayToken.get()) {
+          _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "SetThrottle(): GetDelayTokey(" << _throttleBps << ")";
+        } else {
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "SetThrottle(): set_delayed_write_rate(" << _throttleBps << ")";
+          ((WriteController&)_internalRocksDB->write_controller()).set_delayed_write_rate(_throttleBps);
+        } // else
       } else {
         _delayToken.reset();
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "SetThrottle(): _delaytoken.reset()";
       } // else
     } // if
   } // lock

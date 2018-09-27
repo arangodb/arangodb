@@ -145,7 +145,7 @@ class User {
   std::string _key;
   TRI_voc_rid_t _rev;
   bool _active = true;
-  auth::Source _source = auth::Source::LOCAL;
+  auth::Source _source = auth::Source::Local;
 
   std::string _username;
   std::string _passwordMethod;

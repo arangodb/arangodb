@@ -164,13 +164,10 @@ FOR u IN users
   RETURN length
 ```
 
-The above is equivalent to, but more efficient than:
+The above is equivalent to, but less efficient than:
 
 ```
-RETURN LENGTH(
-  FOR u IN users
-    RETURN length
-)
+RETURN LENGTH(users)
 ```
 
 The *WITH COUNT* clause can also be used to efficiently count the number
@@ -246,7 +243,10 @@ assignment:
 
 - on the top level, an aggregate expression must be a call to one of the supported 
   aggregation functions `LENGTH`, `MIN`, `MAX`, `SUM`, `AVERAGE`, `STDDEV_POPULATION`, 
-  `STDDEV_SAMPLE`, `VARIANCE_POPULATION`, or `VARIANCE_SAMPLE`
+  `STDDEV_SAMPLE`, `VARIANCE_POPULATION`, `VARIANCE_SAMPLE`, `UNIQUE`, `SORTED_UNIQUE` 
+  or `COUNT_DISTINCT`. The following aliases are allowed too: `COUNT` (for `LENGTH`),
+  `AVG` (for `AVERAGE`), `STDDEV` (for `STDDEV_POPULATION`), `VARIANCE` (for `VARIANCE_POPULATION`),
+  `COUNT_UNIQUE` (for `COUNT_DISTINCT`).
 
 - an aggregate expression must not refer to variables introduced by the `COLLECT` itself
 

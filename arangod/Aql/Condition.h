@@ -37,7 +37,6 @@ namespace aql {
 class Ast;
 class EnumerateCollectionNode;
 class ExecutionPlan;
-struct Index;
 class SortCondition;
 struct Variable;
 
@@ -184,9 +183,9 @@ class Condition {
   ~Condition();
 
  public:
-  static void CollectOverlappingMembers(
+  static void collectOverlappingMembers(
       ExecutionPlan const* plan, Variable const* variable, AstNode* andNode,
-      AstNode* otherAndNode, std::unordered_set<size_t>& toRemove,
+      AstNode* otherAndNode, std::unordered_set<size_t>& toRemove, bool isSparse,
                                         bool isFromTraverser);
 
   /// @brief return the condition root
@@ -229,7 +228,7 @@ class Condition {
   void normalize();
 
   /// @brief removes condition parts from another
-  AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
+  AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode const*, bool isSparse);
 
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);

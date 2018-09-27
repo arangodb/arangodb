@@ -12,20 +12,20 @@ Furthermore the edge has to be valid in the definition of this
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name, string, required} 
+@RESTURLPARAM{collection-name,string,required} 
 The name of the edge collection the edge belongs to.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{waitForSync, boolean, optional}
+@RESTQUERYPARAM{waitForSync,boolean,optional}
 Define if the request should wait until synced to disk.
 
-@RESTPARAM{_from, string, required}
+@RESTQUERYPARAM{_from,string,required}
 
-@RESTPARAM{_to, string, required}
+@RESTQUERYPARAM{_to,string,required}
 
 @RESTALLBODYPARAM{storeThisJsonObject,object,required}
 The body has to be the JSON object to be stored.

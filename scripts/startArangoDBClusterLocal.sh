@@ -41,7 +41,6 @@ MINP=0.5
 MAXP=2.5
 COMP=1000
 BASE=4001
-NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
 rm -rf /tmp/cluster
 mkdir /tmp/cluster
@@ -64,7 +63,6 @@ if [ $NRAGENTS -gt 1 ]; then
            --server.authentication false \
            --server.endpoint tcp://127.0.0.1:$port \
            --server.statistics false \
-           --server.threads $NATH \
            --log.force-direct true \
            > /tmp/cluster/$port.stdout 2>&1 &
    done
@@ -89,13 +87,12 @@ ${ARANGOD} \
     --server.authentication false \
     --server.endpoint tcp://127.0.0.1:$(( $BASE + $aid )) \
     --server.statistics false \
-    --server.threads 4 \
     --log.force-direct true \
     > /tmp/cluster/$(( $BASE + $aid )).stdout 2>&1 &
 
 start() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+      ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
       sleep 1
@@ -108,13 +105,11 @@ start() {
                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
                --cluster.my-address tcp://127.0.0.1:$PORT \
                --server.endpoint tcp://127.0.0.1:$PORT \
-               --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                --cluster.my-role $ROLE \
                --log.file /tmp/cluster/$PORT.log \
                --log.level info \
                --javascript.app-path /tmp/cluster/jsapps$port \
                --server.statistics true \
-               --server.threads 5 \
                --server.authentication false \
                --log.force-direct true \
                > /tmp/cluster/$PORT.stdout 2>&1 &
@@ -122,7 +117,7 @@ start() {
 
 startTerminal() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+      ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
     fi
@@ -135,13 +130,11 @@ startTerminal() {
                 --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --javascript.app-path /tmp/cluster/jsapps$port \
                 --log.file /tmp/cluster/$PORT.log \
                 --log.level info \
                 --server.statistics true \
-                --server.threads 5 \
                 --server.authentication false \
                 --console &
 }

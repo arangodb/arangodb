@@ -45,6 +45,14 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'ldap': [tu.pathForTesting('client/authentication')],
+  'ldaprole': [tu.pathForTesting('client/authentication')],
+  'ldapsearch': [tu.pathForTesting('client/authentication')],
+  'ldaprolesimple': [tu.pathForTesting('client/authentication')],
+  'ldapsearchsimple': [tu.pathForTesting('client/authentication')]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Shared conf
 // //////////////////////////////////////////////////////////////////////////////
@@ -143,7 +151,7 @@ function authenticationLdapSearchModePrefixSuffix (options) {
   }
 
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
+  let testCases = tu.scanTestPaths(testPaths.ldapsearchsimple);
 
   print('Performing #4 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
@@ -167,7 +175,7 @@ function authenticationLdapSearchMode (options) {
   }
 
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
+  let testCases = tu.scanTestPaths(testPaths.ldapsearch);
 
   print('Performing #2 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
@@ -191,7 +199,7 @@ function authenticationLdapRolesModePrefixSuffix (options) {
   }
 
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
+  let testCases = tu.scanTestPaths(testPaths.ldaprolesimple);
 
   print('Performing #3 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
@@ -215,14 +223,15 @@ function authenticationLdapRolesMode (options) {
   }
 
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
+  let testCases = tu.scanTestPaths(testPaths.ldaprole);
 
   print('Performing #1 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   // just a convenicen wrapper for the regular tests
   testFns['ldap'] = [ 'ldaprole', 'ldaprole', 'ldapsearch', 'ldaprolesimple', 'ldapsearchsimple' ];
 
@@ -245,6 +254,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

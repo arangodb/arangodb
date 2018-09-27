@@ -60,13 +60,7 @@ void RestEndpointHandler::retrieveEndpoints() {
       application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
           "Endpoint");
 
-  if (_vocbase == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-      TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return;
-  }
-
-  if (!_vocbase->isSystem()) {
+  if (!_vocbase.isSystem()) {
     generateError(rest::ResponseCode::FORBIDDEN,
       TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return;

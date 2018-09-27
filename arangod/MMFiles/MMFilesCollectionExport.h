@@ -44,11 +44,14 @@ class MMFilesCollectionExport {
   MMFilesCollectionExport(MMFilesCollectionExport const&) = delete;
   MMFilesCollectionExport& operator=(MMFilesCollectionExport const&) = delete;
 
-  MMFilesCollectionExport(TRI_vocbase_t*, std::string const&, CollectionExport::Restrictions const&);
+  MMFilesCollectionExport(
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions
+  );
 
   ~MMFilesCollectionExport();
 
- public:
   void run(uint64_t, size_t);
 
  private:
@@ -60,6 +63,7 @@ class MMFilesCollectionExport {
   CollectionExport::Restrictions _restrictions;
   std::vector<uint8_t const*> _vpack;
 };
+
 }
 
 #endif

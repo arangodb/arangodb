@@ -70,7 +70,7 @@ namespace arangodb {
 namespace basics {
 
 /// @brief arango exception type
-class Exception : public virtual std::exception {
+class Exception final : public virtual std::exception {
  public:
   static std::string FillExceptionString(int, ...);
   static std::string FillFormatExceptionString(char const* format, ...);
@@ -89,7 +89,7 @@ class Exception : public virtual std::exception {
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
-  ~Exception() throw();
+  ~Exception();
 
  public:
   char const* what() const noexcept override;
@@ -97,7 +97,7 @@ class Exception : public virtual std::exception {
   int code() const noexcept;
   void addToMessage(std::string const&);
  private:
-  void appendLocation();
+  void appendLocation() noexcept;
 
  protected:
   std::string _errorMessage;

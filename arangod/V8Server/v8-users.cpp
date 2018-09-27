@@ -44,6 +44,48 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a collection exists in database or a wildcard was specified
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result existsCollection(
+    std::string const& database, std::string const& collection
+) {
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL, "failure to find feature 'Database'"
+    );
+  }
+
+  static const std::string wildcard("*");
+
+  if (wildcard == database) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  auto* vocbase = databaseFeature->lookupDatabase(database);
+
+  if (!vocbase) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (wildcard == collection) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  return !arangodb::CollectionNameResolver(*vocbase).getCollection(collection)
+    ? arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
+    : arangodb::Result()
+    ;
+}
+
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -93,8 +135,12 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
     }
   }
   
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  auth::UserManager* um = af->userManager();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "users are not supported on this server");
+  }
+  
   Result r = um->storeUser(replace, username, pass, active, extras.slice());
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -146,7 +192,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       u.setActive(TRI_ObjectToBoolean(args[2]));
     }
     if (!extras.isEmpty()) {
-      u.setConfigData(std::move(extras));
+      u.setUserData(std::move(extras));
     }
     return TRI_ERROR_NO_ERROR;
   });
@@ -165,9 +211,13 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string username = TRI_ObjectToString(args[0]);
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  Result r = af->userManager()->removeUser(username);
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "users are not supported on this server");
+  }
+  
+  Result r = um->removeUser(TRI_ObjectToString(args[0]));
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -189,8 +239,13 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  VPackBuilder result = af->userManager()->serializeUser(username);
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
+  
+  VPackBuilder result = um->serializeUser(username);
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   }
@@ -208,10 +263,12 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
-  af->userManager()->reloadAllUsers(); // noop except on coordinator
+  
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->triggerLocalReload();
+    um->triggerGlobalReload(); // noop except on coordinator
+  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -235,8 +292,12 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     lvl = auth::convertToAuthLevel(type);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  Result r = af->userManager()->updateUser(username,
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
+  Result r = um->updateUser(username,
           [&](auth::User& entry) {
             entry.grantDatabase(db, lvl);
             return TRI_ERROR_NO_ERROR;
@@ -259,10 +320,15 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
+  
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
-  Result r = af->userManager()->updateUser(username, [&](auth::User& entry) {
+  Result r = um->updateUser(username, [&](auth::User& entry) {
         entry.removeDatabase(db);
         return TRI_ERROR_NO_ERROR;
       });
@@ -278,28 +344,48 @@ static void JS_GrantCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
+
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
+
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
 
+  // validate that the collection is present
+  {
+    auto res = existsCollection(db, coll);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
   auth::Level lvl = auth::Level::RW;
+
   if (args.Length() >= 4) {
     std::string type = TRI_ObjectToString(args[3]);
     lvl = auth::convertToAuthLevel(type);
   }
-  Result r = af->userManager()->updateUser(username, [&](auth::User& entry) {
+
+  Result r = um->updateUser(username, [&](auth::User& entry) {
     entry.grantCollection(db, coll, lvl);
     return TRI_ERROR_NO_ERROR;
   });
+
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -312,24 +398,41 @@ static void JS_RevokeCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
+
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
   }
 
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  Result r = af->userManager()->updateUser(
+  // validate that the collection is present
+  {
+    auto res = existsCollection(db, coll);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+  Result r = um->updateUser(
       username, [&](auth::User& entry) {
         entry.removeCollection(db, coll);
         return TRI_ERROR_NO_ERROR;
       });
+
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -364,8 +467,13 @@ static void JS_UpdateConfigData(
     merge.add(key, VPackSlice::nullSlice());
   }
   
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  Result r = af->userManager()->updateUser(username, [&](auth::User& u) {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
+  
+  Result r = um->updateUser(username, [&](auth::User& u) {
     VPackBuilder updated = VelocyPackHelper::merge(u.configData(),
                                                    merge.slice(), true, true);
     u.setConfigData(std::move(updated));
@@ -391,10 +499,14 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
   
   v8::Handle<v8::Value> result;
-  Result r = af->userManager()->accessUser(username, [&](auth::User const& u) {
+  Result r = um->accessUser(username, [&](auth::User const& u) {
     if (u.configData().isObject()) {
       result = TRI_VPackToV8(isolate, u.configData());
     }
@@ -419,17 +531,21 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "user are not supported on this server");
+  }
+  
   std::string username = TRI_ObjectToString(isolate, args[0]);
-
   if (args.Length() > 1) {
     std::string dbname = TRI_ObjectToString(isolate, args[1]);
     auth::Level lvl;
     if (args.Length() == 3) {
       std::string collection = TRI_ObjectToString(isolate, args[2]);
-      lvl = af->userManager()->collectionAuthLevel(username, dbname, collection);
+      lvl = um->collectionAuthLevel(username, dbname, collection);
     } else {
-      lvl = af->userManager()->databaseAuthLevel(username, dbname);
+      lvl = um->databaseAuthLevel(username, dbname);
     }
     
     if (lvl == auth::Level::RO) {
@@ -441,15 +557,22 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      auth::Level lvl = af->userManager()->databaseAuthLevel(username, vocbase->name());
-      if (lvl != auth::Level::NONE) { // hide non accessible collections
-        result->ForceSet(TRI_V8_STD_STRING(isolate, vocbase->name()),
-                         TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
+
+    DatabaseFeature::DATABASE->enumerateDatabases(
+      [&](TRI_vocbase_t& vocbase)->void {
+        auto lvl = um->databaseAuthLevel(username, vocbase.name());
+
+        if (lvl != auth::Level::NONE) { // hide non accessible collections
+          result->ForceSet(
+            TRI_V8_STD_STRING(isolate, vocbase.name()),
+            TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl))
+          );
+        }
       }
-    });
+    );
     TRI_V8_RETURN(result);
   }
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }

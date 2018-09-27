@@ -113,26 +113,20 @@ int Utils::resolveShard(WorkerConfig const* config,
   if (it != planIDMap.end()) {
     info = ci->getCollection(config->database(), it->second);  // might throw
     if (info == nullptr) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
   } else {
     LOG_TOPIC(ERR, Logger::PREGEL)
         << "The collection could not be translated to a planID";
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   TRI_ASSERT(info != nullptr);
 
-  bool usesDefaultShardingAttributes;
   VPackBuilder partial;
   partial.openObject();
   partial.add(shardKey, VPackValue(vertexKey));
   partial.close();
   //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
-  int res =
-      ci->getResponsibleShard(info.get(), partial.slice(), false,
-                              responsibleShard, usesDefaultShardingAttributes);
-  // TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
-
-  return res;
+  return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

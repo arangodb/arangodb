@@ -33,18 +33,22 @@ Rule of thumb is, the closer the UDF is to your final `RETURN` statement
 (or maybe even inside it), the better. 
 
 When used in clusters, UDFs are always executed on the
-[coordinator](../../Manual/Scalability/Architecture.html).
+[coordinator](../../Manual/Architecture/DeploymentModes/Cluster/Architecture.html).
 
-Using UDFs in clusters may result in a higher resource allocation
+As UDFs are written in JavaScript, each query that executes a UDF will acquire
+one V8 context to execute the UDFs in it. V8 contexts can be re-used across subsequent
+queries, but when UDF-invoking queries run in parallel, they will each require a 
+dedicated V8 context.
+
+Using UDFs in clusters may thus result in a higher resource allocation
 in terms of used V8 contexts and server threads. If you run out 
 of these resources, your query may abort with a
 [**cluster backend unavailable**](../../Manual/Appendix/ErrorCodes.html) error.
 
-To overcome these mentioned limitations, you may want to
-[increase the number of available V8 contexts](../../Manual/Administration/Configuration/GeneralArangod.html#v8-contexts)
-(at the expense of increased memory usage),
-and
-[the number of available server threads](../../Manual/Administration/Configuration/GeneralArangod.html#server-threads).
+To overcome these mentioned limitations, you may want to increase the
+[number of available V8 contexts](../../Manual/Programs/Arangod/Javascript.html#v8-contexts)
+(at the expense of increased memory usage), and the
+[number of available server threads](../../Manual/Programs/Arangod/Server.html#server-threads).
 
 ### Deployment Details
 
@@ -60,6 +64,6 @@ Once it is in the `_aqlfunctions` collection, it is available on all
 coordinators without additional effort.
 
 Keep in mind that system collections are excluded from dumps created with
-[arangodump](../../Manual/Administration/Arangodump.html) by default.
+[arangodump](../../Manual/Programs/Arangodump/index.html) by default.
 To include AQL UDF in a dump, the dump needs to be started with
 the option *--include-system-collections true*.

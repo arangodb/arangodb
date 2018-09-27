@@ -37,12 +37,12 @@ class Endpoint;
 namespace rest {
 class GeneralServer;
 
-class GeneralListenTask : public ListenTask {
+class GeneralListenTask final : public ListenTask {
   GeneralListenTask(GeneralListenTask const&) = delete;
   GeneralListenTask& operator=(GeneralListenTask const&) = delete;
 
  public:
-  GeneralListenTask(EventLoop, GeneralServer*, Endpoint*,
+  GeneralListenTask(Scheduler*, GeneralServer*, Endpoint*,
                     ProtocolType connectionType);
 
  protected:

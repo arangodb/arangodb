@@ -149,7 +149,7 @@ The functions:
 * GRAPH_PATHS
 * GRAPH_VERTICES
 
-are covered in [Migrating GRAPH_* Functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/cookbook/AQL/MigratingGraphFunctionsTo3.html)
+are covered in [Migrating GRAPH_* Functions from 2.8 or earlier to 3.0](../../Cookbook/AQL/MigratingGraphFunctionsTo3.html)
 
 * GRAPH_ABSOLUTE_BETWEENNESS
 * GRAPH_ABSOLUTE_CLOSENESS
@@ -160,7 +160,7 @@ are covered in [Migrating GRAPH_* Functions from 2.8 or earlier to 3.0](https://
 * GRAPH_ECCENTRICITY
 * GRAPH_RADIUS
 
-are covered in [Migrating GRAPH_* Measurements from 2.8 or earlier to 3.0](https://docs.arangodb.com/cookbook/AQL/MigratingMeasurementsTo3.html)
+are covered in [Migrating GRAPH_* Measurements from 2.8 or earlier to 3.0](../../Cookbook/AQL/MigratingMeasurementsTo3.html)
 
 * EDGES
 * NEIGHBORS
@@ -168,7 +168,7 @@ are covered in [Migrating GRAPH_* Measurements from 2.8 or earlier to 3.0](https
 * TRAVERSAL
 * TRAVERSAL_TREE
 
-are covered in [Migrating anonymous graph functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/3/cookbook/AQL/MigratingEdgeFunctionsTo3.html)
+are covered in [Migrating anonymous graph functions from 2.8 or earlier to 3.0](../../Cookbook/AQL/MigratingEdgeFunctionsTo3.html)
 
 ### Typecasting functions
 
@@ -401,7 +401,7 @@ The `@arangodb/request` response object now stores the parsed JSON response
 body in a property `json` instead of `body` when the request was made using the
 `json` option. The `body` instead contains the response body as a string.
 
-### Edges API
+### JavaScript Edges API
 
 When completely replacing an edge via a collection's `replace()` function the replacing 
 edge data now needs to contain the `_from` and `_to` attributes for the new edge. Previous
@@ -447,7 +447,7 @@ The collection function `byConditionSkiplist()` has been removed in 3.0. The sam
 can be achieved by issuing an AQL query with the target condition, which will automatically use
 a suitable index if present.
 
-#### Revision id handling
+#### Javascript Revision id handling
 
 The `exists()` method of a collection now throws an exception when the specified document
 exists but its revision id does not match the revision id specified. Previous versions of
@@ -609,7 +609,7 @@ based on AQL internally in 3.0, the API now returns a JSON object with a `result
 
 ### Edges API
 
-#### CRUD operations
+#### CRUD operations on edges
 
 The API for documents and edges have been unified in ArangoDB 3.0. The CRUD operations 
 for documents and edges are now handled by the same endpoint at `/_api/document`. For 
@@ -791,7 +791,7 @@ contain a JSON object with an attribute named `user`, containing the name of the
 be created. Previous versions of ArangoDB also checked this attribute, but additionally 
 looked for an attribute `username` if the `user` attribute did not exist. 
 
-### Undocumented APIs
+### Undocumented HTTP APIs
 
 The following undocumented HTTP REST endpoints have been removed from ArangoDB's REST
 API:

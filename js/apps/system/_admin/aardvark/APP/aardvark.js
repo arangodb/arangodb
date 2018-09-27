@@ -31,13 +31,21 @@ const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
+const actions = require('@arangodb/actions');
 const errors = require('@arangodb').errors;
+const ArangoError = require('@arangodb').ArangoError;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
+const generalGraph = require('@arangodb/general-graph');
+const request = require('@arangodb/request');
 const isEnterprise = require('internal').isEnterprise();
+const explainer = require('@arangodb/aql/explainer');
+const replication = require('@arangodb/replication');
+const fs = require('fs');
+const _ = require('lodash');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
@@ -51,11 +59,11 @@ router.get('/index.html', (req, res) => {
   if (encoding && encoding.indexOf('gzip') >= 0) {
     // gzip-encode?
     res.set('Content-Encoding', 'gzip');
-    res.set('Content-Type', 'text/html');
     res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
   } else {
     res.sendFile(module.context.fileName('frontend/build/index-min.html'));
   }
+  res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('X-Frame-Options', 'DENY');
   res.set('X-XSS-Protection', '1; mode=block');
 })
@@ -134,6 +142,35 @@ authRouter.post('disableVersionCheck', function (req, res) {
   Disable the version check in web interface
 `);
 
+authRouter.post('/query/profile', function (req, res) {
+  const bindVars = req.body.bindVars;
+  const query = req.body.query;
+  let msg = null;
+
+  try {
+    msg = explainer.profileQuery({
+      query, 
+      bindVars: bindVars || {},
+      options: {
+        colors: false,
+        profile: 2
+      }
+    }, false);
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+
+  res.json({msg});
+})
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional()
+}).required(), 'Query and bindVars to profile.')
+.summary('Explains a query')
+.description(dd`
+  Profiles a query in a more user-friendly
+`);
+
 authRouter.post('/query/explain', function (req, res) {
   const bindVars = req.body.bindVars;
   const query = req.body.query;
@@ -143,14 +180,14 @@ authRouter.post('/query/explain', function (req, res) {
 
   try {
     if (bindVars) {
-      msg = require('@arangodb/aql/explainer').explain({
+      msg = explainer.explain({
         query: query,
         bindVars: bindVars,
         batchSize: batchSize,
         id: id
       }, {colors: false}, false, bindVars);
     } else {
-      msg = require('@arangodb/aql/explainer').explain(query, {colors: false}, false);
+      msg = explainer.explain(query, {colors: false}, false);
     }
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
@@ -167,6 +204,54 @@ authRouter.post('/query/explain', function (req, res) {
 .summary('Explains a query')
 .description(dd`
   Explains a query in a more user-friendly way than the query_api/explain
+`);
+
+authRouter.post('/query/debugDump', function (req, res) {
+  const bindVars = req.body.bindVars || {};
+  const query = req.body.query;
+  const tmpDebugFolder = fs.getTempFile();
+  const tmpDebugFileName = fs.join(tmpDebugFolder, 'debugDump.json');
+  const tmpDebugZipFileName = fs.join(tmpDebugFolder, 'debugDump.zip');
+
+  try {
+    fs.makeDirectory(tmpDebugFolder);
+  } catch (e) {
+    require('console').error(e);
+    res.throw('Server error, failed to create temp directory', e.message, {cause: e});
+  }
+  let options = {};
+  if (req.body.examples) {
+    options.anonymize = true;
+    options.examples = true;
+  }
+
+  try {
+    explainer.debugDump(tmpDebugFileName, query, bindVars, options);
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+  try {
+    fs.zipFile(tmpDebugZipFileName, tmpDebugFolder, ['debugDump.json']);
+  } catch (e) {
+    require('console').error(e);
+    res.throw('Server error, failed to create zip file', e.message, {cause: e});
+  }
+
+  res.download(tmpDebugZipFileName, 'debugDump.zip');
+})
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional(),
+  examples: joi.bool().optional()
+}).required(), 'Query and bindVars to generate debug dump output')
+.summary('Generate Debug Output for Query')
+.description(dd`
+  Creates a debug output for the query in a zip file.
+  This file includes the query plan and anonymized test data as
+  well es collection information required for this query.
+  It is extremely helpful for the ArangoDB team to get this archive
+  and to reproduce your case. Whenever you submit a query based issue
+  please attach this file and the Team can help you much faster with it.
 `);
 
 authRouter.post('/query/upload/:user', function (req, res) {
@@ -255,11 +340,20 @@ authRouter.get('/query/result/download/:query', function (req, res) {
 authRouter.post('/graph-examples/create/:name', function (req, res) {
   const name = req.pathParams.name;
 
-  if (['knows_graph', 'social', 'routeplanner'].indexOf(name) === -1) {
+  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'mps_graph', 'worldCountry'].indexOf(name) === -1) {
     res.throw('not found');
   }
-
-  const g = examples.loadGraph(name);
+  if (generalGraph._list().indexOf(name) !== -1) {
+    const error = new ArangoError({errorNum: errors.ERROR_GRAPH_DUPLICATE.code, errorMessage: errors.ERROR_GRAPH_DUPLICATE.message});
+    res.throw(409, error);
+  }
+  let g = false;
+  try {
+    g = examples.loadGraph(name);
+  } catch (e) {
+    const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+    res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
+  }
   res.json({error: !g});
 })
 .pathParam('name', joi.string().required(), 'Name of the example graph.')
@@ -310,8 +404,92 @@ authRouter.get('/job', function (req, res) {
   This function returns the job ids of all currently running jobs.
 `);
 
+//  * mode (server modes, numeric e.g.
+//    0: No active replication found.
+//    1: Replication per Database found.
+//    2: Replication per Server found.
+//    3: Active-Failover replication found.
+authRouter.get('/replication/mode', function (req, res) {
+  // this method is only allowed from within the _system database
+  if (req.database !== '_system') {
+    res.throw('not allowed');
+  }
+
+  let endpoints;
+  let bearer;
+
+  if (internal.authenticationEnabled()) {
+    bearer = req.headers.authorization;
+    endpoints = request.get('/_api/cluster/endpoints', {
+      headers: {
+        'Authorization': bearer
+      }
+    });
+  } else {
+    endpoints = request.get('/_api/cluster/endpoints');
+  }
+
+  let mode = 0;
+  let role = null;
+  // active failover
+  if (endpoints.statusCode === 200 && endpoints.json.endpoints.length) {
+    mode = 3;
+    role = 'leader';
+  } else {
+    // check if global applier (ga) is running
+    // if that is true, this node is replicating from another arangodb instance
+    // (all databases)
+    const globalApplierRunning = replication.globalApplier.state().state.running;
+    let singleAppliers = [];
+
+    if (globalApplierRunning) {
+      mode = 2;
+      role = 'follower';
+    } else {
+      // if ga is not running, check if a single applier is running (per each db)
+      // if that is true,
+      const allSingleAppliers = replication.applier.stateAll();
+      _.each(allSingleAppliers, function (applier) {
+        if (applier.state.running) {
+          singleAppliers.push(db);
+        }
+      });
+
+      if (singleAppliers.length > 0) {
+        // some per db-level pulling replication was found
+        mode = 1;
+        role = 'follower';
+      } else {
+        // at this point, no active pulling replication settings were found at all
+        // now checking logger state of this node
+        if (replication.logger.state().clients.length > 0) {
+          // found clients
+          // currently one logger instance contains all dbs
+          // there is currently no global logger state defined
+          mode = 1; // TODO - how to find exactly out?
+          role = 'leader';
+        } else {
+          // no clients found
+          // no replication detected
+          mode = 0;
+          role = null;
+        }
+      }
+    }
+  }
+
+  const result = {
+    mode: mode,
+    role: role
+  };
+  res.json(result);
+})
+.summary('Return the replication mode.')
+.description(dd`
+  This function returns the job ids of all currently running jobs.
+`);
+
 authRouter.get('/graph/:name', function (req, res) {
-  var _ = require('lodash');
   var name = req.pathParams.name;
   var gm;
   if (isEnterprise) {

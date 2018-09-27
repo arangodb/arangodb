@@ -28,8 +28,6 @@
 #include "fakeit.hpp"
 
 #include "Agency/AddFollower.h"
-#include "Agency/FailedLeader.h"
-#include "Agency/MoveShard.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
@@ -151,7 +149,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
     auto  addFollower = AddFollower(
-      baseStructure, &agent, jobId, "unittest", DATABASE, COLLECTION, SHARD);
+      baseStructure(PREFIX), &agent, jobId, "unittest", DATABASE, COLLECTION, SHARD);
     
     addFollower.create();
     
@@ -159,7 +157,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
 
   SECTION("<collection> still exists, if missing, job is finished, move to "
           "Target/Finished") {
-
+    
     TestStructType createTestStructure = [&](
       Slice const& s, std::string const& path) {
 
@@ -180,7 +178,6 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
         if (path == "/arango/Target/ToDo") {
           builder->add(jobId, createBuilder(todo).slice());
         }
-        builder->close();
       } else {
         builder->add(s);
       }

@@ -298,7 +298,8 @@ curl
 ```
 
 
-**Authors:** [Thomas Schmidts](https://github.com/13abylon) and [Jan Steemann](https://github.com/jsteemann)
+**Authors:** [Thomas Schmidts](https://github.com/13abylon)
+  and [Jan Steemann](https://github.com/jsteemann)
 
 **Tags**: #howto #php
 

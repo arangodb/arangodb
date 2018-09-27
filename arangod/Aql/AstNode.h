@@ -52,35 +52,24 @@ typedef uint32_t AstNodeFlagsType;
 /// the flags are used to prevent repeated calculations of node properties
 /// (e.g. is the node value constant, sorted etc.)
 enum AstNodeFlagType : AstNodeFlagsType {
-  DETERMINED_SORTED = 1,    // node is a list and its members are sorted asc.
-  DETERMINED_CONSTANT = 2,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE =
-      4,  // node value is simple (i.e. for use in a simple expression)
-  DETERMINED_THROWS = 8,  // node can throw an exception
-  DETERMINED_NONDETERMINISTIC =
-      16,  // node produces non-deterministic result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER =
-      32,  // node can run on the DB server in a cluster setup
-  DETERMINED_CHECKUNIQUENESS = 64,  // object's keys must be checked for uniqueness
+  DETERMINED_SORTED =            0x0000001,  // node is a list and its members are sorted asc.
+  DETERMINED_CONSTANT =          0x0000002,  // node value is constant (i.e. not dynamic)
+  DETERMINED_SIMPLE =            0x0000004,  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_NONDETERMINISTIC =  0x0000010,  // node produces non-deterministic result (e.g. function call nodes)
+  DETERMINED_RUNONDBSERVER =     0x0000020,  // node can run on the DB server in a cluster setup
+  DETERMINED_CHECKUNIQUENESS =   0x0000040,  // object's keys must be checked for uniqueness
+  DETERMINED_V8 =                0x0000080,  // node will use V8 internally
 
-  VALUE_SORTED = 128,    // node is a list and its members are sorted asc.
-  VALUE_CONSTANT = 256,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE =
-      512,  // node value is simple (i.e. for use in a simple expression)
-  VALUE_THROWS = 1024,            // node can throw an exception
-  VALUE_NONDETERMINISTIC = 2048,  // node produces non-deterministic result
-                                  // (e.g. function call nodes)
-  VALUE_RUNONDBSERVER =
-      4096,                  // node can run on the DB server in a cluster setup
-  VALUE_CHECKUNIQUENESS = 8192,  // object's keys must be checked for uniqueness
-
-  FLAG_KEEP_VARIABLENAME = 16384,  // node is a reference to a variable name,
-                                   // not the variable value (used in KEEP
-                                   // nodes)
-  FLAG_BIND_PARAMETER = 32768,  // node was created from a bind parameter
-  FLAG_FINALIZED = 65536,       // node has been finalized and should not be
-                                // modified; only set and checked in
-                                // maintainer mode
+  VALUE_SORTED =                 0x0000100,  // node is a list and its members are sorted asc.
+  VALUE_CONSTANT =               0x0000200,  // node value is constant (i.e. not dynamic)
+  VALUE_SIMPLE =                 0x0000400,  // node value is simple (i.e. for use in a simple expression)
+  VALUE_NONDETERMINISTIC =       0x0001000,  // node produces non-deterministic result (e.g. function call nodes)
+  VALUE_RUNONDBSERVER =          0x0002000,  // node can run on the DB server in a cluster setup
+  VALUE_CHECKUNIQUENESS =        0x0004000,  // object's keys must be checked for uniqueness
+  VALUE_V8 =                     0x0008000,  // node will use V8 internally
+  FLAG_KEEP_VARIABLENAME =       0x0010000,  // node is a reference to a variable name,  not the variable value (used in KEEP nodes)
+  FLAG_BIND_PARAMETER =          0x0020000,  // node was created from a bind parameter
+  FLAG_FINALIZED =               0x0040000,  // node has been finalized and should not be modified; only set and checked in maintainer mode
 };
 
 /// @brief enumeration of AST node value types
@@ -193,6 +182,8 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_WITH = 74,
   NODE_TYPE_SHORTEST_PATH = 75,
   NODE_TYPE_VIEW = 76,
+  NODE_TYPE_PARAMETER_DATASOURCE = 77,
+  NODE_TYPE_FOR_VIEW = 78,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -201,12 +192,6 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 /// @brief the node
 struct AstNode {
   friend class Ast;
-
-  enum class DataSourceType : uintptr_t {
-    Invalid = 0,
-    Collection,
-    View,
-  };
 
   static std::unordered_map<int, std::string const> const Operators;
   static std::unordered_map<int, std::string const> const TypeNames;
@@ -321,13 +306,13 @@ struct AstNode {
 
   /// @brief set a flag for the node
   inline void setFlag(AstNodeFlagType flag) const {
-    flags |= static_cast<decltype(flags)>(flag);
+    flags |= flag;
   }
 
   /// @brief set two flags for the node
   inline void setFlag(AstNodeFlagType typeFlag,
                       AstNodeFlagType valueFlag) const {
-    flags |= static_cast<decltype(flags)>(typeFlag | valueFlag);
+    flags |= (typeFlag | valueFlag);
   }
 
   /// @brief whether or not the node value is trueish
@@ -338,9 +323,7 @@ struct AstNode {
 
   /// @brief whether or not the members of a list node are sorted
   inline bool isSorted() const {
-    return ((flags &
-             static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED)) ==
-            static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED));
+    return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
   }
 
   /// @brief whether or not a value node is NULL
@@ -379,25 +362,6 @@ struct AstNode {
 
   /// @brief whether or not a value node is of array type
   inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
-
-  inline bool isDataSource() const noexcept {
-    switch (type) {
-      case NODE_TYPE_COLLECTION:
-      case NODE_TYPE_VIEW:
-        return true;
-      case NODE_TYPE_PARAMETER:
-        return value.type == VALUE_TYPE_STRING
-          && value.length
-          && value.value._string
-          && '@' == value.value._string[0];
-      default:
-        return false;
-    }
-  }
-
-  inline DataSourceType getDataSourceType() const noexcept {
-    return dataSourceType;
-  }
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
@@ -483,6 +447,10 @@ struct AstNode {
   /// @brief whether or not a node has a constant value
   /// this may also set the FLAG_CONSTANT or the FLAG_DYNAMIC flags for the node
   bool isConstant() const;
+  
+  /// @brief whether or not a node will use V8 internally
+  /// this may also set the FLAG_V8 flag for the node
+  bool willUseV8() const;
 
   /// @brief whether or not a node is a simple comparison operator
   bool isSimpleComparisonOperator() const;
@@ -492,10 +460,6 @@ struct AstNode {
 
   /// @brief whether or not a node is an array comparison operator
   bool isArrayComparisonOperator() const;
-
-  /// @brief whether or not a node (and its subnodes) may throw a runtime
-  /// exception
-  bool canThrow() const;
 
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
@@ -568,6 +532,12 @@ struct AstNode {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.erase(members.begin() + i);
   }
+  
+  /// @brief remove all members from the node at once
+  void removeMembers() {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    members.clear();
+  }
 
   /// @brief return a member of the node
   inline AstNode* getMember(size_t i) const {
@@ -602,6 +572,24 @@ struct AstNode {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.clear();
   }
+  
+  /// @brief mark a < or <= operator to definitely exclude the "null" value
+  /// this is only for optimization purposes
+  inline void setExcludesNull(bool v = true) {
+    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || 
+               type == NODE_TYPE_OPERATOR_BINARY_LE || 
+               type == NODE_TYPE_OPERATOR_BINARY_EQ);
+    value.value._bool = v;
+  }
+  
+  /// @brief check if an < or <= operator definitely excludes the "null" value
+  /// this is only for optimization purposes
+  inline bool getExcludesNull() const noexcept {
+    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || 
+               type == NODE_TYPE_OPERATOR_BINARY_LE || 
+               type == NODE_TYPE_OPERATOR_BINARY_EQ);
+    return value.value._bool;
+  }
 
   /// @brief set the node's value type
   inline void setValueType(AstNodeValueType type) {
@@ -610,12 +598,12 @@ struct AstNode {
   }
 
   /// @brief check whether this node value is of expectedType
-  inline bool isValueType(AstNodeValueType expectedType) const {
+  inline bool isValueType(AstNodeValueType expectedType) const noexcept {
     return value.type == expectedType;
   }
 
   /// @brief return the bool value of a node
-  inline bool getBoolValue() const { return value.value._bool; }
+  inline bool getBoolValue() const noexcept { return value.value._bool; }
 
   /// @brief set the bool value of a node
   inline void setBoolValue(bool v) {
@@ -629,7 +617,7 @@ struct AstNode {
   int64_t getIntValue() const;
 
   /// @brief return the int value stored for a node, regardless of the node type
-  inline int64_t getIntValue(bool) const { return value.value._int; }
+  inline int64_t getIntValue(bool) const noexcept { return value.value._int; }
 
   /// @brief set the int value of a node
   inline void setIntValue(int64_t v) {
@@ -694,6 +682,9 @@ struct AstNode {
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
+  
+  /// @brief validate that given node is an object with const-only values
+  bool isConstObject() const;
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible
@@ -738,13 +729,8 @@ struct AstNode {
   AstNodeValue value;
 
  private:
-  union {
-    /// @brief precomputed VPack value (used when executing expressions)
-    uint8_t mutable* computedValue;
-
-    /// @brief type of the data source
-    DataSourceType dataSourceType;
-  };
+  /// @brief precomputed VPack value (used when executing expressions)
+  uint8_t mutable* computedValue;
 
   /// @brief the node's sub nodes
   std::vector<AstNode*> members;

@@ -104,7 +104,7 @@ char* QueryResources::registerString(char const* p, size_t length) {
     return const_cast<char*>(EmptyString);
   }
 
-  if (length < ShortStringStorage::maxStringLength()) {
+  if (length < ShortStringStorage::maxStringLength) {
     return _shortStringStorage.registerString(p, length);
   }
 

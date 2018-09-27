@@ -35,3 +35,6 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 <!-- js/actions/api-system.js -->
 @startDocuBlock post_admin_execute
 
+<!-- /_admin/status -->
+@startDocuBlock JSF_get_admin_status
+

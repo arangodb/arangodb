@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "_WE2VIou--_"' --dump - http://localhost:8529/_api/document/products/11163
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'If-None-Match: "_XWq5sfe--_"'</span> --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103544</span>
 

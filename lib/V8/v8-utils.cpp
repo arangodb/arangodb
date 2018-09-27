@@ -312,7 +312,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder =
-      ApplicationServer::server->options({"server.password"});
+      ApplicationServer::server->options({"server.password", "ldap.bindpasswd"});
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -665,6 +665,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool returnBodyOnError = false;
   int maxRedirects = 5;
   uint64_t sslProtocol = TLS_V12;
+  std::string jwtToken, username, password;
 
   if (args.Length() > 2) {
     if (!args[2]->IsObject()) {
@@ -756,6 +757,15 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (options->Has(TRI_V8_ASCII_STRING(isolate, "returnBodyOnError"))) {
       returnBodyOnError = TRI_ObjectToBoolean(
           options->Get(TRI_V8_ASCII_STRING(isolate, "returnBodyOnError")));
+    }
+    
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "jwt"))) {
+      jwtToken = TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING(isolate, "jwt")));
+    } else if (options->Has(TRI_V8_ASCII_STRING(isolate, "username"))) {
+      username = TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING(isolate, "username")));
+      if (options->Has(TRI_V8_ASCII_STRING(isolate, "password"))) {
+        password = TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING(isolate, "password")));
+      }
     }
   }
 
@@ -870,6 +880,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     params.setSupportDeflate(false);
     // security by obscurity won't work. Github requires a useragent nowadays.
     params.setExposeArangoDB(true);
+    if (!jwtToken.empty()) {
+      params.setJwt(jwtToken);
+    } else if (!username.empty()) {
+      params.setUserNamePassword("/", username, password);
+    }
     SimpleHttpClient client(connection.get(), params);
     
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -885,7 +900,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                        body.size(), headerFields));
 
     int returnCode = 500;  // set a default
-    std::string returnMessage;
+    std::string returnMessage = "";
 
     if (response == nullptr || !response->isComplete()) {
       // save error message
@@ -919,11 +934,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         continue;
       }
 
-      result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                  v8::Number::New(isolate, returnCode));
-      result->Set(TRI_V8_ASCII_STRING(isolate, "message"),
-                  TRI_V8_STD_STRING(isolate, returnMessage));
-
       // process response headers
       auto const& responseHeaders = response->getHeaderFields();
 
@@ -938,23 +948,35 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
+          std::string json;
+          basics::StringBuffer const& sb = response->getBody();
+          StringRef body(sb.c_str(), sb.length());
+          
+          bool found = false;
+          std::string content = response->getHeaderField(StaticStrings::ContentTypeHeader, found);
+          if (found && content.find(StaticStrings::MimeTypeVPack) != std::string::npos) {
+            VPackValidator validator;
+            validator.validate(sb.data(), sb.length()); // throws on error
+            json.assign(VPackSlice(sb.data()).toJson());
+            body = StringRef(json);
+          }
+
           if (outfile.size() > 0) {
             // save outfile
-            FileUtils::spit(outfile, response->getBody());
+            FileUtils::spit(outfile, body.data(), body.length());
           } else {
             // set "body" attribute in result
-            const StringBuffer& sb = response->getBody();
-
             if (returnBodyAsBuffer) {
               V8Buffer* buffer =
-                  V8Buffer::New(isolate, sb.c_str(), sb.length());
+              V8Buffer::New(isolate, body.data(), body.length());
               v8::Local<v8::Object> bufferObject =
-                  v8::Local<v8::Object>::New(isolate, buffer->_handle);
+              v8::Local<v8::Object>::New(isolate, buffer->_handle);
               result->Set(TRI_V8_ASCII_STRING(isolate, "body"), bufferObject);
             } else {
               result->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_STD_STRING(isolate, sb));
             }
           }
+         
         } catch (...) {
         }
       }
@@ -2315,7 +2337,7 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
   tv.tv_usec = 0;
   FD_ZERO(&fds);
   FD_SET(STDIN_FILENO, &fds);
-  select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+  select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
   hasData = FD_ISSET(STDIN_FILENO, &fds);
 #endif
   
@@ -2673,10 +2695,16 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
-
-  TRI_Utf8ValueNFC name(args[0]);
-
-  if (*name == nullptr) {
+#if _WIN32 // the wintendo needs utf16 filenames
+  v8::String::Value str(args[0]);
+  std::wstring name {
+    reinterpret_cast<wchar_t *>(*str),
+      static_cast<size_t>(str.length())};
+#else
+  TRI_Utf8ValueNFC str(args[0]);
+  std::string name(*str, str.length());
+#endif
+  if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
@@ -2697,16 +2725,26 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::fstream file;
 
-    file.open(*name, std::ios::out | std::ios::binary);
+    errno = 0;
+    // disable exceptions in the stream object:
+    file.exceptions(std::ifstream::goodbit);
+    file.open(name, std::ios::out | std::ios::binary);
 
-    if (file.is_open()) {
+    if (file.is_open() && file.good()) {
       file.write(data, size);
-      if (flush) {
-        file.flush();
-        file.sync();
+      if (file.good()) {
+        if (flush) {
+          file.flush();
+          file.sync();
+        }
+        file.close();
+        if (file.good()) {
+          TRI_V8_RETURN_TRUE();
+        }
       }
-      file.close();
-      TRI_V8_RETURN_TRUE();
+      else {
+        file.close();
+      }
     }
   } else {
     TRI_Utf8ValueNFC content(args[1]);
@@ -2717,16 +2755,26 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::fstream file;
 
-    file.open(*name, std::ios::out | std::ios::binary);
+    errno = 0;
+    // disable exceptions in the stream object:
+    file.exceptions(std::ifstream::goodbit);
+    file.open(name, std::ios::out | std::ios::binary);
 
-    if (file.is_open()) {
+    if (file.is_open() && file.good()) {
       file << *content;
-      if (flush) {
-        file.flush();
-        file.sync();
+      if (file.good()) {
+        if (flush) {
+          file.flush();
+          file.sync();
+        }
+        file.close();
+        if (file.good()) {
+          TRI_V8_RETURN_TRUE();
+        }
       }
-      file.close();
-      TRI_V8_RETURN_TRUE();
+      else {
+        file.close();
+      }
     }
   }
 
@@ -3006,13 +3054,13 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha512
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA512(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3048,13 +3096,13 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha384
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA384(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3090,13 +3138,13 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha256
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA256(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3132,13 +3180,13 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha224
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA224(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3174,13 +3222,13 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA1(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3443,8 +3491,10 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string result = StringUtils::encodeHex(SslInterface::sslHMAC(
-      key.c_str(), key.size(), message.c_str(), message.size(), al));
+  std::string v = SslInterface::sslHMAC(
+      key.c_str(), key.size(), message.c_str(), message.size(), al);
+
+  std::string result = StringUtils::encodeHex(v.data(), v.size());
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -4570,6 +4620,21 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if we are in the enterprise edition
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::HandleScope scope(isolate);
+#ifndef USE_ENTERPRISE
+    TRI_V8_RETURN(v8::False(isolate));
+#else
+    TRI_V8_RETURN(v8::True(isolate));
+#endif
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4791,6 +4856,10 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "VPACK_TO_V8"), JS_VPackToV8);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"),
+      JS_IsEnterprise);
 
   // .............................................................................
   // create the global variables

@@ -10,6 +10,9 @@ const ArangoError = arangodb.ArangoError;
 const errors = arangodb.errors;
 const il = require('@arangodb/util').inline;
 
+const CANONICAL_SCHEMA = 'http://json.schemastore.org/foxx-manifest';
+exports.schemaUrl = CANONICAL_SCHEMA;
+
 // Regular expressions for joi patterns
 const RE_EMPTY = /^$/;
 const RE_NOT_EMPTY = /./;
@@ -37,6 +40,7 @@ configTypes.int = configTypes.integer;
 configTypes.bool = configTypes.boolean;
 
 const manifestSchema = {
+  $schema: joi.forbidden().allow(CANONICAL_SCHEMA).default(CANONICAL_SCHEMA),
   // FoxxStore metadata
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
   version: joi.string().optional(),
@@ -167,11 +171,20 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
     const value = inputManifest[key];
     const result = joi.validate(value, schema);
     if (result.error) {
-      const error = result.error.message.replace(/^"value"/, 'Value');
-      errors.push(il`
-        Service at "${mount}" specifies manifest field "${key}"
-        with invalid value "${util.format(value)}": ${error}
-      `);
+      if (key === '$schema') {
+        manifest[key] = CANONICAL_SCHEMA;
+        console.warnLines(il`
+          Service at "${mount}" specifies manifest field "$schema"
+          with invalid value "${util.format(value)}".
+          Did you mean "${CANONICAL_SCHEMA}"?
+        `);
+      } else {
+        const error = result.error.message.replace(/^"value"/, 'Value');
+        errors.push(il`
+          Service at "${mount}" specifies manifest field "${key}"
+          with invalid value "${util.format(value)}": ${error}
+        `);
+      }
     } else {
       manifest[key] = result.value;
     }
@@ -384,3 +397,4 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
 
 exports.configTypes = configTypes;
 exports.validate = validateManifestFile;
+exports.validateJson = checkManifest;

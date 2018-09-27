@@ -6,7 +6,7 @@ Replication
 
 This is an introduction to ArangoDB's HTTP replication interface.
 The replication architecture and components are described in more details in 
-[Replication](../../Manual/Administration/Replication/index.html).
+[Replication](../../Manual/Architecture/Replication/index.html).
 
 The HTTP replication interface serves four main purposes:
 - fetch initial data from a server (e.g. for a backup, or for the initial synchronization 

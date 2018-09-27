@@ -16,54 +16,24 @@ Join tuples
 We'll start with a SQL-ish result set and return each tuple (user name, friends userId) 
 separately. The AQL query to generate such result is:
 
-```js
-FOR u IN users
-  FILTER u.active == true
-  LIMIT 0, 4
-  FOR f IN relations
-    FILTER f.type == "friend" && f.friendOf == u.userId
-    RETURN {
-      "user" : u.name,
-      "friendId" : f.thisUser
-    }
-```
 
-```json
-[
-  {
-    "user" : "Abigail",
-    "friendId" : 108
-  },
-  {
-    "user" : "Abigail",
-    "friendId" : 102
-  },
-  {
-    "user" : "Abigail",
-    "friendId" : 106
-  },
-  {
-    "user" : "Fred",
-    "friendId" : 209
-  },
-  {
-    "user" : "Mary",
-    "friendId" : 207
-  },
-  {
-    "user" : "Mary",
-    "friendId" : 104
-  },
-  {
-    "user" : "Mariah",
-    "friendId" : 203
-  },
-  {
-    "user" : "Mariah",
-    "friendId" : 205
-  }
-]
-```
+    @startDocuBlockInline joinTuples
+    @EXAMPLE_AQL{joinTuples}
+    @DATASET{joinSampleDataset}
+    FOR u IN users
+      FILTER u.active == true
+      LIMIT 0, 4
+      FOR f IN relations
+        FILTER f.type == @friend && f.friendOf == u.userId
+        RETURN {
+          "user" : u.name,
+          "friendId" : f.thisUser
+        }
+    @BV {
+    friend: "friend"
+    }
+    @END_EXAMPLE_AQL
+    @endDocuBlock joinTuples
 
 We iterate over the collection users. Only the 'active' users will be examined.
 For each of these users we will search for up to 4 friends. We locate friends

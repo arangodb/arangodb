@@ -24,6 +24,7 @@
 #include "SortNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/SortBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 
@@ -35,9 +36,8 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
     : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
 
 /// @brief toVelocyPack, for SortNode
-void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
 
   nodes.add(VPackValue("elements"));
   {
@@ -69,7 +69,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
   std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
   explicit SortNodeFindMyExpressions(SortNode* me)
-      : _foundCalcNodes(0), _elms(me->getElements()) {
+      : _foundCalcNodes(0), _elms(me->elements()) {
     _myVars.resize(_elms.size());
   }
 
@@ -90,7 +90,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
 
 std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs() {
   SortNodeFindMyExpressions findExp(this);
-  _dependencies[0]->walk(&findExp);
+  _dependencies[0]->walk(findExp);
   if (findExp._foundCalcNodes < _elements.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -113,7 +113,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
     if (setter != nullptr) {
       if (setter->getType() == ExecutionNode::CALCULATION) {
         // variable introduced by a calculation
-        auto expression = static_cast<CalculationNode*>(setter)->expression();
+        auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
         if (expression->isConstant()) {
           // constant expression, remove it!
@@ -140,8 +140,8 @@ SortInformation SortNode::getSortInformation(
     ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
-  auto elements = getElements();
-  for (auto it = elements.begin(); it != elements.end(); ++it) {
+  auto const& elms = elements();
+  for (auto it = elms.begin(); it != elms.end(); ++it) {
     auto variable = (*it).var;
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
@@ -151,13 +151,9 @@ SortInformation SortNode::getSortInformation(
       break;
     }
 
-    if (!result.canThrow && setter->canThrow()) {
-      result.canThrow = true;
-    }
-
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // variable introduced by a calculation
-      auto expression = static_cast<CalculationNode*>(setter)->expression();
+      auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
       if (!expression->isDeterministic()) {
         result.isDeterministic = false;
@@ -190,11 +186,22 @@ SortInformation SortNode::getSortInformation(
   return result;
 }
 
-/// @brief estimateCost
-double SortNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies.at(0)->getCost(nrItems);
-  if (nrItems <= 3.0) {
-    return depCost + nrItems;
-  }
-  return depCost + nrItems * std::log2(static_cast<double>(nrItems));
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> SortNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<SortBlock>(&engine, this);
 }
+
+/// @brief estimateCost
+CostEstimate SortNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  if (estimate.estimatedNrItems <= 3) {
+    estimate.estimatedCost += estimate.estimatedNrItems;
+  } else {
+    estimate.estimatedCost += estimate.estimatedNrItems * std::log2(static_cast<double>(estimate.estimatedNrItems));
+  }
+  return estimate;
+}
+

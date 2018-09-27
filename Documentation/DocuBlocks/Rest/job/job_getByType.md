@@ -16,7 +16,7 @@ the ids of not yet finished async jobs.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{count,number,optional}
+@RESTQUERYPARAM{count,number,optional}
 
 The maximum number of ids to return per call. If not specified, a
 server-defined maximum value will be used.

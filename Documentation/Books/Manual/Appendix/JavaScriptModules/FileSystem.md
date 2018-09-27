@@ -9,13 +9,12 @@ specification where possible.
 
 Working Directory
 -----------------
-The directory functions below shouldn't use the current working directory of the server like `.` or `./test`. 
-You will not be able to tell whether the environment the server is running in will permit directory listing, 
-reading or writing of files. 
+The directory functions below shouldn't use the current working directory of the server like `.` or `./test`.
+You will not be able to tell whether the environment the server is running in will permit directory listing,
+reading or writing of files.
 
-You should either base your directories with `getTempPath()`, or as a foxx service use the
-[module.context.basePath](../..//Foxx/Context.md).
-  
+You should either base your directories with `getTempPath()`, or as a Foxx service use the
+[module.context.basePath](../../Foxx/Reference/Context.md).
 
 Single File Directory Manipulation
 ----------------------------------

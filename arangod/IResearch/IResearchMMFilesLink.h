@@ -38,10 +38,6 @@ class IResearchMMFilesLink final
 
   virtual ~IResearchMMFilesLink();
 
-  virtual bool allowExpansion() const override {
-    return IResearchLink::allowExpansion();
-  }
-
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
@@ -57,6 +53,10 @@ class IResearchMMFilesLink final
   virtual int drop() override {
     return IResearchLink::drop();
   }
+    
+  void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -92,9 +92,10 @@ class IResearchMMFilesLink final
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
   ) noexcept;
 
   virtual bool matchesDefinition(
@@ -120,11 +121,10 @@ class IResearchMMFilesLink final
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    std::underlying_type<arangodb::Index::Serialize>::type
   ) const override;
 
   virtual IndexType type() const override {
@@ -145,7 +145,7 @@ class IResearchMMFilesLink final
  private:
   IResearchMMFilesLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 };
 

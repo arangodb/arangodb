@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global */
 'use strict';
@@ -33,12 +34,16 @@ const optionsDocumentation = [
 
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'agency': [tu.pathForTesting('client/agency')]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief agency tests
 // //////////////////////////////////////////////////////////////////////////////
 
 function agency (options) {
-  let testCases = tu.scanTestPath('js/client/tests/agency');
+  let testCases = tu.scanTestPaths(testPaths.agency);
 
   let saveAgency = options.agency;
   let saveCluster = options.cluster;
@@ -54,11 +59,10 @@ function agency (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['agency'] = agency;
   defaultFns.push('agency');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

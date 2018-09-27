@@ -1,18 +1,19 @@
-shell> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-start
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/applier-start</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"phase"</span> : <span class="hljs-string">"running"</span>, 
     <span class="hljs-string">"lastAppliedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastProcessedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-12-19T09:24:28Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-30T14:27:33Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier initially created for database '_system'"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
@@ -24,11 +25,11 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastError"</span> : { 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-12-19T09:25:07Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-30T14:27:53Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.3.devel"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"113069788116077"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.0-devel"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"14417223011300"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

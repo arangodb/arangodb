@@ -75,22 +75,19 @@ install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/js/actions
     ${PROJECT_SOURCE_DIR}/js/apps
-    ${PROJECT_SOURCE_DIR}/js/contrib
     ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
-  REGEX       "^.*/server/tests$"                          EXCLUDE
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX       "^.*/aardvark/APP/node_modules$"             EXCLUDE
-  REGEX       "^.*/aardvark/APP/test$"                     EXCLUDE
+  REGEX       "^.*/aardvark/APP/frontend/js/lib"           EXCLUDE
+  REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
 
 if (USE_ENTERPRISE)
   install(
     DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
-    REGEX       "^.*/server/tests$"                        EXCLUDE
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
     REGEX       "^.*/aardvark/APP/node_modules$"           EXCLUDE
-    REGEX       "^.*/aardvark/APP/test$"                   EXCLUDE
   )
 endif ()
 
@@ -236,16 +233,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   include(InstallRequiredSystemLibraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
-
-  # install openssl
-  if (NOT LIB_EAY_RELEASE_DLL OR NOT SSL_EAY_RELEASE_DLL)
-    message(FATAL_ERROR, "BUNDLE_OPENSSL set but couldn't locate SSL DLLs. Please set LIB_EAY_RELEASE_DLL and SSL_EAY_RELEASE_DLL")
-  endif()
-
-  install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
-  install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
 endif()
-
 
 if (THIRDPARTY_SBIN)
   install(FILES ${THIRDPARTY_SBIN}

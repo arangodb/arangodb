@@ -1,62 +1,29 @@
 HTTP Interface for Agency feature
 =================================
 
-### Configuration
+The Agency is the ArangoDB component which manages the entire ArangoDB cluster. 
+ArangoDB itself mainly uses the Agency as a central place to store the configuration
+and the cluster nodes health management. It implements the Raft consensus protocol to act as
+the single-source of truth for the entire cluster. You may know other software providing similar functionality e.g. _Apache Zookeeper_, _etcd_ or _Consul_.
 
-At all times, i.e. regardless of the state of the agents and the current health of the RAFT consensus, one can invoke the configuration API:
+To an end-user the Agency is essentially a fault-tolerant Key-Value Store with a simple REST-API. 
+It is possible to use the Agency API for a variety of use-cases, for example:
 
-    curl http://$SERVER:$PORT/_api/agency/config
+- Centralized configuration repository
+- Service discovery registry
+- Distributed synchronization service
+- Distributed Lock-Manager
 
-Here, and in all subsequent calls, we assume that `$SERVER` is
-replaced by the server name and `$PORT` is replaced by the port
-number. We use `curl` throughout for the examples, but any client
-library performing HTTP requests should do.
-The output might look somewhat like this
+*Note 1*: To access the Agency API with authentication enabled, you need to include an authorization header
+with every request. The authorization header _must_ contain a *superuser JWT Token*; For more information see the [authentication section](../General/README.md#authentication).
 
-```js
-{
-  "term": 1,
-  "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
-  "lastCommitted": 1,
-  "lastAcked": {
-    "ac129027-b440-4c4f-84e9-75c042942171": 0.21,
-    "c54dbb8a-723d-4c82-98de-8c841a14a112": 0.21,
-    "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": 0
-  },
-  "configuration": {
-    "pool": {
-      "ac129027-b440-4c4f-84e9-75c042942171": "tcp://localhost:8531",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112": "tcp://localhost:8530",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": "tcp://localhost:8529"
-    },
-    "active": [
-      "ac129027-b440-4c4f-84e9-75c042942171",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98"
-    ],
-    "id": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
-    "agency size": 3,
-    "pool size": 3,
-    "endpoint": "tcp://localhost:8529",
-    "min ping": 0.5,
-    "max ping": 2.5,
-    "supervision": false,
-    "supervision frequency": 5,
-    "compaction step size": 1000,
-    "supervision grace period": 120
-  }
-}
-```
-
-This is the actual output of a healthy agency. The configuration of the agency is found in the `configuration` section as you might have guessed. It is populated by static information on the startup parameters like `agency size`, the once generated `unique id` etc. It holds information on the invariants of the RAFT algorithm and data compaction.
-
-The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environemnt, while often increasing term numbers indicate, that the network environemnt and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
+*Note 2*: The key-prefix `/arango` contains ArangoDBs internal configuration. You should _never_ change any values below the _arango_ key.
 
 ### Key-Value store APIs
 
-Generally, all document IO to and from the key-value store consists of JSON arrays. The outer Array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
+Generally, all document IO to and from the key-value store consists of JSON arrays. The outer array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
 
-Consider the following write operation into a prestine agency:
+Consider the following write operation into a pristine agency:
 
 
 ```
@@ -86,15 +53,15 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/"]]'
 ]
 ```
 
-In the first step we commited a single transaction that commits the JSON document inside the inner transaction array to the agency. The result is `[1]`, which is the replicated log index. Repeated invocation will yield growing log numbers 2, 3, 4, etc. 
+In the first step we committed a single transaction that commits the JSON document inside the inner transaction array to the agency. The result is `[1]`, which is the replicated log index. Repeated invocation will yield growing log numbers 2, 3, 4, etc. 
 
-The read access is a complete access to the key-value store indicated by access to it's root element and returns the result as an array corresponding to the outermost array in the read transaction.
+The read access is a complete access to the key-value store indicated by access to its root element and returns the result as an array corresponding to the outermost array in the read transaction.
 
 Let's dig in some deeper.
 
 ### Read API
 
-Let's start with the above initialised key-value store in the following. Let us visit the following read operations:
+Let's start with the above initialized key-value store in the following. Let us visit the following read operations:
 
 ```
 curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b"]]'
@@ -128,7 +95,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/c"]]'
 ]
 ```
 
-Note that the above results are identical, meaning that results obtained from the agencyare always return with full path.
+Note that the above results are identical, meaning that results obtained from the agency are always return with full path.
 
 The second outer array brackets in read operations correspond to transactions, meaning that the result is guaranteed to have been acquired without a write transaction in between:
 
@@ -154,7 +121,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/e"],["/d","/a/b"]]'
 ]
 ```
 
-While the first transaction consists of a single read access to the key-value-store thus strechting the meaning of the word transaction, the second bracket actually hold two disjunct read accesses, which have been joined within zero-time, i.e. without a write access in between. That is to say that `"/d"` cannot have changed before `"/a/b"` had been acquired.
+While the first transaction consists of a single read access to the key-value-store thus stretching the meaning of the word transaction, the second bracket actually hold two disjunct read accesses, which have been joined within zero-time, i.e. without a write access in between. That is to say that `"/d"` cannot have changed before `"/a/b"` had been acquired.
 
 Let's try to fetch a value from the key-value-store, which does not exist:
 
@@ -220,7 +187,7 @@ is a precondition specifying that the previous value of the key `"/a/b/c"` key m
 { "/a/b/c": [1, 2, 3] }
 ```
 
-Consider the agency in initialised as above let's review the responses from the agency as follows:
+Consider the agency in initialized as above let's review the responses from the agency as follows:
 
 ```
 curl -L http://$SERVER:$PORT/_api/agency/write -d '[[{"/a/b/c":{"op":"set","new":[1,2,3,4]},"/a/b/pi":{"op":"set","new":"some text"}},{"/a/b/c":{"old":[1,2,3]}}]]'
@@ -381,3 +348,54 @@ The notifying POST requests are submitted immediately with any complete array of
     "/constants/euler" : {"op": "create", "new": 2.718281828459046 },
     "/constants/pi": { "op": "delete" } } }
 ```
+
+### Configuration
+
+At all times, i.e. regardless of the state of the agents and the current health of the RAFT consensus, one can invoke the configuration API:
+
+    curl http://$SERVER:$PORT/_api/agency/config
+
+Here, and in all subsequent calls, we assume that `$SERVER` is
+replaced by the server name and `$PORT` is replaced by the port
+number. We use `curl` throughout for the examples, but any client
+library performing HTTP requests should do.
+The output might look somewhat like this
+
+```js
+{
+  "term": 1,
+  "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
+  "lastCommitted": 1,
+  "lastAcked": {
+    "ac129027-b440-4c4f-84e9-75c042942171": 0.21,
+    "c54dbb8a-723d-4c82-98de-8c841a14a112": 0.21,
+    "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": 0
+  },
+  "configuration": {
+    "pool": {
+      "ac129027-b440-4c4f-84e9-75c042942171": "tcp://localhost:8531",
+      "c54dbb8a-723d-4c82-98de-8c841a14a112": "tcp://localhost:8530",
+      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": "tcp://localhost:8529"
+    },
+    "active": [
+      "ac129027-b440-4c4f-84e9-75c042942171",
+      "c54dbb8a-723d-4c82-98de-8c841a14a112",
+      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98"
+    ],
+    "id": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
+    "agency size": 3,
+    "pool size": 3,
+    "endpoint": "tcp://localhost:8529",
+    "min ping": 0.5,
+    "max ping": 2.5,
+    "supervision": false,
+    "supervision frequency": 5,
+    "compaction step size": 1000,
+    "supervision grace period": 120
+  }
+}
+```
+
+This is the actual output of a healthy agency. The configuration of the agency is found in the `configuration` section as you might have guessed. It is populated by static information on the startup parameters like `agency size`, the once generated `unique id` etc. It holds information on the invariants of the RAFT algorithm and data compaction.
+
+The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environment, while often increasing term numbers indicate, that the network environment and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.

@@ -1,7 +1,9 @@
 Auth and OAuth2
 ===============
 
-The `util-simple-auth` and `util-oauth2` Foxx services have been replaced with the [Foxx auth](../Auth.md) and [Foxx OAuth2](../OAuth2.md) modules. It is no longer necessary to install these services as dependencies in order to use the functionality.
+The `util-simple-auth` and `util-oauth2` Foxx services have been replaced with the [Foxx auth](../Reference/Modules/Auth.md)
+and [Foxx OAuth2](../Reference/Modules/OAuth2.md) modules.
+It is no longer necessary to install these services as dependencies in order to use the functionality.
 
 Old:
 

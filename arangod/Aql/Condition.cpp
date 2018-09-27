@@ -43,6 +43,53 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
+    
+namespace {
+
+// sort comparisons so that > and >= come before < and <=, and that
+// != and > come before ==
+// we use this to some advantage when we check the conditions for a sparse
+// index later.
+// if a sparse index is asked whether it can supported a condition such as
+// `attr < value1`, this range would include `null`, which the sparse index 
+// cannot provide.
+// however, if we first check other conditions we may find a condition on 
+// the same attribute, e.g. `attr > value2`.
+// this other condition may exclude `null` so we then use the full range
+// `value2 < attr < value1` and do not have to discard sub-conditions anymore
+// we can also benefit from sorting != before == for hash indexes, if there
+// is a condition that excludes null (e.g. != null). if this is tracked first,
+// we are sure the index attribute value cannot be null and we can still use
+// the sparse index
+std::function<int(AstNode const*)> const operationWeight = [](AstNode const* node) {
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+      // != before ==, e.g. attr != null && attr == FUNC(abc) for hash indexes 
+      return 1;
+    case NODE_TYPE_OPERATOR_BINARY_GT: 
+      // > before others <, e.g. attr > null && attr < abc
+      return 2;
+    case NODE_TYPE_OPERATOR_BINARY_GE: 
+      // >= before others <, e.g. attr >= null && attr < abc
+      return 3;
+    case NODE_TYPE_OPERATOR_BINARY_EQ: 
+      // != before ==, e.g. attr != null && attr == FUNC(abc) for hash indexes 
+      return 4;
+    case NODE_TYPE_OPERATOR_BINARY_IN: 
+      return 5;
+    case NODE_TYPE_OPERATOR_BINARY_NIN: 
+      return 6;
+    case NODE_TYPE_OPERATOR_BINARY_LT: 
+      // < after others, e.g. attr > null && attr < abc
+      return 7;
+    case NODE_TYPE_OPERATOR_BINARY_LE: 
+      // <= after others, e.g. attr >= null && attr <= abc
+      return 8;
+    default: 
+      // non-comparison types can come after comparisons
+      return 9;
+  }
+};
 
 struct PermutationState {
   PermutationState(arangodb::aql::AstNode const* value, size_t n)
@@ -63,6 +110,8 @@ struct PermutationState {
   size_t current;
   size_t const n;
 };
+
+} //namespace
 
 //        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
 // -------|------------------|--------|--------|--------|--------|--------
@@ -317,7 +366,7 @@ static inline void clearAttributeAccess(
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
 
-    namespace {
+    /*namespace {
     size_t countNodes(AstNode* node) {
       if (node == nullptr) {
         return 0;
@@ -331,7 +380,7 @@ Condition::Condition(Ast* ast)
 
       return sum;
     }
-    }
+    }*/
 
 /// @brief destroy the condition
 Condition::~Condition() {
@@ -410,7 +459,7 @@ std::pair<bool, bool> Condition::findIndexes(
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
-  std::string collectionName = node->collection()->getName();
+  std::string collectionName = node->collection()->name();
 
   transaction::Methods* trx = _ast->query()->trx();
 
@@ -422,7 +471,7 @@ std::pair<bool, bool> Condition::findIndexes(
     // for statistics queries that do not need a fully accurate collection count
     itemsInIndex = 1024;
   } else {
-    // actually count number of items in index
+    // estimate for the number of documents in the index. may be outdated...
     itemsInIndex = node->collection()->count(trx);
   }
   if (_root == nullptr) {
@@ -532,11 +581,12 @@ void Condition::normalize() {
 #endif
 }
 
-void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
+void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
                                           Variable const* variable,
                                           AstNode* andNode,
                                           AstNode* otherAndNode,
                                           std::unordered_set<size_t>& toRemove,
+                                          bool isSparse,
                                           bool isFromTraverser) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       result;
@@ -546,13 +596,33 @@ void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
   for (size_t i = 0; i < n; ++i) {
     auto operand = andNode->getMemberUnchecked(i);
     bool allowOps = operand->isComparisonOperator();
+
+    if (isSparse && allowOps && !isFromTraverser && 
+        (operand->type == NODE_TYPE_OPERATOR_BINARY_NE || operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+      // look   for != null   and   > null
+      // these can be removed if we are working with a sparse index!
+      auto lhs = operand->getMember(0);
+      auto rhs = operand->getMember(1);
+        
+      clearAttributeAccess(result);
+
+      if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          result.first == variable) {
+        if (rhs->isNullValue()) {
+          toRemove.emplace(i);
+          // removed, no need to go on below...
+          continue;
+        }
+      }
+    }
+
     if (isFromTraverser) {
       allowOps = allowOps || operand->isArrayComparisonOperator();
     } else {
       allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
                  operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
     }
-
+  
     if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
@@ -593,7 +663,8 @@ void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
 /// @brief removes condition parts from another
 AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
                                          Variable const* variable,
-                                         AstNode* other) {
+                                         AstNode const* other,
+                                         bool isSparse) {
   if (_root == nullptr || other == nullptr) {
     return _root;
   }
@@ -615,8 +686,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            false);
+  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, isSparse, false);
 
   if (toRemove.empty()) {
     return _root;
@@ -666,8 +736,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            true);
+  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, false, true);
 
   if (toRemove.empty()) {
     return _root;
@@ -810,34 +879,30 @@ void Condition::optimize(ExecutionPlan* plan) {
 
     // sort AND parts of each sub-condition so > and >= come before < and <=
     // we use this to some advantage when we check the conditions for a sparse
-    // index
-    // later.
+    // index later.
     // if a sparse index is asked whether it can supported a condition such as
-    // `attr < value1`,
-    // this range would include `null`, which the sparse index cannot provide.
-    // however, if we
-    // first check other conditions we may find a condition on the same
-    // attribute, e.g. `attr > value2`.
+    // `attr < value1`, this range would include `null`, which the sparse index 
+    // cannot provide.
+    // however, if we first check other conditions we may find a condition on 
+    // the same attribute, e.g. `attr > value2`.
     // this other condition may exclude `null` so we then use the full range
     // `value2 < attr < value1`
     // and do not have to discard sub-conditions anymore
     andNode->sortMembers([](AstNode const* lhs, AstNode const* rhs) {
-      if ((lhs->type != NODE_TYPE_OPERATOR_BINARY_LT &&
-           lhs->type != NODE_TYPE_OPERATOR_BINARY_LE) &&
-          (rhs->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-           rhs->type == NODE_TYPE_OPERATOR_BINARY_LE)) {
-        // sort < and <= after other comparison operators
-        return true;
+      // try to re-order comparison operators 
+      int l = ::operationWeight(lhs);
+      int r = ::operationWeight(rhs);
+      if (l != r) {
+        return l < r;
       }
-      if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-           lhs->type == NODE_TYPE_OPERATOR_BINARY_LE) &&
-          (rhs->type != NODE_TYPE_OPERATOR_BINARY_LT &&
-           rhs->type != NODE_TYPE_OPERATOR_BINARY_LE)) {
-        // sort < and <= after other comparison operators
-        return false;
+      
+      // all equal, now check if original types are different
+      if (lhs->type != rhs->type) {
+        return lhs->type < rhs->type;
       }
-      // compare pointers as last resort
-      return (lhs->type < rhs->type);
+
+      // still all equal
+      return false;
     });
 
     if (inComparisons > 0) {
@@ -1148,7 +1213,7 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
       if (setter != nullptr &&
           setter->getType() == ExecutionNode::CALCULATION) {
-        auto cn = static_cast<CalculationNode const*>(setter);
+        auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
         // use expression node instead
         node = cn->expression()->node();
       }
@@ -1156,6 +1221,8 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
     // return string representation
     return node->toString();
   };
+            
+  std::string temp;
 
   try {
     for (size_t i = 0; i < n; ++i) {
@@ -1171,18 +1238,22 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           clearAttributeAccess(result);
 
           if (lhs->isAttributeAccessForVariable(result, isFromTraverser)) {
-            if (rhs->isConstant()) {
-              ConditionPart indexCondition(result.first, result.second, operand,
-                                           ATTRIBUTE_LEFT, nullptr);
+            temp.clear();
+            TRI_AttributeNamesToString(result.second, temp);
+            if (temp == me.attributeName) {
+              if (rhs->isConstant()) {
+                ConditionPart indexCondition(result.first, result.second, operand,
+                                            ATTRIBUTE_LEFT, nullptr);
 
-              if (me.isCoveredBy(indexCondition, false)) {
+                if (me.isCoveredBy(indexCondition, false)) {
+                  return true;
+                }
+              }
+              // non-constant condition
+              else if (me.operatorType == operand->type &&
+                       normalize(me.valueNode) == normalize(rhs)) {
                 return true;
               }
-            }
-            // non-constant condition
-            else if (me.operatorType == operand->type &&
-                     normalize(me.valueNode) == normalize(rhs)) {
-              return true;
             }
           }
         }
@@ -1192,18 +1263,22 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           clearAttributeAccess(result);
 
           if (rhs->isAttributeAccessForVariable(result, isFromTraverser)) {
-            if (lhs->isConstant()) {
-              ConditionPart indexCondition(result.first, result.second, operand,
-                                           ATTRIBUTE_RIGHT, nullptr);
+            temp.clear();
+            TRI_AttributeNamesToString(result.second, temp);
+            if (temp == me.attributeName) {
+              if (lhs->isConstant()) {
+                ConditionPart indexCondition(result.first, result.second, operand,
+                                            ATTRIBUTE_RIGHT, nullptr);
 
-              if (me.isCoveredBy(indexCondition, true)) {
+                if (me.isCoveredBy(indexCondition, true)) {
+                  return true;
+                }
+              }
+              // non-constant condition
+              else if (me.operatorType == operand->type &&
+                      normalize(me.valueNode) == normalize(lhs)) {
                 return true;
               }
-            }
-            // non-constant condition
-            else if (me.operatorType == operand->type &&
-                     normalize(me.valueNode) == normalize(lhs)) {
-              return true;
             }
           }
         }
@@ -1325,12 +1400,10 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   // If there are 2 attribute accesses it does a
   // string compare of the access path and makes sure
   // the one that compares less ends up on the LHS
-
   if (node->type != NODE_TYPE_OPERATOR_BINARY_LE &&
       node->type != NODE_TYPE_OPERATOR_BINARY_LT &&
       node->type != NODE_TYPE_OPERATOR_BINARY_GE &&
-      node->type != NODE_TYPE_OPERATOR_BINARY_GT )
-  {
+      node->type != NODE_TYPE_OPERATOR_BINARY_GT) {
     // no binary compare in node
     return node;
   }
@@ -1338,13 +1411,13 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   auto first = node->getMemberUnchecked(0);
   auto second = node->getMemberUnchecked(1);
 
-  if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS){
-    if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS){
+  if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
       return switchSidesInCompare(ast, node);
     }
 
-    //both are of type attribute access
-    if(first->toString() > second->toString()){
+    // both are of type attribute access
+    if (first->toString() > second->toString()){
       return switchSidesInCompare(ast, node);
     }
   }
@@ -1415,9 +1488,7 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
   }
 
   // normalize any comparisons
-  auto newCompare = normalizeCompare(_ast, node);
-
-  return newCompare;
+  return normalizeCompare(_ast, node);
 }
 
 /// @brief converts from negation normal to disjunctive normal form
@@ -1464,7 +1535,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       //
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
-      std::vector<PermutationState> clauses;
+      std::vector<::PermutationState> clauses;
       clauses.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {

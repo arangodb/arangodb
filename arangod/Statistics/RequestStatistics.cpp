@@ -34,8 +34,6 @@ using namespace arangodb::basics;
 // --SECTION--                                                    static members
 // -----------------------------------------------------------------------------
 
-arangodb::Mutex RequestStatistics::_dataLock;
-
 std::unique_ptr<RequestStatistics[]> RequestStatistics::_statisticsBuffer;
 
 boost::lockfree::queue<RequestStatistics*,
@@ -61,8 +59,6 @@ void RequestStatistics::initialize() {
     TRI_ASSERT(ok);
   }
 }
-
-void RequestStatistics::shutdown() {}
 
 size_t RequestStatistics::processAll() {
   RequestStatistics* statistics = nullptr;
@@ -109,7 +105,6 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   TRI_ASSERT(statistics != nullptr);
 
   {
-    MUTEX_LOCKER(mutexLocker, _dataLock);
 
     TRI_TotalRequestsStatistics.incCounter();
 
@@ -117,7 +112,10 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       TRI_AsyncRequestsStatistics.incCounter();
     }
 
-    TRI_MethodRequestsStatistics[(int)statistics->_requestType].incCounter();
+    {
+      MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
+      TRI_MethodRequestsStatistics[(size_t)statistics->_requestType].incCounter();
+    }
 
     // check that the request was completely received and transmitted
     if (statistics->_readStart != 0.0 &&
@@ -130,26 +128,26 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
 
-      TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
+      TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
 
       double requestTime = statistics->_requestEnd - statistics->_requestStart;
-      TRI_RequestTimeDistributionStatistics->addFigure(requestTime);
+      TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
 
       double queueTime = 0.0;
 
       if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
         queueTime = statistics->_queueEnd - statistics->_queueStart;
-        TRI_QueueTimeDistributionStatistics->addFigure(queueTime);
+        TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
       }
 
       double ioTime = totalTime - requestTime - queueTime;
 
       if (ioTime >= 0.0) {
-        TRI_IoTimeDistributionStatistics->addFigure(ioTime);
+        TRI_IoTimeDistributionStatistics.addFigure(ioTime);
       }
 
-      TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
-      TRI_BytesReceivedDistributionStatistics->addFigure(
+      TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
+      TRI_BytesReceivedDistributionStatistics.addFigure(
           statistics->_receivedBytes);
     }
   }
@@ -203,14 +201,12 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
     return;
   }
 
-  MUTEX_LOCKER(mutexLocker, _dataLock);
-
-  totalTime = *TRI_TotalTimeDistributionStatistics;
-  requestTime = *TRI_RequestTimeDistributionStatistics;
-  queueTime = *TRI_QueueTimeDistributionStatistics;
-  ioTime = *TRI_IoTimeDistributionStatistics;
-  bytesSent = *TRI_BytesSentDistributionStatistics;
-  bytesReceived = *TRI_BytesReceivedDistributionStatistics;
+  totalTime = TRI_TotalTimeDistributionStatistics;
+  requestTime = TRI_RequestTimeDistributionStatistics;
+  queueTime = TRI_QueueTimeDistributionStatistics;
+  ioTime = TRI_IoTimeDistributionStatistics;
+  bytesSent = TRI_BytesSentDistributionStatistics;
+  bytesReceived = TRI_BytesReceivedDistributionStatistics;
 }
 
 std::string RequestStatistics::timingsCsv() {

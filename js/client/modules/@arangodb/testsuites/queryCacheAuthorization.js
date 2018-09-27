@@ -42,6 +42,10 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'queryCacheAuthorization': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: queryCacheAuthorization
 // //////////////////////////////////////////////////////////////////////////////
@@ -149,7 +153,8 @@ function queryCacheAuthorization (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['queryCacheAuthorization'] = queryCacheAuthorization;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

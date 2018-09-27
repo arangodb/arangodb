@@ -64,6 +64,13 @@ struct AccessMode {
     return (isWrite(type) || isExclusive(type));
   }
 
+  /// @brief checks if the type of the two modes is different
+  /// this will intentially treat EXCLUSIVE the same as WRITE
+  static bool isReadWriteChange(Type lhs, Type rhs) {
+    return ((isWriteOrExclusive(lhs) && !isWriteOrExclusive(rhs)) ||
+            (!isWriteOrExclusive(lhs) && isWriteOrExclusive(rhs)));
+  }
+
   /// @brief get the transaction type from a string
   static Type fromString(char const* value) {
     if (strcmp(value, "read") == 0) {
@@ -98,4 +105,12 @@ struct AccessMode {
 
 }
 
+namespace std {
+template <>
+struct hash<arangodb::AccessMode::Type> {
+  size_t operator()(arangodb::AccessMode::Type const& value) const noexcept {
+    return static_cast<size_t>(value);
+  }
+};
+}
 #endif

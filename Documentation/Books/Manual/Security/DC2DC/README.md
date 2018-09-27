@@ -1,11 +1,16 @@
 <!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter Security
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 This section includes information related to the _datacenter to datacenter replication_
 security.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
+refer to the [Datacenter to datacenter replication](../../Architecture/DeploymentModes/DC2DC/README.md)
 chapter.
 
 ## Firewall settings
@@ -17,7 +22,7 @@ Below you'll find an overview of these connections and the TCP ports that should
    within the same datacenter:
 
    - ArangoDB agents and coordinators (default ports: `8531` and `8529`)
-   - Kafka brokers (default port `9092`)
+   - Kafka brokers (only when using `kafka` type message queue) (default port `9092`)
    - Sync workers (default port `8729`)
 
    Additionally the sync masters must be allowed to connect to the sync masters in the other datacenter.
@@ -27,14 +32,15 @@ Below you'll find an overview of these connections and the TCP ports that should
 1. The sync workers must be allowed to connect to the following components within the same datacenter:
 
    - ArangoDB coordinators (default port `8529`)
-   - Kafka brokers (default port `9092`)
+   - Kafka brokers (only when using `kafka` type message queue) (default port `9092`)
    - Sync masters (default port `8629`)
 
    By default the sync workers will operate on port `8729`.
 
-   Additionally the sync workers must be allowed to connect to the Kafka brokers in the other datacenter.
+   Additionally (when using `kafka` type message queue) the sync workers must be allowed to
+   connect to the Kafka brokers in the other datacenter.
 
-1. Kafka
+1. Kafka (when using `kafka` type message queue)
 
    The kafka brokers must be allowed to connect to the following components within the same datacenter:
 
@@ -45,7 +51,7 @@ Below you'll find an overview of these connections and the TCP ports that should
    metrics on port `7071`. To gain more insight into kafka open this port for your prometheus
    installation.
 
-1. Zookeeper
+1. Zookeeper (when using `kafka` type message queue)
 
    The zookeeper agents must be allowed to connect to the following components within the same datacenter:
 
@@ -82,8 +88,8 @@ however it is more convenient (and common) to use your own CA.
 ### Formats
 
 All certificates are x509 certificates with a public key, a private key and
-an optional chain of certificates used to sign the certificate (this chain is
-typically provided by the Certificate Authority (CA)).
+an optional chain of certificates used to sign the certificate. This chain is
+typically provided by the Certificate Authority (CA).
 <br/>Depending on their use, certificates stored in a different format.
 
 The following formats are used:
@@ -165,8 +171,6 @@ arangosync create tls ca \
 ```
 
 Make sure to protect and store both generated files (`my-tls-ca.crt` & `my-tls-ca.key`) in a safe place.
-<br/>Note: CA certificates have a much longer lifetime than normal certificates.
-Therefore even more care is needed to store them safely.
 
 To create a CA certificate used to **sign client authentication certificates**, run:
 
@@ -187,7 +191,7 @@ target & lifetime.
 <br/> A certificate created for client authentication (function) cannot be used as a TLS server certificate
 (same is true for the reverse).
 <br/> A certificate for host `myserver` (target) cannot be used for host `anotherserver`.
-<br/> A certficiate that is valid until October 2017 (limetime) cannot be used after October 2017.
+<br/> A certificate that is valid until October 2017 (lifetime) cannot be used after October 2017.
 
 If anything changes in function, target or lifetime you need a new certificate.
 

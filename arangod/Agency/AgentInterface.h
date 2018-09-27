@@ -45,8 +45,11 @@ class AgentInterface {
   /// @brief Wait for slaves to confirm appended entries
   virtual raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) = 0;
 
+  /// @brief Wait for slaves to confirm appended entries
+  virtual bool isCommitted(index_t last_entry) = 0;
+
   // Suffice warnings
-  virtual ~AgentInterface() {};
+  virtual ~AgentInterface() {}
 };
 }
 }

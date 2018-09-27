@@ -22,7 +22,6 @@ endif ()
 
 add_executable(${BIN_ARANGOBENCH}
   ${ProductVersionFiles_arangobench}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Benchmark/BenchFeature.cpp
   Benchmark/arangobench.cpp
   Shell/ClientFeature.cpp
@@ -71,12 +70,12 @@ endif ()
 
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
-  V8Client/ArangoClientHelper.cpp
+  Utils/ClientManager.cpp
+  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 
@@ -122,7 +121,6 @@ endif ()
 
 add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Export/ExportFeature.cpp
   Export/arangoexport.cpp
   Shell/ClientFeature.cpp
@@ -172,7 +170,7 @@ endif ()
 
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
@@ -229,12 +227,12 @@ endif ()
 
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
-  V8Client/ArangoClientHelper.cpp
+  Utils/ClientManager.cpp
+  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 
@@ -280,7 +278,7 @@ endif ()
 
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ClientFeature.cpp
@@ -337,7 +335,6 @@ endif ()
 
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
-  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   VPack/VPackFeature.cpp
@@ -355,6 +352,8 @@ target_link_libraries(${BIN_ARANGOVPACK}
 install(
   TARGETS ${BIN_ARANGOVPACK}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangovpack)
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
@@ -375,3 +374,13 @@ install_command_alias(${BIN_ARANGOSH}
   foxx-manager)
 
 install_config(foxx-manager)
+
+################################################################################
+## arangoinspect
+################################################################################
+
+install_command_alias(${BIN_ARANGOSH}
+  ${CMAKE_INSTALL_BINDIR}
+  arangoinspect)
+
+install_config(arangoinspect)

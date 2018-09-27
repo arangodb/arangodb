@@ -87,6 +87,28 @@ Generates a string of random (printable) ASCII characters.
 
 Returns the generated string.
 
+### genRandomBytes
+
+`crypto.genRandomBytes(length): Buffer`
+
+Generates a buffer of random bytes.
+
+**Arguments**
+
+* **length**: `number`
+
+  The length of the buffer to generate.
+
+Returns the generated buffer.
+
+### uuidv4
+
+`crypto.uuidv4(): string`
+
+Generates a random UUID v4 string.
+
+Returns the generated UUID string.
+
 JSON Web Tokens (JWT)
 ---------------------
 

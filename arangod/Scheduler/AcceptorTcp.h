@@ -27,19 +27,17 @@
 
 namespace arangodb {
 class AcceptorTcp final : public Acceptor {
-  public:
-    AcceptorTcp(boost::asio::io_service& ioService, Endpoint* endpoint)
-    : Acceptor(ioService, endpoint),
-      _acceptor(ioService) {
-    }
+ public:
+  AcceptorTcp(rest::Scheduler* scheduler, Endpoint* endpoint)
+      : Acceptor(scheduler, endpoint), _acceptor(scheduler->newAcceptor()) {}
 
-    void open() override;
-    void close() override { _acceptor.close(); };
-    void asyncAccept(Acceptor::AcceptHandler const& handler) override;
-    void createPeer() override;
+ public:
+  void open() override;
+  void close() override { _acceptor->close(); };
+  void asyncAccept(Acceptor::AcceptHandler const& handler) override;
 
-  private:
-    boost::asio::ip::tcp::acceptor _acceptor;
+ private:
+  std::unique_ptr<asio_ns::ip::tcp::acceptor> _acceptor;
 };
 }
 

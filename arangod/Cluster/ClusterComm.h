@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,12 +44,6 @@
 
 namespace arangodb {
 class ClusterCommThread;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of a client transaction ID
-////////////////////////////////////////////////////////////////////////////////
-
-typedef std::string ClientTransactionID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
@@ -169,13 +163,14 @@ enum ClusterCommOpStatus {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommResult {
-  ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   OperationID operationID;
   ShardID shardID;       // the shard to which we want to send, can be empty
   ServerID serverID;     // the actual server ID of the recipient, can be empty
   std::string endpoint;  // the actual endpoint of the recipient, always set
   std::string errorMessage;
+  // error code as returned by the other side in "errorNum" attribute
+  int errorCode;
   ClusterCommOpStatus status;
   bool dropped;  // this is set to true, if the operation
                  // is dropped whilst in state CL_COMM_SENDING
@@ -205,6 +200,7 @@ struct ClusterCommResult {
   ClusterCommResult()
       : coordTransactionID(0),
         operationID(0),
+        errorCode(TRI_ERROR_NO_ERROR),
         status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
@@ -228,6 +224,7 @@ struct ClusterCommResult {
 
   void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
     errorMessage = TRI_errno_string(errorCode);
+    this->errorCode = errorCode;
     switch (errorCode) {
       case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
@@ -254,6 +251,7 @@ struct ClusterCommResult {
 
   void fromResponse(std::unique_ptr<GeneralResponse> response) {
     sendWasComplete = true;
+    errorCode = TRI_ERROR_NO_ERROR;
     // mop: simulate the old behaviour where the original request
     // was sent to the recipient and was simply accepted. Then the backend would
     // do its work and send a request to the target containing the result of
@@ -264,11 +262,15 @@ struct ClusterCommResult {
     // request => response we simulate the old behaviour now and fake a request
     // containing the body of our response
     // :snake: OPST_CIRCUS
-    answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
+    auto httpResponse = dynamic_cast<HttpResponse*>(response.get());
+    if (httpResponse == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+    }
+    answer_code = httpResponse->responseCode();
     HttpRequest* request = HttpRequest::createHttpRequest(
         ContentType::JSON,
-        dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
-        dynamic_cast<HttpResponse*>(response.get())->body().length(), std::unordered_map<std::string,std::string>());
+        httpResponse->body().c_str(),
+        httpResponse->body().length(), std::unordered_map<std::string, std::string>());
 
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
@@ -284,6 +286,15 @@ struct ClusterCommResult {
     // result was available in different status code situations :S
     if (single) {
       status = result->wasHttpError() ? CL_COMM_ERROR : CL_COMM_SENT;
+      if (status == CL_COMM_ERROR) {
+        try {
+          auto body = result->getBodyVelocyPack(VPackOptions());
+          if (body->slice().isObject() && body->slice().hasKey("errorMessage")) {
+            errorMessage = body->slice().get("errorMessage").copyString();
+            errorCode = body->slice().get("errorNum").getNumber<int>();
+          }
+        } catch (...) {}
+      }
     } else {
       // mop: actually it will never be an ERROR here...this is and was a dirty
       // hack :S
@@ -344,28 +355,67 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
+  static std::unordered_map<std::string, std::string> const noHeaders;
+  static std::string const noBody;
+  static std::shared_ptr<std::string const> const sharedNoBody;
+
   std::string destination;
   rest::RequestType requestType;
   std::string path;
+  ClusterCommResult result;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
-  ClusterCommResult result;
   bool done;
 
   ClusterCommRequest() : done(false) {}
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
-                     std::shared_ptr<std::string const> body)
+                     std::shared_ptr<std::string const> const& body)
       : destination(dest),
         requestType(type),
         path(path),
         body(body),
         done(false) {}
 
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
+                     std::string const& path,
+                     std::shared_ptr<std::string const> const& body,
+                     std::unique_ptr<std::unordered_map<std::string, std::string>> headers)
+      : destination(dest),
+        requestType(type),
+        path(path),
+        body(body),
+        headerFields(std::move(headers)),
+        done(false) {}
+
+  /// @brief "safe" accessor for header
+  std::unordered_map<std::string, std::string> const& getHeaders() const {
+    if (headerFields == nullptr) {
+      return noHeaders;
+    }
+    return *headerFields;
+  }
+  
   void setHeaders(
-      std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
+      std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
+  }
+ 
+  /// @brief "safe" accessor for body 
+  std::string const& getBody() const {
+    if (body == nullptr) {
+      return noBody;
+    }
+    return *body;
+  }
+  
+  /// @brief "safe" accessor for body 
+  std::shared_ptr<std::string const> getBodyShared() const {
+    if (body == nullptr) {
+      return sharedNoBody;
+    }
+    return body;
   }
 };
 
@@ -442,22 +492,19 @@ class ClusterComm {
   /// @brief submit an HTTP request to a shard asynchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual OperationID asyncRequest(
-      ClientTransactionID const& clientTransactionID,
+  TEST_VIRTUAL OperationID asyncRequest(
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::unordered_map<std::string, std::string>>&
-          headerFields,
+      std::unordered_map<std::string, std::string> const& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-      bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
+      bool singleRequest = false, ClusterCommTimeout connectTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
   //////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<ClusterCommResult> syncRequest(
-      ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::string const& body,
@@ -474,8 +521,7 @@ class ClusterComm {
   /// @brief wait for one answer matching the criteria
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
-                                       CoordTransactionID const coordTransactionID,
+  TEST_VIRTUAL ClusterCommResult const wait(CoordTransactionID const coordTransactionID,
                                        OperationID const operationID,
                                        ShardID const& shardID,
                                        ClusterCommTimeout timeout = 0.0);
@@ -484,16 +530,8 @@ class ClusterComm {
   /// @brief ignore and drop current and future answers matching
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void drop(ClientTransactionID const& clientTransactionID,
-                    CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief send an answer HTTP request to a coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  void asyncAnswer(std::string& coordinatorHeader,
-                   GeneralResponse* responseToSend);
+  TEST_VIRTUAL void drop(CoordTransactionID const coordTransactionID,
+                         OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
@@ -523,6 +561,24 @@ class ClusterComm {
                          arangodb::LogTopic const& logTopic,
                          bool retryOnCollNotFound);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief this method performs the given requests described by the vector
+  /// of ClusterCommRequest structs in the following way: 
+  /// Each request is done with asyncRequest.
+  /// After each request is successfully send out we drop all requests.
+  /// Hence it is guaranteed that all requests are send, but
+  /// we will not wait for answers of those requests.
+  /// Also all reporting for the responses is lost, because we do not care.
+  /// NOTE: The requests can be in any communication state after this function
+  /// and you should not read them. If you care for response use performRequests
+  /// instead.
+  ////////////////////////////////////////////////////////////////////////////////
+  void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
+  
+  typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
+  void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
+                            bool retryOnCollNotFound, AsyncCallback const&);
+ 
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
   }
@@ -539,13 +595,6 @@ class ClusterComm {
 
   /// @brief Constructor for test cases.
   explicit ClusterComm(bool);
-
-  // code below this point used to be "private".  now "protected" to
-  //  enable unit test wrapper class
-
-  size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
-                              ClusterCommTimeout timeout, size_t& nrDone,
-                              arangodb::LogTopic const& logTopic);
 
   communicator::Destination createCommunicatorDestination(
       std::string const& destination, std::string const& path);
@@ -593,8 +642,8 @@ class ClusterComm {
     std::shared_ptr<ClusterCommResult> result;
   };
 
-  typedef std::unordered_map<communicator::Ticket, AsyncResponse>::iterator ResponseIterator;
   std::unordered_map<communicator::Ticket, AsyncResponse> responses;
+  typedef decltype(ClusterComm::responses)::iterator ResponseIterator;
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;
@@ -623,15 +672,8 @@ class ClusterComm {
   /// @brief internal function to match an operation:
   //////////////////////////////////////////////////////////////////////////////
 
-  bool match(ClientTransactionID const& clientTransactionID,
-             CoordTransactionID const coordTransactionID,
+  bool match(CoordTransactionID const coordTransactionID,
              ShardID const& shardID, ClusterCommResult* res);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief move an operation from the send to the receive queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool moveFromSendToReceived(OperationID operationID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup all queues

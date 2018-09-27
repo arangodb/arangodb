@@ -11,11 +11,12 @@ function help() {
   echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
   echo "     --log-level-agency   Log level (agency)  (string           default: )"
   echo "     --log-level-cluster  Log level (cluster) (string           default: )"
+  echo "  -l/--log-level          Log level           (string           default: )"
   echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
-  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: false)"
+  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: true)"
   echo "  -q/--source-dir         ArangoDB source dir (default: .)"
   echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
   echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
@@ -24,7 +25,7 @@ function help() {
   echo "  $0"
   echo "  $0 -a 1 -c 1 -d 3 -t ssl"
   echo "  $0 -a 3 -c 1 -d 2 -t tcp -i C"
-  
+
 }
 
 # defaults
@@ -40,7 +41,7 @@ if [ -z "$XTERM" ] ; then
     XTERM="x-terminal-emulator"
 fi
 if [ -z "$XTERMOPTIONS" ] ; then
-    XTERMOPTIONS="--geometry=80x43"
+    XTERMOPTIONS=" --geometry=80x43 -e "
 fi
 BUILD="./build"
 JWT_SECRET=""
@@ -68,6 +69,10 @@ while [[ -n "$1" ]]; do
       ;;
     -t|--transport)
       TRANSPORT=${2}
+      shift
+      ;;
+    -l|--log-level)
+      LOG_LEVEL=${2}
       shift
       ;;
     --log-level-agency)
@@ -104,7 +109,7 @@ while [[ -n "$1" ]]; do
       ;;
     -h|--help)
       help
-      exit 1  
+      exit 1
       ;;
     -B|--build)
       BUILD=${2}
@@ -120,7 +125,7 @@ while [[ -n "$1" ]]; do
       exit 1
       ;;
   esac
-  
+
   if ! shift; then
     echo 'Missing parameter argument.' >&2
     return 1

@@ -1,16 +1,16 @@
-shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'x-arango-async: store'</span> --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/version</span>
 
-HTTP/1.1 202 Accepted
+HTTP/1.1 undefined
 content-type: text/plain; charset=utf-8
+x-arango-async-id: 131185
 x-content-type-options: nosniff
-x-arango-async-id: 151367546852177
 
-shell> curl --dump - http://localhost:8529/_api/job/done
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/<span class="hljs-keyword">done</span></span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"151367546852177"</span> 
+  <span class="hljs-string">"131185"</span> 
 ]

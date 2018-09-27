@@ -16,6 +16,16 @@ FOR vertexVariableName, edgeVariableName, pathVariableName IN traversalExpressio
 ```
 
 For this special case see [the graph traversals chapter](../Graphs/Traversals.md).
+
+For views, there is a special (optional) `SEARCH` keyword:
+
+```js
+FOR variableName IN viewName SEARCH searchExpression
+```
+
+Details can be found in [the views chapter](../Views/README.md).
+
+
 For all other cases read on:
 
 Each array element returned by *expression* is visited exactly once. It is

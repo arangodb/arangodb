@@ -78,7 +78,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
     auto parts = irs::file_utils::path_parts(path);
 
     return file_stat(
-      parts.basename.null() ? std::wstring(parts.dirname).c_str() : path,
+      parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path,
       &info
     );
   #else
@@ -146,14 +146,16 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, path.c_str());
     return true; // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, path.c_str());
     return true; // locked
   }
 
@@ -339,7 +341,7 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, file);
     return true; // locked
   }
 
@@ -351,7 +353,7 @@ bool verify_lock_file(const file_path_t file) {
   // check pid
   const char* pid = buf+len+1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, file);
     return true; // locked
   }
 
@@ -517,7 +519,7 @@ bool exists(bool& result, const file_path_t file) NOEXCEPT {
 
   result = 0 == path_stats(info, file);
 
-  if (!result) {
+  if (!result && ENOENT != errno) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
 
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
@@ -532,16 +534,16 @@ bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
 
   result = 0 == path_stats(info, name);
 
-  if (!result) {
-    auto path = boost::locale::conv::utf_to_utf<char>(name);
-
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
-  } else {
+  if (result) {
     #ifdef _WIN32
       result = (info.st_mode & _S_IFDIR) > 0;
     #else
       result = (info.st_mode & S_IFDIR) > 0;
     #endif
+  } else if (ENOENT != errno) {
+    auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
   }
 
   return true;
@@ -553,16 +555,16 @@ bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
 
   result = 0 == path_stats(info, name);
 
-  if (!result) {
-    auto path = boost::locale::conv::utf_to_utf<char>(name);
-
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
-  } else {
+  if (result) {
     #ifdef _WIN32
       result = (info.st_mode & _S_IFREG) > 0;
     #else
       result = (info.st_mode & S_IFREG) > 0;
     #endif
+  } else if (ENOENT != errno) {
+    auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
   }
 
   return true;
@@ -600,7 +602,7 @@ bool mtime(time_t& result, int fd) NOEXCEPT {
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   #ifdef _WIN32
     #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    handle_t handle(::_wfopen(path ? path : _T("NUL:"), mode));
+    handle_t handle(::_wfopen(path ? path : IR_WSTR("NUL:"), mode));
     #pragma warning(default: 4996)
   #else
     handle_t handle(::fopen(path ? path : "/dev/null", mode));
@@ -738,6 +740,11 @@ bool mkdir(const file_path_t path) NOEXCEPT {
 
     // workaround for path MAX_PATH
     auto dirname = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter
+    );
 
     return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
   #else
@@ -941,6 +948,11 @@ bool remove(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
 
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
+
     bool result;
     auto res = exists_directory(result, path) && result
              ? ::RemoveDirectoryW(fullpath.c_str())
@@ -968,6 +980,11 @@ bool set_cwd(const file_path_t path) NOEXCEPT {
 
     // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
 
     return 0 != SetCurrentDirectory(fullpath.c_str());
   #else

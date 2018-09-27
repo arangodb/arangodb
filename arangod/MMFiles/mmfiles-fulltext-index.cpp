@@ -29,6 +29,7 @@
 #include "MMFiles/mmfiles-fulltext-query.h"
 
 #include <algorithm>
+#include <iterator>
 #include <set>
 
 using namespace arangodb;
@@ -74,7 +75,7 @@ typedef void followers_t;
 /// then the node does not have any handles attached. If it is non-NULL, it
 /// contains a byte stream consisting of the following values:
 /// - uint32_t numAllocated: number of handles allocated for the node
-/// - unit32_t numEntries: number of handles currently in use
+/// - uint32_t numEntries: number of handles currently in use
 /// - TRI_fulltext_handle_t* handles: all the handle values subsequently
 /// Note that the highest bit of the numAllocated value contains a flag whether
 /// the handles list is sorted or not. It is therefore not safe to access the
@@ -883,7 +884,7 @@ static bool RemoveDoc(index__t* idx, node_t* node,
     }
     idx->_memoryAllocated -= oldAlloc;
   }
-  
+
   return true;
 }
 
@@ -952,7 +953,7 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
 
   // free root node (this will recursively free all other nodes)
   FreeNode(idx, idx->_root);
-  
+
   // free handles
   idx->_memoryAllocated = sizeof(index__t);
 #if TRI_FULLTEXT_DEBUG
@@ -961,7 +962,7 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
   idx->_memoryFollowers = 0;
   idx->_nodesAllocated = 0;
 #endif
-  
+
   // create the root node
   idx->_root = CreateNode(idx);
   if (idx->_root == nullptr) {
@@ -993,18 +994,18 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
   // start for the 1st word inserted
   paths[0] = idx->_root;
   lastLength = 0;
-  
+
   std::string const* prev = nullptr;
   for (std::string const& tmp : wordlist) {
     node_t* node;
     char const* p;
     size_t start;
     size_t i;
-    
+
     if (prev != nullptr) {
       // check if current word has a shared/common prefix with the previous word
       // inserted
-      // in case this is true, we can use an optimisation and do not need to
+      // in case this is true, we can use an optimization and do not need to
       // traverse the
       // tree from the root again. instead, we just start at the node at the end
       // of the
@@ -1013,7 +1014,7 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
       if (start > MAX_WORD_BYTES) {
         start = MAX_WORD_BYTES;
       }
-      
+
       // check if current word is the same as the last word. we do not want to
       // insert the
       // same word multiple times for the same document
@@ -1026,37 +1027,37 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
       start = 0;
     }
     prev = &tmp;
-    
-    // for words with common prefixes, use the most appropriate start node 
+
+    // for words with common prefixes, use the most appropriate start node
     // so we do not need to traverse the tree from the root again
     node = paths[start];
 #if TRI_FULLTEXT_DEBUG
     TRI_ASSERT(node != nullptr);
 #endif
-    
+
     // now insert into the tree, starting at the next character after the common
     // prefix
     //std::string suffix = tmp.substr(start);
     p = tmp.c_str() + start;
-    
+
     for (i = start; *p && i <= MAX_WORD_BYTES; ++i) {
       node_char_t c = (node_char_t) * (p++);
-      
+
 #if TRI_FULLTEXT_DEBUG
       TRI_ASSERT(node != nullptr);
 #endif
-      
+
       node = CheckSubNode(idx, node, c);
       if (node == nullptr) {
         lastLength = 0;
         prev = nullptr;
         break;
       }
-      
+
 #if TRI_FULLTEXT_DEBUG
       TRI_ASSERT(node != nullptr);
 #endif
-      
+
       paths[i + 1] = node;
     }
 
@@ -1086,7 +1087,7 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
   if (wordlist.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   index__t* idx;
   node_t* paths[MAX_WORD_BYTES + 4];
   size_t lastLength;
@@ -1108,18 +1109,18 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
   // start for the 1st word inserted
   paths[0] = idx->_root;
   lastLength = 0;
-  
+
   std::string const* prev = nullptr;
   for (std::string const& tmp : wordlist) {
     node_t* node;
     char const* p;
     size_t start;
     size_t i;
-    
+
     if (prev != nullptr) {
       // check if current word has a shared/common prefix with the previous word
       // inserted
-      // in case this is true, we can use an optimisation and do not need to
+      // in case this is true, we can use an optimization and do not need to
       // traverse the
       // tree from the root again. instead, we just start at the node at the end
       // of the
@@ -1128,7 +1129,7 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
       if (start > MAX_WORD_BYTES) {
         start = MAX_WORD_BYTES;
       }
-      
+
       // check if current word is the same as the last word. we do not want to
       // insert the
       // same word multiple times for the same document
@@ -1141,43 +1142,43 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
       start = 0;
     }
     prev = &tmp;
-    
+
     // for words with common prefixes, use the most appropriate start node we
     // do not need to traverse the tree from the root again
     node = paths[start];
 #if TRI_FULLTEXT_DEBUG
     TRI_ASSERT(node != nullptr);
 #endif
-    
+
     // now insert into the tree, starting at the next character after the common
     // prefix
     //std::string suffix = tmp.substr(start);
     p = tmp.c_str() + start;
-    
+
     for (i = start; *p && i <= MAX_WORD_BYTES; ++i) {
       node_char_t c = (node_char_t) * (p++);
-      
+
 #if TRI_FULLTEXT_DEBUG
       TRI_ASSERT(node != nullptr);
 #endif
-      
+
       node = EnsureSubNode(idx, node, c);
       if (node == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
-      
+
 #if TRI_FULLTEXT_DEBUG
       TRI_ASSERT(node != nullptr);
 #endif
-      
+
       paths[i + 1] = node;
     }
-    
+
     if (!InsertDoc(idx, node, documentId.id())) {
       // document was added at least once, mark it as deleted
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    
+
     // store length of word just inserted
     // we'll use that to compare with the next word for duplicate removal
     lastLength = i;
@@ -1195,7 +1196,7 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
   if (query == nullptr) {
     return result;
   }
-  
+
   TRI_DEFER(TRI_FreeQueryMMFilesFulltextIndex(query));
 
   if (query->_numWords == 0) {
@@ -1233,7 +1234,7 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
     }
 
     current.clear();
-    
+
 
     node = FindNode(idx, word, strlen(word));
     if (node != nullptr) {
@@ -1246,7 +1247,7 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
       } else {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid matching option for fulltext index query";
       }
-    } 
+    }
 
     if (operation == TRI_FULLTEXT_AND) {
       // perform a logical AND of current and previous result (if any)
@@ -1274,10 +1275,10 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
                           std::inserter(output, output.begin()));
       result = std::move(output);
     }
-    
+
     first = false;
   }
-  
+
   auto maxResults = query->_maxResults;
   if (maxResults > 0 && result.size() > maxResults) {
     auto it = result.begin();
@@ -1288,7 +1289,7 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
 
     result.erase(it, result.end());
   }
-      
+
   return result;
 }
 

@@ -59,7 +59,7 @@
           self.jsonContentChanged();
         },
         search: true,
-        mode: 'tree',
+        mode: 'code',
         modes: ['tree', 'code'],
         ace: window.ace
       };
@@ -76,11 +76,14 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.name)),
+        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.name) + '/properties'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          self.editor.set(data.properties);
+          delete data.name;
+          delete data.code;
+          delete data.error;
+          self.editor.set(data);
         },
         error: function (error) {
           arangoHelper.arangoError('View', error.errorMessage);
@@ -90,6 +93,17 @@
 
     patchView: function () {
       var self = this;
+      var data;
+
+      try {
+        data = self.editor.get();
+      } catch (e) {
+        arangoHelper.arangoError('View', e);
+      }
+
+      if (!data) {
+        return;
+      }
 
       $.ajax({
         type: 'PATCH',

@@ -40,6 +40,11 @@ var COMPLETE = {};
 
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
+var testFilter = "undefined";
+
+function setTestFilter(filter) {
+  testFilter = filter;
+}
 
 jsUnity.results.begin = function (total, suiteName) {
   print('Running ' + (suiteName || 'unnamed test suite'));
@@ -125,6 +130,10 @@ function Run (testsuite) {
   scope.tearDownAll = tearDownAll;
 
   for (var key in definition) {
+    if ((testFilter !== "undefined") && (key !== testFilter)) {
+      // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+      continue;
+    }
     if (key.indexOf('test') === 0) {
       var test = { name: key, fn: definition[key]};
 
@@ -132,6 +141,23 @@ function Run (testsuite) {
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll') {
       console.error('unknown function: %s', key);
     }
+  }
+  if (tests.length === 0) {
+    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`;
+    print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
+    let res = {
+      suiteName: suite.suiteName,
+      message: err,
+      duration: 0,
+      passed: 0,
+      status: false,
+      failed: 1,
+      total: 1,
+    };
+    TOTAL += 1;
+    FAILED += 2;
+    COMPLETE[suite.suiteName] = res;
+    return res;
   }
 
   suite = new jsUnity.TestSuite(suite.suiteName, scope);
@@ -153,7 +179,6 @@ function Run (testsuite) {
       COMPLETE[attrname] = RESULTS[attrname];
     }
   }
-
   return result;
 }
 
@@ -187,13 +212,14 @@ function Done (suiteName) {
 // / @brief runs a JSUnity test file
 // //////////////////////////////////////////////////////////////////////////////
 
-function RunTest (path, outputReply) {
+function RunTest (path, outputReply, filter) {
   var content;
   var f;
 
   content = fs.read(path);
 
-  content = "(function(){require('jsunity').jsUnity.attachAssertions(); return (function() {" + content + '}());\n})';
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)});  ${content} }());
+});`;
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {
@@ -208,6 +234,7 @@ function RunTest (path, outputReply) {
   }
 }
 
+exports.setTestFilter = setTestFilter;
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterInfo, ArangoClusterComm, require, exports, module */
+/*global ArangoClusterInfo, require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -57,37 +57,6 @@ function buildExampleQuery (collection, example, limit) {
   }
 
   return { query: query, bindVars: bindVars };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief add options from arguments to index specification
-// //////////////////////////////////////////////////////////////////////////////
-
-function addIndexOptions (body, parameters) {
-  body.fields = [];
-
-  var setOption = function (k) {
-    if (! body.hasOwnProperty(k)) {
-      body[k] = parameters[i][k];
-    }
-  };
-
-  var i;
-  for (i = 0; i < parameters.length; ++i) {
-    if (typeof parameters[i] === 'string') {
-      // set fields
-      body.fields.push(parameters[i]);
-    }
-    else if (typeof parameters[i] === 'object' &&
-      ! Array.isArray(parameters[i]) &&
-      parameters[i] !== null) {
-      // set arbitrary options
-      Object.keys(parameters[i]).forEach(setOption);
-      break;
-    }
-  }
-
-  return body;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -195,26 +164,11 @@ ArangoCollection.prototype.index = function (id) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief returns connected edges
-// //////////////////////////////////////////////////////////////////////////////
-
-function getEdges (collection, vertex, direction) {
-  if (direction === 'in') {
-    return collection.INEDGES(vertex);
-  }
-  if (direction === 'out') {
-    return collection.OUTEDGES(vertex);
-  }
-
-  return collection.EDGES(vertex);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock collectionEdgesAll
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.edges = function (vertex) {
-  return getEdges(this, vertex, 'any');
+  return this.EDGES(vertex);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -222,7 +176,7 @@ ArangoCollection.prototype.edges = function (vertex) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.inEdges = function (vertex) {
-  return getEdges(this, vertex, 'in');
+  return this.INEDGES(vertex);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -230,7 +184,7 @@ ArangoCollection.prototype.inEdges = function (vertex) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.outEdges = function (vertex) {
-  return getEdges(this, vertex, 'out');
+  return this.OUTEDGES(vertex);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -241,32 +195,15 @@ ArangoCollection.prototype.any = function () {
   var cluster = require('@arangodb/cluster');
 
   if (cluster.isCoordinator()) {
-    var dbName = require('internal').db._name();
-    var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterComm.getId() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest('put',
-        'shard:' + shard,
-        dbName,
-        '/_api/simple/any',
-        JSON.stringify({
-          collection: shard
-        }),
-        { },
-        options);
-    });
-
-    var results = cluster.wait(coord, shards.length), i;
-    for (i = 0; i < results.length; ++i) {
-      var body = JSON.parse(results[i].body);
-      if (body.document !== null) {
-        return body.document;
-      }
+    const db = require('internal').db;
+    let document = null;
+    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
+    let cursor = db._query(query, {"@coll": this.name()});
+    if (cursor.hasNext()) {
+      document = cursor.next();
     }
 
-    return null;
+    return document;
   }
 
   return this.ANY();
@@ -338,7 +275,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   var cluster = require('@arangodb/cluster');
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync: waitForSync };
+  var opts = { waitForSync };
   query.query += ' REMOVE doc IN @@collection OPTIONS ' + JSON.stringify(opts);
 
   return require('internal').db._query(query).getExtra().stats.writesExecuted;
@@ -384,7 +321,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync: waitForSync };
+  var opts = { waitForSync };
   query.query += ' REPLACE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 
@@ -440,7 +377,7 @@ ArangoCollection.prototype.updateByExample = function (example,
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync: waitForSync, keepNull: keepNull, mergeObjects: mergeObjects };
+  var opts = { waitForSync, keepNull, mergeObjects };
   query.query += ' UPDATE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 

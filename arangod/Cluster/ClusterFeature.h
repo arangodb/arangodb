@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,15 +30,15 @@
 #include "Cluster/ServerState.h"
 
 namespace arangodb {
+
 class AgencyCallbackRegistry;
 class HeartbeatThread;
 
 class ClusterFeature : public application_features::ApplicationFeature {
  public:
-  explicit ClusterFeature(application_features::ApplicationServer*);
+  explicit ClusterFeature(application_features::ApplicationServer& server);
   ~ClusterFeature();
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -50,19 +50,28 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyEndpoints;
   }
 
-  std::string agencyPrefix() {
+  std::string agencyPrefix() const {
     return _agencyPrefix;
   }
+
+  void syncDBServerStatusQuo();
+
+protected:
+  void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
+                            uint64_t interval_ms,
+                            uint64_t maxFailsBeforeWarning,
+                            const std::string & endpoints);
 
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
   std::string _myRole;
-  std::string _myAddress;
+  std::string _myEndpoint;
+  std::string _myAdvertisedEndpoint;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
+  double _indexCreationTimeout = 3600.0;
 
- private:
   void reportRole(ServerState::RoleEnum);
 
  public:
@@ -79,7 +88,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   };
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() { return _createWaitsForSyncReplication; };
+  bool createWaitsForSyncReplication() const { return _createWaitsForSyncReplication; };
+  double indexCreationTimeout() const { return _indexCreationTimeout; }
   uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
 
   void stop() override final;
@@ -87,14 +97,13 @@ class ClusterFeature : public application_features::ApplicationFeature {
  private:
   bool _unregisterOnShutdown;
   bool _enableCluster;
+  bool _requirePersistedId;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   uint64_t _heartbeatInterval;
-  bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
-  // FIXME: remove in > 3.3
-  std::string _myLocalInfo;
 };
+
 }
 
 #endif

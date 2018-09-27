@@ -26,11 +26,11 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class LoggerBufferFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LoggerBufferFeature(application_features::ApplicationServer*);
+  explicit LoggerBufferFeature(application_features::ApplicationServer& server);
 
- public:
   // void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   // void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
   // void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -38,6 +38,7 @@ class LoggerBufferFeature final : public application_features::ApplicationFeatur
   // void start() override final;
   // void stop() override final;
 };
+
 }
 
 #endif

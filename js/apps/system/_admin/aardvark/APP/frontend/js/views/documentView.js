@@ -117,7 +117,7 @@
           window.modalView.createReadOnlyEntry(
             'doc-delete-button',
             'Confirm delete, document id is',
-            this.type._id,
+            this.type._id || this.docid,
             undefined,
             undefined,
             false,
@@ -339,8 +339,12 @@
         this.collection.saveEdge(this.colid, this.docid, $('#document-from').html(), $('#document-to').html(), model, callbackE);
       } else {
         var callback = function (error, data) {
-          if (error) {
-            arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
+          if (error || data[0] && data[0].error) {
+            if (data[0] && data[0].error) {
+              arangoHelper.arangoError('Error', data[0].errorMessage);
+            } else {
+              arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
+            }
           } else {
             this.successConfirmation();
             this.disableSaveButton();

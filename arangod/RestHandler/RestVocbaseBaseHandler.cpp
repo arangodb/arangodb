@@ -29,12 +29,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Meta/conversion.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/HttpRequest.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -73,6 +74,12 @@ std::string const RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 std::string const RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief control pregel path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::CONTROL_PREGEL_PATH = "/_api/control_pregel";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,6 +102,12 @@ std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gharial graph api path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::GHARIAL_PATH = "/_api/gharial";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint path
@@ -136,6 +149,41 @@ std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
 std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH =
     "/_api/simple/all-keys";
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE =
+    "/_api/simple/by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query first example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_FIRST_EXAMPLE =
+    "/_api/simple/first-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query remove by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_BY_EXAMPLE =
+    "/_api/simple/remove-by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query replace by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_REPLACE_BY_EXAMPLE =
+    "/_api/simple/replace-by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query replace by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_UPDATE_BY_EXAMPLE =
+    "/_api/simple/update-by-example";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,6 +197,12 @@ std::string const RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH =
 
 std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
     "/_api/simple/remove-by-keys";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tasks path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
@@ -173,12 +227,14 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
-                                               GeneralResponse* response)
-    : RestBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
-      _nolockHeaderSet(nullptr) {}
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(
+    GeneralRequest* request,
+    GeneralResponse* response
+): RestBaseHandler(request, response),
+   _context(*static_cast<VocbaseContext*>(request->requestContext())),
+   _vocbase(_context.vocbase()) {
+  TRI_ASSERT(request->requestContext());
+}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
@@ -203,12 +259,35 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  if (result.wasSynchronous) {
-    resetResponse(rest::ResponseCode::CREATED);
+  generate20x(result, collectionName, type, options, isMultiple, rest::ResponseCode::CREATED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Generate a result for successful delete
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateDeleted(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple, rest::ResponseCode::OK);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a HTTP 20x response
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generate20x(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple,
+    rest::ResponseCode waitForSyncResponseCode) {
+  
+  if (result._options.waitForSync) {
+    resetResponse(waitForSyncResponseCode);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
   }
 
+  
   if (isMultiple && !result.countErrorCodes.empty()) {
     VPackBuilder errorBuilder;
     errorBuilder.openObject();
@@ -220,35 +299,10 @@ void RestVocbaseBaseHandler::generateSaved(
     _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
   }
 
-  generate20x(result, collectionName, type, options);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generate a result for successful delete
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateDeleted(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options) {
-  if (result.wasSynchronous) {
-    resetResponse(rest::ResponseCode::OK);
-  } else {
-    resetResponse(rest::ResponseCode::ACCEPTED);
-  }
-  generate20x(result, collectionName, type, options);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a HTTP 20x response
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generate20x(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options) {
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
-    slice = VelocyPackHelper::EmptyObjectValue();
+    slice = arangodb::velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
@@ -319,6 +373,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
+
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }
 
@@ -393,7 +448,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
   int code = result.errorNumber();
   switch (code) {
-    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,
@@ -475,22 +530,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a boolean parameter value
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name,
-                                                     bool def) const {
-  bool found;
-  std::string const& value = _request->value(name, found);
-
-  if (found) {
-    return StringUtils::boolean(value);
-  }
-
-  return def;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a string parameter value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -504,18 +543,53 @@ void RestVocbaseBaseHandler::extractStringParameter(
   }
 }
 
+std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
+    std::string const& name, AccessMode::Type type) const {
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto trx = std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+  if (_nolockHeaderSet != nullptr) {
+    for (auto const& it : *_nolockHeaderSet) {
+      trx->setLockedShard(it);
+    }
+  }
+  return trx;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::prepareExecute() {
-  RestBaseHandler::prepareExecute();
+void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
+  RestBaseHandler::prepareExecute(isContinue);
+  pickupNoLockHeaders();
+}
 
-  bool found;
-  std::string const& shardId = _request->header("x-arango-nolock", found);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdownExecute, to react to X-Arango-Nolock header
+////////////////////////////////////////////////////////////////////////////////
 
-  if (found) {
-    _nolockHeaderSet = new std::unordered_set<std::string>();
+void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
+  clearNoLockHeaders();
+  RestBaseHandler::shutdownExecute(isFinalized);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::pickupNoLockHeaders() {
+  if (ServerState::instance()->isDBServer()) {
+    // Only DBServer needs to react to them!
+    bool found;
+    std::string const& shardId = _request->header(StaticStrings::XArangoNoLock, found);
+
+    if (!found) {
+      return;
+    }
+
+    TRI_ASSERT(_nolockHeaderSet == nullptr);
+    _nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
+
     // Split value at commas, if there are any, otherwise take full value:
     size_t pos = shardId.find(',');
     size_t oldpos = 0;
@@ -525,20 +599,9 @@ void RestVocbaseBaseHandler::prepareExecute() {
       pos = shardId.find(',', oldpos);
     }
     _nolockHeaderSet->emplace(shardId.substr(oldpos));
-    CollectionLockState::_noLockHeaders = _nolockHeaderSet;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finalizeExecute, to react to X-Arango-Nolock header
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::finalizeExecute() {
-  if (_nolockHeaderSet != nullptr) {
-    CollectionLockState::_noLockHeaders = nullptr;
-    delete _nolockHeaderSet;
-    _nolockHeaderSet = nullptr;
-  }
-
-  RestBaseHandler::finalizeExecute();
+void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
+  _nolockHeaderSet.reset();
 }

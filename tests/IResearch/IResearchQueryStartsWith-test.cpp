@@ -34,30 +34,28 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
@@ -74,81 +72,17 @@ extern const char* ARGV0; // defined in main.cpp
 
 NS_LOCAL
 
-struct TestTermAttribute: public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
-};
-
-class TestDelimAnalyzer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-
-  static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestDelimAnalyzer, ptr, args);
-    return ptr;
-  }
-
-  TestDelimAnalyzer(irs::string_ref const& delim)
-    : irs::analysis::analyzer(TestDelimAnalyzer::type()),
-      _delim(irs::ref_cast<irs::byte_type>(delim)) {
-    _attrs.emplace(_term);
-  }
-
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-
-  virtual bool next() override {
-    if (_data.empty()) {
-      return false;
-    }
-
-    size_t i = 0;
-
-    for (size_t count = _data.size(); i < count; ++i) {
-      auto data = irs::ref_cast<char>(_data);
-      auto delim = irs::ref_cast<char>(_delim);
-
-      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value(irs::bytes_ref(_data.c_str(), i));
-        _data = irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()), _data.size() - i - (std::max)(size_t(1), _delim.size()));
-        return true;
-      }
-    }
-
-    _term.value(_data);
-    _data = irs::bytes_ref::NIL;
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::attribute_view _attrs;
-  irs::bytes_ref _delim;
-  irs::bytes_ref _data;
-  TestTermAttribute _term;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchQuerySetup {
+struct IResearchQueryStartsWithSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQuerySetup(): server(nullptr, nullptr) {
+  IResearchQueryStartsWithSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -156,25 +90,30 @@ struct IResearchQuerySetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), true);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -191,21 +130,21 @@ struct IResearchQuerySetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
-  ~IResearchQuerySetup() {
+  ~IResearchQueryStartsWithSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -236,7 +175,7 @@ NS_END
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
-  IResearchQuerySetup s;
+  IResearchQueryStartsWithSetup s;
   UNUSED(s);
 
   static std::vector<std::string> const EMPTY;
@@ -247,8 +186,8 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
   // add collection_1
   {
@@ -265,9 +204,9 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice())
+  );
   REQUIRE((false == !view));
 
   // add link to collection
@@ -283,10 +222,14 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
@@ -298,8 +241,8 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     arangodb::OperationOptions opt;
     TRI_voc_tick_t tick;
 
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY, EMPTY, EMPTY,
       arangodb::transaction::Options()
     );
@@ -317,7 +260,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 
@@ -337,7 +280,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.invalid_field, 'abc') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.invalid_field, 'abc') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -353,7 +296,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.seq, '0') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.seq, '0') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -373,7 +316,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER starts_with(d.name, 'A') RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.name, 'A') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -410,7 +353,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -443,7 +386,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -466,7 +409,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 

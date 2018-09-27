@@ -35,7 +35,6 @@ export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
     --buildDir build-${EP}deb \
     --targetDir /var/tmp/ \
     --jemalloc \
-    --noopt \
     ${MOREOPTS} \
     $@
 

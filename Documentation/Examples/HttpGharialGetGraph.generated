@@ -1,14 +1,17 @@
-shell> curl --dump - http://localhost:8529/_api/gharial/myGraph
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/gharial/myGraph</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _WE2U2ga--_
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"graph"</span> : { 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"myGraph"</span>, 
+    <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 
@@ -21,12 +24,8 @@ x-content-type-options: nosniff
       } 
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
-    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5kLG--B"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2U2ga--_"</span> 
-  }, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span> 
+  } 
 }

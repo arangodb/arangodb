@@ -23,13 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlHelper.h"
-#include "IResearchViewBlock.h"
-#include "IResearchViewNode.h"
-#include "IResearchView.h"
+#include "IResearchCommon.h"
 #include "IResearchDocument.h"
-#include "IResearchFeature.h"
 #include "IResearchFilterFactory.h"
 #include "IResearchOrderFactory.h"
+#include "IResearchView.h"
+#include "IResearchViewBlock.h"
+#include "IResearchViewNode.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
@@ -38,7 +38,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -49,21 +48,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-#include <iostream>
-
 NS_LOCAL
-
-inline arangodb::iresearch::IResearchViewNode const& getViewNode(
-    arangodb::iresearch::IResearchViewBlockBase const& block
-) noexcept {
-  TRI_ASSERT(block.getPlanNode());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  return dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*block.getPlanNode());
-#else
-  return static_cast<arangodb::iresearch::IResearchViewNode const&>(*block.getPlanNode());
-#endif
-}
 
 inline arangodb::aql::RegisterId getRegister(
     arangodb::aql::Variable const& var,
@@ -97,7 +82,7 @@ AqlValue ViewExpressionContext::getVariableValue(
 ) const {
   TRI_ASSERT(var);
 
-  if (var == _node->outVariable()) {
+  if (var == &_node->outVariable()) {
     // self-reference
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -129,10 +114,11 @@ IResearchViewBlockBase::IResearchViewBlockBase(
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
     _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
-    _ctx(getViewNode(*this)),
+    _ctx(engine.getQuery(), en),
     _reader(reader),
     _filter(irs::filter::prepared::empty()),
     _execCtx(*_trx, _ctx),
+    _inflight(0),
     _hasMore(true), // has more data initially
     _volatileSort(true),
     _volatileFilter(true) {
@@ -142,18 +128,20 @@ IResearchViewBlockBase::IResearchViewBlockBase(
   _filterCtx.emplace(_execCtx);
 }
 
-int IResearchViewBlockBase::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
-    const int res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  const auto res = ExecutionBlock::initializeCursor(items, pos);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
+    return res;
+  }
 
-    _hasMore = true; // has more data initially
-  DEBUG_END_BLOCK();
+  _hasMore = true; // has more data initially
+  _inflight = 0;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 void IResearchViewBlockBase::reset() {
@@ -163,18 +151,18 @@ void IResearchViewBlockBase::reset() {
   _ctx._data = _buffer.front();
   _ctx._pos = _pos;
 
-  auto& viewNode = getViewNode(*this);
+  auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
 
   arangodb::iresearch::QueryContext const queryCtx = {
-    _trx, plan, plan->getAst(), &_ctx, viewNode.outVariable()
+    _trx, plan, plan->getAst(), &_ctx, &viewNode.outVariable()
   };
 
   if (_volatileFilter) { // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx, viewNode.filterCondition())) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failed to build filter while querying iResearch view , query '"
           << viewNode.filterCondition().toVelocyPack(true)->toJson() << "'";
 
@@ -198,25 +186,28 @@ void IResearchViewBlockBase::reset() {
 
       // compile order
       _order = order.prepare();
-      _volatileSort = viewNode.volatile_sort();
     }
 
     // compile filter
     _filter = root.prepare(_reader, _order, irs::boost::no_boost(), _filterCtx);
-    _volatileFilter = _volatileSort || viewNode.volatile_filter();
+
+    auto const& volatility = viewNode.volatility();
+    _volatileSort = volatility.second;
+    _volatileFilter = _volatileSort || volatility.first;
   }
 }
 
 bool IResearchViewBlockBase::readDocument(
     size_t subReaderId,
-    irs::doc_id_t const docId
+    irs::doc_id_t const docId,
+    IndexIterator::DocumentCallback const& callback
 ) {
   const auto& pkValues = _reader.pkColumn(subReaderId);
   arangodb::iresearch::DocumentPrimaryKey docPk;
   irs::bytes_ref tmpRef;
 
   if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
 
     return false; // not a valid document reference
@@ -228,7 +219,7 @@ bool IResearchViewBlockBase::readDocument(
   auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
 
   if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid()
       << "', rid '" << docPk.rid() << "'";
 
@@ -237,26 +228,27 @@ bool IResearchViewBlockBase::readDocument(
 
   TRI_ASSERT(collection->collection());
 
-  return collection->collection()->readDocument(
-    _trx, arangodb::LocalDocumentId(docPk.rid()), _mmdr
+  return collection->collection()->readDocumentWithCallback(
+    _trx, arangodb::LocalDocumentId(docPk.rid()), callback
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+IResearchViewBlockBase::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
   bool needMore;
   AqlItemBlock* cur = nullptr;
-  size_t send = 0;
-  std::unique_ptr<AqlItemBlock> res;
 
-  auto const& planNode = getViewNode(*this);
+  ReadContext ctx(getNrInputRegisters());
+
+  RegisterId const nrOutRegs = getNrOutputRegisters();
 
   do {
     do {
@@ -264,9 +256,16 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
 
       if (_buffer.empty()) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        auto upstreamRes = ExecutionBlock::getBlock(toFetch);
+        if (upstreamRes.first == ExecutionState::WAITING) {
+          traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+          return {upstreamRes.first, nullptr};
+        }
+        _upstreamState = upstreamRes.first;
+        if (!upstreamRes.second) {
           _done = true;
-          return nullptr;
+          traceGetSomeEnd(nullptr, ExecutionState::DONE);
+          return {ExecutionState::DONE, nullptr};
         }
         _pos = 0;  // this is in the first block
         reset();
@@ -292,16 +291,14 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
     } while (needMore);
 
     TRI_ASSERT(cur);
+    TRI_ASSERT(ctx.curRegs == cur->getNrRegs());
 
-    auto const curRegs = cur->getNrRegs();
-    auto const nrRegs = planNode.getRegisterPlan()->nrRegs[planNode.getDepth()];
-
-    res.reset(requestBlock(atMost, nrRegs));
+    ctx.res.reset(requestBlock(atMost, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(ctx.curRegs <= ctx.res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos);
+    inheritRegisters(cur, ctx.res.get(), _pos);
 
     throwIfKilled();  // check if we were aborted
 
@@ -309,45 +306,52 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasMore = next(*res, curRegs, send, atMost);
+    _hasMore = next(ctx, atMost);
 
     // If the collection is actually empty we cannot forward an empty block
-  } while (send == 0);
+  } while (ctx.pos == 0);
 
-  TRI_ASSERT(res);
+  TRI_ASSERT(ctx.res);
 
   // aggregate stats
-   _engine->_stats.scannedIndex += static_cast<int64_t>(send);
+   _engine->_stats.scannedIndex += static_cast<int64_t>(ctx.pos);
 
-  if (send < atMost) {
+  if (ctx.pos < atMost) {
     // The collection did not have enough results
-    res->shrink(send);
+    ctx.res->shrink(ctx.pos);
   }
 
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
+  clearRegisters(ctx.res.get());
 
-  traceGetSomeEnd(res.get());
-
-  return res.release();
-
-  DEBUG_END_BLOCK();
+  traceGetSomeEnd(ctx.res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(ctx.res)};
 }
 
-size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  size_t skipped = 0;
-
+std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
-    return skipped;
+    size_t skipped = _inflight;
+    _inflight = 0;
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
+    return {ExecutionState::DONE, skipped};
   }
 
-  while (skipped < atLeast) {
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch, toFetch)) {
+      auto upstreamRes = getBlock(toFetch);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        traceSkipSomeEnd(0, upstreamRes.first);
+        return {upstreamRes.first, 0};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        traceSkipSomeEnd(skipped, ExecutionState::DONE);
+        return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
       reset();
@@ -356,9 +360,9 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
     // if we get here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
 
-    skipped += skip(atMost - skipped);
+    _inflight += skip(atMost - _inflight);
 
-    if (skipped < atLeast) {
+    if (_inflight < atMost) {
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
@@ -373,13 +377,15 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
   }
 
   // aggregate stats
-  _engine->_stats.scannedIndex += static_cast<int64_t>(skipped);
+  _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
 
   // We skipped atLeast documents
-  return skipped;
 
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  size_t skipped = _inflight;
+  _inflight = 0;
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 // -----------------------------------------------------------------------------
@@ -413,12 +419,19 @@ void IResearchViewBlock::resetIterator() {
 }
 
 bool IResearchViewBlock::next(
-    AqlItemBlock& res,
-    aql::RegisterId curRegs,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit) {
   TRI_ASSERT(_filter);
-  auto const numSorts = getViewNode(*this).sortCondition().size();
+  auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
+  auto const numSorts = viewNode.sortCondition().size();
+
+  // capture only one reference
+  // to potentially avoid heap allocation
+  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
+      LocalDocumentId /*id*/, VPackSlice doc
+  ) {
+    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
+  };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     bool done = false;
@@ -428,29 +441,22 @@ bool IResearchViewBlock::next(
     }
 
     while (limit && _itr->next()) {
-      if (readDocument(_readerOffset, _itr->value())) {
+      if (readDocument(_readerOffset, _itr->value(), copyDocument)) {
         // The result is in the first variable of this depth,
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
-        uint8_t const* vpack = _mmdr.vpack();
-
-        if (_mmdr.canUseInExternal()) {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-        } else {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintCopy(vpack)));
-        }
 
         // evaluate scores
-        TRI_ASSERT(!getViewNode(*this).sortCondition().empty());
+        TRI_ASSERT(!viewNode.sortCondition().empty());
         _scr->evaluate();
 
         // copy scores, registerId's are sequential
-        auto scoreRegs = curRegs;
+        auto scoreRegs = ctx.curRegs;
 
         for (size_t i = 0; i < numSorts; ++i) {
-          res.setValue(
-            pos,
+          ctx.res->setValue(
+            ctx.pos,
             ++scoreRegs,
             _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
           );
@@ -458,11 +464,11 @@ bool IResearchViewBlock::next(
       }
 
       // FIXME why?
-      if (pos > 0) {
+      if (ctx.pos > 0) {
         // re-use already copied AQLValues
-        res.copyValuesFromFirstRow(pos, static_cast<RegisterId>(curRegs));
+        ctx.res->copyValuesFromFirstRow(ctx.pos, static_cast<RegisterId>(ctx.curRegs));
       }
-      ++pos;
+      ++ctx.pos;
 
       done = (0 == --limit);
     }
@@ -519,11 +525,17 @@ IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
 }
 
 bool IResearchViewUnorderedBlock::next(
-    AqlItemBlock& res,
-    aql::RegisterId curRegs,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit) {
   TRI_ASSERT(_filter);
+
+  // capture only one reference
+  // to potentially avoid heap allocation
+  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
+      LocalDocumentId /*id*/, VPackSlice doc
+  ) {
+    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
+  };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     bool done = false;
@@ -537,26 +549,18 @@ bool IResearchViewUnorderedBlock::next(
     }
 
     while (limit && _itr->next()) {
-      if (readDocument(_readerOffset, _itr->value())) {
-        // The result is in the first variable of this depth,
-        // we do not need to do a lookup in
-        // getPlanNode()->_registerPlan->varInfo,
-        // but can just take cur->getNrRegs() as registerId:
-        uint8_t const* vpack = _mmdr.vpack();
-
-        if (_mmdr.canUseInExternal()) {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-        } else {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintCopy(vpack)));
-        }
-      }
+      readDocument(_readerOffset, _itr->value(), copyDocument);
+      // The result is in the first variable of this depth,
+      // we do not need to do a lookup in
+      // getPlanNode()->_registerPlan->varInfo,
+      // but can just take cur->getNrRegs() as registerId:
 
       // FIXME why?
-      if (pos > 0) {
+      if (ctx.pos > 0) {
         // re-use already copied AQLValues
-        res.copyValuesFromFirstRow(pos, curRegs);
+        ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
       }
-      ++pos;
+      ++ctx.pos;
 
       done = (0 == --limit);
     }
@@ -616,9 +620,7 @@ IResearchViewOrderedBlock::IResearchViewOrderedBlock(
 }
 
 bool IResearchViewOrderedBlock::next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curRegs,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
 ) {
   TRI_ASSERT(_filter);
@@ -639,7 +641,7 @@ bool IResearchViewOrderedBlock::next(
     irs::score const* score = itr->attributes().get<irs::score>().get();
 
     if (!score) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
       IR_LOG_STACK_TRACE();
 
@@ -674,37 +676,37 @@ bool IResearchViewOrderedBlock::next(
   // skip documents previously returned
   for (size_t i = _skip; i; --i, ++tokenItr) {
     if (tokenItr == tokenEnd) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
 
       break; // if here then there is probably a bug in the iResearch library
     }
   }
 
+  // capture only one reference
+  // to potentially avoid heap allocation
+  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
+      LocalDocumentId /*id*/, VPackSlice doc
+  ) {
+    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
+  };
+
   // iterate through documents
   while (limit && tokenItr != tokenEnd) {
     auto& token = tokenItr->second;
 
-    if (readDocument(token.first, token.second)) {
-      // The result is in the first variable of this depth,
-      // we do not need to do a lookup in
-      // getPlanNode()->_registerPlan->varInfo,
-      // but can just take cur->getNrRegs() as registerId:
-      uint8_t const* vpack = _mmdr.vpack();
-
-      if (_mmdr.canUseInExternal()) {
-        res.setValue(pos, curRegs, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-      } else {
-        res.setValue(pos, curRegs, AqlValue(AqlValueHintCopy(vpack)));
-      }
-    }
+    readDocument(token.first, token.second, copyDocument);
+    // The result is in the first variable of this depth,
+    // we do not need to do a lookup in
+    // getPlanNode()->_registerPlan->varInfo,
+    // but can just take cur->getNrRegs() as registerId:
 
     // FIXME why?
-    if (pos > 0) {
+    if (ctx.pos > 0) {
       // re-use already copied AQLValues
-      res.copyValuesFromFirstRow(pos, curRegs);
+      ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
     }
-    ++pos;
+    ++ctx.pos;
 
     ++tokenItr;
     ++_skip;
@@ -734,14 +736,6 @@ size_t IResearchViewOrderedBlock::skip(size_t limit) {
     while (limit > skipped && itr->next()) {
       ++skipped;
     }
-
-//    while (limit > skipped && itr->next()) {
-//      if (skip) {
-//        --skip;
-//      } else {
-//        ++skipped;
-//      }
-//    }
   }
 
   _skip += skipped;

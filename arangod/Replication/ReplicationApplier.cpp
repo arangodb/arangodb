@@ -42,23 +42,22 @@ using namespace arangodb;
 
 /// @brief common replication applier
 struct ApplierThread : public Thread {
-  public:
+ public:
   
-  ApplierThread(ReplicationApplier* applier, Syncer* syncer)
-   : Thread("ReplicationApplier"), _applier(applier), _syncer(syncer) {
+  ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
+   : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {
      TRI_ASSERT(_syncer);
    }
 
   ~ApplierThread() {
     {
       MUTEX_LOCKER(locker, _syncerMutex);
-      delete _syncer;
-      _syncer = nullptr;
+      _syncer.reset();
     }
     shutdown();
   }
   
-  void run() {
+  void run() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
     
@@ -79,8 +78,7 @@ struct ApplierThread : public Thread {
       MUTEX_LOCKER(locker, _syncerMutex);
       // will make the syncer remove its barrier too
       _syncer->setAborted(false);
-      delete _syncer;
-      _syncer = nullptr;
+      _syncer.reset();
     }
     
     _applier->markThreadStopped();
@@ -95,25 +93,23 @@ struct ApplierThread : public Thread {
     }
   }
   
-protected:
+ protected:
   ReplicationApplier* _applier;
   Mutex _syncerMutex;
-  Syncer* _syncer;
+  std::shared_ptr<Syncer> _syncer;
 };
 
 /// @brief sync thread class
 struct FullApplierThread final : public ApplierThread {
   FullApplierThread(ReplicationApplier* applier,
-                    std::unique_ptr<InitialSyncer>&& syncer)
-  : ApplierThread(applier, syncer.get()) {
-    syncer.release();
-  }
+                    std::shared_ptr<InitialSyncer>&& syncer)
+  : ApplierThread(applier, std::move(syncer)) {}
   
   Result runApplier() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
     
-    InitialSyncer* initSync = static_cast<InitialSyncer*>(_syncer);
+    InitialSyncer* initSync = static_cast<InitialSyncer*>(_syncer.get());
     // start initial synchronization
     bool allowIncremental = _applier->configuration()._incremental;
     Result r = initSync->run(allowIncremental);
@@ -127,39 +123,29 @@ struct FullApplierThread final : public ApplierThread {
     {
       MUTEX_LOCKER(locker, _syncerMutex);
       auto tailer = _applier->buildTailingSyncer(lastLogTick, true, barrierId);
-      delete initSync;
-      _syncer = tailer.release();
+      _syncer.reset();
+      _syncer = std::move(tailer);
     }
     
     _applier->markThreadTailing();
     
     TRI_ASSERT(_syncer);
-    return static_cast<TailingSyncer*>(_syncer)->run();
+    return static_cast<TailingSyncer*>(_syncer.get())->run();
   }
 };
 
 /// @brief applier thread class. run only the tailing code
 struct TailingApplierThread final : public ApplierThread {
   TailingApplierThread(ReplicationApplier* applier,
-                       std::unique_ptr<TailingSyncer>&& syncer)
-      : ApplierThread(applier, syncer.get()) {
-        syncer.release();
-      }
+                       std::shared_ptr<TailingSyncer>&& syncer)
+      : ApplierThread(applier, std::move(syncer)) {}
   
  public:
   Result runApplier() override {
-    TRI_ASSERT(dynamic_cast<TailingSyncer*>(_syncer) != nullptr);
-    return static_cast<TailingSyncer*>(_syncer)->run();
+    TRI_ASSERT(dynamic_cast<TailingSyncer*>(_syncer.get()) != nullptr);
+    return static_cast<TailingSyncer*>(_syncer.get())->run();
   }
 };
-
-// TODO move sync only also here
-/*struct DumpApplierThread final : public ApplierThread {
-  Result runApplier() override {
-    TRI_ASSERT(dynamic_cast<TailingSyncer*>(_syncer) != nullptr);
-    return static_cast<TailingSyncer*>(_syncer)->run();
-  }
-};*/
 
 ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                        std::string&& databaseName) 
@@ -327,8 +313,8 @@ void ReplicationApplier::startReplication() {
     return;
   }
   
-  doStart([&](){
-    std::unique_ptr<InitialSyncer> syncer = buildInitialSyncer();
+  doStart([&]() {
+    std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
     _thread.reset(new FullApplierThread(this, std::move(syncer)));
   }, ReplicationApplierState::ActivityPhase::INITIAL);
 }
@@ -343,7 +329,7 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
     << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
     << ", useTick: " << useTick;
-    std::unique_ptr<TailingSyncer> syncer = buildTailingSyncer(initialTick, useTick, barrierId);
+    std::shared_ptr<TailingSyncer> syncer = buildTailingSyncer(initialTick, useTick, barrierId);
     _thread.reset(new TailingApplierThread(this, std::move(syncer)));
   }, ReplicationApplierState::ActivityPhase::TAILING);
   
@@ -555,6 +541,13 @@ ReplicationApplierConfiguration ReplicationApplier::configuration() const {
 std::string ReplicationApplier::endpoint() const {
   READ_LOCKER_EVENTUAL(readLocker, _statusLock);
   return _configuration._endpoint;
+}
+
+/// @brief return last persisted tick
+TRI_voc_tick_t ReplicationApplier::lastTick() const {
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return std::max(_state._lastAppliedContinuousTick,
+                  _state._lastProcessedContinuousTick);
 }
 
 /// @brief register an applier error

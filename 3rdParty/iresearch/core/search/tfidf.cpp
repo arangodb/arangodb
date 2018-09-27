@@ -34,7 +34,8 @@ NS_LOCAL
 
 irs::sort::ptr make_from_bool(
     const rapidjson::Document& json,
-    const irs::string_ref& args) {
+    const irs::string_ref& //args
+) {
   assert(json.IsBool());
 
   PTR_NAMED(irs::tfidf_sort, ptr, json.GetBool());

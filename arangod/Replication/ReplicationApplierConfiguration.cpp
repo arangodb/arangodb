@@ -93,6 +93,9 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType.clear();
   _restrictCollections.clear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _force32mode = false; 
+#endif
 }
 
 /// @brief get a VelocyPack representation
@@ -110,7 +113,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
     hasUsernamePassword = true;
     builder.add("username", VPackValue(_username));
   }
-  if (includePassword) {
+  if (includePassword && !_password.empty()) {
     hasUsernamePassword = true;
     builder.add("password", VPackValue(_password));
   }
@@ -137,8 +140,8 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
-  for (auto& it : _restrictCollections) {
-    builder.add(VPackValue(it.first));
+  for (std::string const& it : _restrictCollections) {
+    builder.add(VPackValue(it));
   }
   builder.close();  // restrictCollections
 
@@ -183,15 +186,14 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   // read username / password
   value = slice.get("username");
   bool hasUsernamePassword = false;
-  if (value.isString()) {
+  if (value.isString() && value.getStringLength() > 0) {
     hasUsernamePassword = true;
     configuration._username = value.copyString();
-  }
-
-  value = slice.get("password");
-  if (value.isString()) {
-    hasUsernamePassword = true;
-    configuration._password = value.copyString();
+    
+    value = slice.get("password");
+    if (value.isString()) {
+      configuration._password = value.copyString();
+    }
   }
 
   if (!hasUsernamePassword) {
@@ -199,12 +201,13 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     if (value.isString()) {
       configuration._jwt = value.copyString();
     } else {
+      // use internal JWT token in any cluster setup
       auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
       if (cluster->isEnabled()) {
         auto af = AuthenticationFeature::instance();
         if (af != nullptr) {
           // nullptr happens only during controlled shutdown
-          configuration._jwt = af->tokenCache()->jwtToken();
+          configuration._jwt = af->tokenCache().jwtToken();
         }
       }
     }
@@ -302,7 +305,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
     for (auto const& it : VPackArrayIterator(value)) {
       if (it.isString()) {
-        configuration._restrictCollections.emplace(it.copyString(), true);
+        configuration._restrictCollections.emplace(it.copyString());
       }
     }
   }

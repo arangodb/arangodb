@@ -30,8 +30,7 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/asio-helper.h"
-
+#include <asio/io_service.hpp>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -40,9 +39,9 @@ namespace arangodb {
 namespace cache {
 
 class MockScheduler {
-  typedef std::unique_ptr<boost::asio::io_service::work> asio_worker;
-  std::unique_ptr<boost::asio::io_service> _ioService;
-  std::unique_ptr<boost::asio::io_service::work> _serviceGuard;
+  typedef std::unique_ptr<asio::io_context::work> asio_worker;
+  std::unique_ptr<asio::io_context> _ioService;
+  std::unique_ptr<asio::io_context::work> _serviceGuard;
   std::vector<std::thread*> _group;
 
  public:

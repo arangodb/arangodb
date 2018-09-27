@@ -74,7 +74,7 @@ JavaScript API
 Foxx
 ----
 
-* JWT tokens issued by the built-in [JWT session storage](../Foxx/Sessions/Storages/JWT.md) now correctly specify the `iat` and `exp` values in seconds rather than milliseconds as specified in the JSON Web Token standard.
+* JWT tokens issued by the built-in [JWT session storage](../Foxx/Reference/Sessions/Storages/JWT.md) now correctly specify the `iat` and `exp` values in seconds rather than milliseconds as specified in the JSON Web Token standard.
 
   This may result in previously expired tokens using milliseconds being incorrectly accepted. For this reason it is recommended to replace the signing `secret` or set the new `maxExp` option to a reasonable value that is smaller than the oldest issued expiration timestamp.
 

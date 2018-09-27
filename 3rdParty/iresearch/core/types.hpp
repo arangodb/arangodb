@@ -29,9 +29,8 @@
 NS_ROOT
 
 typedef uint8_t byte_type;
-typedef uint32_t id_type;
-typedef id_type term_id;
-typedef id_type field_id;
+typedef uint32_t term_id;
+typedef uint64_t field_id;
 typedef uint64_t doc_id_t;
 
 NS_END

@@ -9,15 +9,15 @@ Adds a vertex to the given collection.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name, string, required} 
+@RESTURLPARAM{collection-name,string,required} 
 The name of the vertex collection the vertex belongs to.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{waitForSync, boolean, optional}
+@RESTQUERYPARAM{waitForSync,boolean,optional}
 Define if the request should wait until synced to disk.
 
 @RESTALLBODYPARAM{storeThisObject,object,required}

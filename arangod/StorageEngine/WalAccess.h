@@ -79,7 +79,7 @@ class WalAccess {
 
  protected:
   WalAccess() {}
-  virtual ~WalAccess(){};
+  virtual ~WalAccess() {}
 
  public:
   struct Filter {
@@ -143,6 +143,10 @@ struct WalAccessContext {
   
   /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
+  
+  /// @brief check if view should be handled, might already be deleted
+  bool shouldHandleView(TRI_voc_tick_t dbid,
+                        TRI_voc_cid_t vid) const;
 
   /// @brief Check if collection is in filter, will load collection
   /// and prevent deletion

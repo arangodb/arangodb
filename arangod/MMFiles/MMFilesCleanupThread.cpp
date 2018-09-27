@@ -53,8 +53,7 @@ void MMFilesCleanupThread::signal() {
 void MMFilesCleanupThread::run() {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   uint64_t iterations = 0;
-
-  std::vector<arangodb::LogicalCollection*> collections;
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup
@@ -70,7 +69,13 @@ void MMFilesCleanupThread::run() {
         // cursors must be cleaned before collections are handled
         // otherwise the cursors may still hold barriers on collections
         // and collections cannot be closed properly
-        cleanupCursors(true);
+        auto cursors = _vocbase->cursorRepository();
+        TRI_ASSERT(cursors != nullptr);
+        try {
+          cursors->garbageCollect(true);
+        } catch (...) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception during cursor cleanup";
+        }
       }
         
       // check if we can get the compactor lock exclusively
@@ -96,14 +101,12 @@ void MMFilesCleanupThread::run() {
             
           // we're the only ones that can unload the collection, so using
           // the collection pointer outside the lock is ok
-          cleanupCollection(collection);
+          cleanupCollection(collection.get());
         }
       }, false);
 
       // server is still running, clean up unused cursors
       if (iterations % cleanupCursorIterations() == 0) {
-        cleanupCursors(false);
-
         // clean up expired compactor locks
         engine->cleanupCompactionBlockers(_vocbase);
       }
@@ -127,19 +130,6 @@ void MMFilesCleanupThread::run() {
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down cleanup thread";
-}
-
-/// @brief clean up cursors
-void MMFilesCleanupThread::cleanupCursors(bool force) {
-  // clean unused cursors
-  auto cursors = _vocbase->cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
-
-  try {
-    cursors->garbageCollect(force);
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception during cursor cleanup";
-  }
 }
 
 /// @brief checks all datafiles of a collection
@@ -231,7 +221,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           isDeleted = (s == TRI_VOC_COL_STATUS_DELETED);
         }
 
-        if (!isDeleted && collection->vocbase()->isDropped()) {
+        if (!isDeleted && collection->vocbase().isDropped()) {
           // the collection was not marked as deleted, but the database was
           isDeleted = true;
         }

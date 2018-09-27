@@ -30,7 +30,6 @@ fi
     --package DEB \
     --buildDir build-${EP}deb-dbg \
     --targetDir /var/tmp/ \
-    --jemalloc \
     --noopt \
     ${MOREOPTS} \
     $@

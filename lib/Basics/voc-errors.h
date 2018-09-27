@@ -92,7 +92,7 @@ constexpr int TRI_ERROR_CANNOT_OVERWRITE_FILE                                   
 
 /// 17: ERROR_TYPE_ERROR
 /// "type error"
-/// Will be raised when a type error is unencountered.
+/// Will be raised when a type error is encountered.
 constexpr int TRI_ERROR_TYPE_ERROR                                              = 17;
 
 /// 18: ERROR_LOCK_TIMEOUT
@@ -158,6 +158,26 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
+/// 33: ERROR_ARANGO_ICU_ERROR
+/// "icu error: %s"
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 33;
+
+/// 34: ERROR_CANNOT_READ_FILE
+/// "cannot read file"
+/// Will be raised when a file cannot be read.
+constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
+
+/// 35: ERROR_INCOMPATIBLE_VERSION
+/// "incompatible server version"
+/// Will be raised when a server is running an incompatible version of ArangoDB.
+constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
+/// 36: ERROR_DISABLED
+/// "disabled"
+/// Will be raised when a requested resource is not enabled.
+constexpr int TRI_ERROR_DISABLED                                                = 36;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -204,6 +224,12 @@ constexpr int TRI_ERROR_HTTP_SERVER_ERROR                                       
 /// "service unavailable"
 /// Will be raised when a service is temporarily unavailable.
 constexpr int TRI_ERROR_HTTP_SERVICE_UNAVAILABLE                                = 503;
+
+/// 504: ERROR_HTTP_GATEWAY_TIMEOUT
+/// "gateway timeout"
+/// Will be raised when a service contacted by ArangoDB does not respond in a
+/// timely manner.
+constexpr int TRI_ERROR_HTTP_GATEWAY_TIMEOUT                                    = 504;
 
 /// 600: ERROR_HTTP_CORRUPTED_JSON
 /// "invalid JSON object"
@@ -338,11 +364,11 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 /// Will be raised when a document with a given identifier or handle is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
-/// 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
-/// "collection not found"
+/// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+/// "collection or view not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             = 1203;
+constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
 
 /// 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
 /// "parameter 'collection' not found"
@@ -378,11 +404,6 @@ constexpr int TRI_ERROR_ARANGO_NO_INDEX                                         
 /// "unique constraint violated"
 /// Will be raised when there is a unique constraint violation.
 constexpr int TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       = 1210;
-
-/// 1211: ERROR_ARANGO_VIEW_NOT_FOUND
-/// "view not found"
-/// Will be raised when a view with the given identifier or name is unknown.
-constexpr int TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   = 1211;
 
 /// 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 /// "index not found"
@@ -638,11 +659,6 @@ constexpr int TRI_ERROR_REPLICATION_NO_START_TICK                               
 /// Will be raised when the replication applier fetches data using a start
 /// tick, but that start tick is not present on the logger server anymore.
 constexpr int TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      = 1414;
-
-/// 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
-/// "the checksum format is wrong"
-///  "Will be raised when the format of the checksum is wrong")
-constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       = 1415;
 
 /// 1416: ERROR_REPLICATION_WRONG_CHECKSUM
 /// "wrong checksum"
@@ -919,13 +935,13 @@ constexpr int TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     
 /// "conflicting replication factor with distributeShardsLike parameter
 /// "assignment"
 /// Will be raised if intended replication factor does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       = 1493;
 
 /// 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
 /// "conflicting shard number with distributeShardsLike parameter assignment"
 /// Will be raised if intended number of shards does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         = 1494;
 
 /// 1495: ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING
@@ -938,6 +954,18 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// "not a leader"
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
+
+/// 1497: ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN
+/// "could not create view in plan"
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new view in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
+
+/// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
+/// "view ID already exists"
+/// Will be raised when a coordinator in a cluster tries to create a view and
+/// the view ID already exists.
+constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
@@ -964,6 +992,11 @@ constexpr int TRI_ERROR_QUERY_SCRIPT                                            
 /// "number out of range"
 /// Will be raised when a number is outside the expected range.
 constexpr int TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               = 1504;
+
+/// 1505: ERROR_QUERY_INVALID_GEO_VALUE
+/// "invalid geo coordinate value"
+/// Will be raised when a geo index coordinate is invalid or out of range.
+constexpr int TRI_ERROR_QUERY_INVALID_GEO_VALUE                                 = 1505;
 
 /// 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
 /// "variable name '%s' has an invalid format"
@@ -1108,11 +1141,6 @@ constexpr int TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              
 /// Will be raised when an AQL data-modification query contains an invalid
 /// options specification.
 constexpr int TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 = 1576;
-
-/// 1577: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
-/// "collection '%s' used as expression operand"
-/// Will be raised when a collection is used as an operand in an AQL expression.
-constexpr int TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = 1577;
 
 /// 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
 /// "disallowed dynamic call to '%s'"
@@ -1434,11 +1462,6 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       
 /// The edge collection is not used in any edge definition of the graph.
 constexpr int TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          = 1930;
 
-/// 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
-/// " is not an ArangoCollection"
-/// The collection is not an ArangoCollection.
-constexpr int TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          = 1931;
-
 /// 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
 /// "collection _graphs does not exist"
 /// collection _graphs does not exist.
@@ -1483,6 +1506,27 @@ constexpr int TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           
 /// "empty graph"
 /// The requested graph has no edge collections.
 constexpr int TRI_ERROR_GRAPH_EMPTY                                             = 1940;
+
+/// 1941: ERROR_GRAPH_INTERNAL_DATA_CORRUPT
+/// "internal graph data corrupt"
+/// The _graphs collection contains invalid data.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT                             = 1941;
+
+/// 1942: ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET
+/// "edge collection already set"
+/// Tried to add an edge collection which is already defined.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              = 1942;
+
+/// 1943: ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST
+/// "malformed orphan list"
+/// the orphan list argument is malformed. It has to be an array of strings.
+constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      = 1943;
+
+/// 1944: ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT
+/// "edge definition collection is a document collection"
+/// the collection used as a relation is existing, but is a document
+/// collection, it cannot be used here.
+constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
 
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
@@ -1637,6 +1681,80 @@ constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
 
+/// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
+/// "smart graph attribute mismatch"
+/// The smart graph attribute of the given collection does not match the smart
+/// graph attribute of the graph.
+constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
+
+/// 5000: ERROR_CLUSTER_REPAIRS_FAILED
+/// "error during cluster repairs"
+/// General error during cluster repairs
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  = 5000;
+
+/// 5001: ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY
+/// "not enough (healthy) db servers"
+/// Will be raised when, during repairDistributeShardsLike, there must be a
+/// free db server to move a shard, but there is no candidate or none is
+/// healthy.
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = 5001;
+
+/// 5002: ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED
+/// "replication factor violated during cluster repairs"
+/// Will be raised on various inconsistencies regarding the replication factor
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             = 5002;
+
+/// 5003: ERROR_CLUSTER_REPAIRS_NO_DBSERVERS
+/// "no dbservers during cluster repairs"
+/// Will be raised if a collection that is fixed has some shard without DB
+/// Servers
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            = 5003;
+
+/// 5004: ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS
+/// "mismatching leaders during cluster repairs"
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection have mismatching leaders
+/// (when they should already have been fixed)
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS                     = 5004;
+
+/// 5005: ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS
+/// "mismatching followers during cluster repairs"
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection don't have the same followers
+/// (when they should already have been adjusted)
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS                   = 5005;
+
+/// 5006: ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES
+/// "inconsistent attributes during cluster repairs"
+/// Will be raised if a collection that is fixed does (not) have
+/// distributeShardsLike when it is expected, or does (not) have
+/// repairingDistributeShardsLike when it is expected
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 = 5006;
+
+/// 5007: ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS
+/// "mismatching shards during cluster repairs"
+/// Will be raised if in a collection and its distributeShardsLike prototype
+/// collection some shard and its prototype have an unequal number of DB Servers
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = 5007;
+
+/// 5008: ERROR_CLUSTER_REPAIRS_JOB_FAILED
+/// "move shard job failed during cluster repairs"
+/// Will be raised if a move shard job in the agency failed during cluster
+/// repairs
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              = 5008;
+
+/// 5009: ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED
+/// "move shard job disappeared during cluster repairs"
+/// Will be raised if a move shard job in the agency cannot be found anymore
+/// before it finished
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = 5009;
+
+/// 5010: ERROR_CLUSTER_REPAIRS_OPERATION_FAILED
+/// "agency transaction failed during cluster repairs"
+/// Will be raised if an agency transaction failed during either sending or
+/// executing it.
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = 5010;
+
 /// 20001: ERROR_AGENCY_INQUIRY_SYNTAX
 /// "Illegal inquiry syntax"
 /// Inquiry handles a list of string clientIds: [<clientId>,...].
@@ -1712,6 +1830,26 @@ constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
 constexpr int TRI_ERROR_QUEUE_FULL                                              = 21003;
+
+/// 6001: ERROR_ACTION_ALREADY_REGISTERED
+/// "maintenance action already registered"
+/// Action with this description has been registered already
+constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 6001;
+
+/// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
+/// "this maintenance action cannot be stopped"
+/// This maintenance action cannot be stopped once it is started
+constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
+
+/// 6003: ERROR_ACTION_UNFINISHED
+/// "maintenance action still processing"
+/// This maintenance action is still processing
+constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
+
+/// 6004: ERROR_NO_SUCH_ACTION
+/// "no such maintenance action"
+/// No such maintenance action exists
+constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
 
 
 /// register all errors for ArangoDB

@@ -66,20 +66,26 @@ class SortNode : public ExecutionNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new SortNode(plan, _id, _elements, _stable);
-
-    cloneHelper(c, withDependencies, withProperties);
-
-    return static_cast<ExecutionNode*>(c);
+    return cloneHelper(
+      std::make_unique<SortNode>(plan, _id, _elements, _stable),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -101,7 +107,7 @@ class SortNode : public ExecutionNode {
   }
 
   /// @brief get Variables Used Here including ASC/DESC
-  SortElementVector const& getElements() const { return _elements; }
+  SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
   SortInformation getSortInformation(ExecutionPlan*,

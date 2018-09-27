@@ -24,8 +24,6 @@
 
 #include "GeneralServer.h"
 
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/exitcodes.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
@@ -33,19 +31,10 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Task.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-GeneralServer::~GeneralServer() {
-  _listenTasks.clear();
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -57,18 +46,20 @@ void GeneralServer::setEndpointList(EndpointList const* list) {
 
 void GeneralServer::startListening() {
   for (auto& it : _endpointList->allEndpoints()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to bind to endpoint '" << it.first
-               << "' for requests";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to bind to endpoint '"
+                                              << it.first << "' for requests";
 
     bool ok = openEndpoint(it.second);
 
     if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '"
+                                                << it.first << "'";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to bind to endpoint '" << it.first
-                 << "'. Please check whether another instance is already "
-                    "running using this endpoint and review your endpoints "
-                    "configuration.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "failed to bind to endpoint '" << it.first
+          << "'. Please check whether another instance is already "
+             "running using this endpoint and review your endpoints "
+             "configuration.";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_BIND_PORT);
     }
   }
@@ -93,8 +84,9 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     protocolType = ProtocolType::HTTP;
   }
 
-  std::unique_ptr<ListenTask> task(new GeneralListenTask(
-      SchedulerFeature::SCHEDULER->eventLoop(), this, endpoint, protocolType));
+  std::unique_ptr<ListenTask> task;
+  task.reset(new GeneralListenTask(SchedulerFeature::SCHEDULER, this, endpoint,
+                                   protocolType));
   if (!task->start()) {
     return false;
   }

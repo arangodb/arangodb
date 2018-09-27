@@ -1,6 +1,7 @@
 {
   "gitbook": "^3.2.2",
   "title": "ArangoDB VERSION_NUMBER HTTP API Documentation",
+  "version": "VERSION_NUMBER",
   "author": "ArangoDB GmbH",
   "description": "Official HTTP API manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",

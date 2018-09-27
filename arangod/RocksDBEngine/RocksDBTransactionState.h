@@ -39,21 +39,31 @@
 struct TRI_vocbase_t;
 
 namespace rocksdb {
+
 class Transaction;
 class Slice;
 class Iterator;
+
 }  // namespace rocksdb
 
 namespace arangodb {
+
 namespace cache {
+
 struct Transaction;
+
 }
+
 class LogicalCollection;
 struct RocksDBDocumentOperation;
+
 namespace transaction {
+
 class Methods;
 struct Options;
+
 }
+
 class TransactionCollection;
 class RocksDBMethods;
 
@@ -66,7 +76,11 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
+  RocksDBTransactionState(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+  );
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -94,9 +108,14 @@ class RocksDBTransactionState final : public TransactionState {
   void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                         TRI_voc_document_operation_e operationType);
 
+  /// @brief undo the effects of the previous prepareOperation call
+  void rollbackOperation(TRI_voc_document_operation_e operationType);
+
   /// @brief add an operation for a transaction collection
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
   Result addOperation(TRI_voc_cid_t collectionId,
-      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType);
+      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
+      bool& hasPerformedIntermediateCommit);
 
   RocksDBMethods* rocksdbMethods();
 
@@ -105,11 +124,11 @@ class RocksDBTransactionState final : public TransactionState {
   void donateSnapshot(rocksdb::Snapshot const* snap);
   /// @brief steal snapshot of this transaction.
   /// Does not work on a single operation
-  rocksdb::Snapshot const* stealSnapshot();
-  
+  rocksdb::Snapshot const* stealReadSnapshot();
+
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
-  uint64_t sequenceNumber() const;
+  rocksdb::SequenceNumber sequenceNumber() const;
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
@@ -150,25 +169,29 @@ class RocksDBTransactionState final : public TransactionState {
   void cleanupTransaction() noexcept;
   /// @brief internally commit a transaction
   arangodb::Result internalCommit();
-  
+
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
   /// Not thread safe
-  Result triggerIntermediateCommit();
+  Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
   
   /// @brief check sizes and call internalCommit if too big
-  Result checkIntermediateCommit(uint64_t newSize);
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
 
- private:
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction;
-  /// @brief rocksdb snapshot, is null if _rocksTransaction is set
-  rocksdb::Snapshot const* _snapshot;
-  /// @brief write options used
+  /// @brief used for read-only trx and intermediate commits
+  /// For intermediate commits this MUST ONLY be used for iteratos
+  rocksdb::Snapshot const* _readSnapshot;
+  /// @brief shared write options used
   rocksdb::WriteOptions _rocksWriteOptions;
-  ///@brief read options which must be used to guarantee isolation
+  /// @brief shared read options which can be used by operations
+  /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
+  
   /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb

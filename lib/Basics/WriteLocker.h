@@ -97,7 +97,7 @@ class WriteLocker {
   /// @brief releases the write-lock
   ~WriteLocker() {
     if (_isLocked) {
-      _readWriteLock->unlock();
+      _readWriteLock->unlockWrite();
     }
 
 #ifdef TRI_SHOW_LOCK_TIME
@@ -136,7 +136,7 @@ class WriteLocker {
   /// @brief unlocks the lock if we own it
   bool unlock() {
     if (_isLocked) {
-      _readWriteLock->unlock();
+      _readWriteLock->unlockWrite();
       _isLocked = false;
       return true;
     }

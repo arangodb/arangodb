@@ -77,7 +77,7 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
       return StringRef(); // fail
     }
     return StringRef(k);
-  } 
+  }
   if (slice.isString()) {
     StringRef key(slice);
     size_t pos = key.find('/');
@@ -85,11 +85,11 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
       return key;
     }
     return key.substr(pos + 1);
-  } 
+  }
   return StringRef();
 }
 
-/// @brief extract the _id attribute from a slice, and convert it into a 
+/// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
 std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,
                                                   VPackSlice slice,
@@ -99,7 +99,7 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
-   
+
   if (slice.isObject()) {
     // extract id attribute from object
     if (slice.isEmptyObject()) {
@@ -113,7 +113,7 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
       VPackSlice key = VPackSlice(p);
       // skip over attribute value
       p += key.byteSize();
-      
+
       if (*p == basics::VelocyPackHelper::IdAttribute) {
         id = VPackSlice(p + 1);
         if (id.isCustom()) {
@@ -128,12 +128,12 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
       }
     }
 
-    // in case the quick access above did not work out, use the slow path... 
+    // in case the quick access above did not work out, use the slow path...
     id = slice.get(StaticStrings::IdString);
   } else {
     id = slice;
   }
-  
+
   if (id.isString()) {
     // already a string...
     return id.copyString();
@@ -156,7 +156,7 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
   if (!key.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-        
+
   return makeIdFromCustom(resolver, id, key);
 }
 
@@ -169,29 +169,29 @@ VPackSlice transaction::helpers::extractIdFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
-  
+
   if (slice.isEmptyObject()) {
     return VPackSlice();
   }
-  // a regular document must have at least the three attributes 
+  // a regular document must have at least the three attributes
   // _key, _id and _rev (in this order). _id must be the second attribute
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
   if (*p == basics::VelocyPackHelper::KeyAttribute) {
-    // skip over _key 
+    // skip over _key
     ++p;
     // skip over _key value
     p += VPackSlice(p).byteSize();
     if (*p == basics::VelocyPackHelper::IdAttribute) {
       // the + 1 is required so that we can skip over the attribute name
-      // and point to the attribute value 
-      return VPackSlice(p + 1); 
+      // and point to the attribute value
+      return VPackSlice(p + 1);
     }
   }
-  
+
   // fall back to the regular lookup method
-  return slice.get(StaticStrings::IdString); 
+  return slice.get(StaticStrings::IdString);
 }
 
 /// @brief quick access to the _from attribute in a database document
@@ -202,7 +202,7 @@ VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
-  
+
   if (slice.isEmptyObject()) {
     return VPackSlice();
   }
@@ -215,7 +215,7 @@ VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
   while (*p <= basics::VelocyPackHelper::FromAttribute && ++count <= 3) {
     if (*p == basics::VelocyPackHelper::FromAttribute) {
       // the + 1 is required so that we can skip over the attribute name
-      // and point to the attribute value 
+      // and point to the attribute value
       return VPackSlice(p + 1);
     }
     // skip over the attribute name
@@ -225,7 +225,7 @@ VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
   }
 
   // fall back to the regular lookup method
-  return slice.get(StaticStrings::FromString); 
+  return slice.get(StaticStrings::FromString);
 }
 
 /// @brief quick access to the _to attribute in a database document
@@ -235,7 +235,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
-  
+
   if (slice.isEmptyObject()) {
     return VPackSlice();
   }
@@ -247,7 +247,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
   while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 4) {
     if (*p == basics::VelocyPackHelper::ToAttribute) {
       // the + 1 is required so that we can skip over the attribute name
-      // and point to the attribute value 
+      // and point to the attribute value
       return VPackSlice(p + 1);
     }
     // skip over the attribute name
@@ -255,22 +255,22 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
     // skip over the attribute value
     p += VPackSlice(p).byteSize();
   }
-  
+
   // fall back to the regular lookup method
-  return slice.get(StaticStrings::ToString); 
+  return slice.get(StaticStrings::ToString);
 }
 
 /// @brief extract _key and _rev from a document, in one go
-/// this is an optimized version used when loading collections, WAL 
+/// this is an optimized version used when loading collections, WAL
 /// collection and compaction
-void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, 
-                                               VPackSlice& keySlice, 
+void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice,
+                                               VPackSlice& keySlice,
                                                TRI_voc_rid_t& revisionId) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 2); 
+  TRI_ASSERT(slice.length() >= 2);
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -306,7 +306,7 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice,
 
   // fall back to regular lookup
   {
-    keySlice = slice.get(StaticStrings::KeyString);    
+    keySlice = slice.get(StaticStrings::KeyString);
     VPackValueLength l;
     char const* p = slice.get(StaticStrings::RevString).getString(l);
     revisionId = TRI_StringToRid(p, l, false);
@@ -316,7 +316,7 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice,
 /// @brief extract _rev from a database document
 TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 2); 
+  TRI_ASSERT(slice.length() >= 2);
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -339,9 +339,9 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
     // skip over the attribute value
     p += VPackSlice(p).byteSize();
   }
-  
-  // fall back to regular lookup 
-  { 
+
+  // fall back to regular lookup
+  {
     VPackValueLength l;
     char const* p = slice.get(StaticStrings::RevString).getString(l);
     return TRI_StringToRid(p, l, false);
@@ -350,7 +350,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
 
 VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 2); 
+  TRI_ASSERT(slice.length() >= 2);
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -365,38 +365,42 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
     p += VPackSlice(p).byteSize();
   }
 
-  // fall back to regular lookup 
+  // fall back to regular lookup
   return slice.get(StaticStrings::RevString);
 }
- 
-OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate) {
+
+OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, 
+                                                       transaction::CountType type, int64_t& total) {
+  total = 0;
   VPackBuilder resultBuilder;
 
-  if (aggregate) {
-    uint64_t result = 0;
-    for (auto const& it : count) {
-      result += it.second;
-    }
-    resultBuilder.add(VPackValue(result));
-  } else {
+  if (type == transaction::CountType::Detailed) {
     resultBuilder.openObject();
     for (auto const& it : count) {
+      total += it.second;
       resultBuilder.add(it.first, VPackValue(it.second));
     }
     resultBuilder.close();
+  } else {
+    uint64_t result = 0;
+    for (auto const& it : count) {
+      total += it.second;
+      result += it.second;
+    }
+    resultBuilder.add(VPackValue(result));
   }
-  return OperationResult(Result(), resultBuilder.steal(), nullptr, false);
+  return OperationResult(Result(), resultBuilder.buffer(), nullptr);
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const* resolver,
-                                          VPackSlice const& id, 
+                                          VPackSlice const& id,
                                           VPackSlice const& key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
   uint64_t cid = encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
-  
+
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
   if (resolved.compare(0, 7, "_local_") == 0) {
@@ -419,40 +423,40 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
 }
 
 /// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx) 
+transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
       : _transactionContext(trx->transactionContextPtr()),
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
 
 /// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext) 
-      : _transactionContext(transactionContext), 
+transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext)
+      : _transactionContext(transactionContext),
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
 
 /// @brief destructor
-transaction::StringBufferLeaser::~StringBufferLeaser() { 
+transaction::StringBufferLeaser::~StringBufferLeaser() {
   _transactionContext->returnStringBuffer(_stringBuffer);
 }
-  
+
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx) 
-      : _transactionContext(trx->transactionContextPtr()), 
+transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
+      : _transactionContext(trx->transactionContextPtr()),
         _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
 
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext) 
-      : _transactionContext(transactionContext), 
+transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext)
+      : _transactionContext(transactionContext),
         _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
 
 /// @brief destructor
-transaction::BuilderLeaser::~BuilderLeaser() { 
+transaction::BuilderLeaser::~BuilderLeaser() {
   if (_builder != nullptr) {
-    _transactionContext->returnBuilder(_builder); 
+    _transactionContext->returnBuilder(_builder);
   }
 }
 

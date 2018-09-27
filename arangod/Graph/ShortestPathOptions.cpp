@@ -152,7 +152,7 @@ void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, false, false);
+      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
     }
   }
   builder.close();
@@ -231,7 +231,14 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   }
   if (!fetch.empty()) {
     transaction::BuilderLeaser leased(trx());
-    fetchVerticesFromEngines(trx()->databaseName(), ch->engines(), fetch,
-                             cache, ch->datalake(), *(leased.get()));
+
+    fetchVerticesFromEngines(
+      trx()->vocbase().name(),
+      ch->engines(),
+      fetch,
+      cache,
+      ch->datalake(),
+      *(leased.get())
+    );
   }
 }

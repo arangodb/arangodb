@@ -57,27 +57,33 @@ using namespace arangodb::pregel;
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
-Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig)
+Worker<V, E, M>::Worker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algo,
+    VPackSlice initConfig
+)
     : _state(WorkerState::IDLE),
-      _config(vocbase, initConfig),
+      _config(&vocbase, initConfig),
       _algorithm(algo),
       _nextGSSSendMessageCount(0),
       _requestedNextGSS(false) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
+
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators.reset(new AggregatorHandler(algo));
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
+
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
     _messageBatchSize = 5000;
   }
+
   _initializeMessageCaches();
 }
 
@@ -168,7 +174,8 @@ void Worker<V, E, M>::setupWorker() {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->post(
-                    [this, callback] { _graphStore->loadShards(&_config, callback); });
+        [this, callback] { _graphStore->loadShards(&_config, callback); },
+        false);
   }
 }
 
@@ -338,7 +345,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    });
+    }, false);
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -407,7 +414,7 @@ bool Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
-  if (TRI_UNLIKELY(!_writeCache)) {  // ~Worker was called
+  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
     LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
     return false;
   }
@@ -570,17 +577,15 @@ void Worker<V, E, M>::_continueAsync() {
   }
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
 
   // wait for new messages before beginning to process
   int64_t milli =
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(new boost::asio::deadline_timer(
-      *ioService, boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this](const boost::system::error_code& error) {
-    if (error != boost::asio::error::operation_aborted) {
+  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
+      boost::posix_time::millisec(milli)));
+  _boost_timer->async_wait([this](const asio::error_code& error) {
+    if (error != asio::error::operation_aborted) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);
         std::swap(_readCache, _writeCache);
@@ -622,20 +627,21 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder* b) const {
+void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
   MUTEX_LOCKER(guard, _commandMutex);
+  TRI_ASSERT(b.isEmpty());
 
-  b->openArray();
+  b.openArray();
   auto it = _graphStore->vertexIterator();
   for (VertexEntry const* vertexEntry : it) {
     V* data = _graphStore->mutableVertexData(vertexEntry);
-    b->openObject();
-    b->add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
+    b.openObject();
+    b.add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(*b, data, sizeof(V));
-    b->close();
+    _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
+    b.close();
   }
-  b->close();
+  b.close();
 }
 
 template <typename V, typename E, typename M>
@@ -689,6 +695,11 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
         _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
+    if (!vCompensate) {
+      _state = WorkerState::DONE;
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      return;
+    }
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
@@ -711,7 +722,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-  });
+    }, false);
 }
 
 template <typename V, typename E, typename M>
@@ -737,20 +748,21 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     scheduler->post([path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    });
+    }, false);
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =
         Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+    std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
         120.0,  // timeout
         true);  // single request, no answer expected
+    // Forget about it
+    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 
@@ -771,7 +783,7 @@ void Worker<V, E, M>::_callConductorWithResponse(
     std::unordered_map<std::string, std::string> headers;
 
     std::unique_ptr<ClusterCommResult> result = cc->syncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, message.toJson(), headers,
         120.0);
     if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {

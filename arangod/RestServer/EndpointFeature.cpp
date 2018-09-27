@@ -29,19 +29,22 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 EndpointFeature::EndpointFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Endpoint"),
       _reuseAddress(true),
       _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("Ssl");
+  startsAfter("AQLPhase");
+
   startsAfter("Server");
 
   // if our default value is too high, we'll use half of the max value provided
@@ -120,3 +123,5 @@ void EndpointFeature::buildEndpointLists() {
     }
   }
 }
+
+} // arangodb

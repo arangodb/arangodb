@@ -32,6 +32,10 @@ NS_BEGIN(kludge)
 const char TYPE_DELIMITER = '\0';
 const char ANALYZER_DELIMITER = '\1';
 
+irs::string_ref const NULL_SUFFIX("\0_n", 3);
+irs::string_ref const BOOL_SUFFIX("\0_b", 3);
+irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);
+
 void mangleType(std::string& name) {
   name += TYPE_DELIMITER;
 }
@@ -41,30 +45,25 @@ void mangleAnalyzer(std::string& name) {
 }
 
 void mangleNull(std::string& name) {
-  static irs::string_ref const SUFFIX("\0_n", 3);
-  name.append(SUFFIX.c_str(), SUFFIX.size());
+  name.append(NULL_SUFFIX.c_str(), NULL_SUFFIX.size());
 }
 
 void mangleBool(std::string& name) {
-  static irs::string_ref const SUFFIX("\0_b", 3);
-  name.append(SUFFIX.c_str(), SUFFIX.size());
+  name.append(BOOL_SUFFIX.c_str(), BOOL_SUFFIX.size());
 }
 
 void mangleNumeric(std::string& name) {
-  static irs::string_ref const SUFFIX("\0_d", 3);
-  name.append(SUFFIX.c_str(), SUFFIX.size());
+  name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
-void mangleStringField(std::string& name, AnalyzerPoolPtr const& pool) {
-  TRI_ASSERT(pool);
+void mangleStringField(std::string& name, AnalyzerPool const& pool) {
   name += ANALYZER_DELIMITER;
-  name += pool->name();
+  name += pool.name();
 }
 
-void unmangleStringField(std::string& name, AnalyzerPoolPtr const& pool) {
-  TRI_ASSERT(pool);
+void demangleStringField(std::string& name, AnalyzerPool const& pool) {
   // +1 for preceding '\1'
-  auto const suffixSize = 1 + pool->name().size();
+  auto const suffixSize = 1 + pool.name().size();
 
   TRI_ASSERT(name.size() >= suffixSize);
   name.resize(name.size() - suffixSize);

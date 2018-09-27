@@ -47,8 +47,10 @@
 using namespace arangodb;
 
 RocksDBFulltextIndex::RocksDBFulltextIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
@@ -83,12 +85,18 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
+void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
+                  std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(true));
+  RocksDBIndex::toVelocyPack(builder, flags);
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(true)
+  );
   builder.add("minLength", VPackValue(_minWordLength));
   builder.close();
 }
@@ -97,18 +105,20 @@ void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
       // Invalid ID
       return false;
     }
+
     // Short circuit. If id is correct the index is identical.
     StringRef idRef(value);
     return idRef == std::to_string(_iid);
@@ -131,21 +141,29 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  value = info.get("fields");
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
 
   size_t const n = static_cast<size_t>(value.length());
+
   if (n != _fields.size()) {
     return false;
   }
+
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique, false
+                 )
+     ) {
     return false;
   }
+
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+                   info, arangodb::StaticStrings::IndexSparse, true
+                 )
+     ) {
     return false;
   }
 
@@ -237,11 +255,11 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
-    for (auto const& v : VPackArrayIterator(value)) {
+    for (VPackSlice v : VPackArrayIterator(value)) {
       ExtractWords(words, v, minWordLength, level + 1);
     }
   } else if (value.isObject() && level == 0) {
-    for (auto const& v : VPackObjectIterator(value)) {
+    for (VPackObjectIterator::ObjectPair v : VPackObjectIterator(value)) {
       ExtractWords(words, v.value, minWordLength, level + 1);
     }
   }
@@ -412,7 +430,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
-  rocksdb::ReadOptions ro = mthds->readOptions();
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   ro.iterate_upper_bound = &end;
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
   iter->Seek(bounds.start());
@@ -428,7 +446,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
       return rocksutils::convertStatus(s);
     }
 
-    LocalDocumentId documentId = RocksDBKey::documentId(
+    LocalDocumentId documentId = RocksDBKey::indexDocumentId(
         RocksDBEntryType::FulltextIndexValue, iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(documentId);
@@ -457,36 +475,39 @@ Result RocksDBFulltextIndex::applyQueryToken(
 IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* trx,
                                                           ManagedDocumentResult*,
                                                           aql::AstNode const* condNode,
-                                                          aql::Variable const* var, bool reverse) {
+                                                          aql::Variable const* var,
+                                                          IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
-  
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
+
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
   TRI_ASSERT(fcall->numMembers() == 1);
   aql::AstNode const* args = fcall->getMember(0);
-  
+
   size_t numMembers = args->numMembers();
   TRI_ASSERT(numMembers == 3 || numMembers == 4);
-  
+
   aql::AstNode const* queryNode = args->getMember(2);
   if (queryNode->type != aql::NODE_TYPE_VALUE ||
       queryNode->value.type != aql::VALUE_TYPE_STRING) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
-    
+
   FulltextQuery parsedQuery;
   Result res = parseQueryString(queryNode->getString(), parsedQuery);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   std::set<LocalDocumentId> results;
   res = executeQuery(trx, parsedQuery, results);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
-  return new RocksDBFulltextIndexIterator(_collection, trx, this, std::move(results));
-}
 
+  return new RocksDBFulltextIndexIterator(
+    &_collection, trx, std::move(results)
+  );
+}

@@ -43,6 +43,7 @@ const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const yaml = require('js-yaml');
+const platform = require('internal').platform;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -51,248 +52,22 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'http_replication': [tu.pathForTesting('HttpReplication', 'rb')],
+  'http_server': [tu.pathForTesting('HttpInterface', 'rb')],
+  'ssl_server': [tu.pathForTesting('HttpInterface', 'rb')],
+  'server_http': [tu.pathForTesting('common/http')],
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
 
 function serverHttp (options) {
   // first starts to replace rspec:
-  let testCases = tu.scanTestPath('js/common/tests/http');
+  let testCases = tu.scanTestPaths(testPaths.server_http);
 
   return tu.performTests(options, testCases, 'server_http', tu.runThere);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs ruby tests using RSPEC
-// //////////////////////////////////////////////////////////////////////////////
-
-function camelize (str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (letter, index) {
-    return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
-  }).replace(/\s+/g, '');
-}
-
-function rubyTests (options, ssl) {
-  let instanceInfo;
-
-  if (ssl) {
-    instanceInfo = pu.startInstance('ssl', options, {}, 'ssl_server');
-  } else {
-    instanceInfo = pu.startInstance('tcp', options, {}, 'http_server');
-  }
-
-  if (instanceInfo === false) {
-    return {
-      status: false,
-      message: 'failed to start server!'
-    };
-  }
-
-  const tmpname = fs.getTempFile() + '.rb';
-
-  let rspecConfig = 'RSpec.configure do |c|\n' +
-                    '  c.add_setting :ARANGO_SERVER\n' +
-                    '  c.ARANGO_SERVER = "' +
-                    instanceInfo.endpoint.substr(6) + '"\n' +
-                    '  c.add_setting :ARANGO_SSL\n' +
-                    '  c.ARANGO_SSL = "' + (ssl ? '1' : '0') + '"\n' +
-                    '  c.add_setting :ARANGO_USER\n' +
-                    '  c.ARANGO_USER = "' + options.username + '"\n' +
-                    '  c.add_setting :ARANGO_PASSWORD\n' +
-                    '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
-                    '  c.add_setting :SKIP_TIMECRITICAL\n' +
-                    '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
-                    'end\n';
-
-  fs.write(tmpname, rspecConfig);
-
-  if (options.extremeVerbosity === true) {
-    print('rspecConfig: \n' + rspecConfig);
-  }
-
-  try {
-    fs.makeDirectory(pu.LOGS_DIR);
-  } catch (err) {}
-
-  let files = fs.list(fs.join('UnitTests', 'HttpInterface'));
-
-  let continueTesting = true;
-  let filtered = {};
-  let results = {};
-
-  let args;
-  let command;
-  let rspec;
-
-  if (options.ruby === '') {
-    command = options.rspec;
-    rspec = undefined;
-  } else {
-    command = options.ruby;
-    rspec = options.rspec;
-  }
-
-  const parseRspecJson = function (testCase, res, totalDuration) {
-    let tName = camelize(testCase.description);
-    let status = (testCase.status === 'passed');
-
-    res[tName] = {
-      status: status,
-      message: testCase.full_description,
-      duration: totalDuration // RSpec doesn't offer per testcase time...
-    };
-
-    res.total++;
-
-    if (!status) {
-      const msg = yaml.safeDump(testCase)
-            .replace(/.*rspec\/core.*\n/gm, '')
-            .replace(/.*rspec\\core.*\n/gm, '')
-            .replace(/.*lib\/ruby.*\n/, '')
-            .replace(/.*- >-.*\n/gm, '')
-            .replace(/\n *`/gm, ' `');
-      print('RSpec test case falied: \n' + msg);
-      res[tName].message += '\n' + msg;
-    }
-    return status ? 0 : 1;
-  };
-
-  let count = 0;
-  let graphCount = 0;
-  files = tu.splitBuckets(options, files);
-
-  for (let i = 0; i < files.length; i++) {
-    const te = files[i];
-
-    if (te.substr(0, 4) === 'api-' && te.substr(-3) === '.rb') {
-      let tfn = fs.join('UnitTests', 'HttpInterface', te);
-      if (tu.filterTestcaseByOptions(tfn, options, filtered)) {
-        count += 1;
-        if (!continueTesting) {
-          print('Skipping ' + te + ' server is gone.');
-
-          results[te] = {
-            status: false,
-            message: instanceInfo.exitStatus
-          };
-
-          instanceInfo.exitStatus = 'server is gone.';
-          break;
-        }
-
-        let collectionsBefore = [];
-        db._collections().forEach(collection => {
-          collectionsBefore.push(collection._name);
-        });
-
-        const subFolder = ssl ? 'ssl_server' : 'http_server';
-        const resultfn = fs.join(options.testOutputDirectory, subFolder, te + '.json');
-
-        args = ['--color',
-                '-I', fs.join('UnitTests', 'HttpInterface'),
-                '--format', 'd',
-                '--format', 'j',
-                '--out', resultfn,
-                '--require', tmpname,
-                tfn
-               ];
-
-        if (rspec !== undefined) {
-          args = [rspec].concat(args);
-        }
-
-        print('\n' + Date() + ' rspec trying', tfn, '...');
-        const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir);
-
-        results[te] = {
-          total: 0,
-          failed: 0,
-          status: res.status
-        };
-
-        try {
-          const jsonResult = JSON.parse(fs.read(resultfn));
-
-          if (options.extremeVerbosity) {
-            print(yaml.safeDump(jsonResult));
-          }
-
-          for (let j = 0; j < jsonResult.examples.length; ++j) {
-            results[te].failed += parseRspecJson(
-              jsonResult.examples[j], results[te],
-              jsonResult.summary.duration);
-          }
-
-          results[te].duration = jsonResult.summary.duration;
-        } catch (x) {
-          print('Failed to parse rspec result: ' + x);
-          results[te]['complete_' + te] = res;
-
-          if (res.status === false) {
-            options.cleanup = false;
-
-            if (!options.force) {
-              break;
-            }
-          }
-        }
-
-        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
-        if (continueTesting) {
-          // Check whether some collections were left behind, and if mark test as failed.
-          let collectionsAfter = [];
-          db._collections().forEach(collection => {
-            collectionsAfter.push(collection._name);
-          });
-          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual).filter(function(name) {
-            return (name[0] !== '_'); // exclude system collections from the comparison
-          });
-          if (delta.length !== 0) {
-            results[te] = {
-              status: false,
-              message: 'Cleanup missing - test left over collections! [' + delta + '] - Original test status: ' + JSON.stringify(results[te])
-            };
-            collectionsBefore = [];
-            db._collections().forEach(collection => {
-              collectionsBefore.push(collection._name);
-            });
-          }
-
-          if (db._graphs.count() !== graphCount) {
-            results[te] = {
-              status: false,
-              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-                JSON.stringify(db._graphs.toArray()) +
-                ' ] - Original test status: ' +
-                JSON.stringify(results[te])
-            };
-            graphCount = db._graphs.count();
-          }
-        }
-      } else {
-        if (options.extremeVerbosity) {
-          print('Skipped ' + te + ' because of ' + filtered.filter);
-        }
-      }
-    }
-  }
-
-  print('Shutting down...');
-
-  if (count === 0) {
-    results['ALLTESTS'] = {
-      status: false,
-      skipped: true
-    };
-    results.status = false;
-    print(RED + 'No testcase matched the filter.' + RESET);
-  }
-
-  fs.remove(tmpname);
-  pu.shutdownInstance(instanceInfo, options);
-  print('done.');
-
-  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -304,8 +79,12 @@ function httpReplication (options) {
     'replication': true
   };
   _.defaults(opts, options);
+  
+  let testCases = tu.scanTestPaths(testPaths.http_replication);
 
-  return rubyTests(opts, false);
+  testCases = tu.splitBuckets(options, testCases);
+
+  return tu.performTests(opts, testCases, 'http_replication', tu.runInRSpec);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -317,7 +96,12 @@ function httpServer (options) {
     'httpTrustedOrigin': 'http://was-erlauben-strunz.it'
   };
   _.defaults(opts, options);
-  return rubyTests(opts, false);
+
+  let testCases = tu.scanTestPaths(testPaths.http_server);
+
+  testCases = tu.splitBuckets(options, testCases);
+
+  return tu.performTests(opts, testCases, 'http_server', tu.runInRSpec);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -334,13 +118,20 @@ function sslServer (options) {
     };
   }
   var opts = {
-    'httpTrustedOrigin': 'http://was-erlauben-strunz.it'
+    'httpTrustedOrigin': 'http://was-erlauben-strunz.it',
+    'protocol': 'ssl'
   };
   _.defaults(opts, options);
-  return rubyTests(opts, true);
+
+  let testCases = tu.scanTestPaths(testPaths.ssl_server);
+
+  testCases = tu.splitBuckets(options, testCases);
+
+  return tu.performTests(opts, testCases, 'ssl_server', tu.runInRSpec);
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['http_replication'] = httpReplication;
   testFns['http_server'] = httpServer;
   testFns['server_http'] = serverHttp;
@@ -351,11 +142,15 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   defaultFns.push('ssl_server');
 
   opts['skipSsl'] = false;
-  opts['rspec'] = 'rspec';
+  if (platform.substr(0, 3) !== 'win') {
+    opts['rspec'] = 'rspec';
+  } else {
+    // Windows process utilties would apply `.exe` to rspec.
+    // However the file is called .bat and .exe cannot be found.
+    opts['rspec'] = 'rspec.bat';
+  }
   opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

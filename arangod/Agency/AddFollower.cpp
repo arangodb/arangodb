@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,18 +41,25 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
+
   // Get job details from agency:
-  try {
-    std::string path = pos[status] + _jobId + "/";
-    _database = _snapshot.get(path + "database").getString();
-    _collection = _snapshot.get(path + "collection").getString();
-    _shard = _snapshot.get(path + "shard").getString();
-    _creator = _snapshot.get(path + "creator").getString();
-  } catch (std::exception const& e) {
+  std::string path = pos[status] + _jobId + "/";
+  auto tmp_database = _snapshot.hasAsString(path + "database");
+  auto tmp_collection = _snapshot.hasAsString(path + "collection");
+  auto tmp_shard = _snapshot.hasAsString(path + "shard");
+  auto tmp_creator = _snapshot.hasAsString(path + "creator");
+
+  if (tmp_database.second && tmp_collection.second
+      && tmp_shard.second && tmp_creator.second) {
+    _database = tmp_database.first;
+    _collection = tmp_collection.first;
+    _shard = tmp_shard.first;
+    _creator = tmp_creator.first;
+  } else {
     std::stringstream err;
-    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
-    finish("", _shard, false, err.str());
+    finish("", tmp_shard.first, false, err.str());
     _status = FAILED;
   }
 }
@@ -82,9 +89,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->openObject();
   }
 
-  std::string path = toDoPrefix + _jobId;
-
-  _jb->add(VPackValue(path));
+  _jb->add(VPackValue(toDoPrefix + _jobId));
   { VPackObjectBuilder guard(_jb.get());
     _jb->add("creator", VPackValue(_creator));
     _jb->add("type", VPackValue("addFollower"));
@@ -125,24 +130,24 @@ bool AddFollower::start() {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection = _snapshot.get(planColPrefix + _database + "/" + _collection);
+  Node collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
     return false;
   }
-  
+
   // Look at Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.get(planPath).slice();
+  Slice planned = _snapshot.hasAsSlice(planPath).first;
 
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too few followers for the current
   // `replicationFactor`:
-  size_t desiredReplFactor = collection.get("replicationFactor").getUInt();
+  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
   size_t actualReplFactor = planned.length();
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
@@ -166,7 +171,7 @@ bool AddFollower::start() {
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
   while (it != available.end()) {
-    if (checkServerGood(_snapshot, *it) != "GOOD") {
+    if (checkServerHealth(_snapshot, *it) != "GOOD") {
       it = available.erase(it);
     } else {
       ++it;
@@ -176,7 +181,7 @@ bool AddFollower::start() {
   // Check that we have enough:
   if (available.size() < desiredReplFactor - actualReplFactor) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "shard " << _shard
-      << " does not have enough candidates to add followers, waiting, jobId=" 
+      << " does not have enough candidates to add followers, waiting, jobId="
       << _jobId;
     return false;
   }
@@ -206,9 +211,8 @@ bool AddFollower::start() {
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
     if (_jb == nullptr) {
-      try {
-        _snapshot.get(toDoPrefix + _jobId).toBuilder(todo);
-      } catch (std::exception const&) {
+      auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
+      if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC(INFO, Logger::SUPERVISION)
@@ -227,7 +231,7 @@ bool AddFollower::start() {
       }
     }
   }
-  
+
   // Enter pending, remove todo, block toserver
   { VPackArrayBuilder listOfTransactions(&trx);
 
@@ -258,18 +262,18 @@ bool AddFollower::start() {
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
-        addPreconditionServerGood(trx, srv);
+        addPreconditionServerHealth(trx, srv, "GOOD");
       }
     }   // precondition done
   }  // array for transaction done
-  
+
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, trx);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
     LOG_TOPIC(INFO, Logger::SUPERVISION)
-      << "Pending: Addfollower(s) to shard " << _shard << " in collection "
+      << "Finished: Addfollower(s) to shard " << _shard << " in collection "
       << _collection;
     return true;
   }
@@ -296,7 +300,7 @@ arangodb::Result AddFollower::abort() {
                   "Failed aborting addFollower job beyond pending stage");
   }
 
-  Result result;  
+  Result result;
   // Can now only be TODO or PENDING
   if (_status == TODO) {
     finish("", "", false, "job aborted");
@@ -305,6 +309,4 @@ arangodb::Result AddFollower::abort() {
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
   return result;
-  
 }
-

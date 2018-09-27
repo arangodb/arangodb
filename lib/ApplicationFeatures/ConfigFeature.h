@@ -26,12 +26,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
-  ConfigFeature(application_features::ApplicationServer* server,
-                std::string const& progname);
+  ConfigFeature(
+    application_features::ApplicationServer& server,
+    std::string const& progname,
+    std::string const& configFilename = ""
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
                    char const* binaryPath) override final;
@@ -41,14 +44,13 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _defines;
   bool _checkConfiguration;
 
- private:
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname,
                       char const* binaryPath);
 
- private:
   std::string _progname;
 };
+
 }
 
 #endif

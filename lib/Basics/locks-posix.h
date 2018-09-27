@@ -28,12 +28,6 @@
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
-/// @brief mutex type
-#define TRI_mutex_t pthread_mutex_t
-
-/// @brief read-write-lock type
-#define TRI_read_write_lock_t pthread_rwlock_t
-
 /// @brief condition variable
 struct TRI_condition_t {
   pthread_cond_t _cond;

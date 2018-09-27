@@ -277,10 +277,10 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   }; // stream
 
   struct doc_stream : stream {
+    void doc(doc_id_t delta) { deltas[size] = delta; }
     void flush(uint64_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
-    void doc(int32_t delta) { deltas[size] = delta; }
     void freq(uint64_t frq) { freqs[size] = frq; }
 
     void reset() {

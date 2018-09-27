@@ -33,15 +33,17 @@
 #include "Aql/ExecutionPlan.h"
 #include "IResearch/AttributeScorer.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewNode.h"
-#include "IResearch/IResearchFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 
 #include "search/scorers.hpp"
 #include "utils/misc.hpp"
@@ -72,9 +74,12 @@ void assertOrder(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, std::make_shared<arangodb::velocypack::Builder>(),
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    std::make_shared<arangodb::velocypack::Builder>(),
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -135,8 +140,12 @@ void assertOrder(
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     arangodb::iresearch::QueryContext const ctx{
@@ -189,9 +198,12 @@ void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     nullptr, nullptr,
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    nullptr,
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -209,17 +221,22 @@ struct IResearchOrderSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchOrderSetup(): server(nullptr, nullptr) {
+  IResearchOrderSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -239,17 +256,18 @@ struct IResearchOrderSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function invalid("INVALID", "|.", false, true, true, false);
+    arangodb::aql::Function invalid("INVALID", "|.",
+      arangodb::aql::Function::makeFlags(
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      )); 
 
     functions.add(invalid);
-
-    // suppress log messages since tests check error conditions
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchOrderSetup() {
-    arangodb::aql::AqlFunctionFeature(&server).unprepare(); // unset singleton instance
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::aql::AqlFunctionFeature(server).unprepare(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 

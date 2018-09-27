@@ -1,33 +1,33 @@
-shell> curl --dump - http://localhost:8529/subdirectory/ourtest/1
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/subdirectory/ourtest/1</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
     <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"url"</span> : <span class="hljs-string">"/subdirectory/ourtest/1"</span>, 
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">24507</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">15674</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">57022</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"151367546848314"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">49765</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"153563925279595"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
       <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
       <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span> 
+      <span class="hljs-string">"accept"</span> : <span class="hljs-string">"application/json"</span>, 
+      <span class="hljs-string">"content-type"</span> : <span class="hljs-string">"application/json"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 
@@ -40,36 +40,36 @@ x-content-type-options: nosniff
   <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell> curl --dump - http://localhost:8529/subdirectory/ourtest/2
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/subdirectory/ourtest/2</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
     <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"url"</span> : <span class="hljs-string">"/subdirectory/ourtest/2"</span>, 
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">24507</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">15674</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">57022</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"151367546848314"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">49765</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"153563925279595"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
       <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
       <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span> 
+      <span class="hljs-string">"accept"</span> : <span class="hljs-string">"application/json"</span>, 
+      <span class="hljs-string">"content-type"</span> : <span class="hljs-string">"application/json"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 
@@ -82,36 +82,36 @@ x-content-type-options: nosniff
   <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell> curl --dump - http://localhost:8529/subdirectory/ourtest/3
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/subdirectory/ourtest/3</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
     <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"url"</span> : <span class="hljs-string">"/subdirectory/ourtest/3"</span>, 
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">24507</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">15674</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">57022</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"151367546848314"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">49765</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"153563925279595"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
       <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
       <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span> 
+      <span class="hljs-string">"accept"</span> : <span class="hljs-string">"application/json"</span>, 
+      <span class="hljs-string">"content-type"</span> : <span class="hljs-string">"application/json"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 

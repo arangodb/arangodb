@@ -45,7 +45,7 @@ template<typename T>
 inline T atoi_negative_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
-    result = (result << 1) + (result << 3) - (*(p++) - '0');
+    result = (result * 10) - (*(p++) - '0');
   }
   return result;
 }
@@ -63,7 +63,7 @@ template<typename T>
 inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
-    result = (result << 1) + (result << 3) + *(p++) - '0';
+    result = (result * 10) + *(p++) - '0';
   }
 
   return result;
@@ -81,7 +81,7 @@ inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline T atoi_unchecked(char const* p, char const* e) noexcept {
-  if (TRI_UNLIKELY(p == e)) {
+  if (ADB_UNLIKELY(p == e)) {
     return T();
   }
 
@@ -91,7 +91,7 @@ inline T atoi_unchecked(char const* p, char const* e) noexcept {
     }
     return atoi_negative_unchecked<T>(++p, e);
   } 
-  if (TRI_UNLIKELY(*p == '+')) {
+  if (ADB_UNLIKELY(*p == '+')) {
     ++p;
   }
   
@@ -109,7 +109,7 @@ inline T atoi_unchecked(char const* p, char const* e) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
-  if (TRI_UNLIKELY(p == e)) {
+  if (ADB_UNLIKELY(p == e)) {
     valid = false;
     return T();
   }
@@ -121,14 +121,14 @@ inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
   do {
     char c = *p;
     // we expect only '0' to '9'. everything else is unexpected
-    if (TRI_UNLIKELY(c < '0' || c > '9')) {
+    if (ADB_UNLIKELY(c < '0' || c > '9')) {
       valid = false;
       return result;
     }
 
     c -= '0';
     // we expect the bulk of values to not hit the bounds restrictions
-    if (TRI_UNLIKELY(result < cutoff || (result == cutoff && c > cutlim))) {
+    if (ADB_UNLIKELY(result < cutoff || (result == cutoff && c > cutlim))) {
       valid = false;
       return result;
     } 
@@ -151,7 +151,7 @@ inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
-  if (TRI_UNLIKELY(p == e)) {
+  if (ADB_UNLIKELY(p == e)) {
     valid = false;
     return T();
   }
@@ -164,14 +164,14 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
     char c = *p;
 
     // we expect only '0' to '9'. everything else is unexpected
-    if (TRI_UNLIKELY(c < '0' || c > '9')) {
+    if (ADB_UNLIKELY(c < '0' || c > '9')) {
       valid = false;
       return result;
     }
 
     c -= '0';
     // we expect the bulk of values to not hit the bounds restrictions
-    if (TRI_UNLIKELY(result > cutoff || (result == cutoff && c > cutlim))) {
+    if (ADB_UNLIKELY(result > cutoff || (result == cutoff && c > cutlim))) {
       valid = false;
       return result;
     } 
@@ -196,7 +196,7 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(char const* p, char const* e, bool& valid) noexcept {
-  if (TRI_UNLIKELY(p == e)) {
+  if (ADB_UNLIKELY(p == e)) {
     valid = false;
     return T();
   }
@@ -204,7 +204,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(char cons
   if (*p == '-') {
     return atoi_negative<T>(++p, e, valid);
   } 
-  if (TRI_UNLIKELY(*p == '+')) {
+  if (ADB_UNLIKELY(*p == '+')) {
     ++p;
   }
   
@@ -213,7 +213,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(char cons
 
 template<typename T>
 inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(char const* p, char const* e, bool& valid) noexcept {
-  if (TRI_UNLIKELY(p == e)) {
+  if (ADB_UNLIKELY(p == e)) {
     valid = false;
     return T();
   }
@@ -222,7 +222,7 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(char co
     valid = false;
     return T();
   } 
-  if (TRI_UNLIKELY(*p == '+')) {
+  if (ADB_UNLIKELY(*p == '+')) {
     ++p;
   }
   

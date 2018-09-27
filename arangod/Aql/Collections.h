@@ -42,9 +42,9 @@ class Collections {
   ~Collections();
 
  public:
-  Collection* get(std::string const&) const;
+  Collection* get(std::string const& name) const;
 
-  Collection* add(std::string const&, AccessMode::Type);
+  Collection* add(std::string const& name, AccessMode::Type accessType);
 
   std::vector<std::string> collectionNames() const;
 

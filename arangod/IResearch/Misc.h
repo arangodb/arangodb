@@ -46,7 +46,9 @@ struct adjacencyChecker {
 
   template<type_t Max, type_t Min, type_t... Types>
   static constexpr bool checkAdjacency() noexcept {
-    return (Max > Min) && (1 == (Max - Min)) && checkAdjacency<Min, Types...>();
+    typedef typename std::underlying_type<type_t>::type underlying_t;
+
+    return (Max > Min) && (1 == (underlying_t(Max) - underlying_t(Min))) && checkAdjacency<Min, Types...>();
   }
 }; // adjacencyCheker
 

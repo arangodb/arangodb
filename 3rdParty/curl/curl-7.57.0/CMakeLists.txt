@@ -45,7 +45,10 @@ include(Macros)
 include(CMakeDependentOption)
 include(CheckCCompilerFlag)
 
-project( CURL C )
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif ()
+project( CURL LANGUAGES C VERSION 7.57.0)
 
 # message(WARNING "the curl cmake build system is poorly maintained. Be aware")
 

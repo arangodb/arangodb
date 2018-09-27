@@ -22,95 +22,94 @@
 
 #include "RestServer/AqlFeature.h"
 
-#include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/MutexLocker.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 
-AqlFeature* AqlFeature::_AQL = nullptr;
-Mutex AqlFeature::_aqlFeatureMutex;
+namespace {
+// number of leases currently handed out
+// the two highest bit of the value has a special meaning
+// and must be masked out.
+// if it is set, then a new lease can be acquired.
+// if not set, then no new lease can be acquired.
+std::atomic<uint64_t> leases{0};
+static constexpr uint64_t readyBit = 0x8000000000000000ULL;
+}  // namespace
 
-AqlFeature::AqlFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
+namespace arangodb {
+
+AqlFeature::AqlFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "Aql") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("CacheManager");
-  startsAfter("Cluster");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("QueryRegistry");
-  startsAfter("Scheduler");
-  startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
+  startsAfter("TraverserEngineRegistry");
 }
 
-AqlFeature* AqlFeature::lease() {
-  MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
-  AqlFeature* aql = AqlFeature::_AQL;
-  if (aql == nullptr) {
-    return nullptr;
-  }
-  if (aql->_isStopped) {
-    return nullptr;
-  }
-  ++aql->_numberLeases;
-  return aql;
+AqlFeature::~AqlFeature() {
+  // always clean up here
+  ::leases.fetch_and(~::readyBit);
 }
 
-void AqlFeature::unlease() {
-  MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
-  AqlFeature* aql = AqlFeature::_AQL;
-  TRI_ASSERT(aql != nullptr);
-  --aql->_numberLeases;
+bool AqlFeature::lease() noexcept {
+  uint64_t previous = ::leases.fetch_add(1);
+  if ((previous & ::readyBit) == 0) {
+    // oops, no lease can be acquired yet.
+    // revert the increase and return false
+    ::leases.fetch_sub(1);
+    return false;
+  }
+  return true;
 }
+
+void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 
 void AqlFeature::start() {
-  MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
-  TRI_ASSERT(_AQL == nullptr);
-  _AQL = this;
+  ::leases.fetch_or(::readyBit);
+
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature started";
 }
 
 void AqlFeature::stop() {
-  {
-    MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
-    _isStopped = true;  // prevent new AQL queries from being launched
-  }
+  ::leases.fetch_and(~::readyBit);
+
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
 
   // Wait until all AQL queries are done
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto traverserEngineRegistry =
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
+  TRI_ASSERT(queryRegistry != nullptr);
+  TRI_ASSERT(traverserEngineRegistry != nullptr);
   while (true) {
     try {
-      QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
+      queryRegistry->destroyAll();
+      traverserEngineRegistry->destroyAll();
     } catch (...) {
       // ignore errors here. if it fails, we'll try again in next round
     }
 
-    size_t m, n, o;
-    {
-      MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
-      m = _numberLeases;
-      n = QueryRegistryFeature::QUERY_REGISTRY->numberRegisteredQueries();
-      o = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY
-          ->numberRegisteredEngines();
-    }
+    uint64_t m = ::leases.load();
+    TRI_ASSERT((m & ::readyBit) == 0);
+
+    size_t n = queryRegistry->numberRegisteredQueries();
+    size_t o = traverserEngineRegistry->numberRegisteredEngines();
+
     if (n == 0 && m == 0 && o == 0) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQLFeature shutdown, waiting for "
-      << o << " registered traverser engines to terminate and for "
-      << n << " registered queries to terminate and for "
-      << m << " feature leases to be released";
+    LOG_TOPIC(DEBUG, Logger::QUERIES)
+        << "AQLFeature shutdown, waiting for " << o
+        << " registered traverser engines to terminate and for " << n
+        << " registered queries to terminate and for " << m
+        << " feature leases to be released";
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   }
-  MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
-  AqlFeature::_AQL = nullptr;
 }
 
+}  // namespace arangodb

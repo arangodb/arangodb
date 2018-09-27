@@ -311,6 +311,11 @@
 
   .collectionTh {
     height: 55px;
+
+    input[type='checkbox'] {
+      width: 30px;
+      float: left;
+    }
   }
 
   .tab-content {
@@ -576,6 +581,14 @@
 
     h4 {
       color: $c-negative;
+    }
+  }
+}
+
+@-moz-document url-prefix() {
+  .collectionTh {
+    input[type='checkbox'] {
+      margin-left: -5px;
     }
   }
 }

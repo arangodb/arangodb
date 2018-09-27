@@ -91,7 +91,7 @@ NS_ROOT
     const string_ref& name,
     const irs::text_format::type_id& args_format
 ) {
-  return scorer_register::instance().get(entry_key_t(name, args_format));
+  return nullptr != scorer_register::instance().get(entry_key_t(name, args_format));
 }
 
 /*static*/ sort::ptr scorers::get(

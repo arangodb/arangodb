@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TraversalBlock.h"
 #include "Aql/Variable.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
@@ -87,8 +88,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph,
-                             std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, direction, graph, options),
+                             std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _condition(nullptr),
@@ -151,8 +152,8 @@ TraversalNode::TraversalNode(
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
     Variable const* inVariable, std::string const& vertexId,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, options),
+    std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
@@ -296,9 +297,9 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
-                                       bool verbose) const {
-  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
+void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                       unsigned flags) const {
+  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -310,7 +311,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   // Condition
   if (_condition != nullptr) {
     nodes.add(VPackValue("condition"));
-    _condition->toVelocyPack(nodes, verbose);
+    _condition->toVelocyPack(nodes, flags != 0);
   }
 
   if (!_conditionVariables.empty()) {
@@ -332,17 +333,17 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
-  _fromCondition->toVelocyPack(nodes, verbose);
+  _fromCondition->toVelocyPack(nodes, flags);
 
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
-  _toCondition->toVelocyPack(nodes, verbose);
+  _toCondition->toVelocyPack(nodes, flags);
 
   if (!_globalEdgeConditions.empty()) {
     nodes.add(VPackValue("globalEdgeConditions"));
     nodes.openArray();
     for (auto const& it : _globalEdgeConditions) {
-      it->toVelocyPack(nodes, verbose);
+      it->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -351,7 +352,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.add(VPackValue("globalVertexConditions"));
     nodes.openArray();
     for (auto const& it : _globalVertexConditions) {
-      it->toVelocyPack(nodes, verbose);
+      it->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -361,7 +362,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.openObject();
     for (auto const& it : _vertexConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
-      it.second->toVelocyPack(nodes, verbose);
+      it.second->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -371,7 +372,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.openObject();
     for (auto& it : _edgeConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
-      it.second->toVelocyPack(nodes, verbose);
+      it.second->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -383,6 +384,14 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<TraversalBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
@@ -390,8 +399,8 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto oldOpts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<TraverserOptions>(*oldOpts);
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
-                             _inVariable, _vertexId, _directions, tmp);
+  auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
+                             _inVariable, _vertexId, _directions, std::move(tmp));
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -462,16 +471,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
-}
-
-/// @brief the cost of a traversal node
-double TraversalNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-  return depCost + (incoming * _options->estimateCost(nrItems));
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 void TraversalNode::prepareOptions() {
@@ -496,12 +496,12 @@ void TraversalNode::prepareOptions() {
     switch (dir) {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
-            _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
+            _plan, _edgeColls[i]->name(), StaticStrings::ToString,
             globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
-            _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
+            _plan, _edgeColls[i]->name(), StaticStrings::FromString,
             globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
         break;
       case TRI_EDGE_ANY:
@@ -529,12 +529,12 @@ void TraversalNode::prepareOptions() {
       switch (dir) {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
+              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
               builder->getInboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
+              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
               builder->getOutboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_ANY:
@@ -550,7 +550,6 @@ void TraversalNode::prepareOptions() {
       it.second->addMember(jt);
     }
     opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
-    TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {
     auto cond =
@@ -559,7 +558,6 @@ void TraversalNode::prepareOptions() {
       cond->addMember(it);
     }
     opts->_baseVertexExpression = new Expression(_plan, ast, cond);
-    TRI_ASSERT(!opts->_baseVertexExpression->isV8());
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

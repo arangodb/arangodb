@@ -25,22 +25,21 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/common-defines.h"
+#include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Endpoint;
-class LogicalCollection;
-
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 namespace transaction {
 class Methods;
@@ -50,25 +49,108 @@ namespace velocypack {
 class Slice;
 }
 
-class Syncer {
- public:
-  
-  struct MasterInfo {
-    std::string _endpoint;
-    TRI_server_id_t _serverId;
-    int _majorVersion;
-    int _minorVersion;
-    TRI_voc_tick_t _lastLogTick;
-    bool _active;
+class Endpoint;
+class LogicalCollection;
 
-    MasterInfo() 
-        : _serverId(0),
-          _majorVersion(0), 
-          _minorVersion(0), 
-          _lastLogTick(0), 
-          _active(false) {}
+class Syncer : public std::enable_shared_from_this<Syncer> {
+ public:
+
+  /// @brief a helper object used for synchronization between the
+  /// dump apply thread and some helper job posted into the scheduler
+  /// for async fetching of the next dump results
+  class JobSynchronizer : public std::enable_shared_from_this<JobSynchronizer> {
+   public:
+    JobSynchronizer(JobSynchronizer const&) = delete;
+    JobSynchronizer& operator=(JobSynchronizer const&) = delete;
+
+    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer); 
+    ~JobSynchronizer();
+
+    /// @brief will be called whenever a response for the job comes in
+    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept;
+    
+    /// @brief will be called whenever an error occurred
+    /// expects "res" to be an error!
+    void gotResponse(arangodb::Result&& res) noexcept; 
+    
+    /// @brief the calling Syncer will call and block inside this function until
+    /// there is a response or the syncer/server is shut down
+    arangodb::Result waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
+
+    /// @brief post an async request to the scheduler
+    /// this will increase the number of inflight jobs, and count it down
+    /// when the posted request has finished
+    void request(std::function<void()> const& cb);
+
+    /// @brief notifies that a job was posted
+    void jobPosted();
+
+    /// @brief notifies that a job was done
+    void jobDone();
+
+    /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
+    bool hasJobInFlight() const noexcept;
+
+   private:
+    /// @brief the shared syncer we use to check if sychronization was
+    /// externally aborted
+    std::shared_ptr<Syncer const> _syncer;
+
+    /// @brief condition variable used for synchronization
+    arangodb::basics::ConditionVariable mutable _condition;
+
+    /// @brief true if a response was received
+    bool _gotResponse;
+
+    /// @brief the processing response of the job (indicates failure if no response
+    /// was received or if something went wrong)
+    arangodb::Result _res;
+
+    /// @brief the response received by the job (nullptr if no response received)
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> _response;
+
+    /// @brief number of posted jobs in flight
+    uint64_t _jobsInFlight;
   };
-  
+
+  struct SyncerState {
+    /// @brief configuration
+    ReplicationApplierConfiguration applier;
+
+    /// @brief information about the replication barrier
+    replutils::BarrierInfo barrier{};
+
+    /// @brief object holding the HTTP client and all connection machinery
+    replutils::Connection connection;
+
+    /// @brief database name
+    std::string databaseName{};
+
+    /// Is this syncer allowed to handle its own batch
+    bool isChildSyncer{false};
+
+    /// @brief leaderId, this is used in the cluster to the unique ID of the
+    /// source server (the shard leader in this case). We need this information
+    /// to apply the changes locally to a shard, which is configured as a
+    /// follower and thus only accepts modifications that are replications
+    /// from the leader. Leave empty if there is no concept of a "leader".
+    std::string leaderId{};
+
+    /// @brief local server id
+    TRI_server_id_t localServerId{0};
+
+    /// @brief local server id
+    std::string localServerIdString{};
+
+    /// @brief information about the master state
+    replutils::MasterInfo master;
+
+    /// @brief lazy loaded list of vocbases
+    std::unordered_map<std::string, DatabaseGuard> vocbases{};
+
+    SyncerState(Syncer*, ReplicationApplierConfiguration const&);
+  };
+
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
@@ -76,55 +158,44 @@ class Syncer {
 
   virtual ~Syncer();
 
-  /// @brief sleeps (nanoseconds)
-  void sleep(uint64_t time) {
-    std::this_thread::sleep_for(std::chrono::microseconds(time));
-  }
-
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
 
-/// @brief steal the barrier id from the syncer
+  /// @brief steal the barrier id from the syncer
   TRI_voc_tick_t stealBarrier();
- 
-  void setLeaderId(std::string const& leaderId) {
-    _leaderId = leaderId;
-  }
-  
+
+  void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
+
   /// @brief send a "remove barrier" command
   Result sendRemoveBarrier();
-  
+
+  // TODO worker-safety
   void setAborted(bool value);
-  
+
+  // TODO worker-safety
   virtual bool isAborted() const;
 
+ public:
  protected:
   /// @brief reload all users
+  // TODO worker safety
   void reloadUsers();
-  
-  /// @brief parse a velocypack response
-  Result parseResponse(arangodb::velocypack::Builder&,
-                       arangodb::httpclient::SimpleHttpResult const*) const;
-
-  /// @brief send a "create barrier" command
-  Result sendCreateBarrier(TRI_voc_tick_t);
-
-  /// @brief send an "extend barrier" command
-  Result sendExtendBarrier(TRI_voc_tick_t = 0);
 
   /// @brief apply a single marker from the collection dump
+  // TODO worker-safety
   Result applyCollectionDumpMarker(transaction::Methods&,
                                    LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&, 
                                    arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
-  Result createCollection(TRI_vocbase_t* vocbase,
-                          arangodb::velocypack::Slice const&,
-                          arangodb::LogicalCollection**);
+  // TODO worker safety - create/drop phase
+  Result createCollection(TRI_vocbase_t& vocbase,
+                          arangodb::velocypack::Slice const& slice,
+                          arangodb::LogicalCollection** dst);
 
   /// @brief drops a collection, based on the VelocyPack provided
+  // TODO worker safety - create/drop phase
   Result dropCollection(arangodb::velocypack::Slice const&, bool reportError);
 
   /// @brief creates an index, based on the VelocyPack provided
@@ -132,103 +203,32 @@ class Syncer {
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);
-
-  /// @brief get master state
-  Result getMasterState();
-
-  /// @brief handle the state response of the master
-  Result handleStateResponse(arangodb::velocypack::Slice const&);
   
+  /// @brief creates a view, based on the VelocyPack provided
+  Result createView(TRI_vocbase_t& vocbase,
+                    arangodb::velocypack::Slice const& slice);
+  
+  /// @brief drops a view, based on the VelocyPack provided
+  Result dropView(arangodb::velocypack::Slice const&, bool reportError);
+
+
+  // TODO worker safety
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
-   
-  LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
 
+  // TODO worker safety
+  std::shared_ptr<LogicalCollection> resolveCollection(
+      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice);
+
+  // TODO worker safety
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
-    return _vocbases;
+    return _state.vocbases;
   }
-  
-  /// @brief whether or not the HTTP result is valid or not
-  bool hasFailed(arangodb::httpclient::SimpleHttpResult* response) const;
-
-  /// @brief create an error result from a failed HTTP request/response
-  Result buildHttpError(arangodb::httpclient::SimpleHttpResult* response, std::string const& url) const;
-  
-  /// we need to act like a 3.2 client
-  bool simulate32Client() const;
-  
- private:
-  
-  /// @brief extract the collection by either id or name, may return nullptr!
-  LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,
-                                             std::string const&);
-  
-  /// @brief apply a single marker from the collection dump
-  Result applyCollectionDumpMarkerInternal(transaction::Methods&,
-                                           LogicalCollection* coll,
-                                           TRI_replication_operation_e,
-                                           arangodb::velocypack::Slice const&, 
-                                           arangodb::velocypack::Slice const&); 
-  
-  /// @brief extract the collection id from VelocyPack
-  TRI_voc_cid_t getCid(velocypack::Slice const&) const;
-  
-  /// @brief extract the collection name from VelocyPack
-  std::string getCName(arangodb::velocypack::Slice const&) const;
 
  protected:
-  
-  /// @brief lazy loaded list of vocbases
-  std::unordered_map<std::string, DatabaseGuard> _vocbases;
-  
-  /// @brief configuration
-  ReplicationApplierConfiguration _configuration;
-  
-  /// @brief information about the master state
-  MasterInfo _masterInfo;
-
-  /// @brief the endpoint (master) we're connected to
-  Endpoint* _endpoint;
-
-  /// @brief the connection to the master
-  httpclient::GeneralClientConnection* _connection;
-  
-  /// @brief a mutex for assigning and freeing the _client object
-  mutable Mutex _clientMutex;
-
-  /// @brief the http client we're using
-  httpclient::SimpleHttpClient* _client;
-
-  /// @brief database name
-  std::string _databaseName;
-
-  /// @brief local server id
-  std::string _localServerIdString;
-
-  /// @brief local server id
-  TRI_server_id_t _localServerId;
-  
-  /// @brief WAL barrier id
-  uint64_t _barrierId;
-
-  /// @brief ttl for WAL barrier
-  int _barrierTtl;
-  
-  /// @brief WAL barrier last update time
-  double _barrierUpdateTime;
-  
-  /// Is this syncer allowed to handle its own batch
-  bool _isChildSyncer;
-
-  /// @brief leaderId, this is used in the cluster to the unique ID of the
-  /// source server (the shard leader in this case). We need this information
-  /// to apply the changes locally to a shard, which is configured as a
-  /// follower and thus only accepts modifications that are replications
-  /// from the leader. Leave empty if there is no concept of a "leader".
-  std::string _leaderId;
-
-  /// @brief base url of the replication API
-  static std::string const ReplicationUrl;
+  /// @brief state information for the syncer
+  SyncerState _state;
 };
-}
+
+}  // namespace arangodb
 
 #endif

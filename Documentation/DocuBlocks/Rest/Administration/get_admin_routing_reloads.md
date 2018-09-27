@@ -5,7 +5,6 @@
 @RESTHEADER{POST /_admin/routing/reload, Reloads the routing information}
 
 @RESTDESCRIPTION
-
 Reloads the routing information from the collection *routing*.
 
 @RESTRETURNCODES

@@ -4,7 +4,7 @@ project(jemalloc C)
 include(ExternalProject)
 
 # set version and paths
-set(JEMALLOC_VERSION "5.0.1")
+set(JEMALLOC_VERSION "5.1.0")
 set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
 set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
 
@@ -19,15 +19,6 @@ file(
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-if (LINUX OR DARWIN)
-  file(
-    COPY
-      "${CMAKE_CURRENT_SOURCE_DIR}/arangodb-jemalloc.c"
-    DESTINATION
-      "${JEMALLOC_BINARY_DIR}/src"
-  )
-endif ()
-
 # generate external project
 if (LINUX OR DARWIN)
   if (DARWIN)
@@ -39,9 +30,6 @@ if (LINUX OR DARWIN)
     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
     set(JEMALLOC_CONFIG "background_thread:true")
   endif ()
-
-  set(JEMALLOC_CFLAGS_TMP "-DARANGODB_MMAP_JEMALLOC=1 ${CMAKE_C_FLAGS}")
-  set(JEMALLOC_CXXFLAGS_TMP "-DARANGODB_MMAP_JEMALLOC=1 ${CMAKE_CXX_FLAGS}")
 
   ExternalProject_Add(
     jemalloc
@@ -56,8 +44,8 @@ if (LINUX OR DARWIN)
     CONFIGURE_COMMAND
       ./configure CC=${JEMALLOC_CC_TMP}
                   CXX=${JEMALLOC_CXX_TMP}
-                  CFLAGS=${JEMALLOC_CFLAGS_TMP}
-                  CXXFLAGS=${JEMALLOC_CXXFLAGS_TMP}
+                  CFLAGS=${CMAKE_C_FLAGS}
+                  CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --with-malloc-conf=${JEMALLOC_CONFIG}
                   --with-version=${JEMALLOC_VERSION}-0-g0

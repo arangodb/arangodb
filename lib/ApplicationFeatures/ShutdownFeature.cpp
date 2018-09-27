@@ -26,16 +26,17 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server,
-    std::vector<std::string> const& features)
+    application_features::ApplicationServer& server,
+    std::vector<std::string> const& features
+)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 
   for (auto feature : features) {
     if (feature != "Logger") {
@@ -45,3 +46,5 @@ ShutdownFeature::ShutdownFeature(
 }
 
 void ShutdownFeature::start() { server()->beginShutdown(); }
+
+} // arangodb

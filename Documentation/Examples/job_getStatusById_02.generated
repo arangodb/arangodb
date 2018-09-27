@@ -1,4 +1,4 @@
-shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'x-arango-async: store'</span> --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/transaction</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"collections"</span> : { 
     <span class="hljs-string">"read"</span> : [ 
@@ -9,14 +9,14 @@ shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - h
 }
 EOF
 
-HTTP/1.1 202 Accepted
+HTTP/1.1 undefined
 content-type: text/plain; charset=utf-8
+x-arango-async-id: 131190
 x-content-type-options: nosniff
-x-arango-async-id: 151367546852199
 
-shell> curl --dump - http://localhost:8529/_api/job/151367546852199
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/131190</span>
 
-HTTP/1.1 204 No Content
+HTTP/1.1 undefined
 content-type: text/plain; charset=utf-8
 x-content-type-options: nosniff
 

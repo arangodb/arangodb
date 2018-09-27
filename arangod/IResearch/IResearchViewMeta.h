@@ -51,67 +51,65 @@ NS_BEGIN(iresearch)
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewMeta {
-  struct CommitMeta {
-    class ConsolidationPolicy {
-     public:
-      struct Hash {
-        size_t operator()(ConsolidationPolicy const& value) const;
-      };
+  class ConsolidationPolicy {
+   public:
+    ConsolidationPolicy(
+      std::string const& type,
+      size_t segmentThreshold,
+      float threshold
+    );
+    ConsolidationPolicy(ConsolidationPolicy const& other);
+    ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
+    ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
+    ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
+    bool operator==(ConsolidationPolicy const& other) const noexcept;
+    bool operator!=(ConsolidationPolicy const& other) const noexcept;
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief enum of possible consolidation policy thresholds
-      ////////////////////////////////////////////////////////////////////////////////
-      enum class Type {
-        BYTES, // {threshold} > segment_bytes / (all_segment_bytes / #segments)
-        BYTES_ACCUM, // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-        COUNT, // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
-        FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-      };
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief initialize ConsolidationPolicy with values from a JSON definition
+    /// @return success or set 'errorField' to the specific field with the error
+    ///         on failure state is undefined
+    ////////////////////////////////////////////////////////////////////////////
+    bool init(
+      arangodb::velocypack::Slice const& slice,
+      std::string& errorField,
+      ConsolidationPolicy const& defaults
+    ) noexcept;
 
-      ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
-      ConsolidationPolicy(ConsolidationPolicy const& other);
-      ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
-      ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
-      ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
-      bool operator==(ConsolidationPolicy const& other) const noexcept;
-      static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
-      irs::index_writer::consolidation_policy_t const& policy() const noexcept;
-      size_t segmentThreshold() const noexcept;
-      float threshold() const noexcept;
-      Type type() const noexcept;
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief fill and return a JSON definition of a ConsolidationPolicy object
+    /// @return success or set TRI_set_errno(...) and return false
+    ////////////////////////////////////////////////////////////////////////////
+    bool json(arangodb::velocypack::Builder& builder) const;
 
-     private:
-      irs::index_writer::consolidation_policy_t _policy;
-      size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
-      float _threshold; // consolidation policy threshold
-      Type _type;
-    };
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return the iresearch policy instance or false if not initialized
+    ////////////////////////////////////////////////////////////////////////////
+    irs::index_writer::consolidation_policy_t const& policy() const noexcept;
 
-    typedef std::vector<ConsolidationPolicy> ConsolidationPolicies;
+    size_t segmentThreshold() const noexcept;
+    float threshold() const noexcept;
+    std::string const& type() const noexcept;
 
-    size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-    size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-    size_t _commitTimeoutMsec; // try to commit as much as possible before <timeout> milliseconds (0 == disable)
-    ConsolidationPolicies _consolidationPolicies;
-
-    bool operator==(CommitMeta const& other) const noexcept;
-    bool operator!=(CommitMeta const& other) const noexcept;
+   private:
+    irs::index_writer::consolidation_policy_t _policy;
+    size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
+    float _threshold; // consolidation policy threshold
+    std::string _type; // consolidation policy type
   };
 
   struct Mask {
-    bool _collections;
-    bool _commit;
+    bool _cleanupIntervalStep;
+    bool _consolidationIntervalMsec;
+    bool _consolidationPolicy;
     bool _locale;
-    bool _threadsMaxIdle;
-    bool _threadsMaxTotal;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via view property modification (may contain no-longer valid cids)
-  CommitMeta _commit;
+  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
+  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
   std::locale _locale; // locale used for ordering processed attribute names
-  size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
-  size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -120,7 +118,7 @@ struct IResearchViewMeta {
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
   // NOTE: if adding fields don't forget to modify the init(...) function !!!
   // NOTE: if adding fields don't forget to modify the json(...) function !!!
-  // NOTE: if adding fields don't forget to modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
 
   IResearchViewMeta();
   IResearchViewMeta(IResearchViewMeta const& other);
@@ -182,6 +180,88 @@ struct IResearchViewMeta {
   size_t memory() const;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal configuration state of an IResearch view instance
+///        not directly modifiable by user
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchViewMetaState {
+  struct Mask {
+    bool _collections;
+    explicit Mask(bool mask = false) noexcept;
+  };
+
+  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via IResearchLink creation (may contain no-longer valid cids)
+  // NOTE: if adding fields don't forget to modify the default constructor !!!
+  // NOTE: if adding fields don't forget to modify the copy constructor !!!
+  // NOTE: if adding fields don't forget to modify the move constructor !!!
+  // NOTE: if adding fields don't forget to modify the comparison operator !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMetaState::Mask !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMetaState::Mask constructor !!!
+  // NOTE: if adding fields don't forget to modify the init(...) function !!!
+  // NOTE: if adding fields don't forget to modify the json(...) function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
+
+  IResearchViewMetaState();
+  IResearchViewMetaState(IResearchViewMetaState const& other);
+  IResearchViewMetaState(IResearchViewMetaState&& other) noexcept;
+
+  IResearchViewMetaState& operator=(IResearchViewMetaState&& other) noexcept;
+  IResearchViewMetaState& operator=(IResearchViewMetaState const& other);
+
+  bool operator==(IResearchViewMetaState const& other) const noexcept;
+  bool operator!=(IResearchViewMetaState const& other) const noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return default IResearchViewMeta values
+  ////////////////////////////////////////////////////////////////////////////////
+  static const IResearchViewMetaState& DEFAULT();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize IResearchViewMeta with values from a JSON description
+  ///        return success or set 'errorField' to specific field with error
+  ///        on failure state is undefined
+  /// @param mask if set reflects which fields were initialized from JSON
+  ////////////////////////////////////////////////////////////////////////////////
+  bool init(
+    arangodb::velocypack::Slice const& slice,
+    std::string& errorField,
+    IResearchViewMetaState const& defaults = DEFAULT(),
+    Mask* mask = nullptr
+  );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchViewMeta object
+  ///        do not fill values identical to ones available in 'ignoreEqual'
+  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
+  ///        elements are appended to an existing object
+  ///        return success or set TRI_set_errno(...) and return false
+  ////////////////////////////////////////////////////////////////////////////////
+  bool json(
+    arangodb::velocypack::Builder& builder,
+    IResearchViewMetaState const* ignoreEqual = nullptr,
+    Mask const* mask = nullptr
+  ) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchViewMeta object
+  ///        do not fill values identical to ones available in 'ignoreEqual'
+  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
+  ///        elements are appended to an existing object
+  ///        return success or set TRI_set_errno(...) and return false
+  ////////////////////////////////////////////////////////////////////////////////
+  bool json(
+    arangodb::velocypack::ObjectBuilder const& builder,
+    IResearchViewMetaState const* ignoreEqual = nullptr,
+    Mask const* mask = nullptr
+  ) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief amount of memory in bytes occupied by this iResearch Link meta
+  ////////////////////////////////////////////////////////////////////////////////
+  size_t memory() const;
+};
+
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

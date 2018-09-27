@@ -288,7 +288,7 @@ void ApplicationServer::shutdownFatalError() {
 
 VPackBuilder ApplicationServer::options(
     std::unordered_set<std::string> const& excludes) const {
-  return _options->toVPack(false, excludes);
+  return _options->toVPack(false, false, excludes);
 }
 
 // walks over all features and runs a callback function for them
@@ -310,6 +310,9 @@ void ApplicationServer::collectOptions() {
 
   _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
                             new BooleanParameter(&_dumpDependencies));
+  
+  _options->addHiddenOption("--dump-options", "dump configuration options in JSON format",
+                            new BooleanParameter(&_dumpOptions));
 
   apply(
       [this](ApplicationFeature* feature) {
@@ -361,11 +364,19 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       (*it)->loadOptions(_options, _binaryPath);
     }
   }
+  
+  if (_dumpOptions) {
+    auto builder = _options->toVPack(false, true, std::unordered_set<std::string>());
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
+    exit(EXIT_SUCCESS);
+  }
 }
 
 void ApplicationServer::validateOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
-
+    
   for (auto feature : _orderedFeatures) {
     if (feature->isEnabled()) {
       LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name()
@@ -377,7 +388,7 @@ void ApplicationServer::validateOptions() {
   }
 
   // inform about obsolete options  
-  _options->walk([](Section const& section, Option const& option) {
+  _options->walk([](Section const&, Option const& option) {
     if (option.obsolete) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
                                        << "setting this option will not have any effect.";

@@ -70,10 +70,10 @@ class TailingSyncer : public Syncer {
   void setProgress(std::string const&);
   
   /// @brief abort all ongoing transactions
-  void abortOngoingTransactions();
+  void abortOngoingTransactions() noexcept;
 
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&) const;
+  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
 
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
@@ -97,9 +97,16 @@ class TailingSyncer : public Syncer {
   /// @brief renames a collection, based on the VelocyPack provided
   Result renameCollection(arangodb::velocypack::Slice const&);
 
-  /// @brief changes the properties of a collection, based on the VelocyPack
-  /// provided
+  /// @brief changes the properties of a collection,
+  /// based on the VelocyPack provided
   Result changeCollection(arangodb::velocypack::Slice const&);
+  
+  /// @brief truncate a collections. Assumes no trx are running
+  Result truncateCollection(arangodb::velocypack::Slice const&);
+  
+  /// @brief changes the properties of a collection,
+  /// based on the VelocyPack provided
+  Result changeView(arangodb::velocypack::Slice const&);
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t);
@@ -118,10 +125,6 @@ class TailingSyncer : public Syncer {
   Result fetchOpenTransactions(TRI_voc_tick_t fromTick,
                                TRI_voc_tick_t toTick, TRI_voc_tick_t& startTick);
   
-  /// @brief run the continuous synchronization
-  Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick,
-                         uint64_t& ignoreCount, bool& worked, bool& masterActive);
-  
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
  
@@ -130,7 +133,22 @@ class TailingSyncer : public Syncer {
   /// internal method, may throw exceptions
   arangodb::Result runInternal();
 
+  /// @brief fetch data for the continuous synchronization
+  void fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                      TRI_voc_tick_t fetchTick,
+                      TRI_voc_tick_t firstRegularTick);
+
+  /// @brief apply continuous synchronization data from a batch
+  arangodb::Result processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                                    TRI_voc_tick_t& fetchTick,
+                                    TRI_voc_tick_t firstRegularTick,
+                                    uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch);
+
+  /// @brief determines if we can work in parallel on master and slave
+  void checkParallel();
+
  protected:
+  virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
   
   /// @brief pointer to the applier
   ReplicationApplier* _applier;
@@ -170,8 +188,11 @@ class TailingSyncer : public Syncer {
   /// @brief ignore create / drop database
   bool _ignoreDatabaseMarkers;
 
+  /// @brief whether or not master & slave can work in parallel
+  bool _workInParallel;
+
   /// @brief which transactions were open and need to be treated specially
-  std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
+  std::unordered_map<TRI_voc_tid_t, std::unique_ptr<ReplicationTransaction>>
       _ongoingTransactions;
 
   /// @brief recycled builder for repeated document creation

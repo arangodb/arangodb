@@ -39,7 +39,11 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestQueryHandler"; }
-  bool isDirect() const override;
+  RequestLane lane() const override final {
+    return _request->requestType() == rest::RequestType::POST
+               ? RequestLane::CLIENT_SLOW
+               : RequestLane::CLIENT_FAST;
+  }
   RestStatus execute() override;
 
  protected:

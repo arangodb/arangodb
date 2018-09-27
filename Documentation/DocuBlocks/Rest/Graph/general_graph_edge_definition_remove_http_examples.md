@@ -10,15 +10,15 @@ be used in your queries.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTURLPARAM{definition-name, string, required}
+@RESTURLPARAM{definition-name,string,required}
 The name of the edge collection used in the definition.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{dropCollection, boolean, optional}
+@RESTQUERYPARAM{dropCollections,boolean,optional}
 Drop the collection as well.
 Collection will only be dropped if it is not used in other graphs.
 

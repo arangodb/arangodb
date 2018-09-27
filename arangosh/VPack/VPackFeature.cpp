@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Dumper.h>
@@ -43,9 +44,11 @@ using namespace arangodb::options;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief portably and safely reads a number
 ////////////////////////////////////////////////////////////////////////////////
-  
+ 
+namespace {
+   
 template <typename T>
-static inline T ReadNumber(uint8_t const* source, uint32_t length) {
+static inline T readNumber(uint8_t const* source, uint32_t length) {
   T value = 0;
   uint64_t x = 0;
   uint8_t const* end = source + length;
@@ -56,7 +59,7 @@ static inline T ReadNumber(uint8_t const* source, uint32_t length) {
   return value;
 }
 
-static std::string ConvertFromHex(std::string const& value) {
+static std::string convertFromHex(std::string const& value) {
   std::string result;
   result.reserve(value.size());
 
@@ -99,20 +102,24 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
             VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
-  
+
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    uint64_t cid = ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+    uint64_t cid = ::readNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
     return "collection id " + std::to_string(cid);
   }
 };
 
+}
 
-VPackFeature::VPackFeature(application_features::ApplicationServer* server,
-                           int* result)
+VPackFeature::VPackFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "VPack"),
       _result(result),
       _prettyPrint(true),
+      _jsonInput(false),
       _hexInput(false),
       _printNonJson(true) {
   requiresElevatedPrivileges(false);
@@ -133,6 +140,9 @@ void VPackFeature::collectOptions(
   options->addOption(
       "--hex", "read hex-encoded input",
       new BooleanParameter(&_hexInput));
+  options->addOption(
+      "--json", "treat input as JSON",
+      new BooleanParameter(&_jsonInput));
   options->addOption(
       "--print-non-json", "print non-JSON types",
       new BooleanParameter(&_printNonJson));
@@ -158,28 +168,43 @@ void VPackFeature::start() {
   std::string s = basics::FileUtils::slurp(_inputFile);
 
   if (_hexInput) {
-    s = ConvertFromHex(s);
+    s = ::convertFromHex(s);
   }
 
-  auto customTypeHandler = std::make_unique<CustomTypeHandler>();
+  ::CustomTypeHandler customTypeHandler;
   
   VPackOptions options;
   options.prettyPrint = _prettyPrint;
   options.unsupportedTypeBehavior = 
     (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
-  options.customTypeHandler = customTypeHandler.get();
+  options.customTypeHandler = &customTypeHandler;
 
-  try {
-    VPackValidator validator(&options);
-    validator.validate(s.c_str(), s.size(), false);
-  } catch (std::exception const& ex) {
-    std::cerr << "Invalid VPack input while processing infile '" << _inputFile
-              << "': " << ex.what() << std::endl;
-    *_result = TRI_ERROR_INTERNAL;
-    return;
+  VPackSlice slice;
+  std::shared_ptr<VPackBuilder> builder;
+
+  if (_jsonInput) {
+    try {
+      builder = VPackParser::fromJson(s);
+      slice = builder->slice();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "invalid JSON input while processing infile '" << _inputFile
+                << "': " << ex.what();
+      *_result = TRI_ERROR_INTERNAL;
+      return;
+    }
+  } else {
+    try {
+      VPackValidator validator(&options);
+      validator.validate(s.c_str(), s.size(), false);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "invalid VPack input while processing infile '" << _inputFile
+                << "': " << ex.what();
+      *_result = TRI_ERROR_INTERNAL;
+      return;
+    }
+
+    slice = VPackSlice(s.data());
   }
-
-  VPackSlice const slice(s.c_str());
 
   VPackBuffer<char> buffer(4096);
   VPackCharBufferSink sink(&buffer);
@@ -188,13 +213,12 @@ void VPackFeature::start() {
   try {
     dumper.dump(slice);
   } catch (std::exception const& ex) {
-    std::cerr << "An exception occurred while processing infile '" << _inputFile
-              << "': " << ex.what() << std::endl;
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while processing infile '" << _inputFile << "': " << ex.what();
     *_result = TRI_ERROR_INTERNAL;
     return;
   } catch (...) {
-    std::cerr << "An unknown exception occurred while processing infile '"
-              << _inputFile << "'" << std::endl;
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception occurred while processing infile '"
+              << _inputFile << "'";
     *_result = TRI_ERROR_INTERNAL;
     return;
   }
@@ -202,7 +226,7 @@ void VPackFeature::start() {
   std::ofstream ofs(_outputFile, std::ofstream::out);
 
   if (!ofs.is_open()) {
-    std::cerr << "Cannot write outfile '" << _outputFile << "'" << std::endl;
+    LOG_TOPIC(ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
     *_result = TRI_ERROR_INTERNAL;
     return;
   }
@@ -220,10 +244,9 @@ void VPackFeature::start() {
 
   // cppcheck-suppress *
   if (!toStdOut) {
-    std::cout << "Successfully converted JSON infile '" << _inputFile << "'"
-              << std::endl;
-    std::cout << "VPack Infile size: " << s.size() << std::endl;
-    std::cout << "JSON Outfile size: " << buffer.size() << std::endl;
+    LOG_TOPIC(INFO, Logger::FIXME) << "successfully processed infile '" << _inputFile << "'";
+    LOG_TOPIC(INFO, Logger::FIXME) << "infile size: " << s.size();
+    LOG_TOPIC(INFO, Logger::FIXME) << "outfile size: " << buffer.size();
   }
 
   *_result = TRI_ERROR_NO_ERROR;

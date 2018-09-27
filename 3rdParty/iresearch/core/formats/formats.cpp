@@ -116,7 +116,7 @@ index_meta_reader::~index_meta_reader() {}
 format::~format() {}
 
 /*static*/ bool formats::exists(const string_ref& name) {
-  return format_register::instance().get(name);
+  return nullptr != format_register::instance().get(name);
 }
 
 /*static*/ format::ptr formats::get(const string_ref& name) {

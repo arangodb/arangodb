@@ -1,5 +1,6 @@
 @startDocuBlock put_api_simple_update_by_example
 @brief partially updates the body of all documents of a collection that match an example
+
 @RESTHEADER{PUT /_api/simple/update-by-example, Update documents by example}
 
 @RESTBODYPARAM{collection,string,required,string}

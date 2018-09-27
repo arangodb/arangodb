@@ -25,16 +25,46 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Logger/LogTopic.h"
 
 namespace arangodb {
+
+namespace aql {
+
+struct Function;
+
+} // aql
+
 namespace iresearch {
+
+class ResourceMutex; // forward declaration
+
+bool isFilter(arangodb::aql::Function const& func) noexcept;
+bool isScorer(arangodb::aql::Function const& func) noexcept;
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
-  static arangodb::LogTopic IRESEARCH;
+  explicit IResearchFeature(
+    arangodb::application_features::ApplicationServer& server
+  );
 
-  explicit IResearchFeature(application_features::ApplicationServer* server);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an asynchronous task
+  /// @note each task will be invoked by its first of timeout or 'asyncNotify()'
+  /// @param mutex a mutex to check/prevent resource deallocation (nullptr == not required)
+  /// @param fn the function to execute
+  ///           @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until previously set timeout or until notification if first run)
+  ///           @param timeout the timeout has been reached (false == triggered by notification)
+  ///           @return continue/reschedule
+  //////////////////////////////////////////////////////////////////////////////
+  void async(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    std::function<bool(size_t& timeoutMsec, bool timeout)> &&fn
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief notify all currently running async tasks
+  //////////////////////////////////////////////////////////////////////////////
+  void asyncNotify() const;
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -42,12 +72,16 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
   void stop() override;
-  static std::string const& type();
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
  private:
-  bool _running;
+  class Async; // forward declaration
+
+  std::shared_ptr<Async> _async; // object managing async jobs (never null!!!)
+  std::atomic<bool> _running;
+  uint64_t _threads;
+  uint64_t _threadsLimit;
 };
 
 } // iresearch

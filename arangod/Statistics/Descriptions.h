@@ -23,6 +23,8 @@
 #ifndef ARANGOD_STATISTICS_DESCRIPTIONS_H
 #define ARANGOD_STATISTICS_DESCRIPTIONS_H 1
 
+#include "Basics/Common.h"
+
 #include <velocypack/Builder.h>
 #include <string>
 
@@ -65,7 +67,7 @@ struct Figure {
 };
 
 class Descriptions final {
-  
+
 public:
   Descriptions();
 
@@ -74,7 +76,7 @@ public:
   std::vector<stats::Figure> const& figures() const {
     return _figures;
   }
-  
+
   void serverStatistics(velocypack::Builder&) const;
   void clientStatistics(velocypack::Builder&) const;
   void httpStatistics(velocypack::Builder&) const;

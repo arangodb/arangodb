@@ -285,6 +285,9 @@
         },
         'with _id': function(topic) {
           return assert.equal(topic.humanize('author_id'), 'Author');
+        },
+        'with just _id': function(topic) {
+          return assert.equal(topic.humanize('_id'), '');
         }
       },
       'titleize': {

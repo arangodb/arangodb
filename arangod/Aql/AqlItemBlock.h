@@ -75,13 +75,13 @@ class AqlItemBlock {
   }
 
  private:
-  void destroy();
+  void destroy() noexcept;
 
   inline void increaseMemoryUsage(size_t value) {
     _resourceMonitor->increaseMemoryUsage(value);
   }
   
-  inline void decreaseMemoryUsage(size_t value) {
+  inline void decreaseMemoryUsage(size_t value) noexcept {
     _resourceMonitor->decreaseMemoryUsage(value);
   }
 
@@ -94,7 +94,7 @@ class AqlItemBlock {
 
   /// @brief getValue, get the value of a register by reference
   inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data.size() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
@@ -219,19 +219,6 @@ class AqlItemBlock {
     }
     _valueCount.clear();
   }
-  
-  void copyColValuesFromFirstRow(size_t currentRow, RegisterId col) {
-    TRI_ASSERT(currentRow > 0);
-    TRI_ASSERT(_data.size() > currentRow * _nrRegs + col);
-
-    if (_data[currentRow * _nrRegs + col].isEmpty()) {
-      // First update the reference count, if this fails, the value is empty
-      if (_data[col].requiresDestruction()) {
-        ++_valueCount[_data[col]];
-      }
-      _data[currentRow * _nrRegs + col] = _data[col];
-    }
-  }
 
   void copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
     TRI_ASSERT(currentRow > 0);
@@ -242,15 +229,7 @@ class AqlItemBlock {
     }
     TRI_ASSERT(_data.size() > currentRow * _nrRegs + curRegs);
 
-    for (RegisterId i = 0; i < curRegs; i++) {
-      if (_data[currentRow * _nrRegs + i].isEmpty()) {
-        // First update the reference count, if this fails, the value is empty
-        if (_data[i].requiresDestruction()) {
-          ++_valueCount[_data[i]];
-        }
-        _data[currentRow * _nrRegs + i] = _data[i];
-      }
-    }
+    copyValuesFromRow(currentRow, curRegs, 0);
   }
   
   void copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {

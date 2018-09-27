@@ -23,7 +23,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -70,17 +69,17 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
   RocksDBFulltextIndex() = delete;
 
-  RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  RocksDBFulltextIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBFulltextIndex() {}
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
 
   char const* typeName() const override { return "fulltext"; }
-
-  bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return true; }
 
@@ -88,8 +87,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&,
+            std::underlying_type<Index::Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -103,7 +102,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   IndexIterator* iteratorForCondition(transaction::Methods* trx,
                                       ManagedDocumentResult*,
                                       aql::AstNode const* condNode,
-                                      aql::Variable const* var, bool) override;
+                                      aql::Variable const* var,
+                                      IndexIteratorOptions const&) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,
@@ -136,15 +136,13 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                    std::set<LocalDocumentId>& resultSet);
 };
   
-
 /// El Cheapo index iterator
 class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, index),
+  : IndexIterator(collection, trx),
   _docs(std::move(docs)),
   _pos(_docs.begin()) {}
   
@@ -165,7 +163,7 @@ public:
   void reset() override { _pos = _docs.begin(); }
   
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
+    while (_pos != _docs.end() && skipped < count) {
       ++_pos;
       skipped++;
     }

@@ -198,7 +198,7 @@
 
     toggleViews: function (e) {
       var id = e.currentTarget.id.split('-')[0]; var self = this;
-      var views = ['replication', 'requests', 'system'];
+      var views = ['requests', 'system'];
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -545,55 +545,6 @@
       cuts[counter] : cuts[counter - 1] + ' - ' + cuts[counter];
     },
 
-    renderReplicationStatistics: function (object) {
-      $('#repl-numbers table tr:nth-child(1) > td:nth-child(2)').html(object.state.totalEvents);
-      $('#repl-numbers table tr:nth-child(2) > td:nth-child(2)').html(object.state.totalRequests);
-      $('#repl-numbers table tr:nth-child(3) > td:nth-child(2)').html(object.state.totalFailedConnects);
-
-      if (object.state.lastAppliedContinuousTick) {
-        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html(object.state.lastAppliedContinuousTick);
-      } else {
-        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html('no data available').addClass('no-data');
-      }
-      if (object.state.lastProcessedContinuousTick) {
-        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html(object.state.lastProcessedContinuousTick);
-      } else {
-        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html('no data available').addClass('no-data');
-      }
-      if (object.state.lastAvailableContinuousTick) {
-        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html(object.state.lastAvailableContinuousTick);
-      } else {
-        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html('no data available').addClass('no-data');
-      }
-
-      $('#repl-progress table tr:nth-child(1) > td:nth-child(2)').html(object.state.progress.message);
-      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.time);
-      $('#repl-progress table tr:nth-child(3) > td:nth-child(2)').html(object.state.progress.failedConnects);
-    },
-
-    getReplicationStatistics: function () {
-      var self = this;
-
-      $.ajax(
-        arangoHelper.databaseUrl('/_api/replication/applier-state'),
-        {async: true}
-      ).done(
-        function (d) {
-          if (d.hasOwnProperty('state')) {
-            var running;
-            if (d.state.running) {
-              running = 'active';
-            } else {
-              running = 'inactive';
-            }
-            running = '<span class="state">' + running + '</span>';
-            $('#replication-chart .dashboard-sub-bar').html('Replication ' + running);
-
-            self.renderReplicationStatistics(d);
-          }
-        });
-    },
-
     checkState: function () {
       var self = this;
 
@@ -777,8 +728,6 @@
         }).error(function (e) {
           console.log('stat fetch req error:' + e);
         });
-
-      this.getReplicationStatistics();
     },
 
     getHistoryStatistics: function (figure) {

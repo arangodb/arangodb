@@ -35,19 +35,21 @@
 #include "ProgramOptions/Section.h"
 #include "ProgramOptions/Translator.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 using namespace arangodb::options;
 
-ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
-                             std::string const& progname)
+namespace arangodb {
+
+ConfigFeature::ConfigFeature(
+    application_features::ApplicationServer& server,
+    std::string const& progname,
+    std::string const& configFilename
+)
     : ApplicationFeature(server, "Config"),
-      _file(""),
+      _file(configFilename),
       _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("ShellColors");
 }
@@ -134,8 +136,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   //
   // check the following location in this order:
   //
-  //   <PRGNAME>.conf
   //   ./etc/relative/<PRGNAME>.conf
+  //   <PRGNAME>.conf
   //   ${HOME}/.arangodb/<PRGNAME>.conf
   //   /etc/arangodb/<PRGNAME>.conf
   //
@@ -151,8 +153,13 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   std::vector<std::string> locations;
 
+  std::string current = FileUtils::currentDirectory().result();
+  // ./etc/relative/ is always first choice, if it exists
+  locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
+
   if (context != nullptr) {
     auto root = context->runRoot();
+    // will resolve to ./build/etc/arangodb3/ in maintainer builds
     auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
 
     LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root
@@ -161,9 +168,10 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     locations.emplace_back(location);
   }
 
-  std::string current = FileUtils::currentDirectory().result();
+  // ./
   locations.emplace_back(current);
-  locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
+
+  // ~/.arangodb/
   locations.emplace_back(
       FileUtils::buildFilename(FileUtils::homeDirectory(), ".arangodb"));
   locations.emplace_back(FileUtils::configDirectory(binaryPath));
@@ -179,8 +187,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       filename = name;
       break;
     } else if (checkArangoImp) {
-      name = FileUtils::buildFilename(location, "arangoimp");
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file'" << name << "'";
+      name = FileUtils::buildFilename(location, "arangoimp.conf");
+      LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
       if (FileUtils::exists(name)) {
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
         filename = name;
@@ -232,3 +240,5 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     exit(EXIT_FAILURE);
   }
 }
+
+} // arangodb

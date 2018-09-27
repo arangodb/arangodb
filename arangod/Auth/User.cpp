@@ -26,6 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
@@ -52,7 +53,6 @@ static int HexHashFromData(std::string const& hashMethod,
                            std::string const& str, std::string& outHash) {
   char* crypted = nullptr;
   size_t cryptedLength;
-  char* hex;
 
   try {
     if (hashMethod == "sha1") {
@@ -80,32 +80,25 @@ static int HexHashFromData(std::string const& hashMethod,
       return TRI_ERROR_BAD_PARAMETER;
     }
   } catch (...) {
-    // SslInterface::ssl....() allocate strings with new, which might throw
+    // SslInterface::ssl....() allocates strings with new, which might throw
     // exceptions
     return TRI_ERROR_FAILED;
   }
+    
+  TRI_DEFER(delete[] crypted);
 
   if (crypted == nullptr || cryptedLength == 0) {
-    delete[] crypted;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  size_t hexLen;
-  hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
-  delete[] crypted;
+  outHash = basics::StringUtils::encodeHex(crypted, cryptedLength);
 
-  if (hex == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_DEFER(TRI_FreeString(hex));
-  outHash = std::string(hex, hexLen);
   return TRI_ERROR_NO_ERROR;
 }
 
 static void AddSource(VPackBuilder& builder, auth::Source source) {
   switch (source) {
-    case auth::Source::LOCAL: // used to be collection
+    case auth::Source::Local: // used to be collection
       builder.add("source", VPackValue("LOCAL"));
       break;
     case auth::Source::LDAP:
@@ -291,7 +284,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   auth::User entry(keySlice.copyString(), rev);
   entry._active = activeSlice.getBool();
-  entry._source = auth::Source::LOCAL;
+  entry._source = auth::Source::Local;
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -357,65 +350,66 @@ VPackBuilder auth::User::toVPackBuilder() const {
   TRI_ASSERT(!_username.empty());
 
   VPackBuilder builder;
-  VPackObjectBuilder o(&builder, true);
-
-  if (!_key.empty()) {
-    builder.add(StaticStrings::KeyString, VPackValue(_key));
-  }
-  if (_rev > 0) {
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
-  }
-
-  builder.add("user", VPackValue(_username));
-  AddSource(builder, _source);
-
-  // authData sub-object
   {
-    VPackObjectBuilder o2(&builder, "authData", true);
-    builder.add("active", VPackValue(_active));
-    if (_source == auth::Source::LOCAL) {
-      VPackObjectBuilder o3(&builder, "simple", true);
-      builder.add("hash", VPackValue(_passwordHash));
-      builder.add("salt", VPackValue(_passwordSalt));
-      builder.add("method", VPackValue(_passwordMethod));
+    VPackObjectBuilder o(&builder, true);
+
+    if (!_key.empty()) {
+      builder.add(StaticStrings::KeyString, VPackValue(_key));
     }
-  }
+    if (_rev > 0) {
+      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
+    }
 
-  {  // databases sub-object
-    VPackObjectBuilder o2(&builder, "databases", true);
-    for (auto const& dbCtxPair : _dbAccess) {
-      VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
+    builder.add("user", VPackValue(_username));
+    AddSource(builder, _source);
 
-      // permissions
-      {
-        VPackObjectBuilder o4(&builder, "permissions", true);
-        auth::Level lvl = dbCtxPair.second._databaseAuthLevel;
-        AddAuthLevel(builder, lvl);
+    // authData sub-object
+    {
+      VPackObjectBuilder o2(&builder, "authData", true);
+      builder.add("active", VPackValue(_active));
+      if (_source == auth::Source::Local) {
+        VPackObjectBuilder o3(&builder, "simple", true);
+        builder.add("hash", VPackValue(_passwordHash));
+        builder.add("salt", VPackValue(_passwordSalt));
+        builder.add("method", VPackValue(_passwordMethod));
       }
+    }
 
-      // collections
-      {
-        VPackObjectBuilder o4(&builder, "collections", true);
+    {  // databases sub-object
+      VPackObjectBuilder o2(&builder, "databases", true);
+      for (auto const& dbCtxPair : _dbAccess) {
+        VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
 
-        for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
-          VPackObjectBuilder o4(&builder, colAccessPair.first, true);
-          VPackObjectBuilder o5(&builder, "permissions", true);
-          AddAuthLevel(builder, colAccessPair.second);
+        // permissions
+        {
+          VPackObjectBuilder o4(&builder, "permissions", true);
+          auth::Level lvl = dbCtxPair.second._databaseAuthLevel;
+          AddAuthLevel(builder, lvl);
+        }
+
+        // collections
+        {
+          VPackObjectBuilder o4(&builder, "collections", true);
+
+          for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
+            VPackObjectBuilder o4(&builder, colAccessPair.first, true);
+            VPackObjectBuilder o5(&builder, "permissions", true);
+            AddAuthLevel(builder, colAccessPair.second);
+          }
         }
       }
     }
-  }
 
-  if (!_userData.isEmpty() && _userData.isClosed() &&
-      _userData.slice().isObject()) {
-    builder.add("userData", _userData.slice());
-  }
+    if (!_userData.isEmpty() && _userData.isClosed() &&
+        _userData.slice().isObject()) {
+      builder.add("userData", _userData.slice());
+    }
 
-  if (!_configData.isEmpty() && _configData.isClosed() &&
-      _configData.slice().isObject()) {
-    builder.add("configData", _configData.slice());
+    if (!_configData.isEmpty() && _configData.isClosed() &&
+        _configData.slice().isObject()) {
+      builder.add("configData", _configData.slice());
+    }
   }
-
   return builder;
 }
 
@@ -562,7 +556,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     return auth::Level::NONE; // invalid collection names
   }
   // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(cname[0] < '0' || cname[0] > '9');
+  TRI_ASSERT(!isdigit(cname[0]));
   
   bool isSystem = cname[0] == '_';
   if (isSystem) {

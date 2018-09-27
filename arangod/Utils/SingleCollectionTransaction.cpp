@@ -25,25 +25,24 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationResult.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
-#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalDataSource.h"
 
-using namespace arangodb;
+namespace arangodb {
 
-/// @brief create the transaction, using a collection id
+/// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
-  std::shared_ptr<transaction::Context> const& transactionContext, TRI_voc_cid_t cid, 
-  AccessMode::Type accessType)
-      : transaction::Methods(transactionContext),
-        _cid(cid),
-        _trxCollection(nullptr),
-        _documentCollection(nullptr),
-        _accessType(accessType) {
-
-  // add the (sole) collection
-  addCollection(cid, _accessType);
+  std::shared_ptr<transaction::Context> const& transactionContext,
+  LogicalDataSource const& dataSource,
+  AccessMode::Type accessType
+): transaction::Methods(transactionContext),
+   _cid(dataSource.id()),
+   _trxCollection(nullptr),
+   _documentCollection(nullptr),
+   _accessType(accessType) {
+  // add the (sole) data-source
+  addCollection(dataSource.id(), dataSource.name(), _accessType);
   addHint(transaction::Hints::Hint::NO_DLD);
 }
 
@@ -96,3 +95,5 @@ std::string SingleCollectionTransaction::name() {
    // will ensure we have the _trxCollection object set
   return resolveTrxCollection()->collectionName();
 }
+
+} // arangodb

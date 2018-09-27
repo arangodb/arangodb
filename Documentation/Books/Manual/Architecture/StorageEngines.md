@@ -10,6 +10,9 @@ as sole storage engine. Beginning with 3.2 ArangoDB has support for
 pluggable storage engines. The second supported engine is RocksDB from
 Facebook.
 
+Up to including versions 3.3, MMFiles was the default storage engine in
+ArangoDB. Since version 3.4, the default storage engine is RocksDB.
+
 | MMFiles | RocksDB |
 |---|---|
 | default | optional |
@@ -64,7 +67,22 @@ will avoid write conflicts but also inhibits concurrent writes.
 Currently, another restriction is due to the transaction handling in
 RocksDB. Transactions are limited in total size. If you have a statement
 modifying a lot of documents it is necessary to commit data inbetween. This will
-be done automatically for AQL by default.
+be done automatically for AQL by default. Transactions that get too big (in terms of
+number of operations involved or the total size of data modified by the transaction)
+will be committed automatically. Effectively this means that big user transactions
+are split into multiple smaller RocksDB transactions that are committed individually.
+The entire user transaction will not necessarily have ACID properties in this case.
+
+The threshold values for transaction sizes can be configured globally using the
+startup options
+
+* [`--rocksdb.intermediate-commit-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+
+* [`--rocksdb.intermediate-commit-count`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+
+* [`--rocksdb.max-transaction-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+
+It is also possible to override these thresholds per transaction.
 
 ### Performance
 

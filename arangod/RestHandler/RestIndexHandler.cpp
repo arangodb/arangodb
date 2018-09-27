@@ -62,14 +62,16 @@ LogicalCollection* RestIndexHandler::collection(
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
-        coll = ClusterInfo::instance()->getCollection(_vocbase->name(), cName);
+        coll = ClusterInfo::instance()->getCollection(_vocbase.name(), cName);
+
         return coll.get();
       } catch (...) {
       }
     } else {
-      return _vocbase->lookupCollection(cName);
+      return _vocbase.lookupCollection(cName).get();
     }
   }
+
   return nullptr;
 }
 
@@ -90,18 +92,18 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
-    bool withFigures = false;
-    std::string t = _request->value("withStats", found);
-    if (found) {
-      withFigures = StringUtils::tolower(t) == "true";
+    auto flags = Index::makeFlags(Index::Serialize::Estimates);
+    if (_request->parsedValue("withStats", false)) {
+      flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
     }
-
+    bool withLinks = _request->parsedValue("withLinks", false);
+    
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(coll, withFigures, indexes);
+    Result res = methods::Indexes::getAll(coll, flags, withLinks, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -133,7 +135,7 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -165,8 +167,8 @@ RestStatus RestIndexHandler::getIndexes() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+   bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /" + _request->requestPath() +
@@ -178,7 +180,7 @@ RestStatus RestIndexHandler::createIndex() {
   std::string cName = _request->value("collection", found);
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -186,12 +188,11 @@ RestStatus RestIndexHandler::createIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   VPackBuilder copy;
-  VPackSlice body = parsedBody->slice();
   if (body.get("collection").isNone()) {
     copy.openObject();
     copy.add("collection", VPackValue(cName));
@@ -243,7 +244,7 @@ RestStatus RestIndexHandler::dropIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 

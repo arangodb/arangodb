@@ -39,12 +39,40 @@ std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fd
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
-    : LogAppender(filter), _bufferSize(0), _fd(fd), _useColors(false) {}
+    : LogAppender(filter), _bufferSize(0), _fd(fd), _useColors(false), _escape(Logger::getUseEscaped()) {}
+  
+size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) const {
+  if (_escape) {
+    return TRI_MaxLengthEscapeControlsCString(message.size());
+  }
+  return message.size() + 2;
+}
+  
+size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
+  if (_escape) {
+    size_t escapedLength;
+    // this is guaranteed to succeed given that we already have a buffer
+    TRI_EscapeControlsCString(message.data(), message.size(), _buffer.get(), &escapedLength, true);
+    return escapedLength;
+  }
+
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(message.data());
+  unsigned char const* e = p + message.size();
+  char* s = _buffer.get();
+  char* q = s;
+  while (p < e) {
+    unsigned char c = *p++;
+    *q++ = c < 0x20 ? ' ' : c;
+  }
+  *q++ = '\n';
+  *q = '\0';
+  return q - s;
+}
   
 void LogAppenderStream::logMessage(LogLevel level, std::string const& message,
                                    size_t offset) {
   // check max. required output length
-  size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
+  size_t const neededBufferSize = determineOutputBufferSize(message);
   
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
@@ -66,12 +94,10 @@ void LogAppenderStream::logMessage(LogLevel level, std::string const& message,
   
   TRI_ASSERT(_buffer != nullptr);
   
-  size_t escapedLength;
-  // this is guaranteed to succeed given that we already have a buffer
-  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer.get(), &escapedLength, true);
-  TRI_ASSERT(escapedLength <= neededBufferSize);
+  size_t length = writeIntoOutputBuffer(message);
+  TRI_ASSERT(length <= neededBufferSize);
 
-  this->writeLogMessage(level, _buffer.get(), escapedLength);
+  this->writeLogMessage(level, _buffer.get(), length);
 
   if (_bufferSize > maxBufferSize) {
     // free the buffer so the Logger is not hogging so much memory
@@ -176,7 +202,7 @@ void LogAppenderFile::reopenAll() {
     backup.append(".old");
 
     FileUtils::remove(backup);
-    FileUtils::rename(filename, backup);
+    TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
     int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
@@ -184,7 +210,7 @@ void LogAppenderFile::reopenAll() {
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
-      FileUtils::rename(backup, filename);
+      TRI_RenameFile(backup.c_str(), filename.c_str());
       continue;
     }
 

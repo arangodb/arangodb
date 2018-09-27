@@ -431,7 +431,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       }
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(isolate, body));
-      headers["content-length"] = StringUtils::itoa(request->contentLength());
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
       // FIXME not every VPack can be converted to JSON
@@ -443,8 +443,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
           << jsonString;
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString));
-      headers["content-length"] = StringUtils::itoa(jsonString.size());
-      headers["content-type"] = StaticStrings::MimeTypeJson;
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
+      headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
     } else {
       throw std::logic_error("unhandled request type");
     }
@@ -1014,7 +1014,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the action name
   TRI_Utf8ValueNFC utf8name(args[0]);
 
-  if (*utf8name == 0) {
+  if (*utf8name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<name> must be an UTF-8 string");
   }
 
@@ -1422,10 +1422,9 @@ static int clusterSendToAllServers(
   auto reqBodyString = std::make_shared<std::string>(body);
 
   DBServers = ci->getCurrentDBServers();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-    cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
+    cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }
 
@@ -1433,14 +1432,14 @@ static int clusterSendToAllServers(
   size_t count = DBServers.size();
 
   for (; count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_TIMEOUT) {
-      cc->drop("", coordTransactionID, 0, "");
+      cc->drop(coordTransactionID, 0, "");
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
         res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-      cc->drop("", coordTransactionID, 0, "");
+      cc->drop(coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
   }

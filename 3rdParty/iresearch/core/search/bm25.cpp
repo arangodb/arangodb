@@ -99,33 +99,34 @@ irs::sort::ptr make_from_array(
   auto k = irs::bm25_sort::K();
   auto b = irs::bm25_sort::B();
 
-  size_t i = 0;
-
-  auto log_error = [&i, &args](){
-    IR_FRMT_ERROR(
-      "Non-float value on position '" IR_SIZE_T_SPECIFIER "' while constructing bm25 scorer from jSON arguments: %s",
-      i, args.c_str()
-    );
-  };
-
-  for (; i < size; ++i) {
+  for (rapidjson::SizeType i = 0; i < size; ++i) {
     auto& arg = array[i];
 
     switch (i) {
-      case 0: { // parse `b` coefficient
-        if (!arg.IsNumber()) {
-          log_error();
-          return nullptr;
-        }
-        k = static_cast<float_t>(arg.GetDouble());
-      } break;
-      case 1: { // parse `b` coefficient
-        if (!arg.IsNumber()) {
-          log_error();
-          return nullptr;
-        }
-        b = static_cast<float_t>(arg.GetDouble());
-      } break;
+     case 0: // parse `b` coefficient
+      if (!arg.IsNumber()) {
+        IR_FRMT_ERROR(
+          "Non-float value on position '%u' while constructing bm25 scorer from jSON arguments: %s",
+          i, args.c_str()
+        );
+
+        return nullptr;
+      }
+
+      k = static_cast<float_t>(arg.GetDouble());
+      break;
+     case 1: // parse `b` coefficient
+      if (!arg.IsNumber()) {
+        IR_FRMT_ERROR(
+          "Non-float value on position '%u' while constructing bm25 scorer from jSON arguments: %s",
+          i, args.c_str()
+        );
+
+        return nullptr;
+      }
+
+      b = static_cast<float_t>(arg.GetDouble());
+      break;
     }
   }
 

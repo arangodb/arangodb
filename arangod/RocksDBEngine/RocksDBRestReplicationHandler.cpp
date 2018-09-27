@@ -27,7 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -73,20 +73,18 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
-    
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+
     bool found;
     std::string const& value = _request->value("serverId", found);
     TRI_server_id_t serverId = 0;
 
-    if (!found || (!value.empty() && value != "none")) {
-      if (found) {
-        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      }
+    if (found && !value.empty() && value != "none") {
+      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
 
-    // create transaction+snapshot
-    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
+    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
+    auto* ctx = _manager->createContext(&_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
@@ -105,7 +103,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
+    _vocbase.updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -124,12 +122,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    // extract ttl
+    // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, ttl);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, false, ttl);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -147,7 +145,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (!found) {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
-     
+
     TRI_server_id_t serverId = ctx->id();
     if (!value.empty() && value != "none") {
       serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
@@ -156,7 +154,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
+    _vocbase.updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -181,7 +179,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
-  
+
 void RocksDBRestReplicationHandler::handleCommandBarrier() {
   auto const type = _request->requestType();
   if (type == rest::RequestType::POST) {
@@ -230,7 +228,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
-  
+
   // add client
   std::string const& value3 = _request->value("serverId", found);
 
@@ -252,27 +250,34 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
 
+  grantTemporaryRights();
+
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase.lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder(trxContext->getVPackOptions());
+
   builder.openArray();
-  auto result = tailWal(_vocbase, tickStart, tickEnd, chunkSize, includeSystem,
-                        cid, builder);
+
+  auto result = tailWal(
+    &_vocbase, tickStart, tickEnd, chunkSize, includeSystem, cid, builder
+  );
+
   builder.close();
+
   auto data = builder.slice();
 
   uint64_t const latest = latestSequenceNumber();
@@ -335,7 +340,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       }
     }
   }
-    
+
   // insert the start tick (minus 1 to be on the safe side) as the
   // minimum tick we need to keep on the master. we cannot be sure
   // the master's response makes it to the slave safely, so we must
@@ -344,7 +349,11 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase->updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1, InitialSyncer::defaultBatchTimeout);
+  _vocbase.updateReplicationClient(
+    serverId,
+    tickStart == 0 ? 0 : tickStart - 1,
+    replutils::BatchInfo::DefaultTimeout
+  );
 }
 
 /// @brief run the command that determines which transactions were open at
@@ -380,44 +389,36 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   }
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-
   // include system collections?
-  bool includeSystem = true;
-  {
-    std::string const& value = _request->value("includeSystem", found);
-    if (found) {
-      includeSystem = StringUtils::boolean(value);
-    }
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
-  
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
-  if (!result.first.ok()) {
-    generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
-                  "inventory could not be created");
-    return;
-  }
 
   VPackBuilder builder;
   builder.openObject();
 
-  VPackSlice const inventory = result.second->slice();
+  // add collections and views
+  Result res;
   if (isGlobal) {
-    TRI_ASSERT(inventory.isObject());
-    builder.add("databases", inventory);
+    builder.add(VPackValue("databases"));
+    res = ctx->getInventory(&_vocbase, includeSystem, true, builder);
   } else {
-    // add collections data
-    TRI_ASSERT(inventory.isArray());
-    builder.add("collections", inventory);
+    grantTemporaryRights();
+    res = ctx->getInventory(&_vocbase, includeSystem, false, builder);
+    TRI_ASSERT(builder.hasKey("collections") &&
+               builder.hasKey("views"));
+  }
+  
+  if (res.fail()) {
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                  "inventory could not be created");
+    return;
   }
 
-  // "state"
+  // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
-
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
   builder.add(
@@ -426,7 +427,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.add("totalEvents",
               VPackValue(ctx->lastTick()));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
-  builder.close();  // state
+  builder.close();  // </state>
 
   std::string const tickString(std::to_string(tick));
   builder.add("tick", VPackValue(tickString));
@@ -444,7 +445,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   // to is ignored because the snapshot time is the latest point in time
-  
+
   RocksDBReplicationContext* ctx = nullptr;
   //get batchId from url parameters
   bool found, busy;
@@ -460,19 +461,13 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "batchId not specified");
     return;
   }
- 
-  // TRI_voc_tick_t tickEnd = UINT64_MAX;
-  // determine end tick for keys
-  // std::string const& value = _request->value("to", found);
-  // if (found) {
-  //  tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
-  //}
 
   // bind collection to context - will initialize iterator
-  int res = ctx->bindCollection(_vocbase, collection);
+  int res = ctx->bindCollectionIncremental(_vocbase, collection);
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
@@ -584,7 +579,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
-  
+
   size_t offsetInChunk = 0;
   size_t maxChunkSize = SIZE_MAX;
   std::string const& value4 = _request->value("offset", found);
@@ -593,10 +588,10 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     // "offset" was introduced with ArangoDB 3.3. if the client sends it,
     // it means we can adapt the result size dynamically and the client
     // may refetch data for the same chunk
-    maxChunkSize = 8 * 1024 * 1024; 
+    maxChunkSize = 8 * 1024 * 1024;
     // if a client does not send an "offset" parameter at all, we are
     // not sure if it supports this protocol (3.2 and before) or not
-  } 
+  }
 
   std::string const& id = suffixes[1];
 
@@ -616,27 +611,29 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  std::shared_ptr<transaction::Context> transactionContext =
-      transaction::StandaloneContext::Create(_vocbase);
-
+  auto transactionContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
-  
+
   if (keys) {
     Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
+
     if (rv.fail()) {
       generateError(rv);
       return;
     }
   } else {
-    bool success;
-    std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+    bool success = false;
+    VPackSlice const parsedIds = this->parseVPackBody(success);
+
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    
-    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
+
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk,
+                                   maxChunkSize, lowKey, parsedIds);
+
     if (rv.fail()) {
       generateError(rv);
       return;
@@ -678,8 +675,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // VPackSlice options = _request->payload();
 
   // get collection Name
-  std::string const& collection = _request->value("collection");
-  if (collection.empty()) {
+  std::string const& cname = _request->value("collection");
+  if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
@@ -697,58 +694,110 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   // acquire context
   bool isBusy = false;
-  RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
-  RocksDBReplicationContextGuard guard(_manager, context);
-  
-  if (context == nullptr) {
+  RocksDBReplicationContext* ctx = _manager->find(contextId, isBusy, false);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
+
+  if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to find context (it could be expired)");
     return;
+  }
+
+  if (!isBusy) {
+    int res = ctx->chooseDatabase(_vocbase);
+
+    isBusy = (TRI_ERROR_CURSOR_BUSY == res);
   }
 
   if (isBusy) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - context is busy");
     return;
-  }
+  } // we allow dumping in parallel
 
   // print request
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
-      << "' using contextId '" << context->id() << "'";
+      << "' using contextId '" << ctx->id() << "'";
 
+  grantTemporaryRights();
 
-  // TODO needs to generalized || velocypacks needs to support multiple slices
-  // per response!
-  auto response = dynamic_cast<HttpResponse*>(_response.get());
-  StringBuffer dump(8192, false);
-
-  if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
+    return;
   }
 
-  // do the work!
-  auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
+  uint64_t chunkSize = determineChunkSize();
+  size_t reserve = std::max<size_t>(chunkSize, 8192);
 
-  // generate the result
-  if (dump.length() == 0) {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
+  if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
+
+    VPackBuffer<uint8_t> buffer;
+    buffer.reserve(reserve); // avoid reallocs
+
+    auto res = ctx->dumpVPack(&_vocbase, cname, buffer, chunkSize);
+    // generate the result
+    if (res.fail()) {
+      generateError(res);
+    } else if (buffer.byteSize() == 0) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      resetResponse(rest::ResponseCode::OK);
+      _response->setContentType(rest::ContentType::VPACK);
+      _response->setPayload(std::move(buffer), true, VPackOptions::Options::Defaults,
+                            /*resolveExternals*/ false);
+    }
+
+    // set headers
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
+                           (ctx->moreForDump(cname) ? "true" : "false"));
+
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
+                           StringUtils::itoa(buffer.empty() ? 0 : res.maxTick()));
+
   } else {
-    resetResponse(rest::ResponseCode::OK);
+    auto response = dynamic_cast<HttpResponse*>(_response.get());
+    StringBuffer dump(reserve, false);
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+    }
+
+    // do the work!
+    auto res = ctx->dumpJson(&_vocbase, cname, dump, determineChunkSize());
+
+    if (res.fail()) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "replication dump - " + res.errorMessage());
+        return;
+      }
+
+      generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
+                    "replication dump - " + res.errorMessage());
+      return;
+    }
+
+    // generate the result
+    if (dump.length() == 0) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      resetResponse(rest::ResponseCode::OK);
+    }
+
+    response->setContentType(rest::ContentType::DUMP);
+    // set headers
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
+                           (ctx->moreForDump(cname) ? "true" : "false"));
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
+                           StringUtils::itoa((dump.length() == 0) ? 0 : res.maxTick()));
+
+    // transfer ownership of the buffer contents
+    response->body().set(dump.stringBuffer());
+
+    // avoid double freeing
+    TRI_StealStringBuffer(dump.stringBuffer());
   }
-
-  response->setContentType(rest::ContentType::DUMP);
-  // set headers
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
-                         (context->more() ? "true" : "false"));
-
-  _response->setHeaderNC(
-      StaticStrings::ReplicationHeaderLastIncluded,
-      StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
-
-  // transfer ownership of the buffer contents
-  response->body().set(dump.stringBuffer());
-
-  // avoid double freeing
-  TRI_StealStringBuffer(dump.stringBuffer());
 }

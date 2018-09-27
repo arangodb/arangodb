@@ -28,6 +28,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -49,43 +50,62 @@ using namespace arangodb::rocksutils;
 uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 
 RocksDBIndex::RocksDBIndex(
-    TRI_idx_iid_t id, LogicalCollection* collection,
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-    uint64_t objectId, bool useCache)
+    bool unique,
+    bool sparse,
+    rocksdb::ColumnFamilyHandle* cf,
+    uint64_t objectId,
+    bool useCache
+)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection.system()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
+
   if (_cacheEnabled) {
     createCache();
   }
+
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
+
+  engine->addIndexMapping(
+    _objectId, collection.vocbase().id(), collection.id(), _iid
+  );
 }
 
-RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info,
-                           rocksdb::ColumnFamilyHandle* cf, bool useCache)
+RocksDBIndex::RocksDBIndex(
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    rocksdb::ColumnFamilyHandle* cf,
+    bool useCache
+)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection.system()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
     _objectId = TRI_NewTickServer();
   }
+
   if (_cacheEnabled) {
     createCache();
   }
+
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
+
+  engine->addIndexMapping(
+    _objectId, collection.vocbase().id(), collection.id(), _iid
+  );
 }
 
 RocksDBIndex::~RocksDBIndex() {
@@ -110,6 +130,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   builder.add("cacheInUse", VPackValue(cacheInUse));
   if (cacheInUse) {
     builder.add("cacheSize", VPackValue(_cache->size()));
+    builder.add("cacheUsage", VPackValue(_cache->usage()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
@@ -119,6 +140,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
     builder.add("cacheWindowedHitRate", VPackValue(rate));
   } else {
     builder.add("cacheSize", VPackValue(0));
+    builder.add("cacheUsage", VPackValue(0));
   }
 }
 
@@ -136,10 +158,10 @@ void RocksDBIndex::unload() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                bool forPersistence) const {
-  Index::toVelocyPack(builder, withFigures, forPersistence);
-  if (forPersistence) {
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
+                                std::underlying_type<Serialize>::type flags) const {
+  Index::toVelocyPack(builder, flags);
+  if (Index::hasFlag(flags, Index::Serialize::ObjectId)) {
     // If we store it, it cannot be 0
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
@@ -148,17 +170,19 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 void RocksDBIndex::createCache() {
   if (!_cacheEnabled || _cachePresent ||
-      _collection->isAStub() ||
+      _collection.isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
     return;
   }
 
-  TRI_ASSERT(!_collection->isSystem() &&
-             !ServerState::instance()->isCoordinator());
+  TRI_ASSERT(
+    !_collection.system() && !ServerState::instance()->isCoordinator()
+  );
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating index cache";
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
@@ -171,13 +195,11 @@ void RocksDBIndex::destroyCache() {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying index cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_cacheEnabled);
 }
 
 rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
@@ -199,11 +221,14 @@ void RocksDBIndex::recalculateEstimates() {
 }
 
 int RocksDBIndex::drop() {
-  // edge index needs to be dropped with prefix_same_as_start = false
+  auto* coll = toRocksDBCollection(_collection);
+  // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
-  bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  arangodb::Result r = rocksutils::removeLargeRange(
-    rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
+  bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
+
+  arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
+                                                    prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cachePresent) {
@@ -220,9 +245,8 @@ int RocksDBIndex::drop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                             this->getBounds(), prefix_same_as_start);
+                                             this->getBounds(), prefixSameAsStart);
   if (numDocs > 0) {
-
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
@@ -232,14 +256,13 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
-int RocksDBIndex::afterTruncate() {
+void RocksDBIndex::afterTruncate() {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
@@ -319,10 +342,12 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       return RocksDBKeyBounds::FulltextIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+      return RocksDBKeyBounds::LegacyGeoIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
 #ifdef USE_IRESEARCH
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
-      return RocksDBKeyBounds::Empty();
+      return RocksDBKeyBounds::DatabaseViews(objectId);
 #endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:

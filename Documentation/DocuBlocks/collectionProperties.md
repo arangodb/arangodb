@@ -54,6 +54,10 @@ In a cluster setup, the result will also contain the following attributes:
 * *replicationFactor*: determines how many copies of each shard are kept 
   on different DBServers.
 
+* *shardingStrategy*: the sharding strategy selected for the collection.
+  This attribute will only be populated in cluster mode and is not populated
+  in single-server mode.
+
 `collection.properties(properties)`
 
 Changes the collection properties. *properties* must be an object with
@@ -73,13 +77,9 @@ one or more of the following attribute(s):
   different DBServers, valid values are  integer numbers
   in the range of 1-10 *(Cluster only)*
 
-*Note*: it is not possible to change the journal size after the journal or
-datafile has been created. Changing this parameter will only effect newly
-created journals. Also note that you cannot lower the journal size to less
-then size of the largest document already stored in the collection.
-
 **Note**: some other collection properties, such as *type*, *isVolatile*,
-or *keyOptions* cannot be changed once the collection is created.
+*keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once 
+the collection is created.
 
 @EXAMPLES
 

@@ -98,7 +98,7 @@ struct jsonData {
   * ----------------------------------------------------------------------------- */
 
 \"[ !\x23-\x5b\x5d-\x7f]*\" {
-  // performance optimisation for all-ASCII strings without escape characters
+  // performance optimization for all-ASCII strings without escape characters
   // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
   return STRING_CONSTANT_ASCII;
@@ -432,12 +432,13 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
 v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
                                           char const* text,
+                                          size_t len,
                                           char** error) {
   yyscan_t scanner;
   yylex_init(&scanner);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
-  YY_BUFFER_STATE buf = yy_scan_string(text, scanner);
+  YY_BUFFER_STATE buf = yy_scan_bytes(text, len, scanner);
 
   int c = yylex(scanner);
   v8::Handle<v8::Value> value = ParseValue(isolate, scanner, c);

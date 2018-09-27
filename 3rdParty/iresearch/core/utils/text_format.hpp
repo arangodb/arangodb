@@ -56,25 +56,25 @@ class type_id: public irs::type_id, private util::noncopyable {
 /// @class CSV format type https://en.wikipedia.org/wiki/Comma-separated_values
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API const type_id& csv_t();
-static const auto& csv = csv_t();
+ADB_IGNORE_UNUSED static const auto& csv = csv_t();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class jSON format type https://en.wikipedia.org/wiki/JSON
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API const type_id& json_t();
-static const auto& json = json_t();
+ADB_IGNORE_UNUSED static const auto& json = json_t();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw text format type without any specific encoding
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API const type_id& text_t();
-static const auto& text = text_t();
+ADB_IGNORE_UNUSED static const auto& text = text_t();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class XML format type https://en.wikipedia.org/wiki/XML
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API const type_id& xml_t();
-static const auto& xml = xml_t();
+ADB_IGNORE_UNUSED static const auto& xml = xml_t();
 
 #if !defined(_MSC_VER)
   #pragma GCC diagnostic pop

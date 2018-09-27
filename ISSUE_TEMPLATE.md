@@ -1,72 +1,43 @@
-## my environment running ArangoDB
-I'm using the latest ArangoDB of the respective release series:
-- [ ] 2.8
-- [ ] 3.0
-- [ ] 3.1
-- [ ] 3.2
-- [ ] 3.3
-- [ ] self-compiled devel branch
+## My Environment
 
-Mode:
-- [ ] Cluster
-- [ ] Single-Server
+* __ArangoDB Version__:        <!-- e.g. 3.3.14 or self-compiled devel branch -->
+* __Storage Engine__:             <!-- MMFiles / RocksDB -->
+* __Deployment Mode__:       <!-- Single Server | Master/Slave | Active Failover | Cluster | DC2DC -->
+* __Deployment Strategy__:   <!-- Manual Start | Manual Start in Docker | ArangoDB Starter | ArangoDB Starter in Docker | Kubernetes | DCOS -->
+* __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
+* __Infrastructure__:               <!-- AWS | Azure | ... | own -->
+* __Operating System__:        <!-- Ubuntu 18.04 | Windows 10 | MacOS 10.13.4 | DCOS 1.10 | ... -->
+* __Used Package__:              <!-- Debian or Ubuntu .deb | SUSE or RedHat .rpm | Docker - official Docker library | other -->
 
-Storage-Engine:
-- [ ] mmfiles
-- [ ] rocksdb
+## Component, Query & Data
 
-On this operating system:
-- [ ] DCOS on
-  - [ ] AWS
-  - [ ] Azure
-  - [ ] own infrastructure
-- [ ] Linux 
-  - [ ] Debian .deb
-  - [ ] Ubuntu .deb
-  - [ ] SUSE   .rpm
-  - [ ] RedHat .rpm
-  - [ ] Fedora .rpm
-  - [ ] Gentoo
-  - [ ] docker - official docker library
-  - [ ] other:
-- [ ] Windows, version: 
-- [ ] MacOS, version:
+__Affected feature__:
+<!-- e.g. Installation | Foxx | AQL query using web interface | arangosh | with driver | ... -->
 
 
-### this is an AQL-related issue:
-[ ] I'm using graph features
-
-I'm issuing AQL via:
-- [ ] web interface with this browser:     running on this OS:
-- [ ] arangosh
-- [ ] this Driver:
-
-I've run `db._explain("<my aql query>")` and it didn't shed more light on this.
-The AQL query in question is:
-
-The issue can be reproduced using this dataset:
-
-Please provide a way to create the dataset to run the above query on; either by a gist with an arangodump, or `db.collection.save({my: "values"}) statements. If it can be reproduced with one of the ArangoDB example datasets, it's a plus.
-
-### Foxx
+__AQL query (if applicable)__:
 
 
-### this is a web interface-related issue:
-I'm using the web interface with this browser:     running on this OS:
-- [ ] authentication is enabled?
-- [ ] using the cluster?
-- [ ] _system database?
-
-These are the steps to reproduce:
-1) open the browser on http://127.0.0.1:8529
-2) log in as ...
-3) use database [ ] `_system` [ ] other: 
-4) click to ...
-...
-
-The following problem occurs: [Screenshot?] 
-Instead I would be expecting: 
+__AQL explain (if applicable)__:
+<!-- output of  db._explain("<my aql query>") -->
 
 
-### this is an installation-related issue:
-Describe which steps you carried out, what you expected to happen and what actually happened.
+__Dataset__:
+<!-- description, or if possible, please share an example dataset to reproduce the issue either as Gist with an arangodump, or an arangosh script with db.collection.save({my: "values"}) statements -->
+
+
+__Replication Factor & Number of Shards (Cluster only)__:
+<!-- please list these settings for each collection in question -->
+
+
+## Steps to reproduce
+
+1. 
+2. 
+3. 
+
+__Problem__:
+
+
+__Expected result__:
+

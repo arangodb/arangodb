@@ -67,11 +67,11 @@ foxxRouter.use(installer)
   Flag to install the service in legacy mode.
 `)
 .queryParam('upgrade', joi.boolean().default(false), dd`
-  Flag to upgrade the service installed at the mountpoint.
+  Flag to upgrade the service installed at the mount point.
   Triggers setup.
 `)
 .queryParam('replace', joi.boolean().default(false), dd`
-  Flag to replace the service installed at the mountpoint.
+  Flag to replace the service installed at the mount point.
   Triggers teardown and setup.
 `);
 
@@ -362,11 +362,11 @@ router.get('/fishbowl', function (req, res) {
   try {
     store.update();
   } catch (e) {
-    console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+    console.warn('Failed to update Foxx store from GitHub.');
   }
   res.json(store.availableJson());
 })
-.summary('List of all foxx services submitted to the Foxx store.')
+.summary('List of all Foxx services submitted to the Foxx store.')
 .description(dd`
   This function contacts the fishbowl and reports which services are available for install.
 `);
@@ -398,7 +398,7 @@ anonymousRouter.get('/download/zip', function (req, res) {
 .queryParam('nonce', joi.string().required(), 'Cryptographic nonce that authorizes the download.')
 .summary('Download a service as zip archive')
 .description(dd`
-  Download a foxx service packed in a zip archive.
+  Download a Foxx service packed in a zip archive.
 `);
 
 anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {

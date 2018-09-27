@@ -9,23 +9,27 @@ Removes an edge from the collection.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name, string, required} 
+@RESTURLPARAM{collection-name,string,required} 
 The name of the edge collection the edge belongs to.
 
-@RESTURLPARAM{edge-key, string, required} 
+@RESTURLPARAM{edge-key,string,required} 
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{waitForSync, boolean, optional}
+@RESTQUERYPARAM{waitForSync,boolean,optional}
 Define if the request should wait until synced to disk.
+
+@RESTQUERYPARAM{returnOld,boolean,optional}
+Define if a presentation of the deleted document should
+be returned within the response object.
 
 @RESTHEADERPARAMETERS
 
-@RESTPARAM{if-match, string, optional}
+@RESTHEADERPARAM{if-match,string,optional}
 If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated,
 if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
 you can supply the Etag in an attribute rev in the URL.

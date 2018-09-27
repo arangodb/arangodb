@@ -11,12 +11,10 @@ Synchronous replication is used between the _DBServers_ of an ArangoDB
 Cluster.
 
 Asynchronous replication is used:
-- when ArangoDB is operating in _Master/Slave_ or _Active Failover_ modes
-- between multiple Data Centers (inside the same Data Center replication is 
-synchronous)
 
-For more information on the ArangoDB Server _modes_ please refer to the
-[_Server Modes_](../../Architecture/ServerModes.md) section.
+- between the _master_ and the _slave_ of an ArangoDB [_Master/Slave_](../../Architecture/DeploymentModes/MasterSlave/README.md) setup
+- between the _Leader_ and the _Follower_ of an ArangoDB [_Active Failover_](../../Architecture/DeploymentModes/ActiveFailover/README.md) setup
+- between multiple ArangoDB [Data Centers](../../Architecture/DeploymentModes/DC2DC/README.md) (inside the same Data Center replication is synchronous)
 
 Synchronous replication
 -----------------------

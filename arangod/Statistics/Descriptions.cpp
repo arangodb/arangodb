@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Descriptions.h"
-#include "Basics/Common.h"
 #include "Basics/process-utils.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -49,6 +48,8 @@ std::string stats::fromGroupType(stats::GroupType gt) {
     case stats::GroupType::Server:
       return "server";
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
 }
 
 void stats::Group::toVPack(velocypack::Builder& b) const {
@@ -66,6 +67,8 @@ std::string stats::fromFigureType(stats::FigureType t) {
     case stats::FigureType::Distribution:
       return "distribution";
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
 }
 
 std::string stats::fromUnit(stats::Unit u) {
@@ -79,6 +82,8 @@ std::string stats::fromUnit(stats::Unit u) {
     case stats::Unit::Number:
       return "number";
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
 }
 
 void stats::Figure::toVPack(velocypack::Builder& b) const {
@@ -99,10 +104,10 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
 }
 
 stats::Descriptions::Descriptions()
-    : _requestTimeCuts({0.01, 0.05, 0.1, 0.2, 0.5, 1.0}),
-      _connectionTimeCuts({0.1, 1.0, 60.0}),
-      _bytesSendCuts({250, 1000, 2 * 1000, 5 * 1000, 10 * 1000}),
-      _bytesReceivedCuts({250, 1000, 2 * 1000, 5 * 1000, 10 * 1000}) {
+    : _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
+      _connectionTimeCuts(arangodb::basics::TRI_ConnectionTimeDistributionVectorStatistics),
+      _bytesSendCuts(arangodb::basics::TRI_BytesSentDistributionVectorStatistics),
+      _bytesReceivedCuts(arangodb::basics::TRI_BytesReceivedDistributionVectorStatistics) {
   _groups.emplace_back(Group{stats::GroupType::System, "Process Statistics",
                              "Statistics about the ArangoDB process"});
   _groups.emplace_back(Group{stats::GroupType::Client,
@@ -234,7 +239,7 @@ stats::Descriptions::Descriptions()
 
   _figures.emplace_back(
       Figure{stats::GroupType::Client, "bytesReceived", "Bytes Received",
-             "Bytes receiveds for a request.", stats::FigureType::Distribution,
+             "Bytes received for a request.", stats::FigureType::Distribution,
              // cuts: internal.bytesReceivedDistribution,
              stats::Unit::Bytes, _bytesReceivedCuts});
 
@@ -349,30 +354,27 @@ stats::Descriptions::Descriptions()
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   ServerStatistics info = ServerStatistics::statistics();
   b.add("uptime", VPackValue(info._uptime));
-  b.add("physicalMemory", VPackValue((double)TRI_PhysicalMemory));
-  
+  b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+
   V8DealerFeature* dealer =
   application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  
-  b.add("v8Context", VPackValue(VPackValueType::Object, true));
-  auto v8Counters = dealer->getCurrentContextNumbers();
-  b.add( "available", VPackValue(static_cast<int32_t>(v8Counters.available)));
-  b.add( "busy", VPackValue(static_cast<int32_t>(v8Counters.busy)));
-  b.add( "dirty", VPackValue(static_cast<int32_t>(v8Counters.dirty)));
-  b.add( "free", VPackValue(static_cast<int32_t>(v8Counters.free)));
-  b.add( "max", VPackValue(static_cast<int32_t>(v8Counters.max)));
-  b.close();
-  
+  if (dealer->isEnabled()) {
+    b.add("v8Context", VPackValue(VPackValueType::Object, true));
+    auto v8Counters = dealer->getCurrentContextNumbers();
+    b.add( "available", VPackValue(v8Counters.available));
+    b.add( "busy", VPackValue(v8Counters.busy));
+    b.add( "dirty", VPackValue(v8Counters.dirty));
+    b.add( "free", VPackValue(v8Counters.free));
+    b.add( "max", VPackValue(v8Counters.max));
+    b.close();
+  }
+
   b.add("threads", VPackValue(VPackValueType::Object, true));
-  
-  auto countersRaw = SchedulerFeature::SCHEDULER->getCounters();
-  b.add("running", VPackValue(static_cast<int32_t>(rest::Scheduler::numRunning(countersRaw))));
-  b.add("working", VPackValue(static_cast<int32_t>(rest::Scheduler::numWorking(countersRaw))));
-  b.add("blocked", VPackValue(static_cast<int32_t>(rest::Scheduler::numBlocked(countersRaw))));
-  b.add("queued", VPackValue(static_cast<int32_t>(SchedulerFeature::SCHEDULER->numQueued())));
+
+  SchedulerFeature::SCHEDULER->addQueueStatistics(b);
+
   b.close();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the distribution
@@ -382,11 +384,10 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
                              basics::StatisticsDistribution const& dist) {
   b.add(name, VPackValue(VPackValueType::Object, true));
   b.add("sum", VPackValue(dist._total));
-  b.add("count", VPackValue((double)dist._count));
+  b.add("count", VPackValue(dist._count));
   b.add("counts", VPackValue(VPackValueType::Array, true));
-  for (std::vector<uint64_t>::const_iterator i = dist._counts.begin();
-       i != dist._counts.end(); ++i) {
-    b.add(VPackValue(*i));
+  for (auto const& it : dist._counts) {
+    b.add(VPackValue(it));
   }
   b.close();
   b.close();
@@ -395,27 +396,28 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
 void stats::Descriptions::clientStatistics(velocypack::Builder& b) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
-  std::vector<basics::StatisticsCounter> methodRequests;
+  std::array<basics::StatisticsCounter,
+             basics::MethodRequestsStatisticsSize> methodRequests;
   basics::StatisticsCounter asyncRequests;
   basics::StatisticsDistribution connectionTime;
-  
+
   // FIXME why are httpConnections in here ?
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);
-  
-  b.add("httpConnections", VPackValue((double)httpConnections._count));
+
+  b.add("httpConnections", VPackValue(httpConnections._count));
   FillDistribution(b, "connectionTime", connectionTime);
-  
+
   basics::StatisticsDistribution totalTime;
   basics::StatisticsDistribution requestTime;
   basics::StatisticsDistribution queueTime;
   basics::StatisticsDistribution ioTime;
   basics::StatisticsDistribution bytesSent;
   basics::StatisticsDistribution bytesReceived;
-  
+
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent,
                           bytesReceived);
-  
+
   FillDistribution(b, "totalTime", totalTime);
   FillDistribution(b, "requestTime", requestTime);
   FillDistribution(b, "queueTime", queueTime);
@@ -427,42 +429,42 @@ void stats::Descriptions::clientStatistics(velocypack::Builder& b) const {
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
-  std::vector<basics::StatisticsCounter> methodRequests;
+  std::array<basics::StatisticsCounter,
+             basics::MethodRequestsStatisticsSize> methodRequests;
   basics::StatisticsCounter asyncRequests;
   basics::StatisticsDistribution connectionTime;
-  
+
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);
-  
-  // request counters
-  b.add("requestsTotal", VPackValue((double)totalRequests._count));
-  b.add("requestsAsync", VPackValue((double)asyncRequests._count));
-  b.add("requestsGet", VPackValue((double)methodRequests[(int)rest::RequestType::GET]._count));
-  b.add("requestsHead", VPackValue((double)methodRequests[(int)rest::RequestType::HEAD]._count));
-  b.add("requestsPost", VPackValue((double)methodRequests[(int)rest::RequestType::POST]._count));
-  b.add("requestsPut", VPackValue((double)methodRequests[(int)rest::RequestType::PUT]._count));
-  b.add("requestsPatch", VPackValue((double)methodRequests[(int)rest::RequestType::PATCH]._count));
-  b.add("requestsDelete", VPackValue((double)methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
-  b.add("requestsOptions", VPackValue((double)methodRequests[(int)rest::RequestType::OPTIONS]._count));
-  b.add("requestsOther", VPackValue((double)methodRequests[(int)rest::RequestType::ILLEGAL]._count));
-}
 
+  // request counters
+  b.add("requestsTotal", VPackValue(totalRequests._count));
+  b.add("requestsAsync", VPackValue(asyncRequests._count));
+  b.add("requestsGet", VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
+  b.add("requestsHead", VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
+  b.add("requestsPost", VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
+  b.add("requestsPut", VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
+  b.add("requestsPatch", VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
+  b.add("requestsDelete", VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
+  b.add("requestsOptions", VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
+  b.add("requestsOther", VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+}
 
 void stats::Descriptions::processStatistics(VPackBuilder& b) const {
   ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = (double)info._residentSize;
   double rssp = 0;
-  
+
   if (TRI_PhysicalMemory != 0) {
     rssp = rss / TRI_PhysicalMemory;
   }
-  
-  b.add("minorPageFaults", VPackValue((double)info._minorPageFaults));
-  b.add("majorPageFaults", VPackValue((double)info._majorPageFaults));
+
+  b.add("minorPageFaults", VPackValue(info._minorPageFaults));
+  b.add("majorPageFaults", VPackValue(info._majorPageFaults));
   b.add("userTime", VPackValue((double)info._userTime / (double)info._scClkTck));
   b.add("systemTime", VPackValue((double)info._systemTime / (double)info._scClkTck));
-  b.add("numberOfThreads", VPackValue((double)info._numberThreads));
+  b.add("numberOfThreads", VPackValue(info._numberThreads));
   b.add("residentSize", VPackValue(rss));
   b.add("residentSizePercent", VPackValue(rssp));
-  b.add("virtualSize", VPackValue((double)info._virtualSize));
+  b.add("virtualSize", VPackValue(info._virtualSize));
 }

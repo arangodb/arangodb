@@ -1,5 +1,4 @@
 /* jshint strict: false */
-/* global ArangoClusterComm */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Arango Simple Query Language
@@ -198,6 +197,13 @@ SimpleQueryNear.prototype.execute = function () {
   if (this._limit <= 0) {
     this._limit = 100;
   }
+  
+  let cluster = require('@arangodb/cluster');
+  if (cluster.isCoordinator()) {
+    if (this._distance === null || this._distance === undefined) {
+      this._distance = '$distance';
+    }
+  }
 
   var bindVars = {
     '@collection': this._collection.name(),
@@ -206,98 +212,21 @@ SimpleQueryNear.prototype.execute = function () {
     limit: parseInt((this._skip || 0) + (this._limit || 99999999999), 10)
   };
 
-  var mustSort = false;
-  var documents = [];
-  var cluster = require('@arangodb/cluster');
-  if (cluster.isCoordinator()) {
-    if (this._distance === null || this._distance === undefined) {
-      this._distance = '_distance';
-    }
-    mustSort = true;
-
-    var dbName = require('internal').db._name();
-    var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterComm.getId() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    var _limit = 0;
-    if (this._limit > 0) {
-      _limit = parseInt(this._skip + this._limit, 10);
-    }
-
-    var attribute;
-    if (this._distance !== null) {
-      attribute = this._distance;
-    } else {
-      // use a pseudo-attribute for distance (we need this for sorting)
-      attribute = '$distance';
-    }
-
-    var self = this;
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest('put',
-        'shard:' + shard,
-        dbName,
-        '/_api/simple/near',
-        JSON.stringify({
-          collection: shard,
-          latitude: self._latitude,
-          longitude: self._longitude,
-          distance: attribute,
-          geo: rewriteIndex(self._index),
-          skip: 0,
-          limit: _limit || undefined,
-          batchSize: 100000000
-        }),
-        { },
-        options);
-    });
-
-    var result = cluster.wait(coord, shards.length);
-
-    result.forEach(function (part) {
-      var body = JSON.parse(part.body);
-      documents = documents.concat(body.result);
-    });
-
-    if (shards.length > 1) {
-      documents.sort(function (l, r) {
-        if (l[attribute] === r[attribute]) {
-          return 0;
-        }
-        return (l[attribute] < r[attribute] ? -1 : 1);
-      });
-    }
-
-    if (_limit > 0) {
-      documents = documents.slice(this._skip, _limit);
-    } else if (this._skip > 0) {
-      documents = documents.slice(this._skip);
-    }
-
-    if (this._distance === null) {
-      var n = documents.length;
-      for (var i = 0; i < n; ++i) {
-        delete documents[i][attribute];
-      }
-    }
+  var query;
+  if (typeof this._distance === 'string') {
+    query = 'FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit, @distance) ';
+    bindVars.distance = this._distance;
   } else {
-    var query;
-    if (typeof this._distance === 'string') {
-      query = 'FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit, @distance) ';
-      bindVars.distance = this._distance;
-    } else {
-      query = 'FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) ';
-    }
-
-    if (mustSort) {
-      query += 'SORT doc.@distance ';
-    }
-
-    query += limitString(this._skip, this._limit) + ' RETURN doc';
-
-    documents = require('internal').db._query({ query, bindVars}).toArray();
+    query = 'FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) ';
   }
+  
+  if (cluster.isCoordinator()) {
+    query += 'SORT doc.@distance ';
+  }
+
+  query += limitString(this._skip, this._limit) + ' RETURN doc';
+
+  let documents = require('internal').db._query({ query, bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -323,109 +252,36 @@ SimpleQueryWithin.prototype.execute = function () {
     err.errorMessage = 'skip must be non-negative';
     throw err;
   }
-
-  var mustSort = false;
-
-  var cluster = require('@arangodb/cluster');
-
-  var documents = [];
+  
+  let cluster = require('@arangodb/cluster');
   if (cluster.isCoordinator()) {
     if (this._distance === null || this._distance === undefined) {
-      this._distance = '_distance';
+      this._distance = '$distance';
     }
-    mustSort = true;
-
-    var dbName = require('internal').db._name();
-    var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterComm.getId() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    var _limit = 0;
-    if (this._limit > 0) {
-      _limit = parseInt(this._skip + this._limit, 10);
-    }
-
-    var attribute;
-    if (this._distance !== null) {
-      attribute = this._distance;
-    } else {
-      // use a pseudo-attribute for distance (we need this for sorting)
-      attribute = '$distance';
-    }
-
-    var self = this;
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest('put',
-        'shard:' + shard,
-        dbName,
-        '/_api/simple/within',
-        JSON.stringify({
-          collection: shard,
-          latitude: self._latitude,
-          longitude: self._longitude,
-          distance: attribute,
-          radius: self._radius,
-          geo: rewriteIndex(self._index),
-          skip: 0,
-          limit: _limit || undefined,
-          batchSize: 100000000
-        }),
-        { },
-        options);
-    });
-
-    var result = cluster.wait(coord, shards.length);
-
-    result.forEach(function (part) {
-      var body = JSON.parse(part.body);
-      documents = documents.concat(body.result);
-    });
-
-    if (shards.length > 1) {
-      documents.sort(function (l, r) {
-        if (l[attribute] === r[attribute]) {
-          return 0;
-        }
-        return (l[attribute] < r[attribute] ? -1 : 1);
-      });
-    }
-
-    if (_limit > 0) {
-      documents = documents.slice(this._skip, _limit);
-    } else if (this._skip > 0) {
-      documents = documents.slice(this._skip);
-    }
-
-    if (this._distance === null) {
-      var n = documents.length;
-      for (var i = 0; i < n; ++i) {
-        delete documents[i][attribute];
-      }
-    }
-  } else {
-    var bindVars = {
-      '@collection': this._collection.name(),
-      latitude: this._latitude,
-      longitude: this._longitude,
-      radius: this._radius
-    };
-
-    var query;
-    if (typeof this._distance === 'string') {
-      query = 'FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distance) ';
-      bindVars.distance = this._distance;
-    } else {
-      query = 'FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius) ';
-    }
-
-    if (mustSort) {
-      query += 'SORT doc.@distance ';
-    }
-
-    query += limitString(this._skip, this._limit) + ' RETURN doc';
-
-    documents = require('internal').db._query({ query, bindVars}).toArray();
   }
+
+  var bindVars = {
+    '@collection': this._collection.name(),
+    latitude: this._latitude,
+    longitude: this._longitude,
+    radius: this._radius
+  };
+
+  var query;
+  if (typeof this._distance === 'string') {
+    query = 'FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distance) ';
+    bindVars.distance = this._distance;
+  } else {
+    query = 'FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius) ';
+  }
+  
+  if (cluster.isCoordinator()) {
+    query += 'SORT doc.@distance ';
+  }
+
+  query += limitString(this._skip, this._limit) + ' RETURN doc';
+
+  let documents = require('internal').db._query({ query, bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -441,8 +297,6 @@ SimpleQueryFulltext.prototype.execute = function () {
     return;
   }
 
-  var documents = [];
-
   let bindVars = {
     '@collection': this._collection.name(),
     attribute: this._attribute,
@@ -450,7 +304,7 @@ SimpleQueryFulltext.prototype.execute = function () {
   };
   let query = 'FOR doc IN FULLTEXT(@@collection, @attribute, @query) ' +
               limitString(this._skip, this._limit) + ' RETURN doc';
-  documents = require('internal').db._query({ query, bindVars}).toArray();
+  let documents = require('internal').db._query({ query, bindVars}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -462,9 +316,6 @@ SimpleQueryFulltext.prototype.execute = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryWithinRectangle.prototype.execute = function () {
-  var result;
-  var documents;
-
   if (this._execution !== null) {
     return;
   }
@@ -479,193 +330,24 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     err.errorMessage = 'skip must be non-negative';
     throw err;
   }
+  
+  var bindVars = {
+    '@collection': this._collection.name(),
+    latitude1: this._latitude1,
+    longitude1: this._longitude1,
+    latitude2: this._latitude2,
+    longitude2: this._longitude2
+  };
 
-  var cluster = require('@arangodb/cluster');
+  let query = 'FOR doc IN WITHIN_RECTANGLE(@@collection, @latitude1, @longitude1, @latitude2, @longitude2) ';
+  
+  query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  if (cluster.isCoordinator()) {
-    var dbName = require('internal').db._name();
-    var shards = cluster.shardList(dbName, this._collection.name());
-    var coord = { coordTransactionID: ArangoClusterComm.getId() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-    var _limit = 0;
-    if (this._limit > 0) {
-      if (this._skip >= 0) {
-        _limit = this._skip + this._limit;
-      }
-    }
+  let documents = require('internal').db._query({ query, bindVars }).toArray();
 
-    var self = this;
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest('put',
-        'shard:' + shard,
-        dbName,
-        '/_api/simple/within-rectangle',
-        JSON.stringify({
-          collection: shard,
-          latitude1: self._latitude1,
-          longitude1: self._longitude1,
-          latitude2: self._latitude2,
-          longitude2: self._longitude2,
-          geo: rewriteIndex(self._index),
-          skip: 0,
-          limit: _limit || undefined,
-          batchSize: 100000000
-        }),
-        { },
-        options);
-    });
-
-    var _documents = [], total = 0;
-    result = cluster.wait(coord, shards.length);
-
-    result.forEach(function (part) {
-      var body = JSON.parse(part.body);
-      total += body.total;
-
-      _documents = _documents.concat(body.result);
-    });
-
-    if (this._limit > 0) {
-      _documents = _documents.slice(0, this._skip + this._limit);
-    }
-
-    documents = {
-      documents: _documents,
-      count: _documents.length,
-      total: total
-    };
-  } else {
-    var distanceMeters = function (lat1, lon1, lat2, lon2) {
-      var deltaLat = (lat2 - lat1) * Math.PI / 180;
-      var deltaLon = (lon2 - lon1) * Math.PI / 180;
-      var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return 6378.137 /* radius of earth in kilometers */
-        * c
-        * 1000; // kilometers to meters
-    };
-
-    var diameter = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
-    var midpoint = [
-      this._latitude1 + (this._latitude2 - this._latitude1) * 0.5,
-      this._longitude1 + (this._longitude2 - this._longitude1) * 0.5
-    ];
-
-    result = this._collection.within(midpoint[0], midpoint[1], diameter).toArray();
-
-    var idx = this._collection.index(this._index);
-    var latLower, latUpper, lonLower, lonUpper;
-
-    if (this._latitude1 < this._latitude2) {
-      latLower = this._latitude1;
-      latUpper = this._latitude2;
-    } else {
-      latLower = this._latitude2;
-      latUpper = this._latitude1;
-    }
-
-    if (this._longitude1 < this._longitude2) {
-      lonLower = this._longitude1;
-      lonUpper = this._longitude2;
-    } else {
-      lonLower = this._longitude2;
-      lonUpper = this._longitude1;
-    }
-
-    var deref = function (doc, parts) {
-      if (parts.length === 1) {
-        return doc[parts[0]];
-      }
-
-      var i = 0;
-      try {
-        while (i < parts.length && doc !== null && doc !== undefined) {
-          doc = doc[parts[i]];
-          ++i;
-        }
-        return doc;
-      } catch (err) {
-        return null;
-      }
-    };
-
-    documents = [];
-    if (idx.type === 'geo1') {
-      // geo1, we have both coordinates in a list
-      var attribute = idx.fields[0];
-      var parts = attribute.split('.');
-
-      if (idx.geoJson) {
-        result.forEach(function (document) {
-          var doc = deref(document, parts);
-          if (!Array.isArray(doc)) {
-            return;
-          }
-
-          // check if within bounding rectangle
-          // first list value is longitude, then latitude
-          if (doc[1] >= latLower && doc[1] <= latUpper &&
-            doc[0] >= lonLower && doc[0] <= lonUpper) {
-            documents.push(document);
-          }
-        });
-      } else {
-        result.forEach(function (document) {
-          var doc = deref(document, parts);
-          if (!Array.isArray(doc)) {
-            return;
-          }
-
-          // check if within bounding rectangle
-          // first list value is latitude, then longitude
-          if (doc[0] >= latLower && doc[0] <= latUpper &&
-            doc[1] >= lonLower && doc[1] <= lonUpper) {
-            documents.push(document);
-          }
-        });
-      }
-    } else {
-      // geo2, we have dedicated latitude and longitude attributes
-      var latAtt = idx.fields[0], lonAtt = idx.fields[1];
-      var latParts = latAtt.split('.');
-      var lonParts = lonAtt.split('.');
-
-      result.forEach(function (document) {
-        var latDoc = deref(document, latParts);
-        if (latDoc === null || latDoc === undefined) {
-          return;
-        }
-        var lonDoc = deref(document, lonParts);
-        if (lonDoc === null || lonDoc === undefined) {
-          return;
-        }
-
-        // check if within bounding rectangle
-        if (latDoc >= latLower && latDoc <= latUpper &&
-          lonDoc >= lonLower && lonDoc <= lonUpper) {
-          documents.push(document);
-        }
-      });
-    }
-
-    documents = {
-      documents: documents,
-      count: result.length,
-      total: result.length
-    };
-
-    if (this._limit > 0) {
-      documents.documents = documents.documents.slice(0, this._skip + this._limit);
-      documents.count = documents.documents.length;
-    }
-  }
-
-  this._execution = new GeneralArrayCursor(documents.documents, this._skip, null);
-  this._countQuery = documents.total - this._skip;
-  this._countTotal = documents.total;
+  this._execution = new GeneralArrayCursor(documents);
+  this._countQuery = documents.length - this._skip;
+  this._countTotal = documents.length;
 };
 
 exports.GeneralArrayCursor = GeneralArrayCursor;

@@ -166,7 +166,7 @@ struct AqlValue final {
     uint8_t const* pointer;
     uint8_t* slice;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
-    std::vector<AqlItemBlock*>* docvec;
+    std::vector<std::unique_ptr<AqlItemBlock>>* docvec;
     Range const* range;
   } _data;
 
@@ -198,7 +198,7 @@ struct AqlValue final {
   }
   
   // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<AqlItemBlock*>* docvec) noexcept {
+  explicit AqlValue(std::vector<std::unique_ptr<AqlItemBlock>>* docvec) noexcept {
     TRI_ASSERT(docvec != nullptr);
     _data.docvec = docvec;
     setType(AqlValueType::DOCVEC);
@@ -505,7 +505,7 @@ struct AqlValue final {
   /// @brief return the item block at position
   AqlItemBlock* docvecAt(size_t position) const {
     TRI_ASSERT(isDocvec());
-    return _data.docvec->at(position);
+    return _data.docvec->at(position).get();
   }
   
   /// @brief construct a V8 value as input for the expression execution in V8
@@ -563,7 +563,7 @@ struct AqlValue final {
         // no need to count the memory usage for the item blocks in docvec.
         // these have already been counted elsewhere (in ctors of AqlItemBlock
         // and AqlItemBlock::setValue)
-        return sizeof(AqlItemBlock*) * _data.docvec->size();
+        return sizeof(std::unique_ptr<AqlItemBlock>) * _data.docvec->size();
       case RANGE:
         return sizeof(Range);
     }

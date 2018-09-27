@@ -179,7 +179,7 @@ the `SORT` clause of the query in the same order as they appear in the index def
 Skiplist indexes are always created in ascending order, but they can be used to access
 the indexed elements in both ascending or descending order. However, for a combined index
 (an index on multiple attributes) this requires that the sort orders in a single query
-as specified in the `SORT` clause must be either all ascending (optionally ommitted 
+as specified in the `SORT` clause must be either all ascending (optionally omitted 
 as ascending is the default) or all descending. 
 
 For example, if the skiplist index is created on attributes `value1` and `value2` 
@@ -413,7 +413,7 @@ value `bar` will be inserted only once:
 db.posts.insert({ tags: [ "foobar", "bar", "bar" ] });
 ```
 
-This is done to avoid redudant storage of the same index value for the same document, which
+This is done to avoid redundant storage of the same index value for the same document, which
 would not provide any benefit.
 
 If an array index is declared **unique**, the de-duplication of array values will happen before 
@@ -485,17 +485,21 @@ Vertex centric indexes
 As mentioned above, the most important indexes for graphs are the edge
 indexes, indexing the `_from` and `_to` attributes of edge collections.
 They provide very quick access to all edges originating in or arriving
-at a given vertex, which allows to quickly find all neighbours of a vertex
+at a given vertex, which allows to quickly find all neighbors of a vertex
 in a graph.
 
 In many cases one would like to run more specific queries, for example
-finding amongst the edges originating in a given vertex only those
-with the 20 latest time stamps. Exactly this is achieved with "vertex 
-centric indexes". In a sense these are localized indexes for an edge
-collection, which sit at every single vertex.
+finding amongst the edges originating from a given vertex only those
+with a timestamp greater than or equal to some date and time. Exactly this
+is achieved with "vertex centric indexes". In a sense these are localized
+indexes for an edge collection, which sit at every single vertex.
 
 Technically, they are implemented in ArangoDB as indexes, which sort the 
-complete edge collection first by `_from` and then by other attributes.
+complete edge collection first by `_from` and then by other attributes
+for _OUTBOUND_ traversals, or first by `_to` and then by other attributes
+for _INBOUND_ traversals. For traversals in _ANY_ direction two indexes
+are needed, one with `_from` and the other with `_to` as first indexed field.
+
 If we for example have a skiplist index on the attributes `_from` and 
 `timestamp` of an edge collection, we can answer the above question
 very quickly with a single range lookup in the index.
@@ -513,15 +517,17 @@ would simply do
 db.edges.ensureIndex({"type":"skiplist", "fields": ["_from", "timestamp"]});
 ```
 
-Then, queries like
+in arangosh. Then, queries like
 
 ```js
 FOR v, e, p IN 1..1 OUTBOUND "V/1" edges
-  FILTER e.timestamp ALL >= "2016-11-09"
+  FILTER e.timestamp >= "2018-07-09"
   RETURN p
 ```
 
 will be considerably faster in case there are many edges originating
-in vertex `"V/1"` but only few with a recent time stamp.
-
-
+from vertex `"V/1"` but only few with a recent time stamp. Note that the
+optimizer may prefer the default edge index over vertex centric indexes
+based on the costs it estimates, even if a vertex centric index might
+in fact be faster. Vertex centric indexes are more likely to be chosen
+for highly connected graphs and with RocksDB storage engine.

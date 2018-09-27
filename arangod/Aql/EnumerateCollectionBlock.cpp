@@ -42,23 +42,20 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
-      _collection(ep->_collection),
+      _collection(ep->collection()),
       _cursor(
-          _trx->indexScan(_collection->getName(),
+          _trx->indexScan(_collection->name(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
-                                       : transaction::Methods::CursorType::ALL),
-                          false)) {
+                                       : transaction::Methods::CursorType::ALL))),
+      _inflight(0) {
   TRI_ASSERT(_cursor->ok());
-}
 
-int EnumerateCollectionBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
+  buildCallback();
 
-  if (_collection->isSatellite()) {
+  if (ServerState::instance()->isRunningInCluster() && _collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
-    auto dbName = logicalCollection->dbName();
-
+    auto& dbName = logicalCollection->vocbase().name();
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
     unsigned long waitInterval = 10000;
@@ -69,7 +66,7 @@ int EnumerateCollectionBlock::initialize() {
     while (!inSync) {
       auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
         dbName, std::to_string(cid));
-      auto followers = collectionInfoCurrent->servers(_collection->getName());
+      auto followers = collectionInfoCurrent->servers(_collection->name());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
       if (!inSync) {
@@ -87,161 +84,159 @@ int EnumerateCollectionBlock::initialize() {
     if (!inSync) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
+          "collection " + _collection->name() + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
-
-  return ExecutionBlock::initialize();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
-int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
-                                               size_t pos) {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();
   _cursor->reset();
-  DEBUG_END_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  return res;
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
-                                                size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+EnumerateCollectionBlock::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
 
-  TRI_ASSERT(_cursor.get() != nullptr);
+  TRI_ASSERT(_cursor != nullptr);
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
   //   either empty (at the beginning, with _posInDocuments == 0)
   //   or is non-empty and _posInDocuments < _documents.size()
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(_inflight == 0);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
-    
-  bool needMore;
-  AqlItemBlock* cur = nullptr;
-  size_t send = 0;
+
+  RegisterId const nrInRegs = getNrInputRegisters();
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+
   std::unique_ptr<AqlItemBlock> res;
+
   do {
-    do {
-      needMore = false;
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+    if (bufferState == BufferState::WAITING) {
+      return {ExecutionState::WAITING, nullptr};
+    }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      TRI_ASSERT(_inflight == 0);
+      _done = true;
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
+      return {ExecutionState::DONE, nullptr};
+    }
 
-      if (_buffer.empty()) {
-        size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-          _done = true;
-          return nullptr;
-        }
-        _pos = 0;  // this is in the first block
-        _cursor->reset();
-      }
-
-      // If we get here, we do have _buffer.front()
-      cur = _buffer.front();
-
-      if (!_cursor->hasMore()) {
-        needMore = true;
-        // we have exhausted this cursor
-        // re-initialize fetching of documents
-        _cursor->reset();
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        }
-      }
-    } while (needMore);
+    // If we get here, we do have _buffer.front()
+    AqlItemBlock* cur = _buffer.front();
 
     TRI_ASSERT(cur != nullptr);
-    TRI_ASSERT(_cursor->hasMore());
+    TRI_ASSERT(cur->getNrRegs() == nrInRegs);
 
-    size_t curRegs = cur->getNrRegs();
+    // _cursor->hasMore() should only be false here if the collection is empty
+    if (_cursor->hasMore()) {
+      res.reset(requestBlock(atMost, nrOutRegs));
+      // automatically freed if we throw
+      TRI_ASSERT(nrInRegs <= res->getNrRegs());
 
-    RegisterId nrRegs =
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+      // only copy 1st row of registers inherited from previous frame(s)
+      inheritRegisters(cur, res.get(), _pos);
 
-    res.reset(requestBlock(atMost, nrRegs));
-    // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+      throwIfKilled();  // check if we were aborted
 
-    // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos);
+      TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
-    throwIfKilled();  // check if we were aborted
-    
-    TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      bool cursorHasMore;
+      if (produceResult()) {
+        // properly build up results by fetching the actual documents
+        // using nextDocument()
+        cursorHasMore = _cursor->nextDocument(
+          [&](LocalDocumentId const &, VPackSlice slice) {
+            _documentProducer(res.get(), slice, nrInRegs, _inflight, 0);
+          }, atMost
+        );
+      } else {
+        // performance optimization: we do not need the documents at all,
+        // so just call next()
+        cursorHasMore = _cursor->next(
+          [&](LocalDocumentId const &) {
+            _documentProducer(
+              res.get(), VPackSlice::nullSlice(), nrInRegs, _inflight, 0
+            );
+          }, atMost
+        );
+      }
+      if (!cursorHasMore) {
+        TRI_ASSERT(!_cursor->hasMore());
+      }
     }
-   
-    bool tmp;
-    if (produceResult()) {
-      // properly build up results by fetching the actual documents
-      // using nextDocument()
-      tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(res.get(), slice, curRegs, send, 0);
-      }, atMost);
-    } else {
-      // performance optimization: we do not need the documents at all,
-      // so just call next()
-      tmp = _cursor->next([&](LocalDocumentId const&) {
-        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
-      }, atMost);
-    }
-    if (!tmp) {
-      TRI_ASSERT(!_cursor->hasMore());
-    }
 
-    // If the collection is actually empty we cannot forward an empty block
-  } while (send == 0);
-  _engine->_stats.scannedFull += static_cast<int64_t>(send);
+    if (!_cursor->hasMore()) {
+      // we have exhausted this cursor
+      // re-initialize fetching of documents
+      _cursor->reset();
+      AqlItemBlock* removedBlock = advanceCursor(1, 0);
+      returnBlockUnlessNull(removedBlock);
+    }
+  } while (_inflight == 0);
+
+  _engine->_stats.scannedFull += static_cast<int64_t>(_inflight);
   TRI_ASSERT(res != nullptr);
 
-  if (send < atMost) {
+  if (_inflight < atMost) {
     // The collection did not have enough results
-    res->shrink(send);
+    res->shrink(_inflight);
   }
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
-  traceGetSomeEnd(res.get());
-
-  return res.release();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  _inflight = 0;
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
 }
 
-size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  size_t skipped = 0;
-  TRI_ASSERT(_cursor != nullptr);
-
+std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
-    return skipped;
+    TRI_ASSERT(_inflight == 0);
+    traceSkipSomeEnd(_inflight, ExecutionState::DONE);
+    return {ExecutionState::DONE, _inflight};
   }
 
-  while (skipped < atLeast) {
+  TRI_ASSERT(_cursor != nullptr);
+
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch, toFetch)) {
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
+      auto upstreamRes = getBlock(toFetch);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        traceSkipSomeEnd(0, ExecutionState::WAITING);
+        return {ExecutionState::WAITING, 0};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        traceSkipSomeEnd(skipped, ExecutionState::DONE);
+        return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
       _cursor->reset();
@@ -252,16 +247,12 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
     uint64_t skippedHere = 0;
 
     if (_cursor->hasMore()) {
-      int res = _cursor->skip(atMost - skipped, skippedHere);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      _cursor->skip(atMost - _inflight, skippedHere);
     }
 
-    skipped += skippedHere;
+    _inflight += skippedHere;
 
-    if (skipped < atLeast) {
+    if (_inflight < atMost) {
       TRI_ASSERT(!_cursor->hasMore());
       // not skipped enough re-initialize fetching of documents
       _cursor->reset();
@@ -273,10 +264,10 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
     }
   }
 
-  _engine->_stats.scannedFull += static_cast<int64_t>(skipped);
-  // We skipped atLeast documents
-  return skipped;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  _engine->_stats.scannedFull += static_cast<int64_t>(_inflight);
+  size_t skipped = _inflight;
+  _inflight = 0;
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }

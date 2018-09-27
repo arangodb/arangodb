@@ -21,19 +21,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Iterator.h>
+
 #include "Graphs.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Graph/Graph.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
-
-char const* Graph::_attrEdgeDefs = "edgeDefinitions";
-char const* Graph::_attrOrphans = "orphanCollections";
 
 EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
     : _fromCondition(nullptr),
@@ -161,83 +158,3 @@ void EdgeConditionBuilderContainer::setVertexId(std::string const& id) {
   _compareNode->setStringValue(id.c_str(), id.length());
 }
 
-void Graph::insertVertexCollections(VPackSlice& arr) {
-  TRI_ASSERT(arr.isArray());
-  for (auto const& c : VPackArrayIterator(arr)) {
-    TRI_ASSERT(c.isString());
-    addVertexCollection(c.copyString());
-  }
-}
-
-std::unordered_set<std::string> const& Graph::vertexCollections() const {
-  return _vertexColls;
-}
-
-std::unordered_set<std::string> const& Graph::edgeCollections() const {
-  return _edgeColls;
-}
-
-void Graph::addEdgeCollection(std::string const& name) {
-  _edgeColls.insert(name);
-}
-
-void Graph::addVertexCollection(std::string const& name) {
-  _vertexColls.insert(name);
-}
-
-void Graph::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  VPackObjectBuilder guard(&builder);
-
-  if (!_vertexColls.empty()) {
-    builder.add(VPackValue("vertexCollectionNames"));
-    VPackArrayBuilder guard2(&builder);
-    for (auto const& cn : _vertexColls) {
-      builder.add(VPackValue(cn));
-    }
-  }
-
-  if (!_edgeColls.empty()) {
-    builder.add(VPackValue("edgeCollectionNames"));
-    VPackArrayBuilder guard2(&builder);
-    for (auto const& cn : _edgeColls) {
-      builder.add(VPackValue(cn));
-    }
-  }
-}
-
-Graph::Graph(VPackSlice const& slice) : _vertexColls(), _edgeColls() {
-  if (slice.hasKey(_attrEdgeDefs)) {
-    auto edgeDefs = slice.get(_attrEdgeDefs);
-
-    for (auto const& def : VPackArrayIterator(edgeDefs)) {
-      TRI_ASSERT(def.isObject());
-      try {
-        std::string eCol = arangodb::basics::VelocyPackHelper::getStringValue(
-          def, "collection", "");
-        addEdgeCollection(eCol);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find 'collection' in the graph definition");
-      }
-      // TODO what if graph is not in a valid format any more
-      try {
-        VPackSlice tmp = def.get("from");
-        insertVertexCollections(tmp);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find from-collection in the graph definition");
-      }
-      try {
-        VPackSlice tmp = def.get("to");
-        insertVertexCollections(tmp);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "didn't find to-collection in the graph definition");
-      }
-    }
-  }
-  if (slice.hasKey(_attrOrphans)) {
-    auto orphans = slice.get(_attrOrphans);
-    insertVertexCollections(orphans);
-  }
-}
-
-void Graph::enhanceEngineInfo(VPackBuilder&) const {
-}

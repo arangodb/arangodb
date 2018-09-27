@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -499,7 +499,7 @@ std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
 }
 
 std::string AgencyCommManager::generateStamp() {
-  time_t tt = time(0);
+  time_t tt = time(nullptr);
   struct tm tb;
   char buffer[21];
 
@@ -835,8 +835,8 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 }
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
-                                      arangodb::velocypack::Slice const& slice,
-                                      double ttl) {
+                                          arangodb::velocypack::Slice const& slice,
+                                          double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = static_cast<uint64_t>(ttl);
   AgencyTransientTransaction transaction(operation);
@@ -1308,7 +1308,7 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
   for (const auto& i : VPackObjectIterator(current)) {
     auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
     if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
-      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Adding endpoint " << endpoint << " to agent pool";
       AgencyCommManager::MANAGER->addEndpoint(endpoint);
     }
@@ -1321,7 +1321,6 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
       << "Removing endpoint " << i << " from agent pool";
     AgencyCommManager::MANAGER->removeEndpoint(i);
   }
-
 }
 
 
@@ -1360,7 +1359,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
     auto serverFeature =
         application_features::ApplicationServer::getFeature<ServerFeature>(
         "Server");
-    if (serverFeature->isStopping()) {
+    if (serverFeature->isStopping()
+        || !application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Unsuccessful AgencyComm: Timeout because of shutdown "
         << "errorCode: " << result.errorCode()
@@ -1413,10 +1413,32 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
     // Some reporting:
     if (tries > 20) {
+      auto serverState = application_features::ApplicationServer::server->state();
+        application_features::ApplicationServer::getFeature<ServerFeature>(
+        "Server");
+      std::string serverStateStr;
+      switch(serverState) {
+      case arangodb::application_features::ServerState::UNINITIALIZED:
+      case arangodb::application_features::ServerState::IN_COLLECT_OPTIONS:
+      case arangodb::application_features::ServerState::IN_VALIDATE_OPTIONS:
+      case arangodb::application_features::ServerState::IN_PREPARE:
+      case arangodb::application_features::ServerState::IN_START:
+        serverStateStr = "in startup";
+        break;
+      case arangodb::application_features::ServerState::IN_WAIT:
+        serverStateStr = "running";
+        break;
+      case arangodb::application_features::ServerState::IN_STOP:
+      case arangodb::application_features::ServerState::IN_UNPREPARE:
+      case arangodb::application_features::ServerState::STOPPED:
+      case arangodb::application_features::ServerState::ABORT:
+        serverStateStr = "in shutdown";
+      }
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Flaky agency communication to " << endpoint
         << ". Unsuccessful consecutive tries: " << tries
-        << " (" << elapsed << "s). Network checks advised.";
+        << " (" << elapsed << "s). Network checks advised."
+        << " Server " << serverStateStr << ".";
     }
 
     if (1 < tries) {
@@ -1496,17 +1518,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = send(
           connection.get(), method, conTimeout, url, b.toJson());
 
-      // Inquire returns a body like write or if the write is still ongoing
-      // We check, if the operation is still ongoing then body is {"ongoing:true"}
+      // Inquire returns a body like write, if the transactions are not known,
+      // the list of results is empty.
       // _statusCode can be 200 or 412
       if (result.successful() || result._statusCode == 412) {
         std::shared_ptr<VPackBuilder> resultBody
           = VPackParser::fromJson(result._body);
         VPackSlice outer = resultBody->slice();
-        // If the operation is still ongoing, simply ask again later:
-        if (outer.isObject() && outer.hasKey("ongoing")) {
-          continue;
-        }
 
         // If we get an answer, and it contains a "results" key,
         // we release the connection and break out of the loop letting the
@@ -1600,7 +1618,7 @@ AgencyCommResult AgencyComm::send(
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  params.setJwt(af->tokenCache()->jwtToken());
+  params.setJwt(af->tokenCache().jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
@@ -1732,17 +1750,19 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
+      builder.add(VPackValue("Views"));
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("_system", builder);
+      }
     }
 
     builder.add(VPackValue("Sync")); // Sync ----------------------------------
     {
       VPackObjectBuilder c(&builder);
       builder.add("LatestID", VPackValue(1));
-      addEmptyVPackObject("Problems", builder);
       builder.add("UserVersion", VPackValue(1));
-      addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue(1000));
-      addEmptyVPackObject("Commands", builder);
     }
 
     builder.add(VPackValue("Supervision")); // Supervision --------------------
@@ -1763,6 +1783,9 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }
       builder.add("Lock", VPackValue("UNLOCKED"));
+      // MapLocalToID is not used for anything since 3.4. It was used in previous
+      // versions to store server ids from --cluster.my-local-info that were mapped
+      // to server UUIDs
       addEmptyVPackObject("MapLocalToID", builder);
       addEmptyVPackObject("Failed", builder);
       addEmptyVPackObject("Finished", builder);

@@ -29,88 +29,7 @@
 
 using namespace arangodb::aql;
 
-#ifdef USE_IRESEARCH
-
-#include "IResearch/IResearchViewNode.h"
-#include "IResearch/IResearchOrderFactory.h"
-#include "IResearch/AqlHelper.h"
-
 namespace {
-
-int compareIResearchScores(
-    irs::sort::prepared const* comparer,
-    arangodb::transaction::Methods*,
-    AqlValue const& lhs,
-    AqlValue const& rhs
-) {
-  arangodb::velocypack::ValueLength tmp;
-
-  auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
-  auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
-
-  if (comparer->less(lhsScore, rhsScore)) {
-    return -1;
-  }
-
-  if (comparer->less(rhsScore, lhsScore)) {
-    return 1;
-  }
-
-  return 0;
-}
-
-int compareAqlValues(
-    irs::sort::prepared const*,
-    arangodb::transaction::Methods* trx,
-    AqlValue const& lhs,
-    AqlValue const& rhs) {
-  return AqlValue::Compare(
-    reinterpret_cast<arangodb::transaction::Methods*>(trx), lhs, rhs, true
-  );
-}
-
-void fillSortRegisters(
-    std::vector<SortRegister>& sortRegisters,
-    SortNode const& en
-) {
-  TRI_ASSERT(en.plan());
-  auto& execPlan = *en.plan();
-
-  auto const& elements = en.getElements();
-  sortRegisters.reserve(elements.size());
-  std::unordered_map<ExecutionNode const*, size_t> offsets(sortRegisters.capacity());
-
-  irs::sort::ptr comparer;
-
-  for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto it = en.getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    sortRegisters.emplace_back(it->second.registerId, p.ascending, nullptr, &compareAqlValues);
-
-    auto const* setter = execPlan.getVarSetBy(varId);
-
-    if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
-      // sort condition is covered by `IResearchViewNode`
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto const& viewNode = dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
-#else
-      auto const& viewNode = static_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
-
-      auto& offset = offsets[&viewNode];
-      auto* node = viewNode.sortCondition()[offset++].node;
-
-      if (arangodb::iresearch::OrderFactory::comparer(&comparer, *node)) {
-        auto& reg = sortRegisters.back();
-        std::get<2>(reg) = comparer->prepare(); // set score comparer
-        std::get<3>(reg) = &compareIResearchScores; // set comparator
-      }
-    }
-  }
-}
 
 /// @brief OurLessThan
 class OurLessThan {
@@ -127,72 +46,20 @@ class OurLessThan {
   bool operator()(std::pair<uint32_t, uint32_t> const& a,
                   std::pair<uint32_t, uint32_t> const& b) const {
     for (auto const& reg : _sortRegisters) {
-      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
-      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+      auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
+      auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
 
-      auto const comparator = std::get<3>(reg);
-      TRI_ASSERT(comparator);
-
-      int const cmp = (*comparator)(std::get<2>(reg).get(), _trx, lhs, rhs);
-
-      if (cmp < 0) {
-        return std::get<1>(reg);
-      } else if (cmp > 0) {
-        return !std::get<1>(reg);
-      }
-    }
-
-    return false;
-  }
-
- private:
-  arangodb::transaction::Methods* _trx;
-  std::deque<AqlItemBlock*>& _buffer;
-  std::vector<SortRegister>& _sortRegisters;
-};
-
-}
-
+#ifdef USE_IRESEARCH
+      TRI_ASSERT(reg.comparator);
+      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-
-void fillSortRegisters(
-    std::vector<SortRegister>& sortRegisters,
-    SortNode const& en
-) {
-  auto const& elements = en.getElements();
-  sortRegisters.reserve(elements.size());
-
-  for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto it = en.getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    sortRegisters.emplace_back(it->second.registerId, p.ascending);
-  }
-}
-
-/// @brief OurLessThan
-class OurLessThan {
- public:
-  OurLessThan(arangodb::transaction::Methods* trx,
-              std::deque<AqlItemBlock*>& buffer,
-              std::vector<SortRegister>& sortRegisters)
-      : _trx(trx),
-        _buffer(buffer),
-        _sortRegisters(sortRegisters) {}
-
-  bool operator()(std::pair<size_t, size_t> const& a,
-                  std::pair<size_t, size_t> const& b) const {
-    for (auto const& reg : _sortRegisters) {
-      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
-      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
-
       int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+#endif
 
       if (cmp < 0) {
-        return std::get<1>(reg);
+        return reg.asc;
       } else if (cmp > 0) {
-        return !std::get<1>(reg);
+        return !reg.asc;
       }
     }
 
@@ -203,45 +70,53 @@ class OurLessThan {
   arangodb::transaction::Methods* _trx;
   std::deque<AqlItemBlock*>& _buffer;
   std::vector<SortRegister>& _sortRegisters;
-};
+}; // OurLessThan
 
-#endif // USE_IRESEARCH
+}
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
   : ExecutionBlock(engine, en),
     _stable(en->_stable),
     _mustFetchAll(true) {
-  TRI_ASSERT(en);
-  fillSortRegisters(_sortRegisters, *en);
+  TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
+  SortRegister::fill(
+    *en->plan(),
+    *en->getRegisterPlan(),
+    en->elements(),
+    _sortRegisters
+  );
 }
 
 SortBlock::~SortBlock() {}
 
-int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK(); 
-  int res = ExecutionBlock::initializeCursor(items, pos);
-  if (res != TRI_ERROR_NO_ERROR) {
+std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _mustFetchAll = !_done;
   _pos = 0;
 
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  return res; 
 }
 
-int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
-                             AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK(); 
-  
+std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_mustFetchAll) {
+    ExecutionState res = ExecutionState::HASMORE;
     // suck all blocks into _buffer
-    while (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+    while (res != ExecutionState::DONE) {
+      res = getBlock(DefaultBatchSize()).first;
+      if (res == ExecutionState::WAITING) {
+        return {res, TRI_ERROR_NO_ERROR};
+      }
     }
 
     _mustFetchAll = false;
@@ -250,15 +125,10 @@ int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     }
   }
 
-  return ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
-  
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
 }
 
 void SortBlock::doSorting() {
-  DEBUG_BEGIN_BLOCK();  
-
   size_t sum = 0;
   for (auto const& block : _buffer) {
     sum += block->size();
@@ -331,62 +201,78 @@ void SortBlock::doSorting() {
           // If we have already dealt with this value for the next
           // block, then we just put the same value again:
           if (!a.isEmpty()) {
-            auto it = cache.find(a);
+            if (a.requiresDestruction()) {
+              // complex value, with ownership transfer
+              auto it = cache.find(a);
 
-            if (it != cache.end()) {
-              // If one of the following throws, all is well, because
-              // the new block already has either a copy or stolen
-              // the AqlValue:
-              _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              next->setValue(i, j, (*it).second);
-            } else {
-              // We need to copy a, if it has already been stolen from
-              // its original buffer, which we know by looking at the
-              // valueCount there.
-              auto vCount = _buffer[coords[count].first]->valueCount(a);
-
-              if (vCount == 0) {
-                // Was already stolen for another block
-                AqlValue b = a.clone();
-                try {
-                  TRI_IF_FAILURE("SortBlock::doSortingCache") {
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                  }
-                  cache.emplace(a, b);
-                } catch (...) {
-                  b.destroy();
-                  throw;
-                }
-
-                try {
-                  TRI_IF_FAILURE("SortBlock::doSortingNext1") {
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                  }
-                  next->setValue(i, j, b);
-                } catch (...) {
-                  cache.erase(b);
-                  b.destroy();
-                  throw;
-                }
-                // It does not matter whether the following works or not,
-                // since the original block keeps its responsibility
-                // for a:
+              if (it != cache.end()) {
+                // If one of the following throws, all is well, because
+                // the new block already has either a copy or stolen
+                // the AqlValue:
                 _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                next->setValue(i, j, (*it).second);
               } else {
-                TRI_IF_FAILURE("SortBlock::doSortingNext2") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                // We need to copy a, if it has already been stolen from
+                // its original buffer, which we know by looking at the
+                // valueCount there.
+                auto vCount = _buffer[coords[count].first]->valueCount(a);
+
+                if (vCount == 0) {
+                  // Was already stolen for another block
+                  AqlValue b = a.clone();
+                  try {
+                    TRI_IF_FAILURE("SortBlock::doSortingCache") {
+                      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                    }
+                    cache.emplace(a, b);
+                  } catch (...) {
+                    b.destroy();
+                    throw;
+                  }
+
+                  try {
+                    TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+                      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                    }
+                    next->setValue(i, j, b);
+                  } catch (...) {
+                    cache.erase(b);
+                    b.destroy();
+                    throw;
+                  }
+                  // It does not matter whether the following works or not,
+                  // since the original block keeps its responsibility
+                  // for a:
+                  _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                } else {
+                  TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                  }
+                  // Here we are the first to want to inherit a, so we
+                  // steal it:
+                  next->setValue(i, j, a);
+                  _buffer[coords[count].first]->steal(a);
+                  _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                  // If this has worked, responsibility is now with the
+                  // new block or indeed with us!
+                  // If the following does not work, we will create a
+                  // few unnecessary copies, but this does not matter:
+                  cache.emplace(a, a);
                 }
-                // Here we are the first to want to inherit a, so we
-                // steal it:
-                next->setValue(i, j, a);
-                _buffer[coords[count].first]->steal(a);
-                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                // If this has worked, responsibility is now with the
-                // new block or indeed with us!
-                // If the following does not work, we will create a
-                // few unnecessary copies, but this does not matter:
-                cache.emplace(a, a);
               }
+            } else {
+              // simple value, which does not need ownership transfer
+              TRI_IF_FAILURE("SortBlock::doSortingCache") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              next->setValue(i, j, a);
+              _buffer[coords[count].first]->eraseValue(coords[count].second, j);
             }
           }
         }
@@ -405,5 +291,4 @@ void SortBlock::doSorting() {
   for (auto& x : newbuffer) {
     delete x;
   }
-  DEBUG_END_BLOCK();  
 }

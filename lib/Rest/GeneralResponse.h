@@ -155,21 +155,20 @@ class GeneralResponse {
                   bool resolveExternals = true) = 0;
   
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
-  bool generateBody() const { return _generateBody; }  // used for head
+  
+  /// used for head
+  bool generateBody() const { return _generateBody; };
+  /// used for head
   virtual bool setGenerateBody(bool) {
     return _generateBody;
-  }  // used for head
-      // resonses
-  void setOptions(VPackOptions options) { _options = std::move(options); };
+  };
 
  protected:
   ResponseCode _responseCode;  // http response code
-  std::unordered_map<std::string, std::string>
-      _headers;  // headers/metadata map
+  std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
 
   ContentType _contentType;
   ConnectionType _connectionType;
-  velocypack::Options _options;
   bool _generateBody;
   ContentType _contentTypeRequested;
 };

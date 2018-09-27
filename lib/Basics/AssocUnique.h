@@ -159,7 +159,7 @@ class AssocUnique {
 
         if (element) {
           uint64_t i, k;
-          i = k = _helper.HashElement(userData, element, true) % n;
+          i = k = _helper.HashElement(element, true) % n;
 
           for (; i < n && copy._table[i]; ++i)
             ;
@@ -333,6 +333,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   void appendToVelocyPack(VPackBuilder& builder) {
+    TRI_ASSERT(builder.isOpenObject());
     builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
       builder.openObject();
@@ -350,7 +351,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element find(UserData* userData, Element const& element) const {
-    uint64_t i = _helper.HashElement(userData, element, true);
+    uint64_t i = _helper.HashElement(element, true);
     Bucket const& b = _buckets[i & _bucketsMask];
 
     uint64_t const n = b._nrAlloc;
@@ -382,7 +383,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element findByKey(UserData* userData, Key const* key) const {
-    uint64_t hash = _helper.HashKey(userData, key);
+    uint64_t hash = _helper.HashKey(key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
     Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
@@ -411,7 +412,7 @@ class AssocUnique {
   }
 
   Element* findByKeyRef(UserData* userData, Key const* key) const {
-    uint64_t hash = _helper.HashKey(userData, key);
+    uint64_t hash = _helper.HashKey(key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
     Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
@@ -448,7 +449,7 @@ class AssocUnique {
 
   Element findByKey(UserData* userData, Key const* key,
                     BucketPosition& position, uint64_t& hash) const {
-    hash = _helper.HashKey(userData, key);
+    hash = _helper.HashKey(key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
     Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
@@ -486,7 +487,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   int insert(UserData* userData, Element const& element) {
-    uint64_t hash = _helper.HashElement(userData, element, true);
+    uint64_t hash = _helper.HashElement(element, true);
     Bucket& b = _buckets[hash & _bucketsMask];
 
     if (!checkResize(userData, b, 0)) {
@@ -636,7 +637,7 @@ class AssocUnique {
     uint64_t k = TRI_IncModU64(i, n);
 
     while (b._table[k]) {
-      uint64_t j = _helper.HashElement(userData, b._table[k], true) % n;
+      uint64_t j = _helper.HashElement(b._table[k], true) % n;
 
       if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
         b._table[i] = b._table[k];
@@ -659,7 +660,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element removeByKey(UserData* userData, Key const* key) {
-    uint64_t hash = _helper.HashKey(userData, key);
+    uint64_t hash = _helper.HashKey(key);
     uint64_t i = hash;
     Bucket& b = _buckets[i & _bucketsMask];
 
@@ -692,7 +693,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element remove(UserData* userData, Element const& element) {
-    uint64_t i = _helper.HashElement(userData, element, true);
+    uint64_t i = _helper.HashElement(element, true);
     Bucket& b = _buckets[i & _bucketsMask];
 
     uint64_t const n = b._nrAlloc;

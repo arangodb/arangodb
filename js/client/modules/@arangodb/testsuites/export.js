@@ -45,6 +45,10 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const toArgv = require('internal').toArgv;
 
+const testPaths = {
+  'export': [tu.pathForTesting('server/export')] // we have to be fuzzy...
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: export
 // //////////////////////////////////////////////////////////////////////////////
@@ -105,7 +109,7 @@ function exportTest (options) {
     return results;
   }
 
-  results.setup = tu.runInArangosh(options, instanceInfo, tu.makePathUnix('js/server/tests/export/export-setup' + cluster + '.js'));
+  results.setup = tu.runInArangosh(options, instanceInfo, tu.makePathUnix(tu.pathForTesting('server/export/export-setup' + cluster + '.js')));
   results.setup.failed = 0;
   if (!pu.arangod.check.instanceAlive(instanceInfo, options) || results.setup.status !== true) {
     results.setup.failed = 1;
@@ -114,7 +118,7 @@ function exportTest (options) {
   }
 
   print(CYAN + Date() + ': Export data (json)' + RESET);
-  results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath);
+  results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportJson.failed = results.exportJson.status ? 0 : 1;
 
   try {
@@ -134,7 +138,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
   args['type'] = 'jsonl';
-  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath);
+  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportJsonl.failed = results.exportJsonl.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
@@ -157,7 +161,7 @@ function exportTest (options) {
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
-  results.exportXgmml = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath);
+  results.exportXgmml = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportXgmml.failed = results.exportXgmml.status ? 0 : 1;
   try {
     const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
@@ -188,7 +192,7 @@ function exportTest (options) {
   args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
   delete args['graph-name'];
   delete args['collection'];
-  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath);
+  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportQuery.failed = results.exportQuery.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
@@ -211,11 +215,10 @@ function exportTest (options) {
   return shutdown();
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['export'] = exportTest;
   defaultFns.push('export');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

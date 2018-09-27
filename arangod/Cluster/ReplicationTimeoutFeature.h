@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,13 +32,13 @@ namespace arangodb {
 
 class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationTimeoutFeature(application_features::ApplicationServer*);
+  explicit ReplicationTimeoutFeature(
+    application_features::ApplicationServer& server
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  
- public:
+
   static double timeoutFactor;
   static double timeoutPer4k;
   static double lowerLimit;

@@ -19,7 +19,6 @@ the name of the AQL user function.
   qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned. 
 
 @RESTDESCRIPTION
-
 Removes an existing AQL user function or function group, identified by *name*.
 
 @RESTRETURNCODES
@@ -83,7 +82,7 @@ deletes a function:
     code : "function (x) { return x*x; }" 
   };
 
-  db._connection.POST("/_api/aqlfunction", JSON.stringify(body));
+  db._connection.POST("/_api/aqlfunction", body);
   var response = logCurlRequest('DELETE', url);
 
   assert(response.code === 200);

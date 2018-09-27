@@ -58,7 +58,7 @@
 
       $('#upload-foxx-zip').uploadFile({
         url: arangoHelper.databaseUrl('/_api/upload?multipart=true'),
-        allowedTypes: 'zip, js',
+        allowedTypes: 'zip,js',
         multiple: false,
         onSuccess: self.testFunction
       });

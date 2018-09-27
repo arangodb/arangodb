@@ -25,11 +25,9 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
@@ -38,14 +36,19 @@
 #include "Aql/QueryString.h"
 #include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace transaction {
 class Context;
@@ -56,6 +59,10 @@ namespace velocypack {
 class Builder;
 }
 
+namespace graph {
+class Graph;
+}
+
 namespace aql {
 
 struct AstNode;
@@ -63,76 +70,100 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Query;
+struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
-class V8Executor;
 
-/// @brief equery part
+/// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
 class Query {
  private:
+  enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+
+ private:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
  public:
-  Query(bool contextOwnedByExterior, TRI_vocbase_t*, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
+  /// Used to construct a full query
+  Query(
+    bool contextOwnedByExterior,
+    TRI_vocbase_t& vocbase,
+    QueryString const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+    std::shared_ptr<arangodb::velocypack::Builder> const& options,
+    QueryPart part
+  );
 
-  Query(bool contextOwnedByExterior, TRI_vocbase_t*,
-        std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
-        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
+  /// Used to put together query snippets in RestAqlHandler
+  Query(
+    bool contextOwnedByExterior,
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
+    std::shared_ptr<arangodb::velocypack::Builder> const& options,
+    QueryPart
+  );
 
   virtual ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
-  Query* clone(QueryPart, bool);
+  TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
+  constexpr static uint64_t DontCache = 0;
+  
+/// @brief whether or not the query is killed
+  bool killed() const;
+
+  /// @brief set the query to killed
+  void kill();
+
+  void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (transaction::Methods* trx) {
+  void injectTransaction(transaction::Methods* trx) {
     _trx = trx;
     init();
   }
   
+  /// @brief inject a transaction context to use
+  void setTransactionContext(std::shared_ptr<transaction::Context> const& ctx) {
+    _transactionContext = ctx;
+  }
+
   QueryProfile* profile() const {
     return _profile.get();
   }
 
-  QueryOptions const& queryOptions() const { return _queryOptions; }
+  velocypack::Slice optionsSlice() const { return _options->slice(); }
+  TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
-  
+
   ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
-  
+
   /// @brief return the current runtime of the query
   double runTime(double now) const { return now - _startTime; }
-  
+
   /// @brief return the current runtime of the query
   double runTime() const { return runTime(TRI_microtime()); }
-
-  /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
-
-  /// @brief set the query to killed
-  inline void killed(bool) { _killed = true; }
 
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
+  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief collections
   inline Collections* collections() { return &_collections; }
@@ -166,7 +197,7 @@ class Query {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength) { 
     return _resources.registerEscapedString(p, length, outLength); 
   }
-  
+
   /// @brief register an error, with an optional parameter inserted into printf
   /// this also makes the query abort
   void registerError(int, char const* = nullptr);
@@ -177,15 +208,24 @@ class Query {
 
   /// @brief register a warning
   virtual void registerWarning(int, char const* = nullptr);
-  
-  void prepare(QueryRegistry*, uint64_t queryHash);
+
+  void prepare(QueryRegistry*);
 
   /// @brief execute an AQL query
-  QueryResult execute(QueryRegistry*);
+  aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
+
+  /// @brief execute an AQL query and block this thread in case we
+  ///        need to wait.
+  QueryResult executeSync(QueryRegistry*);
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
+  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
+
+  /// @brief Enter finalization phase and do cleanup.
+  /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
+  /// Only use directly for a streaming query, rather use `execute(...)`
+  ExecutionState finalize(QueryResult&);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -193,28 +233,31 @@ class Query {
   /// @brief explain an AQL query
   QueryResult explain();
 
-  /// @brief get v8 executor
-  V8Executor* v8Executor();
-  
   /// @brief cache for regular expressions constructed by the query
   RegexCache* regexCache() { return &_regexCache; }
 
   /// @brief return the engine, if prepared
-  ExecutionEngine* engine() const { return _engine.get(); }
+  TEST_VIRTUAL ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void setEngine(ExecutionEngine* engine);
-  
-  void releaseEngine();
+  TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
-  virtual transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
 
+  /// @brief whether or not a query is a modification query
+  bool isModificationQuery() const { return _isModificationQuery; }
+
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
+
+  /// @brief prepare a V8 context for execution for this expression
+  /// this needs to be called once before executing any V8 function in this
+  /// expression
+  void prepareV8Context();
 
   /// @brief enter a V8 context
   void enterContext();
@@ -222,90 +265,111 @@ class Query {
   /// @brief exits a V8 context
   void exitContext();
 
+  /// @brief check if the query has a V8 context ready for use
+  bool hasEnteredContext() const {
+    return (_contextOwnedByExterior || _context != nullptr);
+  }
+
+  // @brief resets the contexts load-state of the AQL functions.
+  void unPrepareV8Context() {
+    _preparedV8Context = false;
+  }
+
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
 
   /// @brief add the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
-  void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
+  void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
-  /// @brief transform the list of warnings to VelocyPack.
-  ///        NOTE: returns nullptr if there are no warnings.
-  std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
-  
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 
+  /// @brief note that the query uses the view
+  void addView(std::string const& name) { _views.emplace(name); }
+
   /// @brief look up a graph in the _graphs collection
-  Graph const* lookupGraphByName(std::string const& name);
+  graph::Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
     return _bindParameters.builder(); 
   }
- 
+
   QueryExecutionState::ValueType state() const { return _state; }
 
+  /// @brief return the query's shared state
+  std::shared_ptr<SharedQueryState> sharedState() const { 
+    return _sharedState;
+  }
+  
+  /// @brief pass-thru a resolver object from the transaction context
+  CollectionNameResolver const& resolver();
+  
  private:
   /// @brief initializes the query
   void init();
   
+  /// @brief calculate a hash for the query, once
+  uint64_t hash() const;
+
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
-  ExecutionPlan* prepare();
-
-  void setExecutionTime();
+  ExecutionPlan* preparePlan();
 
   /// @brief log a query
   void log();
 
-  /// @brief calculate a hash value for the query and bind parameters
-  uint64_t hash();
+  /// @brief calculate a hash value for the query string and bind parameters
+  uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
- private:
   /// @brief neatly format exception messages for the users
   std::string buildErrorMessage(int errorCode) const;
 
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query
-  void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  /// @brief cleanup plan and engine for current query. synchronous variant,
+  /// will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
+
+  /// @brief cleanup plan and engine for current query can issue WAITING
+  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
-
+  
   /// @brief returns the next query id
-  static TRI_voc_tick_t NextId();
+  static TRI_voc_tick_t nextId();
 
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
-  
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
-  
+
   /// @brief resources used by query
   QueryResources _resources;
 
   /// @brief pointer to vocbase the query runs in
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief V8 code executor
-  std::unique_ptr<V8Executor> _v8Executor;
+  TRI_vocbase_t& _vocbase;
+  
+  /// @brief transaction context to use for this query
+  std::shared_ptr<transaction::Context> _transactionContext;
 
   /// @brief the currently used V8 context
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, Graph*> _graphs;
-  
+  std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
+
   /// @brief the actual query string
   QueryString _queryString;
 
@@ -315,15 +379,15 @@ class Query {
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
-  /// @brief query options
+  /// @brief raw query options
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
-  /// @brief query options
+  /// @brief parsed query options
   QueryOptions _queryOptions;
 
   /// @brief collections used in the query
   Collections _collections;
-  
+
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
   std::unique_ptr<Ast> _ast;
@@ -351,7 +415,7 @@ class Query {
 
   /// @brief cache for regular expressions constructed by the query
   RegexCache _regexCache;
- 
+
   /// @brief query start time
   double _startTime;
 
@@ -366,7 +430,41 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+
+  /// @brief whether or not the preparation routine for V8 contexts was run
+  /// once for this expression
+  /// it needs to be run once before any V8-based function is called
+  bool _preparedV8Context;
+
+  /// Create the result in this builder. It is also used to determine
+  /// if we are continuing the query or of we called
+  std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
+
+  /// Options for _resultBuilder. Optimally, its lifetime should be linked to
+  /// it, but this is hard to do.
+  std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+
+  /// Track in which phase of execution we are, in order to implement repeatability.
+  ExecutionPhase _executionPhase;
+
+  /// @brief shared state 
+  std::shared_ptr<SharedQueryState> _sharedState;
+
+  /// @brief names of views used by the query. needed for the query cache
+  std::unordered_set<std::string> _views;
+  
+  /// @brief query cache entry built by the query
+  /// only populated when the query has generated its result(s) and before storing
+  /// the cache entry in the query cache
+  std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
+
+  /// @brief hash for this query. will be calculated only once when needed
+  mutable uint64_t _queryHash = DontCache;
+  
+  /// @brief whether or not the hash was already calculated
+  mutable bool _queryHashCalculated = false;
 };
+
 }
 }
 

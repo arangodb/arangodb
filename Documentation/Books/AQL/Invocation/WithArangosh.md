@@ -135,8 +135,9 @@ There are further options that can be passed in the *options* attribute of the *
   the query result cache is disabled, and that they will be automatically inserted into
   the query result cache when it is active in non-demand mode.
 
-- *profile*: if set to *true*, returns extra timing information for the query. The timing
-  information is accessible via the *getExtra* method of the query result.
+- *profile*: if set to *true* or *1*, returns extra timing information for the query. The timing
+  information is accessible via the *getExtra* method of the query result. Set to *2* the query will include execution stats per query plan node in sub-attribute *stats.nodes* of the *extra* return attribute.
+  Additionally the query plan is returned in the sub-attribute *extra.plan*.
 
 - *maxWarningCount*: limits the number of warnings that are returned by the query if
   *failOnWarning* is not set to *true*. The default value is *10*.
@@ -145,6 +146,19 @@ There are further options that can be passed in the *options* attribute of the *
   create at most. Reducing the number of query execution plans may speed up query plan
   creation and optimization for complex queries, but normally there is no need to adjust
   this value.
+
+- *stream*: Specify *true* and the query will be executed in a **streaming** fashion. The query result is
+  not stored on the server, but calculated on the fly. *Beware*: long-running queries will
+  need to hold the collection locks for as long as the query cursor exists. It is advisable
+  to *only* use this option on short-running queries *or* without exclusive locks (write locks on MMFiles).
+  When set to *false* the query will be executed right away in its entirety. 
+  In that case query results are either returned right away (if the result set is small enough),
+  or stored on the arangod instance and accessible via the cursor API. 
+
+  Please note that the query options `cache`, `count` and `fullCount` will not work on streaming
+  queries. Additionally query statistics, warnings and profiling data will only be available
+  after the query is finished. 
+  The default value is *false*
 
 The following additional attributes can be passed to queries in the RocksDB storage engine:
  
@@ -324,7 +338,7 @@ a client.
 ### Using cursors to obtain additional information on internal timings
 
 Cursors can also optionally provide statistics of the internal execution phases. By default, they do not. 
-To get to know how long parsing, otpimisation, instanciation and execution took,
+To get to know how long parsing, optimization, instantiation and execution took,
 make the server return that by setting the *profile* attribute to
 *true* when creating a statement:
 
@@ -346,3 +360,16 @@ produced statistics:
     c.getExtra();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 06_workWithAQL_statements12
+
+Query validation
+----------------
+
+The *_parse* method of the *db* object can be used to parse and validate a
+query syntactically, without actually executing it.
+
+    @startDocuBlockInline 06_workWithAQL_statements13
+    @EXAMPLE_ARANGOSH_OUTPUT{06_workWithAQL_statements13}
+    db._parse( "FOR i IN [ 1, 2 ] RETURN i" );
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 06_workWithAQL_statements13
+

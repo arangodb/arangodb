@@ -101,6 +101,15 @@ FOR i IN 1..1000
   REPLACE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
 
+In order to not accidentially overwrite documents that have been updated since you last fetched
+them, you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` value and only 
+succeed if they still match, or let ArangoDB ignore them (default):
+
+```
+FOR i IN 1..1000
+  REPLACE { _key: CONCAT('test', i), _rev: "1287623" } WITH { foobar: true } IN users OPTIONS { ignoreRevs: false }
+```
+
 Returning the modified documents
 --------------------------------
 

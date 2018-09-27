@@ -21,8 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_REST_WAL_HANDLER_H
-#define ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_WAL_HANDLER_H
+#define ARANGOD_ROCKSDB_ROCKSDB_REST_WAL_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -34,11 +34,7 @@ class RocksDBRestWalHandler : public RestBaseHandler {
   RocksDBRestWalHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  
-  bool isDirect() const override {
-    return false;
-  }
-  
+  RequestLane lane() const override final { return RequestLane::SERVER_REPLICATION; }
   RestStatus execute() override final;
   char const* name() const override final { return "RocksDBRestWalHandler"; }
 

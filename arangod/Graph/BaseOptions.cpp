@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
@@ -85,7 +86,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
   std::string idxId = read.copyString();
   auto trx = query->trx();
 
-  for (auto const& it : VPackArrayIterator(shards)) {
+  for (VPackSlice it : VPackArrayIterator(shards)) {
     if (!it.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "Shards have to be a list of strings");
@@ -127,7 +128,7 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0].toVelocyPack(result, false);
+  idxHandles[0].toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -150,9 +151,12 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!idxHandles.empty());
   std::shared_ptr<Index> idx = idxHandles[0].getIndex();
   if (idx->hasSelectivityEstimate()) {
-    double expected = 1 / idx->selectivityEstimate();
-    nrItems += static_cast<size_t>(expected);
-    return expected;
+    double s = idx->selectivityEstimate();
+    if (s > 0.0) {
+      double expected = 1 / s;
+      nrItems += static_cast<size_t>(expected);
+      return expected;
+    } 
   }
   // Some hard-coded value
   nrItems += 1000;
@@ -169,16 +173,16 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _query(query),
-      _trx(query->trx()),
+    : _query(query),
+      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _trx(_query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _cache(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _query(other._query),
+    : _query(other._query),
+      _ctx(new aql::FixedVarExpressionContext(_query)),
       _trx(other._trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -189,9 +193,9 @@ BaseOptions::BaseOptions(BaseOptions const& other)
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
                          VPackSlice collections)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _query(query),
-      _trx(query->trx()),
+    : _query(query),
+      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _trx(_query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _cache(nullptr) {
@@ -289,7 +293,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
   std::unordered_set<size_t> toRemove;
-  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false);
+  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.
@@ -334,7 +338,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, false, false);
+      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       builder.close();
     }
   }
@@ -368,7 +372,6 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
     return true;
   }
 
-  TRI_ASSERT(!expression->isV8());
   TRI_ASSERT(value.isObject() || value.isNull());
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
@@ -401,7 +404,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
                                          std::vector<LookupInfo>& list) {
   TRI_ASSERT(mmdr != nullptr);
   auto allCursor =
-      std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
+      std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
     auto& node = info.indexCondition;
@@ -421,8 +424,9 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
     }
     std::vector<OperationCursor*> csrs;
     csrs.reserve(info.idxHandles.size());
+    IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, false));
+      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts));
     }
     opCursors.emplace_back(std::move(csrs));
   }

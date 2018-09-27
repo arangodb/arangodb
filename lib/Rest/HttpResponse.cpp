@@ -57,6 +57,8 @@ HttpResponse::HttpResponse(ResponseCode code,
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
+
+  TRI_ASSERT(_body != nullptr);
   if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -73,6 +75,7 @@ void HttpResponse::reset(ResponseCode code) {
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
+  TRI_ASSERT(_body != nullptr);
   _body->clear();
   _bodySize = 0;
 }
@@ -81,15 +84,14 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
-  std::unique_ptr<StringBuffer> buffer =
-      std::make_unique<StringBuffer>(false);
+  StringBuffer buffer(false);
 
   std::string tmp = StringUtils::trim(name);
-  buffer->appendText(tmp);
-  buffer->appendChar('=');
+  buffer.appendText(tmp);
+  buffer.appendChar('=');
 
   tmp = StringUtils::urlEncode(value);
-  buffer->appendText(tmp);
+  buffer.appendText(tmp);
 
   if (lifeTimeSeconds != 0) {
     time_t rawtime;
@@ -107,33 +109,34 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 
       timeinfo = gmtime(&rawtime);
       strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("; expires="));
-      buffer->appendText(buffer2);
+      buffer.appendText(TRI_CHAR_LENGTH_PAIR("; expires="));
+      buffer.appendText(buffer2);
     }
   }
 
   if (!path.empty()) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; path="));
-    buffer->appendText(path);
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; path="));
+    buffer.appendText(path);
   }
 
   if (!domain.empty()) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; domain="));
-    buffer->appendText(domain);
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; domain="));
+    buffer.appendText(domain);
   }
 
   if (secure) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; secure"));
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; secure"));
   }
 
   if (httpOnly) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
   }
-
-  _cookies.emplace_back(buffer->data(), buffer->length());
+  // copies buffer into a std::string
+  _cookies.emplace_back(buffer.data(), buffer.length());
 }
 
 void HttpResponse::headResponse(size_t size) {
+  TRI_ASSERT(_body != nullptr);
   _body->clear();
   _isHeadResponse = true;
   _bodySize = size;
@@ -143,6 +146,7 @@ size_t HttpResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
+  TRI_ASSERT(_body != nullptr);
   return _body->length();
 }
 

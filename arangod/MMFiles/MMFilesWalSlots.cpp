@@ -357,7 +357,7 @@ int MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchro
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief get the next synchronisable region
+/// @brief get the next synchronizable region
 MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
   bool sealRequested = false;
   MMFilesWalSyncRegion region;

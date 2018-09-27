@@ -32,6 +32,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-common.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
@@ -231,10 +232,18 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
     return true;
   }
+  
+  bool isViewWalMarker(MMFilesMarker const* marker) const {
+    MMFilesMarkerType t = marker->getType();
+    return t == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+           t == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+           t == TRI_DF_MARKER_VPACK_CHANGE_VIEW;
+  }
 
   /// @brief whether or not a marker is replicated
   bool mustReplicateWalMarker(MMFilesMarker const* marker,
-                              TRI_voc_tick_t databaseId, TRI_voc_cid_t cid) {
+                              TRI_voc_tick_t databaseId,
+                              TRI_voc_cid_t datasourceId) {
     // first check the marker type
     if (!MustReplicateWalMarkerType(marker, true)) {
       return false;
@@ -246,18 +255,20 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
 
     // finally check if the marker is for a collection that we want to ignore
-    if (cid != 0) {
+    if (datasourceId != 0) {
       if (_filter.collection != 0 &&
-          (cid != _filter.collection && !isTransactionWalMarker(marker))) {
+          (datasourceId != _filter.collection && !isTransactionWalMarker(marker))) {
         // restrict output to a single collection, but a different one
         return false;
       }
-
-      LogicalCollection* collection = loadCollection(databaseId, cid);
-      if (collection != nullptr) {  // db may be already dropped
-        if (TRI_ExcludeCollectionReplication(collection->name(),
-                                             _filter.includeSystem)) {
-          return false;
+      if (!isViewWalMarker(marker)) {
+        // will not find anything for a view
+        LogicalCollection* collection = loadCollection(databaseId, datasourceId);
+        if (collection != nullptr) {  // db may be already dropped
+          if (TRI_ExcludeCollectionReplication(collection->name(),
+                                               _filter.includeSystem)) {
+            return false;
+          }
         }
       }
     }
@@ -276,7 +287,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     return true;
   }
 
-  int sliceifyMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  int sliceifyMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t datasourceId,
                      MMFilesMarker const* marker) {
     TRI_ASSERT(MustReplicateWalMarkerType(marker, true));
     MMFilesMarkerType const type = marker->getType();
@@ -306,8 +317,10 @@ struct MMFilesWalAccessContext : WalAccessContext {
     if (type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
+
       _builder.add("db", slice.get("name"));
-    } else if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION) {
+    } else if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+               type == TRI_DF_MARKER_VPACK_DROP_VIEW) {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
       if (vocbase == nullptr) {
@@ -318,19 +331,37 @@ struct MMFilesWalAccessContext : WalAccessContext {
                        MMFilesDatafileHelper::VPackOffset(type));
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", slice.get("cuid"));
-    } else {
+    } else if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+               type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
       if (vocbase == nullptr) {
-        return TRI_ERROR_NO_ERROR;  // ignore dropped dbs
+        // ignore markers from dropped dbs
+        return TRI_ERROR_NO_ERROR;
+      }
+      auto view = vocbase->lookupView(datasourceId);
+      if (!view) {
+        return TRI_ERROR_NO_ERROR; // ignore marker
       }
       _builder.add("db", VPackValue(vocbase->name()));
-      if (collectionId > 0) {
-        LogicalCollection* col = loadCollection(databaseId, collectionId);
+      _builder.add("cuid", VPackValue(view->guid()));
+      
+    } else {
+      TRI_ASSERT(databaseId != 0);
+      TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+
+      if (vocbase == nullptr) {
+        return TRI_ERROR_NO_ERROR;  // ignore dropped dbs
+      }
+
+      _builder.add("db", VPackValue(vocbase->name()));
+
+      if (datasourceId > 0) { // will not find anything for a view
+        LogicalCollection* col = loadCollection(databaseId, datasourceId);
         if (col == nullptr) {
           return TRI_ERROR_NO_ERROR;  // ignore dropped collections
         }
-        _builder.add("cuid", VPackValue(col->globallyUniqueId()));
+        _builder.add("cuid", VPackValue(col->guid()));
       }
     }
 
@@ -342,11 +373,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
       case TRI_DF_MARKER_VPACK_CREATE_INDEX:
       case TRI_DF_MARKER_VPACK_CREATE_VIEW:
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
-      case TRI_DF_MARKER_VPACK_RENAME_VIEW:
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
-      case TRI_DF_MARKER_VPACK_DROP_INDEX:
-      case TRI_DF_MARKER_VPACK_DROP_VIEW: {
+      case TRI_DF_MARKER_VPACK_DROP_INDEX: {
         VPackSlice slice(reinterpret_cast<char const*>(marker) +
                          MMFilesDatafileHelper::VPackOffset(type));
         _builder.add("data", slice);
@@ -355,6 +384,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
       case TRI_DF_MARKER_VPACK_DROP_DATABASE:
       case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
+      case TRI_DF_MARKER_VPACK_DROP_VIEW:
       case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
       case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
       case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
@@ -471,25 +501,29 @@ struct MMFilesWalAccessContext : WalAccessContext {
           }
 
           TRI_voc_tick_t databaseId;
-          TRI_voc_cid_t collectionId;
-
+          TRI_voc_cid_t  datasourceId;
           if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
               type == TRI_DF_MARKER_VPACK_REMOVE) {
             databaseId = lastDatabaseId;
-            collectionId = lastCollectionId;
+            datasourceId = lastCollectionId;
           } else {
             databaseId = MMFilesDatafileHelper::DatabaseId(marker);
-            collectionId = MMFilesDatafileHelper::CollectionId(marker);
+            if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+                type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
+              datasourceId = MMFilesDatafileHelper::ViewId(marker);
+            } else {
+              datasourceId = MMFilesDatafileHelper::CollectionId(marker);
+            }
           }
 
-          if (!mustReplicateWalMarker(marker, databaseId, collectionId)) {
+          if (!mustReplicateWalMarker(marker, databaseId, datasourceId)) {
             continue;
           }
 
           // note the last tick we processed
           lastFoundTick = foundTick;
 
-          res = sliceifyMarker(databaseId, collectionId, marker);
+          res = sliceifyMarker(databaseId, datasourceId, marker);
           if (res != TRI_ERROR_NO_ERROR) {
             THROW_ARANGO_EXCEPTION(res);
           }

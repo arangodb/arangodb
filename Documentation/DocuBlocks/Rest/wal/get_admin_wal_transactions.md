@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/wal/transactions, Returns information about the currently running transactions}
 
 @RESTDESCRIPTION
-
 Returns information about the currently running transactions. The result
 is a JSON object with the following attributes:
 - *runningTransactions*: number of currently running transactions

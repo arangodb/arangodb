@@ -413,7 +413,7 @@ class store_columnstore_iterator final: public store_doc_iterator_base {
     size_t offset_ = 0; // initially no data
     irs::bytes_ref value_;
 
-    virtual bool next() {
+    virtual bool next() override {
       if (!offset_) {
         value_ = irs::bytes_ref::NIL;
 
@@ -433,7 +433,7 @@ class store_columnstore_iterator final: public store_doc_iterator_base {
       return true;
     }
 
-    virtual const irs::bytes_ref& value() const { return value_; }
+    virtual const irs::bytes_ref& value() const override { return value_; }
   };
 
   payload_iterator doc_payload_;
@@ -670,7 +670,7 @@ class store_term_iterator: public irs::seek_term_iterator {
   }
 
   virtual bool seek(
-    const irs::bytes_ref& term,
+    const irs::bytes_ref& /*term*/,
     const irs::seek_term_iterator::seek_cookie& cookie
   ) override {
     #ifdef IRESEARCH_DEBUG

@@ -1,5 +1,5 @@
 #!/bin/bash
-ALLBOOKS="HTTP AQL Manual Cookbook"
+ALLBOOKS="HTTP AQL Manual Cookbook Drivers"
 OTHER_MIME="pdf epub mobi"
 
 # shellcheck disable=SC2016
@@ -34,6 +34,11 @@ OK_COLOR="${C[Green]}"
 RESET="${C[RESET]}"
 
 newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
+
+isCygwin=0
+if test "$(uname -o||true)" == "Cygwin"; then
+    isCygwin=1
+fi
 
 declare -A ALL_GSEARCH_ID
 for book in ${ALLBOOKS}; do
@@ -106,7 +111,7 @@ function book-check-restheader-leftovers()
 {
     NAME="$1"
     echo "${STD_COLOR}##### checking for restheader leftovers in ${NAME}${RESET}"
-    ERRORS=$(find "ppbooks/${NAME}" -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
+    ERRORS=$(find "ppbooks/${NAME}" -not \( -path "ppbooks/Drivers/SpringData/*" -prune \) -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
         echo "found these unconverted Swagger Restapi tags: "
@@ -145,11 +150,12 @@ function ppbook-precheck-bad-headings()
 function ppbook-check-html-link()
 {
     NAME="$1"
+    MSG="$2"
     echo "${STD_COLOR}##### checking for invalid HTML links in ${NAME}${RESET}"
     echo "${ALLBOOKS}" | tr " " "\n" | sed -e 's;^;/;' -e 's;$;/;' > /tmp/books.regex
 
     set +e
-    egrep -r '\[.*\]\(.*\)' "ppbooks/${NAME}"| \
+    grep -r -E '\[.*\]\(.*\)' "ppbooks/${NAME}"| \
         grep '\.md:'| grep 'html'| \
         grep -v 'http://' | \
         grep -v 'https://' | \
@@ -160,7 +166,7 @@ function ppbook-check-html-link()
     if test "$(wc -l < /tmp/relative_html_links.txt)" -gt 0; then
         echo "${ERR_COLOR}"
         echo "Found links to .html files inside of the document! use <foo>.md instead!"
-        echo
+        echo "${MSG}"
         cat  /tmp/relative_html_links.txt
         echo "${RESET}"
         exit 1
@@ -172,7 +178,7 @@ function ppbook-check-directory-link()
     NAME="$1"
     echo "${STD_COLOR}##### checking for invalid md links in ${NAME}${RESET}"
     set +e
-    ERRORS=$(egrep -r '\[.*\]\(.*\)' "ppbooks/${NAME}" | \
+    ERRORS=$(grep -r -E '\[.*\]\(.*\)' "ppbooks/${NAME}" | \
                     grep '\.md:' | \
                     grep -v html | \
                     grep -v http://| \
@@ -194,10 +200,9 @@ function ppbook-check-directory-link()
 
 function book-check-markdown-leftovers()
 {
-    pwd
     NAME="$1"
     echo "${STD_COLOR}##### checking for remaining markdown snippets in the HTML output of ${NAME}${RESET}"
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '##' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '^##' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}";
         echo "found these unconverted markdown titles: "
@@ -218,7 +223,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md\"[ />]' {} \; -print | grep -v data-filepath)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '"[a-zA-Z/\.]*\.md\"[ />]' {} \; -print | grep -v data-filepath)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
@@ -229,7 +234,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md#' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '"[a-zA-Z/\.]*\.md#' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
@@ -273,8 +278,33 @@ function book-check-markdown-leftovers()
     fi
 }
 
+function ppbook-check-two-links()
+{
+    NAME="$1"
+    echo "${STD_COLOR}##### checking for two links in a single line in ${NAME}${RESET}"
+    ERRORS=$(find "ppbooks/${NAME}" \
+                  -path "ppbooks/${NAME}/node_modules" \
+                  -prune -o \
+                  -name '*.md' \
+                  -print | while IFS= read -r ppfile; do
+                 ERR=$(grep -e '](.*](' "${ppfile}" | grep -v '|'||true)
+                 if test -n "${ERR}"; then
+                     printf "\n${ppfile}: \n ${ERR}"
+                 fi
+             done
+          )
+    if test "$(printf "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}";
+        echo "found these files with two links in one line: "
+        echo "${ERRORS}"
+        echo "${RESET}";
+        exit 1;
+    fi
+}
+
 function check-dangling-anchors()
 {
+    rm -rf /tmp/tags/
     echo "${STD_COLOR}##### checking for dangling anchors${RESET}"
     find books/ -name '*.html' | while IFS= read -r htmlf; do
         fn=$(basename "${htmlf}")
@@ -284,10 +314,48 @@ function check-dangling-anchors()
             sed -e 's;.*id=";;' -e 's;".*;;' > "/tmp/tags/${dir}/${fn}"
     done
 
+    fail=0
+    rm -f /tmp/failduplicatetags.txt
+    find /tmp/tags -type f | while IFS= read -r htmlf; do
+        (sort "${htmlf}" |grep -v ^$ > /tmp/sorted.txt) || true
+        (sort -u "${htmlf}" |grep -v ^$ > /tmp/sortedunique.txt) || true
+        if test "$(comm -3 /tmp/sorted.txt /tmp/sortedunique.txt|wc -l)" -ne 0; then
+            echo "${ERR_COLOR}"
+            echo "in ${htmlf}: "
+            comm -3 /tmp/sorted.txt /tmp/sortedunique.txt
+            echo "${RESET}"
+            touch /tmp/failduplicatetags.txt
+        fi       
+    done
+    
+    rm -f /tmp/sorted.txt /tmp/sortedunique.txt
+    if test -f /tmp/failduplicatetags.txt; then
+        echo "${ERR_COLOR}"
+        echo "duplicate anchors detected - see above"
+        echo "${RESET}"
+        rm -f /tmp/failduplicatetags.txt
+        exit 1
+    fi
+
+    rm -f /tmp/anchorlist.txt
+
     echo "${STD_COLOR}##### fetching anchors from generated http files${RESET}"
-    grep -R "a href.*#" books/ | \
-        egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
-        sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
+    for file in $(find books -name \*.html); do 
+        # - strip of the menu
+        # - then the page tail.
+        # - remove links to external pages
+        cat $file | \
+            sed -r -n -e '/normal markdown-section/,${p}'| \
+            sed -r -n -e '/.*id="page-footer".*/q;p' | \
+            grep '<a href="' | \
+            grep -v 'target="_blank"' | \
+            sed -e 's;.*href=";;' -e 's;".*;;' > /tmp/thisdoc.txt
+        # Links with anchors:
+        cat /tmp/thisdoc.txt |grep '#' | sed "s;\(.*\)#\(.*\);${file},\1,\2;" >> /tmp/anchorlist.txt
+        # links without anchors:
+        cat /tmp/thisdoc.txt |grep -v '#' | sed "s;\(.*\);${file},\1,;" >> /tmp/anchorlist.txt
+        
+    done
 
     echo "${STD_COLOR}##### cross checking anchors${RESET}"
     NO=0
@@ -301,25 +369,27 @@ function check-dangling-anchors()
         if test -z "$FN"; then
             FN="$SFN"
         else
-            SFNP=$(sed 's;/[a-zA-Z0-9]*.html;;' <<< "$SFN")
+            SFNP=$(sed 's;/[a-zA-Z0-9.-]*.html;;' <<< "$SFN")
             FN="${SFNP}/${FN}"
         fi
         if test -d "$FN"; then
             FN="${FN}index.html"
         fi
-        if test -n "$ANCHOR"; then
-            if test ! -f "/tmp/tags/${FN}"; then
-                echo "${ERR_COLOR}"
-                echo "File referenced by ${i} doesn't exist."
-                NO=$((NO + 1))
-                echo "${RESET}"
-            else
-                if grep -q "^$ANCHOR$" "/tmp/tags/$FN"; then
+        if test ! -f "/tmp/tags/${FN}"; then
+            echo "${ERR_COLOR}"
+            echo "File referenced by ${i} doesn't exist."
+            NO=$((NO + 1))
+            echo "${RESET}"
+        else
+            if test -n "$ANCHOR"; then
+                if grep -q "^$ANCHOR$" "/tmp/tags/${FN}"; then
                     true
                 else
                     echo "${ERR_COLOR}"
                     echo "Anchor not found in $i"
                     NO=$((NO + 1))
+                    echo "${RESET}${WRN_COLOR}available anchors in that file:${RESET}${STD_COLOR}"
+                    cat "/tmp/tags/${FN}" |sort
                     echo "${RESET}"
                 fi
             fi
@@ -330,6 +400,8 @@ function check-dangling-anchors()
     if test "${NO}" -gt 0; then
         echo "${ERR_COLOR}"
         echo "${NO} Dangling anchors found!"
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -339,17 +411,21 @@ function check-dangling-anchors()
 function book-check-images-referenced()
 {
     NAME="$1"
-    set +e
-    find "${NAME}" -name \*.png | while IFS= read -r image; do
-        baseimage=$(basename "$image")
-        if ! grep -Rq "${baseimage}" "${NAME}"; then
-            echo "${ERR_COLOR}"
-            echo "$image is not used!"
-            echo "${RESET}"
-            exit "1"
-        fi
-    done
-    set -e
+    echo "${STD_COLOR}##### checking for unused image files ${NAME}${RESET}"
+    ERRORS=$(find "${NAME}" -name '*.png' | while IFS= read -r image; do
+            baseimage=$(basename "$image")
+            if ! grep -Rq "${baseimage}" "${NAME}"; then
+                printf "\n${image}"
+            fi
+        done
+    )
+    if test "$(printf "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}";
+        echo "the following images are not referenced by any page: "
+        echo "${ERRORS}"
+        echo "${RESET}";
+        exit 1;
+    fi
 }
 
 function build-book-symlinks()
@@ -365,6 +441,7 @@ function build-book-symlinks()
 
 function build-book()
 {
+    python ../Scripts/codeBlockReader.py || exit 1
     export NAME="$1"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
@@ -381,11 +458,13 @@ function build-book()
     if ditaa --help > /dev/null; then
         echo "${STD_COLOR} - generating ditaa images${RESET}"
         find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
+            mkdir -p $(dirname "ppbooks/${image//ditaa/png}")
             ditaa "${image}" "ppbooks/${image//ditaa/png}"
         done
     else
         echo "${ERR_COLOR} - generating FAKE ditaa images - no ditaa installed${RESET}"
         find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
+            mkdir -p $(dirname "ppbooks/${image//ditaa/png}")
             cp "../../js/node/node_modules/mocha/images/error.png" \
                "ppbooks/${image//ditaa/png}"
         done
@@ -404,14 +483,10 @@ function build-book()
 
     (
         cd "ppbooks/${NAME}"
+        mkdir -p styles
         cp -a "../../${NAME}/styles/"* styles/
     )
     WD=$(pwd)
-    echo "${STD_COLOR} - copying images${RESET}"
-    find "${NAME}" -name "*.png" | while IFS= read -r pic; do
-        cd "${WD}/ppbooks"
-        cp "${WD}/${pic}" "${pic}"
-    done
 
     echo "${STD_COLOR} - generating MD-Files${RESET}"
     python ../Scripts/generateMdFiles.py \
@@ -426,6 +501,7 @@ function build-book()
     check-summary "${NAME}"
     book-check-leftover-docublocks "${NAME}"
     book-check-restheader-leftovers "${NAME}"
+    ppbook-check-two-links "${NAME}"
     ppbook-check-directory-link "${NAME}"
     book-check-images-referenced "${NAME}"
 
@@ -434,7 +510,7 @@ function build-book()
         RELEASE_DIRECTORY=devel
     else
         VERSION="${newVersionNumber}"
-        RELEASE_DIRECTORY=$(sed "s;\.[0-9]*$;;" <<< "${newVersionNumber}")
+        RELEASE_DIRECTORY=$(sed "s;\\.[0-9]*$;;" <<< "${newVersionNumber}")
     fi
     export VERSION
 
@@ -472,8 +548,6 @@ function build-book()
     rm -f "./books/${NAME}/FOOTER.html"
     echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
     find "./books/${NAME}/" -type f -name "*.md" -delete
-    echo "${STD_COLOR} - putting in deprecated items ${RESET}"
-    python ../Scripts/deprecated.py || exit 1
 
     book-check-markdown-leftovers "${NAME}"
 }
@@ -526,6 +600,7 @@ function check-docublocks()
 {
     grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v '@startDocuBlockInline' |\
+        grep -v stash |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -535,34 +610,43 @@ function check-docublocks()
 
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v stash |\
         grep -v allComments.txt |\
         grep -v Makefile |\
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              >> /tmp/rawindoc.txt
 
-    sed  -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
+    sed  -e "s;\r$;;" -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
 
     set +e
     grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v stash |\
         grep -v allComments.txt |\
         grep -v build.sh |\
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              >> /tmp/rawinprog.txt
+
+    # These files are converted to docublocks on the fly and only live in memory. 
+    for file in ../Examples/*.json ; do
+        echo "$file" |sed -e "s;.*/;Generated: @startDocuBlock program_options_;" -e "s;.json;;" >> /tmp/rawinprog.txt
+    done
     set -e
     echo "Generated: startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 
-    sed -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawinprog.txt  |sort > /tmp/inprog_raw.txt
+    sed -e "s;\r$;;" -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawinprog.txt  |sort > /tmp/inprog_raw.txt
     sort -u < /tmp/inprog_raw.txt > /tmp/inprog.txt
 
     if test "$(wc -l < /tmp/inprog.txt)" -ne "$(wc -l < /tmp/inprog_raw.txt)"; then 
         echo "${ERR_COLOR}"
         echo "Duplicate entry found in the source trees:"
         comm -3 /tmp/inprog_raw.txt /tmp/inprog.txt
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -584,6 +668,8 @@ function check-docublocks()
                 grep "$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"
             done
         fi
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -607,7 +693,6 @@ function build-book-keep-md()
 {
     NAME="$1"
     test -d books || mkdir books
-    python ../Scripts/codeBlockReader.py || exit 1
     build-book "${NAME}"
 }
 
@@ -624,22 +709,25 @@ function build-books()
     done
 
     for book in ${ALLBOOKS}; do
-        ppbook-check-html-link "${book}"
+        ppbook-check-html-link "${book}" ""
     done
 
-    check-docublocks
-    check-dangling-anchors
+    check-docublocks ""
     echo "${STD_COLOR}##### Generating redirect index.html${RESET}"; \
     echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
+    check-dangling-anchors ""
 }
 
 function build-dist-books()
 {
-    set -x
     set -e
+    if test -z "${OUTPUT_DIR}"; then
+        echo "please specify --outputDir"
+        exit 1
+    fi
     rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
-    if test -z "${DISPLAY}"; then
+    if test "${isCygwin}" -eq 0 -a -z "${DISPLAY}"; then
         DISPLAY=:20.0
         start_X11_display "${PIDFILE}" "${DISP}"
         trap 'stop_X11_display "${PIDFILE}"' 0
@@ -667,7 +755,7 @@ Usage: VERB arguments
 Available Verbs:
     build-dist-books - build all books in all representations (HTML(+tarball)/PDF/...) - takes some time.
     build-books - builds the HTML representation of all books
-    build-book - build one book, spetify with --name, optionally specify --filter to limit the md files to be regenerated.
+    build-book - build one book specified with --name, optionally specify --filter to limit the md files to be regenerated.
     build-book-keep-md - don't flush pregenerated files while building a book - shortcut version.
     clean - clean the working directory
 
@@ -725,7 +813,6 @@ while [ $# -gt 0 ];  do
     esac
 done
 
-
 case "$VERB" in
     build-books)
         build-books
@@ -737,15 +824,20 @@ case "$VERB" in
             exit 1
         fi
         build-book "$NAME"
+        check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+        check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
+        ppbook-check-html-link "${NAME}" "some of the above errors may be because of referenced books weren't rebuilt."
         ;;
     check-book)
-	check-summary "${NAME}"
-    	book-check-leftover-docublocks "${NAME}"
-    	book-check-restheader-leftovers "${NAME}"
-    	ppbook-check-directory-link "${NAME}"
-    	book-check-images-referenced "${NAME}"
-	book-check-markdown-leftovers "${NAME}"
-	;;
+        check-summary "${NAME}"
+        book-check-leftover-docublocks "${NAME}"
+        book-check-restheader-leftovers "${NAME}"
+        ppbook-check-two-links "${NAME}"
+        ppbook-check-directory-link "${NAME}"
+        book-check-images-referenced "${NAME}"
+        book-check-markdown-leftovers "${NAME}"        
+        check-dangling-anchors "${NAME}" "some of the above errors may be because of referenced books weren't rebuilt."
+        ;;
     build-dist-books)
         build-dist-books
         ;;
@@ -761,6 +853,15 @@ case "$VERB" in
         clean "$@"
         ;;
     *)
+        if test -d "${VERB}"; then
+            guessBookName="${VERB/\/}"
+            if [[ $ALLBOOKS = *"${guessBookName}"* ]]; then
+                build-book "$guessBookName"
+                check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+                check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
+                exit 0
+            fi
+        fi
         printHelp
         exit 1
         ;;

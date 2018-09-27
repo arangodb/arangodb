@@ -165,7 +165,7 @@ may be empty when called on a coordinator in a cluster.
 Additionally, the filesizes of collection and index parameter JSON files are
 not reported. These files should normally have a size of a few bytes
 each. Please also note that the *fileSize* values are reported in bytes
-and reflect the logical file sizes. Some filesystems may use optimisations
+and reflect the logical file sizes. Some filesystems may use optimizations
 (e.g. sparse files) so that the actual physical file size is somewhat
 different. Directories and sub-directories may also require space in the
 file system, but this space is not reported in the *fileSize* results.

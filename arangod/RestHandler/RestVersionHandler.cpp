@@ -43,8 +43,6 @@ RestVersionHandler::RestVersionHandler(GeneralRequest* request,
                                        GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestVersionHandler::isDirect() const { return true; }
-
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -70,7 +68,9 @@ RestStatus RestVersionHandler::execute() {
                         ->getFeature<ServerFeature>("Server");
       result.add("mode", VPackValue(server->operationModeString()));
     }
+
     std::string host = ServerState::instance()->getHost();
+
     if (!host.empty()) {
       result.add("host", VPackValue(host));
     }

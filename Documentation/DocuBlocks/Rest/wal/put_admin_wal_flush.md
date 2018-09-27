@@ -4,7 +4,7 @@
 
 @RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log}
 
-@RESTURLPARAMETERS
+@RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Whether or not the operation should block until the not-yet synchronized
@@ -18,7 +18,6 @@ long-running transactions and the write-ahead log garbage collector cannot
 finish garbage collection.
 
 @RESTDESCRIPTION
-
 Flushes the write-ahead log. By flushing the currently active write-ahead
 logfile, the data in it can be transferred to collection journals and
 datafiles. This is useful to ensure that all data for a collection is

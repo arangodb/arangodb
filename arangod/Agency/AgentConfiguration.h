@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,27 +36,6 @@
 namespace arangodb {
 namespace consensus {
 
-static const std::string idStr = "id";
-static const std::string agencySizeStr = "agency size";
-static const std::string poolSizeStr = "pool size";
-static const std::string minPingStr = "min ping";
-static const std::string maxPingStr = "max ping";
-static const std::string timeoutMultStr = "timeoutMult";
-static const std::string endpointStr = "endpoint";
-static const std::string uuidStr = "uuid";
-static const std::string poolStr = "pool";
-static const std::string gossipPeersStr = "gossipPeers";
-static const std::string activeStr = "active";
-static const std::string supervisionStr = "supervision";
-static const std::string waitForSyncStr = "wait for sync";
-static const std::string supervisionFrequencyStr = "supervision frequency";
-static const std::string supervisionGracePeriodStr = "supervision grace period";
-static const std::string compactionStepSizeStr = "compaction step size";
-static const std::string compactionKeepSizeStr = "compaction keep size";
-static const std::string defaultEndpointStr = "tcp://localhost:8529";
-static const std::string versionStr = "version";
-static const std::string startupStr = "startup";
-
 struct config_t {
  private:
   std::string _id;
@@ -81,6 +60,27 @@ struct config_t {
   size_t _version;
   std::string _startup;
   size_t _maxAppendSize;
+
+  static std::string const idStr;
+  static std::string const agencySizeStr;
+  static std::string const poolSizeStr;
+  static std::string const minPingStr;
+  static std::string const maxPingStr;
+  static std::string const timeoutMultStr;
+  static std::string const endpointStr;
+  static std::string const uuidStr;
+  static std::string const poolStr;
+  static std::string const gossipPeersStr;
+  static std::string const activeStr;
+  static std::string const supervisionStr;
+  static std::string const waitForSyncStr;
+  static std::string const supervisionFrequencyStr;
+  static std::string const supervisionGracePeriodStr;
+  static std::string const compactionStepSizeStr;
+  static std::string const compactionKeepSizeStr;
+  static std::string const defaultEndpointStr;
+  static std::string const versionStr;
+  static std::string const startupStr;
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
@@ -127,8 +127,20 @@ struct config_t {
   /// @brief wait for sync requested
   bool waitForSync() const;
 
-  /// @brief add pool member
-  bool addToPool(std::pair<std::string, std::string> const& i);
+  /**
+   * @brief           Verify other agent's pool against our own:
+   *                  - We only get here, if our pool is not complete yet or the
+   *                    id is member of this agency
+   *                  - We match their pool to ours and allow only for an update
+   *                    of it's own endpoint
+   * 
+   * @param otherPool Other agent's pool
+   * @param otherId   Other agent's id
+   *
+   * @return          Success
+   */
+  bool upsertPool(
+    VPackSlice const& otherPool, std::string const& otherId);
 
   /// @brief active agency size
   void activate();

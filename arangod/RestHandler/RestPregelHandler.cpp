@@ -75,6 +75,7 @@ RestStatus RestPregelHandler::execute() {
        */
     } else if (suffix[0] == Utils::workerPrefix) {
       PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
+
       generateResult(rest::ResponseCode::OK, response.slice());
       /* if (buffer.empty()) {
          resetResponse(rest::ResponseCode::OK);

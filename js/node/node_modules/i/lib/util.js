@@ -8,6 +8,7 @@ var u = module.exports = {
     //     [1, 2, 3].del 4    #=> [1, 2, 3]
     del: function (arr, val) {
       var index = arr.indexOf(val);
+
       if (index != -1) {
         if (index == 0) {
          return arr.slice(1)
@@ -94,9 +95,11 @@ var u = module.exports = {
       var self = u.string.gsub(str, /_([a-z])/, function ($) {
         return "_" + $[1].toUpperCase();
       });
+
       self = u.string.gsub(self, /\/([a-z])/, function ($) {
         return "/" + $[1].toUpperCase();
       });
+
       return self[0].toUpperCase() + self.substr(1);
     },
 
@@ -104,12 +107,18 @@ var u = module.exports = {
     //
     //     "employee salary" #=> "Employee Salary"
     capitalize: function (str, spaces) {
+      if (!str.length) {
+        return str;
+      }
+
       var self = str.toLowerCase();
-      if(!spaces) {
+
+      if (!spaces) {
         self = u.string.gsub(self, /\s([a-z])/, function ($) {
           return " " + $[1].toUpperCase();
         });
       }
+
       return self[0].toUpperCase() + self.substr(1);
     },
 
@@ -120,9 +129,11 @@ var u = module.exports = {
       var self = u.string.gsub(str, /_([A-Z])/, function ($) {
         return "_" + $[1].toLowerCase();
       });
+
       self = u.string.gsub(self, /\/([A-Z])/, function ($) {
         return "/" + $[1].toLowerCase();
       });
+
       return self[0].toLowerCase() + self.substr(1);
     },
 

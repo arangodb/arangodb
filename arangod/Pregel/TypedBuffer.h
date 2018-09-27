@@ -102,7 +102,7 @@ class VectorTypedBuffer : public TypedBuffer<T> {
 
   void appendEmptyElement() {
     _vector.push_back(T());
-    this->_ptr = _vector.data();  // might change adress
+    this->_ptr = _vector.data();  // might change address
   }
 };
 

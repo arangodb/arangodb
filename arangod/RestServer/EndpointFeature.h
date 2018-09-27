@@ -34,9 +34,8 @@ namespace arangodb {
 class EndpointFeature final : public application_features::ApplicationFeature,
                               public HttpEndpointProvider {
  public:
-  explicit EndpointFeature(application_features::ApplicationServer* server);
+  explicit EndpointFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -54,9 +53,9 @@ class EndpointFeature final : public application_features::ApplicationFeature,
  private:
   void buildEndpointLists();
 
- private:
   EndpointList _endpointList;
 };
+
 }
 
 #endif

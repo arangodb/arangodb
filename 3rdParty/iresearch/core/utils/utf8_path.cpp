@@ -43,13 +43,20 @@ const std::codecvt<wchar_t, char, std::mbstate_t>& fs_codecvt() {
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
-bool append_path(std::string& buf, const irs::string_ref& value) {
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const irs::string_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
 }
 
-bool append_path(std::string& buf, const wstring_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const wstring_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 4; // same ratio as boost::filesystem
   auto start = buf.size();
@@ -80,12 +87,8 @@ bool append_path(std::string& buf, const wstring_ref& value) {
   return true;
 }
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-
-bool append_path(std::wstring& buf, const irs::string_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 3; // same ratio as boost::filesystem
   auto start = buf.size();
@@ -116,7 +119,8 @@ bool append_path(std::wstring& buf, const irs::string_ref& value) {
   return true;
 }
 
-bool append_path(std::wstring& buf, const wstring_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const wstring_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
@@ -390,13 +394,11 @@ std::string utf8_path::utf8_absolute() const {
     return utf8(); // already absolute (on failure assume relative path)
   }
 
-  #ifdef _WIN32
-    return boost::locale::conv::utf_to_utf<char>(
-      (utf8_path(true) /= path_).native()
-    );
-  #else
-    return (utf8_path(true) /= path_).native();
-  #endif
+  utf8_path path(true);
+
+  path /= path_;
+
+  return path.utf8();
 }
 
 NS_END

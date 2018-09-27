@@ -93,7 +93,7 @@ NS_BEGIN(analysis)
     const string_ref& name,
     const irs::text_format::type_id& args_format
 ) {
-  return analyzer_register::instance().get(entry_key_t(name, args_format));
+  return nullptr != analyzer_register::instance().get(entry_key_t(name, args_format));
 }
 
 /*static*/ analyzer::ptr analyzers::get(

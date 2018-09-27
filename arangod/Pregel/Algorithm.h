@@ -69,13 +69,11 @@ struct IAlgorithm {
   }
 
   // ============= Configure runtime parameters ============
-
-  virtual uint64_t maxGlobalSuperstep() const { return 500; }
-
+  
   std::string const& name() const { return _name; }
 
  protected:
-  IAlgorithm(std::string const& name) : _name(name){};
+  IAlgorithm(std::string const& name) : _name(name) {}
 
  private:
   std::string _name;
@@ -114,7 +112,7 @@ struct Algorithm : IAlgorithm {
   }
 
  protected:
-  Algorithm(std::string const& name) : IAlgorithm(name){};
+  Algorithm(std::string const& name) : IAlgorithm(name) {}
 };
 
 template <typename V, typename E, typename M>

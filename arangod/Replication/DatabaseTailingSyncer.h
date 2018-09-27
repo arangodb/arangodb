@@ -31,41 +31,49 @@
 namespace arangodb {
 class DatabaseReplicationApplier;
 
-class DatabaseTailingSyncer : public TailingSyncer {
+class DatabaseTailingSyncer final : public TailingSyncer {
  public:
-  DatabaseTailingSyncer(TRI_vocbase_t*,
-                        ReplicationApplierConfiguration const&,
-                        TRI_voc_tick_t initialTick, bool useTick,
-                        TRI_voc_tick_t barrierId);
+  DatabaseTailingSyncer(
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration,
+    TRI_voc_tick_t initialTick,
+    bool useTick,
+    TRI_voc_tick_t barrierId
+  );
 
- public:
-  
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
 
   /// @brief return the syncer's replication applier
   DatabaseReplicationApplier* applier() const {
     return static_cast<DatabaseReplicationApplier*>(_applier);
   }
-  
+
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
   Result syncCollectionFinalize(std::string const& collectionName);
-  
+
  protected:
-    
+
   /// @brief save the current applier state
   Result saveApplierState() override;
-  
+
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
-    return vocbases().begin()->second.database();
+    return &(vocbases().begin()->second.database());
   }
 
+  /// @brief whether or not we should skip a specific marker
+  bool skipMarker(arangodb::velocypack::Slice const& slice) override;
+
  private:
-  
+
   /// @brief vocbase to use for this run
   TRI_vocbase_t* _vocbase;
-  
+
+  /// @brief translation between globallyUniqueId and collection name
+  std::unordered_map<std::string, std::string> _translations;
+
+  bool _queriedTranslations;
 };
 }
 

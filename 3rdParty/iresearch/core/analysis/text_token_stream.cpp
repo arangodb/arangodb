@@ -256,18 +256,25 @@ irs::analysis::analyzer::ptr construct(
     }
   }
 
-  // interpret the cache_key as a locale name
-  std::string locale_name(cache_key.c_str(), cache_key.size());
-  auto locale = irs::locale_utils::locale(locale_name);
-  ignored_words_t buf;
+  try {
+    // interpret the cache_key as a locale name
+    std::string locale_name(cache_key.c_str(), cache_key.size());
+    auto locale = irs::locale_utils::locale(locale_name);
+    ignored_words_t buf;
 
-  if (!get_ignored_words(buf, locale)) {
-    IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
+    if (!get_ignored_words(buf, locale)) {
+      IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
 
-    return nullptr;
+      return nullptr;
+    }
+
+    return construct(cache_key, locale, std::move(buf));
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s", cache_key.c_str());
+    IR_LOG_EXCEPTION();
   }
 
-  return construct(cache_key, locale, std::move(buf));
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,34 +416,41 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     return nullptr;
   }
 
-  static const rapidjson::Value empty;
-  auto locale = irs::locale_utils::locale(json["locale"].GetString());
-  auto& ignored_words = json.HasMember("ignored_words") ? json["ignored_words"] : empty;
-  auto& ignored_words_path = json.HasMember("ignored_words_path") ? json["ignored_words_path"] : empty;
+  try {
+    static const rapidjson::Value empty;
+    auto locale = irs::locale_utils::locale(json["locale"].GetString());
+    auto& ignored_words = json.HasMember("ignored_words") ? json["ignored_words"] : empty;
+    auto& ignored_words_path = json.HasMember("ignored_words_path") ? json["ignored_words_path"] : empty;
 
-  if (!ignored_words.IsArray()) {
-    return ignored_words_path.IsString()
-      ? construct(args, locale, ignored_words_path.GetString())
-      : construct(args, locale)
-      ;
-  }
-
-  ignored_words_t buf;
-
-  for (auto itr = ignored_words.Begin(), end = ignored_words.End(); itr != end; ++itr) {
-    if (!itr->IsString()) {
-      IR_FRMT_WARN("Non-string value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
-
-      return nullptr;
+    if (!ignored_words.IsArray()) {
+      return ignored_words_path.IsString()
+        ? construct(args, locale, ignored_words_path.GetString())
+        : construct(args, locale)
+        ;
     }
 
-    buf.emplace(itr->GetString());
+    ignored_words_t buf;
+
+    for (auto itr = ignored_words.Begin(), end = ignored_words.End(); itr != end; ++itr) {
+      if (!itr->IsString()) {
+        IR_FRMT_WARN("Non-string value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+
+        return nullptr;
+      }
+
+      buf.emplace(itr->GetString());
+    }
+
+    return ignored_words_path.IsString()
+      ? construct(args, locale, ignored_words_path.GetString(), std::move(buf))
+      : construct(args, locale, std::move(buf))
+      ;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", args.c_str());
+    IR_LOG_EXCEPTION();
   }
 
-  return ignored_words_path.IsString()
-    ? construct(args, locale, ignored_words_path.GetString(), std::move(buf))
-    : construct(args, locale, std::move(buf))
-    ;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

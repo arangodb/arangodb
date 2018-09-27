@@ -1,13 +1,13 @@
 #!/bin/bash
 params=("$@")
 
-rm -rf cluster
+rm -rf active
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
-  cp -a cluster-init cluster
+  cp -a active-init active
 else
   echo "== creating fresh directory"
-  mkdir -p cluster || { echo "failed to create cluster directory"; exit 1; }
+  mkdir -p active || { echo "failed to create cluster directory"; exit 1; }
   #if we want to restart we should probably store the parameters line wise
 fi
 
@@ -27,8 +27,8 @@ else
   exit 1
 fi
 
-if [[ -f cluster/startup_parameters ]];then
-    string="$(< cluster/startup_parameters)"
+if [[ -f active/startup_parameters ]];then
+    string="$(< active/startup_parameters)"
     if [[ -z "${params[@]}" ]]; then
         params=( $string )
     else
@@ -41,7 +41,7 @@ if [[ -f cluster/startup_parameters ]];then
 else
     #store parmeters
     if [[ -n "${params[@]}" ]]; then
-      echo "${params[@]}" > cluster/startup_parameters
+      echo "${params[@]}" > active/startup_parameters
     fi
 fi
 
@@ -52,8 +52,13 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
-  STORAGE_ENGINE=""
-else
+  #default engine is RocksDB
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+elif [ "$USE_ROCKSDB" == "0" ]; then 
+  #explicitly disable RocksDB engine, so use MMFiles
+  STORAGE_ENGINE="--server.storage-engine=mmfiles"
+else 
+  #any value other than "0" means RocksDB engine
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
 fi
 DEFAULT_REPLICATION=""
@@ -88,11 +93,11 @@ NATH=$(( $NRSINGLESERVERS + $NRAGENTS ))
 ENDPOINT=[::]
 ADDRESS=[::1]
 
-rm -rf cluster
-if [ -d cluster-init ];then
-  cp -a cluster-init cluster
+rm -rf active
+if [ -d active-init ];then
+  cp -a active-init active
 fi
-mkdir -p cluster
+mkdir -p active
 
 if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
@@ -124,35 +129,31 @@ fi
 
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    port=$(( $AG_BASE + $aid ))
-    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
+    PORT=$(( $AG_BASE + $aid ))
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
     $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
         --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --agency.my-address $TRANSPORT://$ADDRESS:$port \
+        --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
-        --database.directory cluster/data$port \
-        --javascript.app-path $SRC_DIR/js/apps \
-        --javascript.startup-directory $SRC_DIR/js \
-        --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.v8-contexts 1 \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$port \
+        --database.directory active/data$PORT \
+        --javascript.enabled false \
+        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
-        --server.threads 16 \
-        --log.file cluster/$port.log \
+        --log.file active/$PORT.log \
         --log.level $LOG_LEVEL_AGENCY \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee cluster/$PORT.stdout 2>&1 &
+        2>&1 | tee active/$PORT.stdout &
 done
 
 start() {
@@ -161,28 +162,27 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir cluster/data$PORT cluster/apps$PORT 
+    mkdir active/data$PORT active/apps$PORT 
     echo Starting $TYPE on port $PORT
     $CMD \
         -c none \
-        --database.directory cluster/data$PORT \
+        --database.directory active/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
         --replication.active-failover true \
-        --log.file cluster/$PORT.log \
+        --log.file active/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \
-        --server.threads 5 \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.app-path cluster/apps$PORT \
+        --javascript.app-path active/apps$PORT \
         --log.level $LOG_LEVEL_CLUSTER \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee cluster/$PORT.stdout 2>&1 &
+        2>&1 | tee active/$PORT.stdout &
 }
 
 PORTTOPDB=`expr $SS_BASE + $NRSINGLESERVERS - 1`
@@ -212,7 +212,7 @@ for p in `seq $SS_BASE $PORTTOPDB` ; do
     testServer $p
 done
 
-echo Done, your cluster is ready at
+echo Done, your active failover pair is ready at
 for p in `seq $SS_BASE $PORTTOPDB` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
 done

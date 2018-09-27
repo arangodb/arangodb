@@ -71,20 +71,16 @@ void VstResponse::addPayload(VPackSlice const& slice,
       tmpBuffer.reserve(slice.byteSize()); // reserve space already
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
-                                               builder, options, true, true);
+                                               builder, options, true, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
-    } else {
-      // just copy
-      _vpackPayloads.emplace_back(slice.byteSize());
-      _vpackPayloads.back().append(slice.startAs<char const>(),
-                                   slice.byteSize());
+      return;
     }
-  } else {
-    // just copy
-    _vpackPayloads.emplace_back(slice.byteSize());
-    _vpackPayloads.back().append(slice.startAs<char const>(),
-                                 slice.byteSize());
   }
+    
+  // just copy
+  _vpackPayloads.emplace_back(slice.byteSize());
+  _vpackPayloads.back().append(slice.startAs<char const>(),
+                               slice.byteSize());
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
@@ -103,14 +99,12 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       tmpBuffer.reserve(buffer.length()); // reserve space already
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
-                                               builder, options, true, true);
+                                               builder, options, true, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
-    } else {
-      _vpackPayloads.push_back(std::move(buffer));
+      return; // done
     }
-  } else {
-    _vpackPayloads.push_back(std::move(buffer));
   }
+  _vpackPayloads.push_back(std::move(buffer));
 }
 
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
@@ -151,8 +145,8 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   if (_vpackPayloads.empty()) {
     if (_generateBody) {
       LOG_TOPIC(INFO, Logger::REQUESTS)
-          << "Response should generate body but no Data available";
-      _generateBody = false;  // no body availalbe
+          << "Response should generate body but no data available";
+      _generateBody = false;  // no body available
     }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
                                    VPackSlice::noneSlice(), _messageId,

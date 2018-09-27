@@ -345,6 +345,269 @@ unsigned int const SliceStaticData::FirstSubMap[32] = {
     0,  // 0x14, compact object, no index table - note: the offset is dynamic!
     0};
 
+uint64_t const SliceStaticData::PrecalculatedHashesForDefaultSeed[256] = {
+#ifdef VELOCYPACK_XXHASH
+  /* 0x00 */ 0xe2b56fa571b3a544,    /* 0x01 */ 0xda3cfd1dc58389d8,
+  /* 0x02 */ 0x0000000000000000,    /* 0x03 */ 0x0000000000000000,
+  /* 0x04 */ 0x0000000000000000,    /* 0x05 */ 0x0000000000000000,
+  /* 0x06 */ 0x0000000000000000,    /* 0x07 */ 0x0000000000000000,
+  /* 0x08 */ 0x0000000000000000,    /* 0x09 */ 0x0000000000000000,
+  /* 0x0a */ 0xd296bf393ef8d5f5,    /* 0x0b */ 0x0000000000000000,
+  /* 0x0c */ 0x0000000000000000,    /* 0x0d */ 0x0000000000000000,
+  /* 0x0e */ 0x0000000000000000,    /* 0x0f */ 0x0000000000000000,
+  /* 0x10 */ 0x0000000000000000,    /* 0x11 */ 0x0000000000000000,
+  /* 0x12 */ 0x0000000000000000,    /* 0x13 */ 0x0000000000000000,
+  /* 0x14 */ 0x0000000000000000,    /* 0x15 */ 0x0000000000000000,
+  /* 0x16 */ 0x0000000000000000,    /* 0x17 */ 0x24db76da0ebbd8bb,
+  /* 0x18 */ 0x1a6a668fb2aa030a,    /* 0x19 */ 0xed545328fb397fed,
+  /* 0x1a */ 0xfd783491fceeb46b,    /* 0x1b */ 0x0000000000000000,
+  /* 0x1c */ 0x0000000000000000,    /* 0x1d */ 0x0000000000000000,
+  /* 0x1e */ 0x505ec293ddfeec5e,    /* 0x1f */ 0x9fab26ba108e2fbf,
+  /* 0x20 */ 0x0000000000000000,    /* 0x21 */ 0x0000000000000000,
+  /* 0x22 */ 0x0000000000000000,    /* 0x23 */ 0x0000000000000000,
+  /* 0x24 */ 0x0000000000000000,    /* 0x25 */ 0x0000000000000000,
+  /* 0x26 */ 0x0000000000000000,    /* 0x27 */ 0x0000000000000000,
+  /* 0x28 */ 0x0000000000000000,    /* 0x29 */ 0x0000000000000000,
+  /* 0x2a */ 0x0000000000000000,    /* 0x2b */ 0x0000000000000000,
+  /* 0x2c */ 0x0000000000000000,    /* 0x2d */ 0x0000000000000000,
+  /* 0x2e */ 0x0000000000000000,    /* 0x2f */ 0x0000000000000000,
+  /* 0x30 */ 0xcdf3868203041650,    /* 0x31 */ 0x7c9133bfa6f828a6,
+  /* 0x32 */ 0x62e05b34c4ed7ce4,    /* 0x33 */ 0xb79b6530d263533d,
+  /* 0x34 */ 0xf05f611558114f31,    /* 0x35 */ 0xc941f9afc86cdcd5,
+  /* 0x36 */ 0x79873ccd694a9f90,    /* 0x37 */ 0xd360268d66bf8c1f,
+  /* 0x38 */ 0x19e870f3e36185fe,    /* 0x39 */ 0xd154aeb6ba9114e5,
+  /* 0x3a */ 0xa4d6434557b5b885,    /* 0x3b */ 0x91584221ca9eda5b,
+  /* 0x3c */ 0xb39b55e7252de481,    /* 0x3d */ 0xe6bf494f0a40618e,
+  /* 0x3e */ 0xd2ce603b7dceb6ea,    /* 0x3f */ 0xec71f69fe56368f1,
+  /* 0x40 */ 0x142191d3f9a23bce,    /* 0x41 */ 0x0000000000000000,
+  /* 0x42 */ 0x0000000000000000,    /* 0x43 */ 0x0000000000000000,
+  /* 0x44 */ 0x0000000000000000,    /* 0x45 */ 0x0000000000000000,
+  /* 0x46 */ 0x0000000000000000,    /* 0x47 */ 0x0000000000000000,
+  /* 0x48 */ 0x0000000000000000,    /* 0x49 */ 0x0000000000000000,
+  /* 0x4a */ 0x0000000000000000,    /* 0x4b */ 0x0000000000000000,
+  /* 0x4c */ 0x0000000000000000,    /* 0x4d */ 0x0000000000000000,
+  /* 0x4e */ 0x0000000000000000,    /* 0x4f */ 0x0000000000000000,
+  /* 0x50 */ 0x0000000000000000,    /* 0x51 */ 0x0000000000000000,
+  /* 0x52 */ 0x0000000000000000,    /* 0x53 */ 0x0000000000000000,
+  /* 0x54 */ 0x0000000000000000,    /* 0x55 */ 0x0000000000000000,
+  /* 0x56 */ 0x0000000000000000,    /* 0x57 */ 0x0000000000000000,
+  /* 0x58 */ 0x0000000000000000,    /* 0x59 */ 0x0000000000000000,
+  /* 0x5a */ 0x0000000000000000,    /* 0x5b */ 0x0000000000000000,
+  /* 0x5c */ 0x0000000000000000,    /* 0x5d */ 0x0000000000000000,
+  /* 0x5e */ 0x0000000000000000,    /* 0x5f */ 0x0000000000000000,
+  /* 0x60 */ 0x0000000000000000,    /* 0x61 */ 0x0000000000000000,
+  /* 0x62 */ 0x0000000000000000,    /* 0x63 */ 0x0000000000000000,
+  /* 0x64 */ 0x0000000000000000,    /* 0x65 */ 0x0000000000000000,
+  /* 0x66 */ 0x0000000000000000,    /* 0x67 */ 0x0000000000000000,
+  /* 0x68 */ 0x0000000000000000,    /* 0x69 */ 0x0000000000000000,
+  /* 0x6a */ 0x0000000000000000,    /* 0x6b */ 0x0000000000000000,
+  /* 0x6c */ 0x0000000000000000,    /* 0x6d */ 0x0000000000000000,
+  /* 0x6e */ 0x0000000000000000,    /* 0x6f */ 0x0000000000000000,
+  /* 0x70 */ 0x0000000000000000,    /* 0x71 */ 0x0000000000000000,
+  /* 0x72 */ 0x0000000000000000,    /* 0x73 */ 0x0000000000000000,
+  /* 0x74 */ 0x0000000000000000,    /* 0x75 */ 0x0000000000000000,
+  /* 0x76 */ 0x0000000000000000,    /* 0x77 */ 0x0000000000000000,
+  /* 0x78 */ 0x0000000000000000,    /* 0x79 */ 0x0000000000000000,
+  /* 0x7a */ 0x0000000000000000,    /* 0x7b */ 0x0000000000000000,
+  /* 0x7c */ 0x0000000000000000,    /* 0x7d */ 0x0000000000000000,
+  /* 0x7e */ 0x0000000000000000,    /* 0x7f */ 0x0000000000000000,
+  /* 0x80 */ 0x0000000000000000,    /* 0x81 */ 0x0000000000000000,
+  /* 0x82 */ 0x0000000000000000,    /* 0x83 */ 0x0000000000000000,
+  /* 0x84 */ 0x0000000000000000,    /* 0x85 */ 0x0000000000000000,
+  /* 0x86 */ 0x0000000000000000,    /* 0x87 */ 0x0000000000000000,
+  /* 0x88 */ 0x0000000000000000,    /* 0x89 */ 0x0000000000000000,
+  /* 0x8a */ 0x0000000000000000,    /* 0x8b */ 0x0000000000000000,
+  /* 0x8c */ 0x0000000000000000,    /* 0x8d */ 0x0000000000000000,
+  /* 0x8e */ 0x0000000000000000,    /* 0x8f */ 0x0000000000000000,
+  /* 0x90 */ 0x0000000000000000,    /* 0x91 */ 0x0000000000000000,
+  /* 0x92 */ 0x0000000000000000,    /* 0x93 */ 0x0000000000000000,
+  /* 0x94 */ 0x0000000000000000,    /* 0x95 */ 0x0000000000000000,
+  /* 0x96 */ 0x0000000000000000,    /* 0x97 */ 0x0000000000000000,
+  /* 0x98 */ 0x0000000000000000,    /* 0x99 */ 0x0000000000000000,
+  /* 0x9a */ 0x0000000000000000,    /* 0x9b */ 0x0000000000000000,
+  /* 0x9c */ 0x0000000000000000,    /* 0x9d */ 0x0000000000000000,
+  /* 0x9e */ 0x0000000000000000,    /* 0x9f */ 0x0000000000000000,
+  /* 0xa0 */ 0x0000000000000000,    /* 0xa1 */ 0x0000000000000000,
+  /* 0xa2 */ 0x0000000000000000,    /* 0xa3 */ 0x0000000000000000,
+  /* 0xa4 */ 0x0000000000000000,    /* 0xa5 */ 0x0000000000000000,
+  /* 0xa6 */ 0x0000000000000000,    /* 0xa7 */ 0x0000000000000000,
+  /* 0xa8 */ 0x0000000000000000,    /* 0xa9 */ 0x0000000000000000,
+  /* 0xaa */ 0x0000000000000000,    /* 0xab */ 0x0000000000000000,
+  /* 0xac */ 0x0000000000000000,    /* 0xad */ 0x0000000000000000,
+  /* 0xae */ 0x0000000000000000,    /* 0xaf */ 0x0000000000000000,
+  /* 0xb0 */ 0x0000000000000000,    /* 0xb1 */ 0x0000000000000000,
+  /* 0xb2 */ 0x0000000000000000,    /* 0xb3 */ 0x0000000000000000,
+  /* 0xb4 */ 0x0000000000000000,    /* 0xb5 */ 0x0000000000000000,
+  /* 0xb6 */ 0x0000000000000000,    /* 0xb7 */ 0x0000000000000000,
+  /* 0xb8 */ 0x0000000000000000,    /* 0xb9 */ 0x0000000000000000,
+  /* 0xba */ 0x0000000000000000,    /* 0xbb */ 0x0000000000000000,
+  /* 0xbc */ 0x0000000000000000,    /* 0xbd */ 0x0000000000000000,
+  /* 0xbe */ 0x0000000000000000,    /* 0xbf */ 0x0000000000000000,
+  /* 0xc0 */ 0x0000000000000000,    /* 0xc1 */ 0x0000000000000000,
+  /* 0xc2 */ 0x0000000000000000,    /* 0xc3 */ 0x0000000000000000,
+  /* 0xc4 */ 0x0000000000000000,    /* 0xc5 */ 0x0000000000000000,
+  /* 0xc6 */ 0x0000000000000000,    /* 0xc7 */ 0x0000000000000000,
+  /* 0xc8 */ 0x0000000000000000,    /* 0xc9 */ 0x0000000000000000,
+  /* 0xca */ 0x0000000000000000,    /* 0xcb */ 0x0000000000000000,
+  /* 0xcc */ 0x0000000000000000,    /* 0xcd */ 0x0000000000000000,
+  /* 0xce */ 0x0000000000000000,    /* 0xcf */ 0x0000000000000000,
+  /* 0xd0 */ 0x0000000000000000,    /* 0xd1 */ 0x0000000000000000,
+  /* 0xd2 */ 0x0000000000000000,    /* 0xd3 */ 0x0000000000000000,
+  /* 0xd4 */ 0x0000000000000000,    /* 0xd5 */ 0x0000000000000000,
+  /* 0xd6 */ 0x0000000000000000,    /* 0xd7 */ 0x0000000000000000,
+  /* 0xd8 */ 0x0000000000000000,    /* 0xd9 */ 0x0000000000000000,
+  /* 0xda */ 0x0000000000000000,    /* 0xdb */ 0x0000000000000000,
+  /* 0xdc */ 0x0000000000000000,    /* 0xdd */ 0x0000000000000000,
+  /* 0xde */ 0x0000000000000000,    /* 0xdf */ 0x0000000000000000,
+  /* 0xe0 */ 0x0000000000000000,    /* 0xe1 */ 0x0000000000000000,
+  /* 0xe2 */ 0x0000000000000000,    /* 0xe3 */ 0x0000000000000000,
+  /* 0xe4 */ 0x0000000000000000,    /* 0xe5 */ 0x0000000000000000,
+  /* 0xe6 */ 0x0000000000000000,    /* 0xe7 */ 0x0000000000000000,
+  /* 0xe8 */ 0x0000000000000000,    /* 0xe9 */ 0x0000000000000000,
+  /* 0xea */ 0x0000000000000000,    /* 0xeb */ 0x0000000000000000,
+  /* 0xec */ 0x0000000000000000,    /* 0xed */ 0x0000000000000000,
+  /* 0xee */ 0x0000000000000000,    /* 0xef */ 0x0000000000000000,
+  /* 0xf0 */ 0x0000000000000000,    /* 0xf1 */ 0x0000000000000000,
+  /* 0xf2 */ 0x0000000000000000,    /* 0xf3 */ 0x0000000000000000,
+  /* 0xf4 */ 0x0000000000000000,    /* 0xf5 */ 0x0000000000000000,
+  /* 0xf6 */ 0x0000000000000000,    /* 0xf7 */ 0x0000000000000000,
+  /* 0xf8 */ 0x0000000000000000,    /* 0xf9 */ 0x0000000000000000,
+  /* 0xfa */ 0x0000000000000000,    /* 0xfb */ 0x0000000000000000,
+  /* 0xfc */ 0x0000000000000000,    /* 0xfd */ 0x0000000000000000,
+  /* 0xfe */ 0x0000000000000000,    /* 0xff */ 0x0000000000000000
+#endif
+#ifdef VELOCYPACK_FASTHASH
+  /* 0x00 */ 0xf747d9afd5fc13cd,    /* 0x01 */ 0x9dd59a0795d72dae,    
+  /* 0x02 */ 0x0000000000000000,    /* 0x03 */ 0x0000000000000000,    
+  /* 0x04 */ 0x0000000000000000,    /* 0x05 */ 0x0000000000000000,    
+  /* 0x06 */ 0x0000000000000000,    /* 0x07 */ 0x0000000000000000,    
+  /* 0x08 */ 0x0000000000000000,    /* 0x09 */ 0x0000000000000000,    
+  /* 0x0a */ 0x651f231e0822a1f2,    /* 0x0b */ 0x0000000000000000,    
+  /* 0x0c */ 0x0000000000000000,    /* 0x0d */ 0x0000000000000000,    
+  /* 0x0e */ 0x0000000000000000,    /* 0x0f */ 0x0000000000000000,    
+  /* 0x10 */ 0x0000000000000000,    /* 0x11 */ 0x0000000000000000,    
+  /* 0x12 */ 0x0000000000000000,    /* 0x13 */ 0x0000000000000000,    
+  /* 0x14 */ 0x0000000000000000,    /* 0x15 */ 0x0000000000000000,    
+  /* 0x16 */ 0x0000000000000000,    /* 0x17 */ 0x423211fec79af09b,    
+  /* 0x18 */ 0xd43a065f33b14e52,    /* 0x19 */ 0xf1adc756c139e443,    
+  /* 0x1a */ 0x6bf229fb02c686b ,    /* 0x1b */ 0x0000000000000000,    
+  /* 0x1c */ 0x0000000000000000,    /* 0x1d */ 0x0000000000000000,    
+  /* 0x1e */ 0xc36f498e29ef2aba,    /* 0x1f */ 0x1ad28762083cdc7d,    
+  /* 0x20 */ 0x0000000000000000,    /* 0x21 */ 0x0000000000000000,    
+  /* 0x22 */ 0x0000000000000000,    /* 0x23 */ 0x0000000000000000,    
+  /* 0x24 */ 0x0000000000000000,    /* 0x25 */ 0x0000000000000000,    
+  /* 0x26 */ 0x0000000000000000,    /* 0x27 */ 0x0000000000000000,    
+  /* 0x28 */ 0x0000000000000000,    /* 0x29 */ 0x0000000000000000,    
+  /* 0x2a */ 0x0000000000000000,    /* 0x2b */ 0x0000000000000000,    
+  /* 0x2c */ 0x0000000000000000,    /* 0x2d */ 0x0000000000000000,    
+  /* 0x2e */ 0x0000000000000000,    /* 0x2f */ 0x0000000000000000,    
+  /* 0x30 */ 0xbb1c99a88abf76d2,    /* 0x31 */ 0x8d3e0efdb932c4b8,    
+  /* 0x32 */ 0xcd41672e3cd8f76e,    /* 0x33 */ 0x3f831eadbd6628f8,    
+  /* 0x34 */ 0x9e4ea5d4abe810ae,    /* 0x35 */ 0x836489847293c2d6,    
+  /* 0x36 */ 0x270883ef450bf1c8,    /* 0x37 */ 0x4abf5dea3bb7fb98,    
+  /* 0x38 */ 0x5a6892806deadcb2,    /* 0x39 */ 0xdeaa9c7264ffdad0,    
+  /* 0x3a */ 0xabd49df61b8b4756,    /* 0x3b */ 0xc068ab004a6dc8de,    
+  /* 0x3c */ 0xc2a9f41025e2711b,    /* 0x3d */ 0x47cb9c887443ad40,    
+  /* 0x3e */ 0xa57497643e705316,    /* 0x3f */ 0xea4688cdf868a142,    
+  /* 0x40 */ 0x49e51044202c2999,    /* 0x41 */ 0x0000000000000000,    
+  /* 0x42 */ 0x0000000000000000,    /* 0x43 */ 0x0000000000000000,    
+  /* 0x44 */ 0x0000000000000000,    /* 0x45 */ 0x0000000000000000,    
+  /* 0x46 */ 0x0000000000000000,    /* 0x47 */ 0x0000000000000000,    
+  /* 0x48 */ 0x0000000000000000,    /* 0x49 */ 0x0000000000000000,    
+  /* 0x4a */ 0x0000000000000000,    /* 0x4b */ 0x0000000000000000,    
+  /* 0x4c */ 0x0000000000000000,    /* 0x4d */ 0x0000000000000000,    
+  /* 0x4e */ 0x0000000000000000,    /* 0x4f */ 0x0000000000000000,    
+  /* 0x50 */ 0x0000000000000000,    /* 0x51 */ 0x0000000000000000,    
+  /* 0x52 */ 0x0000000000000000,    /* 0x53 */ 0x0000000000000000,    
+  /* 0x54 */ 0x0000000000000000,    /* 0x55 */ 0x0000000000000000,    
+  /* 0x56 */ 0x0000000000000000,    /* 0x57 */ 0x0000000000000000,    
+  /* 0x58 */ 0x0000000000000000,    /* 0x59 */ 0x0000000000000000,    
+  /* 0x5a */ 0x0000000000000000,    /* 0x5b */ 0x0000000000000000,    
+  /* 0x5c */ 0x0000000000000000,    /* 0x5d */ 0x0000000000000000,    
+  /* 0x5e */ 0x0000000000000000,    /* 0x5f */ 0x0000000000000000,    
+  /* 0x60 */ 0x0000000000000000,    /* 0x61 */ 0x0000000000000000,    
+  /* 0x62 */ 0x0000000000000000,    /* 0x63 */ 0x0000000000000000,    
+  /* 0x64 */ 0x0000000000000000,    /* 0x65 */ 0x0000000000000000,    
+  /* 0x66 */ 0x0000000000000000,    /* 0x67 */ 0x0000000000000000,    
+  /* 0x68 */ 0x0000000000000000,    /* 0x69 */ 0x0000000000000000,    
+  /* 0x6a */ 0x0000000000000000,    /* 0x6b */ 0x0000000000000000,    
+  /* 0x6c */ 0x0000000000000000,    /* 0x6d */ 0x0000000000000000,    
+  /* 0x6e */ 0x0000000000000000,    /* 0x6f */ 0x0000000000000000,    
+  /* 0x70 */ 0x0000000000000000,    /* 0x71 */ 0x0000000000000000,    
+  /* 0x72 */ 0x0000000000000000,    /* 0x73 */ 0x0000000000000000,    
+  /* 0x74 */ 0x0000000000000000,    /* 0x75 */ 0x0000000000000000,    
+  /* 0x76 */ 0x0000000000000000,    /* 0x77 */ 0x0000000000000000,    
+  /* 0x78 */ 0x0000000000000000,    /* 0x79 */ 0x0000000000000000,    
+  /* 0x7a */ 0x0000000000000000,    /* 0x7b */ 0x0000000000000000,    
+  /* 0x7c */ 0x0000000000000000,    /* 0x7d */ 0x0000000000000000,    
+  /* 0x7e */ 0x0000000000000000,    /* 0x7f */ 0x0000000000000000,    
+  /* 0x80 */ 0x0000000000000000,    /* 0x81 */ 0x0000000000000000,    
+  /* 0x82 */ 0x0000000000000000,    /* 0x83 */ 0x0000000000000000,    
+  /* 0x84 */ 0x0000000000000000,    /* 0x85 */ 0x0000000000000000,    
+  /* 0x86 */ 0x0000000000000000,    /* 0x87 */ 0x0000000000000000,    
+  /* 0x88 */ 0x0000000000000000,    /* 0x89 */ 0x0000000000000000,    
+  /* 0x8a */ 0x0000000000000000,    /* 0x8b */ 0x0000000000000000,    
+  /* 0x8c */ 0x0000000000000000,    /* 0x8d */ 0x0000000000000000,    
+  /* 0x8e */ 0x0000000000000000,    /* 0x8f */ 0x0000000000000000,    
+  /* 0x90 */ 0x0000000000000000,    /* 0x91 */ 0x0000000000000000,    
+  /* 0x92 */ 0x0000000000000000,    /* 0x93 */ 0x0000000000000000,    
+  /* 0x94 */ 0x0000000000000000,    /* 0x95 */ 0x0000000000000000,    
+  /* 0x96 */ 0x0000000000000000,    /* 0x97 */ 0x0000000000000000,    
+  /* 0x98 */ 0x0000000000000000,    /* 0x99 */ 0x0000000000000000,    
+  /* 0x9a */ 0x0000000000000000,    /* 0x9b */ 0x0000000000000000,    
+  /* 0x9c */ 0x0000000000000000,    /* 0x9d */ 0x0000000000000000,    
+  /* 0x9e */ 0x0000000000000000,    /* 0x9f */ 0x0000000000000000,    
+  /* 0xa0 */ 0x0000000000000000,    /* 0xa1 */ 0x0000000000000000,    
+  /* 0xa2 */ 0x0000000000000000,    /* 0xa3 */ 0x0000000000000000,    
+  /* 0xa4 */ 0x0000000000000000,    /* 0xa5 */ 0x0000000000000000,    
+  /* 0xa6 */ 0x0000000000000000,    /* 0xa7 */ 0x0000000000000000,    
+  /* 0xa8 */ 0x0000000000000000,    /* 0xa9 */ 0x0000000000000000,    
+  /* 0xaa */ 0x0000000000000000,    /* 0xab */ 0x0000000000000000,    
+  /* 0xac */ 0x0000000000000000,    /* 0xad */ 0x0000000000000000,    
+  /* 0xae */ 0x0000000000000000,    /* 0xaf */ 0x0000000000000000,    
+  /* 0xb0 */ 0x0000000000000000,    /* 0xb1 */ 0x0000000000000000,    
+  /* 0xb2 */ 0x0000000000000000,    /* 0xb3 */ 0x0000000000000000,    
+  /* 0xb4 */ 0x0000000000000000,    /* 0xb5 */ 0x0000000000000000,    
+  /* 0xb6 */ 0x0000000000000000,    /* 0xb7 */ 0x0000000000000000,    
+  /* 0xb8 */ 0x0000000000000000,    /* 0xb9 */ 0x0000000000000000,    
+  /* 0xba */ 0x0000000000000000,    /* 0xbb */ 0x0000000000000000,    
+  /* 0xbc */ 0x0000000000000000,    /* 0xbd */ 0x0000000000000000,    
+  /* 0xbe */ 0x0000000000000000,    /* 0xbf */ 0x0000000000000000,    
+  /* 0xc0 */ 0x0000000000000000,    /* 0xc1 */ 0x0000000000000000,    
+  /* 0xc2 */ 0x0000000000000000,    /* 0xc3 */ 0x0000000000000000,    
+  /* 0xc4 */ 0x0000000000000000,    /* 0xc5 */ 0x0000000000000000,    
+  /* 0xc6 */ 0x0000000000000000,    /* 0xc7 */ 0x0000000000000000,    
+  /* 0xc8 */ 0x0000000000000000,    /* 0xc9 */ 0x0000000000000000,    
+  /* 0xca */ 0x0000000000000000,    /* 0xcb */ 0x0000000000000000,    
+  /* 0xcc */ 0x0000000000000000,    /* 0xcd */ 0x0000000000000000,    
+  /* 0xce */ 0x0000000000000000,    /* 0xcf */ 0x0000000000000000,    
+  /* 0xd0 */ 0x0000000000000000,    /* 0xd1 */ 0x0000000000000000,    
+  /* 0xd2 */ 0x0000000000000000,    /* 0xd3 */ 0x0000000000000000,    
+  /* 0xd4 */ 0x0000000000000000,    /* 0xd5 */ 0x0000000000000000,    
+  /* 0xd6 */ 0x0000000000000000,    /* 0xd7 */ 0x0000000000000000,    
+  /* 0xd8 */ 0x0000000000000000,    /* 0xd9 */ 0x0000000000000000,    
+  /* 0xda */ 0x0000000000000000,    /* 0xdb */ 0x0000000000000000,    
+  /* 0xdc */ 0x0000000000000000,    /* 0xdd */ 0x0000000000000000,    
+  /* 0xde */ 0x0000000000000000,    /* 0xdf */ 0x0000000000000000,    
+  /* 0xe0 */ 0x0000000000000000,    /* 0xe1 */ 0x0000000000000000,    
+  /* 0xe2 */ 0x0000000000000000,    /* 0xe3 */ 0x0000000000000000,    
+  /* 0xe4 */ 0x0000000000000000,    /* 0xe5 */ 0x0000000000000000,    
+  /* 0xe6 */ 0x0000000000000000,    /* 0xe7 */ 0x0000000000000000,    
+  /* 0xe8 */ 0x0000000000000000,    /* 0xe9 */ 0x0000000000000000,    
+  /* 0xea */ 0x0000000000000000,    /* 0xeb */ 0x0000000000000000,    
+  /* 0xec */ 0x0000000000000000,    /* 0xed */ 0x0000000000000000,    
+  /* 0xee */ 0x0000000000000000,    /* 0xef */ 0x0000000000000000,    
+  /* 0xf0 */ 0x0000000000000000,    /* 0xf1 */ 0x0000000000000000,    
+  /* 0xf2 */ 0x0000000000000000,    /* 0xf3 */ 0x0000000000000000,    
+  /* 0xf4 */ 0x0000000000000000,    /* 0xf5 */ 0x0000000000000000,    
+  /* 0xf6 */ 0x0000000000000000,    /* 0xf7 */ 0x0000000000000000,    
+  /* 0xf8 */ 0x0000000000000000,    /* 0xf9 */ 0x0000000000000000,    
+  /* 0xfa */ 0x0000000000000000,    /* 0xfb */ 0x0000000000000000,    
+  /* 0xfc */ 0x0000000000000000,    /* 0xfd */ 0x0000000000000000,    
+  /* 0xfe */ 0x0000000000000000,    /* 0xff */ 0x0000000000000000 
+#endif
+};
+
 // creates a Slice from Json and adds it to a scope
 Slice Slice::fromJson(SliceScope& scope, std::string const& json,
                       Options const* options) {
@@ -357,7 +620,7 @@ Slice Slice::fromJson(SliceScope& scope, std::string const& json,
 
 // translates an integer key into a string
 Slice Slice::translate() const {
-  if (!isSmallInt() && !isUInt()) {
+  if (VELOCYPACK_UNLIKELY(!isSmallInt() && !isUInt())) {
     throw Exception(Exception::InvalidValueType,
                     "Cannot translate key of this type");
   }
@@ -369,7 +632,7 @@ Slice Slice::translate() const {
 
 // return the value for a UInt object, without checks!
 // returns 0 for invalid values/types
-uint64_t Slice::getUIntUnchecked() const {
+uint64_t Slice::getUIntUnchecked() const noexcept {
   uint8_t const h = head();
   if (h >= 0x28 && h <= 0x2f) {
     // UInt
@@ -380,6 +643,30 @@ uint64_t Slice::getUIntUnchecked() const {
     // Smallint >= 0
     return static_cast<uint64_t>(h - 0x30);
   }
+  return 0;
+}
+
+// return the value for a SmallInt object
+int64_t Slice::getSmallIntUnchecked() const noexcept {
+  uint8_t const h = head();
+
+  if (h >= 0x30 && h <= 0x39) {
+    // Smallint >= 0
+    return static_cast<int64_t>(h - 0x30);
+  }
+
+  if (h >= 0x3a && h <= 0x3f) {
+    // Smallint < 0
+    return static_cast<int64_t>(h - 0x3a) - 6;
+  }
+
+  if ((h >= 0x20 && h <= 0x27) || (h >= 0x28 && h <= 0x2f)) {
+    // Int and UInt
+    // we'll leave it to the compiler to detect the two ranges above are
+    // adjacent
+    return getIntUnchecked();
+  }
+
   return 0;
 }
 
@@ -428,21 +715,26 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
   } else if (isArray()) {
     // normalize arrays by hashing array length and iterating
     // over all array members
-    uint64_t const n = length() ^ 0xba5bedf00d;
+    ArrayIterator it(*this);
+    uint64_t const n = it.size() ^ 0xba5bedf00d;
     value = VELOCYPACK_HASH(&n, sizeof(n), seed);
-    for (auto const& it : ArrayIterator(*this)) {
-      value ^= it.normalizedHash(value);
+    while (it.valid()) {
+      value ^= it.value().normalizedHash(value);
+      it.next();
     }
   } else if (isObject()) {
     // normalize objects by hashing object length and iterating
     // over all object members
-    uint64_t const n = length() ^ 0xf00ba44ba5;
+    ObjectIterator it(*this, true);
+    uint64_t const n = it.size() ^ 0xf00ba44ba5;
     uint64_t seed2 = VELOCYPACK_HASH(&n, sizeof(n), seed);
     value = seed2;
-    for (auto const& it : ObjectIterator(*this, true)) {
-      uint64_t seed3 = it.key.makeKey().normalizedHash(seed2);
+    while (it.valid()) {
+      auto current = (*it);
+      uint64_t seed3 = current.key.normalizedHash(seed2);
       value ^= seed3;
-      value ^= it.value.normalizedHash(seed3);
+      value ^= current.value.normalizedHash(seed3);
+      it.next();
     }
   } else {
     // fall back to regular hash function
@@ -455,7 +747,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found
 Slice Slice::get(std::string const& attribute) const {
-  if (!isObject()) {
+  if (VELOCYPACK_UNLIKELY(!isObject())) {
     throw Exception(Exception::InvalidValueType, "Expecting Object");
   }
 
@@ -490,7 +782,7 @@ Slice Slice::get(std::string const& attribute) const {
     Slice key = Slice(_start + findDataOffset(h));
 
     if (key.isString()) {
-      if (key.isEqualString(attribute)) {
+      if (key.isEqualStringUnchecked(attribute)) {
         return Slice(key.start() + key.byteSize());
       }
       // fall through to returning None Slice below
@@ -530,7 +822,7 @@ Slice Slice::get(std::string const& attribute) const {
 }
 
 // return the value for an Int object
-int64_t Slice::getIntUnchecked() const {
+int64_t Slice::getIntUnchecked() const noexcept {
   uint8_t const h = head();
 
   if (h >= 0x20 && h <= 0x27) {
@@ -547,7 +839,7 @@ int64_t Slice::getIntUnchecked() const {
 
   // SmallInt
   VELOCYPACK_ASSERT(h >= 0x30 && h <= 0x3f);
-  return getSmallInt();
+  return getSmallIntUnchecked();
 }
 
 // return the value for an Int object
@@ -568,7 +860,7 @@ int64_t Slice::getInt() const {
 
   if (h >= 0x28 && h <= 0x2f) {
     // UInt
-    uint64_t v = getUInt();
+    uint64_t v = getUIntUnchecked();
     if (v > static_cast<uint64_t>(INT64_MAX)) {
       throw Exception(Exception::NumberOutOfRange);
     }
@@ -577,7 +869,7 @@ int64_t Slice::getInt() const {
 
   if (h >= 0x30 && h <= 0x3f) {
     // SmallInt
-    return getSmallInt();
+    return getSmallIntUnchecked();
   }
 
   throw Exception(Exception::InvalidValueType, "Expecting type Int");
@@ -657,9 +949,33 @@ int Slice::compareString(char const* value, size_t length) const {
   return res;
 }
 
+int Slice::compareStringUnchecked(char const* value, size_t length) const noexcept {
+  ValueLength keyLength;
+  char const* k = getStringUnchecked(keyLength);
+  size_t const compareLength =
+      (std::min)(static_cast<size_t>(keyLength), length);
+  int res = memcmp(k, value, compareLength);
+
+  if (res == 0) {
+    if (keyLength != length) {
+      return (keyLength > length) ? 1 : -1;
+    }
+  }
+  return res;
+}
+
 bool Slice::isEqualString(std::string const& attribute) const {
   ValueLength keyLength;
   char const* k = getString(keyLength);
+  if (static_cast<size_t>(keyLength) != attribute.size()) {
+    return false;
+  }
+  return (memcmp(k, attribute.data(), attribute.size()) == 0);
+}
+
+bool Slice::isEqualStringUnchecked(std::string const& attribute) const noexcept {
+  ValueLength keyLength;
+  char const* k = getStringUnchecked(keyLength);
   if (static_cast<size_t>(keyLength) != attribute.size()) {
     return false;
   }
@@ -709,7 +1025,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     Slice first(_start + dataOffset);
     ValueLength s = first.byteSize();
     if (s == 0) {
-      throw Exception(Exception::InternalError);
+      throw Exception(Exception::InternalError, "Invalid data for compact object");
     }
     n = (end - dataOffset) / s;
   } else if (offsetSize < 8) {
@@ -782,7 +1098,7 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
 
   ValueLength end = readVariableValueLength<false>(_start + 1);
   ValueLength n = readVariableValueLength<true>(_start + end - 1);
-  if (index >= n) {
+  if (VELOCYPACK_UNLIKELY(index >= n)) {
     throw Exception(Exception::IndexOutOfBounds);
   }
 
@@ -810,7 +1126,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
     Slice key(_start + readIntegerNonEmpty<ValueLength>(_start + offset, offsetSize));
 
     if (key.isString()) {
-      if (!key.isEqualString(attribute)) {
+      if (!key.isEqualStringUnchecked(attribute)) {
         continue;
       }
     } else if (key.isSmallInt() || key.isUInt()) {
@@ -853,7 +1169,7 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
 
     int res;
     if (key.isString()) {
-      res = key.compareString(attribute);
+      res = key.compareStringUnchecked(attribute.data(), attribute.size());
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
       if (!useTranslator) {

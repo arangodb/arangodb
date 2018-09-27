@@ -26,10 +26,8 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
 
 (function () {
   var startupPath = global.STARTUP_PATH;
@@ -71,5 +69,3 @@ require('@arangodb/actions').startup();
 
 // initialize AQL
 require('@arangodb/aql');
-
-

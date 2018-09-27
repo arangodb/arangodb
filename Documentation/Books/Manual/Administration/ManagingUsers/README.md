@@ -4,10 +4,10 @@ Managing Users
 The user management in ArangoDB 3 is similar to the ones found in MySQL,
 PostgreSQL, or other database systems.
 
-User management is possible in the [web interface](../WebInterface/Users.md)
+User management is possible in the [web interface](../../Programs/WebInterface/Users.md)
 and in [arangosh](InArangosh.md) while logged on to the *\_system* database.
 
-Note that the only usernames *must* not start with `:role:`.
+Note that usernames *must* not start with `:role:`.
 
 Actions and Access Levels
 -------------------------
@@ -132,7 +132,8 @@ collection *data* nor create new collections in the database *example*.
 Granting Access Levels
 ----------------------
 
-Access levels can be managed via the [web interface](../WebInterface/Users.md) or in [arangosh](InArangosh.md).
+Access levels can be managed via the [web interface](../../Programs/WebInterface/Users.md)
+or in [arangosh](InArangosh.md).
 
 In order to grant an access level to a user, you can assign one of
 three access levels for each database and one of three levels for each
@@ -287,10 +288,14 @@ database. All changes to the access levels must be done using the
 
 ### LDAP Users
 
-__This feature is only available in the Enterprise Edition.__
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
-ArangoDB supports LDAP as an external authentication system. For detailed information please have look into
-the [LDAP configuration guide](../Configuration/Ldap.md).
+ArangoDB supports LDAP as an external authentication system. For detailed
+information please have look into the
+[LDAP configuration guide](../../Programs/Arangod/Ldap.md).
 
 There are a few differences to *normal* ArangoDB users:
 - ArangoDB does not "*know*" LDAP users before they first authenticate, calls to various API's using endpoints in `_api/users/*` will **fail** until the user first logs-in

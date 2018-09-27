@@ -113,6 +113,16 @@ COUNT()
 
 This is an alias for [LENGTH()](#length).
 
+ENCODE_URI_COMPONENT()
+-----------
+
+`ENCODE_URI_COMPONENT(value) → encodedURIComponentString`
+
+Return the encoded uri component of *value*.
+
+- **value** (string): a string
+- returns **encodedURIComponentString** (string): an encoded uri component of *value*
+
 FIND_FIRST()
 ------------
 
@@ -229,6 +239,31 @@ LENGTH("foobar") // 6
 LENGTH("电脑坏了") // 4
 ```
 
+LEVENSHTEIN_DISTANCE()
+------
+
+`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
+
+Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+
+- **value1** (string): a string
+- **value2** (string): a string
+
+`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
+
+Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+
+- **value1** (string): a string
+- **value2** (string): a string
+- returns **levenshteinDistance** (number): calculated Levenshtein distance between the input strings *value1* and *value2*
+
+```js
+LEVENSHTEIN_DISTANCE("foobar", "bar") // 3
+LEVENSHTEIN_DISTANCE(" ", "") // 1
+LEVENSHTEIN_DISTANCE("The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox") // 13
+LEVENSHTEIN_DISTANCE("der mötör trötet", "der trötet") // 6
+```
+
 *LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
 the [number of attribute keys](Document.md#length) of an object / document and
 the [amount of documents](Miscellaneous.md#length) in a collection.
@@ -331,18 +366,16 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
-REGEX_TEST()
+REGEX_MATCHES()
 ------------
 
-`REGEX_TEST(text, search, caseInsensitive) → bool`
+`REGEX_MATCHES(text, regex, caseInsensitive) → stringArray`
 
-Check whether the pattern *search* is contained in the string *text*,
-using regular expression matching.
+Return the matches in the given string *text*, using the *regex*.
 
 - **text** (string): the string to search in
-- **search** (string): a regular expression search pattern
-- returns **bool** (bool): *true* if the pattern is contained in *text*,
-  and *false* otherwise
+- **regex** (string): a regular expression to use for matching the *text*
+- returns **stringArray** (array): an array of strings containing the matches
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -355,9 +388,145 @@ characters and sequences:
 - `\t` – matches a tab character
 - `\r` – matches a carriage return
 - `\n` – matches a line-feed character
-- `[xyz]` – set of characters. matches any of the enclosed characters (i.e.
-  *x*, *y* or *z* in this case
-- `[^xyz]` – negated set of characters. matches any other character than the
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
+  enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+- `[x-z]` – range of characters. Matches any of the characters in the 
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
+- `[^x-z]` – negated range of characters. Matches any other character than the
+  ones specified in the range
+- `(xyz)` – defines and matches a pattern group
+- `(x|y)` – matches either *x* or *y*
+- `^` – matches the beginning of the string (e.g. `^xyz`)
+- <code>$</code> – matches the end of the string (e.g. <code>xyz$</code>)
+
+Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+and `$` have a special meaning in regular expressions and may need to be 
+escaped using a backslash, which requires escaping itself (`\\`). A literal
+backslash needs to be escaped using another escaped backslash, i.e. `\\\\`.
+In arangosh, the amount of backslashes needs to be doubled.
+
+Characters and sequences may optionally be repeated using the following
+quantifiers:
+
+- `x*` – matches zero or more occurrences of *x*
+- `x+` – matches one or more occurrences of *x*
+- `x?` – matches one or zero occurrences of *x*
+- `x{y}` – matches exactly *y* occurrences of *x*
+- `x{y,z}` – matches between *y* and *z* occurrences of *x*
+- `x{y,}` – matches at least *y* occurences of *x*
+
+Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
+you need to define a pattern group by wrapping the subexpression in parentheses
+and place the quantifier right behind it: `(xyz)+`.
+
+If the regular expression in *regex* is invalid, a warning will be raised
+and the function will return *null*.
+
+```js
+REGEX_MATCHES("My-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true) // ["My-us3r_n4m3"]
+REGEX_MATCHES("#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true) // null
+REGEX_MATCHES("john@doe.com", "^([a-z0-9_\.-]+)@([\da-z-]+)\.([a-z\.]{2,6})$", false) // ["john@doe.com", "john", "doe", "com"]
+```
+
+REGEX_SPLIT()
+------------
+
+`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → stringArray`
+
+Split the given string *text* into a list of strings, using the *separator*.
+
+- **text** (string): the string to split
+- **splitExpression** (string): a regular expression to use for splitting the *text*
+- **limit** (number, *optional*): limit the number of split values in the result.
+  If no *limit* is given, the number of splits returned is not bounded.
+- returns **stringArray** (array): an array of strings
+
+The regular expression may consist of literal characters and the following 
+characters and sequences:
+
+- `.` – the dot matches any single character except line terminators.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+- `\d` – matches a single digit, equivalent to `[0-9]`
+- `\s` – matches a single whitespace character
+- `\S` – matches a single non-whitespace character
+- `\t` – matches a tab character
+- `\r` – matches a carriage return
+- `\n` – matches a line-feed character
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
+enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+- `[x-z]` – range of characters. Matches any of the characters in the 
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
+- `[^x-z]` – negated range of characters. Matches any other character than the
+ones specified in the range
+- `(xyz)` – defines and matches a pattern group
+- `(x|y)` – matches either *x* or *y*
+- `^` – matches the beginning of the string (e.g. `^xyz`)
+- <code>$</code> – matches the end of the string (e.g. <code>xyz$</code>)
+
+Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+and `$` have a special meaning in regular expressions and may need to be 
+escaped using a backslash, which requires escaping itself (`\\`). A literal
+backslash needs to be escaped using another escaped backslash, i.e. `\\\\`.
+In arangosh, the amount of backslashes needs to be doubled.
+
+Characters and sequences may optionally be repeated using the following
+quantifiers:
+
+- `x*` – matches zero or more occurrences of *x*
+- `x+` – matches one or more occurrences of *x*
+- `x?` – matches one or zero occurrences of *x*
+- `x{y}` – matches exactly *y* occurrences of *x*
+- `x{y,z}` – matches between *y* and *z* occurrences of *x*
+- `x{y,}` – matches at least *y* occurences of *x*
+
+Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
+you need to define a pattern group by wrapping the subexpression in parentheses
+and place the quantifier right behind it: `(xyz)+`.
+
+If the regular expression in *splitExpression* is invalid, a warning will be raised
+and the function will return *null*.
+
+```js
+REGEX_SPLIT("This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 4) // ["This is a line", "\n", " This is yet another lin", "\r"]
+REGEX_SPLIT("hypertext language, programming", "[\s, ]+") // ["hypertext", "language", "programming"]
+REGEX_SPLIT("ca,bc,a,bca,bca,bc", "a,b", true, 5) // ["c", "c,", "c", "c", "c"]
+```
+
+REGEX_TEST()
+------------
+
+`REGEX_TEST(text, search, caseInsensitive) → bool`
+
+Check whether the pattern *search* is contained in the string *text*,
+using regular expression matching.
+
+- **text** (string): the string to search in
+- **search** (string): a regular expression search pattern
+- returns **bool** (bool): *true* if the pattern is contained in *text*,
+  and *false* otherwise
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
+
+The regular expression may consist of literal characters and the following 
+characters and sequences:
+
+- `.` – the dot matches any single character except line terminators.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+- `\d` – matches a single digit, equivalent to `[0-9]`
+- `\s` – matches a single whitespace character
+- `\S` – matches a single non-whitespace character
+- `\t` – matches a tab character
+- `\r` – matches a carriage return
+- `\n` – matches a line-feed character
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
   enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
 - `[x-z]` – range of characters. Matches any of the characters in the 
   specified range, e.g. `[0-9A-F]` to match any character in
@@ -412,6 +581,8 @@ Replace the pattern *search* with the string *replacement* in the string
 - returns **string** (string): the string *text* with the *search* regex
   pattern replaced with the *replacement* string wherever the pattern exists
   in *text*
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 For more details about the rules for characters and sequences refer
 [REGEX_TEST()](#regextest).
@@ -429,7 +600,7 @@ REVERSE()
 
 `REVERSE(value) → reversedString`
 
-Return the reverse of the string *str*.
+Return the reverse of the string *value*.
 
 - **value** (string): a string
 - returns **reversedString** (string): a new string with the characters in
@@ -528,6 +699,23 @@ SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
+SOUNDEX()
+-----------
+
+`SOUNDEX(value) → soundexString`
+
+Return the soundex fingerprint of *value*.
+
+- **value** (string): a string
+- returns **soundexString** (string): a soundex fingerprint of *value*
+
+```js
+SOUNDEX( "example" ) // "E251"
+SOUNDEX( "ekzampul")  // "E251"
+SOUNDEX( "soundex" ) // "S532"
+SOUNDEX( "sounteks" ) // "S532"
+```
+
 SUBSTITUTE()
 ------------
 
@@ -574,6 +762,10 @@ Alternatively, *search* and *replace* can be specified in a combined value.
 - **value** (string): a string
 - **mapping** (object): a lookup map with search strings as keys and replacement
   strings as values. Empty strings and *null* as values remove matches.
+  Please note that no sequence of search strings can be warrantied by this; 
+  Means, if you have overlapping search results, one time the first may win, 
+  another time the second. If you need to ensure the precedence of the sequence
+  choose the array based invocation method.
 - **limit** (number, *optional*): cap the number of replacements to this value
 - returns **substitutedString** (string): a new string with matches replaced
   (or removed)
@@ -614,6 +806,39 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
+TOKENS()
+--------
+
+`TOKENS(input, analyzer) → array`
+
+Split the **input** string with the help of the specified **analyzer** into an array.
+The resulting array can i.e. be used in subsequent `FILTER` statements with the **IN** operator.
+This can be used to better understand how the specific analyzer is going to behave.
+
+- *input* string to tokenize
+- *analyzer* one of the [available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
+
+
+TO_BASE64()
+-----------
+
+`TO_BASE64(value) → toBase64String`
+
+Return the base64 representation of *value*.
+
+- **value** (string): a string
+- returns **toBase64String** (string): a base64 representation of *value*
+
+TO_HEX()
+-----------
+
+`TO_HEX(value) → toHexString`
+
+Return the hex representation of *value*.
+
+- **value** (string): a string
+- returns **toHexString** (string): a hex representation of *value*
+
 TRIM()
 ------
 
@@ -622,7 +847,8 @@ TRIM()
 Return the string *value* with whitespace stripped from the start and/or end.
 
 The optional *type* parameter specifies from which parts of the string the
-whitespace is stripped. [LTRIM()](#ltrim) and [RTRIM()](#rtrim) are preferred
+whitespace is stripped. [LTRIM()](#ltrim)
+and [RTRIM()](#rtrim) are preferred
 however.
 
 - **value** (string): a string
@@ -661,3 +887,12 @@ All other characters are returned unchanged.
 - **value** (string): a string
 - returns **upperCaseString** (string): *value* with lower-case characters converted
   to upper-case characters
+  
+UUID()
+------
+
+`UUID() → UUIDString`
+
+Return a universally unique identifier value.
+
+- returns **UUIDString** (string): a universally unique identifier

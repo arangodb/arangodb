@@ -8,7 +8,6 @@
 The body to be executed.
 
 @RESTDESCRIPTION
-
 Executes the javascript code in the body on the server as the body
 of a function with no arguments. If you have a *return* statement
 then the return value you produce will be returned as content type

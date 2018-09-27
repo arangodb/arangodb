@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/statistics, Read the statistics}
 
 @RESTDESCRIPTION
-
 Returns the statistics information. The returned object contains the
 statistics figures grouped together according to the description returned by
 *_admin/statistics-description*. For instance, to access a figure *userTime*
@@ -67,14 +66,14 @@ VSS of the process
 
 
 @RESTREPLYBODY{client,object,required,client_statistics_struct}
-informations about the connected clients and their resource usage
+information about the connected clients and their resource usage
 
 
 @RESTSTRUCT{sum,setof_statistics_struct,number,required,}
-sumarized value of all counts
+summarized value of all counts
 
 @RESTSTRUCT{count,setof_statistics_struct,integer,required,}
-number of values sumarized
+number of values summarized
 
 @RESTSTRUCT{counts,setof_statistics_struct,array,required,integer}
 array containing the values
@@ -114,7 +113,7 @@ the numbers of requests by Verb
 total number of http requests
 
 @RESTSTRUCT{requestsAsync,http_statistics_struct,integer,required,}
-total number of asynchroneous http requests
+total number of asynchronous http requests
 
 @RESTSTRUCT{requestsGet,http_statistics_struct,integer,required,}
 No of requests using the GET-verb
@@ -173,14 +172,11 @@ the total number of V8 contexts we may spawn as configured by --javascript.v8-co
 @RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}
 Statistics about the server worker threads (excluding V8 specific or jemalloc specific threads and system threads)
 
-@RESTSTRUCT{running,server_threads_struct,integer,required,}
+@RESTSTRUCT{scheduler-threads,server_threads_struct,integer,required,}
 The number of spawned worker threads
 
-@RESTSTRUCT{working,server_threads_struct,integer,required,}
+@RESTSTRUCT{in-progress,server_threads_struct,integer,required,}
 The number of currently busy worker threads
-
-@RESTSTRUCT{blocked,server_threads_struct,integer,required,}
-The number of worker threads waiting for the availability of resources (like Collection locks)
 
 @RESTSTRUCT{queued,server_threads_struct,integer,required,}
 The number of jobs queued up waiting for worker threads becomming available

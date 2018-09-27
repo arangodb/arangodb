@@ -30,17 +30,17 @@ In queries you can define in which directions the edge relations may be followed
 Named Graphs
 ------------
 
-Named graphs are completely managed by ArangoDB, and thus also [visible in the web interface](../Administration/WebInterface/Graphs.md).
+Named graphs are completely managed by ArangoDB, and thus also [visible in the web interface](../Programs/WebInterface/Graphs.md).
 They use the full spectrum of ArangoDB's graph features. You may access them via several interfaces.
 
 - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
   - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
 - [JavaScript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
-  - [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+  - [Graph Management](GeneralGraphs/Management.md); creating & manipulating graph definitions; inserting, updating and deleting vertices and edges into graphs
   - [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
 - [JavaScript Smart Graph implementation, for scalable graphs](SmartGraphs/README.md)
-  - [Smart Graph Management](SmartGraphs/Management.md); creating & manipualating SmartGraph definitions; Differences to General Graph 
+  - [Smart Graph Management](SmartGraphs/Management.md); creating & manipulating SmartGraph definitions; Differences to General Graph 
 - [RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 ### Manipulating collections of named graphs with regular document functions
@@ -59,7 +59,8 @@ Anonymous graphs
 ----------------
 
 Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
-You may use anonymous graphs in the [traversals](Traversals/README.md) and in the [Working with Edges](Edges/README.md) chapter.
+You may use anonymous graphs in the [traversals](Traversals/README.md) 
+and in the [Working with Edges](Edges/README.md) chapter.
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 
@@ -89,16 +90,16 @@ You can then configure several named graphs including a subset of the available 
 or you use anonymous graph queries, where you specify a list of edge collections to take into account in that query.
 To only follow friend edges, you would specify `friend_edges` as sole edge collection.
 
-Both approaches have advantages and disadvantages. `FILTER` operations on ede attributes will do comparisons on
+Both approaches have advantages and disadvantages. `FILTER` operations on edge attributes will do comparisons on
 each traversed edge, which may become CPU-intense. When not *finding* the edges in the first place because of the
-collection containing them is not traversed at all, there will never be a reason to actualy check for their
+collection containing them is not traversed at all, there will never be a reason to actually check for their
 `type` attribute with `FILTER`.
 
 The multiple edge collections approach is limited by the [number of collections that can be used simultaneously in one query](../../AQL/Fundamentals/Syntax.html#collection-names).
 Every collection used in a query requires some resources inside of ArangoDB and the number is therefore limited
 to cap the resource requirements. You may also have constraints on other edge attributes, such as a hash index
 with a unique constraint, which requires the documents to be in a single collection for the uniqueness guarantee,
-and it may thus not be possible to store the different types of edges in multiple edeg collections.
+and it may thus not be possible to store the different types of edges in multiple edge collections.
 
 So, if your edges have about a dozen different types, it's okay to choose the collection approach, otherwise
 the `FILTER` approach is preferred. You can still use `FILTER` operations on edges of course. You can get rid
@@ -152,8 +153,8 @@ flexible ways, whereas it would cause headache to handle it in a relational data
 Backup and restore
 ------------------
 
-For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
-and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
+For sure you want to have backups of your graph data, you can use [Arangodump](../Programs/Arangodump/README.md) to create the backup,
+and [Arangorestore](../Programs/Arangorestore/README.md) to restore a backup into a new ArangoDB. You should however note that:
 
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
@@ -161,7 +162,7 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 Managing graphs
 ---------------
 
-By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+By default you should use [the interface your driver provides to manage graphs](../../HTTP/Gharial/Management.html).
 
 This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
 
@@ -170,7 +171,7 @@ Example Graphs
 
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
-Once you've created them, you can [inspect them in the webinterface](../Administration/WebInterface/Graphs.md) - which was used to create the pictures below.
+Once you've created them, you can [inspect them in the webinterface](../Programs/WebInterface/Graphs.md) - which was used to create the pictures below.
 
 You [can easily look into the innards of this script](https://github.com/arangodb/arangodb/blob/devel/js/common/modules/%40arangodb/graph-examples/example-graph.js) for reference about howto manage graphs programatically.
 
@@ -201,6 +202,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock graph_create_knows_sample
 
+**Note:** with the default "Search Depth" of 2 of the graph viewer you may not see all edges of this graph.
 
 ### The Social Graph
 
@@ -263,7 +265,11 @@ Circles have unique numeric labels. Edges have two boolean attributes (*theFalse
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_traversal_sample
 
+**Note:** with the default "Search Depth" of 2 of the graph viewer you may not see all nodes of this graph.
+
 ### The World Graph
+
+![world graph](world_graph.png)
 
 The world country graph structures its nodes like that: world → continent → country → capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
@@ -280,9 +286,34 @@ It is used to demonstrate raw traversal operations.
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_world_sample
 
+### The Mps Graph
+
+This graph was created to demonstrate a use case of the shortest path algorithm. Even though the algorithm can only determine one shortest path, it is possible to return multiple shortest paths with two separate queries. Therefore the graph is named after the [**m**ultiple **p**ath **s**earch](../../AQL/Examples/MultiplePaths.html) use case.
+
+![mps graph](mps_graph.png)
+
+The example graph consists of *vertices* in the `mps_verts` collection and *edges* in the `mps_edges` collection. It is a simple traversal graph with start node *A* and end node *C*.
+
+This is how we create it, inspect its *vertices* and *edges*, and drop it again:
+
+    @startDocuBlockInline graph_create_mps_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_mps_sample}
+    var examples = require("@arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("mps_graph");
+    db.mps_verts.toArray();
+    db.mps_edges.toArray();
+    examples.dropGraph("mps_graph");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock graph_create_mps_sample
+
 ### Higher volume graph examples
 
-All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/arangodb/example-datasets) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.
+All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works.
+There are however several datasets freely available on the web that are a lot bigger.
+[We collected some of them with import scripts](https://github.com/arangodb/example-datasets) so you may play around with them.
+Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html)
+from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/);
+You will find importing scripts etc. in this blogpost.
 
 Cookbook examples
 -----------------
@@ -290,8 +321,7 @@ Cookbook examples
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
  - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
- - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
- - [Retrieving documents from ArangoDB without knowing the structure](https://docs.arangodb.com/cookbook/Graph/JavaDriverBaseDocument.html)
+ - [Retrieving documents from ArangoDB without knowing the structure](../../Cookbook/UseCases/JavaDriverBaseDocument.html)
  - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
  - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)
 

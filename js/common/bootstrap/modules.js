@@ -92,6 +92,9 @@
     function require (path) {
       assert(path, 'missing path');
       assert(typeof path === 'string', 'path must be a string');
+      if (path === '@arangodb/locals') {
+        return {context: module.context};
+      }
       return Module._load(path, module);
     }
 
@@ -539,7 +542,7 @@
       Module._extensions[extension](this, filename);
     } catch (e) {
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}`;
+        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}\nReason: ${e}`;
 
         if (e.fileName !== undefined) {
           msg += `\nFile: ${e.fileName}`;
@@ -547,7 +550,7 @@
           msg += `\nFile: ${filename}`;
         }
         if (e.lineNumber !== undefined) {
-          msg += `\nLine: ${e.lineNumber-2}`;
+          msg += `\nLine: ${e.lineNumber}`;
         }
         if (e.columnNumber !== undefined) {
           msg += `\nColumn: ${e.columnNumber}`;
@@ -631,6 +634,9 @@
   Module.Module = Module;
 
   global.require = function (request) {
+    if (request === '@arangodb/locals') {
+      return {};
+    }
     return Module._load(request);
   };
 }());

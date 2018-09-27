@@ -1,6 +1,6 @@
 
 @startDocuBlock put_api_new_tasks
-@brief registers a new task with a pre-defined id
+@brief registers a new task with a pre-defined id; not compatible with load balancers
 
 @RESTHEADER{PUT /_api/tasks/{id}, creates a task with id}
 
@@ -20,7 +20,7 @@ The parameters to be passed into command
 number of seconds between the executions
 
 @RESTBODYPARAM{offset,integer,optional,int64}
-Number of seconds initial delay 
+Number of seconds initial delay
 
 @RESTDESCRIPTION
 registers a new task with the specified id
@@ -53,4 +53,3 @@ If the task *id* already exists or the rest body is not accurate, *HTTP 400* is 
     curlRequest('DELETE', url + 'sampleTask');
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

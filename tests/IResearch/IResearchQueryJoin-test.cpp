@@ -30,40 +30,40 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Aql/Ast.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -113,7 +113,7 @@ struct CustomScorer : public irs::sort {
       irs::attribute_view const&
     ) const override {
       struct Scorer : public irs::sort::scorer {
-        Scorer(size_t i) : i(i) { }
+        Scorer(float_t score): i(score) { }
 
         virtual void score(irs::byte_type* score_buf) override {
           *reinterpret_cast<score_t*>(score_buf) = i;
@@ -164,7 +164,7 @@ struct CustomScorer : public irs::sort {
   CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(i);
+    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
   size_t i;
@@ -172,81 +172,17 @@ struct CustomScorer : public irs::sort {
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
-struct TestTermAttribute: public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
-};
-
-class TestDelimAnalyzer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-
-  static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestDelimAnalyzer, ptr, args);
-    return ptr;
-  }
-
-  TestDelimAnalyzer(irs::string_ref const& delim)
-    : irs::analysis::analyzer(TestDelimAnalyzer::type()),
-      _delim(irs::ref_cast<irs::byte_type>(delim)) {
-    _attrs.emplace(_term);
-  }
-
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-
-  virtual bool next() override {
-    if (_data.empty()) {
-      return false;
-    }
-
-    size_t i = 0;
-
-    for (size_t count = _data.size(); i < count; ++i) {
-      auto data = irs::ref_cast<char>(_data);
-      auto delim = irs::ref_cast<char>(_delim);
-
-      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value(irs::bytes_ref(_data.c_str(), i));
-        _data = irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()), _data.size() - i - (std::max)(size_t(1), _delim.size()));
-        return true;
-      }
-    }
-
-    _term.value(_data);
-    _data = irs::bytes_ref::NIL;
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::attribute_view _attrs;
-  irs::bytes_ref _delim;
-  irs::bytes_ref _data;
-  TestTermAttribute _term;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchQuerySetup {
+struct IResearchQueryJoinSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQuerySetup(): server(nullptr, nullptr) {
+  IResearchQueryJoinSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
@@ -255,25 +191,30 @@ struct IResearchQuerySetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -294,11 +235,11 @@ struct IResearchQuerySetup {
     functions->add(arangodb::aql::Function{
       "_NONDETERM_",
       ".",
-      false, // fake non-deterministic
-      false, // fake can throw
-      true,
-      false,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ), 
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -307,11 +248,13 @@ struct IResearchQuerySetup {
     functions->add(arangodb::aql::Function{
       "_FORWARD_",
       ".",
-      true, // fake deterministic
-      false, // fake can throw
-      true,
-      false,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      arangodb::aql::Function::makeFlags(
+        // fake deterministic
+        arangodb::aql::Function::Flags::Deterministic,
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ), 
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -319,24 +262,29 @@ struct IResearchQuerySetup {
     // external function names must be registred in upper-case
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
-    arangodb::aql::Function customScorer("CUSTOMSCORER", ".|+", true, false, true, true);
+    arangodb::aql::Function customScorer("CUSTOMSCORER", ".|+", 
+      arangodb::aql::Function::makeFlags(
+        arangodb::aql::Function::Flags::Deterministic,
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ));
     arangodb::iresearch::addFunction(*arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS, customScorer);
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
-  ~IResearchQuerySetup() {
+  ~IResearchQueryJoinSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -367,7 +315,7 @@ TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]")
 }
 
 TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-query]") {
-  IResearchQuerySetup s;
+  IResearchQueryJoinSetup s;
   UNUSED(s);
 
   static std::vector<std::string> const EMPTY;
@@ -378,10 +326,9 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
-  arangodb::LogicalCollection* logicalCollection3{};
-  arangodb::LogicalCollection* logicalCollectionWithTheSameNameAsView{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
 
   // add collection_1
   {
@@ -404,18 +351,18 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     REQUIRE((nullptr != logicalCollection3));
   }
 
+  // add view
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice())
+  );
+  REQUIRE((false == !view));
+
   // add logical collection with the same name as view
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-    logicalCollectionWithTheSameNameAsView = vocbase.createCollection(collectionJson->slice());
-    REQUIRE((nullptr != logicalCollectionWithTheSameNameAsView));
+    // TRI_vocbase_t::createCollection(...) throws exception instead of returning a nullptr
+    CHECK_THROWS(vocbase.createCollection(collectionJson->slice()));
   }
-
-  // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
-  REQUIRE((false == !view));
 
   // add link to collection
   {
@@ -430,25 +377,30 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
-  std::deque<arangodb::ManagedDocumentResult> insertedDocsCollectionWithTheSameNameAsView;
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
     TRI_voc_tick_t tick;
 
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
@@ -465,17 +417,13 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
         auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, tick, false);
-
-        insertedDocsCollectionWithTheSameNameAsView.emplace_back();
-        logicalCollectionWithTheSameNameAsView->insert(&trx, doc, insertedDocsCollectionWithTheSameNameAsView.back(), opt, tick, false);
-
         CHECK(res.ok());
         ++i;
       }
@@ -504,75 +452,27 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     view->sync();
   }
 
-  // bind collection and view with the same name
+  // using search keyword for collection is prohibited
   {
-    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN x";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
+    std::string const query = "LET c=5 FOR x IN collection_1 SEARCH x.seq == c RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
 
-    CHECK(arangodb::tests::assertRules(
-      vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-      },
-      boundParameters
-    ));
-
-    std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
-    };
-
+    // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
-// FIXME remove line above and uncomment lines below
-// will not return any results because of the:
-// https://github.com/arangodb/backlog/issues/342
-// unable to resolve collection and view with the same name for the time being
-//
-//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
-//
-//    auto result = queryResult.result->slice();
-//    CHECK(result.isArray());
-//
-//    arangodb::velocypack::ArrayIterator resultIt(result);
-//    REQUIRE(expectedDocs.size() == resultIt.size());
-//
-//    // Check documents
-//    auto expectedDoc = expectedDocs.begin();
-//    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
-//      auto const actualDoc = resultIt.value();
-//      auto const resolved = actualDoc.resolveExternals();
-//
-//      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
-//    }
-//    CHECK(expectedDoc == expectedDocs.end());
+    CHECK(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
   }
 
-  // bind collection and view with the same name
-  //
-  // FIXME
-  // will not return any results because of the:
-  // https://github.com/arangodb/backlog/issues/342
+  // using search keyword for bound collection is prohibited
   {
-    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN d";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
-
-    CHECK(arangodb::tests::assertRules(
-      vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-      },
-      boundParameters
-    ));
-
-    std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
-    };
-
+    std::string const query = "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c  RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"collection_1\" }");
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
+    CHECK(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
   }
 }
 
 TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
-  IResearchQuerySetup s;
+  IResearchQueryJoinSetup s;
   UNUSED(s);
 
   static std::vector<std::string> const EMPTY;
@@ -583,9 +483,9 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
-  arangodb::LogicalCollection* logicalCollection3{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
 
   // add collection_1
   {
@@ -609,9 +509,9 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice())
+  );
   REQUIRE((false == !view));
 
   // add link to collection
@@ -627,10 +527,14 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
@@ -642,9 +546,11 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     arangodb::OperationOptions opt;
     TRI_voc_tick_t tick;
 
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
@@ -661,7 +567,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 
@@ -701,16 +607,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // LET c=5
   // FOR x IN 1..7
-  //   FOR d IN VIEW testView
-  //   FILTER c == x.seq
+  //   FOR d IN testView
+  //   SEARCH c == x.seq
   // RETURN d;
   {
-    std::string const query = "LET c=5 FOR x IN 1..7 FOR d IN VIEW testView FILTER c == d.seq RETURN d";
+    std::string const query = "LET c=5 FOR x IN 1..7 FOR d IN testView SEARCH c == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -748,16 +654,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // (must recreate view iterator each loop iteration)
   //
   // FOR x IN 1..7
-  //   FOR d IN VIEW testView
-  //   FILTER _FORWARD_(5) == x.seq
+  //   FOR d IN testView
+  //   SEARCH _FORWARD_(5) == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR x IN 1..7 FOR d IN VIEW testView FILTER _FORWARD_(5) == d.seq RETURN d";
+    std::string const query = "FOR x IN 1..7 FOR d IN testView SEARCH _FORWARD_(5) == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -795,16 +701,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // (must recreate view iterator each loop iteration)
   //
   // FOR x IN 1..7
-  //   FOR d IN VIEW testView
-  //   FILTER _NONDETERM_(5) == x.seq
+  //   FOR d IN testView
+  //   SEARCH _NONDETERM_(5) == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR x IN 1..7 FOR d IN VIEW testView FILTER _NONDETERM_(5) == d.seq RETURN d";
+    std::string const query = "FOR x IN 1..7 FOR d IN testView SEARCH _NONDETERM_(5) == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -843,16 +749,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // LET c=_NONDETERM_(4)
   // FOR x IN 1..7
-  //   FOR d IN VIEW testView
-  //   FILTER c == x.seq
+  //   FOR d IN testView
+  //   SEARCH c == x.seq
   // RETURN d;
   {
-    std::string const query = "LET c=_NONDETERM_(4) FOR x IN 1..7 FOR d IN VIEW testView FILTER c == d.seq RETURN d";
+    std::string const query = "LET c=_NONDETERM_(4) FOR x IN 1..7 FOR d IN testView SEARCH c == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -891,16 +797,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // LET range=_NONDETERM_(0).._NONDETERM_(7)
   // FOR x IN range
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x.seq
+  //   FOR d IN testView
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = " FOR x IN _NONDETERM_(0).._NONDETERM_(7) FOR d IN VIEW testView FILTER x == d.seq RETURN d";
+    std::string const query = " FOR x IN _NONDETERM_(0).._NONDETERM_(7) FOR d IN testView SEARCH x == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -936,16 +842,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR x IN collection_3
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x.seq
+  //   FOR d IN testView
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query =  "FOR x IN collection_3 FOR d IN VIEW testView FILTER x.seq == d.seq RETURN d";
+    std::string const query =  "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -981,17 +887,17 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR x IN collection_3
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x.seq
+  //   FOR d IN testView
+  //   SEARCH d.seq == x.seq
   // SORT d.seq DESC
   // RETURN d;
   {
-    std::string const query = "FOR x IN collection_3 FOR d IN VIEW testView FILTER x.seq == d.seq SORT d.seq DESC RETURN d";
+    std::string const query = "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT d.seq DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1027,18 +933,18 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR x IN collection_3
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x.seq
+  //   FOR d IN testView
+  //   SEARCH d.seq == x.seq
   // SORT d.seq DESC
   // LIMIT 3
   // RETURN d;
   {
-    std::string const query = "FOR x IN collection_3 FOR d IN VIEW testView FILTER x.seq == d.seq SORT d.seq DESC LIMIT 3 RETURN d";
+    std::string const query = "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT d.seq DESC LIMIT 3 RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1069,16 +975,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR x IN collection_3
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x.seq && (d.value > 5 && d.value <= 100)
+  //   FOR d IN testView
+  //   SEARCH d.seq == x.seq && (d.value > 5 && d.value <= 100)
   // RETURN d;
   {
-    std::string const query = "FOR x IN collection_3 FOR d IN VIEW testView FILTER x.seq == d.seq && (d.value > 5 && d.value <= 100) SORT d.seq DESC RETURN d";
+    std::string const query = "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq && (d.value > 5 && d.value <= 100) SORT d.seq DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1110,8 +1016,8 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR x IN collection_3
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x.seq
+  //   FOR d IN testView
+  //   SEARCH d.seq == x.seq
   //   SORT BM25(d) ASC, d.seq DESC
   // RETURN d;
   {
@@ -1128,7 +1034,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR x IN collection_3 FOR d IN VIEW testView FILTER x.seq == d.seq SORT BM25(d) ASC, d.seq DESC RETURN d"
+      "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT BM25(d) ASC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -1151,12 +1057,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN VIEW testView
+  // FOR d IN testView
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN VIEW testView FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1195,12 +1101,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN VIEW testView
+  // FOR d IN testView
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq && d.name == 'B'
+  //   SEARCH d.seq == x.seq && d.name == 'B'
   // RETURN d;
   {
-    std::string const query = "FOR d IN VIEW testView FOR x IN collection_3 FILTER d.seq == x.seq && d.name == 'B' RETURN d";
+    std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq && d.name == 'B' RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1232,17 +1138,17 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1274,17 +1180,17 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1316,18 +1222,18 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // LIMIT 2
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq LIMIT 2 RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq LIMIT 2 RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1357,17 +1263,17 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
       }
     ));
 
@@ -1397,21 +1303,32 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.end());
   }
 
+  // Invalid bound collection name
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN @@collection SEARCH d.seq == x.seq RETURN d",
+      arangodb::velocypack::Parser::fromJson("{ \"@collection\": \"invlaidCollectionName\" }")
+    );
+
+    REQUIRE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
+  }
+
   // dependent sort condition in inner loop + custom scorer
   // (must recreate view iterator each loop iteration)
   //
   // FOR x IN 0..5
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x
+  //   FOR d IN testView
+  //   SEARCH d.seq == x
   //   SORT customscorer(d,x)
   // RETURN d;
   {
-    std::string const query = "FOR x IN 0..5 FOR d IN VIEW testView FILTER d.seq == x SORT customscorer(d, x) DESC RETURN d";
+    std::string const query = "FOR x IN 0..5 FOR d IN testView SEARCH d.seq == x SORT customscorer(d, x) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1447,12 +1364,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // invalid reference in scorer
   //
   // FOR x IN 0..5
-  //   FOR d IN VIEW testView
-  //   FILTER d.seq == x
+  //   FOR d IN testView
+  //   SEARCH d.seq == x
   //   SORT customscorer(x,x)
   // RETURN d;
   {
-    std::string const query = "FOR d IN VIEW testView FOR i IN 0..5 SORT tfidf(i) DESC RETURN d";
+    std::string const query = "FOR d IN testView FOR i IN 0..5 SORT tfidf(i) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, { }
@@ -1464,15 +1381,15 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR i IN 1..5
   //  FOR x IN collection_0
-  //    FOR d IN VIEW FILTER d.seq == i && d.name == x.name
+  //    FOR d IN  SEARCH d.seq == i && d.name == x.name
   // SORT customscorer(d, x.seq)
   {
-    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FOR d IN VIEW testView FILTER d.seq == i AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FOR d IN testView SEARCH d.seq == i AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1502,16 +1419,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR i IN 1..5
-  //  FOR x IN collection_0 FILTER x.seq == i
-  //    FOR d IN VIEW FILTER d.seq == x.seq && d.name == x.name
+  //  FOR x IN collection_0 SEARCH x.seq == i
+  //    FOR d IN  SEARCH d.seq == x.seq && d.name == x.name
   // SORT customscorer(d, x.seq)
   {
-    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FILTER x.seq == i FOR d IN VIEW testView FILTER d.seq == x.seq AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FILTER x.seq == i FOR d IN testView SEARCH d.seq == x.seq AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1542,16 +1459,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // unable to retrieve `d.seq` from self-referenced variable
   // FOR i IN 1..5
-  //  FOR d IN VIEW FILTER d.seq == i SORT customscorer(d, d.seq)
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, d.seq)
+  //    FOR x IN collection_0 SEARCH x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, d.seq) DESC
   {
-    std::string const query = "FOR i IN 1..5 FOR d IN VIEW testView FILTER d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, d.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR d IN testView SEARCH d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, d.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1561,16 +1478,16 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // unable to retrieve `x.seq` from inner loop
   // FOR i IN 1..5
-  //  FOR d IN VIEW FILTER d.seq == i SORT customscorer(d, d.seq)
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, d.seq)
+  //    FOR x IN collection_0 SEARCH x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, x.seq) DESC
   {
-    std::string const query = "FOR i IN 1..5 FOR d IN VIEW testView FILTER d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, x.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR d IN testView SEARCH d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, x.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1579,20 +1496,20 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR i IN 1..5
-  //  FOR d IN VIEW FILTER d.seq == i SORT customscorer(d, i) ASC
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, i) ASC
+  //    FOR x IN collection_0 SEARCH x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, i) DESC
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN VIEW testView FILTER d.seq == i SORT customscorer(d, i) ASC "
+      "  FOR d IN testView SEARCH d.seq == i SORT customscorer(d, i) ASC "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
       "SORT customscorer(d, i) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1624,18 +1541,18 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // we don't support scorers as a part of any expression (in sort or filter)
   //
   // FOR i IN 1..5
-  //   FOR d IN VIEW testView FILTER d.seq == i
+  //   FOR d IN testView SEARCH d.seq == i
   //     FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN VIEW testView FILTER d.seq == i "
+      "  FOR d IN testView SEARCH d.seq == i "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)"
       "RETURN x";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1646,19 +1563,19 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // we don't support scorers as a part of any expression (in sort or filter)
   //
   // FOR i IN 1..5
-  //   FOR d IN VIEW testView FILTER d.seq == i
+  //   FOR d IN testView SEARCH d.seq == i
   //     FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN VIEW testView FILTER d.seq == i "
+      "  FOR d IN testView SEARCH d.seq == i "
       "    FOR x IN collection_1 FILTER x.seq == d.seq "
       "SORT 1 + TFIDF(d)"
       "RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1668,19 +1585,19 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // we don't support scorers outside the view node
   //
-  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c)
   //     FOR x IN collection_1 FILTER x.seq == d.seq
   // SORT customscorer(d, x.seq)
   {
     std::string const query =
-     "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
+     "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
      "  FOR x IN collection_1 FILTER x.seq == d.seq "
      "    SORT customscorer(d, x.seq) "
      "RETURN x";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 
@@ -1690,19 +1607,19 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // multiple sorts (not supported now)
   // FOR i IN 1..5
-  //  FOR d IN VIEW FILTER d.seq == i SORT customscorer(d, i) ASC
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, i) ASC
   //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, i) DESC
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN VIEW testView FILTER d.seq == i SORT tfidf(d, i) ASC "
+      "  FOR d IN testView SEARCH d.seq == i SORT tfidf(d, i) ASC "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
       "SORT customscorer(d, i) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
       }
     ));
 

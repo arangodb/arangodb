@@ -30,32 +30,32 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class TransactionState;
-  
+
 namespace transaction {
 
 class V8Context final : public Context {
-
  public:
 
   /// @brief create the context
-  V8Context(TRI_vocbase_t*, bool);
+  V8Context(TRI_vocbase_t& vocbase, bool embeddable);
 
   /// @brief destroy the context
   ~V8Context() = default;
-  
+
   /// @brief order a custom type handler
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
   orderCustomTypeHandler() override final;
 
-  /// @brief return the resolver
-  CollectionNameResolver const* getResolver() override final;
-  
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;
 
   /// @brief register the transaction in the context
   void registerTransaction(TransactionState* trx) override;
+
+  /// @brief return the resolver
+  CollectionNameResolver const& resolver() override final;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
@@ -65,7 +65,7 @@ class V8Context final : public Context {
 
   /// @brief make this transaction context a global context
   void makeGlobal();
-  
+
   /// @brief whether or not the transaction context is a global one
   bool isGlobal() const;
 
@@ -74,13 +74,17 @@ class V8Context final : public Context {
 
   /// @brief check whether the transaction is embedded
   static bool isEmbedded();
-  
+
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t*, bool embeddable);
+  static std::shared_ptr<transaction::V8Context> Create(
+    TRI_vocbase_t& vocbase, bool embeddable
+  );
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a standlone
   /// transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t*, bool embeddable);
+  static std::shared_ptr<transaction::Context> CreateWhenRequired(
+    TRI_vocbase_t& vocbase, bool embeddable
+  );
 
  private:
 

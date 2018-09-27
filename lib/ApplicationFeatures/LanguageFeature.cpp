@@ -31,23 +31,23 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 static LanguageFeature* Instance = nullptr;
 
 LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Language"),
       _locale(),
-      _binaryPath(server->getBinaryPath()),
+      _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr) {
   Instance = this;
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 LanguageFeature::~LanguageFeature() {
@@ -70,13 +70,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                                   std::string const& binaryExecutionPath,
                                   std::string& path,
                                   std::string const& binaryName) {
-  char const* icuDataEnv = getenv("ICU_DATA");
   std::string fn("icudtl.dat");
-
-  if (icuDataEnv != nullptr) {
-    path = FileUtils::buildFilename(icuDataEnv, fn);
-  }
-
+  TRI_GETENV("ICU_DATA", path);
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -118,7 +113,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
 #ifndef _WIN32
       setenv("ICU_DATA", icu_path.c_str(), 1);
 #else
-      SetEnvironmentVariable("ICU_DATA", icu_path.c_str());
+      UnicodeString uicuEnv(icu_path.c_str(), (uint16_t) icu_path.length());
+      SetEnvironmentVariableW(L"ICU_DATA", uicuEnv.getTerminatedBuffer());
 #endif
     }
   }
@@ -169,8 +165,8 @@ void LanguageFeature::start() {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
-
-
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "using default language '" << languageName << "'";
 }
+
+} // arangodb

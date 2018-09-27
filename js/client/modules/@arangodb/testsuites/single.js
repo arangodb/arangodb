@@ -37,6 +37,11 @@ const optionsDocumentation = [
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'single_server': [],
+  'single_client': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: single_client
 // //////////////////////////////////////////////////////////////////////////////
@@ -154,11 +159,10 @@ function singleServer (options) {
   return result;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['single_server'] = singleServer;
   testFns['single_client'] = singleClient;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

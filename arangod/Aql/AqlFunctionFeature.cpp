@@ -26,68 +26,21 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::aql;
 
-/// @brief determines if code is executed on coordinator or not
-static ExecutionCondition const NotInCoordinator = [] {
-  return !arangodb::ServerState::instance()->isRunningInCluster() ||
-         !arangodb::ServerState::instance()->isCoordinator();
-};
+namespace arangodb {
+namespace aql {
+
+using FF = Function::Flags;
 
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
 AqlFunctionFeature::AqlFunctionFeature(
-    application_features::ApplicationServer* server)
-    : application_features::ApplicationFeature(server, "AQLFunctions"),
-      _internalFunctionNames{
-          {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS), "UNARY_PLUS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS), "UNARY_MINUS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT), "LOGICAL_NOT"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), "RELATIONAL_EQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),
-           "RELATIONAL_UNEQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
-           "RELATIONAL_GREATER"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
-           "RELATIONAL_GREATEREQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), "RELATIONAL_LESS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
-           "RELATIONAL_LESSEQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "RELATIONAL_IN"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),
-           "RELATIONAL_NOT_IN"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS), "ARITHMETIC_PLUS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS),
-           "ARITHMETIC_MINUS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES),
-           "ARITHMETIC_TIMES"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),
-           "ARITHMETIC_DIVIDE"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),
-           "ARITHMETIC_MODULUS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND), "LOGICAL_AND"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR), "LOGICAL_OR"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ),
-           "RELATIONAL_ARRAY_EQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE),
-           "RELATIONAL_ARRAY_UNEQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT),
-           "RELATIONAL_ARRAY_GREATER"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE),
-           "RELATIONAL_ARRAY_GREATEREQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT),
-           "RELATIONAL_ARRAY_LESS"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE),
-           "RELATIONAL_ARRAY_LESSEQUAL"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN),
-           "RELATIONAL_ARRAY_IN"},
-          {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN),
-           "RELATIONAL_ARRAY_NOT_IN"}} {
+    application_features::ApplicationServer& server
+)
+    : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
   startsAfter("Aql");
 }
 
@@ -102,6 +55,7 @@ void AqlFunctionFeature::validateOptions(
 void AqlFunctionFeature::prepare() {
   // set singleton
   AQLFUNCTIONS = this;
+  Functions::init();
 
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -111,12 +65,9 @@ void AqlFunctionFeature::prepare() {
   addListFunctions();
   addDocumentFunctions();
   addGeoFunctions();
+  addGeometryConstructors();
   addDateFunctions();
   addMiscFunctions();
-  addStorageEngineFunctions();
-
-  add({"PREGEL_RESULT", ".", false, true,
-    true, true, &Functions::PregelResult, NotInCoordinator});
 }
 
 void AqlFunctionFeature::unprepare() {
@@ -154,15 +105,15 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) {
     builder.add("name", VPackValue(it.second.name));
     builder.add("arguments", VPackValue(it.second.arguments));
     builder.add("implementations", VPackValue(VPackValueType::Array));
-    builder.add(VPackValue("js"));
-
-    if (it.second.implementation != nullptr) {
+    if (it.second.implementation == nullptr) {
+      builder.add(VPackValue("js"));
+    } else {
       builder.add(VPackValue("cxx"));
     }
     builder.close(); // implementations
-    builder.add("deterministic", VPackValue(it.second.isDeterministic));
-    builder.add("cacheable", VPackValue(it.second.isCacheable()));
-    builder.add("canThrow", VPackValue(it.second.canThrow));
+    builder.add("deterministic", VPackValue(it.second.hasFlag(FF::Deterministic)));
+    builder.add("cacheable", VPackValue(it.second.hasFlag(FF::Cacheable)));
+    builder.add("canRunOnDBServer", VPackValue(it.second.hasFlag(FF::CanRunOnDBServer)));
     builder.close();
   }
   builder.close();
@@ -180,17 +131,6 @@ Function const* AqlFunctionFeature::byName(std::string const& name) {
   return &((*it).second);
 }
 
-std::string const& AqlFunctionFeature::getOperatorName(
-    AstNodeType const type, std::string const& errorMessage) {
-  auto it = _internalFunctionNames.find(static_cast<int>(type));
-
-  if (it == _internalFunctionNames.end()) {
-    // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMessage);
-  }
-  return it->second;
-}
-
 // meanings of the symbols in the function arguments list
 // ------------------------------------------------------
 //
@@ -202,298 +142,284 @@ std::string const& AqlFunctionFeature::getOperatorName(
 // + = unlimited number of optional arguments of any type
 
 void AqlFunctionFeature::addTypeCheckFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // type check functions
-  add({"IS_NULL", ".", true, false, true, true,
-       &Functions::IsNull});
-  add({"IS_BOOL", ".", true, false, true, true,
-       &Functions::IsBool});
-  add({"IS_NUMBER", ".", true, false, true, true,
-       &Functions::IsNumber});
-  add({"IS_STRING", ".", true, false, true, true,
-       &Functions::IsString});
-  add({"IS_ARRAY", ".", true, false, true, true,
-       &Functions::IsArray});
+  add({"IS_NULL", ".", flags, &Functions::IsNull});
+  add({"IS_BOOL", ".", flags, &Functions::IsBool});
+  add({"IS_NUMBER", ".", flags, &Functions::IsNumber});
+  add({"IS_STRING", ".", flags, &Functions::IsString});
+  add({"IS_ARRAY", ".", flags, &Functions::IsArray});
   // IS_LIST is an alias for IS_ARRAY
   addAlias("IS_LIST", "IS_ARRAY");
-  add({"IS_OBJECT", ".", true, false, true, true,
-       &Functions::IsObject});
+  add({"IS_OBJECT", ".", flags, &Functions::IsObject});
   // IS_DOCUMENT is an alias for IS_OBJECT
   addAlias("IS_DOCUMENT", "IS_OBJECT");
 
-  add({"IS_DATESTRING", ".", true, false, true,
-       true});
-  add({"IS_KEY", ".", true, false, true, true, &Functions::IsKey});
-  add({"TYPENAME", ".", true, false, true, true,
-       &Functions::Typename});
+  add({"IS_DATESTRING", ".", flags, &Functions::IsDatestring});
+  add({"IS_KEY", ".", flags, &Functions::IsKey});
+  add({"TYPENAME", ".", flags, &Functions::Typename});
 }
 
 void AqlFunctionFeature::addTypeCastFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // type cast functions
-  add({"TO_NUMBER", ".", true, false, true, true, &Functions::ToNumber});
-  add({"TO_STRING", ".", true, false, true, true, &Functions::ToString});
-  add({"TO_BOOL", ".", true, false, true, true, &Functions::ToBool});
-  add({"TO_ARRAY", ".", true, false, true, true, &Functions::ToArray});
+  add({"TO_NUMBER", ".", flags, &Functions::ToNumber});
+  add({"TO_STRING", ".", flags, &Functions::ToString});
+  add({"TO_BOOL", ".", flags, &Functions::ToBool});
+  add({"TO_ARRAY", ".", flags, &Functions::ToArray});
   // TO_LIST is an alias for TO_ARRAY
   addAlias("TO_LIST", "TO_ARRAY");
 }
 
 void AqlFunctionFeature::addStringFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // string functions
-  add({"CONCAT", ".|+", true, false, true, true, &Functions::Concat});
-  add({"CONCAT_SEPARATOR", ".,.|+", true, false,
-       true, true, &Functions::ConcatSeparator});
-  add({"CHAR_LENGTH", ".", true, false, true, true, &Functions::CharLength});
-  add({"LOWER", ".", true, false, true, true, &Functions::Lower});
-  add({"UPPER", ".", true, false, true, true, &Functions::Upper});
-  add({"SUBSTRING", ".,.|.", true, false, true, true, &Functions::Substring});
-  add({"CONTAINS", ".,.|.", true, false, true, true, &Functions::Contains});
-  add({"LIKE", ".,.|.", true, false, true, true, &Functions::Like});
-  add({"REGEX_TEST", ".,.|.", true, false, true, true, &Functions::RegexTest});
-  add({"REGEX_REPLACE", ".,.,.|.", true, false, true,
-       true, &Functions::RegexReplace});
-  add({"LEFT", ".,.", true, false, true, true, &Functions::Left});
-  add({"RIGHT", ".,.", true, false, true, true, &Functions::Right});
-  add({"TRIM", ".|.", true, false, true, true, &Functions::Trim});
-  add({"LTRIM", ".|.", true, false, true, true, &Functions::LTrim});
-  add({"RTRIM", ".|.", true, false, true, true, &Functions::RTrim});
-  add({"FIND_FIRST", ".,.|.,.", true, false, true, true, &Functions::FindFirst});
-  add({"FIND_LAST", ".,.|.,.", true, false, true, true, &Functions::FindLast});
-  add({"SPLIT", ".|.,.", true, false, true, true});
-  add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
-  add({"MD5", ".", true, false, true, true, &Functions::Md5});
-  add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
-  add({"SHA512", ".", true, false, true, true, &Functions::Sha512});
-  add({"HASH", ".", true, false, true, true, &Functions::Hash});
-  add({"RANDOM_TOKEN", ".", false, true, true, true, &Functions::RandomToken});
+  add({"CONCAT", ".|+", flags, &Functions::Concat});
+  add({"CONCAT_SEPARATOR", ".,.|+", flags, &Functions::ConcatSeparator});
+  add({"CHAR_LENGTH", ".", flags, &Functions::CharLength});
+  add({"LOWER", ".", flags, &Functions::Lower});
+  add({"UPPER", ".", flags, &Functions::Upper});
+  add({"SUBSTRING", ".,.|.", flags, &Functions::Substring});
+  add({"CONTAINS", ".,.|.", flags, &Functions::Contains});
+  add({"LIKE", ".,.|.", flags, &Functions::Like});
+  add({"REGEX_MATCHES", ".,.|.", flags, &Functions::RegexMatches});
+  add({"REGEX_SPLIT", ".,.|.,.", flags, &Functions::RegexSplit});
+  add({"REGEX_TEST", ".,.|.", flags, &Functions::RegexTest});
+  add({"REGEX_REPLACE", ".,.,.|.", flags, &Functions::RegexReplace});
+  add({"LEFT", ".,.", flags, &Functions::Left});
+  add({"RIGHT", ".,.", flags, &Functions::Right});
+  add({"TRIM", ".|.", flags, &Functions::Trim});
+  add({"LTRIM", ".|.", flags, &Functions::LTrim});
+  add({"RTRIM", ".|.", flags, &Functions::RTrim});
+  add({"FIND_FIRST", ".,.|.,.", flags, &Functions::FindFirst});
+  add({"FIND_LAST", ".,.|.,.", flags, &Functions::FindLast});
+  add({"SPLIT", ".|.,.", flags, &Functions::Split});
+  add({"SUBSTITUTE", ".,.|.,.", flags, &Functions::Substitute});
+  add({"MD5", ".", flags, &Functions::Md5});
+  add({"SHA1", ".", flags, &Functions::Sha1});
+  add({"SHA512", ".", flags, &Functions::Sha512});
+  add({"HASH", ".", flags, &Functions::Hash});
+  add({"TO_BASE64", ".", flags, &Functions::ToBase64});
+  add({"TO_HEX", ".", flags, &Functions::ToHex});
+  add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
+  add({"SOUNDEX", ".", flags, &Functions::Soundex});
+  add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
+  
+  // special flags:
+  add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::RandomToken}); // not deterministic and not cacheable
+  add({"UUID", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Uuid}); // not deterministic and not cacheable
+
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // numeric functions
-  add({"FLOOR", ".", true, false, true, true,
-       &Functions::Floor});
-  add({"CEIL", ".", true, false, true, true,
-       &Functions::Ceil});
-  add({"ROUND", ".", true, false, true, true,
-       &Functions::Round});
-  add({"ABS", ".", true, false, true, true, &Functions::Abs});
-  add({"RAND", "", false, false, true, true,
-       &Functions::Rand});
-  add({"SQRT", ".", true, false, true, true,
-       &Functions::Sqrt});
-  add({"POW", ".,.", true, false, true, true,
-       &Functions::Pow});
-  add({"LOG", ".", true, false, true, true, &Functions::Log});
-  add({"LOG2", ".", true, false, true, true,
-       &Functions::Log2});
-  add({"LOG10", ".", true, false, true, true,
-       &Functions::Log10});
-  add({"EXP", ".", true, false, true, true, &Functions::Exp});
-  add({"EXP2", ".", true, false, true, true,
-       &Functions::Exp2});
-  add({"SIN", ".", true, false, true, true, &Functions::Sin});
-  add({"COS", ".", true, false, true, true, &Functions::Cos});
-  add({"TAN", ".", true, false, true, true, &Functions::Tan});
-  add({"ASIN", ".", true, false, true, true,
-       &Functions::Asin});
-  add({"ACOS", ".", true, false, true, true,
-       &Functions::Acos});
-  add({"ATAN", ".", true, false, true, true,
-       &Functions::Atan});
-  add({"ATAN2", ".,.", true, false, true, true,
-       &Functions::Atan2});
-  add({"RADIANS", ".", true, false, true, true,
-       &Functions::Radians});
-  add({"DEGREES", ".", true, false, true, true,
-       &Functions::Degrees});
-  add({"PI", "", true, false, true, true, &Functions::Pi});
+  add({"FLOOR", ".", flags, &Functions::Floor});
+  add({"CEIL", ".", flags, &Functions::Ceil});
+  add({"ROUND", ".", flags, &Functions::Round});
+  add({"ABS", ".", flags, &Functions::Abs});
+  add({"SQRT", ".", flags, &Functions::Sqrt});
+  add({"POW", ".,.", flags, &Functions::Pow});
+  add({"LOG", ".", flags, &Functions::Log});
+  add({"LOG2", ".", flags, &Functions::Log2});
+  add({"LOG10", ".", flags, &Functions::Log10});
+  add({"EXP", ".", flags, &Functions::Exp});
+  add({"EXP2", ".", flags, &Functions::Exp2});
+  add({"SIN", ".", flags, &Functions::Sin});
+  add({"COS", ".", flags, &Functions::Cos});
+  add({"TAN", ".", flags, &Functions::Tan});
+  add({"ASIN", ".", flags, &Functions::Asin});
+  add({"ACOS", ".", flags, &Functions::Acos});
+  add({"ATAN", ".", flags, &Functions::Atan});
+  add({"ATAN2", ".,.", flags, &Functions::Atan2});
+  add({"RADIANS", ".", flags, &Functions::Radians});
+  add({"DEGREES", ".", flags, &Functions::Degrees});
+  add({"PI", "", flags, &Functions::Pi});
+  
+  // special flags:
+  add({"RAND", "", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Rand}); // not deterministic and not cacheable
 }
 
 void AqlFunctionFeature::addListFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // list functions
-  add({"RANGE", ".,.|.", true, false, true, true,
-       &Functions::Range});
-  add({"UNION", ".,.|+", true, false, true, true,
-       &Functions::Union});
-  add({"UNION_DISTINCT", ".,.|+", true, false, true,
-       true, &Functions::UnionDistinct});
-  add({"MINUS", ".,.|+", true, false, true, true,
-       &Functions::Minus});
-  add({"OUTERSECTION", ".,.|+", true, false, true,
-       true, &Functions::Outersection});
-  add({"INTERSECTION", ".,.|+", true, false, true,
-       true, &Functions::Intersection});
-  add({"FLATTEN", ".|.", true, false, true, true,
-       &Functions::Flatten});
-  add({"LENGTH", ".", true, false, true, true,
-       &Functions::Length});
+  add({"RANGE", ".,.|.", flags, &Functions::Range});
+  add({"UNION", ".,.|+", flags, &Functions::Union});
+  add({"UNION_DISTINCT", ".,.|+", flags, &Functions::UnionDistinct});
+  add({"MINUS", ".,.|+", flags, &Functions::Minus});
+  add({"OUTERSECTION", ".,.|+", flags, &Functions::Outersection});
+  add({"INTERSECTION", ".,.|+", flags, &Functions::Intersection});
+  add({"FLATTEN", ".|.", flags, &Functions::Flatten});
+  add({"LENGTH", ".", flags, &Functions::Length});
+  // COUNT is an alias for LENGTH 
   addAlias("COUNT", "LENGTH");
-  add({"MIN", ".", true, false, true, true, &Functions::Min});
-  add({"MAX", ".", true, false, true, true, &Functions::Max});
-  add({"SUM", ".", true, false, true, true, &Functions::Sum});
-  add({"MEDIAN", ".", true, false, true, true,
-       &Functions::Median});
-  add({"PERCENTILE", ".,.|.", true, false, true, true,
-       &Functions::Percentile});
-  add({"AVERAGE", ".", true, false, true, true,
-       &Functions::Average});
+  add({"MIN", ".", flags, &Functions::Min});
+  add({"MAX", ".", flags, &Functions::Max});
+  add({"SUM", ".", flags, &Functions::Sum});
+  add({"MEDIAN", ".", flags, &Functions::Median});
+  add({"PERCENTILE", ".,.|.", flags, &Functions::Percentile});
+  add({"AVERAGE", ".", flags, &Functions::Average});
+  // AVG is an alias for AVERAGE 
   addAlias("AVG", "AVERAGE");
-  add({"VARIANCE_SAMPLE", ".", true, false, true,
-       true, &Functions::VarianceSample});
-  add({"VARIANCE_POPULATION", ".", true, false,
-       true, true, &Functions::VariancePopulation});
+  add({"VARIANCE_SAMPLE", ".", flags, &Functions::VarianceSample});
+  add({"VARIANCE_POPULATION", ".", flags, &Functions::VariancePopulation});
+  // VARIANCE is an alias for VARIANCE_POPULATION 
   addAlias("VARIANCE", "VARIANCE_POPULATION");
-  add({"STDDEV_SAMPLE", ".", true, false, true, true,
-       &Functions::StdDevSample});
-  add({"STDDEV_POPULATION", ".", true, false,
-       true, true, &Functions::StdDevPopulation});
+  add({"STDDEV_SAMPLE", ".", flags, &Functions::StdDevSample});
+  add({"STDDEV_POPULATION", ".", flags, &Functions::StdDevPopulation});
+  // STDDEV is an alias for STDDEV_POPULATION 
   addAlias("STDDEV", "STDDEV_POPULATION");
-  add({"UNIQUE", ".", true, false, true, true,
-       &Functions::Unique});
-  add({"SORTED_UNIQUE", ".", true, false, true, true,
-       &Functions::SortedUnique});
-  add({"SORTED", ".", true, false, true, true,
-       &Functions::Sorted});
-  add({"SLICE", ".,.|.", true, false, true, true,
-       &Functions::Slice});
-  add({"REVERSE", ".", true, false, true,
-       true});  // note: REVERSE() can be applied on strings, too
-  add({"FIRST", ".", true, false, true, true,
-       &Functions::First});
-  add({"LAST", ".", true, false, true, true,
-       &Functions::Last});
-  add({"NTH", ".,.", true, false, true, true,
-       &Functions::Nth});
-  add({"POSITION", ".,.|.", true, false, true, true,
-       &Functions::Position});
-  add({"CALL", ".|.+", false, true, false, true});
-  add({"APPLY", ".|.", false, true, false, false});
-  add({"PUSH", ".,.|.", true, false, true, false,
-       &Functions::Push});
-  add({"APPEND", ".,.|.", true, false, true, true,
-       &Functions::Append});
-  add({"POP", ".", true, false, true, true, &Functions::Pop});
-  add({"SHIFT", ".", true, false, true, true,
-       &Functions::Shift});
-  add({"UNSHIFT", ".,.|.", true, false, true, true,
-       &Functions::Unshift});
-  add({"REMOVE_VALUE", ".,.|.", true, false, true,
-       true, &Functions::RemoveValue});
-  add({"REMOVE_VALUES", ".,.", true, false, true,
-       true, &Functions::RemoveValues});
-  add({"REMOVE_NTH", ".,.", true, false, true, true,
-       &Functions::RemoveNth});
+  add({"COUNT_DISTINCT", ".", flags, &Functions::CountDistinct});
+  // COUNT_UNIQUE is an alias for COUNT_DISTINCT 
+  addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
+  add({"UNIQUE", ".", flags, &Functions::Unique});
+  add({"SORTED_UNIQUE", ".", flags, &Functions::SortedUnique});
+  add({"SORTED", ".", flags, &Functions::Sorted});
+  add({"SLICE", ".,.|.", flags, &Functions::Slice});
+  add({"REVERSE", ".", flags, &Functions::Reverse});
+  add({"FIRST", ".", flags, &Functions::First});
+  add({"LAST", ".", flags, &Functions::Last});
+  add({"NTH", ".,.", flags, &Functions::Nth});
+  add({"POSITION", ".,.|.", flags, &Functions::Position});
+  // CONTAINS_ARRAY is an alias for POSITION
+  addAlias("CONTAINS_ARRAY", "POSITION");
+  add({"PUSH", ".,.|.", flags, &Functions::Push});
+  add({"APPEND", ".,.|.", flags, &Functions::Append});
+  add({"POP", ".", flags, &Functions::Pop});
+  add({"SHIFT", ".", flags, &Functions::Shift});
+  add({"UNSHIFT", ".,.|.", flags, &Functions::Unshift});
+  add({"REMOVE_VALUE", ".,.|.", flags, &Functions::RemoveValue});
+  add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
+  add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
+  
+  // special flags:
+  // CALL and APPLY will always run on the coordinator and are not deterministic and not cacheable, as we don't know 
+  // what function is actually gonna be called
+  add({"CALL", ".|.+", Function::makeFlags(), &Functions::Call}); 
+  add({"APPLY", ".|.", Function::makeFlags(), &Functions::Apply});
 }
 
 void AqlFunctionFeature::addDocumentFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // document functions
-  add({"HAS", ".,.", true, false, true, true,
-       &Functions::Has});
-  add({"ATTRIBUTES", ".|.,.", true, false, true, true,
-       &Functions::Attributes});
-  add({"VALUES", ".|.", true, false, true, true,
-       &Functions::Values});
-  add({"MERGE", ".|+", true, false, true, true,
-       &Functions::Merge});
-  add({"MERGE_RECURSIVE", ".,.|+", true, false,
-       true, true, &Functions::MergeRecursive});
-  add({"DOCUMENT", "h.|.", false, true, false, true, &Functions::Document});
-  add({"MATCHES", ".,.|.", true, false, true, true, &Functions::Matches});
-  add({"UNSET", ".,.|+", true, false, true, true,
-       &Functions::Unset});
-  add({"UNSET_RECURSIVE", ".,.|+", true, false,
-       true, true, &Functions::UnsetRecursive});
-  add({"KEEP", ".,.|+", true, false, true, true,
-       &Functions::Keep});
-  add({"TRANSLATE", ".,.|.", true, false, true, true, &Functions::Translate});
-  add({"ZIP", ".,.", true, false, true, true,
-       &Functions::Zip});
-  add({"JSON_STRINGIFY", ".", true, false, true,
-       true, &Functions::JsonStringify});
-  add({"JSON_PARSE", ".", true, false, true, true,
-       &Functions::JsonParse});
+  add({"HAS", ".,.", flags, &Functions::Has});
+  add({"ATTRIBUTES", ".|.,.", flags, &Functions::Attributes});
+  // KEYS is an alias for ATTRIBUTES
+  addAlias("KEYS", "ATTRIBUTES");
+  add({"VALUES", ".|.", flags, &Functions::Values});
+  add({"MERGE", ".|+", flags, &Functions::Merge});
+  add({"MERGE_RECURSIVE", ".,.|+", flags, &Functions::MergeRecursive});
+  add({"MATCHES", ".,.|.", flags, &Functions::Matches});
+  add({"UNSET", ".,.|+", flags, &Functions::Unset});
+  add({"UNSET_RECURSIVE", ".,.|+", flags, &Functions::UnsetRecursive});
+  add({"KEEP", ".,.|+", flags, &Functions::Keep});
+  add({"TRANSLATE", ".,.|.", flags, &Functions::Translate});
+  add({"ZIP", ".,.", flags, &Functions::Zip});
+  add({"JSON_STRINGIFY", ".", flags, &Functions::JsonStringify});
+  add({"JSON_PARSE", ".", flags, &Functions::JsonParse});
+  
+  // special flags:
+  add({"DOCUMENT", "h.|.", Function::makeFlags(), &Functions::Document}); // not deterministic and non-cacheable
 }
 
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
-  add({"DISTANCE", ".,.,.,.", true, false, true, true,
-       &Functions::Distance});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false,
-       true, false, true});
-  add({"IS_IN_POLYGON", ".,.|.", true, false, true,
-       true});
+  add({"DISTANCE", ".,.,.,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::Distance});
+  add({"IS_IN_POLYGON", ".,.|.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::IsInPolygon});
+  add({"GEO_DISTANCE", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoDistance});
+  add({"GEO_CONTAINS", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoContains});
+  add({"GEO_INTERSECTS", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoIntersects});
+  add({"GEO_EQUALS", ".,.", Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer), &Functions::GeoEquals});
+}
+
+void AqlFunctionFeature::addGeometryConstructors() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
+  // geometry types
+  add({"GEO_POINT", ".,.", flags, &Functions::GeoPoint});
+  add({"GEO_MULTIPOINT", ".", flags, &Functions::GeoMultiPoint});
+  add({"GEO_POLYGON", ".", flags, &Functions::GeoPolygon});
+  add({"GEO_LINESTRING", ".", flags, &Functions::GeoLinestring});
+  add({"GEO_MULTILINESTRING", ".", flags, &Functions::GeoMultiLinestring});
 }
 
 void AqlFunctionFeature::addDateFunctions() {
+  // common flags for all these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // date functions
-  add({"DATE_NOW", "", false, false, true, true});
-  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.",
-       true, false, true, true});
-  add({"DATE_ISO8601", ".|.,.,.,.,.,.", true,
-       false, true, true});
-  add({"DATE_DAYOFWEEK", ".", true, false, true,
-       true});
-  add({"DATE_YEAR", ".", true, false, true, true});
-  add({"DATE_MONTH", ".", true, false, true, true});
-  add({"DATE_DAY", ".", true, false, true, true});
-  add({"DATE_HOUR", ".", true, false, true, true});
-  add({"DATE_MINUTE", ".", true, false, true, true});
-  add({"DATE_SECOND", ".", true, false, true, true});
-  add({"DATE_MILLISECOND", ".", true, false,
-       true, true});
-  add({"DATE_DAYOFYEAR", ".", true, false, true,
-       true});
-  add({"DATE_ISOWEEK", ".", true, false, true,
-       true});
-  add({"DATE_LEAPYEAR", ".", true, false, true,
-       true});
-  add({"DATE_QUARTER", ".", true, false, true,
-       true});
-  add({"DATE_DAYS_IN_MONTH", ".", true, false,
-       true, true});
-  add({"DATE_ADD", ".,.|.", true, false, true, true});
-  add({"DATE_SUBTRACT", ".,.|.", true, false, true,
-       true});
-  add({"DATE_DIFF", ".,.,.|.", true, false, true,
-       true});
-  add({"DATE_COMPARE", ".,.,.|.", true, false, true,
-       true});
-  add({"DATE_FORMAT", ".,.", true, false, true,
-       true});
+  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", flags, &Functions::DateTimestamp});
+  add({"DATE_ISO8601", ".|.,.,.,.,.,.", flags, &Functions::DateIso8601});
+  add({"DATE_DAYOFWEEK", ".", flags, &Functions::DateDayOfWeek});
+  add({"DATE_YEAR", ".", flags, &Functions::DateYear});
+  add({"DATE_MONTH", ".", flags, &Functions::DateMonth});
+  add({"DATE_DAY", ".", flags, &Functions::DateDay});
+  add({"DATE_HOUR", ".", flags, &Functions::DateHour});
+  add({"DATE_MINUTE", ".", flags, &Functions::DateMinute});
+  add({"DATE_SECOND", ".", flags, &Functions::DateSecond});
+  add({"DATE_MILLISECOND", ".", flags, &Functions::DateMillisecond});
+  add({"DATE_DAYOFYEAR", ".", flags, &Functions::DateDayOfYear});
+  add({"DATE_ISOWEEK", ".", flags, &Functions::DateIsoWeek});
+  add({"DATE_LEAPYEAR", ".", flags, &Functions::DateLeapYear});
+  add({"DATE_QUARTER", ".", flags, &Functions::DateQuarter});
+  add({"DATE_DAYS_IN_MONTH", ".", flags, &Functions::DateDaysInMonth});
+  add({"DATE_ADD", ".,.|.", flags, &Functions::DateAdd});
+  add({"DATE_SUBTRACT", ".,.|.", flags, &Functions::DateSubtract});
+  add({"DATE_DIFF", ".,.,.|.", flags, &Functions::DateDiff});
+  add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
+  add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
+  add({"DATE_TRUNC",   ".,.", flags, &Functions::DateTrunc});
+  
+  // special flags:
+  add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer), &Functions::DateNow}); // deterministic, but not cacheable!
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
+  // common flags for most of these functions
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
+
   // misc functions
-  add({"FAIL", "|.", false, true, true, true});
-  add({"PASSTHRU", ".", false, false, true, true,
-       &Functions::Passthru});
-  addAlias("NOOPT", "PASSTHRU");
-  add({"V8", ".", true, false, true, true});
-  add({"TEST_INTERNAL", ".,.", false, false, true,
-       false});
-  add({"SLEEP", ".", false, true, true, true, &Functions::Sleep});
-  add({"COLLECTIONS", "", false, true, false, true, &Functions::Collections});
-  add({"NOT_NULL", ".|+", true, false, true, true,
-       &Functions::NotNull});
-  add({"FIRST_LIST", ".|+", true, false, true, true,
-       &Functions::FirstList});
-  add({"FIRST_DOCUMENT", ".|+", true, false, true,
-       true, &Functions::FirstDocument});
-  add({"PARSE_IDENTIFIER", ".", true, false, true,
-       true, &Functions::ParseIdentifier});
-  add({"IS_SAME_COLLECTION", ".h,.h", true,
-       false, true, true, &Functions::IsSameCollection});
-  add({"CURRENT_USER", "", false, false, false,
-       true});
-  add({"CURRENT_DATABASE", "", false, false,
-       false, true, &Functions::CurrentDatabase});
-  add({"COLLECTION_COUNT", ".h", false, true,
-       false, true, &Functions::CollectionCount});
-  add({"ASSERT", ".,.", false, true, true, true, &Functions::Assert});
-  add({"WARN", ".,.", false, false, true, true, &Functions::Warn});
+  add({"PASSTHRU", ".", flags, &Functions::Passthru});
+  add({"NOT_NULL", ".|+", flags, &Functions::NotNull});
+  add({"FIRST_LIST", ".|+", flags, &Functions::FirstList});
+  add({"FIRST_DOCUMENT", ".|+", flags, &Functions::FirstDocument});
+  add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
+  add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)}); // only native function without a C++ implementation
+
+  // special flags:
+  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version}); // deterministic, not cacheable. only on coordinator
+  add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail}); // not deterministic and not cacheable
+  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Passthru}); // prevents all optimizations!
+  add({"SLEEP", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Sleep}); // not deterministic and not cacheable
+  add({"COLLECTIONS", "", Function::makeFlags(), &Functions::Collections}); // not deterministic and not cacheable
+  add({"CURRENT_USER", "", Function::makeFlags(FF::Deterministic), &Functions::CurrentUser}); // deterministic, but not cacheable
+  add({"CURRENT_DATABASE", "", Function::makeFlags(FF::Deterministic), &Functions::CurrentDatabase}); // deterministic, but not cacheable
+  add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount}); // not deterministic and not cacheable
+  add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::PregelResult}); // not deterministic and not cacheable
+  add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert}); // not deterministic and not cacheable
+  add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn}); // not deterministic and not cacheable
+  
+  // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL optimizer with collection-based subqueries
+  // they are all not marked as non-deterministic and non-cacheable here as they refer to documents
+  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
+  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented });
+  add({"FULLTEXT", ".h,.,.|." , Function::makeFlags(), &Functions::NotImplemented});
 }
 
-void AqlFunctionFeature::addStorageEngineFunctions() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
-  engine->addAqlFunctions();
-}
+} // aql
+} // arangodb

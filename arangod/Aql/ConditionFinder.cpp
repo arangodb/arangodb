@@ -40,32 +40,36 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
     case EN::RETURN:
     case EN::TRAVERSAL:
     case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+    {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
+    }
 
-    case EN::LIMIT:
-      // LIMIT invalidates the sort expression we already found
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::UPSERT:
+    case EN::LIMIT: {
+      // LIMIT or modification invalidates the sort expression we already found
       _sorts.clear();
       _filters.clear();
       break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
       std::vector<Variable const*> invars(en->getVariablesUsedHere());
@@ -78,7 +82,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::SORT: {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
-        for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
+        for (auto& it : ExecutionNode::castTo<SortNode const*>(en)->elements()) {
           _sorts.emplace_back(it.var, it.ascending);
           TRI_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -94,7 +98,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
       _variableDefinitions.emplace(
           outvars[0]->id,
-          static_cast<CalculationNode const*>(en)->expression()->node());
+          ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -102,7 +106,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
-      auto node = static_cast<EnumerateCollectionNode const*>(en);
+      auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
         break;
@@ -127,9 +131,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
           condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
-        bool reverse = false;
+        bool descending = false;
         if (canUseIndex.second && sortCondition->isUnidirectional()) {
-          reverse = sortCondition->isDescending();
+          descending = sortCondition->isDescending();
         }
 
         if (!canUseIndex.first) {
@@ -142,12 +146,13 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
         TRI_ASSERT(!usedIndexes.empty());
 
-        // We either can find indexes for everything or findIndexes will clear
-        // out usedIndexes
+        // We either can find indexes for everything or findIndexes
+        // will clear out usedIndexes
+        IndexIteratorOptions opts;
+        opts.ascending = !descending;
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->vocbase(), node->collection(),
-            node->outVariable(), usedIndexes, condition.get(), reverse));
-        condition.release();
+            _plan, _plan->nextId(), node->collection(),
+            node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -159,6 +164,11 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
       break;
     }
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
 
   return false;
@@ -169,44 +179,46 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool ConditionFinder::handleFilterCondition(
-    ExecutionNode* en, std::unique_ptr<Condition>& condition) {
+    ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
   bool foundCondition = false;
+
   for (auto& it : _variableDefinitions) {
-    if (_filters.find(it.first) != _filters.end()) {
-      // a variable used in a FILTER
-      AstNode* var = const_cast<AstNode*>(it.second);
-      if (!var->canThrow() && var->isDeterministic() && var->isSimple()) {
-        // replace all variables inside the FILTER condition with the
-        // expressions represented by the variables
-        var = it.second->clone(_plan->getAst());
+    if (_filters.find(it.first) == _filters.end()) {
+      continue;
+    }
 
-        auto func = [&](AstNode* node, void* data) -> AstNode* {
-          if (node->type == NODE_TYPE_REFERENCE) {
-            auto plan = static_cast<ExecutionPlan*>(data);
-            auto variable = static_cast<Variable*>(node->getData());
+    // a variable used in a FILTER
+    AstNode* var = const_cast<AstNode*>(it.second);
+    if (var->isDeterministic() && var->isSimple()) {
+      // replace all variables inside the FILTER condition with the
+      // expressions represented by the variables
+      var = it.second->clone(_plan->getAst());
 
-            if (variable != nullptr) {
-              auto setter = plan->getVarSetBy(variable->id);
+      auto func = [&](AstNode* node) -> AstNode* {
+        if (node->type == NODE_TYPE_REFERENCE) {
+          auto variable = static_cast<Variable*>(node->getData());
 
-              if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                auto s = static_cast<CalculationNode*>(setter);
-                auto filterExpression = s->expression();
-                AstNode* inNode = filterExpression->nodeForModification();
-                if (!inNode->canThrow() && inNode->isDeterministic() &&
-                    inNode->isSimple()) {
-                  return inNode;
-                }
+          if (variable != nullptr) {
+            auto setter = _plan->getVarSetBy(variable->id);
+
+            if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+              auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+              auto filterExpression = s->expression();
+              AstNode* inNode = filterExpression->nodeForModification();
+              if (inNode->isDeterministic() && inNode->isSimple()) {
+                return inNode;
               }
             }
           }
-          return node;
-        };
+        }
+        return node;
+      };
 
-        var = Ast::traverseAndModify(var, func, _plan);
-      }
-      condition->andCombine(var);
-      foundCondition = true;
+      var = Ast::traverseAndModify(var, func);
     }
+
+    condition->andCombine(var);
+    foundCondition = true;
   }
 
   // normalize the condition
@@ -236,12 +248,11 @@ bool ConditionFinder::handleFilterCondition(
     // this means we can't use the index to restrict the results
     return false;
   }
-
   return true;
 }
 
 void ConditionFinder::handleSortCondition(
-    ExecutionNode* en, Variable const* outVar, std::unique_ptr<Condition>& condition,
+    ExecutionNode* en, Variable const* outVar, std::unique_ptr<Condition> const& condition,
     std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves

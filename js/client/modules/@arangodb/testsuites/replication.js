@@ -1,5 +1,4 @@
 /* jshint strict: false, sub: true */
-/* global arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,12 +40,22 @@ const _ = require('lodash');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'shell_replication': [tu.pathForTesting('common/replication')],
+  'replication_aql': [tu.pathForTesting('server/replication')],
+  'replication_fuzz': [tu.pathForTesting('server/replication')],
+  'replication_random': [tu.pathForTesting('server/replication')],
+  'replication_ongoing': [tu.pathForTesting('server/replication')],
+  'replication_static': [tu.pathForTesting('server/replication')],
+  'replication_sync': [tu.pathForTesting('server/replication')]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_replication
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
-  let testCases = tu.scanTestPath('js/common/tests/replication');
+  let testCases = tu.scanTestPaths(testPaths.shell_replication);
 
   var opts = {
     'replication': true
@@ -61,7 +70,7 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationFuzz (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_fuzz);
 
   options.replication = true;
   options.test = 'replication-fuzz';
@@ -72,7 +81,7 @@ function replicationFuzz (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_fuzz');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -120,7 +129,7 @@ function replicationFuzz (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationRandom (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_random);
 
   options.replication = true;
   options.test = 'replication-random';
@@ -131,7 +140,7 @@ function replicationRandom (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_random');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -179,7 +188,7 @@ function replicationRandom (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationAql (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_aql);
 
   options.replication = true;
   options.test = 'replication-aql';
@@ -190,7 +199,7 @@ function replicationAql (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_aql');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -238,7 +247,7 @@ function replicationAql (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationOngoing (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_ongoing);
 
   options.replication = true;
   if (options.test === undefined) {
@@ -300,7 +309,7 @@ function replicationOngoing (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_static);
 
   options.replication = true;
   if (options.test === undefined) {
@@ -386,7 +395,7 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_sync);
 
   options.replication = true;
   if (options.test === undefined) {
@@ -401,7 +410,7 @@ function replicationSync (options) {
                          startStopHandlers) {
       let message;
       let res = true;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {"log.level" : "replication=trace", "--log.level": "replication=trace"}, 'slave_sync');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -458,7 +467,8 @@ function replicationSync (options) {
   return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['shell_replication'] = shellReplication;
   testFns['replication_aql'] = replicationAql;
   testFns['replication_fuzz'] = replicationFuzz;
@@ -468,6 +478,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['replication_sync'] = replicationSync;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

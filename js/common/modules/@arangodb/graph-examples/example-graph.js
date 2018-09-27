@@ -1,5 +1,3 @@
-/* jshint maxlen:160 */
-'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Graph Data for Example
@@ -52,6 +50,28 @@ var createTraversalExample = function () {
   return g;
 };
 
+// we create a graph with 'edges2' pointing from 'verts' to 'verts'
+var createMpsTraversal = function () {
+  var g = Graph._create('mps_graph',
+    [Graph._relation('mps_edges', 'mps_verts', 'mps_verts')]
+  );  
+  var a = g.mps_verts.save({_key: 'A'});
+  var b = g.mps_verts.save({_key: 'B'});
+  var c = g.mps_verts.save({_key: 'C'});
+  var d = g.mps_verts.save({_key: 'D'});
+  var e = g.mps_verts.save({_key: 'E'});
+  var f = g.mps_verts.save({_key: 'F'});
+  g.mps_edges.save(a._id, b._id, {vertex:a._key});
+  g.mps_edges.save(a._id, e._id, {vertex:a._key});
+  g.mps_edges.save(a._id, d._id, {vertex:a._key});
+  g.mps_edges.save(b._id, c._id, {vertex:b._key});
+  g.mps_edges.save(d._id, c._id, {vertex:d._key});
+  g.mps_edges.save(e._id, f._id, {vertex:e._key});
+  g.mps_edges.save(f._id, c._id, {vertex:f._key});
+  return g;
+};
+
+
 // we create a graph with 'relation' pointing from 'female' to 'male' and 'male
 var createSocialGraph = function () {
   db._create("female");
@@ -87,13 +107,48 @@ var createRoutePlannerGraph = function () {
   );
 
   var g = Graph._create('routeplanner', edgeDefinition);
-  var berlin = g.germanCity.save({_key: 'Berlin', population: 3000000, isCapital: true, loc: [52.5167, 13.3833]});
-  var cologne = g.germanCity.save({_key: 'Cologne', population: 1000000, isCapital: false, loc: [50.9364, 6.9528]});
-  var hamburg = g.germanCity.save({_key: 'Hamburg', population: 1000000, isCapital: false, loc: [53.5653, 10.0014]});
-  var lyon = g.frenchCity.save({_key: 'Lyon', population: 80000, isCapital: false, loc: [45.7600, 4.8400]});
-  var paris = g.frenchCity.save({_key: 'Paris', population: 4000000, isCapital: true, loc: [48.8567, 2.3508]});
-  g.germanCity.ensureGeoIndex('loc');
-  g.frenchCity.ensureGeoIndex('loc');
+  var berlin = g.germanCity.save({
+    _key: 'Berlin',
+    population: 3000000,
+    isCapital: true,
+    geometry: {
+      'type': 'Point',
+      'coordinates': [13.3833, 52.5167]
+    }});
+  var cologne = g.germanCity.save({
+    _key: 'Cologne',
+    population: 1000000,
+    isCapital: false,
+    geometry: {
+      'type': 'Point',
+      'coordinates': [6.9528, 50.9364]
+    }});
+  var hamburg = g.germanCity.save({
+    _key: 'Hamburg',
+    population: 1000000,
+    isCapital: false,
+    geometry: {
+      'type': 'Point',
+      'coordinates': [10.0014, 53.5653]
+    }});
+  var lyon = g.frenchCity.save({
+    _key: 'Lyon',
+    population: 80000,
+    isCapital: false,
+    geometry: {
+      'type': 'Point',
+      'coordinates': [4.8400, 45.7600]
+    }});
+  var paris = g.frenchCity.save({
+    _key: 'Paris',
+    population: 4000000,
+    isCapital: true,
+    geometry: {
+      'type': 'Point',
+      'coordinates': [2.3508, 48.8567]
+    }});
+  g.germanCity.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true });
+  g.frenchCity.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true });
   g.germanHighway.save(berlin._id, cologne._id, {distance: 850});
   g.germanHighway.save(berlin._id, hamburg._id, {distance: 400});
   g.germanHighway.save(hamburg._id, cologne._id, {distance: 500});
@@ -374,6 +429,9 @@ var createTraversalGraph = function () {
 var knownGraphs = {
   'knows_graph': {create: createTraversalExample, dependencies: [
       'knows', 'persons'
+  ]},
+  'mps_graph': {create: createMpsTraversal, dependencies: [
+      'mps_edges', 'mps_verts'
   ]},
   'routeplanner': {create: createRoutePlannerGraph, dependencies: [
       'frenchHighway', 'frenchCity', 'germanCity', 'germanHighway', 'internationalHighway'

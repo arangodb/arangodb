@@ -35,6 +35,7 @@ class RestAdminRoutingHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override final;
   char const* name() const override final { return "RestAdminRoutingHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  protected:
   void reloadRouting();

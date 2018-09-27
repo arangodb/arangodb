@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log}
 
 @RESTDESCRIPTION
-
 Retrieves the configuration of the write-ahead log. The result is a JSON
 object with the following attributes:
 - *allowOversizeEntries*: whether or not operations that are bigger than a

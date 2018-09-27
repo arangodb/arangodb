@@ -490,7 +490,7 @@ class IRESEARCH_API order final {
 
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
-      #if !defined(__APPLE__) || defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
+      #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
         assert(sizeof(T) == order_[i].bucket->size());
       #endif
       return reinterpret_cast<const T&>(*(score + order_[i].offset));

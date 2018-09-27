@@ -347,54 +347,6 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_by_example
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: API + 'by-example',
-
-  callback: function (req, res) {
-    try {
-      var body = actions.getJsonBody(req, res);
-
-      if (body === undefined) {
-        return;
-      }
-
-      if (req.requestType !== actions.PUT) {
-        actions.resultUnsupported(req, res);
-      } else {
-        var limit = body.limit;
-        var skip = body.skip;
-        var example = body.example;
-        var name = body.collection;
-        var collection = db._collection(name);
-
-        if (collection === null) {
-          actions.collectionNotFound(req, res, name);
-        } else if (typeof example !== 'object') {
-          actions.badParameter(req, res, 'example');
-        } else {
-          var result = collection.byExample(example);
-
-          if (skip !== null && skip !== undefined) {
-            result = result.skip(skip);
-          }
-
-          if (limit !== null && limit !== undefined) {
-            result = result.limit(limit);
-          }
-
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
-        }
-      }
-    } catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSA_put_api_simple_first_example
 // //////////////////////////////////////////////////////////////////////////////
 

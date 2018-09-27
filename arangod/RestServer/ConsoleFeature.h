@@ -27,13 +27,13 @@
 #include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
+
 class ConsoleThread;
 
 class ConsoleFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ConsoleFeature(application_features::ApplicationServer* server);
+  explicit ConsoleFeature(application_features::ApplicationServer& server);
 
- public:
   void start() override final;
   void unprepare() override final;
 
@@ -41,6 +41,7 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   OperationMode _operationMode;
   std::unique_ptr<ConsoleThread> _consoleThread;
 };
+
 }
 
 #endif

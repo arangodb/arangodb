@@ -33,9 +33,12 @@ void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
 void WINAPI ServiceCtrl(DWORD dwCtrlCode);
 
 namespace arangodb {
+
 class WindowsServiceFeature final : public application_features::ApplicationFeature {
  public:
-  explicit WindowsServiceFeature(application_features::ApplicationServer* server);
+  explicit WindowsServiceFeature(
+    application_features::ApplicationServer& server
+  );
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -51,18 +54,16 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
   void shutDownBegins ();
   void shutDownComplete ();
   void shutDownFailure ();
-  void abortFailure();
-  static void abortService();
+  void abortFailure(uint16_t exitCode);
+  static void abortService(uint16_t exitCode);
+
  public:
   bool _installService = false;
   bool _unInstallService = false;
   bool _forceUninstall = false;
-  
   bool _startAsService = false;
-
   bool _startService = false;
   bool _startWaitService = false;
-  
   bool _stopService = false;
   bool _stopWaitService = false;
 
@@ -71,6 +72,7 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
  private:
   uint16_t _progress;
 };
-};
+
+} // arangodb
 
 #endif

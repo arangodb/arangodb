@@ -5,14 +5,17 @@
 @RESTHEADER{POST /_api/transaction, Execute transaction}
 
 @RESTBODYPARAM{collections,string,required,string}
-*collections* must be a JSON object that can have either or both sub-attributes
-*read* and *write*, each being an array of collection names or a single
-collection name as string. Collections that will be written to in the
-transaction must be declared with the *write* attribute or it will fail,
-whereas non-declared collections from which is solely read will be added lazily.
-The optional sub-attribute *allowImplicit* can be set to *false* to let
-transactions fail in case of undeclared collections for reading. Collections
-for reading should be fully declared if possible, to avoid deadlocks.
+*collections* must be a JSON object that can have one or all sub-attributes
+*read*, *write* or *exclusive*, each being an array of collection names or a
+single collection name as string. Collections that will be written to in the
+transaction must be declared with the *write* or *exclusive* attribute or it
+will fail, whereas non-declared collections from which is solely read will be
+added lazily. The optional sub-attribute *allowImplicit* can be set to *false*
+to let transactions fail in case of undeclared collections for reading.
+Collections for reading should be fully declared if possible, to avoid
+deadlocks.
+See [locking and isolation](../../Manual/Transactions/LockingAndIsolation.html)
+for more information.
 
 @RESTBODYPARAM{action,string,required,string}
 the actual transaction operations to be executed, in the
@@ -38,14 +41,6 @@ optional arguments passed to *action*.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
 Transaction size limit in bytes. Honored by the RocksDB storage engine only.
-
-@RESTBODYPARAM{intermediateCommitSize,integer,optional,int64}
-Maximum total size of operations after which an intermediate commit is performed 
-automatically. Honored by the RocksDB storage engine only.
-
-@RESTBODYPARAM{intermediateCommitCount,integer,optional,int64}
-Maximum number of operations after which an intermediate commit is performed 
-automatically. Honored by the RocksDB storage engine only.
 
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.

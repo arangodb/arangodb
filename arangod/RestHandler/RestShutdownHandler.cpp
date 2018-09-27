@@ -28,6 +28,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/ExecContext.h"
 
@@ -39,22 +40,24 @@ RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestShutdownHandler::isDirect() const { return true; }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_get_api_initiate
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights to trigger shutdown");
-    return RestStatus::DONE;
-  }
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
+  }
+  
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isEnabled() && !_request->user().empty()) {
+    auth::Level lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", /*configured*/true);
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to trigger shutdown");
+      return RestStatus::DONE;
+    }
   }
   
   bool removeFromCluster;

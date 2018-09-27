@@ -26,13 +26,19 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let functionsDocumentation = {
-  'all': 'run all tests (marked with [x])'
+  'all': 'run all tests (marked with [x])',
+  'find': 'searches all testcases, and eventually filters them by `--test`, ' +
+    'will dump testcases associated to testsuites.',
+  'auto': 'uses find; if the testsuite for the testcase is located, ' +
+    'runs the suite with the filter applied'
 };
 
 let optionsDocumentation = [
   '',
+
   ' The following properties of `options` are defined:',
   '',
+  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
   '   - `jsonReply`: if set a json is returned which the caller has to ',
   '        present the user',
   '   - `force`: if set to true the tests are continued even if one fails',
@@ -51,7 +57,7 @@ let optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `mmfiles`',
+  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
@@ -70,19 +76,22 @@ let optionsDocumentation = [
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '',
+  '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
-  '   - `writeXml`:  Write junit xml report files',
+  '   - `writeXmlReport`:  Write junit xml report files',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `rr`: if set to true arangod instances are run with rr',
+  '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
+  '                  produce a backtrace in the event of a crash',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
   '',
-  '   - `resilientsingle` starts resilient single server setup (active/passive)',
+  '   - `activefailover` starts active failover single server setup (active/passive)',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -98,6 +107,7 @@ let optionsDocumentation = [
   '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
+  '   - `testCase`: filter a jsunity testsuite for one special test case',
   ''
 ];
 
@@ -112,13 +122,14 @@ const optionsDefaults = {
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
+  'coreCheck': false,
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
   'duration': 10,
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
-  'arangosearch':false,
+  'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
@@ -128,16 +139,17 @@ const optionsDefaults = {
   'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
+  'protocol': 'tcp',
   'replication': false,
   'rr': false,
   'sanitizer': false,
-  'resilientsingle': false,
+  'activefailover': false,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipTimeCritical': false,
-  'storageEngine': 'mmfiles',
+  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'useReconnect': true,
@@ -149,7 +161,8 @@ const optionsDefaults = {
   'verbose': false,
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
-  'testFailureText': 'testfailures.txt'
+  'testFailureText': 'testfailures.txt',
+  'testCase': undefined
 };
 
 const _ = require('lodash');
@@ -158,6 +171,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/process-utils');
 const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
 
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -356,7 +370,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
       print(color + failText + RESET);
     }
 
-    failedMessages = onlyFailedMessages + crashedText + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages + crashedText + '\n\n' + cu.GDB_OUTPUT + failText + '\n';
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');
@@ -404,6 +418,112 @@ function printUsage () {
   }
 }
 
+
+
+let allTestPaths = {};
+
+function findTestCases(options) {
+  let filterTestcases = (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined'));
+  let found = !filterTestcases;
+  let allTestFiles = {};
+  for (let testSuiteName in allTestPaths) {
+    var myList = [];
+    let files =  tu.scanTestPaths(allTestPaths[testSuiteName]);
+    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+      for (let j = 0; j < files.length; j++) {
+        let foo = {};
+        if (tu.filterTestcaseByOptions(files[j], options, foo)) {
+          myList.push(files[j]);
+          found = true;
+        }
+      }
+    } else {
+      myList = myList.concat(files);
+    }
+    if (!filterTestcases || (myList.length > 0)) {
+      allTestFiles[testSuiteName] = myList;
+    }
+  }
+  // print(allTestPaths)
+  return [found, allTestFiles];
+}
+
+function findTest(options) {
+  let rc = findTestCases(options);
+  if (rc[0]) {
+    print(rc[1]);
+    return {
+      findTest: {
+        status: true,
+        total: 1,
+        message: 'we have found a test. see above.',
+        duration: 0,
+        failed: [],
+        found: {
+          status: true,
+          duration: 0,
+          message: 'we have found a test.'
+        }
+      }
+    };
+  } else {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'we haven\'t found a test.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'we haven\'t found a test.'
+        }
+      }
+    };
+  }
+}
+
+
+function autoTest(options) {
+  if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'you must specify a --test filter.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'you must specify a --test filter.'
+        }
+      }
+    };
+  }
+  let rc = findTestCases(options);
+  if (rc[0]) {
+    let testSuites = Object.keys(rc[1]);
+    return iterateTests(testSuites, options, true);
+  } else {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'we haven\'t found a test.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'we haven\'t found a test.'
+        }
+      }
+    };
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief load the available testsuites
 // //////////////////////////////////////////////////////////////////////////////
@@ -419,45 +539,20 @@ function loadTestSuites () {
                                                              allTests,
                                                              optionsDefaults,
                                                              functionsDocumentation,
-                                                             optionsDocumentation);
+                                                             optionsDocumentation,
+                                                             allTestPaths);
     } catch (x) {
       print('failed to load module ' + testSuites[j]);
       throw x;
     }
   }
+  testFuncs['find'] = findTest;
+  testFuncs['auto'] = autoTest;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief framework to perform unittests
-// /
-// / This function gets one or two arguments, the first describes which tests
-// / to perform and the second is an options object. For `which` the following
-// / values are allowed:
-// /  Empty will give you a complete list.
-// //////////////////////////////////////////////////////////////////////////////
+let globalStatus = true;
 
-function unitTest (cases, options) {
-  if (typeof options !== 'object') {
-    options = {};
-  }
-  loadTestSuites();
-  _.defaults(options, optionsDefaults);
-
-  if (cases === undefined || cases.length === 0) {
-    printUsage();
-
-    print('FATAL: "which" is undefined\n');
-
-    return {
-      status: false,
-      crashed: false
-    };
-  }
-
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
-  const jsonReply = options.jsonReply;
-  delete options.jsonReply;
-
+function iterateTests(cases, options, jsonReply) {
   // tests to run
   let caselist = [];
 
@@ -481,7 +576,6 @@ function unitTest (cases, options) {
     }
   }
 
-  let globalStatus = true;
   let results = {};
   let cleanup = true;
     
@@ -517,6 +611,7 @@ function unitTest (cases, options) {
     // grrr...normalize structure
     delete result.status;
     delete result.failed;
+    delete result.crashed;
 
     let status = Object.values(result).every(testCase => testCase.status === true);
     let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -556,6 +651,42 @@ function unitTest (cases, options) {
       print(RED + require('internal').inspect(results) + RESET);
     }
   }
+
+  return results;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief framework to perform unittests
+// /
+// / This function gets one or two arguments, the first describes which tests
+// / to perform and the second is an options object. For `which` the following
+// / values are allowed:
+// /  Empty will give you a complete list.
+// //////////////////////////////////////////////////////////////////////////////
+
+function unitTest (cases, options) {
+  if (typeof options !== 'object') {
+    options = {};
+  }
+  loadTestSuites();
+  _.defaults(options, optionsDefaults);
+
+  if (cases === undefined || cases.length === 0) {
+    printUsage();
+
+    print('FATAL: "which" is undefined\n');
+
+    return {
+      status: false,
+      crashed: false
+    };
+  }
+
+  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  const jsonReply = options.jsonReply;
+  delete options.jsonReply;
+
+  let results = iterateTests(cases, options, jsonReply);
 
   if (jsonReply === true) {
     return results;

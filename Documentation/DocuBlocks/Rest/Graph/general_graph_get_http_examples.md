@@ -10,7 +10,7 @@ Returns the definition content of this graph.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
 @RESTRETURNCODES

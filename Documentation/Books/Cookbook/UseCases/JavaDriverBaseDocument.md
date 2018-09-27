@@ -60,6 +60,7 @@ More documentation about the ArangoDB Java driver is available:
 - [Example source code](https://github.com/arangodb/arangodb-java-driver/tree/master/src/test/java/com/arangodb/example)
 - [JavaDoc](http://arangodb.github.io/arangodb-java-driver/javadoc-4_1/index.html)
 
-**Author**: [gschwab](https://github.com/gschwab), [Mark Vollmary](https://github.com/mpv1989)
+**Author**: [gschwab](https://github.com/gschwab),
+   [Mark Vollmary](https://github.com/mpv1989)
 
 **Tags**: #java #driver

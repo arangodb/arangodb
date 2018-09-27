@@ -50,6 +50,11 @@ When using the second syntax, *keyExpression* provides the document identificati
 This can either be a string (which must then contain the document key) or a
 document, which must contain a *_key* attribute.
 
+An object with `_id` attribute but without `_key` attribute as well as a
+document ID as string like `"users/john"` do not work. However, you can use
+`DOCUMENT(id)` to fetch the document via its ID and `PARSE_IDENTIFIER(id).key`
+to get the document key as string.
+
 The following queries are equivalent:
 
 ```js
@@ -95,7 +100,12 @@ might not be a variable like above (`doc`), which would let you refer to the
 document which is being updated:
 
 ```js
-UPDATE "users/john" WITH { ... } IN users
+UPDATE "john" WITH { ... } IN users
+```
+
+```js
+LET key = PARSE_IDENTIFIER("users/john").key
+UPDATE key WITH { ... } IN users
 ```
 
 To access the current value in this situation, the document has to be retrieved
@@ -209,6 +219,17 @@ FOR u IN users
   } IN users OPTIONS { waitForSync: true }
 ```
 
+In order to not accidentially overwrite documents that have been updated since you last fetched
+them, you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` value and 
+only succeed if they still match, or let ArangoDB ignore them (default):
+
+```js
+FOR i IN 1..1000
+  UPDATE { _key: CONCAT('test', i), _rev: "1287623" }
+  WITH { foobar: true } IN users
+  OPTIONS { ignoreRevs: false }
+```
+
 Returning the modified documents
 --------------------------------
 
@@ -233,7 +254,8 @@ documents before modification. For each modified document, the document key is r
 
 ```js
 FOR u IN users
-  UPDATE u WITH { value: "test" } 
+  UPDATE u WITH { value: "test" }
+  IN users 
   LET previous = OLD 
   RETURN previous._key
 ```
@@ -244,6 +266,7 @@ without some of the system attributes:
 ```js
 FOR u IN users
   UPDATE u WITH { value: "test" } 
+  IN users
   LET updated = NEW 
   RETURN UNSET(updated, "_key", "_id", "_rev")
 ```
@@ -253,5 +276,6 @@ It is also possible to return both `OLD` and `NEW`:
 ```js
 FOR u IN users
   UPDATE u WITH { value: "test" } 
+  IN users
   RETURN { before: OLD, after: NEW }
 ```

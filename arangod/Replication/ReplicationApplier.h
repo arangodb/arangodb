@@ -26,13 +26,14 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/Thread.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 class InitialSyncer;
 class TailingSyncer;
-class Thread;
 
 namespace velocypack {
 class Builder;
@@ -124,6 +125,9 @@ class ReplicationApplier {
   
   /// @brief return the current endpoint
   std::string endpoint() const;
+  
+  /// @brief return last persisted tick
+  TRI_voc_tick_t lastTick() const;
 
   /// @brief block the replication applier from starting
   Result preventStart();
@@ -149,9 +153,10 @@ class ReplicationApplier {
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
 
-  virtual std::unique_ptr<InitialSyncer> buildInitialSyncer() const = 0;
-  virtual std::unique_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
-                                                      bool useTick, TRI_voc_tick_t barrierId) const = 0;
+  virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
+  virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                            bool useTick, 
+                                                            TRI_voc_tick_t barrierId) const = 0;
   
 protected:
 

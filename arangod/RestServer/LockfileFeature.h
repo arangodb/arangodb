@@ -26,17 +26,18 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class LockfileFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LockfileFeature(application_features::ApplicationServer* server);
+  explicit LockfileFeature(application_features::ApplicationServer& server);
 
- public:
   void start() override final;
   void unprepare() override final;
 
  private:
   std::string _lockFilename;
 };
+
 }
 
 #endif

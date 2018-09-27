@@ -1,9 +1,8 @@
 /*jshint strict: false */
+/* global more:true */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Arango Simple Query Language
-// /
-// / @file
 // /
 // / DISCLAIMER
 // /
@@ -27,9 +26,8 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require('@arangodb');
-
-var ArangoError = arangodb.ArangoError;
+const arangodb = require('@arangodb');
+const internal = require('internal');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief array query
@@ -46,7 +44,7 @@ function GeneralArrayCursor (documents, skip, limit, data) {
 
   var self = this;
   if (data !== null && data !== undefined && typeof data === 'object') {
-    [ 'stats', 'warnings', 'profile' ].forEach(function (d) {
+    [ 'stats', 'warnings', 'profile', 'plan' ].forEach(function (d) {
       if (data.hasOwnProperty(d)) {
         self._extra[d] = data[d];
       }
@@ -108,9 +106,10 @@ GeneralArrayCursor.prototype.execute = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype._PRINT = function (context) {
-  var text;
-
-  text = 'GeneralArrayCursor([.. ' + this._documents.length + ' docs .., cached: ' + String(this._cached);
+  let text = '[object GeneralArrayCursor';
+  
+  text += ', count: ' + this._documents.length;
+  text += ', cached: ' + (this._cached ? 'true' : 'false');
 
   if (this.hasOwnProperty('_extra') &&
     this._extra.hasOwnProperty('warnings') && this._extra.warnings.length > 0) {
@@ -126,16 +125,26 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
       }
     }
   }
-  text += '])';
-
-  if (this._skip !== null && this._skip !== 0) {
-    text += '.skip(' + this._skip + ')';
+  text += ']';
+  
+  let rows = [], i = 0;
+//  this._pos = this._printPos || currentPos;
+  while (++i <= 10 && this.hasNext()) {
+    rows.push(this.next());
   }
-
-  if (this._limit !== null) {
-    text += '.limit(' + this._limit + ')';
+ 
+  more = undefined;
+  if (rows.length > 0) {
+    var old = internal.startCaptureMode();
+    internal.print(rows);
+    text += '\n' + internal.stopCaptureMode(old);
+  
+    if (this.hasNext()) {
+      text += "\ntype 'more' to show more documents\n";
+      more = this; // assign cursor to global variable more!
+    }
   }
-
+    
   context.output += text;
 };
 
@@ -153,7 +162,7 @@ GeneralArrayCursor.prototype.toArray =
 // //////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype.count = function (applyPagination) {
-  if (applyPagination === undefined || ! applyPagination) {
+  if (applyPagination === undefined || !applyPagination) {
     return this._countTotal;
   }
 

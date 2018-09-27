@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +37,6 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
     _agencyCallbackRegistry(agencyCallbackRegistry) {
 }
 
-bool RestAgencyCallbacksHandler::isDirect() const { return false; }
-
 RestStatus RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -57,9 +55,8 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   }
   
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || body.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return RestStatus::DONE;
@@ -73,7 +70,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     auto callback = _agencyCallbackRegistry->getCallback(index);
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "Agency callback has been triggered. refetching!";
-    callback->refetchAndUpdate(true);
+    callback->refetchAndUpdate(true, false);
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } catch (arangodb::basics::Exception const&) {
     // mop: not found...expected

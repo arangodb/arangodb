@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,9 @@ struct DBServerAgencySyncResult {
 
   DBServerAgencySyncResult()
       : success(false), planVersion(0), currentVersion(0) {}
+
+  DBServerAgencySyncResult(bool s, uint64_t p, uint64_t c)
+      : success(s), planVersion(p), currentVersion(c) {}
 
   DBServerAgencySyncResult(const DBServerAgencySyncResult& other)
       : success(other.success),

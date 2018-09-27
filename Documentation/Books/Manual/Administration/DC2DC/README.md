@@ -1,12 +1,17 @@
 <!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter replication administration
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 This Section includes information related to the administration of the _datacenter
 to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](../../Scalability/DC2DC/README.md)
-chapther.
+refer to the [Datacenter to datacenter replication](../../Architecture/DeploymentModes/DC2DC/README.md)
+chapter.
 
 ## Starting synchronization
 

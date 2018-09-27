@@ -234,5 +234,5 @@ Note that while a slave has only partly executed a transaction from the master, 
 a write lock on the collections involved in the transaction.
 
 You may also want to check the master and slave states via the HTTP APIs 
-(see [HTTP Interface for Replication](../../../../HTTP/Replications/index.html)).
+(see [HTTP Interface for Replication](../../../HTTP/Replications/index.html)).
 

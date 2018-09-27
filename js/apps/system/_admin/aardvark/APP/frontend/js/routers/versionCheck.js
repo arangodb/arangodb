@@ -139,7 +139,7 @@
         window.versionHelper.fromString(data.version);
 
         $('.navbar #currentVersion').html(
-          data.version.substr(0, 7) + '<i class="fa fa-check-circle"></i>'
+          data.version + '<i class="fa fa-check-circle"></i>'
         );
 
         window.parseVersions = function (json) {
@@ -172,7 +172,17 @@
           timeout: 3000,
           dataType: 'jsonp',
           url: 'https://www.arangodb.com/repositories/versions.php' +
-            '?jsonp=parseVersions&version=' + encodeURIComponent(currentVersion.toString())
+            '?jsonp=parseVersions&version=' + encodeURIComponent(currentVersion.toString()),
+          error: function (e) {
+            if (e.status === 200) {
+              window.activeInternetConnection = true;
+            } else {
+              window.activeInternetConnection = false;
+            }
+          },
+          success: function (e) {
+            window.activeInternetConnection = true;
+          }
         });
       }
     });

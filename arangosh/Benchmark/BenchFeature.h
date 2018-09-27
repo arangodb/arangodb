@@ -45,14 +45,12 @@ struct BenchRunResult {
 
 class BenchFeature final : public application_features::ApplicationFeature {
  public:
-  BenchFeature(application_features::ApplicationServer* server, int* result);
+  BenchFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override final;
   void unprepare() override final;
 
- public:
   bool async() const { return _async; }
   uint64_t concurrency() const { return _concurreny; }
   uint64_t operations() const { return _operations; }
@@ -77,7 +75,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
   void printResult(BenchRunResult const& result);
   bool writeJunitReport(BenchRunResult const& result);
 
- private:
   bool _async;
   uint64_t _concurreny;
   uint64_t _operations;
@@ -96,16 +93,14 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t _numberOfShards;
   bool _waitForSync;
 
- private:
   int* _result;
 
- private:
   static void updateStartCounter();
   static int getStartCounter();
 
- private:
   static std::atomic<int> _started;
 };
+
 }
 
 #endif

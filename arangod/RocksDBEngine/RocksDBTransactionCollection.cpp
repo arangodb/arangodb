@@ -23,7 +23,6 @@
 
 #include "RocksDBTransactionCollection.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -112,12 +111,9 @@ bool RocksDBTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      return true;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    return true;
   }
   return (_lockType != AccessMode::Type::NONE);
 }
@@ -132,6 +128,10 @@ void RocksDBTransactionCollection::freeOperations(
 
 bool RocksDBTransactionCollection::canAccess(
     AccessMode::Type accessType) const {
+  if (!_collection) {
+    return false; // not opened. probably a mistake made by the caller
+  }
+
   // check if access type matches
   if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
@@ -180,33 +180,25 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->vocbase()->useCollection(_cid, status);
-      if (_collection != nullptr) {
-        _usageLocked = true;
 
-        // geo index needs exclusive write access
-        RocksDBCollection* rc =
-            static_cast<RocksDBCollection*>(_collection->getPhysical());
-        if (AccessMode::isWrite(_accessType) && rc->hasGeoIndex()) {
-          _accessType = AccessMode::Type::EXCLUSIVE;
-        }
+      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
+      _collection = _transaction->vocbase().useCollection(_cid, status);
+
+      if (!_collection) {
+        // must return an error
+        return TRI_ERROR_NO_ERROR == TRI_errno()
+          ? TRI_ERROR_INTERNAL : TRI_errno();
       }
+
+      _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid);
+      _collection = _transaction->vocbase().lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
-    }
-
-    if (_collection == nullptr) {
-      int res = TRI_errno();
-      if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
-        return res;
-      }
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
     doSetup = true;
@@ -254,9 +246,10 @@ void RocksDBTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase()->releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection);
       _usageLocked = false;
     }
+
     _collection = nullptr;
   }
 }
@@ -323,7 +316,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
-  if (commitSeq != 0) {
+  if (commitSeq != 0) { // is '0' for filling new indexes
     if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
       RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
       coll->adjustNumberDocuments(adjustment);
@@ -389,13 +382,10 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(!isLocked());
@@ -456,13 +446,10 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(isLocked());

@@ -48,7 +48,8 @@ On success an object with the following attributes is returned:
 
 - *keyOptions*: JSON object which contains key generation options:
   - *type*: specifies the type of the key generator. The currently
-    available generators are *traditional* and *autoincrement*.
+    available generators are *traditional*, *autoincrement*, *uuid*
+    and *padded*.
   - *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator is solely responsible for

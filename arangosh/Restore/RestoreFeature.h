@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
@@ -26,70 +27,106 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/VelocyPackHelper.h"
-#include "Shell/ClientFeature.h"
-#include "V8Client/ArangoClientHelper.h"
+#include "Utils/ClientManager.h"
+#include "Utils/ClientTaskQueue.h"
+#include "Utils/ManagedDirectory.h"
 
 namespace arangodb {
+
 namespace httpclient {
+
 class SimpleHttpResult;
+
 }
 
-class EncryptionFeature;
+class ManagedDirectory;
 
-class RestoreFeature final : public application_features::ApplicationFeature,
-                             public ArangoClientHelper {
+class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(application_features::ApplicationServer* server, int* result);
+  RestoreFeature(
+    application_features::ApplicationServer& server,
+    int& exitCode
+  );
 
- public:
+  // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
- private:
-  std::vector<std::string> _collections;
-  std::string _inputDirectory;
-  uint64_t _chunkSize;
-  bool _includeSystemCollections;
-  bool _createDatabase;
-  bool _forceSameDatabase;
-  bool _importData;
-  bool _importStructure;
-  bool _progress;
-  bool _overwrite;
-  bool _force;
-  bool _ignoreDistributeShardsLikeErrors;
-  bool _clusterMode;
-  uint64_t _defaultNumberOfShards;
-  uint64_t _defaultReplicationFactor;
+  /**
+   * @brief Returns the feature name (for registration with `ApplicationServer`)
+   * @return The name of the feature
+   */
+  static std::string featureName();
+
+  /**
+   * @brief Saves a worker error for later handling and clears queued jobs
+   * @param error Error from a client worker
+   */
+  void reportError(Result const& error);
+
+  /**
+   * @brief Returns the first error from the worker errors list
+   * @return  First error from the list, or OK if none exist
+   */
+  Result getFirstError() const;
+
+  /// @brief Holds configuration data to pass between methods
+  struct Options {
+    std::vector<std::string> collections{};
+    std::string inputPath{};
+    uint64_t chunkSize{1024 * 1024 * 8};
+    uint64_t defaultNumberOfShards{1};
+    uint64_t defaultReplicationFactor{1};
+    uint32_t threadCount{2};
+    bool clusterMode{false};
+    bool createDatabase{false};
+    bool force{false};
+    bool forceSameDatabase{false};
+    bool ignoreDistributeShardsLikeErrors{false};
+    bool importData{true};
+    bool importStructure{true};
+    bool includeSystemCollections{false};
+    bool indexesFirst{false};
+    bool overwrite{true};
+    bool progress{true};
+  };
+
+  /// @brief Stores stats about the overall restore progress
+  struct Stats {
+    std::atomic<uint64_t> totalBatches{0};
+    std::atomic<uint64_t> totalSent{0};
+    std::atomic<uint64_t> totalCollections{0};
+    std::atomic<uint64_t> restoredCollections{0};
+    std::atomic<uint64_t> totalRead{0};
+  };
+
+  /// @brief Stores all necessary data to restore a single collection or shard
+  struct JobData {
+    ManagedDirectory& directory;
+    RestoreFeature& feature;
+    Options const& options;
+    Stats& stats;
+
+    VPackSlice collection;
+
+    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&,
+            VPackSlice const&);
+  };
 
  private:
-  int tryCreateDatabase(ClientFeature*, std::string const& name);
-  int sendRestoreCollection(VPackSlice const& slice, std::string const& name,
-                            std::string& errorMsg);
-  int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
-  int sendRestoreData(std::string const& cname, char const* buffer,
-                      size_t bufferSize, std::string& errorMsg);
-  Result readEncryptionInfo();
-  Result readDumpInfo();
-  int processInputDirectory(std::string& errorMsg);
-  ssize_t readData(int fd, char* data, size_t len);
-  void beginDecryption(int fd);
-  void endDecryption(int fd);
-
- private:
-  int* _result;
-  EncryptionFeature* _encryption;
-
-  // statistics
-  struct {
-    uint64_t _totalBatches;
-    uint64_t _totalCollections;
-    uint64_t _totalRead;
-  } _stats;
+  ClientManager _clientManager;
+  ClientTaskQueue<JobData> _clientTaskQueue;
+  std::unique_ptr<ManagedDirectory> _directory;
+  int& _exitCode;
+  Options _options;
+  Stats _stats;
+  Mutex mutable _workerErrorLock;
+  std::queue<Result> _workerErrors;
 };
-}
+
+}  // namespace arangodb
 
 #endif

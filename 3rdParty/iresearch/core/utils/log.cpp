@@ -456,7 +456,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
         auto fn_end = offset_start ? offset_start - 1 : nullptr;
         auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
-        bfd_callback_type_t callback = [level, out](const char* file, size_t line, const char* fn)->void {
+        bfd_callback_type_t callback = [out](const char* file, size_t line, const char* fn)->void {
           UNUSED(fn);
 
           if (file) {

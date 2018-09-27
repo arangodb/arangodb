@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/near</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
@@ -9,16 +9,16 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/n
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12932"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12932"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VaIa--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105247"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105247"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5z5S--B"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
@@ -26,9 +26,9 @@ x-content-type-options: nosniff
       ] 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12926"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12926"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WE2VaIW--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105241"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105241"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5z5O--D"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 

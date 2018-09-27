@@ -52,7 +52,7 @@ exports.save = function (user, passwd, active, extra, changePassword) {
     data.changePassword = changePassword;
   }
 
-  let requestResult = db._connection.POST(uri, JSON.stringify(data));
+  let requestResult = db._connection.POST(uri, data);
   return arangosh.checkRequestResult(requestResult);
 };
 
@@ -68,7 +68,7 @@ exports.replace = function (user, passwd, active, extra, changePassword) {
     changePassword: changePassword
   };
 
-  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+  var requestResult = db._connection.PUT(uri, data);
   return arangosh.checkRequestResult(requestResult);
 };
 
@@ -95,7 +95,7 @@ exports.update = function (user, passwd, active, extra, changePassword) {
     data.changePassword = changePassword;
   }
 
-  var requestResult = db._connection.PATCH(uri, JSON.stringify(data));
+  var requestResult = db._connection.PATCH(uri, data);
   return arangosh.checkRequestResult(requestResult);
 };
 
@@ -126,7 +126,7 @@ exports.isValid = function (user, password) {
   var uri = '_api/user/' + encodeURIComponent(user);
   var data = { passwd: password };
 
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  var requestResult = db._connection.POST(uri, data);
 
   if (requestResult.error !== undefined && requestResult.error) {
     if (requestResult.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
@@ -168,7 +168,7 @@ exports.grantDatabase = function (username, database, type) {
   + '/database/' + encodeURIComponent(database);
   var data = { grant: type };
 
-  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+  var requestResult = db._connection.PUT(uri, data);
 
   return arangosh.checkRequestResult(requestResult).result;
 };
@@ -195,7 +195,7 @@ exports.grantCollection = function (username, database, collection, type) {
   + encodeURIComponent(collection);
   var data = { grant: type };
 
-  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+  var requestResult = db._connection.PUT(uri, data);
 
   return arangosh.checkRequestResult(requestResult).result;
 };
@@ -227,7 +227,7 @@ exports.updateConfigData = function (username, key, value) {
     + '/config/' + encodeURIComponent(key);
 
     var data = { value: value };
-    requestResult = db._connection.PUT(uri, JSON.stringify(data));
+    requestResult = db._connection.PUT(uri, data);
   }
 
   arangosh.checkRequestResult(requestResult);

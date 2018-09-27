@@ -59,6 +59,28 @@ FOR u IN users
   REMOVE { _key: u._key } IN backup
 ```
 
+A single document can be removed as well, using a document key string or a
+document with `_key` attribute:
+
+```
+REMOVE 'john' IN users
+```
+
+```
+LET doc = DOCUMENT('users/john')
+REMOVE doc IN users
+```
+
+The restriction of a single remove operation per query and collection
+applies. The following query causes an *access after data-modification*
+error because of the third remove operation:
+
+```
+REMOVE 'john' IN users
+REMOVE 'john' IN backups // OK, different collection
+REMOVE 'mary' IN users   // Error, users collection again
+```
+
 Setting query options
 ---------------------
 
@@ -85,6 +107,15 @@ query option:
 ```
 FOR i IN 1..1000
   REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { waitForSync: true }
+```
+
+In order to not accidentially remove documents that have been updated since you last fetched
+them, you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` values and 
+only succeed if they still match, or let ArangoDB ignore them (default):
+
+```
+FOR i IN 1..1000
+  REMOVE { _key: CONCAT('test', i), _rev: "1287623" } IN users OPTIONS { ignoreRevs: false }
 ```
 
 Returning the removed documents

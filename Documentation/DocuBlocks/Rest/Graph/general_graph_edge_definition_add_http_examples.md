@@ -15,7 +15,7 @@ from "v2" to "v1" in the other graph.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
 @RESTBODYPARAM{collection,string,required,string}

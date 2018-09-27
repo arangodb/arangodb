@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,10 +29,11 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/asio-helper.h"
+#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
+#include <chrono>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -49,11 +50,12 @@ struct AgencyVersions {
 };
 
 class AgencyCallbackRegistry;
+class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public Thread,
+class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, uint64_t interval,
+  HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
                   uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
@@ -76,7 +78,7 @@ class HeartbeatThread : public Thread,
 
   void setReady() { _ready.store(true); }
 
-  void runBackgroundJob();
+  //void runBackgroundJob();
 
   void dispatchedJobResult(DBServerAgencySyncResult);
 
@@ -85,7 +87,27 @@ class HeartbeatThread : public Thread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return HasRunOnce.load(); }
+  static bool hasRunOnce() { return HasRunOnce.load(std::memory_order_acquire); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief break runDBserver out of wait on condition after setting state in
+  /// base class
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void beginShutdown() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add thread name to ongoing list of threads that have crashed
+  ///        unexpectedly
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void recordThreadDeath(const std::string & threadName);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief post list of deadThreads to current log.  Called regularly, but only
+  ///        posts to log roughly every 60 minutes
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void logThreadDeaths(bool force=false);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -106,12 +128,18 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
 
   void runDBServer();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop, single server version
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void runSingleServer();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief heartbeat main loop for agent and single db ... provides thread crash reporting
+  //////////////////////////////////////////////////////////////////////////////
+
+  void runSimpleServer();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
@@ -126,27 +154,23 @@ class HeartbeatThread : public Thread,
   bool handlePlanChangeDBServer(uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handles a state change
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool handleStateChange(AgencyCommResult&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief sends the current server's state to the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendState();
+  bool sendServerState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
-  void syncDBServerStatusQuo();
-  
+public:
+  void syncDBServerStatusQuo(bool asyncPush = false);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
 
+ private:
   void updateAgentPool(arangodb::velocypack::Slice const& agentPool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -155,7 +179,6 @@ class HeartbeatThread : public Thread,
 
   void updateServerMode(arangodb::velocypack::Slice const& readOnlySlice);
 
- private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyCallbackRegistry
   //////////////////////////////////////////////////////////////////////////////
@@ -190,7 +213,7 @@ class HeartbeatThread : public Thread,
   /// @brief heartbeat interval
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t _interval;
+  std::chrono::microseconds  _interval;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of fails in a row before a warning is issued
@@ -247,31 +270,14 @@ class HeartbeatThread : public Thread,
 
   std::atomic<uint64_t> _backgroundJobsPosted;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief number of background jobs that have been launched by the scheduler
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::atomic<uint64_t> _backgroundJobsLaunched;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flag indicates whether or not a background job is either
-  /// scheduled with boost::asio or is already running, this and the
-  /// next one about having to start another background job when the
-  /// current one is finished are protected by the statusLock.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _backgroundJobScheduledOrRunning;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flag indicates whether or not a new background job needs
-  /// to be started when the current one has terminated. This and the
-  /// previous one are protected by the statusLock.
-  //////////////////////////////////////////////////////////////////////////////
-  
-  bool _launchAnotherBackgroundJob;
-
-  // when was the javascript sync routine last run?
+  // when was the sync routine last run?
   double _lastSyncTime;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief handle of the dedicated thread to execute the phase 1 and phase 2
+  /// code. Only created on dbservers.
+  //////////////////////////////////////////////////////////////////////////////
+  std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
 };
 }
 

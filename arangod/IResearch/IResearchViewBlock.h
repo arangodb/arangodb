@@ -27,7 +27,8 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExpressionContext.h"
+#include "Aql/QueryExpressionContext.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -52,10 +53,11 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 /// @class ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public aql::ExpressionContext {
+class ViewExpressionContext final : public aql::QueryExpressionContext {
  public:
-  explicit ViewExpressionContext(IResearchViewNode const& node)
-    : _node(&node) {
+  explicit ViewExpressionContext(arangodb::aql::Query* query, IResearchViewNode const& node)
+    : QueryExpressionContext(query),
+      _node(&node) {
     TRI_ASSERT(_node);
   }
 
@@ -91,25 +93,35 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
     IResearchViewNode const&
   );
 
-  aql::AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<aql::ExecutionState, std::unique_ptr<aql::AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  std::pair<aql::ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
-  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
+  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
-  bool readDocument(size_t segmentId, irs::doc_id_t docId);
+  struct ReadContext {
+    explicit ReadContext(aql::RegisterId curRegs)
+      : curRegs(curRegs) {
+    }
+
+    std::unique_ptr<aql::AqlItemBlock> res;
+    size_t pos{};
+    const aql::RegisterId curRegs;
+  }; // ReadContext
+
+  bool readDocument(
+    size_t segmentId,
+    irs::doc_id_t docId,
+    IndexIterator::DocumentCallback const& callback
+  );
 
   virtual void reset();
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) = 0;
 
@@ -121,7 +133,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
-  ManagedDocumentResult _mmdr;
+  size_t _inflight; // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
@@ -148,9 +160,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
@@ -173,9 +183,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
 
  protected:
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
@@ -206,9 +214,7 @@ class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 

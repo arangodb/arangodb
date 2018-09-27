@@ -4,7 +4,9 @@
     <div id="propertiesEditor" class="document-editor"></div>
     <div class="bottomButtonBar">
       <button id="savePropertiesButton" class="button-close pull-right" disabled>Save</button>
-      <button id="renameViewButton" class="button-warning pull-right">Rename</button>
+      <% if (!window.frontendConfig.isCluster) { %>
+        <button id="renameViewButton" class="button-warning pull-right">Rename</button>
+      <% } %>
       <button id="deleteViewButton" class="button-danger pull-right">Delete</button>
     </div>
   </div>

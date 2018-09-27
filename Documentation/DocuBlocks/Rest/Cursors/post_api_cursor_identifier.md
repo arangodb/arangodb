@@ -10,7 +10,6 @@
 The name of the cursor
 
 @RESTDESCRIPTION
-
 If the cursor is still alive, returns an object with the following
 attributes:
 

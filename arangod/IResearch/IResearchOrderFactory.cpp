@@ -21,13 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchOrderFactory.h"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
+
+#include "search/scorers.hpp"
 
 #include "AqlHelper.h"
-#include "AttributeScorer.h"
 #include "IResearchAttributes.h"
+#include "IResearchFeature.h"
+#include "IResearchOrderFactory.h"
 #include "VelocyPackHelper.h"
-
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
@@ -158,7 +164,9 @@ bool nameFromFCall(
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
   auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
 
-  if (!fn || 1 != node.numMembers()) {
+  if (!fn
+      || 1 != node.numMembers()
+      || !arangodb::iresearch::isScorer(*fn)) {
     return false; // no function
   }
 

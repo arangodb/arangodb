@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,14 +53,15 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// UserManager is the sole point of access for users and permissions
 /// stored in `_system/_users` as well as in external authentication
 /// systems like LDAP. The permissions are cached locally if possible,
-/// to avoid unecessary disk access.
+/// to avoid unnecessary disk access. An instance of this should only
+/// exist on coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager();
 #ifdef USE_ENTERPRISE
-  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>&&);
+  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>);
 #endif
-  ~UserManager();
+  ~UserManager() = default;
 
  public:
   typedef std::function<Result(auth::User&)> UserCallback;
@@ -72,10 +73,22 @@ class UserManager {
   }
 
   /// Tells coordinator to reload its data. Only called in HeartBeat thread
-  void outdate() { _outdated = true; }
+  void setGlobalVersion(uint64_t version) {
+    _globalVersion.store(version, std::memory_order_release);
+  }
+  
+  /// @brief reload user cache and token caches
+  void triggerLocalReload() {
+    _globalVersion.fetch_add(1, std::memory_order_release);
+  }
+  
+  /// @brief used for caching
+  uint64_t globalVersion() {
+    return _globalVersion.load(std::memory_order_acquire);
+  }
 
-  /// Trigger eventual reload, user facing API call
-  void reloadAllUsers();
+  /// Trigger eventual reload on all other coordinators (and in TokenCache)
+  void triggerGlobalReload();
 
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
@@ -94,6 +107,8 @@ class UserManager {
   /// Access user without modifying it
   Result accessUser(std::string const& user, ConstUserCallback&&);
 
+  /// @brief does this user exists in the db
+  bool userExists(std::string const& user);
   /// Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
@@ -145,6 +160,7 @@ class UserManager {
   Result storeUserInternal(auth::User const& user, bool replace);
 
  private:
+  
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
   Mutex _loadFromDBLock;
@@ -152,8 +168,9 @@ class UserManager {
   /// Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
-  /// @brief need to sync _userCache from database
-  std::atomic<bool> _outdated;
+  /// @brief used to update caches
+  std::atomic<uint64_t> _globalVersion;
+  std::atomic<uint64_t> _internalVersion;
 
   /// Caches permissions and other user info
   UserMap _userCache;
@@ -161,7 +178,7 @@ class UserManager {
   aql::QueryRegistry* _queryRegistry;
 #ifdef USE_ENTERPRISE
   /// iterface to external authentication systems like LDAP
-  arangodb::auth::Handler* _authHandler;
+  std::unique_ptr<arangodb::auth::Handler> _authHandler;
 #endif
 };
 }  // auth

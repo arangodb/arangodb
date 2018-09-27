@@ -51,10 +51,14 @@ using namespace arangodb::basics;
 const char* arangodb::pregel::ExecutionStateNames[6] = {
     "none", "running", "done", "canceled", "in error", "recovering"};
 
-Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
-                     std::vector<CollectionID> const& vertexCollections,
-                     std::vector<CollectionID> const& edgeCollections,
-                     std::string const& algoName, VPackSlice const& config)
+Conductor::Conductor(
+    uint64_t executionNumber,
+    TRI_vocbase_t& vocbase,
+    std::vector<CollectionID> const& vertexCollections,
+    std::vector<CollectionID> const& edgeCollections,
+    std::string const& algoName,
+    VPackSlice const& config
+)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(AlgoRegistry::createAlgorithm(algoName, config)),
@@ -243,12 +247,15 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   _computationStartTimeSecs = TRI_microtime();
+
   if (_startGlobalStep()) {
     // listens for changing primary DBServers on each collection shard
     RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
+
     if (mngr) {
-      mngr->monitorCollections(_vocbaseGuard.database()->name(),
-                               _vertexCollections, this);
+      mngr->monitorCollections(
+        _vocbaseGuard.database().name(), _vertexCollections, this
+      );
     }
   }
 }
@@ -318,7 +325,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
       LOG_TOPIC(WARN, Logger::PREGEL)
           << "No further action taken after receiving all responses";
     }
-  });
+    }, false);
   return VPackBuilder();
 }
 
@@ -412,16 +419,14 @@ void Conductor::startRecovery() {
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(new boost::asio::deadline_timer(
-      *ioService, boost::posix_time::seconds(2)));
-  _boost_timer->async_wait([this](const boost::system::error_code& error) {
+  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
+    boost::posix_time::seconds(2)));
+  _boost_timer->async_wait([this](const asio::error_code& error) {
     _boost_timer.reset();
 
-    if (error == boost::asio::error::operation_aborted ||
+    if (error == asio::error::operation_aborted ||
         _state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }
@@ -478,13 +483,14 @@ static void resolveInfo(
     std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {  // single server mode
-    LogicalCollection* lc = vocbase->lookupCollection(collectionID);
+    auto lc = vocbase->lookupCollection(collectionID);
+
     if (lc == nullptr || lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                      collectionID);
     }
 
-    collectionPlanIdMap.emplace(collectionID, lc->planId_as_string());
+    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
@@ -494,13 +500,13 @@ static void resolveInfo(
     std::shared_ptr<LogicalCollection> lc =
         ci->getCollection(vocbase->name(), collectionID);
     if (lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                      collectionID);
     }
-    collectionPlanIdMap.emplace(collectionID, lc->planId_as_string());
+    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci->getShardList(lc->cid_as_string());
+      ci->getShardList(std::to_string(lc->id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
@@ -522,7 +528,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   _callbackMutex.assertLockedByCurrentThread();
 
   std::string const path =
-      Utils::baseUrl(_vocbaseGuard.database()->name(), Utils::workerPrefix) +
+    Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix) +
       suffix;
 
   // int64_t vertexCount = 0, edgeCount = 0;
@@ -533,12 +539,22 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 
   // resolve plan id's and shards on the servers
   for (CollectionID const& collectionID : _vertexCollections) {
-    resolveInfo(_vocbaseGuard.database(), collectionID, collectionPlanIdMap,
-                vertexMap, shardList);  // store or
+    resolveInfo(
+      &(_vocbaseGuard.database()),
+      collectionID,
+      collectionPlanIdMap,
+      vertexMap,
+      shardList
+    );  // store or
   }
   for (CollectionID const& collectionID : _edgeCollections) {
-    resolveInfo(_vocbaseGuard.database(), collectionID, collectionPlanIdMap,
-                edgeMap, shardList);  // store or
+    resolveInfo(
+      &(_vocbaseGuard.database()),
+      collectionID,
+      collectionPlanIdMap,
+      edgeMap,
+      shardList
+    );  // store or
   }
 
   _dbServers.clear();
@@ -609,22 +625,23 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
       PregelFeature* feature = PregelFeature::instance();
-      
       std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
+
       if (worker) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "a worker with this execution number already exists.");
       }
-      
-      TRI_vocbase_t* vocbase = _vocbaseGuard.database();
-      auto created = AlgoRegistry::createWorker(vocbase, b.slice());
+
+      auto created =
+        AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
+
       TRI_ASSERT(created.get() != nullptr);
       PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
       worker = PregelFeature::instance()->worker(_executionNumber);
       TRI_ASSERT (worker);
       worker->setupWorker();
+
       return TRI_ERROR_NO_ERROR;
-      
     } else {
       auto body = std::make_shared<std::string const>(b.toJson());
       requests.emplace_back("server:" + server, rest::RequestType::POST, path,
@@ -688,28 +705,30 @@ int Conductor::_finalizeWorkers() {
   return res;
 }
 
-VPackBuilder Conductor::collectAQLResults() {
-  _callbackMutex.assertLockedByCurrentThread();
+void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
+  MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE) {
-    return VPackBuilder();
+    return;
   }
 
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.close();
-  VPackBuilder messages;
+  
+  // merge results from DBServers
+  outBuilder.openArray();
   int res = _sendToAllDBServers(Utils::aqlResultsPath, b,
                                 [&](VPackSlice const& payload) {
                                   if (payload.isArray()) {
-                                    messages.add(payload);
+                                    outBuilder.add(VPackArrayIterator(payload));
                                   }
                                 });
+  outBuilder.close();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  return messages;
 }
 
 VPackBuilder Conductor::toVelocyPack() const {
@@ -743,31 +762,38 @@ int Conductor::_sendToAllDBServers(std::string const& path,
   if (ServerState::instance()->isRunningInCluster() == false) {
     if (handle) {
       VPackBuilder response;
-      PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
-                                         message.slice(), response);
+
+      PregelFeature::handleWorkerRequest(
+        _vocbaseGuard.database(), path, message.slice(), response
+      );
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
       scheduler->post([this, path, message] {
         VPackBuilder response;
-        PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
-                                           message.slice(), response);
-      });
+
+        PregelFeature::handleWorkerRequest(
+          _vocbaseGuard.database(), path, message.slice(), response
+        );
+      }, false);
     }
     return TRI_ERROR_NO_ERROR;
   }
 
   // cluster case
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
+
   if (_dbServers.size() == 0) {
     LOG_TOPIC(WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
+
   std::string base =
-      Utils::baseUrl(_vocbaseGuard.database()->name(), Utils::workerPrefix);
+    Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix);
   auto body = std::make_shared<std::string const>(message.toJson());
   std::vector<ClusterCommRequest> requests;
+
   for (auto const& server : _dbServers) {
     requests.emplace_back("server:" + server, rest::RequestType::POST,
                           base + path, body);

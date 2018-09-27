@@ -1,5 +1,4 @@
-Array functions
-===============
+# Array functions
 
 AQL provides functions for higher-level array manipulation. Also see the
 [numeric functions](Numeric.md) for functions that work on number arrays.
@@ -15,12 +14,12 @@ Apart from that, AQL also offers several language constructs:
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
 - loop-based operations using [FOR](../Operations/For.md),
-  [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
+  [SORT](../Operations/Sort.md),
+  [LIMIT](../Operations/Limit.md),
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
-APPEND()
---------
+## APPEND()
 
 `APPEND(anyArray, values, unique) → newArray`
 
@@ -33,21 +32,57 @@ array (right side).
   that are not already contained in *anyArray*. The default is *false*.
 - returns **newArray** (array): the modified array
 
-```js
-APPEND([ 1, 2, 3 ], [ 5, 6, 9 ])
-// [ 1, 2, 3, 5, 6, 9 ]
+**Examples**
 
-APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
-// [ 1, 2, 3, 4, 5, 9 ]
-```
+@startDocuBlockInline aqlArrayAppend_1
+@EXAMPLE_AQL{aqlArrayAppend_1}
+RETURN APPEND([ 1, 2, 3 ], [ 5, 6, 9 ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayAppend_1
 
-COUNT()
--------
+@startDocuBlockInline aqlArrayAppend_2
+@EXAMPLE_AQL{aqlArrayAppend_2}
+RETURN APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayAppend_2
+
+## CONTAINS_ARRAY()
+
+This is an alias for [POSITION()](#position).
+
+
+## COUNT()
 
 This is an alias for [LENGTH()](#length).
 
-FIRST()
--------
+## COUNT_DISTINCT()
+
+`COUNT_DISTINCT(anyArray) → number`
+
+Get the number of distinct elements in an array.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **number**: the number of distinct elements in *anyArray*.
+
+**Examples**
+
+@startDocuBlockInline aqlArrayCountDistinct_1
+@EXAMPLE_AQL{aqlArrayCountDistinct_1}
+RETURN COUNT_DISTINCT([ 1, 2, 3 ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayCountDistinct_1
+
+@startDocuBlockInline aqlArrayCountDistinct_2
+@EXAMPLE_AQL{aqlArrayCountDistinct_2}
+RETURN COUNT_DISTINCT([ "yes", "no", "yes", "sauron", "no", "yes" ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayCountDistinct_2
+
+## COUNT_UNIQUE()
+
+This is an alias for [COUNT_DISTINCT()](#countdistinct).
+
+## FIRST()
 
 `FIRST(anyArray) → firstElement`
 
@@ -57,8 +92,21 @@ Get the first element of an array. It is the same as `anyArray[0]`.
 - returns **firstElement** (any|null): the first element of *anyArray*, or *null* if
   the array is empty.
 
-FLATTEN()
----------
+**Examples**
+
+@startDocuBlockInline aqlArrayFirst_1
+@EXAMPLE_AQL{aqlArrayFirst_1}
+RETURN FIRST([ 1, 2, 3 ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayFirst_1
+
+@startDocuBlockInline aqlArrayFirst_2
+@EXAMPLE_AQL{aqlArrayFirst_2}
+RETURN FIRST([])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayFirst_2
+
+## FLATTEN()
 
 `FLATTEN(anyArray, depth) → flatArray`
 
@@ -70,20 +118,23 @@ will recurse into sub-arrays up to the specified depth. Duplicates will not be r
 - **depth** (number, *optional*):  flatten up to this many levels, the default is 1
 - returns **flatArray** (array): a flattened array
 
-```js
-FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ] )
-// [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
-```
+**Examples**
+
+@startDocuBlockInline aqlArrayFlatten_1
+@EXAMPLE_AQL{aqlArrayFlatten_1}
+RETURN FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayFlatten_1
 
 To fully flatten the example array, use a *depth* of 2:
 
-```js
-FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2 )
-// [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
-```
+@startDocuBlockInline aqlArrayFlatten_2
+@EXAMPLE_AQL{aqlArrayFlatten_2}
+RETURN FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayFlatten_2
 
-INTERSECTION()
---------------
+## INTERSECTION()
 
 `INTERSECTION(array1, array2, ... arrayN) → newArray`
 
@@ -95,8 +146,21 @@ occur in all arguments.
 - returns **newArray** (array): a single array with only the elements, which exist in all
   provided arrays. The element order is random. Duplicates are removed.
 
-LAST()
+**Examples**
 
+@startDocuBlockInline aqlArrayIntersection_1
+@EXAMPLE_AQL{aqlArrayIntersection_1}
+RETURN INTERSECTION( [1,2,3,4,5], [2,3,4,5,6], [3,4,5,6,7] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayIntersection_1
+
+@startDocuBlockInline aqlArrayIntersection_2
+@EXAMPLE_AQL{aqlArrayIntersection_2}
+RETURN INTERSECTION( [2,4,6], [8,10,12], [14,16,18] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayIntersection_2
+
+## LAST()
 
 `LAST(anyArray) → lastElement`
 
@@ -106,8 +170,15 @@ Get the last element of an array. It is the same as `anyArray[-1]`.
 - returns **lastElement** (any|null): the last element of *anyArray* or *null* if the
   array is empty.
 
-LENGTH()
---------
+**Example**
+
+@startDocuBlockInline aqlArrayLast_1
+@EXAMPLE_AQL{aqlArrayLast_1}
+RETURN LAST( [1,2,3,4,5] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayLast_1
+
+## LENGTH()
 
 `LENGTH(anyArray) → length`
 
@@ -130,8 +201,39 @@ collection and the [character length](String.md#length) of a string.
 |false|0|
 |null|0|
 
-MINUS()
--------
+**Examples**
+
+@startDocuBlockInline aqlArrayLength_1
+@EXAMPLE_AQL{aqlArrayLength_1}
+RETURN LENGTH( "🥑" )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayLength_1
+
+@startDocuBlockInline aqlArrayLength_2
+@EXAMPLE_AQL{aqlArrayLength_2}
+RETURN LENGTH( 1234 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayLength_2
+
+@startDocuBlockInline aqlArrayLength_3
+@EXAMPLE_AQL{aqlArrayLength_3}
+RETURN LENGTH( [1,2,3,4,5,6,7] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayLength_3
+
+@startDocuBlockInline aqlArrayLength_4
+@EXAMPLE_AQL{aqlArrayLength_4}
+RETURN LENGTH( [1,2,3,4,5,6,7] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayLength_4
+
+@startDocuBlockInline aqlArrayLength_5
+@EXAMPLE_AQL{aqlArrayLength_5}
+RETURN LENGTH( {a:1, b:2, c:3, d:4, e:{f:5,g:6}} )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayLength_5
+
+## MINUS()
 
 `MINUS(array1, array2, ... arrayN) → newArray`
 
@@ -143,8 +245,15 @@ Return the difference of all arrays specified.
   but not in any of the subsequent arrays. The order of the result array is undefined
   and should not be relied on. Duplicates will be removed.
 
-NTH()
------
+**Example**
+
+@startDocuBlockInline aqlArrayMinus_1
+@EXAMPLE_AQL{aqlArrayMinus_1}
+RETURN MINUS( [1,2,3,4], [3,4,5,6], [5,6,7,8] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayMinus_1
+
+## NTH()
 
 `NTH(anyArray, position) → nthElement`
 
@@ -157,14 +266,27 @@ for positive positions, but does not support negative positions.
   If *position* is negative or beyond the upper bound of the array,
   then *null* will be returned.
 
-```js
-NTH( [ "foo", "bar", "baz" ], 2 )  // "baz"
-NTH( [ "foo", "bar", "baz" ], 3 )  // null
-NTH( [ "foo", "bar", "baz" ], -1 ) // null
-```
+**Examples**
 
-OUTERSECTION()
---------------
+@startDocuBlockInline aqlArrayNth_1
+@EXAMPLE_AQL{aqlArrayNth_1}
+RETURN NTH( [ "foo", "bar", "baz" ], 2 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayNth_1
+
+@startDocuBlockInline aqlArrayNth_2
+@EXAMPLE_AQL{aqlArrayNth_2}
+RETURN NTH( [ "foo", "bar", "baz" ], 3 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayNth_2
+
+@startDocuBlockInline aqlArrayNth_3
+@EXAMPLE_AQL{aqlArrayNth_3}
+RETURN NTH( [ "foo", "bar", "baz" ], -1 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayNth_3
+
+## OUTERSECTION()
 
 `OUTERSECTION(array1, array2, ... arrayN) → newArray`
 
@@ -175,13 +297,15 @@ Return the values that occur only once across all arrays specified.
 - returns **newArray** (array): a single array with only the elements that exist only once
   across all provided arrays. The element order is random.
 
-```js
-OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
-// [ 1, 5 ]
-```
+**Example**
 
-POP()
------
+@startDocuBlockInline aqlArrayOutersection_1
+@EXAMPLE_AQL{aqlArrayOutersection_1}
+RETURN OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayOutersection_1
+
+## POP()
 
 `POP(anyArray) → newArray`
 
@@ -191,13 +315,21 @@ Remove the element at the end (right side) of *array*.
 - returns **newArray** (array): *anyArray* without the last element. If it's already
   empty or has only a single element left, an empty array is returned.
 
-```js
-POP( [ 1, 2, 3, 4 ] ) // [ 1, 2, 3 ]
-POP( [ 1 ] ) // []
-```
+**Examples**
 
-POSITION()
-----------
+@startDocuBlockInline aqlArrayPop_1
+@EXAMPLE_AQL{aqlArrayPop_1}
+RETURN POP( [ 1, 2, 3, 4 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayPop_1
+
+@startDocuBlockInline aqlArrayPop_2
+@EXAMPLE_AQL{aqlArrayPop_2}
+RETURN POP( [ 1 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayPop_2
+
+## POSITION()
 
 `POSITION(anyArray, search, returnIndex) → position`
 
@@ -214,8 +346,21 @@ Return whether *search* is contained in *array*. Optionally return the position.
 To determine if or at which position a string occurs in another string, see the
 [CONTAINS() string function](String.md#contains).
 
-PUSH()
-------
+**Examples**
+
+@startDocuBlockInline aqlArrayPosition_1
+@EXAMPLE_AQL{aqlArrayPosition_1}
+RETURN POSITION( [2,4,6,8], 4 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayPosition_1
+
+@startDocuBlockInline aqlArrayPosition_2
+@EXAMPLE_AQL{aqlArrayPosition_2}
+RETURN POSITION( [2,4,6,8], 4, true )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayPosition_2
+
+## PUSH()
 
 `PUSH(anyArray, value, unique) → newArray`
 
@@ -232,16 +377,21 @@ Note: The *unique* flag only controls if *value* is added if it's already presen
 in *anyArray*. Duplicate elements that already exist in *anyArray* will not be
 removed. To make an array unique, use the [UNIQUE()](#unique) function.
 
-```js
-PUSH([ 1, 2, 3 ], 4)
-// [ 1, 2, 3, 4 ]
+**Examples**
 
-PUSH([ 1, 2, 2, 3 ], 2, true)
-// [ 1, 2, 2, 3 ]
-```
+@startDocuBlockInline aqlArrayPush_1
+@EXAMPLE_AQL{aqlArrayPush_1}
+RETURN PUSH([ 1, 2, 3 ], 4)
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayPush_1
 
-REMOVE_NTH()
-------------
+@startDocuBlockInline aqlArrayPush_2
+@EXAMPLE_AQL{aqlArrayPush_2}
+RETURN PUSH([ 1, 2, 2, 3 ], 2, true)
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayPush_2
+
+## REMOVE_NTH()
 
 `REMOVE_NTH(anyArray, position) → newArray`
 
@@ -253,16 +403,21 @@ Remove the element at *position* from the *anyArray*.
   If *position* is out of bounds, the array is returned unmodified.
 - returns **newArray** (array): *anyArray* without the element at *position*
 
-```js
-REMOVE_NTH( [ "a", "b", "c", "d", "e" ], 1 )
-// [ "a", "c", "d", "e" ]
+**Examples**
 
-REMOVE_NTH( [ "a", "b", "c", "d", "e" ], -2 )
-// [ "a", "b", "c", "e" ]
-```
+@startDocuBlockInline aqlArrayRemoveNth_1
+@EXAMPLE_AQL{aqlArrayRemoveNth_1}
+RETURN REMOVE_NTH( [ "a", "b", "c", "d", "e" ], 1 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayRemoveNth_1
 
-REMOVE_VALUE()
---------------
+@startDocuBlockInline aqlArrayRemoveNth_2
+@EXAMPLE_AQL{aqlArrayRemoveNth_2}
+RETURN REMOVE_NTH( [ "a", "b", "c", "d", "e" ], -2 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayRemoveNth_2
+
+## REMOVE_VALUE()
 
 `REMOVE_VALUE(anyArray, value, limit) → newArray`
 
@@ -274,16 +429,21 @@ to the number of removals.
 - **limit** (number, *optional*): cap the number of removals to this value
 - returns **newArray** (array): *anyArray* with *value* removed
 
-```js
-REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a" )
-// [ "b", "b", "c" ]
+**Examples**
 
-REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a", 1 )
-// [ "b", "b", "a", "c" ]
-```
+@startDocuBlockInline aqlArrayRemoveValue_1
+@EXAMPLE_AQL{aqlArrayRemoveValue_1}
+RETURN REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a" )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayRemoveValue_1
 
-REMOVE_VALUES()
----------------
+@startDocuBlockInline aqlArrayRemoveValue_2
+@EXAMPLE_AQL{aqlArrayRemoveValue_2}
+RETURN REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a", 1 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayRemoveValue_2
+
+## REMOVE_VALUES()
 
 `REMOVE_VALUES(anyArray, values) → newArray`
 
@@ -294,13 +454,15 @@ Remove all occurrences of any of the *values* from *anyArray*.
   be removed from *anyArray*
 - returns **newArray** (array): *anyArray* with all individual *values* removed
 
-```js
-REMOVE_VALUES( [ "a", "a", "b", "c", "d", "e", "f" ], [ "a", "f", "d" ] )
-// [ "b", "c", "e" ]
-```
+**Example**
 
-REVERSE()
----------
+@startDocuBlockInline aqlArrayRemoveValues_1
+@EXAMPLE_AQL{aqlArrayRemoveValues_1}
+RETURN REMOVE_VALUES( [ "a", "a", "b", "c", "d", "e", "f" ], [ "a", "f", "d" ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayRemoveValues_1
+
+## REVERSE()
 
 `REVERSE(anyArray) → reversedArray`
 
@@ -310,8 +472,15 @@ Return an array with its elements reversed.
 - returns **reversedArray** (array): a new array with all elements of *anyArray* in
   reversed order
 
-SHIFT()
--------
+**Example**
+
+@startDocuBlockInline aqlArrayReverse_1
+@EXAMPLE_AQL{aqlArrayReverse_1}
+RETURN REVERSE ( [2,4,6,8,10] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayReverse_1
+
+## SHIFT()
 
 `SHIFT(anyArray) → newArray`
 
@@ -321,13 +490,21 @@ Remove the element at the start (left side) of *anyArray*.
 - returns **newArray** (array): *anyArray* without the left-most element. If *anyArray*
   is already empty or has only one element left, an empty array is returned.
 
-```js
-SHIFT( [ 1, 2, 3, 4 ] ) // [ 2, 3, 4 ]
-SHIFT( [ 1 ] ) // []
-```
+**Examples**
 
-SLICE()
--------
+@startDocuBlockInline aqlArrayShift_1
+@EXAMPLE_AQL{aqlArrayShift_1}
+RETURN SHIFT( [ 1, 2, 3, 4 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayShift_1
+
+@startDocuBlockInline aqlArrayShift_2
+@EXAMPLE_AQL{aqlArrayShift_2}
+RETURN SHIFT( [ 1 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayShift_2
+
+## SLICE()
 
 `SLICE(anyArray, start, length) → newArray`
 
@@ -341,17 +518,45 @@ Extract a slice of *anyArray*.
 - returns **newArray** (array): the specified slice of *anyArray*. If *length*
   is not specified, all array elements starting at *start* will be returned.
 
-```js
-SLICE( [ 1, 2, 3, 4, 5 ], 0, 1 ) // [ 1 ]
-SLICE( [ 1, 2, 3, 4, 5 ], 1, 2 ) // [ 2, 3 ]
-SLICE( [ 1, 2, 3, 4, 5 ], 3 ) // [ 4, 5 ]
-SLICE( [ 1, 2, 3, 4, 5 ], 1, -1 ) // [ 2, 3, 4 ]
-SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 ) // [ 1, 2, 3 ]
-SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
-```
+**Examples**
 
-SORTED()
---------
+@startDocuBlockInline aqlArraySlice_1
+@EXAMPLE_AQL{aqlArraySlice_1}
+RETURN SLICE( [ 1, 2, 3, 4, 5 ], 0, 1 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySlice_1
+
+@startDocuBlockInline aqlArraySlice_2
+@EXAMPLE_AQL{aqlArraySlice_2}
+RETURN SLICE( [ 1, 2, 3, 4, 5 ], 1, 2 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySlice_2
+
+@startDocuBlockInline aqlArraySlice_3
+@EXAMPLE_AQL{aqlArraySlice_3}
+RETURN SLICE( [ 1, 2, 3, 4, 5 ], 3 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySlice_3
+
+@startDocuBlockInline aqlArraySlice_4
+@EXAMPLE_AQL{aqlArraySlice_4}
+RETURN SLICE( [ 1, 2, 3, 4, 5 ], 1, -1 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySlice_4
+
+@startDocuBlockInline aqlArraySlice_5
+@EXAMPLE_AQL{aqlArraySlice_5}
+RETURN SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySlice_5
+
+@startDocuBlockInline aqlArraySlice_6
+@EXAMPLE_AQL{aqlArraySlice_6}
+RETURN SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySlice_6
+
+## SORTED()
 
 `SORTED(anyArray) → newArray`
 
@@ -361,9 +566,15 @@ order for AQL value types.
 - **anyArray** (array): array with elements of arbitrary type
 - returns **newArray** (array): *anyArray*, with elements sorted
 
+**Example**
 
-SORTED_UNIQUE()
----------------
+@startDocuBlockInline aqlArraySorted_1
+@EXAMPLE_AQL{aqlArraySorted_1}
+RETURN SORTED( [ 8,4,2,10,6 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySorted_1
+
+## SORTED_UNIQUE()
 
 `SORTED_UNIQUE(anyArray) → newArray`
 
@@ -375,8 +586,15 @@ be made unique.
 - returns **newArray** (array): *anyArray*, with elements sorted and duplicates
   removed
 
-UNION()
--------
+**Example**
+
+@startDocuBlockInline aqlArraySortedUnique_1
+@EXAMPLE_AQL{aqlArraySortedUnique_1}
+RETURN SORTED_UNIQUE( [ 8,4,2,10,6,2,8,6,4 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArraySortedUnique_1
+
+## UNION()
 
 `UNION(array1, array2, ... arrayN) → newArray`
 
@@ -387,30 +605,34 @@ Return the union of all arrays specified.
 - returns **newArray** (array): all array elements combined in a single array,
   in any order
 
-```js
-UNION(
+**Examples**
+
+@startDocuBlockInline aqlArrayUnion_1
+@EXAMPLE_AQL{aqlArrayUnion_1}
+RETURN UNION(
     [ 1, 2, 3 ],
     [ 1, 2 ]
 )
-// [ 1, 2, 3, 1, 2 ]
-```
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayUnion_1
 
 Note: No duplicates will be removed. In order to remove duplicates, please use
-either [UNION_DISTINCT()](#uniondistinct) or apply [UNIQUE()](#unique) on the
+either [UNION_DISTINCT()](#uniondistinct)
+or apply [UNIQUE()](#unique) on the
 result of *UNION()*:
 
-```js
-UNIQUE(
+@startDocuBlockInline aqlArrayUnion_2
+@EXAMPLE_AQL{aqlArrayUnion_2}
+RETURN UNIQUE(
     UNION(
         [ 1, 2, 3 ],
         [ 1, 2 ]
     )
 )
-// [ 1, 2, 3 ]
-```
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayUnion_2
 
-UNION_DISTINCT()
-----------------
+## UNION_DISTINCT()
 
 `UNION_DISTINCT(array1, array2, ... arrayN) → newArray`
 
@@ -421,16 +643,18 @@ Return the union of distinct values of all arrays specified.
 - returns **newArray** (array): the elements of all given arrays in a single
   array, without duplicates, in any order
 
-```js
-UNION_DISTINCT(
+**Example**
+
+@startDocuBlockInline aqlArrayUnionDistinct_1
+@EXAMPLE_AQL{aqlArrayUnionDistinct_1}
+RETURN UNION_DISTINCT(
     [ 1, 2, 3 ],
     [ 1, 2 ]
 )
-// [ 1, 2, 3 ]
-```
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayUnionDistinct_1
 
-UNIQUE()
---------
+## UNIQUE()
 
 `UNIQUE(anyArray) → newArray`
 
@@ -440,8 +664,15 @@ function will use the comparison order.
 - **anyArray** (array): array with elements of arbitrary type
 - returns **newArray** (array): *anyArray* without duplicates, in any order
 
-UNSHIFT()
----------
+**Example**
+
+@startDocuBlockInline aqlArrayUnique_1
+@EXAMPLE_AQL{aqlArrayUnique_1}
+RETURN UNIQUE( [ 1,2,2,3,3,3,4,4,4,4,5,5,5,5,5 ] )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayUnique_1
+
+## UNSHIFT()
 
 `UNSHIFT(anyArray, value, unique) → newArray`
 
@@ -458,7 +689,16 @@ Note: The *unique* flag only controls if *value* is added if it's already presen
 in *anyArray*. Duplicate elements that already exist in *anyArray* will not be
 removed. To make an array unique, use the [UNIQUE()](#unique) function.
 
-```js
-UNSHIFT( [ 1, 2, 3 ], 4 ) // [ 4, 1, 2, 3 ]
-UNSHIFT( [ 1, 2, 3 ], 2, true ) // [ 1, 2, 3 ]
-```
+**Examples**
+
+@startDocuBlockInline aqlArrayUnshift_1
+@EXAMPLE_AQL{aqlArrayUnshift_1}
+RETURN UNSHIFT( [ 1, 2, 3 ], 4 )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayUnshift_1
+
+@startDocuBlockInline aqlArrayUnshift_2
+@EXAMPLE_AQL{aqlArrayUnshift_2}
+RETURN UNSHIFT( [ 1, 2, 3 ], 2, true )
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayUnshift_2

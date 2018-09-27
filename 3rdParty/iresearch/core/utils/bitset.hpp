@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_BITSET_H
 #define IRESEARCH_BITSET_H
 
+#include <cstring>
 #include <memory>
 
 #include "shared.hpp"

@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/SameThreadAsserter.h"
-#include "Scheduler/EventLoop.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -39,8 +38,8 @@ class JobGuard : public SameThreadAsserter {
   JobGuard(JobGuard const&) = delete;
   JobGuard& operator=(JobGuard const&) = delete;
 
-  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop._scheduler) {}
-  explicit JobGuard(rest::Scheduler* scheduler) : SameThreadAsserter(), _scheduler(scheduler) {}
+  explicit JobGuard(rest::Scheduler* scheduler)
+      : SameThreadAsserter(), _scheduler(scheduler) {}
   ~JobGuard() { release(); }
 
  public:
@@ -48,20 +47,10 @@ class JobGuard : public SameThreadAsserter {
     TRI_ASSERT(!_isWorkingFlag);
 
     if (0 == _isWorking++) {
-      _scheduler->workThread();
+      _scheduler->incWorking();
     }
 
     _isWorkingFlag = true;
-  }
-
-  void block() {
-    TRI_ASSERT(!_isBlockedFlag);
-
-    if (0 == _isBlocked++) {
-      _scheduler->blockThread();
-    }
-
-    _isBlockedFlag = true;
   }
 
  private:
@@ -69,20 +58,11 @@ class JobGuard : public SameThreadAsserter {
     if (_isWorkingFlag) {
       _isWorkingFlag = false;
 
+      TRI_ASSERT(_isWorking > 0);
       if (0 == --_isWorking) {
         // if this is the last JobGuard we inform the
         // scheduler that the thread is back to idle
-        _scheduler->unworkThread();
-      }
-    }
-
-    if (_isBlockedFlag) {
-      _isBlockedFlag = false;
-
-      if (0 == --_isBlocked) {
-        // if this is the last JobGuard we inform the
-        // scheduler that the thread is now unblocked
-        _scheduler->unblockThread();
+        _scheduler->decWorking();
       }
     }
   }
@@ -91,10 +71,8 @@ class JobGuard : public SameThreadAsserter {
   rest::Scheduler* _scheduler;
 
   bool _isWorkingFlag = false;
-  bool _isBlockedFlag = false;
 
   static thread_local size_t _isWorking;
-  static thread_local size_t _isBlocked;
 };
 }
 

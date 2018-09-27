@@ -98,7 +98,9 @@ static constexpr uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 }
 
 // create the logfile manager
-MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
+MMFilesLogfileManager::MMFilesLogfileManager(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "MMFilesLogfileManager"),
       _allowWrites(false),  // start in read-only mode
       _inRecovery(true),
@@ -121,17 +123,12 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
-  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("MMFilesEngine");
-
-  startsBefore("Aql");
-  startsBefore("Bootstrap");
-  startsBefore("GeneralServer");
-  startsBefore("QueryRegistry");
-  startsBefore("TraverserEngineRegistry");
+  startsAfter("SystemDatabase");
 
   onlyEnabledWith("MMFilesEngine");
 }
@@ -182,7 +179,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
       "ignore logfile errors. this will read recoverable data from corrupted "
       "logfiles but ignore any unrecoverable data",
       new BooleanParameter(&_ignoreLogfileErrors));
-
+  
   options->addOption(
       "--wal.ignore-recovery-errors",
       "continue recovery even if re-applying operations fails",
@@ -395,8 +392,7 @@ bool MMFilesLogfileManager::open() {
   res = startMMFilesSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start WAL synchronizer thread: "
-               << TRI_errno_string(res);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -835,7 +831,8 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 // this is useful to ensure that any open writes up to this point have made
 // it into a logfile
 int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
-                                 bool writeShutdownFile, double maxWaitTime) {
+                                 bool writeShutdownFile, double maxWaitTime,
+                                 bool abortWaitOnShutdown) {
   TRI_IF_FAILURE("LogfileManagerFlush") {
     return TRI_ERROR_NO_ERROR;
   }
@@ -858,6 +855,10 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "about to flush active WAL logfile. currentLogfileId: "
              << lastOpenLogfileId << ", waitForSync: " << waitForSync
              << ", waitForCollector: " << waitForCollector;
+  
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "about to flush active WAL logfile. currentLogfileId: "
+             << lastOpenLogfileId << ", waitForSync: " << waitForSync
+             << ", waitForCollector: " << waitForCollector << ", last committed tick: " << _slots->lastCommittedTick();
 
   int res = _slots->flush(waitForSync);
 
@@ -880,7 +881,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
-      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
+      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime, abortWaitOnShutdown);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
         LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
@@ -892,7 +893,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
       // datafile
 
       if (lastSealedLogfileId > 0) {
-        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime);
+        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime, abortWaitOnShutdown);
 
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
           LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
@@ -1205,7 +1206,7 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value << ", barriers: " << _barriers.size();
 
   return value;
 }
@@ -1312,8 +1313,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType i
 
 // get a logfile for writing. this may return nullptr
 int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
-                                        MMFilesWalLogfile::StatusType& status,
-                                        MMFilesWalLogfile*& result) {
+                                               MMFilesWalLogfile::StatusType& status,
+                                               MMFilesWalLogfile*& result) {
   // always initialize the result
   result = nullptr;
 
@@ -1397,6 +1398,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: called";
+
   auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
     MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
 
@@ -1422,15 +1425,25 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
       }
 
       if (logfile->id() <= minId && logfile->canBeCollected(released)) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: found logfile id: " << logfile->id();
         return logfile;
       }
 
-      if (logfile->id() > minId || !logfile->hasBeenReleased(released)) {
+      if (logfile->id() > minId) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: abort early1 "
+          << logfile->id() << " minId: " << minId;
+        break;
+      }
+      if (!logfile->hasBeenReleased(released)) {
         // abort early
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: abort early2 released: " << released;
         break;
       }
     }
   }
+
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: "
+    << "found no logfile to collect, minId:" << minId;
 
   return nullptr;
 }
@@ -1716,7 +1729,7 @@ bool MMFilesLogfileManager::executeWhileNothingQueued(std::function<void()> cons
 
 // wait until a specific logfile has been collected
 int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
-                                     double maxWaitTime) {
+                                            double maxWaitTime, bool abortWaitOnShutdown) {
   if (maxWaitTime <= 0.0) {
     maxWaitTime = 24.0 * 3600.0; // wait "forever"
   }
@@ -1730,6 +1743,10 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
     if (_lastCollectedId >= logfileId) {
       return TRI_ERROR_NO_ERROR;
     }
+  
+    if (application_features::ApplicationServer::isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
 
     READ_LOCKER(locker, _collectorThreadLock);
 
@@ -1741,8 +1758,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     locker.unlock();
 
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId <<
-    // " lastCollected: " << _lastCollectedId << ", result: " << res;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId << " lastCollected: " << _lastCollectedId << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -1761,6 +1777,10 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxWaitTime: " << maxWaitTime;
   logStatus();
+
+  if (application_features::ApplicationServer::isStopping()) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // waited for too long
   return TRI_ERROR_LOCK_TIMEOUT;
@@ -2164,11 +2184,10 @@ int MMFilesLogfileManager::inspectLogfiles() {
         }
         return res;
       }
-
       _logfiles.erase(it++);
       continue;
     }
-
+     
     if (logfile->status() == MMFilesWalLogfile::StatusType::OPEN ||
         logfile->status() == MMFilesWalLogfile::StatusType::SEALED) {
       _recoverState->logfilesToProcess.push_back(logfile.get());

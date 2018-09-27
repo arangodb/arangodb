@@ -34,7 +34,6 @@
 #include <iomanip>
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -46,7 +45,9 @@ static const int BACKGROUND_WHITE =
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
       _codePage(-1),
@@ -68,7 +69,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 
   if (!_supportsColors) {
     _colors = false;
@@ -313,18 +314,12 @@ std::string ConsoleFeature::readPassword() {
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet) {
-    if (_pager) {
-      std::ostringstream s;
+  if (!_quiet && _pager) {
+    std::ostringstream s;
 
-      s << "Using pager '" << _pagerCommand << "' for output buffering.";
+    s << "Using pager '" << _pagerCommand << "' for output buffering.";
 
-      printLine(s.str());
-    }
-
-    if (_prettyPrint) {
-      printLine("Pretty printing values.");
-    }
+    printLine(s.str());
   }
 }
 
@@ -369,7 +364,7 @@ void ConsoleFeature::print(std::string const& message) {
 
 void ConsoleFeature::openLog() {
   if (!_auditFile.empty()) {
-    _toAuditFile = fopen(_auditFile.c_str(), "w");
+    _toAuditFile = TRI_FOPEN(_auditFile.c_str(), "w");
 
     std::ostringstream s;
 
@@ -518,3 +513,5 @@ void ConsoleFeature::stopPager() {
   }
 #endif
 }
+
+} // arangodb

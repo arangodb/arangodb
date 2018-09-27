@@ -26,9 +26,9 @@ namespace arangodb {
 namespace events {
 void UnknownAuthenticationMethod(GeneralRequest const*) {}
 void CredentialsMissing(GeneralRequest const*) {}
-void CredentialsBad(GeneralRequest*, rest::AuthenticationMethod) {}
+void CredentialsBad(GeneralRequest const*, rest::AuthenticationMethod) {}
 void PasswordChangeRequired(GeneralRequest const*) {}
-void Authenticated(GeneralRequest*, rest::AuthenticationMethod) {}
+void Authenticated(GeneralRequest const*, rest::AuthenticationMethod) {}
 void NotAuthorized(GeneralRequest const*) {}
 void CreateCollection(std::string const& name, int result) {}
 void DropCollection(std::string const& name, int result) {}

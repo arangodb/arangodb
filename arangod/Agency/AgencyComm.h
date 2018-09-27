@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -370,6 +370,15 @@ public:
       operations.push_back(op);
     }
     preconditions.push_back(precondition);
+  }
+
+  AgencyWriteTransaction(AgencyOperation const& operation,
+                         std::vector<AgencyPrecondition> const& precs) :
+    clientId(to_string(boost::uuids::random_generator()())) {
+    operations.push_back(operation);
+    for (auto const& pre : precs) {
+      preconditions.push_back(pre);
+    }
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,

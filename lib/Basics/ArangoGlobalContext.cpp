@@ -24,6 +24,9 @@
 
 #ifdef _WIN32
 #include <DbgHelp.h>
+#if ARANGODB_ENABLE_BACKTRACE
+#include <iostream>
+#endif
 #endif
 
 #include "Basics/FileUtils.h"
@@ -132,12 +135,12 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
-                                         char const* InstallDirectory)
+ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
+                                         char const* installDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _binaryPath(TRI_LocateBinaryPath(argv[0])),
       _runRoot(
-          TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
+          TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
       _ret(EXIT_FAILURE),
       _useEventLog(true) {
 
@@ -146,8 +149,8 @@ ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
 #ifndef __GLIBC__
   // Increase default stack size for libmusl:
   pthread_attr_t a;
-  memset(&a, 0, sizeof(pthread_attr_t));
-  pthread_attr_setstacksize(&a, 8*1024*1024);  // 8MB as in glibc
+  pthread_attr_init(&a);
+  pthread_attr_setstacksize(&a, 8 * 1024 * 1024);  // 8MB as in glibc
   pthread_attr_setguardsize(&a, 4096);         // one page
   pthread_setattr_default_np(&a);
 #endif
@@ -202,7 +205,7 @@ void ArangoGlobalContext::maskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
 #endif
 }
 
@@ -210,7 +213,7 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
-  pthread_sigmask(SIG_UNBLOCK, &all, 0);
+  pthread_sigmask(SIG_UNBLOCK, &all, nullptr);
 #endif
 }
 

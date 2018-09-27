@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global $, Joi, arangoHelper, Backbone, templateEngine, window */
+/* global $, Joi, arangoHelper, _, Backbone, templateEngine, window */
 (function () {
   'use strict';
 
@@ -12,6 +12,12 @@
     initialize: function () {
     },
 
+    sortOptions: {
+      desc: false
+    },
+
+    searchString: '',
+
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
@@ -22,14 +28,109 @@
 
     events: {
       'click #createView': 'createView',
-      'click .tile': 'gotoView'
+      'click #viewsToggle': 'toggleSettingsDropdown',
+      'click .tile': 'gotoView',
+      'keyup #viewsSearchInput': 'search',
+      'click #viewsSearchSubmit': 'search',
+      'click #viewsSortDesc': 'sorting'
     },
 
-    render: function () {
-      this.getViews();
-      this.$el.html(this.template.render({
-        views: []
-      }));
+    sorting: function () {
+      if ($('#viewsSortDesc').is(':checked')) {
+        this.setSortingDesc(true);
+      } else {
+        this.setSortingDesc(false);
+      }
+
+      if ($('#viewsDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+
+      this.render();
+    },
+
+    setSortingDesc: function (yesno) {
+      this.sortOptions.desc = yesno;
+    },
+
+    search: function () {
+      this.setSearchString($('#viewsSearchInput').val());
+      this.render();
+    },
+
+    toggleSettingsDropdown: function () {
+      // apply sorting to checkboxes
+      $('#viewsSortDesc').attr('checked', this.sortOptions.desc);
+
+      $('#viewsToggle').toggleClass('activated');
+      $('#viewsDropdown2').slideToggle(200);
+    },
+
+    render: function (data) {
+      var self = this;
+
+      if (data) {
+        self.$el.html(self.template.render({
+          views: self.applySorting(data.result),
+          searchString: self.getSearchString()
+        }));
+      } else {
+        this.getViews();
+        this.$el.html(this.template.render({
+          views: [],
+          searchString: self.getSearchString()
+        }));
+      }
+
+      if (self.dropdownVisible === true) {
+        $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
+        $('#viewsToggle').toggleClass('activated');
+        $('#viewsDropdown2').show();
+      }
+
+      $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
+      arangoHelper.setCheckboxStatus('#viewsDropdown');
+
+      var searchInput = $('#viewsSearchInput');
+      var strLength = searchInput.val().length;
+      searchInput.focus();
+      searchInput[0].setSelectionRange(strLength, strLength);
+    },
+
+    setSearchString: function (string) {
+      this.searchString = string;
+    },
+
+    getSearchString: function () {
+      return this.searchString.toLowerCase();
+    },
+
+    applySorting: function (data) {
+      var self = this;
+
+      // default sorting order
+      data = _.sortBy(data, 'name');
+      // desc sorting order
+      if (this.sortOptions.desc) {
+        data = data.reverse();
+      }
+
+      var toReturn = [];
+      if (this.getSearchString() !== '') {
+        _.each(data, function (view, key) {
+          if (view && view.name) {
+            if (view.name.toLowerCase().indexOf(self.getSearchString()) !== -1) {
+              toReturn.push(view);
+            }
+          }
+        });
+      } else {
+        return data;
+      }
+
+      return toReturn;
     },
 
     gotoView: function (e) {
@@ -49,9 +150,7 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          self.$el.html(self.template.render({
-            views: data
-          }));
+          self.render(data);
         },
         error: function (error) {
           console.log(error);
@@ -129,7 +228,9 @@
           self.getViews();
         },
         error: function (error) {
-          console.log(error);
+          if (error.responseJSON && error.responseJSON.errorMessage) {
+            arangoHelper.arangoError('Views', error.responseJSON.errorMessage);
+          }
         }
       });
     }

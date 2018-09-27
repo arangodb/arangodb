@@ -76,14 +76,14 @@ var registerFunction = function (name, code, isDeterministic = false) {
   var db = internal.db;
 
   var requestResult = db._connection.POST('/_api/aqlfunction/' + encodeURIComponent(name),
-                                          JSON.stringify({
+                                          {
                                             name: name,
                                             code: stringifyFunction(code),
                                             isDeterministic: isDeterministic
-                                          }));
+                                          });
 
   arangosh.checkRequestResult(requestResult);
-  return requestResult;
+  return !requestResult.isNewlyCreated;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

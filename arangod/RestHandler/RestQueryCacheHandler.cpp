@@ -34,18 +34,16 @@ RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestQueryCacheHandler::isDirect() const { return false; }
-
 RestStatus RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
   switch (type) {
+    case rest::RequestType::GET:
+      executeRead();
+      break;
     case rest::RequestType::DELETE_REQ:
       clearCache();
-      break;
-    case rest::RequestType::GET:
-      readProperties();
       break;
     case rest::RequestType::PUT:
       replaceProperties();
@@ -59,13 +57,9 @@ RestStatus RestQueryCacheHandler::execute() {
   return RestStatus::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock DeleteApiQueryCache
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestQueryCacheHandler::clearCache() {
+void RestQueryCacheHandler::clearCache() {
   auto queryCache = arangodb::aql::QueryCache::instance();
-  queryCache->invalidate();
+  queryCache->invalidate(&_vocbase);
     
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -73,67 +67,65 @@ bool RestQueryCacheHandler::clearCache() {
   result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
-  return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock GetApiQueryCacheProperties
-////////////////////////////////////////////////////////////////////////////////
+void RestQueryCacheHandler::executeRead() {
+  auto const& suffixes = _request->suffixes();
 
-bool RestQueryCacheHandler::readProperties() {
+  if (suffixes.size() != 1 || 
+      (suffixes[0] != "properties" && suffixes[0] != "entries")) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting GET /_api/query-cache/properties or /_api/query-cache/entries");
+    return;
+  }
+
+  if (suffixes[0] == "properties") {
+    readProperties();
+  } else {
+    readQueries();
+  }
+}
+
+void RestQueryCacheHandler::readQueries() {
   auto queryCache = arangodb::aql::QueryCache::instance();
 
-  VPackBuilder result = queryCache->properties();
+  VPackBuilder result;
+  queryCache->queriesToVelocyPack(&_vocbase, result);
   generateResult(rest::ResponseCode::OK, result.slice());
-  return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock PutApiQueryCacheProperties
-////////////////////////////////////////////////////////////////////////////////
+void RestQueryCacheHandler::readProperties() {
+  auto queryCache = arangodb::aql::QueryCache::instance();
 
-bool RestQueryCacheHandler::replaceProperties() {
+  VPackBuilder result;
+  queryCache->toVelocyPack(result);
+  generateResult(rest::ResponseCode::OK, result.slice());
+}
+
+void RestQueryCacheHandler::replaceProperties() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1 || suffixes[0] != "properties") {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
-    return true;
+    return;
   }
-  bool validBody = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(validBody);
 
+  bool validBody = false;
+  VPackSlice body = this->parseVPackBody(validBody);
   if (!validBody) {
     // error message generated in parseJsonBody
-    return true;
+    return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting a JSON-Object body");
-    return true;
+    return;
   }
 
-  auto queryCache = arangodb::aql::QueryCache::instance();
-
-  std::pair<std::string, size_t> cacheProperties;
-  queryCache->properties(cacheProperties);
-
-  VPackSlice attribute = body.get("mode");
-  if (attribute.isString()) {
-    cacheProperties.first = attribute.copyString();
-  }
-
-  attribute = body.get("maxResults");
-
-  if (attribute.isNumber()) {
-    cacheProperties.second = static_cast<size_t>(attribute.getUInt());
-  }
-
-  queryCache->setProperties(cacheProperties);
-
-  return readProperties();
+  arangodb::aql::QueryCache::instance()->properties(body);
+  readProperties();
 }
