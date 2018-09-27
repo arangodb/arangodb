@@ -597,7 +597,7 @@ function BaseTestConfig() {
               docs.push({ _key: "test" + i, "value": i });
             }
             const txt = "the red foxx jumps over the pond";
-            docs.push({ _key: "test" + i, "value": -1, "text": txt});
+            docs.push({ _key: "testxxx", "value": -1, "text": txt});
             c.insert(docs);
 
             state.arangoSearchEnabled = true;
@@ -632,10 +632,10 @@ function BaseTestConfig() {
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
     
-          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+          let res = db._query("FOR doc IN " + view.name() + " OPTIONS { waitForSync: true } SEARCH doc.value >= 2500 RETURN doc").toArray();
           assertEqual(2500, res.length);
     
-          res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+          res = db._query("FOR doc IN UnitTestsDumpView OPTIONS { waitForSync: true } SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
           assertEqual(1, res.length);
         },
         true
