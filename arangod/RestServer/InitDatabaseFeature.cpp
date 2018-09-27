@@ -86,13 +86,7 @@ void InitDatabaseFeature::validateOptions(
 
 void InitDatabaseFeature::prepare() {
   if (!_seenPassword) {
-    std::string env = "ARANGODB_DEFAULT_ROOT_PASSWORD";
-    char const* password = getenv(env.c_str());
-
-    if (password != nullptr) {
-      env += "=";
-      putenv(const_cast<char*>(env.c_str()));
-      _password = password;
+    if (TRI_GETENV("ARANGODB_DEFAULT_ROOT_PASSWORD", _password)){
       _seenPassword = true;
     }
   }
