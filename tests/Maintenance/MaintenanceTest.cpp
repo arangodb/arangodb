@@ -829,15 +829,12 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         REQUIRE(actions.size() == 1);
         REQUIRE(actions.front().name() == "UpdateCollection");
         REQUIRE(actions.front().get(DATABASE) == dbname);
-        REQUIRE(actions.front().get(COLLECTION) == shname);
+        REQUIRE(actions.front().get(SHARD) == shname);
         REQUIRE(actions.front().get(FOLLOWERS_TO_DROP) == followerName);
       } else {
         // No actions required
         REQUIRE(actions.size() == 0);
       }
-
-      std::cout << "Node: " << node.first << " leader: " << leaderName
-        << " " << actions << std::endl;
     }
 
   }
