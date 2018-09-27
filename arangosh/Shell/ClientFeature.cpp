@@ -310,6 +310,7 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
 }
 
 void ClientFeature::start() {
+  fprintf(stderr, "snatoheusnaotehu\n");
 #if _WIN32
   SetConsoleOutputCP(_codePage);
 #endif
