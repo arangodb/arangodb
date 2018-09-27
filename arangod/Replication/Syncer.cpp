@@ -822,7 +822,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no name specified for view");
   }
-  VPackSlice guidSlice = slice.get("globallyUniqueId");
+  VPackSlice guidSlice = slice.get(StaticStrings::DataSourceGuid);
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
@@ -835,12 +835,16 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   
   auto view = vocbase.lookupView(guidSlice.copyString());
   if (view) { // identical view already exists
-    VPackSlice properties = slice.get("properties");
-    if (properties.isObject()) {
-      bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-      return view->updateProperties(properties, false, doSync);
+    VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+    if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+      auto res = vocbase.renameView(view->id(), nameSlice.copyString());
+      if (!res.ok()) {
+        return res;
+      }
     }
-    return {};
+    
+    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+    return view->updateProperties(slice, false, doSync);
   }
   
   view = vocbase.lookupView(nameSlice.copyString());
