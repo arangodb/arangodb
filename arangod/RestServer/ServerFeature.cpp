@@ -53,7 +53,7 @@ ServerFeature::ServerFeature(
       _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER),
-      _codePage(65002) { // default to UTF8
+      _codePage(65001) { // default to UTF8
   setOptional(true);
 
   startsAfter("AQLPhase");
