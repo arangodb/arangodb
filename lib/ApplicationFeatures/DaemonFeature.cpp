@@ -240,8 +240,9 @@ int DaemonFeature::forkProcess() {
  
   TRI_ASSERT(pid == 0); // we are in the child
 
-  // child    
+  // child   
   LogAppender::allowStdLogging(false);
+  Logger::clearCachedPid(); 
 
   // change the file mode mask
   umask(0);

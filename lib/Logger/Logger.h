@@ -234,6 +234,9 @@ class Logger {
   static void setUseMicrotime(bool);
   static bool getUseMicrotime() {return _useMicrotime;};
   static void setKeepLogrotate(bool);
+  
+  // can be called after fork()
+  static void clearCachedPid() { _cachedPid = 0; }
 
   static std::string const& translateLogLevel(LogLevel);
 
@@ -275,6 +278,7 @@ class Logger {
   static bool _keepLogRotate;
   static bool _useMicrotime;
   static char _role; // current server role to log
+  static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
 
   static std::unique_ptr<LogThread> _loggingThread;
