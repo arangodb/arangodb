@@ -851,7 +851,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       }
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*>* cs =
+      std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
@@ -1078,7 +1078,7 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   if (vCols.empty()) {
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*>* cs =
+    std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
       handleCollection(col.second, AccessMode::Type::READ);

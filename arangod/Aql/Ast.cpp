@@ -651,7 +651,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
     // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
     // case it is ok that the datasource does not exist, but we need to track
     // the names of datasources used in the query
-    _query->collections()->add(nameString, accessType);
+    _query->addCollection(nameString, accessType);
 
     return createNodeCollectionNoValidation(name, nameLength, nameString, accessType);
   }
@@ -662,11 +662,11 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
   auto const& dataSourceName = dataSource->name();
   name = _query->registerString(dataSourceName.data(), dataSourceName.size());
   
-  // add datasource to query
-  _query->collections()->add(dataSourceName, accessType);
   
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
+    // add datasource to query
+    _query->addCollection(dataSourceName, accessType);
     return createNodeCollectionNoValidation(name, dataSourceName.size(), dataSourceName, accessType);
   }
 
@@ -689,7 +689,7 @@ AstNode* Ast::createNodeCollection(char const* name,
   std::string const nameString = validateDataSourceName(name, nameLength, true);
 
   // add collection to query
-  _query->collections()->add(nameString, accessType);
+  _query->addCollection(nameString, accessType);
 
   // call private function after validation
   return createNodeCollectionNoValidation(name, nameLength, nameString, accessType);
@@ -1144,7 +1144,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
     if (c->isStringValue()) {
       std::string name = c->getString();
 
-      _query->collections()->add(name, AccessMode::Type::READ);
+      _query->addCollection(name, AccessMode::Type::READ);
 
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
@@ -1156,7 +1156,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
           auto names = coll->realNames();
 
           for (auto const& n : names) {
-            _query->collections()->add(n, AccessMode::Type::READ);
+            _query->addCollection(n, AccessMode::Type::READ);
           }
         }
         catch (...) {
@@ -1184,7 +1184,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    _query->collections()->add(name, AccessMode::Type::READ);
+    _query->addCollection(name, AccessMode::Type::READ);
 
     if (ss->isCoordinator()) {
       try {
@@ -1192,7 +1192,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
         auto const& names = c->realNames();
 
         for (auto const& n : names) {
-          _query->collections()->add(n, AccessMode::Type::READ);
+          _query->addCollection(n, AccessMode::Type::READ);
         }
       }
       catch (...) {
@@ -1618,81 +1618,9 @@ void Ast::injectBindParameters(
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
                                     node->getString().c_str());
     } else if (node->type == NODE_TYPE_TRAVERSAL) {
-      auto graphNode = node->getMember(2);
-
-      if (graphNode->type == NODE_TYPE_VALUE) {
-        TRI_ASSERT(graphNode->isStringValue());
-        std::string graphName = graphNode->getString();
-        auto graph = _query->lookupGraphByName(graphName);
-        if (graph == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
-        }
-        TRI_ASSERT(graph != nullptr);
-
-        for (const auto& n : graph->vertexCollections()) {
-          _query->collections()->add(n, AccessMode::Type::READ);
-        }
-
-        auto const& eColls = graph->edgeCollections();
-
-        for (const auto& n : eColls) {
-          _query->collections()->add(n, AccessMode::Type::READ);
-        }
-
-        if (ServerState::instance()->isCoordinator()) {
-          auto ci = ClusterInfo::instance();
-
-          for (const auto& n : eColls) {
-            try {
-              auto c = ci->getCollection(_query->vocbase().name(), n);
-              auto names = c->realNames();
-
-              for (auto const& name : names) {
-                _query->collections()->add(name, AccessMode::Type::READ);
-              }
-            } catch (...) {
-            }
-          }
-        }
-      }
+      extractCollectionsFromGraph(node->getMember(2));
     } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
-      auto graphNode = node->getMember(3);
-
-      if (graphNode->type == NODE_TYPE_VALUE) {
-        TRI_ASSERT(graphNode->isStringValue());
-        std::string graphName = graphNode->getString();
-        auto graph = _query->lookupGraphByName(graphName);
-        if (graph == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
-        }
-        TRI_ASSERT(graph != nullptr);
-        
-        for (const auto& n : graph->vertexCollections()) {
-          _query->collections()->add(n, AccessMode::Type::READ);
-        }
-
-        auto const& eColls = graph->edgeCollections();
-
-        for (const auto& n : eColls) {
-          _query->collections()->add(n, AccessMode::Type::READ);
-        }
-
-        if (ServerState::instance()->isCoordinator()) {
-          auto ci = ClusterInfo::instance();
-
-          for (const auto& n : eColls) {
-            try {
-              auto c = ci->getCollection(_query->vocbase().name(), n);
-              auto names = c->realNames();
-
-              for (auto const& name : names) {
-                _query->collections()->add(name, AccessMode::Type::READ);
-              }
-            } catch (...) {
-            }
-          }
-        }
-      }
+      extractCollectionsFromGraph(node->getMember(3));
     }
 
     return node;
@@ -1706,7 +1634,7 @@ void Ast::injectBindParameters(
     bool isExclusive = it.second;
     if (c->type == NODE_TYPE_COLLECTION) {
       std::string name = c->getString();
-      _query->collections()->add(name, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
+      _query->addCollection(name, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
 
@@ -1717,7 +1645,7 @@ void Ast::injectBindParameters(
           auto names = coll->realNames();
 
           for (auto const& n : names) {
-            _query->collections()->add(n, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
+            _query->addCollection(n, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
           }
         } catch (...) {
         }
@@ -3772,7 +3700,7 @@ AstNode* Ast::createNodeCollectionNoValidation(char const* name,
       if (coll->isSmart()) {
         // add names of underlying smart-edge collections
         for (auto const& n : coll->realNames()) {
-          _query->collections()->add(n, accessType);
+          _query->addCollection(n, accessType);
         }
       }
     } catch (...) {
@@ -3783,4 +3711,43 @@ AstNode* Ast::createNodeCollectionNoValidation(char const* name,
   node->setStringValue(name, nameLength);
 
   return node;
+}
+
+void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
+  TRI_ASSERT(graphNode != nullptr);
+  if (graphNode->type == NODE_TYPE_VALUE) {
+    TRI_ASSERT(graphNode->isStringValue());
+    std::string graphName = graphNode->getString();
+    auto graph = _query->lookupGraphByName(graphName);
+    if (graph == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+    }
+    TRI_ASSERT(graph != nullptr);
+
+    for (const auto& n : graph->vertexCollections()) {
+      _query->addCollection(n, AccessMode::Type::READ);
+    }
+
+    auto const& eColls = graph->edgeCollections();
+
+    for (const auto& n : eColls) {
+      _query->addCollection(n, AccessMode::Type::READ);
+    }
+
+    if (ServerState::instance()->isCoordinator()) {
+      auto ci = ClusterInfo::instance();
+
+      for (const auto& n : eColls) {
+        try {
+          auto c = ci->getCollection(_query->vocbase().name(), n);
+          auto names = c->realNames();
+
+          for (auto const& name : names) {
+            _query->addCollection(name, AccessMode::Type::READ);
+          }
+        } catch (...) {
+        }
+      }
+    }
+  }
 }

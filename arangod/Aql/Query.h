@@ -165,8 +165,12 @@ class Query {
   /// @brief get the vocbase
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
+  inline Collection* addCollection(std::string const& name, AccessMode::Type accessType) {
+    return _collections.add(name, accessType);
+  }
+
   /// @brief collections
-  inline Collections* collections() { return &_collections; }
+  inline Collections const* collections() const { return &_collections; }
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const {

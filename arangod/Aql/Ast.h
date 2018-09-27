@@ -572,6 +572,8 @@ class Ast {
   AstNode* createNodeCollectionNoValidation(char const* name, size_t nameLength, 
                                             std::string const& nameString, AccessMode::Type accessType);
 
+  void extractCollectionsFromGraph(AstNode const* graphNode);
+
  public:
   /// @brief negated comparison operators
   static std::unordered_map<int, AstNodeType> const NegatedOperators;
