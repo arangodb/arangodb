@@ -837,8 +837,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   if (view) { // identical view already exists
     VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
     if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-      auto res = vocbase.renameView(view->id(), nameSlice.copyString());
-      if (!res.ok()) {
+      int res = vocbase.renameView(view, nameSlice.copyString());
+      if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
