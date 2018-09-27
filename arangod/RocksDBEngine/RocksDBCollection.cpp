@@ -728,7 +728,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid != 0);
     
-    RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
+    RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     
     state->prepareOperation(_logicalCollection.id(),
                             rid, // actual revision ID!!
@@ -896,10 +896,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
   }
 
-  auto state = RocksDBTransactionState::toState(trx);
-  auto mthds = RocksDBTransactionState::toMethods(trx);
-  RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
+  auto state = RocksDBTransactionState::toState(trx);
   state->prepareOperation(
     _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT
   );
@@ -1010,8 +1009,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1119,8 +1117,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1202,8 +1199,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   }
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   // add possible log statement under guard
   state->prepareOperation(
