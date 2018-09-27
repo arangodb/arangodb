@@ -309,12 +309,15 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
   return {http};
 }
 
-int ClientFeature::runMain(
-    int argc, char* argv[],
-    std::function<int(int argc, char* argv[])> const& mainFunc) {
+void ClientFeature::start() {
 #if _WIN32
   SetConsoleOutputCP(_codePage);
 #endif
+}
+
+int ClientFeature::runMain(
+    int argc, char* argv[],
+    std::function<int(int argc, char* argv[])> const& mainFunc) {
   try {
     return mainFunc(argc, argv);
   } catch (std::exception const& ex) {

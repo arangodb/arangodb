@@ -56,6 +56,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void start() override final;
 
   std::string const& databaseName() const { return _databaseName; }
   bool authentication() const { return _authentication; }
