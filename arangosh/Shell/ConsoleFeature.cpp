@@ -76,7 +76,6 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("BasicsPhase");
-  startsAfter("Client");
   if (!_supportsColors) {
     _colors = false;
   }
@@ -306,7 +305,7 @@ std::string ConsoleFeature::readPassword() {
 #ifdef _WIN32
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
-  std::getline(std::wcin, password);
+  std::getline(std::wcin, wpassword);
   UnicodeString pw(wpassword.c_str(), wpassword.length());
   pw.toUTF8String<std::string>(password);
 #else
