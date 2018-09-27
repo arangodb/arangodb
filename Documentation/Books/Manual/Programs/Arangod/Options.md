@@ -21,4 +21,8 @@ if the value contains whitespace. Extra whitespace around `=` is allowed:
 See [Configuration](../../Administration/Configuration.md)
 if you want to translate startup parameters to configuration files.
 
+See [Fetch Current Configuration Options]
+(../../Administration/Configuration.md#fetch-current-configuration-options) if
+you want to query the `arangod` server for the current settings at runtime.
+
 @startDocuBlock program_options_arangod
