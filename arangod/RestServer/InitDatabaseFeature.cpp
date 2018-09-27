@@ -137,7 +137,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 #else
 #ifdef TRI_HAVE_TERMIOS_H
   TRI_SetStdinVisibility(false);
-  std::getline(std::cin, password);
+  std::getline(std::cin, wpassword);
 
   TRI_SetStdinVisibility(true);
 #else
