@@ -33,7 +33,7 @@ void QueryString::append(std::string& out) const {
   out.append(_queryString);
 }
 
-uint64_t QueryString::hash() {
+uint64_t QueryString::hash() const {
   if (!_hashed) {
     if (empty()) {
       return 0;

@@ -214,15 +214,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
       // we do not really care about the state response
       collections = inventoryResponse.slice().get("collections");
-      views = inventoryResponse.slice().get("views");
       if (!collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "collections section is missing from response");
       }
+      views = inventoryResponse.slice().get("views");
     }
 
     if (!_config.applier._skipCreateDrop &&
-        _config.applier._restrictCollections.empty()) {
+        _config.applier._restrictCollections.empty() && 
+        !views.isNone()) {
+      // views are optional, and 3.3 and before will not send any view data
       r = handleViewCreation(views); // no requests to master
       if (r.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION)
@@ -1269,8 +1271,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const& masterColl =
         !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-             ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
-             : fetchCollectionDump(col, masterColl, _config.master.lastLogTick)
+             ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
+             : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick)
              ;
 
     if (!res.ok()) {
