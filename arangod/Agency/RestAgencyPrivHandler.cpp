@@ -192,7 +192,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
-          LOG_TOPIC(ERR, Logger::AGENCY)
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
             << "Responding to gossip request " << query->toJson() << " with "
             << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {

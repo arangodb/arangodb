@@ -1753,7 +1753,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   VPackObjectBuilder b(out.get());
     
   std::unordered_set<std::string> gossipPeers = _config.gossipPeers();
-  if (!gossipPeers.empty()) {
+  if (!gossipPeers.empty() && !isCallback) {
     try {
       _config.eraseGossipPeer(endpoint);
     } catch (std::exception const& e) {
