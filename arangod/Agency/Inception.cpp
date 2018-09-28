@@ -94,6 +94,7 @@ void Inception::gossip() {
 
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
+
       if (p != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
@@ -104,7 +105,7 @@ void Inception::gossip() {
         }
         std::string clientid = config.id() + std::to_string(j++);
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 1: "
-            << out->toJson() << " to peer " << p;
+                                         << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
@@ -116,13 +117,18 @@ void Inception::gossip() {
       }
     }
 
+    if (config.poolComplete()) {
+      _agent->activateAgency();
+      return;
+    }
+        
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
-          if (_acked[pair.second] >= version) {
+          if (_acked[pair.second] > version) {
             continue;
           }
         }
@@ -232,7 +238,7 @@ bool Inception::restartingActiveAgent() {
     auto gp = myConfig.gossipPeers();
     std::vector<std::string> informed;
 
-    for (auto& p : gp) {
+    for (auto const& p : gp) {
       if (this->isStopping() && _agent->isStopping() && cc==nullptr) {
         return false;
       }
@@ -261,7 +267,7 @@ bool Inception::restartingActiveAgent() {
     }
 
     auto pool = _agent->config().pool();
-    for (const auto& i : informed) {
+    for (auto const& i : informed) {
       active.erase(
         std::remove(active.begin(), active.end(), i), active.end());
     }

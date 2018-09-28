@@ -125,7 +125,7 @@ VPackBuilder createJob(std::string const& collection, std::string const& from, s
 
 TEST_CASE("MoveShard", "[agency][supervision]") {
 auto baseStructure = createRootNode();
-write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
 std::string const jobId = "1";
 
 SECTION("the job should fail if toServer does not exist") {
@@ -153,7 +153,7 @@ SECTION("the job should fail if toServer does not exist") {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
@@ -194,7 +194,7 @@ SECTION("the job should fail to start if toServer is already in plan") {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
@@ -275,7 +275,7 @@ SECTION("the job should fail if fromServer is not in plan of the shard") {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
@@ -316,7 +316,7 @@ SECTION("the job should fail if fromServer does not exist") {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
@@ -448,7 +448,7 @@ SECTION("the job should fail if the target server was cleaned out") {
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
@@ -494,7 +494,7 @@ SECTION("the job should fail if the target server is failed") {
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
@@ -577,7 +577,7 @@ SECTION("the job should fail if the shard distributes its shards like some other
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
@@ -619,7 +619,7 @@ SECTION("the job should be moved to pending when everything is ok") {
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     std::string sourceKey = "/arango/Target/ToDo/1";
     REQUIRE(std::string(q->slice().typeName()) == "array");
@@ -699,7 +699,7 @@ SECTION("moving from a follower should be possible") {
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
 
     auto writes = q->slice()[0][0];
@@ -831,7 +831,7 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() == 3); // leader, oldFollower, newLeader
@@ -1175,7 +1175,7 @@ SECTION("if the job is done it should properly finish itself") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
@@ -1469,7 +1469,7 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
@@ -1525,7 +1525,7 @@ SECTION("a moveshard job that just made it to ToDo can simply be aborted") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
     auto writes = q->slice()[0][0];
@@ -1589,7 +1589,7 @@ SECTION("a pending moveshard job should also put the original server back into p
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
@@ -1670,7 +1670,7 @@ SECTION("after the new leader has synchronized the new leader should resign") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1817,7 +1817,7 @@ SECTION("aborting the job while a leader transition is in progress (for example 
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
@@ -1897,7 +1897,7 @@ SECTION("if we are ready to resign the old server then finally move to the new l
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1978,7 +1978,7 @@ SECTION("if the new leader took over finish the job") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.length() == 4);
@@ -2021,7 +2021,7 @@ SECTION("calling an unknown job should be possible without throwing exceptions o
 SECTION("it should be possible to create a new moveshard job") {
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     REQUIRE(q->slice()[0].length() == 1);
 
@@ -2122,7 +2122,7 @@ SECTION("when aborting a moveshard job that is moving stuff away from a follower
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
@@ -2193,8 +2193,8 @@ SECTION("if aborting failed report it back properly") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-    return {true, "", std::vector<bool> {true}, std::vector<index_t> {0}};
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    return {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {0}};
   });
 
   AgentInterface& agent = mockAgent.get();
@@ -2252,8 +2252,8 @@ SECTION("if aborting failed due to a precondition report it properly") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-    return {false, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    return {false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   });
 
   AgentInterface& agent = mockAgent.get();
@@ -2311,8 +2311,8 @@ SECTION("trying to abort a finished should result in failure") {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-    return {false, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    return {false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   });
 
   AgentInterface& agent = mockAgent.get();
@@ -2491,7 +2491,7 @@ SECTION("when promoting the new leader, the old one should become a resigned fol
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     REQUIRE(q->slice()[0].length() == 2);
 

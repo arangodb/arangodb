@@ -26,15 +26,19 @@
 namespace arangodb {
 namespace consensus {
 
-extern std::string const COLLECTIONS;
-extern std::string const DATABASES;
-extern std::string const VERSION;
+constexpr char const* DATABASES = "Databases";
+constexpr char const* COLLECTIONS = "Collections";
+constexpr char const* RECONFIGURE = ".agency";
+constexpr char const* VERSION = "Version";
 
-extern std::string const CURRENT;
-extern std::string const CURRENT_COLLECTIONS;
-extern std::string const CURRENT_DATABASES;
-extern std::string const PLAN;
-extern std::string const PLAN_COLLECTIONS;
-extern std::string const PLAN_DATABASES;
+constexpr char const* CURRENT = "Current"; 
+constexpr char const* CURRENT_VERSION = "Current/Version";
+constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
+constexpr char const* CURRENT_DATABASES = "Current/Databases/";
+
+constexpr char const* PLAN = "Plan"; 
+constexpr char const* PLAN_VERSION = "Plan/Version";
+constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
+constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
 }}

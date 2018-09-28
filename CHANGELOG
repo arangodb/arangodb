@@ -1,6 +1,13 @@
 v3.4.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* upgraded arangosync version to 0.6.0
+
+* upgraded arangodb starter version to 0.13.3
+
+* fixed issue #6611: Properly display JSON properties of user defined foxx services 
+  configuration within the web UI 
+
 * improved shards display in web UI: included arrows to better visualize that 
   collection name sections can be expanded and collapsed
 
@@ -98,6 +105,15 @@ v3.4.0-rc.2 (XXXX-XX-XX)
   which could have led to the server returning an HTTP 500 error
 
 * catch more exceptions in replication and handle them appropriately
+
+* agency endpoint updates now go through RAFT
+
+* fixed a cleanup issue in Current when a follower was removed from Plan
+
+* catch exceptions in MaintenanceWorker thread
+
+* fixed a bug in cleanOutServer which could lead to a cleaned out server
+  still being a follower for some shard
 
 
 v3.4.0-rc.1 (2018-09-06)
