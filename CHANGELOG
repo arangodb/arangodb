@@ -9,6 +9,9 @@ devel
 v3.4.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* fixed issue #6611: Properly display JSON properties of user defined foxx services 
+  configuration within the web UI 
+
 * improved shards display in web UI: included arrows to better visualize that 
   collection name sections can be expanded and collapsed
 
