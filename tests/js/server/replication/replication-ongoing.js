@@ -442,9 +442,15 @@ function BaseTestConfig() {
       compare(
         function (state) {
           let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < (32 * 1024 + 1); i++) {
-            c.insert({ value: i });
+            docs.push({value:i});
+            if (docs.length >= 1000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
+          c.insert(docs);
         },
 
         function (state) {
@@ -856,8 +862,6 @@ function BaseTestConfig() {
             return;
           }
 
-          assertEqual(state.count, collectionCount(cn));
-          assertEqual(state.checksum, collectionChecksum(cn));
           var idx = db._collection(cn).getIndexes();
           assertEqual(1, idx.length); // primary 
 
