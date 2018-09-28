@@ -8,6 +8,10 @@ R"=(
       "status": 3,
       "planId": "2010049",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010049/s2010050",
       "isSystem": false,
@@ -232,6 +236,10 @@ R"=(
       "status": 3,
       "planId": "2010049",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010049/s2010053",
       "isSystem": false,
@@ -456,6 +464,10 @@ R"=(
       "status": 3,
       "planId": "2010049",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010049/s2010056",
       "isSystem": false,
@@ -680,6 +692,11 @@ R"=(
       "status": 3,
       "planId": "2010061",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
+            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010061/s2010062",
       "isSystem": false,
@@ -773,6 +790,11 @@ R"=(
       "status": 3,
       "planId": "2010061",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010061/s2010065",
       "isSystem": false,
@@ -890,6 +912,11 @@ R"=(
       "status": 3,
       "planId": "2010097",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010097/s2010100",
       "isSystem": false,
@@ -1005,6 +1032,10 @@ R"=(
       "status": 3,
       "planId": "2010102",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010102/s2010105",
       "isSystem": false,
@@ -1067,6 +1098,10 @@ R"=(
       "status": 3,
       "planId": "2010102",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010102/s2010108",
       "isSystem": false,
@@ -1129,6 +1164,10 @@ R"=(
       "status": 3,
       "planId": "2010102",
       "theLeader": "",
+      "servers": [
+            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+          ],
       "cacheEnabled": false,
       "globallyUniqueId": "c2010102/s2010111",
       "isSystem": false,
