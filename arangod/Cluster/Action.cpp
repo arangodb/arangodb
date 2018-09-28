@@ -185,15 +185,14 @@ void Action::endStats() {
 }
 
 void Action::failAll() {
-  std::shared_ptr<Action> failAction(this);
+  this->setState(FAILED);
+  this->endStats();
 
-  // fail all actions that would follow
-  do {
-    failAction->setState(FAILED);
-    failAction->endStats();
-    failAction=failAction->getPostAction();
-  } while(failAction);
-
+  for (std::shared_ptr<Action> action = this->getPostAction(); action != nullptr;
+    action = action->getPostAction()) {
+    action->setState(FAILED);
+    action->endStats();
+  }
 }
 
 void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
