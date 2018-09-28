@@ -272,8 +272,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // sanity check for our on-disk WAL format
     uint64_t x = _numInserts + _numRemoves + _numUpdates;
-
     if (hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       TRI_ASSERT(x <= 1 && _numLogdata == x);
     } else {
@@ -283,7 +283,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         << "_numUpdates " << _numUpdates << "  "
         << "_numLogdata " << _numLogdata;
       }
-
       // begin transaction + commit transaction + n doc removes
       TRI_ASSERT(_numLogdata == (2 + _numRemoves));
     }
@@ -321,10 +320,11 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
-    rocksdb::SequenceNumber latestSeq =
-        rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 
     if (result.ok()) {
+      rocksdb::SequenceNumber latestSeq =
+        rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+      
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
             static_cast<RocksDBTransactionCollection*>(trxCollection);
@@ -478,6 +478,32 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
   }
 }
 
+/// @brief undo the effects of the previous prepareOperation call
+void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e operationType) {
+  bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  if (singleOp) {
+    switch (operationType) {
+      case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        --_numLogdata;
+#endif
+        break;
+      default: {
+        break;
+      }
+    }
+  } else {
+    if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      --_numLogdata;
+#endif
+    }
+  }
+}
+
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
@@ -492,22 +518,20 @@ Result RocksDBTransactionState::addOperation(
     return Result(Result(TRI_ERROR_RESOURCE_LIMIT, message));
   }
 
-  auto collection =
-      static_cast<RocksDBTransactionCollection*>(findCollection(cid));
-
-  if (collection == nullptr) {
+  auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
+  if (tcoll == nullptr) {
     std::string message = "collection '" + std::to_string(cid) +
                           "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   // should not fail or fail with exception
-  collection->addOperation(operationType, revisionId);
+  tcoll->addOperation(operationType, revisionId);
 
   // clear the query cache for this collection
   auto queryCache = arangodb::aql::QueryCache::instance();
   if (queryCache->mayBeActive()) {
-    queryCache->invalidate(&_vocbase, collection->collectionName());
+    queryCache->invalidate(&_vocbase,tcoll->collectionName());
   }
 
   switch (operationType) {
@@ -527,6 +551,23 @@ Result RocksDBTransactionState::addOperation(
 
   // perform an intermediate commit if necessary
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
+}
+
+// only a valid under an exlusive lock as an only operation
+void RocksDBTransactionState::addTruncateOperation(TRI_voc_cid_t cid) {
+  auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
+  if (tcoll == nullptr) {
+    std::string message = "collection '" + std::to_string(cid) +
+    "' not found in transaction state";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+  }
+  tcoll->addTruncateOperation();
+  _numRemoves += tcoll->numRemoves();
+  TRI_ASSERT(_numInserts == 0 && _numUpdates == 0);
+  TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _numLogdata += _numRemoves; // cheat our own sanity checks
+#endif
 }
 
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
