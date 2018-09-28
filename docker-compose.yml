@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  arango-db:
+    build: .
+    image: "${PRIVATE_DOCKER_REGISTRY}arango-db:latest"
+    container_name: arango-db
+    ports:
+      - "8529:8529"
+    volumes:
+      - .:/data:Z
+    networks: 
+      - arango-db
+    command: bash
+    stdin_open: true
+    tty: true
+    user: root
+    cap_add:
+      - ALL
+networks:
+    arango-db:
+        
