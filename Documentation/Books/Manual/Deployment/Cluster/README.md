@@ -10,3 +10,5 @@ For a general introduction to the _ArangoDB Cluster_, please refer to the [Clust
 - [Manual Start](ManualStart.md)
 - [Kubernetes](Kubernetes.md)	
 - [Mesos, DC/OS](Mesos.md)	
+
+Or go through detailed [ArangoDB Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/) to dig deeper into maintenance, resilience and troubleshooting of your distributed environment.
