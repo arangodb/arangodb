@@ -118,7 +118,7 @@ class ScopeGuard {
 
 template <class T>
 ScopeGuard<T> scopeGuard(T&& f) {
-  return ScopeGuard<T>(std::move(f));
+  return ScopeGuard<T>(std::forward<T>(f));
 }
 
 }  // namespace arangodb

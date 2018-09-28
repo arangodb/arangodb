@@ -1220,7 +1220,7 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
     return true;
   }
   // We simply drop the current estimator and steal the one from recovery
-  // We are than save for resizing issues in our _estimator format
+  // We are then safe for resizing issues in our _estimator format
   // and will use the old size.
 
   TRI_ASSERT(mgr != nullptr);
@@ -1253,6 +1253,9 @@ void RocksDBVPackIndex::recalculateEstimates() {
 }
 
 void RocksDBVPackIndex::afterTruncate() {
+  if (unique()) {
+    return;
+  }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
   RocksDBIndex::afterTruncate();

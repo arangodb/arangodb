@@ -423,6 +423,13 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
 
 void IResearchRocksDBRecoveryHelper::SingleDeleteCF(uint32_t column_family_id,
                                                     const rocksdb::Slice& key) {
+  // not needed for anything atm
+}
+
+void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
+                                                   const rocksdb::Slice& end_key,
+                                                   const rocksdb::Slice& begin_key) {
+  // not needed for anything atm
 }
 
 void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
@@ -451,9 +458,20 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
       TRI_idx_iid_t const indexId = RocksDBLogValue::indexId(blob);
       dropCollectionFromView(*_dbFeature, dbId, collectionId, indexId, viewId);
     } break;
-    default: {
-      // shut up the compiler
-    } break;
+    case RocksDBLogType::CollectionTruncate: {
+      uint64_t objectId = RocksDBLogValue::objectId(blob);
+      auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
+      
+      if (coll != nullptr) {
+        auto const links = lookupLinks(*coll);
+        for (auto link : links) {
+          link->afterTruncate();
+        }
+      }
+      
+      break;
+    }
+    default: break; // shut up the compiler
   }
 }
 

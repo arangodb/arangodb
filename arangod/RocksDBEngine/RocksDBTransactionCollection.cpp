@@ -111,7 +111,7 @@ bool RocksDBTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  std::string collName(_collection->name());
+  std::string collName(_collection->name()); // WTF?!
   if (_transaction->isLockedShard(collName)) {
     return true;
   }
@@ -275,6 +275,15 @@ void RocksDBTransactionCollection::addOperation(
       _revision = revisionId;
       break;
   }
+}
+
+void RocksDBTransactionCollection::addTruncateOperation() {
+  TRI_ASSERT(_numInserts == 0 && _numUpdates == 0 && _numRemoves == 0);
+  if (!isLocked() || _accessType != AccessMode::Type::EXCLUSIVE) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection must be exlusively locked");
+  }
+  _numRemoves += _initialNumberDocuments + _numInserts;
 }
 
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
