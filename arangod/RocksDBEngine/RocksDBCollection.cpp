@@ -728,7 +728,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid != 0);
 
-    RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
+    RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     state->prepareOperation(_logicalCollection.id(),
                             rid, // actual revision ID!!
@@ -841,8 +841,7 @@ bool RocksDBCollection::readDocumentWithCallback(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     IndexIterator::DocumentCallback const& cb) const {
   if (documentId.isSet()) {
-    auto res = lookupDocumentVPack(documentId, trx, cb, true);
-    return res.ok();
+    return lookupDocumentVPack(documentId, trx, cb, true).ok();
   }
   return false;
 }
@@ -871,10 +870,35 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   VPackSlice newSlice = builder->slice();
 
-  auto state = RocksDBTransactionState::toState(trx);
-  auto mthds = RocksDBTransactionState::toMethods(trx);
-  RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
+  if (options.overwrite) {
+    // special optimization for the overwrite case:
+    // in case the operation is a RepSert, we will first check if the specified
+    // primary key exists. we can abort this low-level insert early, before any
+    // modification to the data has been done. this saves us from creating a RocksDB
+    // transaction SavePoint.
+    // if we don't do the check here, we will always create a SavePoint first and
+    // insert the new document. when then inserting the key for the primary index and
+    // then detecting a unique constraint violation, the transaction would be rolled
+    // back to the SavePoint state, which will rebuild *all* data in the WriteBatch
+    // up to the SavePoint. this can be super-expensive for bigger transactions.
+    // to keep things simple, we are not checking for unique constraint violations
+    // in secondary indexes here, but defer it to the regular index insertion check
+    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    if (keySlice.isString()) {
+      LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, StringRef(keySlice));
+      if (documentId.isSet()) {
+        if (options.indexOperationMode == Index::OperationMode::internal) {
+          // need to return the key of the conflict document
+          return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+        }
+        return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      }
+    }
+  }
 
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+
+  auto state = RocksDBTransactionState::toState(trx);
   state->prepareOperation(
     _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT
   );
@@ -985,8 +1009,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1094,8 +1117,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1177,8 +1199,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   }
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   // add possible log statement under guard
   state->prepareOperation(

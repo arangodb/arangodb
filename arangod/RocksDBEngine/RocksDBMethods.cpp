@@ -24,6 +24,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Transaction/Methods.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -37,12 +38,15 @@ using namespace arangodb;
 // ================= RocksDBSavePoint ==================
 
 RocksDBSavePoint::RocksDBSavePoint(
-    RocksDBMethods* trx, bool handled)
-    : _trx(trx), _handled(handled) {
+    transaction::Methods* trx, TRI_voc_document_operation_e operationType)
+    : _trx(trx), 
+      _operationType(operationType),
+      _handled(_trx->isSingleOperationTransaction()) { 
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
+    auto mthds = RocksDBTransactionState::toMethods(_trx);
     // only create a savepoint when necessary
-    _trx->SetSavePoint();
+    mthds->SetSavePoint();
   }
 }
 
@@ -71,7 +75,8 @@ void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
     // leave the savepoint alone, because it belonged to another
     // transaction, and the current transaction will not have any
     // savepoint
-    _trx->PopSavePoint();
+    auto mthds = RocksDBTransactionState::toMethods(_trx);
+    mthds->PopSavePoint();
   }
 
   // this will prevent the rollback call in the destructor
@@ -80,7 +85,12 @@ void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
 
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
-  _trx->RollbackToSavePoint();
+  auto mthds = RocksDBTransactionState::toMethods(_trx);
+  mthds->RollbackToSavePoint();
+  
+  auto state = RocksDBTransactionState::toState(_trx);
+  state->rollbackOperation(_operationType);
+
   _handled = true;  // in order to not roll back again by accident
 }
 

@@ -115,6 +115,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
     result.add("state", VPackValue(QueryExecutionState::toString(q.state)));
+    result.add("stream", VPackValue(q.stream));
     result.close();
   }
   result.close();

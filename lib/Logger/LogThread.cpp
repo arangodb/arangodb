@@ -92,6 +92,10 @@ void LogThread::run() {
   }
 
   while (_messages.pop(msg)) {
+    try {
+      LogAppender::log(msg);
+    } catch (...) {
+    }
     delete msg;
   }
 }

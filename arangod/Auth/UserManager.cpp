@@ -556,6 +556,14 @@ Result auth::UserManager::accessUser(std::string const& user,
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
+bool auth::UserManager::userExists(std::string const& user) {
+  loadFromDB();
+  
+  READ_LOCKER(readGuard, _userCacheLock);
+  UserMap::iterator const& it = _userCache.find(user);
+  return it != _userCache.end();
+}
+
 VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   loadFromDB();
 

@@ -127,7 +127,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   qi->_isOpen = true;
 
   if (!qi->_isPrepared) {
-    qi->_query->prepare(this, 0);
+    qi->_query->prepare(this);
     qi->_isPrepared = true;
   }
 
@@ -160,7 +160,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   if (!qi->_isPrepared) {
     qi->_isPrepared = true;
-    qi->_query->prepare(this, 0);
+    qi->_query->prepare(this);
   }
 
   qi->_isOpen = false;
@@ -209,9 +209,8 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
 
   if (!queryInfo->_isPrepared) {
     queryInfo->_isPrepared = true;
-    queryInfo->_query->prepare(this, 0);
+    queryInfo->_query->prepare(this);
   }
-
 
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust

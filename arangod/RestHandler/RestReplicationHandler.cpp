@@ -1429,6 +1429,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    options.overwrite = true;
     opRes = trx.insert(collectionName, requestSlice, options);
     if (opRes.fail()) {
       return opRes.result;

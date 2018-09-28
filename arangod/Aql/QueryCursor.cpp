@@ -169,7 +169,7 @@ QueryStreamCursor::QueryStreamCursor(
     std::move(opts),
     arangodb::aql::PART_MAIN
   );
-  _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
+  _query->prepare(QueryRegistryFeature::QUERY_REGISTRY);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query
@@ -199,8 +199,14 @@ QueryStreamCursor::~QueryStreamCursor() {
   if (_query) {  // cursor is canceled or timed-out
     // now remove the continue handler we may have registered in the query
     _query->sharedState()->setContinueCallback();
-    // Query destructor will  cleanup plan and abort transaction
+    // Query destructor will cleanup plan and abort transaction
     _query.reset();
+  }
+}
+
+void QueryStreamCursor::kill() {
+  if (_query) {
+    _query->kill();
   }
 }
 
