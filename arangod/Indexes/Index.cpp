@@ -66,16 +66,16 @@ std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                     "invalid index description");
   }
-  
+
   size_t const n = static_cast<size_t>(fields.length());
   result.reserve(n);
-  
+
   for (auto const& name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                       "invalid index description");
     }
-    
+
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes,
                               allowExpansion);
@@ -115,7 +115,7 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
                    std::unordered_set<std::string>& nonNullAttributes) {
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
-  
+
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -123,8 +123,8 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
     const_cast<arangodb::aql::AstNode*>(op)->setExcludesNull(true);
   }
   // all other node types will be ignored here
-   
-  try { 
+
+  try {
     nonNullAttributes.emplace(access->toString());
   } catch (...) {
     // stringification may throw
@@ -413,6 +413,22 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
       if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get("minLength"), false) != 0) {
         return false;
+      }
+    }
+  } else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    value = lhs.get("view");
+    if (value.isString()) {
+      if (arangodb::basics::VelocyPackHelper::compare(
+              value, rhs.get("view"), false) != 0) {
+        auto ls = value.copyString();
+        auto rs = rhs.get("view").copyString();
+        if (ls.size() < rs.size()) {
+          std::swap(ls, rs);
+        }
+        if (ls.back() != '/' ||
+            ls.compare(rs.substr(0, ls.size())) != 0) {
+          return false;
+        }
       }
     }
   }
@@ -786,7 +802,7 @@ bool Index::canUseConditionPart(
         if (::canBeNull(op, access, nonNullAttributes)) {
           return false;
         }
-        
+
         // range definitely exludes the "null" value
         ::markAsNonNull(op, access, nonNullAttributes);
       }
@@ -797,7 +813,7 @@ bool Index::canUseConditionPart(
     // in execution phase, we do not need to check the variable usage again
     return true;
   }
-      
+
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
     // none of the indexes can use !=, so we can exit here
     // note that this function may have been called for operator !=. this is
@@ -822,7 +838,7 @@ bool Index::canUseConditionPart(
   } else {
     // a.b == value  OR  a.b IN values
     if (!other->isConstant()) {
-      // don't look for referenced variables if we only access a 
+      // don't look for referenced variables if we only access a
       // constant value (there will be no variables then...)
       arangodb::aql::Ast::getReferencedVariables(other, variables);
     }
