@@ -108,6 +108,9 @@ class RocksDBTransactionState final : public TransactionState {
   void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                         TRI_voc_document_operation_e operationType);
 
+  /// @brief undo the effects of the previous prepareOperation call
+  void rollbackOperation(TRI_voc_document_operation_e operationType);
+
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
   Result addOperation(TRI_voc_cid_t collectionId,
