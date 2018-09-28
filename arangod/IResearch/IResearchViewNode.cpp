@@ -673,6 +673,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       IResearchView::Snapshot::SyncAndReplace
     };
 
+    TRI_ASSERT(view.category() == LogicalDataSourceCategory::VIEW);
     reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(
       *trx, _shards, SNAPSHOT[size_t(_options.forceSync)]
     );
@@ -682,6 +683,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       IResearchView::Snapshot::SyncAndReplace
     };
 
+    TRI_ASSERT(view.category() == LogicalDataSourceCategory::VIEW);
     reader = LogicalView::cast<IResearchView>(view).snapshot(
       *trx, SNAPSHOT[size_t(_options.forceSync)]
     );
