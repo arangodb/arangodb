@@ -612,7 +612,7 @@ function BaseTestConfig() {
             text: { analyzers: ["text_en"] }
           }
         };
-        view.properties(links);
+        view.properties({links});
       }
 
 
