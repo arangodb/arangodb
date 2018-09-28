@@ -46,6 +46,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override final;
   void unprepare() override final;
+  void stop() override final;
 
   std::string const& startupDirectory() {
     return _startupDirectory;
@@ -54,8 +55,11 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
  private:
   std::string _startupDirectory;
   std::string _clientModule;
+  std::string _copyDirectory;
   std::vector<std::string> _moduleDirectory;
   bool _currentModuleDirectory;
+  bool _copyInstallation;
+  bool _removeCopyInstallation;
   uint64_t _gcInterval;
 
  public:
@@ -69,6 +73,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   bool jslint(std::vector<std::string> const& files);
 
  private:
+  void copyInstallationFiles();
   bool printHello(V8ClientConnection*);
   void initGlobals();
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
