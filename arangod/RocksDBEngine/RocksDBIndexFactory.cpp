@@ -744,8 +744,9 @@ void RocksDBIndexFactory::prepareIndexes(
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     else {
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) <<
-        "created index from definition '" << v.toJson() << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "created index '" << idx->id() << "' from definition '"
+          << v.toJson() << "'";
     }
 #endif
 

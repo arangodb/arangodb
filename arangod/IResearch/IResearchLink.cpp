@@ -146,7 +146,7 @@ int IResearchLink::drop() {
 
   _dropCollectionInDestructor = false; // will do drop now
   _defaultGuid = _view->guid(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
-  
+
   TRI_voc_cid_t vid = _view->id();
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
@@ -295,6 +295,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     _viewLock.unlock();
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "error getting view: '" << viewId << "' for link '" << _id << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "have raw view '" << view->guid() << "'";
 
     return false;
   }
@@ -498,11 +500,10 @@ int IResearchLink::unload() {
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
     auto res = drop();
 
-    if (TRI_ERROR_NO_ERROR != res) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to drop collection from view while unloading dropped IResearch link '" << _id
-        << "' for IResearch view '" << _view->id() << "'";
-    }
+    LOG_TOPIC_IF(WARN, arangodb::iresearch::TOPIC, TRI_ERROR_NO_ERROR != res)
+        << "failed to drop collection from view while unloading dropped "
+        << "IResearch link '" << _id << "' for IResearch view '"
+        << _view->name() << "'";
 
     return res;
   }

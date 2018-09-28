@@ -132,6 +132,10 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
+  LOG_TOPIC(DEBUG, Logger::VIEWS)
+    << "created '" << viewType.toString() << "' view '" << view->name() << "' ("
+    << view->guid() << ")";
+
   return view;
 }
 

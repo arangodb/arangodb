@@ -66,6 +66,8 @@ arangodb::Result createLink(
     VPackSlice link,
     VPackBuilder& builder
 ) {
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "beginning IResearchViewCoordinator::createLink";
   TRI_ASSERT(builder.isEmpty());
 
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
@@ -86,10 +88,14 @@ arangodb::Result createLink(
   );
 
   if (!mergeSliceSkipKeys(builder, link, acceptor)) {
+    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+        << "failed to update link definition with the view name while updating "
+        << "IResearch view '" << view.name() << "' and collection '"
+        << collection.name() << "'";
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to update link definition with the view name while updating IResearch view '")
-      + std::to_string(view.id()) + "' collection '" + collection.name() + "'"
+      + view.name() + "' and collection '" + collection.name() + "'"
     );
   }
 
@@ -97,9 +103,16 @@ arangodb::Result createLink(
 
   VPackBuilder tmp;
 
-  return arangodb::methods::Indexes::ensureIndex(
+  auto res = arangodb::methods::Indexes::ensureIndex(
     &collection, builder.slice(), true, tmp
   );
+  LOG_TOPIC_IF(DEBUG, arangodb::iresearch::TOPIC, res.ok())
+    << "created link for collection '" << collection.name()
+    << "' and view '" << view.name() << "' (" << view.guid() << ")";
+  LOG_TOPIC_IF(DEBUG, arangodb::iresearch::TOPIC, res.fail())
+    << "failed to ensure link for collection '" << collection.name()
+    << "' and view '" << view.name() << "'";
+  return res;
 }
 
 arangodb::Result updateLinks(
@@ -112,6 +125,8 @@ arangodb::Result updateLinks(
     VPackBuilder& viewNewProperties,
     std::unordered_set<TRI_voc_cid_t>& newCids
 ) {
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "beginning IResearchViewCoordinator::updateLinks";
   if (!newLinks.isObject()) {
     newLinks = VPackSlice::emptyObjectSlice();
   }
@@ -154,6 +169,9 @@ arangodb::Result updateLinks(
 
     if (link.isNull()) {
       if (existingLink) {
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "dropping link '" << existingLink->id() << "' from collection '"
+            << collection->name() << "'";
         res = dropLink(*existingLink, *collection, builder);
 
         // do not need to drop link afterwards
@@ -180,6 +198,9 @@ arangodb::Result updateLinks(
           continue;
         }
 
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "dropping link '" << existingLink->id() << "' from collection '"
+            << collection->name() << "'";
         res = dropLink(*existingLink, *collection, builder);
 
         if (!res.ok()) {
@@ -189,7 +210,14 @@ arangodb::Result updateLinks(
         builder.clear();
       }
 
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+          << "creating link for collection '"
+          << collection->name() << "' and view '" << view.name() << "'";
       res = createLink(*collection, view, link, builder);
+      LOG_TOPIC_IF(TRACE, arangodb::iresearch::TOPIC, res.fail())
+          << "failed to create link for collection '"
+          << collection->name() << "' and view '" << view.name() << "': "
+          << res.errorMessage();
       modified = true;
     }
 
