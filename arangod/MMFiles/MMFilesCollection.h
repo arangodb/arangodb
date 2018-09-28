@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_MMFILES_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/FairReadWriteLock.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
@@ -440,6 +441,9 @@ class MMFilesCollection final : public PhysicalCollection {
                         OperationOptions& options, bool& waitForSync);
 
  private:
+  int lockWriteWithDeadlockDetection(TransactionState const*, double timeout);
+  int lockReadWithDeadlockDetection(TransactionState const*, double timeout);
+
   uint8_t const* lookupDocumentVPack(LocalDocumentId const& documentId) const;
   uint8_t const* lookupDocumentVPackConditional(LocalDocumentId const& documentId,
                                                 TRI_voc_tick_t maxTick,
@@ -497,7 +501,7 @@ class MMFilesCollection final : public PhysicalCollection {
   mutable arangodb::MMFilesDitches _ditches;
 
   // lock protecting the indexes and data
-  mutable basics::ReadWriteLock _dataLock;
+  mutable basics::FairReadWriteLock _dataLock;
 
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<MMFilesDatafile*> _datafiles;   // all datafiles

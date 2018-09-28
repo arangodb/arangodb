@@ -2485,120 +2485,31 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
     // do not lock by command
     return TRI_ERROR_NO_ERROR;
   }
-
-  TRI_voc_tid_t tid = state->id();
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginReadTimed: " << _name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-  uint64_t waitTime = 0;  // indicate that times uninitialized
-  double startTime = 0.0;
-
-  while (true) {
-    TRY_READ_LOCKER(locker, _dataLock);
-
-    if (locker.isLocked()) {
-      // when we are here, we've got the read lock
-      if (useDeadlockDetector) {
-        _logicalCollection.vocbase()._deadlockDetector.addReader(
-          tid, &_logicalCollection, wasBlocked
-        );
-      }
-
-      // keep lock and exit loop
-      locker.steal();
-
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (useDeadlockDetector) {
-      try {
-        if (!wasBlocked) {
-          // insert reader
-          wasBlocked = true;
-
-          if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.setReaderBlocked(tid, &_logicalCollection)) {
-            // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-                << "deadlock detected while trying to acquire read-lock "
-                   "on collection '"
-                << _logicalCollection.name() << "'";
-
-            return TRI_ERROR_DEADLOCK;
-          }
-
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-              << "waiting for read-lock on collection '"
-              << _logicalCollection.name() << "'";
-          // intentionally falls through
-        } else if (++iterations >= 5) {
-          // periodically check for deadlocks
-          TRI_ASSERT(wasBlocked);
-          iterations = 0;
-
-          if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.detectDeadlock(tid, &_logicalCollection, false)) {
-            // deadlock
-            _logicalCollection.vocbase()._deadlockDetector.unsetReaderBlocked(
-                tid, &_logicalCollection
-            );
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-                << "deadlock detected while trying to acquire read-lock "
-                   "on collection '"
-                << _logicalCollection.name() << "'";
-
-            return TRI_ERROR_DEADLOCK;
-          }
-        }
-      } catch (...) {
-        // clean up!
-        if (wasBlocked) {
-          _logicalCollection.vocbase()._deadlockDetector.unsetReaderBlocked(
-            tid, &_logicalCollection
-          );
-        }
-
-        // always exit
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    }
-
-    double now = TRI_microtime();
-
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
-      startTime = now;
-      waitTime = 1;
-    }
-
-    if (now > startTime + timeout) {
-      if (useDeadlockDetector) {
-        _logicalCollection.vocbase()._deadlockDetector.unsetReaderBlocked(
-          tid, &_logicalCollection
-        );
-      }
-
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-          << "timed out after " << timeout
-          << " s waiting for read-lock on collection '"
-          << _logicalCollection.name() << "'";
-
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
+  
+  if (timeout <= 0.0) {
+    timeout = defaultLockTimeout;
+  }
+  
+  int res = TRI_ERROR_NO_ERROR;
+  if (useDeadlockDetector) {
+    res = lockReadWithDeadlockDetection(state, timeout); 
+  } else {
+    bool isLocked = _dataLock.tryReadLock(timeout);
+    if (!isLocked) {
+      res = TRI_ERROR_LOCK_TIMEOUT;
     }
   }
+
+  if (res == TRI_ERROR_LOCK_TIMEOUT) {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "timed out after " << timeout << " s waiting for read-lock on collection '"
+        << _logicalCollection.name() << "'";
+  } else if (res == TRI_ERROR_DEADLOCK) {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "deadlock detected while trying to acquire read-lock on collection '"
+        << _logicalCollection.name() << "'";
+  }
+  return res;
 }
 
 /// @brief write locks a collection, with a timeout
@@ -2609,119 +2520,31 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
     // do not lock by command
     return TRI_ERROR_NO_ERROR;
   }
-
-  TRI_voc_tid_t tid = state->id();
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-  uint64_t waitTime = 0;  // indicate that times uninitialized
-  double startTime = 0.0;
-
-  while (true) {
-    TRY_WRITE_LOCKER(locker, _dataLock);
-
-    if (locker.isLocked()) {
-      // register writer
-      if (useDeadlockDetector) {
-        _logicalCollection.vocbase()._deadlockDetector.addWriter(
-          tid, &_logicalCollection, wasBlocked
-        );
-      }
-
-      // keep lock and exit loop
-      locker.steal();
-
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (useDeadlockDetector) {
-      try {
-        if (!wasBlocked) {
-          // insert writer
-          wasBlocked = true;
-
-          if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.setWriterBlocked(tid, &_logicalCollection)) {
-            // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-                << "deadlock detected while trying to acquire "
-                   "write-lock on collection '"
-                << _logicalCollection.name() << "'";
-
-            return TRI_ERROR_DEADLOCK;
-          }
-
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-              << "waiting for write-lock on collection '"
-              << _logicalCollection.name() << "'";
-        } else if (++iterations >= 5) {
-          // periodically check for deadlocks
-          TRI_ASSERT(wasBlocked);
-          iterations = 0;
-
-          if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.detectDeadlock(tid, &_logicalCollection, true)) {
-            // deadlock
-            _logicalCollection.vocbase()._deadlockDetector.unsetWriterBlocked(
-              tid, &_logicalCollection
-            );
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-                << "deadlock detected while trying to acquire "
-                   "write-lock on collection '"
-                << _logicalCollection.name() << "'";
-
-            return TRI_ERROR_DEADLOCK;
-          }
-        }
-      } catch (...) {
-        // clean up!
-        if (wasBlocked) {
-          _logicalCollection.vocbase()._deadlockDetector.unsetWriterBlocked(
-            tid, &_logicalCollection
-          );
-        }
-
-        // always exit
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    }
-
-    double now = TRI_microtime();
-
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
-      startTime = now;
-      waitTime = 1;
-    }
-
-    if (now > startTime + timeout) {
-      if (useDeadlockDetector) {
-        _logicalCollection.vocbase()._deadlockDetector.unsetWriterBlocked(
-          tid, &_logicalCollection
-        );
-      }
-
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-          << "timed out after " << timeout
-          << " s waiting for write-lock on collection '"
-          << _logicalCollection.name() << "'";
-
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
+  
+  if (timeout <= 0.0) {
+    timeout = defaultLockTimeout;
+  }
+  
+  int res = TRI_ERROR_NO_ERROR;
+  if (useDeadlockDetector) {
+    res = lockWriteWithDeadlockDetection(state, timeout); 
+  } else {
+    bool isLocked = _dataLock.tryWriteLock(timeout);
+    if (!isLocked) {
+      res = TRI_ERROR_LOCK_TIMEOUT;
     }
   }
+
+  if (res == TRI_ERROR_LOCK_TIMEOUT) {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "timed out after " << timeout << " s waiting for write-lock on collection '"
+        << _logicalCollection.name() << "'";
+  } else if (res == TRI_ERROR_DEADLOCK) {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "deadlock detected while trying to acquire write-lock on collection '"
+        << _logicalCollection.name() << "'";
+  }
+  return res;
 }
 
 /// @brief read unlocks a collection
@@ -3959,4 +3782,108 @@ Result MMFilesCollection::updateDocument(
 
   return Result(static_cast<MMFilesTransactionState*>(trx->state())
       ->addOperation(newDocumentId, revisionId, operation, marker, waitForSync));
+}
+
+int MMFilesCollection::lockReadWithDeadlockDetection(TransactionState const* state, double timeout) {
+  TRI_voc_tid_t tid = state->id();
+  int res = TRI_ERROR_NO_ERROR;
+  bool wasBlocked = false;
+  auto onBlock = [this, &res, &wasBlocked, tid]() noexcept -> bool {
+    TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
+    try {
+      // insert reader
+      if (_logicalCollection.vocbase()._deadlockDetector.setReaderBlocked(tid, &_logicalCollection) == TRI_ERROR_DEADLOCK) {
+        // deadlock
+        res = TRI_ERROR_DEADLOCK;
+        return false;
+      }
+     
+      wasBlocked = true;   
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "waiting for read-lock on collection '" << _logicalCollection.name() << "'";
+      return true;
+    } catch (...) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
+      return false;
+    }
+  };
+  
+  auto onUnblock = [&res](bool isExpired) noexcept {
+    if (isExpired) {
+      res = TRI_ERROR_LOCK_TIMEOUT;
+    }
+  };
+
+  auto onWakeup = [this, &res, tid]() -> bool {
+    if (_logicalCollection.vocbase()._deadlockDetector.detectDeadlock(tid, &_logicalCollection, false) == TRI_ERROR_DEADLOCK) {
+      // deadlock
+      _logicalCollection.vocbase()._deadlockDetector.unsetReaderBlocked(tid, &_logicalCollection);
+      res = TRI_ERROR_DEADLOCK;
+      return false;
+    }
+    return true;
+  };
+
+  _dataLock.tryReadLock(timeout, onBlock, onUnblock, onWakeup);
+  if (res == TRI_ERROR_NO_ERROR) {
+    try {
+      _logicalCollection.vocbase()._deadlockDetector.addReader(tid, &_logicalCollection, wasBlocked);
+    } catch (...) {
+      _dataLock.unlockRead();
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  return res;
+} 
+
+int MMFilesCollection::lockWriteWithDeadlockDetection(TransactionState const* state, double timeout) {
+  TRI_voc_tid_t const tid = state->id();
+  int res = TRI_ERROR_NO_ERROR;
+  bool wasBlocked = false;
+  auto onBlock = [this, &res, &wasBlocked, tid]() noexcept -> bool {
+    TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
+    try {
+      // insert writer
+      if (_logicalCollection.vocbase()._deadlockDetector.setWriterBlocked(tid, &_logicalCollection) == TRI_ERROR_DEADLOCK) {
+        // deadlock
+        res = TRI_ERROR_DEADLOCK;
+        return false;
+      }
+      wasBlocked = true;
+        
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          << "waiting for write-lock on collection '" << _logicalCollection.name() << "'";
+      return true;
+    } catch (...) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
+      return false;
+    }
+  };
+  
+  auto onUnblock = [&res](bool isExpired) noexcept {
+    if (isExpired) {
+      res = TRI_ERROR_LOCK_TIMEOUT;
+    }
+  };
+
+  auto onWakeup = [this, &res, tid]() -> bool {
+    if (_logicalCollection.vocbase()._deadlockDetector.detectDeadlock(tid, &_logicalCollection, true) == TRI_ERROR_DEADLOCK) {
+      // deadlock
+      _logicalCollection.vocbase()._deadlockDetector.unsetWriterBlocked(tid, &_logicalCollection);
+      res = TRI_ERROR_DEADLOCK;
+      return false;
+    }
+    return true;
+  };
+
+  _dataLock.tryWriteLock(timeout, onBlock, onUnblock, onWakeup);
+  if (res == TRI_ERROR_NO_ERROR) {
+    try {
+      _logicalCollection.vocbase()._deadlockDetector.addWriter(tid, &_logicalCollection, wasBlocked);
+    } catch (...) {
+      _dataLock.unlockWrite();
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  return res;
 }
