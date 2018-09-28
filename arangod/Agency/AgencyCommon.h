@@ -42,6 +42,8 @@ extern std::string const NO_LEADER;
 
 enum role_t { FOLLOWER, CANDIDATE, LEADER };
 
+enum apply_ret_t {APPLIED, PRECONDITION_FAILED, FORBIDDEN, UNKNOWN_ERROR};
+
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
 typedef uint64_t index_t;
 typedef uint64_t term_t;
@@ -63,11 +65,11 @@ struct read_ret_t {
 struct write_ret_t {
   bool accepted;         // Query accepted (i.e. we are leader)
   std::string redirect;  // If not accepted redirect id
-  std::vector<bool> applied;
+  std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
   write_ret_t() : accepted(false), redirect("") {}
   write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
-  write_ret_t(bool a, std::string const& id, std::vector<bool> const& app,
+  write_ret_t(bool a, std::string const& id, std::vector<apply_ret_t> const& app,
               std::vector<index_t> const& idx)
     : accepted(a), redirect(id), applied(app), indices(idx) {}
 };

@@ -102,6 +102,8 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * catch more exceptions in replication and handle them appropriately
 
+* agency endpoint updates now go through RAFT
+
 
 v3.4.0-rc.1 (2018-09-06)
 ------------------------
