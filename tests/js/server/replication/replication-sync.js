@@ -47,27 +47,27 @@ if (db._engine().name === "mmfiles") {
 
 const cn = "UnitTestsReplication";
 
-const connectToMaster = function() {
+const connectToMaster = function () {
   arango.reconnect(masterEndpoint, db._name(), "root", "");
   db._flushCache();
 };
 
-const connectToSlave = function() {
+const connectToSlave = function () {
   arango.reconnect(slaveEndpoint, db._name(), "root", "");
   db._flushCache();
 };
 
-const collectionChecksum = function(name) {
+const collectionChecksum = function (name) {
   var c = db._collection(name).checksum(true, true);
   return c.checksum;
 };
 
-const collectionCount = function(name) {
+const collectionCount = function (name) {
   var res = db._collection(name).count();
   return res;
 };
 
-const compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
+const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
   var state = {};
 
   db._flushCache();
@@ -102,13 +102,13 @@ function BaseTestConfig() {
     /// @brief test existing collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveSomeWithIncremental: function() {
+    testRemoveSomeWithIncremental: function () {
       connectToMaster();
 
       var st;
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
 
@@ -124,9 +124,9 @@ function BaseTestConfig() {
 
           st = _.clone(state); // save state
         },
-        function(state) {
+        function (state) {
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -158,16 +158,16 @@ function BaseTestConfig() {
     /// @brief test existing collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertSomeWithIncremental: function() {
+    testInsertSomeWithIncremental: function () {
       connectToMaster();
 
       var st;
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i });
           }
@@ -179,9 +179,9 @@ function BaseTestConfig() {
 
           st = _.clone(state); // save state
         },
-        function(state) {
+        function (state) {
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -210,21 +210,21 @@ function BaseTestConfig() {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test existing collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertHugeIncrementalMoreOnMaster: function() {
+    testInsertHugeIncrementalMoreOnMaster: function () {
       connectToMaster();
 
       var st;
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i });
           }
@@ -236,9 +236,9 @@ function BaseTestConfig() {
 
           st = _.clone(state); // save state
         },
-        function(state) {
+        function (state) {
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -256,7 +256,7 @@ function BaseTestConfig() {
           docs = [];
         }
       }
-      
+
       // insert some documents "after"
       for (let i = 0; i < 110000; ++i) {
         docs.push({ _key: "z" + i });
@@ -283,17 +283,17 @@ function BaseTestConfig() {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
-    
-    testInsertHugeIncrementalMoreOnSlave: function() {
+
+    testInsertHugeIncrementalMoreOnSlave: function () {
       connectToMaster();
 
       var st;
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i });
           }
@@ -305,9 +305,9 @@ function BaseTestConfig() {
 
           st = _.clone(state); // save state
         },
-        function(state) {
+        function (state) {
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -326,7 +326,7 @@ function BaseTestConfig() {
           docs = [];
         }
       }
-      
+
       // insert some documents "after"
       for (let i = 0; i < 110000; ++i) {
         docs.push({ _key: "z" + i });
@@ -348,18 +348,18 @@ function BaseTestConfig() {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test existing collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertHugeIncrementalLessOnMaster: function() {
+    testInsertHugeIncrementalLessOnMaster: function () {
       connectToMaster();
 
       var st;
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
           // insert some documents "before"
@@ -370,7 +370,7 @@ function BaseTestConfig() {
               docs = [];
             }
           }
-          
+
           // insert some documents "after"
           for (let i = 0; i < 110000; ++i) {
             docs.push({ _key: "z" + i });
@@ -386,9 +386,9 @@ function BaseTestConfig() {
 
           st = _.clone(state); // save state
         },
-        function(state) {
+        function (state) {
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -406,7 +406,7 @@ function BaseTestConfig() {
           docs = [];
         }
       }
-      
+
       // remove some documents from the "back"
       for (let i = 0; i < 50000; ++i) {
         docs.push({ _key: "z" + i });
@@ -438,11 +438,11 @@ function BaseTestConfig() {
     /// @brief test collection properties
     ////////////////////////////////////////////////////////////////////////////////
 
-    testProperties: function() {
+    testProperties: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn);
 
           c.properties({
@@ -451,10 +451,10 @@ function BaseTestConfig() {
             journalSize: 16 * 1024 * 1024
           });
         },
-        function(state) {
+        function (state) {
           // don't create the collection on the slave
         },
-        function(state) {
+        function (state) {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
@@ -471,11 +471,11 @@ function BaseTestConfig() {
     /// @brief test collection properties
     ////////////////////////////////////////////////////////////////////////////////
 
-    testPropertiesOther: function() {
+    testPropertiesOther: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn);
 
           c.properties({
@@ -484,11 +484,11 @@ function BaseTestConfig() {
             journalSize: 16 * 1024 * 1024
           });
         },
-        function(state) {
+        function (state) {
           // create the collection on the slave, but with default properties
           db._create(cn);
         },
-        function(state) {
+        function (state) {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
@@ -505,14 +505,14 @@ function BaseTestConfig() {
     /// @brief test with indexes
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexes: function() {
+    testCreateIndexes: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, "value1": i, "value2": "test" + i });
           }
@@ -531,7 +531,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -541,14 +541,14 @@ function BaseTestConfig() {
           c.truncate(); // but empty it
 
           let docs = [];
-         
+
           // create it with different values 
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, "value1": i, "value2": "test" + i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
@@ -575,29 +575,29 @@ function BaseTestConfig() {
     /// @brief test with views
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateViews: function() {
+    testCreateViews: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           try {
             let c = db._create(cn);
             let view = db._createView(cn + "View", "arangosearch", {});
             let links = {};
-            links[cn] =  { 
+            links[cn] = {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en" ] }
+                text: { analyzers: ["text_en"] }
               }
             };
-            view.properties({"links": links});
+            view.properties({ "links": links });
 
             let docs = [];
             for (let i = 0; i < 5000; ++i) {
               docs.push({ _key: "test" + i, "value": i });
             }
             const txt = "the red foxx jumps over the pond";
-            docs.push({ _key: "test" + i, "value": -1, "text": txt});
+            docs.push({ _key: "testxxx", "value": -1, "text": txt});
             c.insert(docs);
 
             state.arangoSearchEnabled = true;
@@ -608,14 +608,14 @@ function BaseTestConfig() {
             db._drop(cn);
           }
         },
-        function(state) {
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
           // create a conflicting collection
           db._createView(cn + "View", "arangosearch", {});
         },
-        function(state) {
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -631,11 +631,11 @@ function BaseTestConfig() {
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
-    
-          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+
+          let res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 OPTIONS { waitForSync: true } RETURN doc").toArray();
           assertEqual(2500, res.length);
-    
-          res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+
+          res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync: true } RETURN doc").toArray();
           assertEqual(1, res.length);
         },
         true
@@ -643,14 +643,74 @@ function BaseTestConfig() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with views
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSyncView: function () {
+      connectToMaster();
+
+      // create view & collection on master
+      db._flushCache();
+      let c = db._create(cn);
+      db._createView(cn + "View", "arangosearch");
+
+
+      db._flushCache();
+      connectToSlave();
+      internal.wait(0.1, false);
+      // sync on slave
+      replication.sync({ endpoint: masterEndpoint });
+
+      db._flushCache();
+      {
+        // check state is the same
+        let view = db._view(cn + "View");
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty("links"));
+        assertEqual(Object.keys(props.links).length, 0);
+      }
+
+      connectToMaster();
+
+      // update view properties
+      {
+        let view = db._view(cn + "View");
+        let links = {};
+        links[cn] = {
+          includeAllFields: true,
+          fields: {
+            text: { analyzers: ["text_en"] }
+          }
+        };
+        view.properties({ links });
+      }
+
+
+      db._flushCache();
+      connectToSlave();
+
+      replication.sync({ endpoint: masterEndpoint });
+
+      {
+        let view = db._view(cn + "View");
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty("links"));
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty(cn));
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test with edges
     ////////////////////////////////////////////////////////////////////////////////
 
-    testEdges: function() {
+    testEdges: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           var c = db._createEdgeCollection(cn),
             i;
 
@@ -666,7 +726,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(100, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -683,7 +743,7 @@ function BaseTestConfig() {
             });
           }
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
@@ -706,11 +766,11 @@ function BaseTestConfig() {
     /// @brief test with edges differences
     ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesDifferences: function() {
+    testEdgesDifferences: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           var c = db._createEdgeCollection(cn),
             i;
 
@@ -726,7 +786,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(100, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -746,7 +806,7 @@ function BaseTestConfig() {
             );
           }
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
@@ -769,14 +829,14 @@ function BaseTestConfig() {
     /// @brief test non-present collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testNonPresent: function() {
+    testNonPresent: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -786,8 +846,8 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {},
-        function(state) {
+        function (state) { },
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -799,14 +859,14 @@ function BaseTestConfig() {
     /// @brief test non-present collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testNonPresentIncremental: function() {
+    testNonPresentIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -816,8 +876,8 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {},
-        function(state) {
+        function (state) { },
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -829,14 +889,14 @@ function BaseTestConfig() {
     /// @brief test existing collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testExisting: function() {
+    testExisting: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -846,7 +906,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -855,7 +915,7 @@ function BaseTestConfig() {
           var c = db._collection(cn);
           c.truncate(); // but empty it
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -867,14 +927,14 @@ function BaseTestConfig() {
     /// @brief test existing collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testExistingIncremental: function() {
+    testExistingIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -884,7 +944,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -893,7 +953,7 @@ function BaseTestConfig() {
           var c = db._collection(cn);
           c.truncate(); // but empty it
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -905,11 +965,11 @@ function BaseTestConfig() {
     /// @brief test with existing documents - but empty on master
     ////////////////////////////////////////////////////////////////////////////////
 
-    testExistingEmptyOnMaster: function() {
+    testExistingEmptyOnMaster: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn),
             i;
 
@@ -917,7 +977,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -927,13 +987,13 @@ function BaseTestConfig() {
           c.truncate(); // but empty it
 
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -945,11 +1005,11 @@ function BaseTestConfig() {
     /// @brief test with existing documents - but empty on master
     ////////////////////////////////////////////////////////////////////////////////
 
-    testExistingEmptyOnMasterIncremental: function() {
+    testExistingEmptyOnMasterIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn),
             i;
 
@@ -957,7 +1017,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -967,13 +1027,13 @@ function BaseTestConfig() {
           c.truncate(); // but empty it
 
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -985,14 +1045,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - less on the slave
     ////////////////////////////////////////////////////////////////////////////////
 
-    testExistingDocumentsLess: function() {
+    testExistingDocumentsLess: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -1002,7 +1062,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1017,7 +1077,7 @@ function BaseTestConfig() {
             });
           }
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1029,14 +1089,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - less on the slave
     ////////////////////////////////////////////////////////////////////////////////
 
-    testExistingDocumentsLessIncremental: function() {
+    testExistingDocumentsLessIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -1046,7 +1106,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1061,7 +1121,7 @@ function BaseTestConfig() {
             });
           }
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1073,14 +1133,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - more on the slave
     ////////////////////////////////////////////////////////////////////////////////
 
-    testMoreDocuments: function() {
+    testMoreDocuments: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -1090,7 +1150,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1105,7 +1165,7 @@ function BaseTestConfig() {
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1117,14 +1177,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - more on the slave
     ////////////////////////////////////////////////////////////////////////////////
 
-    testMoreDocumentsIncremental: function() {
+    testMoreDocumentsIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -1134,7 +1194,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1149,7 +1209,7 @@ function BaseTestConfig() {
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1161,14 +1221,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - same on the slave
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSameDocuments: function() {
+    testSameDocuments: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, value: i });
           }
@@ -1178,7 +1238,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1186,15 +1246,15 @@ function BaseTestConfig() {
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
-          
+
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, value: i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1206,14 +1266,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - same on the slave
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSameDocumentsIncremental: function() {
+    testSameDocumentsIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, value: i });
           }
@@ -1223,7 +1283,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1233,13 +1293,13 @@ function BaseTestConfig() {
           c.truncate(); // but empty it
 
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, value: i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1251,14 +1311,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - same on the slave but different keys
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSameSameButDifferentKeys: function() {
+    testSameSameButDifferentKeys: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -1268,7 +1328,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1278,13 +1338,13 @@ function BaseTestConfig() {
           c.truncate(); // but empty it
 
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1296,14 +1356,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - same on the slave but different keys
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSameSameButDifferentKeysIncremental: function() {
+    testSameSameButDifferentKeysIncremental: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
@@ -1313,7 +1373,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1323,13 +1383,13 @@ function BaseTestConfig() {
           c.truncate(); // but empty it
 
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ value: i });
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1341,14 +1401,14 @@ function BaseTestConfig() {
     /// @brief test with existing documents - same on the slave but different values
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSameSameButDifferentValues: function() {
+    testSameSameButDifferentValues: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
-          
+
           for (let i = 0; i < 5000; ++i) {
             docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
           }
@@ -1358,51 +1418,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
-          // already create the collection on the slave
-          replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
-            incremental: false
-          });
-          let c = db._collection(cn);
-          c.truncate(); // but empty it
-          
-          let docs = [];
-          for (let i = 0; i < 5000; ++i) {
-            docs.push({ _key: "test" + i, value1: "test" + i, value2: i });
-          }
-          c.insert(docs);
-        },
-        function(state) {
-          assertEqual(state.count, collectionCount(cn));
-          assertEqual(state.checksum, collectionChecksum(cn));
-        },
-        false
-      );
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test with existing documents - same on the slave but different values
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testSameSameButDifferentValuesIncremental: function() {
-      connectToMaster();
-
-      compare(
-        function(state) {
-          let c = db._create(cn);
-          let docs = [];
-          
-          for (let i = 0; i < 5000; ++i) {
-            docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
-          }
-          c.insert(docs);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(5000, state.count);
-        },
-        function(state) {
+        function (state) {
           // already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -1417,7 +1433,51 @@ function BaseTestConfig() {
           }
           c.insert(docs);
         },
-        function(state) {
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        false
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with existing documents - same on the slave but different values
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSameSameButDifferentValuesIncremental: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+          }
+          c.insert(docs);
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          let c = db._collection(cn);
+          c.truncate(); // but empty it
+
+          let docs = [];
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value1: "test" + i, value2: i });
+          }
+          c.insert(docs);
+        },
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         },
@@ -1441,8 +1501,11 @@ function ReplicationSuite() {
   /// @brief set up
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.setUp = function() {
+  suite.setUp = function () {
     connectToMaster();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
   };
 
@@ -1450,8 +1513,11 @@ function ReplicationSuite() {
   /// @brief tear down
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.tearDown = function() {
+  suite.tearDown = function () {
     connectToMaster();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
 
     connectToSlave();
@@ -1477,7 +1543,7 @@ function ReplicationOtherDBSuite() {
   /// @brief set up
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.setUp = function() {
+  suite.setUp = function () {
     connectToMaster();
     try {
       db._dropDatabase(dbName);
@@ -1498,7 +1564,7 @@ function ReplicationOtherDBSuite() {
   /// @brief tear down
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.tearDown = function() {
+  suite.tearDown = function () {
     db._useDatabase("_system");
     connectToMaster();
     try {
@@ -1525,20 +1591,20 @@ function ReplicationIncrementalKeyConflict() {
 
   return {
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set up
-  ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function() {
+    setUp: function () {
       connectToMaster();
       db._drop(cn);
     },
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tear down
-  ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function() {
+    tearDown: function () {
       connectToMaster();
       db._drop(cn);
 
@@ -1546,7 +1612,7 @@ function ReplicationIncrementalKeyConflict() {
       db._drop(cn);
     },
 
-    testKeyConflicts : function() {
+    testKeyConflicts: function () {
       var c = db._create(cn);
       c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
 
@@ -1600,7 +1666,7 @@ function ReplicationIncrementalKeyConflict() {
       assertTrue(c.getIndexes()[1].unique);
     },
 
-    testKeyConflictsManyDocuments : function() {
+    testKeyConflictsManyDocuments: function () {
       var c = db._create(cn), i;
       c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
 

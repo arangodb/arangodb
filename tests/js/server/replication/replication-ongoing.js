@@ -43,26 +43,26 @@ const slaveEndpoint = ARGUMENTS[0];
 const cn = "UnitTestsReplication";
 const cn2 = "UnitTestsReplication2";
 
-const connectToMaster = function() {
+const connectToMaster = function () {
   arango.reconnect(masterEndpoint, db._name(), "root", "");
   db._flushCache();
 };
 
-const connectToSlave = function() {
+const connectToSlave = function () {
   arango.reconnect(slaveEndpoint, db._name(), "root", "");
   db._flushCache();
 };
 
-const collectionChecksum = function(name) {
+const collectionChecksum = function (name) {
   var c = db._collection(name).checksum(true, true);
   return c.checksum;
 };
 
-const collectionCount = function(name) {
+const collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
+const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
   var state = {};
 
   db._flushCache();
@@ -135,8 +135,8 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
     }
 
     if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-        compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-     //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+      compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
+      //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
       console.log("slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
       break;
     }
@@ -165,16 +165,16 @@ function BaseTestConfig() {
     /// @brief test duplicate _key issue and replacement
     ////////////////////////////////////////////////////////////////////////////////
 
-    testPrimaryKeyConflict: function() {
+    testPrimaryKeyConflict: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           db._drop(cn);
           db._create(cn);
         },
 
-        function(state) {
+        function (state) {
           // insert same record on slave that we will insert on the master
           connectToSlave();
           db[cn].insert({ _key: "boom", who: "slave" });
@@ -182,28 +182,28 @@ function BaseTestConfig() {
           db[cn].insert({ _key: "boom", who: "master" });
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           // master document version must have one
           assertEqual("master", db[cn].document("boom").who);
         }
       );
     },
 
-    testSecondaryKeyConflict: function() {
+    testSecondaryKeyConflict: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           db._drop(cn);
           db._create(cn);
           db[cn].ensureIndex({ type: "hash", fields: ["value"], unique: true });
         },
 
-        function(state) {
+        function (state) {
           // insert same record on slave that we will insert on the master
           connectToSlave();
           db[cn].insert({ _key: "slave", value: "one" });
@@ -211,11 +211,11 @@ function BaseTestConfig() {
           db[cn].insert({ _key: "master", value: "one" });
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertNull(db[cn].firstExample({ _key: "slave" }));
           assertNotNull(db[cn].firstExample({ _key: "master" }));
           assertEqual("master", db[cn].toArray()[0]._key);
@@ -228,14 +228,14 @@ function BaseTestConfig() {
     /// @brief test collection creation
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateCollection: function() {
+    testCreateCollection: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
         },
 
-        function(state) {
+        function (state) {
           db._create(cn);
           for (var i = 0; i < 100; ++i) {
             db._collection(cn).save({
@@ -245,11 +245,11 @@ function BaseTestConfig() {
           internal.wal.flush(true, true);
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertTrue(db._collection(cn).count() === 100);
         }
       );
@@ -259,14 +259,14 @@ function BaseTestConfig() {
     /// @brief test collection dropping
     ////////////////////////////////////////////////////////////////////////////////
 
-    testDropCollection: function() {
+    testDropCollection: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
         },
 
-        function(state) {
+        function (state) {
           db._create(cn);
           for (var i = 0; i < 100; ++i) {
             db._collection(cn).save({
@@ -277,11 +277,11 @@ function BaseTestConfig() {
           internal.wal.flush(true, true);
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertNull(db._collection(cn));
         }
       );
@@ -291,23 +291,23 @@ function BaseTestConfig() {
     /// @brief test index creation
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndex: function() {
+    testCreateIndex: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
         },
 
-        function(state) {
+        function (state) {
           db._create(cn);
           db._collection(cn).ensureIndex({ type: "hash", fields: ["value"] });
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           var col = db._collection(cn);
           assertNotNull(col, "collection does not exist");
           var idx = col.getIndexes();
@@ -323,24 +323,24 @@ function BaseTestConfig() {
     /// @brief test index dropping
     ////////////////////////////////////////////////////////////////////////////////
 
-    testDropIndex: function() {
+    testDropIndex: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
         },
 
-        function(state) {
+        function (state) {
           db._create(cn);
           var idx = db._collection(cn).ensureIndex({ type: "hash", fields: ["value"] });
           db._collection(cn).dropIndex(idx);
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           var idx = db._collection(cn).getIndexes();
           assertEqual(1, idx.length);
           assertEqual("primary", idx[0].type);
@@ -352,23 +352,23 @@ function BaseTestConfig() {
     /// @brief test renaming
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRenameCollection: function() {
+    testRenameCollection: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
         },
 
-        function(state) {
+        function (state) {
           db._create(cn);
           db._collection(cn).rename(cn + "Renamed");
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertNull(db._collection(cn));
           assertNotNull(db._collection(cn + "Renamed"));
         }
@@ -379,24 +379,24 @@ function BaseTestConfig() {
     /// @brief test renaming
     ////////////////////////////////////////////////////////////////////////////////
 
-    testChangeCollection: function() {
+    testChangeCollection: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
         },
 
-        function(state) {
+        function (state) {
           db._create(cn);
           assertFalse(db._collection(cn).properties().waitForSync);
           db._collection(cn).properties({ waitForSync: true });
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertTrue(db._collection(cn).properties().waitForSync);
         }
       );
@@ -406,26 +406,26 @@ function BaseTestConfig() {
     /// @brief test truncating a small collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testTruncateCollectionSmall: function() {
+    testTruncateCollectionSmall: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           for (let i = 0; i < 1000; i++) {
-            c.insert({value:i});
+            c.insert({ value: i });
           }
         },
 
-        function(state) {
+        function (state) {
           db._collection(cn).truncate();
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertEqual(db._collection(cn).count(), 0);
           assertEqual(db._collection(cn).all().toArray().length, 0);
         }
@@ -436,26 +436,32 @@ function BaseTestConfig() {
     /// @brief test truncating a bigger collection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testTruncateCollectionBigger: function() {
+    testTruncateCollectionBigger: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < (32 * 1024 + 1); i++) {
-            c.insert({value:i});
+            docs.push({value:i});
+            if (docs.length >= 1000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
+          c.insert(docs);
         },
 
-        function(state) {
+        function (state) {
           db._collection(cn).truncate(); // should hit range-delete in rocksdb
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertEqual(db._collection(cn).count(), 0);
           assertEqual(db._collection(cn).all().toArray().length, 0);
         }
@@ -466,20 +472,20 @@ function BaseTestConfig() {
     /// @brief test long transaction, blocking
     ////////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionBlocking: function() {
+    testLongTransactionBlocking: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
         },
 
-        function(state) {
+        function (state) {
           db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
+            action: function (params) {
               var wait = require("internal").wait;
               var db = require("internal").db;
               var c = db._collection(params.cn);
@@ -510,7 +516,7 @@ function BaseTestConfig() {
           assertEqual(20, state.count);
         },
 
-        function(state) {
+        function (state) {
           // stop and restart replication on the slave
           assertTrue(replication.applier.state().state.running);
           replication.applier.stop();
@@ -522,7 +528,7 @@ function BaseTestConfig() {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
@@ -533,20 +539,20 @@ function BaseTestConfig() {
     /// @brief test long transaction, asynchronous
     ////////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionAsync: function() {
+    testLongTransactionAsync: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
         },
 
-        function(state) {
+        function (state) {
           var func = db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
+            action: function (params) {
               var wait = require("internal").wait;
               var db = require("internal").db;
               var c = db._collection(params.cn);
@@ -581,7 +587,7 @@ function BaseTestConfig() {
           }).id;
         },
 
-        function(state) {
+        function (state) {
           assertTrue(replication.applier.state().state.running);
 
           connectToMaster();
@@ -601,7 +607,7 @@ function BaseTestConfig() {
           }
         },
 
-        function(state) {
+        function (state) {
           assertTrue(state.hasOwnProperty("count"));
           assertEqual(state.count, collectionCount(cn));
         }
@@ -612,20 +618,20 @@ function BaseTestConfig() {
     /// @brief test long transaction, asynchronous
     ////////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionAsyncWithSlaveRestarts: function() {
+    testLongTransactionAsyncWithSlaveRestarts: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
         },
 
-        function(state) {
+        function (state) {
           var func = db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
+            action: function (params) {
               var wait = require("internal").wait;
               var db = require("internal").db;
               var c = db._collection(params.cn);
@@ -660,7 +666,7 @@ function BaseTestConfig() {
           }).id;
         },
 
-        function(state) {
+        function (state) {
           // stop and restart replication on the slave
           assertTrue(replication.applier.state().state.running);
           replication.applier.stop();
@@ -689,34 +695,34 @@ function BaseTestConfig() {
           }
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
         }
       );
     },
 
-    testViewBasic: function() {
+    testViewBasic: function () {
       connectToMaster();
 
       compare(
-        function() {},
-        function(state) {
+        function () { },
+        function (state) {
           try {
             db._create(cn);
             let view = db._createView("UnitTestsSyncView", "arangosearch", {});
             let links = {};
-            links[cn] =  {
+            links[cn] = {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en" ] }
+                text: { analyzers: ["text_en"] }
               }
             };
-            view.properties({"links": links});
+            view.properties({ "links": links });
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
-        function() {},
-        function(state) {
+        function () { },
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -732,27 +738,27 @@ function BaseTestConfig() {
       );
     },
 
-    testViewCreateWithLinks: function() {
+    testViewCreateWithLinks: function () {
       connectToMaster();
 
       compare(
-        function() {},
-        function(state) {
+        function () { },
+        function (state) {
           try {
             db._create(cn);
             let links = {};
-            links[cn] =  {
+            links[cn] = {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en" ] }
+                text: { analyzers: ["text_en"] }
               }
             };
-            let view = db._createView("UnitTestsSyncView", "arangosearch", {"links": links});
+            let view = db._createView("UnitTestsSyncView", "arangosearch", { "links": links });
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
-        function() {},
-        function(state) {
+        function () { },
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -768,26 +774,26 @@ function BaseTestConfig() {
       );
     },
 
-    testViewRename: function() {
+    testViewRename: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           try {
             db._create(cn);
             let view = db._createView("UnitTestsSyncView", "arangosearch", {});
             let links = {};
-            links[cn] =  {
+            links[cn] = {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en" ] }
+                text: { analyzers: ["text_en"] }
               }
             };
-            view.properties({"links": links});
+            view.properties({ "links": links });
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
-        function(state) {
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -801,8 +807,8 @@ function BaseTestConfig() {
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
         },
-        function(state) {},
-        function(state) {
+        function (state) { },
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -818,17 +824,65 @@ function BaseTestConfig() {
       );
     },
 
-    testViewDrop: function() {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test property update
+    ////////////////////////////////////////////////////////////////////////////////
+    testViewPropertiesUpdate: function () {
+      connectToMaster();
+      compare(
+        function (state) { // masterFunc1
+          try {
+            let c = db._create(cn);
+            let view = db._createView(cn + "View", "arangosearch");
+            state.arangoSearchEnabled = true;
+          } catch (err) {
+            db._drop(cn);
+          }
+        },
+        function (state) { // masterFunc2
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          let view = db._view(cn + "View", "arangosearch");
+          let links = {};
+          links[cn] = {
+            includeAllFields: true,
+            fields: {
+              text: { analyzers: ["text_en"] }
+            }
+          };
+          view.properties({ links });
+        },
+        function () { // slaveFuncOngoing
+        }, // slaveFuncOngoing
+        function (state) { // slaveFuncFinal
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(1, idx.length); // primary 
+
+          let view = db._view(cn + "View");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty("links"));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+        });
+    },
+
+    testViewDrop: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           try {
             let view = db._createView("UnitTestsSyncView", "arangosearch", {});
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
-        function(state) {
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -836,8 +890,8 @@ function BaseTestConfig() {
           let view = db._view("UnitTestsSyncView");
           view.drop();
         },
-        function(state) {},
-        function(state) {
+        function (state) { },
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
@@ -847,8 +901,85 @@ function BaseTestConfig() {
         },
         {}
       );
-    }
+    },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with views
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testViewData: function () {
+      connectToMaster();
+
+      compare(
+        function (state) { // masterFunc1
+          try {
+            let c = db._create(cn);
+            let links = {};
+            links[cn] = {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: ["text_en"] }
+              }
+            };
+            let view = db._createView(cn + "View", "arangosearch", { links: links });
+            assertEqual(Object.keys(view.properties().links).length, 1);
+
+            let docs = [];
+            for (let i = 0; i < 5000; ++i) {
+              docs.push({ _key: "test" + i, "value": i });
+            }
+            c.insert(docs);
+
+            state.arangoSearchEnabled = true;
+          } catch (err) {
+            db._drop(cn);
+          }
+        },
+        function (state) { // masterFunc2
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          const txt = "the red foxx jumps over the pond";
+          db._collection(cn).save({ _key: "testxxx", "value": -1, "text": txt });
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5001, state.count);
+        },
+        function (state) { // slaveFuncOngoing
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          let view = db._view(cn + "View");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty("links"));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+        }, // slaveFuncOngoing
+        function (state) { // slaveFuncFinal
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(1, idx.length); // primary 
+
+          let view = db._view(cn + "View");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty("links"));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+
+          let res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 OPTIONS { waitForSync: true } RETURN doc").toArray();
+          assertEqual(2500, res.length);
+
+          res = db._query("FOR doc IN " + view.name() + " SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync: true } RETURN doc").toArray();
+          assertEqual(1, res.length);
+        });
+    }
   };
 }
 
@@ -864,7 +995,7 @@ function ReplicationSuite() {
   /// @brief set up
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.setUp = function() {
+  suite.setUp = function () {
     connectToSlave();
     try {
       replication.applier.stop();
@@ -884,7 +1015,7 @@ function ReplicationSuite() {
   /// @brief tear down
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.tearDown = function() {
+  suite.tearDown = function () {
     connectToMaster();
 
     db._dropView("UnitTestsSyncView");
@@ -919,14 +1050,14 @@ function ReplicationOtherDBSuite() {
 
   let docs = [];
   for (let i = 0; i < 50; ++i) {
-    docs.push({value: i});
+    docs.push({ value: i });
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set up
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.setUp = function() {
+  suite.setUp = function () {
     db._useDatabase("_system");
     connectToSlave();
     try {
@@ -956,7 +1087,7 @@ function ReplicationOtherDBSuite() {
   /// @brief tear down
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.tearDown = function() {
+  suite.tearDown = function () {
     db._useDatabase("_system");
 
     connectToSlave();
@@ -986,7 +1117,7 @@ function ReplicationOtherDBSuite() {
 
   // Shared function that sets up replication
   // of the collection and inserts 50 documents.
-  const setupReplication = function() {
+  const setupReplication = function () {
     // Section - Master
     connectToMaster();
 
@@ -1039,7 +1170,7 @@ function ReplicationOtherDBSuite() {
   /// @brief test dropping a database on slave while replication is ongoing
   ////////////////////////////////////////////////////////////////////////////////
 
-  suite.testDropDatabaseOnSlaveDuringReplication = function() {
+  suite.testDropDatabaseOnSlaveDuringReplication = function () {
     setupReplication();
 
     // Section - Slave
@@ -1104,14 +1235,14 @@ function ReplicationOtherDBSuite() {
 
     // Give it some time to sync (eventually, should not do anything...)
     let i = 30;
-    while(i-- > 0) {
+    while (i-- > 0) {
       let state = replication.applier.state();
       if (!state.running) {
         console.log("slave is not running");
         break;
       }
       if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
         console.log("slave has caught up");
         break;
       }
@@ -1122,7 +1253,7 @@ function ReplicationOtherDBSuite() {
     assertEqual(0, collectionCount(cn));
   };
 
-  suite.testDropDatabaseOnMasterDuringReplication = function() {
+  suite.testDropDatabaseOnMasterDuringReplication = function () {
     setupReplication();
 
     // Section - Master
@@ -1151,14 +1282,14 @@ function ReplicationOtherDBSuite() {
 
     // Give it some time to sync (eventually, should not do anything...)
     let i = 30;
-    while(i-- > 0) {
+    while (i-- > 0) {
       let state = replication.applier.state();
       if (!state.running) {
         console.log("slave is not running");
         break;
       }
       if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
         console.log("slave has caught up");
         break;
       }
@@ -1167,7 +1298,7 @@ function ReplicationOtherDBSuite() {
 
     // Now test if the Slave did replicate the new database directly...
     assertEqual(50, collectionCount(cn),
-    "The slave inserted the new collection data into the old one, it skipped the drop.");
+      "The slave inserted the new collection data into the old one, it skipped the drop.");
   };
 
   return suite;
