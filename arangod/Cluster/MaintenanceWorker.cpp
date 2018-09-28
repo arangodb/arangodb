@@ -32,12 +32,12 @@ namespace maintenance {
 
 MaintenanceWorker::MaintenanceWorker(
   arangodb::MaintenanceFeature& feature,
-  std::unordered_set<std::string> const& labels) 
+  std::unordered_set<std::string> const& labels)
   : Thread("MaintenanceWorker"), _feature(feature), _curAction(nullptr),
     _loopState(eFIND_ACTION), _directAction(false), _labels(labels) {
 
   return;
-  
+
 } // MaintenanceWorker::MaintenanceWorker
 
 
@@ -57,29 +57,58 @@ void MaintenanceWorker::run() {
 
   while(eSTOP != _loopState && !_feature.isShuttingDown()){
 
-    switch(_loopState) {
-      case eFIND_ACTION:
-        _curAction = _feature.findReadyAction(_labels);
-        more = (bool)_curAction;
-        break;
+    try {
+      switch(_loopState) {
+        case eFIND_ACTION:
+          _curAction = _feature.findReadyAction(_labels);
+          more = (bool)_curAction;
+          break;
 
-      case eRUN_FIRST:
-        _curAction->startStats();
-        more = _curAction->first();
-        break;
+        case eRUN_FIRST:
+          _curAction->startStats();
+          more = _curAction->first();
+          break;
 
-      case eRUN_NEXT:
-        more = _curAction->next();
-        break;
+        case eRUN_NEXT:
+          more = _curAction->next();
+          break;
 
-      default:
-        _loopState = eSTOP;
+        default:
+          _loopState = eSTOP;
+          LOG_TOPIC(ERR, Logger::CLUSTER)
+            << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
+
+      } // switch
+
+    } catch(std::exception const& ex) {
+      if (_curAction) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
-          << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
+          << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+          << " state:" << _loopState
+          << " action:" << *_curAction;
 
-    } // switch
+        _curAction->setState(FAILED);
+      } else {
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+          << " state:" << _loopState;
+      }
+    } catch(...) {
+      if (_curAction) {
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "MaintenanceWorkerRun: caught error, state: " << _loopState
+          << " state:" << _loopState
+          << " action:" << *_curAction;
 
-    // determine next loop state
+        _curAction->setState(FAILED);
+      } else {
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "MaintenanceWorkerRun: caught error, state: " << _loopState
+          << " state:" << _loopState;
+      }
+    }
+
+     // determine next loop state
     nextState(more);
 
   } // while
