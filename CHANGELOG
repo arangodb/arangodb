@@ -9,6 +9,10 @@ devel
 v3.4.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* upgraded arangosync version to 0.6.0
+
+* upgraded arangodb starter version to 0.13.3
+
 * fixed issue #6611: Properly display JSON properties of user defined foxx services 
   configuration within the web UI 
 
