@@ -65,7 +65,8 @@ ClientFeature::ClientFeature(
       _warn(false),
       _warnConnect(true),
       _haveServerPassword(false),
-      _codePage(65001) { // default to UTF8
+      _codePage(65001), // default to UTF8
+      _originalCodePage(-1) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("GreetingsPhase");
@@ -311,7 +312,15 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
 
 void ClientFeature::start() {
 #if _WIN32
+  _originalCodePage = GetConsoleOutputCP();
+
   SetConsoleOutputCP(_codePage);
+#endif
+}
+
+void ClientFeature::stop() {
+#if _WIN32
+  SetConsoleOutputCP(_originalCodePage);
 #endif
 }
 
