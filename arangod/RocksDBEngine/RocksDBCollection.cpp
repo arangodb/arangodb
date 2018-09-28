@@ -271,13 +271,14 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 /// @brief report extra memory used by indexes etc.
 size_t RocksDBCollection::memory() const { return 0; }
 
-void RocksDBCollection::open(bool ignoreErrors) {
+void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
 
   // set the initial number of documents
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  auto counterValue = engine->settingsManager()->loadCounter(this->objectId());
+  TRI_ASSERT(engine != nullptr);
+  auto counterValue = engine->settingsManager()->loadCounter(_objectId);
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
 }
@@ -640,9 +641,8 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
-
+   
     rocksdb::WriteBatch batch;
-    
     // add the assertion again here, so we are sure we can use RangeDeletes   
     TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal());
   
@@ -674,19 +674,20 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
-        idx->afterTruncate(); // clears caches (if applicable)
+        idx->afterTruncate(); // clears caches / clears links (if applicable)
       }
     }
+    
+    state->addTruncateOperation(_logicalCollection.id());
     
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    uint64_t prevCount = _numberDocuments;
-    _numberDocuments = 0; // protected by collection lock
+    TRI_ASSERT(state->numRemoves() == _numberDocuments);
     
-    if (prevCount > 64 * 1024) {
+    if (_numberDocuments > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
@@ -857,8 +858,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   resultMarkerTick = 0;
 
   LocalDocumentId const documentId = LocalDocumentId::create();
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   Result res(newObjectForInsert(trx, slice, isEdgeCollection,
@@ -1805,7 +1804,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
       rocksutils::countKeyRange(engine->db(), documentBounds, true);
 
   // update counter manager value
-  res = engine->settingsManager()->setAbsoluteCounter(_objectId,
+  res = engine->settingsManager()->setAbsoluteCounter(_objectId, engine->currentTick(),
                                                       _numberDocuments);
   if (res.ok()) {
     // in case of fail the counter has never been written and hence does not
@@ -1921,17 +1920,12 @@ void RocksDBCollection::recalculateIndexEstimates(
   // issues with estimate integrity; please do not expose via a user-facing
   // method or endpoint unless the implementation changes
 
-  // start transaction to get a collection lock
-  auto ctx =
-    transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  arangodb::SingleCollectionTransaction trx(
-    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
-  );
-  auto res = trx.begin();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  // intentionally do not use transactions here, as we will only be called
+  // during recovery
+  RocksDBEngine* engine =
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  TRI_ASSERT(engine != nullptr);
+  TRI_ASSERT(engine->inRecovery());
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
@@ -1939,8 +1933,6 @@ void RocksDBCollection::recalculateIndexEstimates(
     TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
-
-  trx.commit();
 }
 
 arangodb::Result RocksDBCollection::serializeKeyGenerator(
@@ -1973,7 +1965,6 @@ void RocksDBCollection::deserializeKeyGenerator(RocksDBSettingsManager* mgr) {
 
   if (value > 0) {
     std::string k(basics::StringUtils::itoa(value));
-
     _logicalCollection.keyGenerator()->track(k.data(), k.size());
   }
 }
