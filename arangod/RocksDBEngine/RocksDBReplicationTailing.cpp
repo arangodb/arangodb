@@ -431,16 +431,16 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
     return rocksdb::Status();
   }
-
-  rocksdb::Status DeleteCF(uint32_t column_family_id,
-                           rocksdb::Slice const& key) override {
+  
+  // for Delete / SingleDelete
+  void handleDeleteCF(uint32_t cfId, rocksdb::Slice const& key) {
     tick();
     
-    if (column_family_id != _primaryCF) {
-      return rocksdb::Status(); // ignore all document operations
+    if (cfId != _primaryCF) {
+      return; // ignore all document operations
     } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
-      return rocksdb::Status();
+      return;
     }
     TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId == 0);
     
@@ -450,7 +450,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     TRI_voc_cid_t const cid = std::get<1>(triple);
     if (!shouldHandleCollection(dbid, cid)) {
       _removedDocRid = 0; // ignore rid too
-      return rocksdb::Status(); // no reset here
+      return; // no reset here
     }
     TRI_ASSERT(_vocbase->id() == dbid);
     
@@ -475,7 +475,17 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     if (_state == SINGLE_REMOVE) {
       resetTransientState();
     }
-    
+  }
+
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           rocksdb::Slice const& key) override {
+    handleDeleteCF(column_family_id, key);
+    return rocksdb::Status();
+  }
+  
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                 rocksdb::Slice const& key) override {
+    handleDeleteCF(column_family_id, key);
     return rocksdb::Status();
   }
 

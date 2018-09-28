@@ -1453,7 +1453,7 @@ Result RocksDBCollection::removeDocument(
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  Result res = mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
+  Result res = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (res.fail()) {
     return res;
   }
@@ -1515,7 +1515,7 @@ Result RocksDBCollection::updateDocument(
   blackListKey(oldKey->string().data(),
                static_cast<uint32_t>(oldKey->string().size()));
 
-  res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
+  res = mthd->SingleDelete(RocksDBColumnFamily::documents(), oldKey.ref());
   if (res.fail()) {
     return res;
   }

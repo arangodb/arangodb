@@ -568,16 +568,16 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
     return rocksdb::Status();
   }
-
-  rocksdb::Status DeleteCF(uint32_t column_family_id,
-                           rocksdb::Slice const& key) override {
+  
+  // for Delete / SingleDelete
+  void handleDeleteCF(uint32_t cfId, rocksdb::Slice const& key) {
     tick();
     
-    if (column_family_id != _primaryCF) {
-      return rocksdb::Status(); // ignore all document operations
+    if (cfId != _primaryCF) {
+      return; // ignore all document operations
     } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
-      return rocksdb::Status();
+      return;
     }
     TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId == 0);
     TRI_ASSERT(_state != TRANSACTION || _trxDbId != 0);
@@ -586,45 +586,55 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     auto triple = rocksutils::mapObjectToIndex(objectId);
     TRI_voc_tick_t const dbid = std::get<0>(triple);
     TRI_voc_cid_t const cid = std::get<1>(triple);
-
+    
     if (!shouldHandleCollection(dbid, cid)) {
       _removedDocRid = 0; // ignore rid too
-
-      return rocksdb::Status(); // no reset here
+      
+      return; // no reset here
     }
-
+    
     StringRef docKey = RocksDBKey::primaryKey(key);
     TRI_ASSERT(_state != TRANSACTION || _trxDbId == dbid);
-
+    
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
     LogicalCollection* col = loadCollection(dbid, cid);
     TRI_ASSERT(vocbase != nullptr && col != nullptr);
-
+    
     {
       VPackObjectBuilder marker(&_builder, true);
-
+      
       marker->add("tick", VPackValue(std::to_string(_currentSequence)));
       marker->add("type", VPackValue(REPLICATION_MARKER_REMOVE));
       marker->add("db", VPackValue(vocbase->name()));
       marker->add("cuid", VPackValue(col->guid()));
       marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
-
+      
       VPackObjectBuilder data(&_builder, "data", true);
-
+      
       data->add(StaticStrings::KeyString, VPackValuePair(docKey.data(), docKey.size(),
                                                          VPackValueType::String));
       data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(_removedDocRid)));
     }
-
+    
     _callback(vocbase, _builder.slice());
     _responseSize += _builder.size();
     _builder.clear();
     _removedDocRid = 0; // always reset
-
+    
     if (_state == SINGLE_REMOVE) {
       resetTransientState();
     }
+  }
 
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           rocksdb::Slice const& key) override {
+    handleDeleteCF(column_family_id, key);
+    return rocksdb::Status();
+  }
+  
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                 rocksdb::Slice const& key) override {
+    handleDeleteCF(column_family_id, key);
     return rocksdb::Status();
   }
   
