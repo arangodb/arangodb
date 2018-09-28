@@ -137,6 +137,8 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
+  TRI_SetStdinVisibility(false);
+  TRI_DEFER(TRI_SetStdinVisibility(true));
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
@@ -145,7 +147,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 #else
 #ifdef TRI_HAVE_TERMIOS_H
   TRI_SetStdinVisibility(false);
-  std::getline(std::cin, wpassword);
+  std::getline(std::cin, password);
 
   TRI_SetStdinVisibility(true);
 #else
