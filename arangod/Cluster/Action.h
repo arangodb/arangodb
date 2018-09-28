@@ -106,6 +106,9 @@ public:
   /// @brief finalize statistics
   void endStats();
 
+  /// @brief fails the action and all following actions
+  void failAll();
+
   /// @brief check if action matches worker options
   bool matches(std::unordered_set<std::string> const& labels) const;
 
