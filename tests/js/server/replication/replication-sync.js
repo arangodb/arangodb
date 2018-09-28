@@ -632,10 +632,10 @@ function BaseTestConfig() {
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
     
-          let res = db._query("FOR doc IN " + view.name() + " OPTIONS { waitForSync: true } SEARCH doc.value >= 2500 RETURN doc").toArray();
+          let res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 OPTIONS { waitForSync: true } RETURN doc").toArray();
           assertEqual(2500, res.length);
     
-          res = db._query("FOR doc IN UnitTestsDumpView OPTIONS { waitForSync: true } SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+          res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync: true } RETURN doc").toArray();
           assertEqual(1, res.length);
         },
         true
