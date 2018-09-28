@@ -25,12 +25,11 @@ set(MAN_NAMES
   )
 
 set(MAN_FILES)
-set(GENERATED_MAN_FILES)
 
 
 foreach (m IN LISTS MAN_NAMES)
-  set(msrc ${CMAKE_SOURCE_DIR}/Documentation/${m})
-  set(mdst ${CMAKE_SOURCE_DIR}/Documentation/man/${m})
+    set(msrc ${CMAKE_SOURCE_DIR}/Documentation/${m})
+    set(mdst ${CMAKE_SOURCE_DIR}/Documentation/man/${m})
 
   add_custom_command(
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -40,9 +39,9 @@ foreach (m IN LISTS MAN_NAMES)
     COMMENT "Building manpage ${mdst}"
     VERBATIM
     )
-
   list(APPEND MAN_FILES ${mdst})
 endforeach ()
+set(ARANGO_MAN_FILES ${MAN_FILES} PARENT_SCOPE)
 
 add_custom_command(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

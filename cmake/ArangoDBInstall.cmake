@@ -45,7 +45,7 @@ set(CMAKE_TEST_DIRECTORY "tests")
 
 include(InstallMacros)
 # install ----------------------------------------------------------------------
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
+install(FILES ${ARANGO_MAN_FILES}
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
 
 install_readme(README README.txt)
