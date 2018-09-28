@@ -172,7 +172,6 @@ void MaintenanceWorker::nextState(bool actionMore) {
           _loopState = (_directAction ? eSTOP : eFIND_ACTION);
         } // else
       } else {
-        // fail this action and all following actions
         std::shared_ptr<Action> failAction(_curAction);
         // fail all actions that would follow
         do {
