@@ -46,9 +46,16 @@ v3.4.0-rc.2 (XXXX-XX-XX)
   that fixes range deletions (used internally in ArangoDB when dropping or truncating 
   collections)
 
-  The non-working range deletes could have triggered errors such as `
-  deletion check in index drop failed - not all documents in the index have been deleted.`
+  The non-working range deletes could have triggered errors such as 
+  `deletion check in index drop failed - not all documents in the index have been deleted.`
   when dropping or truncating collections
+
+* improve error messages in Windows installer
+
+* allow retrying installation in Windows installer in case an existing database is still
+  running and needs to be manually shut down before continuing with the installation
+
+* fix database backup functionality in Windows installer
 
 * fixed memory leak in `/_api/batch` REST handler
 
