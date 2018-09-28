@@ -54,6 +54,7 @@ public:
   Action(Action const&) = delete;
   Action(Action &&) = delete;
   Action() = delete;
+  Action& operator=(Action const&) = delete;
 
   /**
    * @brief construct with concrete action base
