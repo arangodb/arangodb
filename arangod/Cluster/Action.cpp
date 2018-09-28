@@ -184,17 +184,6 @@ void Action::endStats() {
   _action->endStats();
 }
 
-void Action::failAll() {
-  this->setState(FAILED);
-  this->endStats();
-
-  for (std::shared_ptr<Action> action = this->getPostAction(); action != nullptr;
-    action = action->getPostAction()) {
-    action->setState(FAILED);
-    action->endStats();
-  }
-}
-
 void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(_action != nullptr);
   _action->toVelocyPack(builder);

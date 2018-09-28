@@ -80,8 +80,6 @@ void MaintenanceWorker::run() {
 
       } // switch
 
-      // determine next loop state
-      nextState(more);
     } catch(std::exception const& ex) {
       if (_curAction) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
@@ -89,7 +87,7 @@ void MaintenanceWorker::run() {
           << " state:" << _loopState
           << " action:" << *_curAction;
 
-        _curAction->failAll();
+        _curAction->setState(FAILED);
       } else {
         LOG_TOPIC(ERR, Logger::CLUSTER)
           << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
@@ -102,13 +100,16 @@ void MaintenanceWorker::run() {
           << " state:" << _loopState
           << " action:" << *_curAction;
 
-        _curAction->failAll();
+        _curAction->setState(FAILED);
       } else {
         LOG_TOPIC(ERR, Logger::CLUSTER)
           << "MaintenanceWorkerRun: caught error, state: " << _loopState
           << " state:" << _loopState;
       }
     }
+
+    // determine next loop state
+    nextState(more);
   } // while
 
 } // MaintenanceWorker::run
@@ -172,8 +173,13 @@ void MaintenanceWorker::nextState(bool actionMore) {
         } // else
       } else {
         // fail this action and all following actions
-        _curAction->failAll();
-        _curAction.reset();
+        std::shared_ptr<Action> failAction(_curAction);
+        // fail all actions that would follow
+        do {
+          failAction->setState(FAILED);
+          failAction->endStats();
+          failAction=failAction->getPostAction();
+        } while(failAction);
         _loopState = (_directAction ? eSTOP : eFIND_ACTION);
       } // else
     } else {
