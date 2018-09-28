@@ -22,6 +22,7 @@
 
 #include "V8DealerFeature.h"
 
+#include <regex>
 #include <thread>
 
 #include "3rdParty/valgrind/valgrind.h"
@@ -41,6 +42,7 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "Rest/Version.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
@@ -193,6 +195,27 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+
+  // try to append the current version name to the startup directory,
+  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
+  std::string versionedPath = basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
+
+  LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific startup-directory '" << versionedPath << "'";
+  if (basics::FileUtils::isDirectory(versionedPath)) {
+    // version-specific js path exists!
+    _startupDirectory = versionedPath;
+  }
+
+  for (auto& it : _moduleDirectory) {
+    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
+
+    LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
+    if (basics::FileUtils::isDirectory(versionedPath)) {
+      // version-specific js path exists!
+      it = versionedPath;
+    }
+  }
 
   // check whether app-path was specified
   if (_appPath.empty()) {
