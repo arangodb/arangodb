@@ -74,7 +74,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testDropRangeDeletionTruncateMulti: function () {
+    testRangeDeleteTruncateMulti2: function () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(1, c.count());
     }
