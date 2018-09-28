@@ -445,9 +445,15 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < (32 * 1024 + 1); i++) {
-            c.insert({value:i});
+            docs.push({value:i});
+            if (docs.length >= 1000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
+          c.insert(docs);
         },
 
         function(state) {
@@ -804,7 +810,7 @@ function BaseTestConfig() {
           if (!state.arangoSearchEnabled) {
             return;
           }
-          // rename view on master
+          // drop view on master
           let view = db._view("UnitTestsSyncView");
           view.drop();
         },
