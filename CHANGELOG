@@ -1,6 +1,9 @@
 devel
 -----
 
+* removed bundled Valgrind headers, removed JavaScript variable `valgrind`
+  from the `internal` module
+
 * upgraded JEMalloc version to 5.1.0
 
 * use `-std=c++14` for ArangoDB compilation
