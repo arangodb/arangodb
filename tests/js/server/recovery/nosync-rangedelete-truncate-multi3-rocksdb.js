@@ -33,10 +33,9 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
   // turn off syncing of counters etc.  
   internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
-
+  
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
   let docs = [];
@@ -77,7 +76,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testNosyncRangeDeleteTruncate2: function () {
+    testNosyncRangeDeleteTruncate3: function () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(1, c.count());
     }
