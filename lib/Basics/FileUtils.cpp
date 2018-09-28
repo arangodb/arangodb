@@ -404,6 +404,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
       continue;
     }
 
+    result.push_back(rcs);
   } while (_wfindnext(handle, &oneItem) != -1);
 
   _findclose(handle);
