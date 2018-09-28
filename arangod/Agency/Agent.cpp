@@ -926,13 +926,24 @@ void Agent::lastAckedAgo(Builder& ret) const {
     VPackObjectBuilder b(&ret);
     for (auto const& i : lastAcked) {
       auto lsit = lastSent.find(i.first);
+      // Note that it is possible that a server is already in lastAcked
+      // but not yet in lastSent, since lastSent only has times of non-empty
+      // appendEntriesRPC calls, but we also get lastAcked entries for the
+      // empty ones.
       ret.add(VPackValue(i.first));
       { VPackObjectBuilder o(&ret);
         ret.add("lastAckedTime", VPackValue(dur2str(i)));
         ret.add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
         if (i.first != id()) {
-          ret.add("lastAppend", VPackValue(dur2str(*lsit)));
-        }}
+          if (lsit != lastSent.end()) {
+            ret.add("lastAppend", VPackValue(dur2str(*lsit)));
+          } else {
+            ret.add("lastAppend", VPackValue(dur2str(i)));
+            // This is just for the above mentioned case, which will very
+            // soon be rectified.
+          }
+        }
+      }
     }
   }
 
