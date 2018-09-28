@@ -97,7 +97,7 @@ SECTION("test_category") {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    CHECK((arangodb::LogicalCollection::category() == instance.category()));
+    CHECK((arangodb::LogicalDataSourceCategory::COLLECTION == instance.category()));
   }
 
   // LogicalView
@@ -118,7 +118,7 @@ SECTION("test_category") {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    CHECK((arangodb::LogicalView::category() == instance.category()));
+    CHECK((arangodb::LogicalDataSourceCategory::VIEW == instance.category()));
   }
 }
 

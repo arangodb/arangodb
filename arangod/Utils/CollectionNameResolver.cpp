@@ -435,7 +435,7 @@ bool CollectionNameResolver::visitCollections(
     return false; // no way to determine what to visit
   }
 
-  if (LogicalCollection::category() == dataSource->category()) {
+  if (LogicalDataSourceCategory::COLLECTION == dataSource->category()) {
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto collection = std::dynamic_pointer_cast<LogicalCollection>(dataSource);
       TRI_ASSERT(collection);
@@ -447,7 +447,7 @@ bool CollectionNameResolver::visitCollections(
     return visitor(*collection);
   }
 
-  if (LogicalView::category() == dataSource->category()) {
+  if (LogicalDataSourceCategory::VIEW == dataSource->category()) {
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto view = std::dynamic_pointer_cast<LogicalView>(dataSource);
     #else
