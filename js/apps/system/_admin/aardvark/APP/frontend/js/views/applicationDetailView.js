@@ -459,7 +459,7 @@
         } else if (obj.type === 'json') {
           methodName = 'createBlobEntry';
           defaultValue = obj.default === undefined ? '' : JSON.stringify(obj.default);
-          currentValue = obj.current === undefined ? '' : obj.current;
+          currentValue = obj.current === undefined ? '' : JSON.stringify(obj.current);
           checks.push({
             rule: function (v) {
               return v && JSON.parse(v);
