@@ -575,71 +575,60 @@ function BaseTestConfig() {
     /// @brief test with views
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateViews: function() {
+    testSyncView: function() {
       connectToMaster();
 
-      compare(
-        function(state) {
-          try {
-            let c = db._create(cn);
-            let view = db._createView(cn + "View", "arangosearch", {});
-            let links = {};
-            links[cn] =  { 
-              includeAllFields: true,
-              fields: {
-                text: { analyzers: [ "text_en" ] }
-              }
-            };
-            view.properties({"links": links});
+      // create view & collection on master
+      db._flushCache();
+      let c = db._create(cn);
+      db._createView(cn + "View", "arangosearch");
 
-            let docs = [];
-            for (let i = 0; i < 5000; ++i) {
-              docs.push({ _key: "test" + i, "value": i });
-            }
-            const txt = "the red foxx jumps over the pond";
-            docs.push({ _key: "testxxx", "value": -1, "text": txt});
-            c.insert(docs);
-
-            state.arangoSearchEnabled = true;
-            state.checksum = collectionChecksum(cn);
-            state.count = collectionCount(cn);
-            assertEqual(5001, state.count);
-          } catch (err) {
-            db._drop(cn);
-          }
-        },
-        function(state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
-          // create a conflicting collection
-          db._createView(cn + "View", "arangosearch", {});
-        },
-        function(state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
-
-          assertEqual(state.count, collectionCount(cn));
-          assertEqual(state.checksum, collectionChecksum(cn));
-          var idx = db._collection(cn).getIndexes();
-          assertEqual(1, idx.length); // primary 
-
-          let view = db._view(cn + "View");
-          assertTrue(view !== null);
-          let props = view.properties();
-          assertEqual(Object.keys(props.links).length, 1);
-          assertTrue(props.hasOwnProperty("links"));
-          assertTrue(props.links.hasOwnProperty(cn));
     
-          let res = db._query("FOR doc IN " + view.name() + " OPTIONS { waitForSync: true } SEARCH doc.value >= 2500 RETURN doc").toArray();
-          assertEqual(2500, res.length);
+      db._flushCache();
+      connectToSlave();    
+      internal.wait(0.1, false);
+      // sync on slave
+      replication.sync({endpoint: masterEndpoint});
     
-          res = db._query("FOR doc IN UnitTestsDumpView OPTIONS { waitForSync: true } SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
-          assertEqual(1, res.length);
-        },
-        true
-      );
+      db._flushCache();
+      {
+        // check state is the same
+        let view = db._view(cn + "View");
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty("links"));
+        assertEqual(Object.keys(props.links).length, 0);
+      }
+
+      connectToMaster();
+
+      // update view properties
+      {
+        let view = db._view(cn + "View");
+        let links = {};
+        links[cn] = {
+          includeAllFields: true,
+          fields: {
+            text: { analyzers: ["text_en"] }
+          }
+        };
+        view.properties(links);
+      }
+
+
+      db._flushCache();
+      connectToSlave();    
+
+      replication.sync({endpoint: masterEndpoint});
+
+      {
+        let view = db._view(cn + "View");
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty("links"));
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty(cn));
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1443,6 +1432,9 @@ function ReplicationSuite() {
 
   suite.setUp = function() {
     connectToMaster();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
   };
 
@@ -1452,9 +1444,15 @@ function ReplicationSuite() {
 
   suite.tearDown = function() {
     connectToMaster();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
 
     connectToSlave();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
   };
 
