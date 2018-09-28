@@ -585,6 +585,10 @@ target_link_libraries(arangoserver
   ${SYSTEM_LIBRARIES}
 )
 
+if (MSVC)
+  target_link_libraries(arangoserver Bcrypt.lib)
+endif()
+
 if (USE_ENTERPRISE)
   target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
