@@ -1624,7 +1624,7 @@ void Ast::injectBindParameters(
     auto const& c = it.first;
     bool isExclusive = it.second;
     if (c->type == NODE_TYPE_COLLECTION) {
-      std::string name = c->getString();
+      std::string const name = c->getString();
       _query->addCollection(name, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
@@ -3778,11 +3778,22 @@ std::pair<LogicalDataSourceCategory, StringRef> Ast::injectDataSourceInQuery(
     // it's a collection!
     // add datasource to query
     _query->addCollection(nameRef, accessType);
+
+    if (nameRef != name) {
+      _query->addCollection(name, accessType); // Add collection by ID as well
+    }
   } else if (dataSource->category() == LogicalDataSourceCategory::VIEW) {
     // it's a view!
-    AstNode* node = createNode(NODE_TYPE_VIEW);
-    node->setStringValue(nameRef.data(), name.size());
     _query->addView(nameRef.toString());
+
+    LOG_DEVEL << "Adding view to query: " << nameRef.toString() << " orignal " << name << " dsname: " << dataSourceName;
+
+    // Make sure to add all collections now:
+    resolver.visitCollections([&] (LogicalCollection& col) -> bool {
+        LOG_DEVEL << "Adding view collection" << col.name();
+        _query->addCollection(col.name(), accessType);
+        return true;
+    }, dataSource->id());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected datasource type");   
   }
