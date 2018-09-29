@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgencyStrings.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
@@ -71,6 +72,13 @@ class Agent final : public arangodb::Thread,
   /// @brief Get timeoutMult:
   int64_t getTimeoutMult() const;
 
+  /**
+   * @brief add gossip peer to configuration
+   * @param   endpoint  new endpoint
+   * @return  true: if new endpoint, false: if already known
+   */
+  bool addGossipPeer(std::string const& endpoint);
+
   /// @brief Adjust timeoutMult:
   void adjustTimeoutMult(int64_t timeoutMult);
 
@@ -110,7 +118,7 @@ class Agent final : public arangodb::Thread,
   /// @brief Attempt write
   ///        Startup flag should NEVER be discarded solely for purpose of
   ///        persisting the agency configuration
-  write_ret_t write(query_t const&, bool discardStartup = false) override;
+  write_ret_t write(query_t const&, WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
@@ -301,6 +309,9 @@ class Agent final : public arangodb::Thread,
 
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
+
+  /// @brief add agent to configuration (from State after successful local persistence)
+  void updateConfiguration(VPackSlice const&);
 
  private:
 

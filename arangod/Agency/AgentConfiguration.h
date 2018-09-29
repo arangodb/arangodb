@@ -68,7 +68,7 @@ struct config_t {
   int64_t _timeoutMult;
   std::string _endpoint;
   std::unordered_map<std::string, std::string> _pool;
-  std::vector<std::string> _gossipPeers;
+  std::unordered_set<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
   bool _supervisionTouched;
@@ -81,10 +81,10 @@ struct config_t {
   size_t _version;
   std::string _startup;
   size_t _maxAppendSize;
-
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
- public:
+public:
+
   /// @brief default ctor
   config_t();
 
@@ -126,6 +126,12 @@ struct config_t {
 
   /// @brief wait for sync requested
   bool waitForSync() const;
+
+  /// @brief find id in pool
+  bool findInPool(std::string const&) const;
+
+  /// @brief match id and endpoint with pool
+  bool matchPeer(std::string const& id, std::string const& endpoint) const;
 
   /**
    * @brief           Verify other agent's pool against our own:
@@ -174,6 +180,9 @@ struct config_t {
   /// @brief vpack representation
   query_t toBuilder() const;
 
+  /// @brief vpack representation
+  void toBuilder(VPackBuilder&) const;
+
   /// @brief set id
   bool setId(std::string const& i);
 
@@ -181,10 +190,13 @@ struct config_t {
   bool merge(VPackSlice const& conf);
 
   /// @brief gossip peers
-  std::vector<std::string> gossipPeers() const;
+  std::unordered_set<std::string> gossipPeers() const;
 
   /// @brief remove endpoint from gossip peers
-  void eraseFromGossipPeers(std::string const& endpoint);
+  size_t eraseGossipPeer(std::string const& endpoint);
+
+  /// @brief remove endpoint from gossip peers
+  bool addGossipPeer(std::string const& endpoint);
 
   /// @brief add active agents
   bool activePushBack(std::string const& id);
@@ -227,6 +239,9 @@ struct config_t {
 
   /// @brief Update an indivdual uuid's endpoint
   bool updateEndpoint(std::string const&, std::string const&);
+
+  /// @brief Update configuration with an other
+  void updateConfiguration(VPackSlice const& other);
 
 };
 }

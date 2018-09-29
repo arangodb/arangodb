@@ -1109,9 +1109,9 @@ write_ret_t Agent::inquire(query_t const& query) {
 
 
 /// Write new entries to replicated state and store
-write_ret_t Agent::write(query_t const& query, bool discardStartup) {
+write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
-  std::vector<bool> applied;
+  std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
   auto multihost = size()>1;
 
@@ -1124,7 +1124,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     return write_ret_t(false, leader);
   }
 
-  if (!discardStartup) {
+  if (!wmode.discardStartup()) {
     CONDITION_LOCKER(guard, _waitForCV);
     while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
@@ -1168,7 +1168,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
 
-      applied = _spearhead.applyTransactions(chunk);
+      applied = _spearhead.applyTransactions(chunk, wmode);
       auto tmp = _state.logLeaderMulti(chunk, applied, term());
       indices.insert(indices.end(), tmp.begin(), tmp.end());
 
@@ -1329,19 +1329,23 @@ void Agent::persistConfiguration(term_t t) {
   { VPackArrayBuilder trxs(agency.get());
     { VPackArrayBuilder trx(agency.get());
       { VPackObjectBuilder oper(agency.get());
-        agency->add(VPackValue(".agency"));
+        agency->add(VPackValue(RECONFIGURE));
         { VPackObjectBuilder a(agency.get());
-          agency->add("term", VPackValue(t));
-          agency->add("id", VPackValue(id()));
-          agency->add("active", _config.activeToBuilder()->slice());
-          agency->add("pool", _config.poolToBuilder()->slice());
-          agency->add("size", VPackValue(size()));
-          agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
-        }}}}
+          agency->add("op", VPackValue("set"));
+          agency->add(VPackValue("new"));
+          { VPackObjectBuilder aa(agency.get());
+            agency->add("term", VPackValue(t));
+            agency->add(idStr, VPackValue(id()));
+            agency->add(activeStr, _config.activeToBuilder()->slice());
+            agency->add(poolStr, _config.poolToBuilder()->slice());
+            agency->add("size", VPackValue(size()));
+            agency->add(timeoutMultStr, VPackValue(_config.timeoutMult()));
+          }}}}}
 
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
-  write(agency, true);
+  write(agency, WriteMode(true,true));
+
 }
 
 
@@ -1506,6 +1510,11 @@ void Agent::updatePeerEndpoint(query_t const& message) {
 
   updatePeerEndpoint(uuid, endpoint);
 
+}
+
+
+bool Agent::addGossipPeer(std::string const& endpoint) {
+  return _config.addGossipPeer(endpoint);
 }
 
 void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
@@ -1704,8 +1713,7 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// If I know more immediately contact peer with my list.
 query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: "
-      << in->slice().toJson();
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: " << in->slice().toJson();
 
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
@@ -1715,11 +1723,36 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
             slice.typeName());
   }
 
+  if (slice.hasKey(StaticStrings::Error)) {
+    if (slice.get(StaticStrings::Code).getNumber<int>() == 403) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "Gossip peer does not have us in their pool " << slice.toJson();
+      FATAL_ERROR_EXIT(); /// We don't belong here
+    } else {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Received gossip error. We'll retry " << slice.toJson();
+    }
+    query_t out = std::make_shared<Builder>();
+    return out;
+  }
+  
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
   }
   std::string id = slice.get("id").copyString();
+
+  // If pool is complete and id not in our pool reject under all circumstances
+  if (_config.poolComplete() && !_config.findInPool(id)) {
+    query_t ret = std::make_shared<VPackBuilder>();
+     { VPackObjectBuilder o(ret.get());
+    ret->add(StaticStrings::Code, VPackValue(403));
+    ret->add(StaticStrings::Error, VPackValue(true));
+    ret->add(StaticStrings::ErrorMessage,
+             VPackValue("This agents is not member of this pool"));
+     ret->add(StaticStrings::ErrorNum, VPackValue(403)); }
+    return ret;
+  }
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1729,15 +1762,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
   if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
-  }
-
-  // If pool complete but knabe is not member => reject at all times
-  if (_config.poolComplete()) {
-    auto pool = _config.pool();
-    if (pool.find(id) == pool.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        20003, "Gossip message from new peer while my pool is complete.");
-    }
   }
 
   LOG_TOPIC(TRACE, Logger::AGENCY)
@@ -1760,51 +1784,109 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   query_t out = std::make_shared<Builder>();
-
-  {
-    VPackObjectBuilder b(out.get());
-
-    std::vector<std::string> gossipPeers = _config.gossipPeers();
-    if (!gossipPeers.empty()) {
-      try {
-        _config.eraseFromGossipPeers(endpoint);
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << __FILE__ << ":" << __LINE__ << " " << e.what();
-      }
+ 
+  VPackObjectBuilder b(out.get());
+    
+  std::unordered_set<std::string> gossipPeers = _config.gossipPeers();
+  if (!gossipPeers.empty() && !isCallback) {
+    try {
+      _config.eraseGossipPeer(endpoint);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << __FILE__ << ":" << __LINE__ << " " << e.what();
     }
-
-    /// disagreement over pool membership: fatal!
+  }
+    
+  std::string err;
+    
+  /// Pool incomplete or the other guy is in my pool: I'll gossip.
+  if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
+      
     if (!_config.upsertPool(pslice, id)) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
     }
+    auto pool = _config.pool();
+      
+    // Wrapped in envelope in RestAgencyPrivHandler
+    out->add(VPackValue("pool"));
+    { VPackObjectBuilder bb(out.get());
+      for (auto const& i : pool) {
+        out->add(i.first, VPackValue(i.second));
+      }}
+       
+  } else {  // Pool complete & id's endpoint not matching.
 
-    if (!isCallback) { // no gain in callback to a callback.
-      auto pool = _config.pool();
-      auto active = _config.active();
-
-      // Wrapped in envelope in RestAgencyPrivHandler
-      out->add(VPackValue("pool"));
-      {
-        VPackObjectBuilder bb(out.get());
-        for (auto const& i : pool) {
-          out->add(i.first, VPackValue(i.second));
+    // Not leader: redirect / 503     
+    if (challengeLeadership()) {
+      out->add("redirect", VPackValue(true));
+      out->add("id", VPackValue(leaderID()));
+    } else { // leader magic
+      auto tmp = _config;
+      tmp.upsertPool(pslice, id);
+      auto query = std::make_shared<VPackBuilder>();
+      { VPackArrayBuilder trs(query.get());
+        { VPackArrayBuilder tr(query.get());
+          { VPackObjectBuilder o(query.get());
+            query->add(VPackValue(RECONFIGURE));
+            { VPackObjectBuilder o(query.get());
+              query->add("op", VPackValue("set"));
+              query->add(VPackValue("new"));
+              { VPackObjectBuilder c(query.get());
+                tmp.toBuilder(*query); }}}}}
+         
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "persisting new agency configuration via RAFT: " << query->toJson();
+            
+      // Do write
+      write_ret_t ret;
+      try {
+        ret = write(query, WriteMode(false,true));
+        arangodb::consensus::index_t max_index = 0;
+        if (ret.indices.size() > 0) {
+          max_index =
+            *std::max_element(ret.indices.begin(), ret.indices.end());
         }
+        if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
+          auto result = waitFor(max_index);
+          if (result != Agent::raft_commit_t::OK) {
+            err = "failed to retrieve RAFT index for updated agency endpoints";
+          } else {
+            auto pool = _config.pool();
+            out->add(VPackValue("pool"));
+            { VPackObjectBuilder bb(out.get());
+              for (auto const& i : pool) {
+                out->add(i.first, VPackValue(i.second));
+              }}
+          }
+        } else {
+          err = "failed to retrieve RAFT index for updated agency endpoints";
+        }
+      } catch (std::exception const& e) {
+        err = std::string("failed to write new agency to RAFT") + e.what();
+        LOG_TOPIC(ERR, Logger::AGENCY) << err;
       }
+        
     }
+
+    if (!err.empty()) {
+      out->add(StaticStrings::Code, VPackValue(500));
+      out->add(StaticStrings::Error, VPackValue(true));
+      out->add(StaticStrings::ErrorMessage, VPackValue(err));
+      out->add(StaticStrings::ErrorNum, VPackValue(500));
+    } 
   }
 
   if (!isCallback) {
-    LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
-                                     << out->slice().toJson();
+    LOG_TOPIC(TRACE, Logger::AGENCY)
+      << "Answering with gossip " << out->slice().toJson();
   }
-
+    
   // let gossip loop know that it has new data
   if ( _inception != nullptr && isCallback) {
     _inception->signalConditionVar();
   }
-
+    
   return out;
 }
 
@@ -1909,6 +1991,10 @@ bool Agent::isTrxOngoing(std::string& id) {
 
 Inception const* Agent::inception() const {
   return _inception.get();
+}
+
+void Agent::updateConfiguration(Slice const& slice) {
+  _config.updateConfiguration(slice);
 }
 
 }}  // namespace
