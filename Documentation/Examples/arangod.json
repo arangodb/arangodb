@@ -145,7 +145,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 19611176140,
+    "default" : 19609898188,
     "description" : "size of cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -195,7 +195,15 @@
   },
   "cluster.my-address" : {
     "default" : "",
-    "description" : "this server's endpoint",
+    "description" : "this server's endpoint (cluster internal)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "string"
+  },
+  "cluster.my-advertised-endpoint" : {
+    "default" : "",
+    "description" : "this server's advertised endpoint (e.g. external IP address or load balancer, optional)",
     "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "cluster",
@@ -597,6 +605,14 @@
     "section" : "javascript",
     "type" : "string"
   },
+  "javascript.copy-installation" : {
+    "default" : false,
+    "description" : "copy contents of 'javascript.startup-directory' on first start",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
   "javascript.enabled" : {
     "default" : true,
     "description" : "enable the V8 JavaScript engine",
@@ -880,6 +896,30 @@
     "section" : "query",
     "type" : "uint64"
   },
+  "query.cache-entries-max-size" : {
+    "default" : 268435456,
+    "description" : "maximum cumulated size of results in query result cache per database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-entry-max-size" : {
+    "default" : 16777216,
+    "description" : "maximum size of an invidiual result entry in query result cache",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-include-system-collections" : {
+    "default" : false,
+    "description" : "whether or not to include system collection queries in the query result cache",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
   "query.cache-mode" : {
     "default" : "off",
     "description" : "mode for the AQL query result cache (on, off, demand)",
@@ -914,7 +954,7 @@
   },
   "query.registry-ttl" : {
     "default" : 600,
-    "description" : "Default time-to-live of query snippets (in seconds)",
+    "description" : "default time-to-live of query snippets (in seconds)",
     "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "query",
@@ -994,7 +1034,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 19611176140,
+    "default" : 19609898188,
     "description" : "size of block cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -1533,7 +1573,7 @@
     "type" : "string"
   },
   "ssl.options" : {
-    "default" : 2148535295,
+    "default" : 2147485780,
     "description" : "ssl connection options, see OpenSSL documentation",
     "enterpriseOnly" : false,
     "hidden" : true,

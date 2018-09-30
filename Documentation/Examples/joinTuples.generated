@@ -44,10 +44,10 @@
   },
   {
     <span class="hljs-string">"user"</span>: <span class="hljs-string">"Fred"</span>,
-    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">2</span>
+    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">5</span>
   },
   {
     <span class="hljs-string">"user"</span>: <span class="hljs-string">"Fred"</span>,
-    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">5</span>
+    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">2</span>
   }
 ]

@@ -1,5 +1,5 @@
 arangosh&gt; v = db._view(<span class="hljs-string">"demoView"</span>);
-[ArangoView <span class="hljs-number">115</span>, <span class="hljs-string">"demoView"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">116</span>, <span class="hljs-string">"demoView"</span> (type arangosearch)]
 arangosh&gt; v.properties();
 { 
   <span class="hljs-string">"links"</span> : { 
