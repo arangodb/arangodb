@@ -1,5 +1,5 @@
-/* jshint globalstrict:false, strict:false, unused : false */
-/* global assertFalse, assertEqual */
+/* jshint globalstrict:false, strict:false, unused: false */
+/* global assertEqual, assertFalse, assertNull, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -33,25 +33,29 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
-
-  db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
-  internal.wal.flush(true, true);
-  internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
-
-  internal.debugSetFailAt('CollectorThreadProcessQueuedOperations');
-  for (i = 0; i < 10000; ++i) {
-    c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
-  }
   
-  internal.wal.flush(true, false);
+  db._drop('UnitTestsRecovery1');
+  let c = db._create('UnitTestsRecovery1');
+  let docs = [];
+  for (let i = 0; i < 100000; i++) {
+    docs.push({ value: i });
+    if (docs.length === 10000) {
+      c.insert(docs);
+      docs = [];
+    }
+  }
+ 
+  // should trigger range deletion
+  c.truncate();
 
-  // now let the write throttling become active
-  internal.wait(7);
-  try {
-    c.save({ _key: 'foo' });
-  } catch (err) {}
+  for (let i = 0; i < 5000; i++) {
+    docs.push({ _key: "test" + i, value: i });
+  }
+  c.insert(docs, { waitForSync: true });
+
+  // this should trigger the background sync thread at least once,
+  // though this is not guaranteed under high load
+  c.recalculateCounts();
 
   internal.debugSegfault('crashing server');
 }
@@ -68,22 +72,13 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the data
-    // //////////////////////////////////////////////////////////////////////////////
+    testRangeDeleteTruncateRefill: function () {
+      let c = db._collection('UnitTestsRecovery1');
+      assertEqual(5000, c.count());
 
-    testWriteThrottling: function () {
-      var i, c = db._collection('UnitTestsRecovery');
-
-      assertEqual(10000, c.count());
-      for (i = 0; i < 10000; ++i) {
-        var doc = c.document('test' + i);
-
-        assertEqual('test' + i, doc.value1);
-        assertEqual(i, doc.value2);
+      for (let i = 0; i < 5000; ++i) {
+        assertEqual(i, c.document("test" + i).value);
       }
-
-      assertFalse(c.exists('foo'));
     }
 
   };
