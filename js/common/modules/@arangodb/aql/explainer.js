@@ -877,6 +877,9 @@ function processQuery (query, explain) {
           return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' && '));
         }
         return '';
+      case 'parameter':
+      case 'datasource parameter':
+        return value('@' + node.name);
       default:
         return 'unhandled node type (' + node.type + ')';
     }
