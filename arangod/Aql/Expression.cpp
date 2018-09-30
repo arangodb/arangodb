@@ -445,10 +445,12 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
+    case NODE_TYPE_SPREAD:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "spread operator is not supported in expressions");
     case NODE_TYPE_COLLECTION:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in ArangoDB 3.4");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in expressions");
     case NODE_TYPE_VIEW:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'view' is not supported in ArangoDB 3.4");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'view' is not supported in expressions");
 
     default:
       std::string msg("unhandled type '");
@@ -597,9 +599,21 @@ AqlValue Expression::executeSimpleExpressionArray(
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
     bool localMustDestroy = false;
-    AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
-    AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, *builder.get(), false);
+    if (member->type == NODE_TYPE_SPREAD) {
+      AqlValue result = executeSimpleExpression(member->getMember(0), trx, localMustDestroy, false);
+      if (result.isArray()) {
+        size_t subLength = result.length();
+        for (size_t sub = 0; sub < subLength; ++sub) {
+          AqlValue subResult = result.at(trx, int64_t(sub), localMustDestroy, false);
+          AqlValueGuard guard(subResult, localMustDestroy);
+          subResult.toVelocyPack(trx, *builder.get(), false);
+        }
+      }
+    } else {
+      AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+      result.toVelocyPack(trx, *builder.get(), false);
+    }
   }
 
   builder->close();
@@ -628,15 +642,47 @@ AqlValue Expression::executeSimpleExpressionObject(
   std::unordered_map<std::string, size_t> uniqueKeyValues;
   bool isUnique = true;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
-
+  size_t writePosition = 0;
   transaction::BuilderLeaser builder(trx);
   builder->openObject();
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
 
-    // key
-    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+    if (member->type == NODE_TYPE_SPREAD) {
+      bool localMustDestroy;
+      AqlValue result = executeSimpleExpression(member->getMember(0), trx, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+      
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(result, false);
+
+      if (slice.isObject()) {
+        for (auto const& it : VPackObjectIterator(slice, true)) {
+          builder->add(it.key);
+          builder->add(it.value);
+
+          if (mustCheckUniqueness) {
+            std::string key = it.key.copyString();
+
+            // note each individual object key name with latest value position
+            auto it = uniqueKeyValues.find(key);
+
+            if (it == uniqueKeyValues.end()) {
+              // unique key
+              uniqueKeyValues.emplace(std::move(key), writePosition);
+            } else {
+              // duplicate key
+              (*it).second = writePosition;
+              isUnique = false;
+            }
+          }
+
+          ++writePosition;
+        }
+      }
+    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      // dynamic key
       bool localMustDestroy;
       AqlValue result = executeSimpleExpression(member->getMember(0), trx, localMustDestroy, false);
       AqlValueGuard guard(result, localMustDestroy);
@@ -660,17 +706,24 @@ AqlValue Expression::executeSimpleExpressionObject(
 
         if (it == uniqueKeyValues.end()) {
           // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
+          uniqueKeyValues.emplace(std::move(key), writePosition);
         } else {
           // duplicate key
-          (*it).second = i;
+          (*it).second = writePosition;
           isUnique = false;
         }
       }
 
       // value
       member = member->getMember(1);
+      {
+        AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
+        AqlValueGuard guard(result, localMustDestroy);
+        result.toVelocyPack(trx, *builder.get(), false);
+      }
+      ++writePosition;
     } else {
+      // static key
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
       builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
@@ -683,22 +736,24 @@ AqlValue Expression::executeSimpleExpressionObject(
 
         if (it == uniqueKeyValues.end()) {
           // unique key
-          uniqueKeyValues.emplace(std::move(key), i);
+          uniqueKeyValues.emplace(std::move(key), writePosition);
         } else {
           // duplicate key
-          (*it).second = i;
+          (*it).second = writePosition;
           isUnique = false;
         }
       }
 
       // value
       member = member->getMember(0);
+      {
+        bool localMustDestroy;
+        AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
+        AqlValueGuard guard(result, localMustDestroy);
+        result.toVelocyPack(trx, *builder.get(), false);
+      }
+      ++writePosition;
     }
-
-    bool localMustDestroy;
-    AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
-    AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(trx, *builder.get(), false);
   }
 
   builder->close();
@@ -845,20 +900,54 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   });
 
   for (size_t i = 0; i < n; ++i) {
-    auto arg = member->getMemberUnchecked(i);
+    AstNode const* arg = member->getMemberUnchecked(i);
 
     if (arg->type == NODE_TYPE_COLLECTION) {
+      // collection parameter
       parameters.emplace_back(arg->getStringValue(), arg->getStringLength());
-      destroyParameters.push_back(1);
+      try {
+        destroyParameters.push_back(1);
+      } catch (...) {
+        parameters.back().destroy();
+        throw;
+      }
+    } else if (arg->type == NODE_TYPE_SPREAD) {
+      // resolve spread
+      bool localMustDestroy;
+      AqlValue a = executeSimpleExpression(arg->getMember(0), trx, localMustDestroy, false);
+      AqlValueGuard guard(a, localMustDestroy);
+
+      if (a.isArray()) {
+        size_t sub = a.length();
+        for (size_t j = 0; j < sub; ++j) {
+          bool localMustDestroy;
+          parameters.emplace_back(a.at(trx, int64_t(j), localMustDestroy, false));
+          try {
+            destroyParameters.push_back(localMustDestroy ? 1 : 0);
+          } catch (...) {
+            if (localMustDestroy) {
+              parameters.back().destroy();
+            }
+            throw;
+          }
+        }
+      }
     } else {
+      // regular parameter
       bool localMustDestroy;
       parameters.emplace_back(executeSimpleExpression(arg, trx, localMustDestroy, false));
-      destroyParameters.push_back(localMustDestroy ? 1 : 0);
+      try {
+        destroyParameters.push_back(localMustDestroy ? 1 : 0);
+      } catch (...) {
+        if (localMustDestroy) {
+          parameters.back().destroy();
+        }
+        throw;
+      }
     }
   }
 
   TRI_ASSERT(parameters.size() == destroyParameters.size());
-  TRI_ASSERT(parameters.size() == n);
 
   AqlValue a = func->implementation(_expressionContext, trx, parameters);
   mustDestroy = true; // function result is always dynamic

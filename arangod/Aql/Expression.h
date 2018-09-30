@@ -330,7 +330,7 @@ class Expression {
   AqlValue executeSimpleExpressionArithmetic(
       AstNode const*, transaction::Methods*,
       bool& mustDestroy);
-
+  
  private:
   /// @brief the query execution plan. note: this may be a nullptr for expressions
   /// created in the early optimization stage!

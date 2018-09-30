@@ -99,24 +99,25 @@ extern int Aqldebug;
     T_COLON = 308,
     T_SCOPE = 309,
     T_RANGE = 310,
-    T_COMMA = 311,
-    T_OPEN = 312,
-    T_CLOSE = 313,
-    T_OBJECT_OPEN = 314,
-    T_OBJECT_CLOSE = 315,
-    T_ARRAY_OPEN = 316,
-    T_ARRAY_CLOSE = 317,
-    T_OUTBOUND = 318,
-    T_INBOUND = 319,
-    T_ANY = 320,
-    T_ALL = 321,
-    T_NONE = 322,
-    UMINUS = 323,
-    UPLUS = 324,
-    FUNCCALL = 325,
-    REFERENCE = 326,
-    INDEXED = 327,
-    EXPANSION = 328
+    T_SPREAD = 311,
+    T_COMMA = 312,
+    T_OPEN = 313,
+    T_CLOSE = 314,
+    T_OBJECT_OPEN = 315,
+    T_OBJECT_CLOSE = 316,
+    T_ARRAY_OPEN = 317,
+    T_ARRAY_CLOSE = 318,
+    T_OUTBOUND = 319,
+    T_INBOUND = 320,
+    T_ANY = 321,
+    T_ALL = 322,
+    T_NONE = 323,
+    UMINUS = 324,
+    UPLUS = 325,
+    FUNCCALL = 326,
+    REFERENCE = 327,
+    INDEXED = 328,
+    EXPANSION = 329
   };
 #endif
 
@@ -135,7 +136,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 139 "Aql/grammar.hpp" /* yacc.c:1909  */
+#line 140 "Aql/grammar.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

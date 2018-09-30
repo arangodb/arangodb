@@ -147,6 +147,8 @@ class Ast {
   /// note: this type of node is only used during parsing and optimized away
   /// later
   AstNode* createNodePassthru(AstNode const*);
+  
+  AstNode* createNodeSpread(AstNode const*);
 
   /// @brief create an AST example node
   AstNode* createNodeExample(AstNode const*, AstNode const*);
@@ -341,9 +343,9 @@ class Ast {
 
   /// @brief create an AST calculated object element node
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
-
+  
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections (AstNode const*);
+  AstNode* createNodeWithCollections(AstNode const*);
 
   /// @brief create an AST collection list node
   AstNode* createNodeCollectionList(AstNode const*);
@@ -529,6 +531,9 @@ class Ast {
   /// no real optimizations are done here, but we do an early check if the
   /// FOR loop operand is actually a list
   AstNode* optimizeFor(AstNode*);
+  
+  /// @brief optimizes an array literal or an array expression
+  AstNode* optimizeArray(AstNode*);
 
   /// @brief optimizes an object literal or an object expression
   AstNode* optimizeObject(AstNode*);

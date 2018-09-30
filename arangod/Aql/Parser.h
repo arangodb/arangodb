@@ -112,6 +112,10 @@ class Parser {
   void pushArrayElement(AstNode*);
 
   /// @brief push an AstNode into the object element on top of the stack
+  /// note: the node must be of type SPREAD
+  void pushObjectElement(AstNode*);
+
+  /// @brief push an AstNode into the object element on top of the stack
   void pushObjectElement(char const*, size_t, AstNode*);
 
   /// @brief push an AstNode into the object element on top of the stack

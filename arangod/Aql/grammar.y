@@ -329,6 +329,7 @@ static AstNode const* getIntoExpression(AstNode const* node) {
 %token T_COLON ":"
 %token T_SCOPE "::"
 %token T_RANGE ".."
+%token T_SPREAD "..."
 
 %token T_COMMA ","
 %token T_OPEN "("
@@ -360,6 +361,7 @@ static AstNode const* getIntoExpression(AstNode const* node) {
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
 %left T_IN T_NIN
 %left T_LT T_GT T_LE T_GE
+%left T_SPREAD
 %left T_RANGE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
@@ -404,6 +406,7 @@ static AstNode const* getIntoExpression(AstNode const* node) {
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
+%type <node> array_element;
 %type <node> for_options;
 %type <node> object;
 %type <node> options;
@@ -1433,6 +1436,10 @@ expression_or_query:
     expression {
       $$ = $1;
     }
+  | T_SPREAD expression {
+      AstNode* node = parser->ast()->createNodeSpread($2);
+      $$ = node;
+    }
   | {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
@@ -1485,11 +1492,19 @@ optional_array_elements:
   ;
 
 array_elements_list:
+    array_element {
+    }
+  | array_elements_list T_COMMA array_element {
+    }
+  ;
+
+array_element:
     expression {
       parser->pushArrayElement($1);
     }
-  | array_elements_list T_COMMA expression {
-      parser->pushArrayElement($3);
+  | T_SPREAD expression {
+      AstNode* node = parser->ast()->createNodeSpread($2);
+      parser->pushArrayElement(node);
     }
   ;
 
@@ -1504,7 +1519,7 @@ for_options:
 
       // we always return an array with two values: SEARCH and OPTIONS
       // as only one of these values will be set here, the other value is NOP
-      auto node = parser->ast()->createNodeArray(2);
+      AstNode* node = parser->ast()->createNodeArray(2);
       // only one extra qualifier. now we need to check if it is SEARCH or OPTIONS
 
       if (TRI_CaseEqualString($1.value, "SEARCH")) {
@@ -1602,6 +1617,10 @@ object_element:
   | object_element_name T_COLON expression {
       // attribute-name : attribute-value
       parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_SPREAD expression {
+      AstNode* node = parser->ast()->createNodeSpread($2);
+      parser->pushObjectElement(node);
     }
   | T_PARAMETER T_COLON expression {
       // bind-parameter : attribute-value

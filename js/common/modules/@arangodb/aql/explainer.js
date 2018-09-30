@@ -877,6 +877,8 @@ function processQuery (query, explain) {
           return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' && '));
         }
         return '';
+      case 'spread operator':
+        return '...' + buildExpression(node.subNodes[0]);
       default:
         return 'unhandled node type (' + node.type + ')';
     }

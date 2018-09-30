@@ -188,6 +188,15 @@ void Parser::pushArrayElement(AstNode* node) {
 }
 
 /// @brief push an AstNode into the object element on top of the stack
+/// note: the node must be of type SPREAD
+void Parser::pushObjectElement(AstNode* node) {
+  TRI_ASSERT(node->type == NODE_TYPE_SPREAD);
+  auto object = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+  object->addMember(node);
+}
+
+/// @brief push an AstNode into the object element on top of the stack
 void Parser::pushObjectElement(char const* attributeName, size_t nameLength,
                                AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());

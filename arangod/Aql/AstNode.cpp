@@ -161,6 +161,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
+    {static_cast<int>(NODE_TYPE_SPREAD), "spread operator"},
 };
 
 /// @brief names for AST node value types
@@ -586,6 +587,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_SPREAD:
       break;
   }
 
@@ -704,7 +706,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_WITH: 
-    case NODE_TYPE_FOR_VIEW: {
+    case NODE_TYPE_FOR_VIEW: 
+    case NODE_TYPE_SPREAD: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -1521,7 +1524,8 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OPERATOR_UNARY_NOT ||
       type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
-      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS ||
+      type == NODE_TYPE_SPREAD) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1664,7 +1668,8 @@ bool AstNode::isConstant() const {
         }
       } else {
         // definitely not const!
-        TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
+        TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                   member->type == NODE_TYPE_SPREAD);
         setFlag(DETERMINED_CONSTANT);
         return false;
       }
@@ -1790,8 +1795,9 @@ bool AstNode::mustCheckUniqueness() const {
           mustCheck = true;
           break;
         }
-      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-        // dynamic key... we don't know the key yet, so there's no
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                 member->type == NODE_TYPE_SPREAD) {
+        // dynamic key(s)... we don't know the key yet, so there's no
         // way around check it at runtime later
         mustCheck = true;
         break;
@@ -1939,7 +1945,9 @@ bool AstNode::containsDynamicAttributeName() const {
 
   size_t const n = numMembers();
   for (size_t i = 0; i < n; ++i) {
-    if (getMember(i)->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+    AstNode const* member = getMemberUnchecked(i);
+    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+        member->type == NODE_TYPE_SPREAD) {
       return true;
     }
   }
@@ -2036,6 +2044,12 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
         member->getMember(0)->stringify(buffer, verbose, failIfLong);
         buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
         member->getMember(1)->stringify(buffer, verbose, failIfLong);
+      } else if (member->type == NODE_TYPE_SPREAD) {
+        TRI_ASSERT(member->numMembers() == 1);
+
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("...["));
+        member->getMember(0)->stringify(buffer, verbose, failIfLong);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("]"));
       } else {
         TRI_ASSERT(false);
       }
@@ -2374,6 +2388,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_SPREAD:
       break;
   }
 
@@ -2549,6 +2564,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_SPREAD:
       break;
   }
   return ret;

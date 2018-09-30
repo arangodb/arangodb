@@ -147,11 +147,18 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
   }
 }
 
-/// @brief create an AST passhthru node
+/// @brief create an AST spread node
+AstNode* Ast::createNodeSpread(AstNode const* what) {
+  AstNode* node = createNode(NODE_TYPE_SPREAD);
+  node->addMember(what);
+
+  return node;
+}
+
+/// @brief create an AST passthru node
 /// note: this type of node is only used during parsing and optimized away later
 AstNode* Ast::createNodePassthru(AstNode const* what) {
   AstNode* node = createNode(NODE_TYPE_PASSTHRU);
-
   node->addMember(what);
 
   return node;
@@ -1133,7 +1140,7 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
 }
 
 /// @brief create an AST with collections node
-AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
+AstNode* Ast::createNodeWithCollections(AstNode const* collections) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
@@ -2082,11 +2089,15 @@ void Ast::validateAndOptimize() {
 
       return node;
     }
+    
+    if (node->type == NODE_TYPE_ARRAY) {
+      return this->optimizeArray(node);
+    }
 
     if (node->type == NODE_TYPE_OBJECT) {
       return this->optimizeObject(node);
     }
-
+    
     // traversal
     if (node->type == NODE_TYPE_TRAVERSAL) {
       // traversals must not be used after a modification operation
@@ -3448,6 +3459,49 @@ AstNode* Ast::optimizeFor(AstNode* node) {
   return node;
 }
 
+/// @brief optimizes an array literal or an array expression
+AstNode* Ast::optimizeArray(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_ARRAY);
+
+  size_t newSize = 0;
+  bool foundSpread = false;
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode const* member = node->getMemberUnchecked(i);
+    // resolve spreads
+    if (member->type == NODE_TYPE_SPREAD &&
+        member->getMember(0)->type == NODE_TYPE_ARRAY &&
+        member->getMember(0)->isConstant()) {
+      newSize += member->getMember(0)->numMembers();
+      foundSpread = true;
+    } else {
+      ++newSize;
+    }
+  }
+
+  if (!foundSpread) {
+    return node;
+  }
+
+  // resolve spreads
+  AstNode* newNode = createNodeArray(newSize);
+  for (size_t i = 0; i < n; ++i) {
+    AstNode const* member = node->getMemberUnchecked(i);
+    if (member->type == NODE_TYPE_SPREAD &&
+        member->getMember(0)->type == NODE_TYPE_ARRAY &&
+        member->getMember(0)->isConstant()) {
+      AstNode const* sub = member->getMember(0);
+      for (size_t j = 0; j < sub->numMembers(); ++j) {
+        newNode->addMember(sub->getMemberUnchecked(j));
+      }
+    } else {
+      newNode->addMember(member);
+    }
+  }
+  return newNode;
+}
+
 /// @brief optimizes an object literal or an object expression
 AstNode* Ast::optimizeObject(AstNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -3474,9 +3528,10 @@ AstNode* Ast::optimizeObject(AstNode* node) {
         node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
         return node;
       }
-    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+               member->type == NODE_TYPE_SPREAD) {
       // dynamic key... we don't know the key yet, so there's no
-      // way around check it at runtime later
+      // way around checking it at runtime later
       node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
       return node;
     }
