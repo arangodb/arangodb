@@ -57,6 +57,8 @@ bool createLink(
 ) {
   bool isNew = false;
   auto link = collection.createIndex(&trx, definition, isNew);
+  LOG_TOPIC_IF(DEBUG, arangodb::iresearch::TOPIC, link)
+      << "added link '" << link->id() << "'";
 
   return link && isNew;
 }
@@ -282,6 +284,9 @@ arangodb::Result modifyLinks(
       // remove modification state if removal of non-existant link
       if (!state._link // links currently does not exist
           && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "found link '" << state._link->id() << "' for collection '"
+            << state._collection->name() << "' - slated for removal";
         view.drop(state._collection->id()); // drop any stale data for the specified collection
         itr = linkModifications.erase(itr);
 
@@ -291,6 +296,9 @@ arangodb::Result modifyLinks(
       if (state._link // links currently exists
           && !state._stale // did not originate from the stale list (remove stale links lower)
           && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "found link '" << state._link->id() << "' for collection '"
+            << state._collection->name() << "' - slated for removal";
         auto cid = state._collection->id();
 
         // remove duplicate removal requests (e.g. by name + by CID)
@@ -305,8 +313,19 @@ arangodb::Result modifyLinks(
 
       if (state._link // links currently exists
           && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "found link '" << state._link->id() << "' for collection '"
+            << state._collection->name() << "' - slated for update";
         collectionsToUpdate.emplace(state._collection->id());
       }
+
+      LOG_TOPIC_IF(TRACE, arangodb::iresearch::TOPIC, state._link)
+          << "found link '" << state._link->id() << "' for collection '"
+          << state._collection->name() << "' - unsure what to do";
+
+      LOG_TOPIC_IF(TRACE, arangodb::iresearch::TOPIC, !state._link)
+          << "no link found for collection '"
+          << state._collection->name() << "'";
 
       ++itr;
     }
@@ -322,6 +341,9 @@ arangodb::Result modifyLinks(
           && (collectionsToRemove.find(cid) != collectionsToRemove.end() // also has a removal request (duplicate removal request)
               || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) { // also has a reindex request
         itr = linkModifications.erase(itr);
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "modification unnecessary, came from stale list, for link '"
+            << state._link->id() << "'";
 
         continue;
       }
@@ -338,6 +360,9 @@ arangodb::Result modifyLinks(
           && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
           && collectionsToUpdate.find(state._collection->id()) != collectionsToUpdate.end()) { // also has a reindex request
         itr = linkModifications.erase(itr);
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "modification unnecessary, remove+update, for link '"
+            << state._link->id() << "'";
 
         continue;
       }
@@ -348,6 +373,9 @@ arangodb::Result modifyLinks(
           && collectionsToRemove.find(state._collection->id()) == collectionsToRemove.end() // not a reindex request
           && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) { // link meta not modified
         itr = linkModifications.erase(itr);
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "modification unnecessary, no change, for link '"
+            << state._link->id() << "'";
 
         continue;
       }
@@ -359,6 +387,8 @@ arangodb::Result modifyLinks(
   // execute removals
   for (auto& state: linkModifications) {
     if (state._link) { // link removal or recreate request
+      LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+          << "removed link '" << state._link->id() << "'";
       state._valid = dropLink(*(state._collection), *(state._link));
       modified.emplace(state._collection->id());
     }
@@ -477,6 +507,8 @@ namespace iresearch {
     arangodb::velocypack::Slice const& links,
     std::unordered_set<TRI_voc_cid_t> const& stale /*= {}*/
 ) {
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "beginning IResearchLinkHelper::updateLinks";
   try {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       return modifyLinks<IResearchViewCoordinator, IResearchLinkCoordinator>(
