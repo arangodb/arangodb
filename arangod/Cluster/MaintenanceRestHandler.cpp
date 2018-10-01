@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/DBServerAgencySync.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -154,8 +155,21 @@ void MaintenanceRestHandler::getAction() {
   // build the action
   auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
 
-  VPackBuilder registry = maintenance->toVelocyPack();
-  generateResult(rest::ResponseCode::OK, registry.slice());
+  bool found;
+  std::string const& detailsStr = _request->value("details", found);
+
+  VPackBuilder builder;
+  { VPackObjectBuilder o(&builder);
+    builder.add(VPackValue("registry"));
+    maintenance->toVelocyPack(builder); 
+    
+    if (found && StringUtils::boolean(detailsStr)) {
+      builder.add(VPackValue("state"));
+      { VPackObjectBuilder s(&builder);
+        DBServerAgencySync::getLocalCollections(builder); }
+    }}
+  
+  generateResult(rest::ResponseCode::OK, builder.slice());
 
 } // MaintenanceRestHandler::getAction
 

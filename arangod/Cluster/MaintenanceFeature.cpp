@@ -456,17 +456,15 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
 } // MaintenanceFeature::findReadyAction
 
 
-VPackBuilder MaintenanceFeature::toVelocyPack() const {
-  VPackBuilder vb;
+void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
+
   READ_LOCKER(rLock, _actionRegistryLock);
 
   { VPackArrayBuilder ab(&vb);
     for (auto const& action : _actionRegistry ) {
       action->toVelocyPack(vb);
     } // for
-
   }
-  return vb;
 
 } // MaintenanceFeature::toVelocyPack
 #if 0
