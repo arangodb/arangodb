@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Driver setup
 
 Setup with default configuration, this automatically loads a properties file arangodb.properties if exists in the classpath:
@@ -74,7 +74,7 @@ To use SSL, you have to set the configuration `useSsl` to `true` and set a `SSLC
 
 ## Connection Pooling
 
-The driver supports connection pooling for VelocyStream with a default of 1 and HTTP with a default of 20 maximum connections. To change this value use the method `maxConnections(Integer)` in `ArangoDB.Builder`.
+The driver supports connection pooling for VelocyStream with a default of 1 and HTTP with a default of 20 maximum connections per host. To change this value use the method `maxConnections(Integer)` in `ArangoDB.Builder`.
 
 ```Java
   ArangoDB arangoDB = new ArangoDB.Builder().maxConnections(8).build();
@@ -104,16 +104,16 @@ Since version 4.3 the driver support acquiring a list of known hosts in a cluste
 
 Since version 4.3 the driver supports load balancing for cluster setups in two different ways.
 
-The first one is a round robin load balancing where the driver iterates through a list of known hosts and performs every request on a different host than the request before. This load balancing strategy only work when the maximun of connections is greater 1.
+The first one is a round robin load balancing where the driver iterates through a list of known hosts and performs every request on a different host than the request before.
 
 ```Java
-  ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ROUND_ROBIN).maxConnections(8).build();
+  ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ROUND_ROBIN).build();
 ```
 
 Just like the Fallback hosts feature the round robin load balancing strategy can use the `acquireHostList` configuration to acquire a list of all known hosts in the cluster. Do so only requires the manually configuration of only one host. Because this list is updated frequently it makes load balancing over the whole cluster very comfortable.
 
 ```Java
-  ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ROUND_ROBIN).maxConnections(8).acquireHostList(true).build();
+  ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ROUND_ROBIN).acquireHostList(true).build();
 ```
 
 The second load balancing strategy allows to pick a random host from the configured or acquired list of hosts and sticks to that host as long as the connection is open. This strategy is useful for an application - using the driver - which provides a session management where each session has its own instance of `ArangoDB` build from a global configured list of hosts. In this case it could be wanted that every sessions sticks with all its requests to the same host but not all sessions should use the same host. This load balancing strategy also works together with `acquireHostList`.
@@ -124,7 +124,7 @@ The second load balancing strategy allows to pick a random host from the configu
 
 ## Connection time to live
 
-Since version 4.4 the driver supports setting a TTL for connections managed by the internal connection pool. Setting a TTL helps when using load balancing strategy `ROUND_ROBIN`, because as soon as a coordinator goes down, every open connection to that host will be closed and opened again with another target coordinator. As long as the driver does not have to open new connections (all connections in the pool are used) it will use only the coordinators which never went down. To use the downed coordinator again, when it is running again, the connections in the connection pool have to be closed and opened again with the target host mentioned by the load balancing strategy. To achieve this you can manually call `ArangoDB.shutdown` in your client code or use the TTL for connection so that a downed coordinator (which is then brought up again) will be used again after a certain time.
+Since version 4.4 the driver supports setting a TTL for connections managed by the internal connection pool.
 
 ```Java
 ArangoDB arango = new ArangoDB.Builder().connectionTtl(5 * 60 * 1000).build();

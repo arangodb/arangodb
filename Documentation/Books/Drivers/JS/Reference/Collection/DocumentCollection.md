@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
 # DocumentCollection API
 
 The _DocumentCollection API_ extends the
@@ -131,8 +131,8 @@ the document's metadata.
 If a boolean is passed instead of an options object, it will be interpreted as
 the _returnNew_ option.
 
-For more information on the _opts_ object, see
-[the HTTP API documentation for working with documents](../../../..//HTTP/Document/WorkingWithDocuments.html).
+For more information on the _opts_ object, see the
+[HTTP API documentation for working with documents](../../../..//HTTP/Document/WorkingWithDocuments.html).
 
 **Examples**
 

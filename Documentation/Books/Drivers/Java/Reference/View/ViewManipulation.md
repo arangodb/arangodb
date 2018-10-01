@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Manipulating the view
 
 These functions implement
@@ -28,7 +28,7 @@ Creates a view of the given _type_, then returns view information from the serve
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
 db.createView("myView", ViewType.ARANGO_SEARCH);
-// the view "potatoes" now exists
+// the view "potatos" now exists
 ```
 
 ## ArangoView.rename
