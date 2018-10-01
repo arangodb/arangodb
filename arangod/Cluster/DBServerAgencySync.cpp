@@ -57,7 +57,7 @@ void DBServerAgencySync::work() {
   _heartbeat->dispatchedJobResult(result);
 }
 
-Result getLocalCollections(VPackBuilder& collections) {
+Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
   using namespace arangodb::basics;
   Result result;
@@ -72,7 +72,6 @@ Result getLocalCollections(VPackBuilder& collections) {
     return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
   }
 
-  collections.clear();
   VPackObjectBuilder c(&collections);
   for (auto const& database : Databases::list()) {
 
@@ -158,6 +157,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne done";
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
