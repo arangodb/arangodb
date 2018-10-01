@@ -160,8 +160,8 @@ bool UpdateCollection::first() {
         // resignation case is not handled here, since then
         // ourselves does not appear in shards[shard] but only
         // "_" + ourselves.
-        handleLeadership(coll, localLeader, plannedLeader, followersToDrop);
-        _result = Collections::updateProperties(&coll, props);
+        handleLeadership(*coll, localLeader, plannedLeader, followersToDrop);
+        _result = Collections::updateProperties(coll.get(), props);
 
         if (!_result.ok()) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE) << "failed to update properties"
