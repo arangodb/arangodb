@@ -489,9 +489,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
-
+    
   std::string const& path = request.requestPath();
   std::string const& username = request.user();
+
   rest::ResponseCode result = request.authenticated()
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
@@ -503,6 +504,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     events::NotAuthorized(&request);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+
+    if (request.authenticated()) {
+      request.setAuthenticated(false);
+    }
   }
 
   // mop: inside the authenticateRequest() request->user will be populated

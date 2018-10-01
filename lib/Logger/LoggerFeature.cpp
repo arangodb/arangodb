@@ -128,6 +128,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--log.force-direct",
                            "do not start a seperate thread for logging",
                            new BooleanParameter(&_forceDirect));
+
+  options->addHiddenOption("--log.request-parameters",
+                           "include full URLs and HTTP request parameters in trace logs",
+                           new BooleanParameter(&_logRequestParameters));
 }
 
 void LoggerFeature::loadOptions(
@@ -175,6 +179,7 @@ void LoggerFeature::prepare() {
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
+  Logger::setLogRequestParameters(_logRequestParameters);
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
