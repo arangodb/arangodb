@@ -378,53 +378,48 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   }
 }
 
-void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
-                                              const rocksdb::Slice& key) {
+// common implementation for DeleteCF / SingleDeleteCF
+void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
+                                                    const rocksdb::Slice& key) {
   if (column_family_id == _documentCF) {
-    auto coll =
-      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-
-    if (coll == nullptr) {
-      return;
-    }
-
-    auto const links = lookupLinks(*coll);
-
-    if (links.empty()) {
-      return;
-    }
-
-    auto docId = RocksDBKey::documentId(key);
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()),
-      *coll,
-      arangodb::AccessMode::Type::WRITE
-    );
-
-    trx.begin();
-
-    for (auto link : links) {
-      link->remove(
-        &trx,
-        docId,
-        arangodb::velocypack::Slice::emptyObjectSlice(),
-        Index::OperationMode::internal
-      );
-      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // removed: " << docId.id();
-    }
-
-    trx.commit();
-
     return;
   }
-}
+  auto coll =
+    lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
 
-void IResearchRocksDBRecoveryHelper::SingleDeleteCF(uint32_t column_family_id,
-                                                    const rocksdb::Slice& key) {
-  // not needed for anything atm
-}
+  if (coll == nullptr) {
+    return;
+  }
 
+  auto const links = lookupLinks(*coll);
+
+  if (links.empty()) {
+    return;
+  }
+
+  auto docId = RocksDBKey::documentId(key);
+  SingleCollectionTransaction trx(
+    transaction::StandaloneContext::Create(coll->vocbase()),
+    *coll,
+    arangodb::AccessMode::Type::WRITE
+  );
+
+  trx.begin();
+
+  for (auto link : links) {
+    link->remove(
+      &trx,
+      docId,
+      arangodb::velocypack::Slice::emptyObjectSlice(),
+      Index::OperationMode::internal
+    );
+    // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
+    // removed: " << docId.id();
+  }
+
+  trx.commit();
+}
+  
 void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
                                                    const rocksdb::Slice& end_key,
                                                    const rocksdb::Slice& begin_key) {

@@ -158,11 +158,14 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  if (!reverse) {
-    // we need to have a pointer to a slice for the upper bound
-    // so we need to assign the slice to an instance variable here
-    _upperBound = _bounds.end();
-    options.iterate_upper_bound = &_upperBound;
+  // we need to have a pointer to a slice for the upper bound
+  // so we need to assign the slice to an instance variable here
+  if (reverse) {
+    _rangeBound = _bounds.start();
+    options.iterate_lower_bound = &_rangeBound;
+  } else {
+    _rangeBound = _bounds.end();
+    options.iterate_upper_bound = &_rangeBound;
   }
 
   TRI_ASSERT(options.prefix_same_as_start);
@@ -394,7 +397,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
   TRI_ASSERT(leased.isEmpty());
   if (!_useExpansion) {
     // fast path for inserts... no array elements used
-    leased.openArray();
+    leased.openArray(true);
 
     size_t const n = _paths.size();
     for (size_t i = 0; i < n; ++i) {
@@ -817,10 +820,21 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   }
 
   size_t const count = elements.size();
-  for (size_t i = 0; i < count; ++i) {
-    arangodb::Result r = mthds->Delete(_cf, elements[i]);
-    if (!r.ok()) {
-      res = r.errorNumber();
+  if (_unique) {
+    for (size_t i = 0; i < count; ++i) {
+      arangodb::Result r = mthds->Delete(_cf, elements[i]);
+      if (!r.ok()) {
+        res = r.errorNumber();
+      }
+    }
+  } else {
+    // non-unique index contain the unique objectID
+    // they should be written exactly once
+    for (size_t i = 0; i < count; ++i) {
+      arangodb::Result r = mthds->SingleDelete(_cf, elements[i]);
+      if (!r.ok()) {
+        res = r.errorNumber();
+      }
     }
   }
 

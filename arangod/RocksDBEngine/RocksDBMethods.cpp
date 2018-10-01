@@ -207,6 +207,11 @@ arangodb::Result RocksDBReadOnlyMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
+arangodb::Result RocksDBReadOnlyMethods::SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                                      RocksDBKey const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
@@ -288,6 +293,14 @@ arangodb::Result RocksDBTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
+
+arangodb::Result RocksDBTrxMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                 RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->SingleDelete(cf, key.string());
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
+}
+
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
@@ -331,6 +344,13 @@ arangodb::Result RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle*
                                                     RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::Status s = _state->_rocksTransaction->DeleteUntracked(cf, key.string());
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
+}
+  
+arangodb::Result RocksDBTrxUntrackedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                          RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->SingleDeleteUntracked(cf, key.string());
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
@@ -385,6 +405,13 @@ arangodb::Result RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   return arangodb::Result();
 }
 
+arangodb::Result RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                     RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  _wb->SingleDelete(cf, key.string());
+  return arangodb::Result();
+}
+  
 std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
     rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);

@@ -360,10 +360,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     return rocksdb::Status();
   }
-
-  rocksdb::Status DeleteCF(uint32_t column_family_id,
-                           const rocksdb::Slice& key) override {
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+  
+  void handleDeleteCF(uint32_t cfId,
+                      const rocksdb::Slice& key) {
+    if (cfId == RocksDBColumnFamily::documents()->GetID()) {
       uint64_t objectId = RocksDBKey::objectId(key);
       Operations* ops = nullptr;
       if (shouldHandleCollection(objectId, &ops)) {
@@ -373,17 +373,17 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (_lastRemovedDocRid != 0) {
           ops->lastRevisionId = _lastRemovedDocRid;
         }
-      } 
+      }
       _lastRemovedDocRid = 0; // reset in any case
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hash = 0;
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
+      if (cfId == RocksDBColumnFamily::vpack()->GetID()) {
         hash = RocksDBVPackIndex::HashForKey(key);
-      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+      } else if (cfId == RocksDBColumnFamily::edge()->GetID()) {
         hash = RocksDBEdgeIndex::HashForKey(key);
       }
-
+      
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
@@ -393,6 +393,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
       }
     }
+  }
+
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           const rocksdb::Slice& key) override {
+    handleDeleteCF(column_family_id, key);
 
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -405,6 +410,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
                                  const rocksdb::Slice& key) override {
+    handleDeleteCF(column_family_id, key);
+
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
