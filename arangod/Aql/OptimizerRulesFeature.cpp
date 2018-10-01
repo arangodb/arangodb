@@ -260,10 +260,6 @@ void OptimizerRulesFeature::addRules() {
   );
 #endif
 
-  // @brief replace WITHIN_RECTANGLE(...), NEAR(...), WITHIN(...)
-  /*OptimizerRulesFeature::registerRule("replace-legacy-geo-functions", replaceLegacyGeoFunctionsRule,
-                OptimizerRule::removeLegacyGeoFunctions_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);*/
-
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
                                       OptimizerRule::applyGeoIndexRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
