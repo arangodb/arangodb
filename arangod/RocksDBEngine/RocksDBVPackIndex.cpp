@@ -162,6 +162,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
   // so we need to assign the slice to an instance variable here
   if (reverse) {
     _rangeBound = _bounds.start();
+    options.iterate_lower_bound = &_rangeBound;
   } else {
     _rangeBound = _bounds.end();
     options.iterate_upper_bound = &_rangeBound;
