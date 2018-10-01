@@ -478,6 +478,14 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     
     return rocksdb::Status();
   }
+    
+  rocksdb::Status DeleteRangeCF(uint32_t /*column_family_id*/,
+                                const rocksdb::Slice& /*begin_key*/,
+                                const rocksdb::Slice& /*end_key*/) override {
+    // nothing special to-do here. collection dropping and
+    // truncation is already handled elsewhere
+    return rocksdb::Status();
+  }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // starting new write batch
