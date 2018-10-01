@@ -32,7 +32,7 @@ var ERRORS = require("@arangodb").errors;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function iResearchFeatureAqlTestSuite () {
+function IResearchFeatureDDLTestSuite () {
   return {
     setUpAll : function () {
     },
@@ -620,7 +620,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
-      
+
       view2.properties(meta2, true); // partial update
 
       var result = db._query("FOR doc IN TestView2 SEARCH EXISTS(doc.b) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
