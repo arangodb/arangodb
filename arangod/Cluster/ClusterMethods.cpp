@@ -1665,7 +1665,7 @@ int getDocumentOnCoordinator(
     // Contact all shards directly with the correct information.
 
     VPackBuilder reqBuilder;
-    
+
     // Now prepare the requests:
     std::vector<ClusterCommRequest> requests;
     auto body = std::make_shared<std::string>();
@@ -1920,7 +1920,8 @@ int fetchEdgesFromEngines(
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC(ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
         continue;
       }
       StringRef idRef(id);
@@ -2028,7 +2029,8 @@ void fetchVerticesFromEngines(
       VPackSlice id = val.slice().get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC(ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
         continue;
       }
       TRI_ASSERT(id.isString());
@@ -2592,7 +2594,9 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   if (nrok != (int)DBservers.size()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not flush WAL on all servers. confirmed: " << nrok << ", expected: " << DBservers.size();
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "could not flush WAL on all servers. confirmed: " << nrok
+        << ", expected: " << DBservers.size();
     return globalErrorCode;
   }
 
@@ -2805,7 +2809,8 @@ int fetchEdgesFromEngines(
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        LOG_TOPIC(ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
         continue;
       }
       StringRef idRef(id);

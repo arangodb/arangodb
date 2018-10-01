@@ -226,7 +226,7 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
       // No need to check our graph
       return {TRI_ERROR_NO_ERROR};
     }
-    
+
     for (auto const& sGED : graph->edgeDefinitions()) {
       std::string const& col = sGED.first;
       auto it = edgeDefinitions.find(col);
@@ -401,7 +401,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
     return OperationResult{TRI_ERROR_GRAPH_CREATE_MISSING_NAME};
   }
   std::string const graphName = graphNameSlice.copyString();
-  
+
   if (graphExists(graphName)) {
     return OperationResult{TRI_ERROR_GRAPH_DUPLICATE};
   }
@@ -641,7 +641,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
                              arangodb::aql::QueryString(queryStr), nullptr,
                              nullptr, queryPart);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC(DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
   aql::QueryResult queryResult =
       query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
@@ -659,7 +659,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!graphsSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
   }
 
@@ -733,7 +733,7 @@ Result GraphManager::checkCreateGraphPermissions(
         return {TRI_ERROR_FORBIDDEN, "Createing Graphs requires RW access on the database (" + databaseName + ")"};
       }
     }
- 
+
     LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to "
                                      << databaseName << "."
                                      << StaticStrings::GraphCollection;

@@ -75,7 +75,7 @@ static int HexHashFromData(std::string const& hashMethod,
                                            cryptedLength);
     } else {
       // invalid algorithm...
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
           << "invalid algorithm for hexHashFromData: " << hashMethod;
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -84,7 +84,7 @@ static int HexHashFromData(std::string const& hashMethod,
     // exceptions
     return TRI_ERROR_FAILED;
   }
-    
+
   TRI_DEFER(delete[] crypted);
 
   if (crypted == nullptr || cryptedLength == 0) {
@@ -259,7 +259,8 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   VPackSlice const simpleSlice = authDataSlice.get("simple");
 
   if (!simpleSlice.isObject()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract simple";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+        << "cannot extract simple";
     return auth::User("", 0);
   }
 
@@ -269,7 +270,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   if (!methodSlice.isString() || !saltSlice.isString() ||
       !hashSlice.isString()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract password internals";
     return auth::User("", 0);
   }
@@ -278,7 +279,8 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   VPackSlice const activeSlice = authDataSlice.get("active");
 
   if (!activeSlice.isBoolean()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract active flag";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+        << "cannot extract active flag";
     return auth::User("", 0);
   }
 
@@ -425,7 +427,7 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
   }
   LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Granting " <<
   auth::convertFromAuthLevel(level) << " on " << dbname;
- 
+
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     it->second._databaseAuthLevel = level;
@@ -471,7 +473,7 @@ void auth::User::grantCollection(std::string const& dbname,
   }
   LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Granting " <<
   auth::convertFromAuthLevel(level) << " on " << dbname << "/" << cname;
-  
+
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     it->second._collectionAccess[cname] = level;
@@ -530,7 +532,7 @@ auth::Level auth::User::configuredCollectionAuthLevel(std::string const& dbname,
 }
 
 auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
-  
+
   auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
@@ -545,7 +547,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
       }
     }
   }
-  
+
   return std::max(lvl, auth::Level::NONE);
 }
 
@@ -557,7 +559,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   }
   // we must have got a non-empty collection name when we get here
   TRI_ASSERT(!isdigit(cname[0]));
-  
+
   bool isSystem = cname[0] == '_';
   if (isSystem) {
     // disallow access to _system/_users for everyone
@@ -568,7 +570,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     } else if (cname == "_frontend") {
       return auth::Level::RW;
     }
-    return databaseAuthLevel(dbname); 
+    return databaseAuthLevel(dbname);
   }
 
   auth::Level lvl = auth::Level::NONE;
@@ -582,7 +584,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       } else if (cname == "*") { // skip special rules for wildcard
         return auth::Level::NONE;
       }
-      
+
       // Fallback step 1.
       lvl = it->second._databaseAuthLevel;
       pair = it->second._collectionAccess.find("*");
@@ -591,7 +593,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
         lvl = std::max(pair->second, lvl);
       }
     }
-    
+
     if (dbname != StaticStrings::SystemDatabase) {
       // Fallback step 3. look into _system
       it = _dbAccess.find(StaticStrings::SystemDatabase);
@@ -600,7 +602,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       }
     }
   }
- 
+
   // Fallback step 2. is to look into the "*" database
   auto it = _dbAccess.find("*");
   if (it != _dbAccess.end()) {
@@ -614,7 +616,6 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     }
     // nothing found
   }
-  
+
   return lvl;
 }
-

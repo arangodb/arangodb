@@ -72,6 +72,10 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
   virtual void SingleDeleteCF(uint32_t column_family_id,
                               const rocksdb::Slice& key) override;
+  
+  virtual void DeleteRangeCF(uint32_t column_family_id,
+                             const rocksdb::Slice& begin_key,
+                             const rocksdb::Slice& end_key) override;
 
   virtual void LogData(const rocksdb::Slice& blob) override;
 

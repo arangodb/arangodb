@@ -202,7 +202,7 @@ void LogAppenderFile::reopenAll() {
     backup.append(".old");
 
     FileUtils::remove(backup);
-    FileUtils::rename(filename, backup);
+    TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
     int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
@@ -210,7 +210,7 @@ void LogAppenderFile::reopenAll() {
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
-      FileUtils::rename(backup, filename);
+      TRI_RenameFile(backup.c_str(), filename.c_str());
       continue;
     }
 

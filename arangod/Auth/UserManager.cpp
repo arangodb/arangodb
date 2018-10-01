@@ -128,7 +128,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+        << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -145,7 +146,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     emptyBuilder,
     arangodb::aql::PART_MAIN
   );
-  
+
   query.queryOptions().cache = false;
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
@@ -226,7 +227,7 @@ void auth::UserManager::loadFromDB() {
           applyRolesToAllUsers();
 #endif
         }
-        
+
         _internalVersion.store(tmp);
       }
     }
@@ -553,6 +554,14 @@ Result auth::UserManager::accessUser(std::string const& user,
     return func(it->second);
   }
   return TRI_ERROR_USER_NOT_FOUND;
+}
+
+bool auth::UserManager::userExists(std::string const& user) {
+  loadFromDB();
+  
+  READ_LOCKER(readGuard, _userCacheLock);
+  UserMap::iterator const& it = _userCache.find(user);
+  return it != _userCache.end();
 }
 
 VPackBuilder auth::UserManager::serializeUser(std::string const& user) {

@@ -43,8 +43,7 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"),
-      _flushInterval(1000000) {
+    : ApplicationFeature(server, "Flush"), _flushInterval(1000000) {
   setOptional(true);
   startsAfter("BasicsPhase");
 
@@ -54,13 +53,13 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  options->addHiddenOption(
-      "--server.flush-interval",
-      "interval (in microseconds) for flushing data",
-      new UInt64Parameter(&_flushInterval));
+  options->addHiddenOption("--server.flush-interval",
+                           "interval (in microseconds) for flushing data",
+                           new UInt64Parameter(&_flushInterval));
 }
 
-void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+void FlushFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   if (_flushInterval < 1000) {
     // do not go below 1000 microseconds
     _flushInterval = 1000;
@@ -71,24 +70,25 @@ void FlushFeature::prepare() {
   // At least for now we need FlushThread for ArangoSearch views
   // on a DB/Single server only, so we avoid starting FlushThread on
   // a coordinator and on agency nodes.
-  setEnabled(!arangodb::ServerState::instance()->isCoordinator() && !arangodb::ServerState::instance()->isAgent());
+  setEnabled(!arangodb::ServerState::instance()->isCoordinator() &&
+             !arangodb::ServerState::instance()->isAgent());
 }
 
 void FlushFeature::start() {
   _flushThread.reset(new FlushThread(_flushInterval));
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
-  dbFeature->registerPostRecoveryCallback(
-    [this]() -> Result {
-      if (!this->_flushThread->start()) {
-        LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
-        FATAL_ERROR_ABORT();
-      }
-
-      this->_isRunning.store(true);
-
-      return {TRI_ERROR_NO_ERROR};
+  dbFeature->registerPostRecoveryCallback([this]() -> Result {
+    if (!this->_flushThread->start()) {
+      LOG_TOPIC(FATAL, Logger::FLUSH) << "unable to start FlushThread";
+      FATAL_ERROR_ABORT();
+    } else {
+      LOG_TOPIC(TRACE, Logger::FLUSH) << "started FlushThread";
     }
-  );
+
+    this->_isRunning.store(true);
+
+    return {TRI_ERROR_NO_ERROR};
+  });
 }
 
 void FlushFeature::beginShutdown() {
@@ -99,7 +99,7 @@ void FlushFeature::beginShutdown() {
 }
 
 void FlushFeature::stop() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping FlushThread";
+  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "stopping FlushThread";
   // wait until thread is fully finished
 
   if (_flushThread != nullptr) {
@@ -117,9 +117,11 @@ void FlushFeature::unprepare() {
   _callbacks.clear();
 }
 
-void FlushFeature::registerCallback(void* ptr, FlushFeature::FlushCallback const& cb) {
+void FlushFeature::registerCallback(void* ptr,
+                                    FlushFeature::FlushCallback const& cb) {
   WRITE_LOCKER(locker, _callbacksLock);
   _callbacks.emplace(ptr, std::move(cb));
+  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "registered new flush callback";
 }
 
 bool FlushFeature::unregisterCallback(void* ptr) {
@@ -131,6 +133,7 @@ bool FlushFeature::unregisterCallback(void* ptr) {
   }
 
   _callbacks.erase(it);
+  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "unregistered flush callback";
   return true;
 }
 
@@ -144,6 +147,7 @@ void FlushFeature::executeCallbacks() {
   // there are callbacks
   for (auto const& cb : _callbacks) {
     // copy elision, std::move(..) not required
+    LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "executing flush callback";
     transactions.emplace_back(cb.second());
   }
 
@@ -151,15 +155,18 @@ void FlushFeature::executeCallbacks() {
 
   // commit all transactions
   for (auto const& trx : transactions) {
-    LOG_TOPIC(DEBUG, Logger::FIXME) << "commiting flush transaction '" << trx->name() << "'";
+    LOG_TOPIC(DEBUG, Logger::FLUSH)
+        << "commiting flush transaction '" << trx->name() << "'";
 
     Result res = trx->commit();
 
     if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush transaction '" << trx->name() << "': " << res.errorMessage();
+      LOG_TOPIC(ERR, Logger::FLUSH)
+          << "could not commit flush transaction '" << trx->name()
+          << "': " << res.errorMessage();
     }
     // TODO: honor the commit results here
   }
 }
 
-} // arangodb
+}  // namespace arangodb
