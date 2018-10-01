@@ -343,7 +343,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << "
+  // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
@@ -369,7 +369,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << "
+  // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty());
 
