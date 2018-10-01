@@ -1411,7 +1411,7 @@ arangodb::Result IResearchView::commit() {
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "begining flush commit for " << name();
+      << "beginning flush commit for " << name();
 
   auto& memoryStore = _toFlush->_store;
 
@@ -1898,7 +1898,8 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
   if (!state) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction state while creating IResearchView snapshot";
+      << "failed to get transaction state while creating arangosearch view "
+      << "snapshot";
 
     return nullptr;
   }
@@ -1917,7 +1918,8 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
       // ingore existing cookie, recreate snapshot
       if (!const_cast<IResearchView*>(this)->sync()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to sync while creating snapshot for arangosearch view '" << name() << "', previous snapshot will be used instead";
+          << "failed to sync while creating snapshot for arangosearch view '"
+          << name() << "', previous snapshot will be used instead";
       }
       break;
   }
@@ -1938,7 +1940,8 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
   if (!_asyncSelf->get()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "current view no longer valid while creating IResearchView snapshot";
+      << "current view no longer valid while creating arangosearch view "
+      << "snapshot";
     return nullptr; // the current view is no longer valid (checked after ReadLock aquisition)
   }
 

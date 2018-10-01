@@ -282,7 +282,6 @@ class RocksDBKey {
     TRI_ASSERT(size >= sizeof(char));
 
     const auto type = static_cast<RocksDBEntryType>(data[0]);
-/*#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     switch (type) {
       case RocksDBEntryType::Database:
       case RocksDBEntryType::Collection:
@@ -294,9 +293,8 @@ class RocksDBKey {
       case RocksDBEntryType::View:
         return type;
       default:
-        TRI_ASSERT(false);
+        return RocksDBEntryType::Placeholder;
     }
-#endif*/
     return type;
   }
 

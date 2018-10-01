@@ -90,11 +90,11 @@ arangodb::Result createLink(
   if (!mergeSliceSkipKeys(builder, link, acceptor)) {
     LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
         << "failed to update link definition with the view name while updating "
-        << "IResearch view '" << view.name() << "' and collection '"
+        << "arangosearch view '" << view.name() << "' and collection '"
         << collection.name() << "'";
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to update link definition with the view name while updating IResearch view '")
+      std::string("failed to update link definition with the view name while updating arangosearch view '")
       + view.name() + "' and collection '" + collection.name() + "'"
     );
   }
@@ -145,7 +145,7 @@ arangodb::Result updateLinks(
     if (!collectionNameOrIdSlice.isString()) {
       return {
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for IResearch view '")
+        std::string("error parsing link parameters from json for arangosearch view '")
           + view.name()
           + "' offset '"
           + std::to_string(linksItr.index())
@@ -343,7 +343,7 @@ bool IResearchViewCoordinator::emplace(
   // strip internal keys (added in createLink(...)) from externally visible link definition
   if (!mergeSliceSkipKeys(builder, value, acceptor)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "failed to generate externally visible link definition while emplacing link definition into IResearch view '"
+      << "failed to generate externally visible link definition while emplacing link definition into arangosearch view '"
       << name() << "' collection '" << cid << "'";
 
     return false;
@@ -409,7 +409,7 @@ bool IResearchViewCoordinator::emplace(
   if (!view->_meta.init(properties, error)) {
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(WARN, iresearch::TOPIC)
-        << "failed to initialize IResearch view from definition, error: " << error;
+        << "failed to initialize arangosearch view from definition, error: " << error;
 
     return nullptr;
   }
@@ -644,30 +644,30 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     );
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.code() << " " << e.what();
+      << "caught exception while updating properties for arangosearch view '" << id() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
-      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+      std::string("error updating properties for arangosearch view '") + StringUtils::itoa(id()) + "'"
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
+      << "caught exception while updating properties for arangosearch view '" << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+      std::string("error updating properties for arangosearch view '") + StringUtils::itoa(id()) + "'"
     );
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
-      << "caught exception while updating properties for IResearch view '" << id() << "'";
+      << "caught exception while updating properties for arangosearch view '" << id() << "'";
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+      std::string("error updating properties for arangosearch view '") + StringUtils::itoa(id()) + "'"
     );
   }
 
@@ -720,7 +720,7 @@ Result IResearchViewCoordinator::drop() {
     if (!res.ok()) {
       return arangodb::Result(
         res.errorNumber(),
-        std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+        std::string("failed to remove links while removing arangosearch view '") + name() + "': " + res.errorMessage()
       );
     }
   }

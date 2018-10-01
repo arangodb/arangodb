@@ -206,7 +206,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
         << "Locking shard " << shard << " lead to exception '"
         << lockResult.errorNumber() << "' ("
-        << lockResult.errorMessage() << ") ";
+        << lockResult.errorMessage() << ")";
     return false;
   }
 

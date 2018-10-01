@@ -1880,9 +1880,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  //std::vector<iresearch::IResearchView*> views;
-#endif
   // scan the database path for views
   try {
     VPackBuilder builder;
@@ -1913,7 +1910,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       view->open();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
-        //views.emplace_back(v);
         LOG_TOPIC(DEBUG, Logger::VIEWS)
             << "arangosearch view '" << v->name()
             << "' contains " << v->count() << " documents";
@@ -1957,18 +1953,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       physical->deserializeIndexEstimates(settingsManager());
       physical->deserializeKeyGenerator(settingsManager());
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "added document collection '"
-                                                << collection->name() << "' with properties " << it.toJson();
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "added document collection '"
+          << collection->name() << "' with properties " << it.toJson();
     }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-/*    for (auto view : views) {
-      TRI_ASSERT(view != nullptr);
-      LOG_TOPIC(DEBUG, Logger::VIEWS)
-          << "arangosearch view '" << view->name()
-          << "' contains " << view->count() << " documents";
-    }*/
-#endif
 
     return vocbase;
   } catch (std::exception const& ex) {
