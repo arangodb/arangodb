@@ -6,171 +6,20 @@ R"=(
       "name": "_system"
     },
     "foo": {
-      "id": "2010068",
-      "coordinator": "CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8",
+      "id": "2010058",
+      "coordinator": "CRDN-383e3a90-2b26-49fe-9974-f9fce7b5eabf",
       "options": {},
       "name": "foo"
     }
   },
   "Collections": {
     "_system": {
-      "2010049": {
-        "status": 3,
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "isSmart": false,
-        "id": "2010049",
-        "isSystem": false,
-        "deleted": false,
-        "type": 3,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          },
-          {
-            "fields": [
-              "_from"
-            ],
-            "id": "1",
-            "sparse": false,
-            "type": "edge",
-            "unique": false
-          },
-          {
-            "fields": [
-              "_to"
-            ],
-            "id": "2",
-            "sparse": false,
-            "type": "edge",
-            "unique": false
-          },
-          {
-            "fields": [
-              "gi"
-            ],
-            "geoJson": false,
-            "id": "2010116",
-            "sparse": true,
-            "type": "geo",
-            "unique": false
-          },
-          {
-            "fields": [
-              "gij"
-            ],
-            "geoJson": true,
-            "id": "2010122",
-            "sparse": true,
-            "type": "geo",
-            "unique": false
-          },
-          {
-            "deduplicate": false,
-            "fields": [
-              "hi",
-              "_key"
-            ],
-            "id": "2010126",
-            "sparse": false,
-            "type": "hash",
-            "unique": true
-          },
-          {
-            "deduplicate": false,
-            "fields": [
-              "pi"
-            ],
-            "id": "2010130",
-            "sparse": true,
-            "type": "persistent",
-            "unique": false
-          },
-          {
-            "fields": [
-              "fi"
-            ],
-            "id": "2010132",
-            "minLength": 3,
-            "sparse": true,
-            "type": "fulltext",
-            "unique": false
-          },
-          {
-            "deduplicate": true,
-            "fields": [
-              "sli"
-            ],
-            "id": "2010136",
-            "sparse": false,
-            "type": "skiplist",
-            "unique": false
-          }
-        ],
-        "name": "bar",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "numberOfShards": 9,
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ],
-        "shards": {
-          "s2010055": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010051": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010053": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010057": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010056": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010052": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010054": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010058": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010050": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        }
-      },
-      "2010019": {
+      "2010006": {
         "status": 3,
         "shards": {
-          "s2010020": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          "s2010007": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -180,7 +29,7 @@ R"=(
         },
         "cacheEnabled": false,
         "waitForSync": false,
-        "id": "2010019",
+        "id": "2010006",
         "isSmart": false,
         "type": 2,
         "numberOfShards": 1,
@@ -198,7 +47,7 @@ R"=(
             "unique": true
           }
         ],
-        "name": "_queues",
+        "name": "_modules",
         "shardingStrategy": "hash",
         "statusString": "loaded",
         "replicationFactor": 2,
@@ -206,12 +55,12 @@ R"=(
           "_key"
         ]
       },
-      "2010034": {
+      "2010008": {
         "status": 3,
         "shards": {
-          "s2010035": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          "s2010009": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -221,7 +70,7 @@ R"=(
         },
         "cacheEnabled": false,
         "waitForSync": false,
-        "id": "2010034",
+        "id": "2010008",
         "isSmart": false,
         "type": 2,
         "numberOfShards": 1,
@@ -237,19 +86,9 @@ R"=(
             "sparse": false,
             "type": "primary",
             "unique": true
-          },
-          {
-            "deduplicate": true,
-            "fields": [
-              "time"
-            ],
-            "id": "2010036",
-            "sparse": false,
-            "type": "skiplist",
-            "unique": false
           }
         ],
-        "name": "_statistics",
+        "name": "_iresearch_analyzers",
         "shardingStrategy": "hash",
         "statusString": "loaded",
         "replicationFactor": 2,
@@ -292,140 +131,17 @@ R"=(
         ],
         "shards": {
           "s2010002": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         }
-      },
-      "2010006": {
-        "status": 3,
-        "shards": {
-          "s2010007": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010006",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_modules",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010008": {
-        "status": 3,
-        "shards": {
-          "s2010009": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010008",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_iresearch_analyzers",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010010": {
-        "status": 3,
-        "shards": {
-          "s2010011": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010010",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_routing",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
       },
       "2010015": {
         "status": 3,
         "shards": {
           "s2010016": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -461,12 +177,12 @@ R"=(
           "_key"
         ]
       },
-      "2010021": {
+      "2010010": {
         "status": 3,
         "shards": {
-          "s2010022": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          "s2010011": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -476,179 +192,7 @@ R"=(
         },
         "cacheEnabled": false,
         "waitForSync": false,
-        "id": "2010021",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          },
-          {
-            "deduplicate": true,
-            "fields": [
-              "queue",
-              "status",
-              "delayUntil"
-            ],
-            "id": "2010023",
-            "sparse": true,
-            "type": "skiplist",
-            "unique": true
-          },
-          {
-            "deduplicate": true,
-            "fields": [
-              "status",
-              "queue",
-              "delayUntil"
-            ],
-            "id": "2010024",
-            "sparse": true,
-            "type": "skiplist",
-            "unique": true
-          }
-        ],
-        "name": "_jobs",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010061": {
-        "status": 3,
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "isSmart": false,
-        "id": "2010061",
-        "isSystem": false,
-        "deleted": false,
-        "type": 2,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "baz",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "numberOfShards": 4,
-        "replicationFactor": 3,
-        "shardKeys": [
-          "_key"
-        ],
-        "shards": {
-          "s2010063": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010062": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010065": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010064": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ]
-        }
-      },
-      "2010025": {
-        "status": 3,
-        "shards": {
-          "s2010026": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010025",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          },
-          {
-            "deduplicate": true,
-            "fields": [
-              "mount"
-            ],
-            "id": "2010027",
-            "sparse": true,
-            "type": "hash",
-            "unique": true
-          }
-        ],
-        "name": "_apps",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010028": {
-        "status": 3,
-        "shards": {
-          "s2010029": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010028",
+        "id": "2010010",
         "isSmart": false,
         "type": 2,
         "numberOfShards": 1,
@@ -666,7 +210,7 @@ R"=(
             "unique": true
           }
         ],
-        "name": "_appbundles",
+        "name": "_routing",
         "shardingStrategy": "hash",
         "statusString": "loaded",
         "replicationFactor": 2,
@@ -675,27 +219,32 @@ R"=(
         ]
       },
       "2010003": {
-        "status": 3,
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
         "shards": {
           "s2010004": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010001",
         "keyOptions": {
           "lastValue": 0,
           "type": "traditional",
           "allowUserKeys": true
         },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010003",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
         "isSystem": true,
+        "name": "_users",
         "indexes": [
           {
             "fields": [
@@ -717,71 +266,15 @@ R"=(
             "unique": true
           }
         ],
-        "name": "_users",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010031": {
-        "status": 3,
-        "shards": {
-          "s2010032": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010031",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          },
-          {
-            "deduplicate": true,
-            "fields": [
-              "time"
-            ],
-            "id": "2010033",
-            "sparse": false,
-            "type": "skiplist",
-            "unique": false
-          }
-        ],
-        "name": "_statisticsRaw",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
+        "id": "2010003",
+        "isSmart": false
       },
       "2010017": {
         "status": 3,
         "shards": {
           "s2010018": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -817,12 +310,12 @@ R"=(
           "_key"
         ]
       },
-      "2010037": {
+      "2010019": {
         "status": 3,
         "shards": {
-          "s2010038": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          "s2010020": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -832,13 +325,161 @@ R"=(
         },
         "cacheEnabled": false,
         "waitForSync": false,
-        "id": "2010037",
+        "id": "2010019",
         "isSmart": false,
         "type": 2,
         "numberOfShards": 1,
         "deleted": false,
         "distributeShardsLike": "2010001",
         "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_queues",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ]
+      },
+      "2010034": {
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "shards": {
+          "s2010035": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ]
+        },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010001",
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "isSystem": true,
+        "name": "_statistics",
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "time"
+            ],
+            "id": "2010036",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ],
+        "id": "2010034",
+        "isSmart": false
+      },
+      "2010031": {
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "shards": {
+          "s2010032": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ]
+        },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010001",
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "isSystem": true,
+        "name": "_statisticsRaw",
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "time"
+            ],
+            "id": "2010033",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ],
+        "id": "2010031",
+        "isSmart": false
+      },
+      "2010037": {
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "shards": {
+          "s2010038": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ]
+        },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010001",
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "isSystem": true,
+        "name": "_statistics15",
         "indexes": [
           {
             "fields": [
@@ -860,20 +501,166 @@ R"=(
             "unique": false
           }
         ],
-        "name": "_statistics15",
+        "id": "2010037",
+        "isSmart": false
+      },
+      "2010041": {
+        "cacheEnabled": false,
+        "type": 3,
+        "deleted": false,
         "shardingStrategy": "hash",
         "statusString": "loaded",
-        "replicationFactor": 2,
+        "shards": {
+          "s2010047": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "s2010046": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010045": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "s2010049": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010050": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "s2010048": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "s2010042": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "s2010043": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010044": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "status": 3,
+        "waitForSync": false,
         "shardKeys": [
           "_key"
-        ]
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 9,
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "isSystem": false,
+        "name": "bar",
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "gi"
+            ],
+            "geoJson": false,
+            "id": "2010051",
+            "sparse": true,
+            "type": "geo",
+            "unique": false
+          },
+          {
+            "fields": [
+              "gij"
+            ],
+            "geoJson": true,
+            "id": "2010052",
+            "sparse": true,
+            "type": "geo",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "hi",
+              "_key"
+            ],
+            "id": "2010053",
+            "sparse": false,
+            "type": "hash",
+            "unique": true
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "pi"
+            ],
+            "id": "2010054",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "fields": [
+              "fi"
+            ],
+            "id": "2010132",
+            "minLength": 3,
+            "sparse": true,
+            "type": "fulltext",
+            "unique": false
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "sli"
+            ],
+            "id": "2010055",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ],
+        "id": "2010041",
+        "isSmart": false
       },
-      "2010045": {
+      "2010028": {
         "status": 3,
         "shards": {
-          "s2010046": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          "s2010029": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
         "keyOptions": {
@@ -883,259 +670,12 @@ R"=(
         },
         "cacheEnabled": false,
         "waitForSync": false,
-        "id": "2010045",
+        "id": "2010028",
         "isSmart": false,
         "type": 2,
         "numberOfShards": 1,
         "deleted": false,
         "distributeShardsLike": "2010001",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_fishbowl",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      }
-    },
-    "foo": {
-      "2010082": {
-        "status": 3,
-        "shards": {
-          "s2010083": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010082",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_queues",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010069": {
-        "status": 3,
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "isSmart": false,
-        "id": "2010069",
-        "isSystem": true,
-        "deleted": false,
-        "type": 2,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_graphs",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "numberOfShards": 1,
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ],
-        "shards": {
-          "s2010070": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        }
-      },
-      "2010080": {
-        "status": 3,
-        "shards": {
-          "s2010081": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010080",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_frontend",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010078": {
-        "status": 3,
-        "shards": {
-          "s2010079": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010078",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_aqlfunctions",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010071": {
-        "status": 3,
-        "shards": {
-          "s2010072": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010071",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
-        "isSystem": true,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "_modules",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ]
-      },
-      "2010091": {
-        "status": 3,
-        "shards": {
-          "s2010092": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010091",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
         "isSystem": true,
         "indexes": [
           {
@@ -1156,28 +696,33 @@ R"=(
           "_key"
         ]
       },
-      "2010088": {
-        "status": 3,
+      "2010025": {
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
         "shards": {
-          "s2010089": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+          "s2010026": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ]
         },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010001",
         "keyOptions": {
           "lastValue": 0,
           "type": "traditional",
           "allowUserKeys": true
         },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010088",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
         "isSystem": true,
+        "name": "_apps",
         "indexes": [
           {
             "fields": [
@@ -1193,21 +738,81 @@ R"=(
             "fields": [
               "mount"
             ],
-            "id": "2010090",
+            "id": "2010027",
             "sparse": true,
             "type": "hash",
             "unique": true
           }
         ],
-        "name": "_apps",
+        "id": "2010025",
+        "isSmart": false
+      },
+      "2010021": {
+        "cacheEnabled": false,
+        "type": 2,
         "shardingStrategy": "hash",
         "statusString": "loaded",
-        "replicationFactor": 2,
+        "shards": {
+          "s2010022": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ]
+        },
+        "status": 3,
+        "waitForSync": false,
         "shardKeys": [
           "_key"
-        ]
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010001",
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "isSystem": true,
+        "name": "_jobs",
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "queue",
+              "status",
+              "delayUntil"
+            ],
+            "id": "2010023",
+            "sparse": true,
+            "type": "skiplist",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "status",
+              "queue",
+              "delayUntil"
+            ],
+            "id": "2010024",
+            "sparse": true,
+            "type": "skiplist",
+            "unique": true
+          }
+        ],
+        "id": "2010021",
+        "isSmart": false
       },
-      "2010097": {
+      "2010056": {
         "status": 3,
         "keyOptions": {
           "lastValue": 0,
@@ -1217,7 +822,365 @@ R"=(
         "cacheEnabled": false,
         "waitForSync": false,
         "isSmart": false,
-        "id": "2010097",
+        "id": "2010056",
+        "isSystem": false,
+        "deleted": false,
+        "type": 2,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "baz",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "numberOfShards": 1,
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ],
+        "shards": {
+          "s2010057": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        }
+      }
+    },
+    "foo": {
+      "2010072": {
+        "status": 3,
+        "shards": {
+          "s2010073": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "id": "2010072",
+        "isSmart": false,
+        "type": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_queues",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ]
+      },
+      "2010061": {
+        "status": 3,
+        "shards": {
+          "s2010062": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "id": "2010061",
+        "isSmart": false,
+        "type": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_modules",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ]
+      },
+      "2010063": {
+        "status": 3,
+        "shards": {
+          "s2010064": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "id": "2010063",
+        "isSmart": false,
+        "type": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_routing",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ]
+      },
+      "2010078": {
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "shards": {
+          "s2010079": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "isSystem": true,
+        "name": "_apps",
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "mount"
+            ],
+            "id": "2010080",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          }
+        ],
+        "id": "2010078",
+        "isSmart": false
+      },
+      "2010088": {
+        "status": 3,
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "isSmart": false,
+        "id": "2010088",
+        "isSystem": false,
+        "deleted": false,
+        "type": 2,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "foobaz",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "numberOfShards": 6,
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ],
+        "shards": {
+          "s2010090": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010089": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "s2010092": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "s2010093": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010091": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "s2010094": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        }
+      },
+      "2010068": {
+        "status": 3,
+        "shards": {
+          "s2010069": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "id": "2010068",
+        "isSmart": false,
+        "type": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_aqlfunctions",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ]
+      },
+      "2010081": {
+        "status": 3,
+        "shards": {
+          "s2010082": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "id": "2010081",
+        "isSmart": false,
+        "type": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_appbundles",
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "replicationFactor": 2,
+        "shardKeys": [
+          "_key"
+        ]
+      },
+      "2010083": {
+        "status": 3,
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "isSmart": false,
+        "id": "2010083",
         "isSystem": false,
         "deleted": false,
         "type": 3,
@@ -1259,122 +1222,55 @@ R"=(
           "_key"
         ],
         "shards": {
-          "s2010099": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010100": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010101": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010098": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ]
-        }
-      },
-      "2010102": {
-        "status": 3,
-        "keyOptions": {
-          "lastValue": 0,
-          "type": "traditional",
-          "allowUserKeys": true
-        },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "isSmart": false,
-        "id": "2010102",
-        "isSystem": false,
-        "deleted": false,
-        "type": 2,
-        "indexes": [
-          {
-            "fields": [
-              "_key"
-            ],
-            "id": "0",
-            "sparse": false,
-            "type": "primary",
-            "unique": true
-          }
-        ],
-        "name": "foobaz",
-        "shardingStrategy": "hash",
-        "statusString": "loaded",
-        "numberOfShards": 9,
-        "replicationFactor": 2,
-        "shardKeys": [
-          "_key"
-        ],
-        "shards": {
-          "s2010107": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010106": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010109": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010104": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010108": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010110": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "s2010111": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "s2010103": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "s2010105": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ]
-        }
-      },
-      "2010084": {
-        "status": 3,
-        "shards": {
           "s2010085": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010084": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "s2010087": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "s2010086": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ]
+        }
+      },
+      "2010074": {
+        "cacheEnabled": false,
+        "type": 2,
+        "shardingStrategy": "hash",
+        "statusString": "loaded",
+        "shards": {
+          "s2010075": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ]
         },
+        "status": 3,
+        "waitForSync": false,
+        "shardKeys": [
+          "_key"
+        ],
+        "replicationFactor": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
         "keyOptions": {
           "lastValue": 0,
           "type": "traditional",
           "allowUserKeys": true
         },
-        "cacheEnabled": false,
-        "waitForSync": false,
-        "id": "2010084",
-        "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
         "isSystem": true,
+        "name": "_jobs",
         "indexes": [
           {
             "fields": [
@@ -1392,7 +1288,7 @@ R"=(
               "status",
               "delayUntil"
             ],
-            "id": "2010086",
+            "id": "2010076",
             "sparse": true,
             "type": "skiplist",
             "unique": true
@@ -1404,13 +1300,49 @@ R"=(
               "queue",
               "delayUntil"
             ],
-            "id": "2010087",
+            "id": "2010077",
             "sparse": true,
             "type": "skiplist",
             "unique": true
           }
         ],
-        "name": "_jobs",
+        "id": "2010074",
+        "isSmart": false
+      },
+      "2010070": {
+        "status": 3,
+        "shards": {
+          "s2010071": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        },
+        "keyOptions": {
+          "lastValue": 0,
+          "type": "traditional",
+          "allowUserKeys": true
+        },
+        "cacheEnabled": false,
+        "waitForSync": false,
+        "id": "2010070",
+        "isSmart": false,
+        "type": 2,
+        "numberOfShards": 1,
+        "deleted": false,
+        "distributeShardsLike": "2010059",
+        "isSystem": true,
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ],
+        "name": "_frontend",
         "shardingStrategy": "hash",
         "statusString": "loaded",
         "replicationFactor": 2,
@@ -1418,14 +1350,8 @@ R"=(
           "_key"
         ]
       },
-      "2010073": {
+      "2010059": {
         "status": 3,
-        "shards": {
-          "s2010074": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ]
-        },
         "keyOptions": {
           "lastValue": 0,
           "type": "traditional",
@@ -1433,13 +1359,11 @@ R"=(
         },
         "cacheEnabled": false,
         "waitForSync": false,
-        "id": "2010073",
         "isSmart": false,
-        "type": 2,
-        "numberOfShards": 1,
-        "deleted": false,
-        "distributeShardsLike": "2010069",
+        "id": "2010059",
         "isSystem": true,
+        "deleted": false,
+        "type": 2,
         "indexes": [
           {
             "fields": [
@@ -1451,13 +1375,20 @@ R"=(
             "unique": true
           }
         ],
-        "name": "_routing",
+        "name": "_graphs",
         "shardingStrategy": "hash",
         "statusString": "loaded",
+        "numberOfShards": 1,
         "replicationFactor": 2,
         "shardKeys": [
           "_key"
-        ]
+        ],
+        "shards": {
+          "s2010060": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ]
+        }
       }
     }
   },
@@ -1466,14 +1397,15 @@ R"=(
     "_system": {}
   },
   "Coordinators": {
-    "CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8": "none"
+    "CRDN-383e3a90-2b26-49fe-9974-f9fce7b5eabf": "none",
+    "CRDN-8d79ded3-9062-4521-8fa6-7ef3aaf144ad": "none"
   },
   "Version": 50,
   "Lock": "UNLOCKED",
   "DBServers": {
-    "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83": "none",
-    "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291": "none",
-    "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89": "none"
+    "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d": "none",
+    "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da": "none",
+    "PRMR-62eeb203-c38c-4879-b343-ca34633705cf": "none"
   },
   "Singles": {}
 }

@@ -1,50 +1,22 @@
 R"=(
 {
-  "Foxxmaster": "CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8",
-  "ServersRegistered": {
-    "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89": {
-      "endpoint": "tcp://[::1]:8629",
-      "engine": "rocksdb",
-      "version": 30400,
-      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
-    },
-    "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291": {
-      "endpoint": "tcp://[::1]:8630",
-      "engine": "rocksdb",
-      "version": 30400,
-      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
-    },
-    "CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8": {
-      "endpoint": "tcp://[::1]:8530",
-      "engine": "rocksdb",
-      "version": 30400,
-      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
-    },
-    "Version": 1,
-    "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83": {
-      "endpoint": "tcp://[::1]:8631",
-      "engine": "rocksdb",
-      "version": 30400,
-      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
-    }
-  },
   "Databases": {
     "_system": {
-      "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83": {
+      "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d": {
         "errorMessage": "",
         "error": false,
         "id": "1",
         "name": "_system",
         "errorNum": 0
       },
-      "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291": {
+      "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da": {
         "errorMessage": "",
         "error": false,
         "id": "1",
         "name": "_system",
         "errorNum": 0
       },
-      "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89": {
+      "PRMR-62eeb203-c38c-4879-b343-ca34633705cf": {
         "errorMessage": "",
         "error": false,
         "id": "1",
@@ -53,24 +25,24 @@ R"=(
       }
     },
     "foo": {
-      "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83": {
+      "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d": {
         "errorMessage": "",
         "error": false,
-        "id": "10033126",
+        "id": "2010593",
         "name": "foo",
         "errorNum": 0
       },
-      "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291": {
+      "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da": {
         "errorMessage": "",
         "error": false,
-        "id": "8035848",
+        "id": "2010670",
         "name": "foo",
         "errorNum": 0
       },
-      "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89": {
+      "PRMR-62eeb203-c38c-4879-b343-ca34633705cf": {
         "errorMessage": "",
         "error": false,
-        "id": "9035030",
+        "id": "3010743",
         "name": "foo",
         "errorNum": 0
       }
@@ -78,14 +50,14 @@ R"=(
   },
   "Collections": {
     "_system": {
-      "2010049": {
-        "s2010055": {
+      "2010006": {
+        "s2010007": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -96,93 +68,18 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ]
-        },
-        "s2010051": {
+        }
+      },
+      "2010008": {
+        "s2010009": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -193,93 +90,18 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ]
-        },
-        "s2010053": {
+        }
+      },
+      "2010001": {
+        "s2010002": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -290,93 +112,18 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ]
-        },
-        "s2010057": {
+        }
+      },
+      "2010015": {
+        "s2010016": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -387,93 +134,18 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ]
-        },
-        "s2010056": {
+        }
+      },
+      "2010010": {
+        "s2010011": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -484,93 +156,18 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ]
-        },
-        "s2010052": {
+        }
+      },
+      "2010003": {
+        "s2010004": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -583,91 +180,26 @@ R"=(
               "unique": true
             },
             {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
               "deduplicate": true,
               "fields": [
-                "sli"
+                "user"
               ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
+              "id": "2010005",
+              "sparse": true,
+              "type": "hash",
+              "unique": true
             }
           ]
-        },
-        "s2010054": {
+        }
+      },
+      "2010017": {
+        "s2010018": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -678,277 +210,6 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
-            }
-          ]
-        },
-        "s2010058": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
-            }
-          ]
-        },
-        "s2010050": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gi"
-              ],
-              "geoJson": false,
-              "id": "2010116",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "bestIndexedLevel": 17,
-              "fields": [
-                "gij"
-              ],
-              "geoJson": true,
-              "id": "2010122",
-              "maxNumCoverCells": 8,
-              "sparse": true,
-              "type": "geo",
-              "unique": false,
-              "worstIndexedLevel": 4
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "hi",
-                "_key"
-              ],
-              "id": "2010126",
-              "sparse": false,
-              "type": "hash",
-              "unique": true
-            },
-            {
-              "deduplicate": false,
-              "fields": [
-                "pi"
-              ],
-              "id": "2010130",
-              "sparse": true,
-              "type": "persistent",
-              "unique": false
-            },
-            {
-              "fields": [
-                "fi"
-              ],
-              "id": "2010132",
-              "minLength": 3,
-              "sparse": true,
-              "type": "fulltext",
-              "unique": false
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "sli"
-              ],
-              "id": "2010136",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ]
         }
@@ -959,8 +220,8 @@ R"=(
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -981,8 +242,8 @@ R"=(
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -1007,14 +268,1025 @@ R"=(
           ]
         }
       },
-      "2010001": {
-        "s2010002": {
+      "2010031": {
+        "s2010032": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "time"
+              ],
+              "id": "2010033",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        }
+      },
+      "2010037": {
+        "s2010038": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "time"
+              ],
+              "id": "2010039",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        }
+      },
+      "2010041": {
+        "s2010049": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010046": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010047": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010044": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010043": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010050": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010045": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010042": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        },
+        "s2010048": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gi"
+              ],
+              "geoJson": false,
+              "id": "2010051",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "bestIndexedLevel": 17,
+              "fields": [
+                "gij"
+              ],
+              "geoJson": true,
+              "id": "2010052",
+              "maxNumCoverCells": 8,
+              "sparse": true,
+              "type": "geo",
+              "unique": false,
+              "worstIndexedLevel": 4
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "hi",
+                "_key"
+              ],
+              "id": "2010053",
+              "sparse": false,
+              "type": "hash",
+              "unique": true
+            },
+            {
+              "deduplicate": false,
+              "fields": [
+                "pi"
+              ],
+              "id": "2010054",
+              "sparse": true,
+              "type": "persistent",
+              "unique": false
+            },
+            {
+              "fields": [
+                "fi"
+              ],
+              "id": "2010132",
+              "minLength": 3,
+              "sparse": true,
+              "type": "fulltext",
+              "unique": false
+            },
+            {
+              "deduplicate": true,
+              "fields": [
+                "sli"
+              ],
+              "id": "2010055",
+              "sparse": false,
+              "type": "skiplist",
+              "unique": false
+            }
+          ]
+        }
+      },
+      "2010028": {
+        "s2010029": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -1029,14 +1301,14 @@ R"=(
           ]
         }
       },
-      "2010006": {
-        "s2010007": {
+      "2010025": {
+        "s2010026": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -1047,71 +1319,15 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            }
-          ]
-        }
-      },
-      "2010008": {
-        "s2010009": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
+            },
             {
+              "deduplicate": true,
               "fields": [
-                "_key"
+                "mount"
               ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010010": {
-        "s2010011": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010015": {
-        "s2010016": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
+              "id": "2010027",
+              "sparse": true,
+              "type": "hash",
               "unique": true
             }
           ]
@@ -1123,8 +1339,8 @@ R"=(
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -1163,272 +1379,14 @@ R"=(
           ]
         }
       },
-      "2010061": {
-        "s2010063": {
+      "2010056": {
+        "s2010057": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        },
-        "s2010062": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        },
-        "s2010065": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        },
-        "s2010064": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010025": {
-        "s2010026": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "mount"
-              ],
-              "id": "2010027",
-              "sparse": true,
-              "type": "hash",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010028": {
-        "s2010029": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010003": {
-        "s2010004": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "user"
-              ],
-              "id": "2010005",
-              "sparse": true,
-              "type": "hash",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010031": {
-        "s2010032": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "time"
-              ],
-              "id": "2010033",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
-            }
-          ]
-        }
-      },
-      "2010017": {
-        "s2010018": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010037": {
-        "s2010038": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "time"
-              ],
-              "id": "2010039",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
-            }
-          ]
-        }
-      },
-      "2010045": {
-        "s2010046": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1445,14 +1403,14 @@ R"=(
       }
     },
     "foo": {
-      "2010082": {
-        "s2010083": {
+      "2010072": {
+        "s2010073": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1467,14 +1425,14 @@ R"=(
           ]
         }
       },
-      "2010069": {
-        "s2010070": {
+      "2010061": {
+        "s2010062": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1489,14 +1447,14 @@ R"=(
           ]
         }
       },
-      "2010080": {
-        "s2010081": {
+      "2010063": {
+        "s2010064": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1517,74 +1475,8 @@ R"=(
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010071": {
-        "s2010072": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010091": {
-        "s2010092": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        }
-      },
-      "2010088": {
-        "s2010089": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1601,7 +1493,7 @@ R"=(
               "fields": [
                 "mount"
               ],
-              "id": "2010090",
+              "id": "2010080",
               "sparse": true,
               "type": "hash",
               "unique": true
@@ -1609,140 +1501,14 @@ R"=(
           ]
         }
       },
-      "2010097": {
-        "s2010099": {
+      "2010088": {
+        "s2010092": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            }
-          ]
-        },
-        "s2010100": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            }
-          ]
-        },
-        "s2010101": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            }
-          ]
-        },
-        "s2010098": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "fields": [
-                "_from",
-                "_to"
-              ],
-              "id": "2",
-              "sparse": false,
-              "type": "edge",
-              "unique": false
-            }
-          ]
-        }
-      },
-      "2010102": {
-        "s2010107": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -1756,13 +1522,13 @@ R"=(
             }
           ]
         },
-        "s2010106": {
+        "s2010089": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da"
           ],
           "indexes": [
             {
@@ -1776,13 +1542,13 @@ R"=(
             }
           ]
         },
-        "s2010109": {
+        "s2010090": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
           ],
           "indexes": [
             {
@@ -1796,13 +1562,13 @@ R"=(
             }
           ]
         },
-        "s2010104": {
+        "s2010093": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
           ],
           "indexes": [
             {
@@ -1816,13 +1582,13 @@ R"=(
             }
           ]
         },
-        "s2010108": {
+        "s2010091": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1836,73 +1602,13 @@ R"=(
             }
           ]
         },
-        "s2010110": {
+        "s2010094": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        },
-        "s2010111": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        },
-        "s2010103": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
-          ],
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            }
-          ]
-        },
-        "s2010105": {
-          "error": false,
-          "errorMessage": "",
-          "errorNum": 0,
-          "servers": [
-            "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89"
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1917,14 +1623,216 @@ R"=(
           ]
         }
       },
-      "2010084": {
+      "2010068": {
+        "s2010069": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            }
+          ]
+        }
+      },
+      "2010081": {
+        "s2010082": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            }
+          ]
+        }
+      },
+      "2010083": {
+        "s2010084": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            }
+          ]
+        },
         "s2010085": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            }
+          ]
+        },
+        "s2010087": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            }
+          ]
+        },
+        "s2010086": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-62eeb203-c38c-4879-b343-ca34633705cf",
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            },
+            {
+              "fields": [
+                "_from"
+              ],
+              "id": "1",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            },
+            {
+              "fields": [
+                "_to"
+              ],
+              "id": "2",
+              "sparse": false,
+              "type": "edge",
+              "unique": false
+            }
+          ]
+        }
+      },
+      "2010074": {
+        "s2010075": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1943,7 +1851,7 @@ R"=(
                 "status",
                 "delayUntil"
               ],
-              "id": "2010086",
+              "id": "2010076",
               "sparse": true,
               "type": "skiplist",
               "unique": true
@@ -1955,7 +1863,7 @@ R"=(
                 "queue",
                 "delayUntil"
               ],
-              "id": "2010087",
+              "id": "2010077",
               "sparse": true,
               "type": "skiplist",
               "unique": true
@@ -1963,14 +1871,36 @@ R"=(
           ]
         }
       },
-      "2010073": {
-        "s2010074": {
+      "2010070": {
+        "s2010071": {
           "error": false,
           "errorMessage": "",
           "errorNum": 0,
           "servers": [
-            "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-            "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291"
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
+          ],
+          "indexes": [
+            {
+              "fields": [
+                "_key"
+              ],
+              "id": "0",
+              "sparse": false,
+              "type": "primary",
+              "unique": true
+            }
+          ]
+        }
+      },
+      "2010059": {
+        "s2010060": {
+          "error": false,
+          "errorMessage": "",
+          "errorNum": 0,
+          "servers": [
+            "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da",
+            "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d"
           ],
           "indexes": [
             {
@@ -1988,19 +1918,59 @@ R"=(
     }
   },
   "DBServers": {
-    "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83": "none",
-    "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291": "none",
-    "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89": "none"
+    "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d": "none",
+    "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da": "none",
+    "PRMR-62eeb203-c38c-4879-b343-ca34633705cf": "none"
   },
   "Singles": {},
-  "Coordinators": {
-    "CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8": "none"
-  },
-  "AsyncReplication": {},
-  "NewServers": {},
-  "Version": 422,
   "Lock": "UNLOCKED",
+  "Version": 166,
+  "Coordinators": {
+    "CRDN-383e3a90-2b26-49fe-9974-f9fce7b5eabf": "none",
+    "CRDN-8d79ded3-9062-4521-8fa6-7ef3aaf144ad": "none"
+  },
+  "Foxxmaster": "CRDN-383e3a90-2b26-49fe-9974-f9fce7b5eabf",
+  "ServersRegistered": {
+    "PRMR-498a2f3d-9700-4917-afa9-ec317f6e2e3d": {
+      "endpoint": "tcp://[::1]:11197",
+      "advertisedEndpoint": "",
+      "engine": "rocksdb",
+      "version": 30400,
+      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
+    },
+    "Version": 1,
+    "CRDN-383e3a90-2b26-49fe-9974-f9fce7b5eabf": {
+      "endpoint": "tcp://[::1]:11097",
+      "advertisedEndpoint": "",
+      "engine": "rocksdb",
+      "version": 30400,
+      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
+    },
+    "CRDN-8d79ded3-9062-4521-8fa6-7ef3aaf144ad": {
+      "endpoint": "tcp://[::1]:11098",
+      "advertisedEndpoint": "",
+      "engine": "rocksdb",
+      "version": 30400,
+      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
+    },
+    "PRMR-d6e6b701-e455-4f8f-86cf-a87faaf235da": {
+      "endpoint": "tcp://[::1]:11198",
+      "advertisedEndpoint": "",
+      "engine": "rocksdb",
+      "version": 30400,
+      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
+    },
+    "PRMR-62eeb203-c38c-4879-b343-ca34633705cf": {
+      "endpoint": "tcp://[::1]:11196",
+      "advertisedEndpoint": "",
+      "engine": "rocksdb",
+      "version": 30400,
+      "host": "ac8ddefc7d1f4364ba655b4debcd076f"
+    }
+  },
+  "ShardsCopied": {},
   "FoxxmasterQueueupdate": false,
-  "ShardsCopied": {}
+  "NewServers": {},
+  "AsyncReplication": {}
 }
 )="
