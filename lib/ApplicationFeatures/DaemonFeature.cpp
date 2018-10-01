@@ -22,12 +22,11 @@
 
 #include "DaemonFeature.h"
 
-#include <fstream>
-#include <iostream>
 #include <thread>
 #include <chrono>
 
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -147,15 +146,30 @@ void DaemonFeature::checkPidFile() {
     } else if (FileUtils::exists(_pidFile) && FileUtils::size(_pidFile) > 0) {
       LOG_TOPIC(INFO, Logger::STARTUP) << "pid-file '" << _pidFile
                                        << "' already exists, verifying pid";
+      std::string oldPidS;
+      try {
+        oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
+      }
+      catch (arangodb::basics::Exception const& ex) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't read PID file '"
+                                                << _pidFile << "' - "
+                                                << ex.what();
+        FATAL_ERROR_EXIT();
+      }
 
-      std::ifstream f(_pidFile.c_str());
+      basics::StringUtils::trimInPlace(oldPidS);
 
-      // file can be opened
-      if (f) {
+      if (!oldPidS.empty()) {
         TRI_pid_t oldPid;
 
-        f >> oldPid;
-
+        try {
+          oldPid = std::stol(oldPidS);
+        }
+        catch (std::invalid_argument const& ex) {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
+                                                    << "' doesn't contain a number.";
+          FATAL_ERROR_EXIT();
+        }
         if (oldPid == 0) {
           LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
                                                     << "' is unreadable";
@@ -316,15 +330,14 @@ void DaemonFeature::remapStandardFileDescriptors() {
 }
 
 void DaemonFeature::writePidFile(int pid) {
-  std::ofstream out(_pidFile.c_str(), std::ios::trunc);
-
-  if (!out) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
-                                              << _pidFile << "'";
-    FATAL_ERROR_EXIT();
+  try {
+    arangodb::basics::FileUtils::spit(_pidFile, std::to_string(pid), true);
   }
-
-  out << pid;
+  catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
+                                                << _pidFile << "' - "
+                                                << ex.what();
+  }
 }
 
 int DaemonFeature::waitForChildProcess(int pid) {

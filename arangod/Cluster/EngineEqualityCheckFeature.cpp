@@ -52,8 +52,14 @@ bool equalStorageEngines() {
 
   // send requests
   std::size_t requestsDone = 0;
-  auto successful = cc->performRequests(requests, 60.0 /*double timeout*/,
-                                        requestsDone, Logger::CLUSTER, false);
+  // We are using a very long timeout here, since in our Jenkins we have
+  // observed that some dbservers need a long time to come up, since the
+  // I/O system is overloaded (lots of servers starting at the same time).
+  // Furthermore, this long timeout here does not really hurt. Besides,
+  // failure here is fatal for this coordinator, and thus for the whole
+  // test in a single coordinator scenario.
+  auto successful = cc->performRequests(requests, 600.0 /*20 fold timeout*/,
+      requestsDone, Logger::CLUSTER, false);
 
   if (successful != requests.size()){
     LOG_TOPIC(ERR, Logger::CLUSTER)

@@ -120,12 +120,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
 
   struct Operations {
-    explicit Operations(rocksdb::SequenceNumber seq) : startSequenceNumber(seq) {};
+    Operations(rocksdb::SequenceNumber seq) : startSequenceNumber(seq) {}
     Operations(Operations const&) = delete;
     Operations& operator=(Operations const&) = delete;
+    Operations(Operations&&) = default;
+    Operations& operator=(Operations&&) = default;
 
-    const rocksdb::SequenceNumber startSequenceNumber;
-    rocksdb::SequenceNumber lastSequenceNumber;
+    rocksdb::SequenceNumber startSequenceNumber;
+    rocksdb::SequenceNumber lastSequenceNumber = 0;
     uint64_t added = 0;
     uint64_t removed = 0;
     TRI_voc_rid_t lastRevisionId = 0;
@@ -153,7 +155,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       : currentSeqNum(0) {
         for (auto const& pair : seqs) {
           try {
-            deltas.emplace(pair.first, pair.second);
+            deltas.emplace(pair.first, Operations(pair.second));
           } catch(...) {}
         }
       }
