@@ -823,7 +823,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
-        errors, actions);
+        errors, feature, actions);
 
       if (node.first == followerName) {
         // Must see an action dropping the shard
