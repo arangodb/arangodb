@@ -128,6 +128,9 @@ public:
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);
 
+  /// @brief Create a VPackBuilder object with snapshot of current action registry
+  VPackBuilder toVelocyPack() const;
+
   /// @brief Fill the envelope with snapshot of current action registry
   void toVelocyPack(VPackBuilder& envelope) const;
 

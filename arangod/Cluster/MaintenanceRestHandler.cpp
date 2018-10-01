@@ -153,7 +153,8 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
 
 void MaintenanceRestHandler::getAction() {
   // build the action
-  auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  auto maintenance =
+    ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
 
   bool found;
   std::string const& detailsStr = _request->value("details", found);
@@ -161,12 +162,10 @@ void MaintenanceRestHandler::getAction() {
   VPackBuilder builder;
   { VPackObjectBuilder o(&builder);
     builder.add(VPackValue("registry"));
-    maintenance->toVelocyPack(builder); 
-    
+    maintenance->toVelocyPack(builder);
     if (found && StringUtils::boolean(detailsStr)) {
       builder.add(VPackValue("state"));
-      { VPackObjectBuilder s(&builder);
-        DBServerAgencySync::getLocalCollections(builder); }
+      DBServerAgencySync::getLocalCollections(builder); 
     }}
   
   generateResult(rest::ResponseCode::OK, builder.slice());

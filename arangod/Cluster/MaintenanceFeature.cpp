@@ -456,6 +456,13 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
 } // MaintenanceFeature::findReadyAction
 
 
+VPackBuilder MaintenanceFeature::toVelocyPack() const {
+  VPackBuilder vb;
+  toVelocyPack(vb);
+  return vb;
+}
+
+
 void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
 
   READ_LOCKER(rLock, _actionRegistryLock);
