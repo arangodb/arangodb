@@ -422,7 +422,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
               value, rhs.get("view"), false) != 0) {
         auto ls = value.copyString();
         auto rs = rhs.get("view").copyString();
-        if (ls.size() < rs.size()) {
+        if (ls.size() > rs.size()) {
           std::swap(ls, rs);
         }
         if (ls.back() != '/' ||
