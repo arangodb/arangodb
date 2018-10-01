@@ -14,9 +14,11 @@ v3.3.17 (XXXX-XX-XX)
 
 * fix some TLS errors that occurred when combining HTTPS/TLS transport with the
   VelocyStream protocol (VST)
-  
+
   That combination could have led to spurious errors such as "TLS padding error"
   or "Tag mismatch" and connections being closed 
+
+* agency endpoint updates now go through RAFT
 
 
 v3.3.16 (2018-09-19)
