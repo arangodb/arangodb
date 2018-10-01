@@ -328,7 +328,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
                     dumper.dump(marker);
                     buffer.appendChar('\n');
-                    //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(&opts);
+                    //LOG_TOPIC(INFO, Logger::REPLICATION) << marker.toJson(&opts);
                   });
   }
 

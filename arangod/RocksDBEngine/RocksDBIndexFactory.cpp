@@ -680,7 +680,8 @@ void RocksDBIndexFactory::prepareIndexes(
 
           if (!idxFrom) {
             LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-              << "error creating index from definition '" << from.slice().toString() << "'";
+              << "error creating index from definition '"
+              << from.slice().toJson() << "'";
 
             continue;
           }
@@ -689,7 +690,8 @@ void RocksDBIndexFactory::prepareIndexes(
 
           if (!idxTo) {
             LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-              << "error creating index from definition '" << to.slice().toString() << "'";
+              << "error creating index from definition '"
+              << to.slice().toJson() << "'";
 
             continue;
           }
@@ -721,7 +723,7 @@ void RocksDBIndexFactory::prepareIndexes(
 
         if (!idx) {
           LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-            << "error creating index from definition '" << b.slice().toString() << "'";
+            << "error creating index from definition '" << b.slice().toJson() << "'";
 
           continue;
         }
@@ -736,10 +738,17 @@ void RocksDBIndexFactory::prepareIndexes(
 
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "error creating index from definition '" << v.toString() << "'";
+        << "error creating index from definition '" << v.toJson() << "'";
 
       continue;
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    else {
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "created index '" << idx->id() << "' from definition '"
+          << v.toJson() << "'";
+    }
+#endif
 
     indexes.emplace_back(std::move(idx));
   }

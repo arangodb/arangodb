@@ -67,7 +67,7 @@ namespace {
 
 namespace arangodb {
 namespace rocksutils {
-  
+
 uint16_t (*uint16FromPersistent)(char const* p) = nullptr;
 uint32_t (*uint32FromPersistent)(char const* p) = nullptr;
 uint64_t (*uint64FromPersistent)(char const* p) = nullptr;
@@ -75,10 +75,10 @@ uint64_t (*uint64FromPersistent)(char const* p) = nullptr;
 void (*uint16ToPersistent)(std::string& p, uint16_t value) = nullptr;
 void (*uint32ToPersistent)(std::string& p, uint32_t value) = nullptr;
 void (*uint64ToPersistent)(std::string& p, uint64_t value) = nullptr;
-  
+
 void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
   if (e == RocksDBEndianness::Little) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "using little-endian keys";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "using little-endian keys";
     uint16FromPersistent = &uint16FromPersistentLE;
     uint32FromPersistent = &uint32FromPersistentLE;
     uint64FromPersistent = &uint64FromPersistentLE;
@@ -87,7 +87,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint64ToPersistent = &uint64ToPersistentLE;
     return;
   } else if (e == RocksDBEndianness::Big) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "using big-endian keys";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "using big-endian keys";
     uint16FromPersistent = &uint16FromPersistentBE;
     uint32FromPersistent = &uint32FromPersistentBE;
     uint64FromPersistent = &uint64FromPersistentBE;
@@ -96,7 +96,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint64ToPersistent = &uint64ToPersistentBE;
     return;
   }
-  LOG_TOPIC(FATAL, Logger::ROCKSDB) << "Invalid key endianess";
+  LOG_TOPIC(FATAL, Logger::ENGINES) << "Invalid key endianess";
   FATAL_ERROR_EXIT();
 }
 

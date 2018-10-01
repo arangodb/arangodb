@@ -46,7 +46,8 @@ bool equalStorageEngines() {
   auto bodyToSend = std::make_shared<std::string>();
   std::string const url = "/_api/engine";
   for(auto const& id : serverIdVector){
-    requests.emplace_back("server:" + id, rest::RequestType::GET, url, bodyToSend);
+    requests.emplace_back("server:" + id, rest::RequestType::GET, url,
+                          bodyToSend);
   }
 
   // send requests
@@ -58,10 +59,11 @@ bool equalStorageEngines() {
   // failure here is fatal for this coordinator, and thus for the whole
   // test in a single coordinator scenario.
   auto successful = cc->performRequests(requests, 600.0 /*20 fold timeout*/,
-      requestsDone ,Logger::FIXME ,false);
+      requestsDone, Logger::CLUSTER, false);
 
   if (successful != requests.size()){
-    LOG_TOPIC(ERR, Logger::FIXME) << "could not reach all dbservers for engine check";
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "could not reach all dbservers for engine check";
     return false;
   }
 
@@ -102,7 +104,7 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
   setOptional(false);
   startsAfter("DatabasePhase");
   // this feature is supposed to run after the cluster is somewhat ready
-  startsAfter("ClusterPhase"); 
+  startsAfter("ClusterPhase");
   startsAfter("Bootstrap");
 }
 
