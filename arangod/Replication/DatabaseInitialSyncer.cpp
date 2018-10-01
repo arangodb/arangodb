@@ -221,24 +221,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       views = inventoryResponse.slice().get("views");
     }
 
-    if (!_config.applier._skipCreateDrop &&
-        _config.applier._restrictCollections.empty() && 
-        !views.isNone()) {
-      // views are optional, and 3.3 and before will not send any view data
-      r = handleViewCreation(views); // no requests to master
-      if (r.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "Error during intial sync view creation: " << r.errorMessage();
-        return r;
-      }
-    } else {
-      _config.progress.set("view creation skipped because of configuration");
-    }
-
     // strip eventual objectIDs and then dump the collections
     auto pair = rocksutils::stripObjectIds(collections);
-    r = handleLeaderCollections(pair.first, incremental);
-
+    r = handleCollectionsAndViews(pair.first, views, incremental);
+    
     // all done here, do not try to finish batch if master is unresponsive
     if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -1413,12 +1399,13 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 }
 
 /// @brief handle the inventory response of the master
-Result DatabaseInitialSyncer::handleLeaderCollections(
-    VPackSlice const& collSlice, bool incremental) {
-  TRI_ASSERT(collSlice.isArray());
+Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSlices,
+                                                        VPackSlice const& viewSlices,
+                                                        bool incremental) {
+  TRI_ASSERT(collSlices.isArray());
 
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
-  for (VPackSlice it : VPackArrayIterator(collSlice)) {
+  for (VPackSlice it : VPackArrayIterator(collSlices)) {
     if (!it.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "collection declaration is invalid in response");
@@ -1480,12 +1467,8 @@ Result DatabaseInitialSyncer::handleLeaderCollections(
   // the master
   //  ------------------------------------------------------------------------------------
 
-  // STEP 3: sync collection data from master and create initial indexes
-  // ----------------------------------------------------------------------------------
-
   // iterate over all collections from the master...
-  std::array<SyncPhase, 3> phases{
-      {PHASE_VALIDATE, PHASE_DROP_CREATE, PHASE_DUMP}};
+  std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
   for (auto const& phase : phases) {
     Result r = iterateCollections(collections, incremental, phase);
 
@@ -1493,8 +1476,30 @@ Result DatabaseInitialSyncer::handleLeaderCollections(
       return r;
     }
   }
-
-  return Result();
+  
+  // STEP 3: now that the collections exist create the views
+  // this should be faster than re-indexing afterwards
+  // ----------------------------------------------------------------------------------
+  
+  if (!_config.applier._skipCreateDrop &&
+      _config.applier._restrictCollections.empty() &&
+      !viewSlices.isNone()) {
+    // views are optional, and 3.3 and before will not send any view data
+    Result r = handleViewCreation(viewSlices); // no requests to master
+    if (r.fail()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+      << "Error during intial sync view creation: " << r.errorMessage();
+      return r;
+    }
+  } else {
+    _config.progress.set("view creation skipped because of configuration");
+  }
+  
+  // STEP 4: sync collection data from master and create initial indexes
+  // ----------------------------------------------------------------------------------
+  
+  // now load the data into the collections
+  return iterateCollections(collections, incremental, PHASE_DUMP);
 }
 
 /// @brief iterate over all collections from an array and apply an action
@@ -1523,14 +1528,7 @@ Result DatabaseInitialSyncer::iterateCollections(
 /// @brief create non-existing views locally
 Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
   for (VPackSlice slice  : VPackArrayIterator(views)) {
-
-    // Remove the links from the view slice
-    //  This is required since views are created before collections.
-    //  Hence, the collection does not exist and the view creation is aborted.
-    // The association views <-> collections is still created via the indexes.
-    auto patchedSlice = VPackCollection::remove(slice, std::vector<std::string>{"links"});
-
-    Result res = createView(vocbase(), patchedSlice.slice());
+    Result res = createView(vocbase(), slice);
     if (res.fail()) {
       return res;
     }

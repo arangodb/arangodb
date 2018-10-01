@@ -96,7 +96,7 @@ VPackBuilder createJob(std::string const& collection, std::string const& from, s
 
 TEST_CASE("CleanUpLostCollectionTest", "[agency][supervision]") {
 auto baseStructure = createRootNode();
-write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
 std::string const jobId = "1";
 
 SECTION("clean up a lost collection when the leader is failed") {
@@ -104,7 +104,7 @@ SECTION("clean up a lost collection when the leader is failed") {
   Mock<AgentInterface> mockAgent;
 
 
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO(q->slice().toJson());
 
     // What do we expect here:
