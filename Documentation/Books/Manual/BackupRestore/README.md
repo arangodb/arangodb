@@ -8,6 +8,8 @@ Performing frequent backups is important and a recommended best practices that c
 
 Backup-ing up your data before an ArangoDB upgrade is also a best practice.
 
+**Note:** making use of a high availability deployment mode of ArangoDB, like Active Failover, Cluster or data-center to data-center replication, does not remove the need of taking frequent backups, which are recommended also when using such deployment modes.
+
 <!-- Offline dumps -->
 
 <!-- Hot backups  -->
