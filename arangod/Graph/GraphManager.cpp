@@ -662,7 +662,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
                              arangodb::aql::QueryString(queryStr), nullptr,
                              nullptr, queryPart);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC(DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
   aql::QueryResult queryResult =
       query.executeSync(QueryRegistryFeature::QUERY_REGISTRY.load());
@@ -680,7 +680,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!graphsSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
   }
 
