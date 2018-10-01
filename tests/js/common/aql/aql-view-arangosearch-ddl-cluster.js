@@ -38,6 +38,9 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     tearDownAll : function () {
+      db._dropView("TestView");
+      db._dropView("TestView1");
+      db._dropView("TestView1");
       db._drop("TestCollection");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
