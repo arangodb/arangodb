@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
 # Collection API
 
 These functions implement the
@@ -13,8 +13,8 @@ their specific type. I.e. it represents a shared subset between instances of
 
 ## Getting information about the collection
 
-See
-[the HTTP API documentation](../../../..//HTTP/Collection/Getting.html)
+See the
+[HTTP API documentation](../../../..//HTTP/Collection/Getting.html)
 for details.
 
 ## collection.exists
@@ -117,8 +117,8 @@ Retrieves the collection checksum.
 
 - **opts**: `Object` (optional)
 
-  For information on the possible options see
-  [the HTTP API for getting collection information](../../../..//HTTP/Collection/Getting.html).
+  For information on the possible options see the
+  [HTTP API for getting collection information](../../../..//HTTP/Collection/Getting.html).
 
 **Examples**
 

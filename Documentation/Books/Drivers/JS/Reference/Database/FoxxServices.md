@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
 # Managing Foxx services
 
 ## database.listServices
@@ -9,7 +9,7 @@ Fetches a list of all installed service.
 
 **Arguments**
 
-* **excludeSystem**: `boolean` (Default: `true`)
+- **excludeSystem**: `boolean` (Default: `true`)
 
   Whether system services should be excluded.
 
@@ -31,56 +31,56 @@ Installs a new service.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **source**: `Buffer | Readable | File | string`
+- **source**: `Buffer | Readable | File | string`
 
   The service bundle to install.
 
-* **options**: `Object` (optional)
+- **options**: `Object` (optional)
 
   An object with any of the following properties:
 
-  * **configuration**: `Object` (optional)
+  - **configuration**: `Object` (optional)
 
     An object mapping configuration option names to values.
 
-  * **dependencies**: `Object` (optional)
+  - **dependencies**: `Object` (optional)
 
     An object mapping dependency aliases to mount points.
 
-  * **development**: `boolean` (Default: `false`)
+  - **development**: `boolean` (Default: `false`)
 
     Whether the service should be installed in development mode.
 
-  * **legacy**: `boolean` (Default: `false`)
+  - **legacy**: `boolean` (Default: `false`)
 
     Whether the service should be installed in legacy compatibility mode.
 
     This overrides the `engines` option in the service manifest (if any).
 
-  * **setup**: `boolean` (Default: `true`)
+  - **setup**: `boolean` (Default: `true`)
 
     Whether the setup script should be executed.
 
 **Examples**
 
 ```js
-const source = fs.createReadStream('./my-foxx-service.zip');
-const info = await db.installService('/hello', source);
+const source = fs.createReadStream("./my-foxx-service.zip");
+const info = await db.installService("/hello", source);
 
 // -- or --
 
-const source = fs.readFileSync('./my-foxx-service.zip');
-const info = await db.installService('/hello', source);
+const source = fs.readFileSync("./my-foxx-service.zip");
+const info = await db.installService("/hello", source);
 
 // -- or --
 
-const element = document.getElementById('my-file-input');
+const element = document.getElementById("my-file-input");
 const source = element.files[0];
-const info = await db.installService('/hello', source);
+const info = await db.installService("/hello", source);
 ```
 
 ## database.replaceService
@@ -92,64 +92,64 @@ service and installing a new service at the same mount point.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **source**: `Buffer | Readable | File | string`
+- **source**: `Buffer | Readable | File | string`
 
   The service bundle to replace the existing service with.
 
-* **options**: `Object` (optional)
+- **options**: `Object` (optional)
 
   An object with any of the following properties:
 
-  * **configuration**: `Object` (optional)
+  - **configuration**: `Object` (optional)
 
     An object mapping configuration option names to values.
 
     This configuration will replace the existing configuration.
 
-  * **dependencies**: `Object` (optional)
+  - **dependencies**: `Object` (optional)
 
     An object mapping dependency aliases to mount points.
 
     These dependencies will replace the existing dependencies.
 
-  * **development**: `boolean` (Default: `false`)
+  - **development**: `boolean` (Default: `false`)
 
     Whether the new service should be installed in development mode.
 
-  * **legacy**: `boolean` (Default: `false`)
+  - **legacy**: `boolean` (Default: `false`)
 
     Whether the new service should be installed in legacy compatibility mode.
 
     This overrides the `engines` option in the service manifest (if any).
 
-  * **teardown**: `boolean` (Default: `true`)
+  - **teardown**: `boolean` (Default: `true`)
 
     Whether the teardown script of the old service should be executed.
 
-  * **setup**: `boolean` (Default: `true`)
+  - **setup**: `boolean` (Default: `true`)
 
     Whether the setup script of the new service should be executed.
 
 **Examples**
 
 ```js
-const source = fs.createReadStream('./my-foxx-service.zip');
-const info = await db.replaceService('/hello', source);
+const source = fs.createReadStream("./my-foxx-service.zip");
+const info = await db.replaceService("/hello", source);
 
 // -- or --
 
-const source = fs.readFileSync('./my-foxx-service.zip');
-const info = await db.replaceService('/hello', source);
+const source = fs.readFileSync("./my-foxx-service.zip");
+const info = await db.replaceService("/hello", source);
 
 // -- or --
 
-const element = document.getElementById('my-file-input');
+const element = document.getElementById("my-file-input");
 const source = element.files[0];
-const info = await db.replaceService('/hello', source);
+const info = await db.replaceService("/hello", source);
 ```
 
 ## database.upgradeService
@@ -161,64 +161,64 @@ service's configuration and dependencies.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **source**: `Buffer | Readable | File | string`
+- **source**: `Buffer | Readable | File | string`
 
   The service bundle to replace the existing service with.
 
-* **options**: `Object` (optional)
+- **options**: `Object` (optional)
 
   An object with any of the following properties:
 
-  * **configuration**: `Object` (optional)
+  - **configuration**: `Object` (optional)
 
     An object mapping configuration option names to values.
 
     This configuration will be merged into the existing configuration.
 
-  * **dependencies**: `Object` (optional)
+  - **dependencies**: `Object` (optional)
 
     An object mapping dependency aliases to mount points.
 
     These dependencies will be merged into the existing dependencies.
 
-  * **development**: `boolean` (Default: `false`)
+  - **development**: `boolean` (Default: `false`)
 
     Whether the new service should be installed in development mode.
 
-  * **legacy**: `boolean` (Default: `false`)
+  - **legacy**: `boolean` (Default: `false`)
 
     Whether the new service should be installed in legacy compatibility mode.
 
     This overrides the `engines` option in the service manifest (if any).
 
-  * **teardown**: `boolean` (Default: `false`)
+  - **teardown**: `boolean` (Default: `false`)
 
     Whether the teardown script of the old service should be executed.
 
-  * **setup**: `boolean` (Default: `true`)
+  - **setup**: `boolean` (Default: `true`)
 
     Whether the setup script of the new service should be executed.
 
 **Examples**
 
 ```js
-const source = fs.createReadStream('./my-foxx-service.zip');
-const info = await db.upgradeService('/hello', source);
+const source = fs.createReadStream("./my-foxx-service.zip");
+const info = await db.upgradeService("/hello", source);
 
 // -- or --
 
-const source = fs.readFileSync('./my-foxx-service.zip');
-const info = await db.upgradeService('/hello', source);
+const source = fs.readFileSync("./my-foxx-service.zip");
+const info = await db.upgradeService("/hello", source);
 
 // -- or --
 
-const element = document.getElementById('my-file-input');
+const element = document.getElementById("my-file-input");
 const source = element.files[0];
-const info = await db.upgradeService('/hello', source);
+const info = await db.upgradeService("/hello", source);
 ```
 
 ## database.uninstallService
@@ -229,22 +229,22 @@ Completely removes a service from the database.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **options**: `Object` (optional)
+- **options**: `Object` (optional)
 
   An object with any of the following properties:
 
-  * **teardown**: `boolean` (Default: `true`)
+  - **teardown**: `boolean` (Default: `true`)
 
     Whether the teardown script should be executed.
 
 **Examples**
 
 ```js
-await db.uninstallService('/my-service');
+await db.uninstallService("/my-service");
 // service was uninstalled
 ```
 
@@ -256,14 +256,14 @@ Retrieves information about a mounted service.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const info = await db.getService('/my-service');
+const info = await db.getService("/my-service");
 // info contains detailed information about the service
 ```
 
@@ -276,39 +276,38 @@ and their current values.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **minimal**: `boolean` (Default: `false`)
+- **minimal**: `boolean` (Default: `false`)
 
   Only return the current values.
 
 **Examples**
 
 ```js
-const config = await db.getServiceConfiguration('/my-service');
+const config = await db.getServiceConfiguration("/my-service");
 // config contains information about the service's configuration
 ```
 
 ## database.replaceServiceConfiguration
 
-`async database.replaceServiceConfiguration(mount, configuration, [minimal]):
-Object`
+`async database.replaceServiceConfiguration(mount, configuration, [minimal]): Object`
 
 Replaces the configuration of the given service.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **configuration**: `Object`
+- **configuration**: `Object`
 
   An object mapping configuration option names to values.
 
-* **minimal**: `boolean` (Default: `false`)
+- **minimal**: `boolean` (Default: `false`)
 
   Only return the current values and warnings (if any).
 
@@ -318,31 +317,30 @@ Replaces the configuration of the given service.
 **Examples**
 
 ```js
-const config = {currency: 'USD', locale: 'en-US'};
-const info = await db.replaceServiceConfiguration('/my-service', config);
+const config = { currency: "USD", locale: "en-US" };
+const info = await db.replaceServiceConfiguration("/my-service", config);
 // info.values contains information about the service's configuration
 // info.warnings contains any validation errors for the configuration
 ```
 
 ## database.updateServiceConfiguration
 
-`async database.updateServiceConfiguration(mount, configuration, [minimal]):
-Object`
+`async database.updateServiceConfiguration(mount, configuration, [minimal]): Object`
 
 Updates the configuration of the given service my merging the new values into
 the existing ones.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **configuration**: `Object`
+- **configuration**: `Object`
 
   An object mapping configuration option names to values.
 
-* **minimal**: `boolean` (Default: `false`)
+- **minimal**: `boolean` (Default: `false`)
 
   Only return the current values and warnings (if any).
 
@@ -352,8 +350,8 @@ the existing ones.
 **Examples**
 
 ```js
-const config = {locale: 'en-US'};
-const info = await db.updateServiceConfiguration('/my-service', config);
+const config = { locale: "en-US" };
+const info = await db.updateServiceConfiguration("/my-service", config);
 // info.values contains information about the service's configuration
 // info.warnings contains any validation errors for the configuration
 ```
@@ -367,39 +365,38 @@ current mount points.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **minimal**: `boolean` (Default: `false`)
+- **minimal**: `boolean` (Default: `false`)
 
   Only return the current values and warnings (if any).
 
 **Examples**
 
 ```js
-const deps = await db.getServiceDependencies('/my-service');
+const deps = await db.getServiceDependencies("/my-service");
 // deps contains information about the service's dependencies
 ```
 
 ## database.replaceServiceDependencies
 
-`async database.replaceServiceDependencies(mount, dependencies, [minimal]):
-Object`
+`async database.replaceServiceDependencies(mount, dependencies, [minimal]): Object`
 
 Replaces the dependencies for the given service.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **dependencies**: `Object`
+- **dependencies**: `Object`
 
   An object mapping dependency aliases to mount points.
 
-* **minimal**: `boolean` (Default: `false`)
+- **minimal**: `boolean` (Default: `false`)
 
   Only return the current values and warnings (if any).
 
@@ -409,31 +406,30 @@ Replaces the dependencies for the given service.
 **Examples**
 
 ```js
-const deps = {mailer: '/mailer-api', auth: '/remote-auth'};
-const info = await db.replaceServiceDependencies('/my-service', deps);
+const deps = { mailer: "/mailer-api", auth: "/remote-auth" };
+const info = await db.replaceServiceDependencies("/my-service", deps);
 // info.values contains information about the service's dependencies
 // info.warnings contains any validation errors for the dependencies
 ```
 
 ## database.updateServiceDependencies
 
-`async database.updateServiceDependencies(mount, dependencies, [minimal]):
-Object`
+`async database.updateServiceDependencies(mount, dependencies, [minimal]): Object`
 
 Updates the dependencies for the given service by merging the new values into
 the existing ones.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **dependencies**: `Object`
+- **dependencies**: `Object`
 
   An object mapping dependency aliases to mount points.
 
-* **minimal**: `boolean` (Default: `false`)
+- **minimal**: `boolean` (Default: `false`)
 
   Only return the current values and warnings (if any).
 
@@ -443,8 +439,8 @@ the existing ones.
 **Examples**
 
 ```js
-const deps = {mailer: '/mailer-api'};
-const info = await db.updateServiceDependencies('/my-service', deps);
+const deps = { mailer: "/mailer-api" };
+const info = await db.updateServiceDependencies("/my-service", deps);
 // info.values contains information about the service's dependencies
 // info.warnings contains any validation errors for the dependencies
 ```
@@ -457,14 +453,14 @@ Enables development mode for the given service.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const info = await db.enableServiceDevelopmentMode('/my-service');
+const info = await db.enableServiceDevelopmentMode("/my-service");
 // the service is now in development mode
 // info contains detailed information about the service
 ```
@@ -478,14 +474,14 @@ the database.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const info = await db.disableServiceDevelopmentMode('/my-service');
+const info = await db.disableServiceDevelopmentMode("/my-service");
 // the service is now in production mode
 // info contains detailed information about the service
 ```
@@ -500,14 +496,14 @@ Returns an object mapping each name to a more readable representation.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const scripts = await db.listServiceScripts('/my-service');
+const scripts = await db.listServiceScripts("/my-service");
 // scripts is an object listing the service scripts
 ```
 
@@ -519,22 +515,22 @@ Runs a service script and returns the result.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
-* **name**: `string`
+- **name**: `string`
 
   Name of the script to execute.
 
-* **scriptArg**: `any`
+- **scriptArg**: `any`
 
   Value that will be passed as an argument to the script.
 
 **Examples**
 
 ```js
-const result = await db.runServiceScript('/my-service', 'setup');
+const result = await db.runServiceScript("/my-service", "setup");
 // result contains the script's exports (if any)
 ```
 
@@ -546,40 +542,40 @@ Runs the tests of a given service and returns a formatted report.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database
 
-* **options**: `Object` (optional)
+- **options**: `Object` (optional)
 
   An object with any of the following properties:
 
-  * **reporter**: `string` (Default: `default`)
+  - **reporter**: `string` (Default: `default`)
 
     The reporter to use to process the test results.
 
     As of ArangoDB 3.2 the following reporters are supported:
 
-    * **stream**: an array of event objects
-    * **suite**: nested suite objects with test results
-    * **xunit**: JSONML representation of an XUnit report
-    * **tap**: an array of TAP event strings
-    * **default**: an array of test results
+    - **stream**: an array of event objects
+    - **suite**: nested suite objects with test results
+    - **xunit**: JSONML representation of an XUnit report
+    - **tap**: an array of TAP event strings
+    - **default**: an array of test results
 
-  * **idiomatic**: `boolean` (Default: `false`)
+  - **idiomatic**: `boolean` (Default: `false`)
 
     Whether the results should be converted to the apropriate `string`
     representation:
 
-    * **xunit** reports will be formatted as XML documents
-    * **tap** reports will be formatted as TAP streams
-    * **stream** reports will be formatted as JSON-LD streams
+    - **xunit** reports will be formatted as XML documents
+    - **tap** reports will be formatted as TAP streams
+    - **stream** reports will be formatted as JSON-LD streams
 
 **Examples**
 
 ```js
-const opts = {reporter: 'xunit', idiomatic: true};
-const result = await db.runServiceTests('/my-service', opts);
+const opts = { reporter: "xunit", idiomatic: true };
+const result = await db.runServiceTests("/my-service", opts);
 // result contains the XUnit report as a string
 ```
 
@@ -593,14 +589,14 @@ Returns a `Buffer` in Node or `Blob` in the browser version.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const bundle = await db.downloadService('/my-service');
+const bundle = await db.downloadService("/my-service");
 // bundle is a Buffer/Blob of the service bundle
 ```
 
@@ -614,14 +610,14 @@ Returns `undefined` if no such file could be found.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const readme = await db.getServiceReadme('/my-service');
+const readme = await db.getServiceReadme("/my-service");
 // readme is a string containing the service README's
 // text content, or undefined if no README exists
 ```
@@ -635,14 +631,14 @@ given mount point.
 
 **Arguments**
 
-* **mount**: `string`
+- **mount**: `string`
 
   The service's mount point, relative to the database.
 
 **Examples**
 
 ```js
-const spec = await db.getServiceDocumentation('/my-service');
+const spec = await db.getServiceDocumentation("/my-service");
 // spec is a Swagger API description of the service
 ```
 
@@ -655,7 +651,7 @@ bundles missing in the database.
 
 **Arguments**
 
-* **replace**: `boolean` (Default: `false`)
+- **replace**: `boolean` (Default: `false`)
 
   Also commit outdated services.
 

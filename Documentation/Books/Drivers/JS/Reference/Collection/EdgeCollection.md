@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
 # EdgeCollection API
 
 The _EdgeCollection API_ extends the
@@ -79,7 +79,7 @@ if (exists === false) {
 
 ## edgeCollection.save
 
-`async edgeCollection.save(data, [fromId, toId]): Object`
+`async edgeCollection.save(data, [fromId, toId], [opts]): Object`
 
 Creates a new edge between the documents _fromId_ and _toId_ with the given
 _data_ and returns an object containing the edge's metadata.
@@ -275,8 +275,8 @@ contained in this edge collection.
 
 - **opts**: `Object`
 
-  See
-  [the HTTP API documentation](../../../..//HTTP/Traversal/index.html)
+  See the
+  [HTTP API documentation](../../../..//HTTP/Traversal/index.html)
   for details on the additional arguments.
 
   Please note that while _opts.filter_, _opts.visitor_, _opts.init_,

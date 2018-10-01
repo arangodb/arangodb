@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
 # Bulk importing documents
 
 This function implements the
@@ -12,90 +12,140 @@ Bulk imports the given _data_ into the collection.
 
 **Arguments**
 
-* **data**: `Array<Array<any>> | Array<Object>`
+- **data**: `Array | Buffer | string`
 
-  The data to import. This can be an array of documents:
+  The data to import. Depending on the _type_ option this can be any of the
+  following:
 
-  ```js
-  [
-    {key1: value1, key2: value2}, // document 1
-    {key1: value1, key2: value2}, // document 2
-    ...
-  ]
-  ```
+  For type `"documents"` or `"auto"`:
 
-  Or it can be an array of value arrays following an array of keys.
+  - an array of documents, e.g.
 
-  ```js
-  [
-    ['key1', 'key2'], // key names
-    [value1, value2], // document 1
-    [value1, value2], // document 2
-    ...
-  ]
-  ```
+    ```json
+    [
+      { "_key": "banana", "color": "yellow" },
+      { "_key": "peach", "color": "pink" }
+    ]
+    ```
 
-* **opts**: `Object` (optional) If _opts_ is set, it must be an object with any
+  - a string or buffer containing one JSON document per line, e.g.
+
+    ```
+    {"_key":"banana","color":"yellow"}
+    {"_key":"peach","color":"pink"}
+    ```
+
+  For type `"array"` or `"auto"`:
+
+  - a string or buffer containing a JSON array of documents, e.g.
+
+    ```json
+    [
+      { "_key": "banana", "color": "yellow" },
+      { "_key": "peach", "color": "pink" }
+    ]
+    ```
+
+  For type `null`:
+
+  - an array containing an array of keys followed by arrays of values, e.g.
+
+    ```
+    [
+      ["_key", "color"],
+      ["banana", "yellow"],
+      ["peach", "pink"]
+    ]
+    ```
+
+  - a string or buffer containing a JSON array of keys followed by
+    one JSON array of values per line, e.g.
+
+    ```
+    ["_key", "color"]
+    ["banana", "yellow"]
+    ["peach", "pink"]
+    ```
+
+- **opts**: `Object` (optional) If _opts_ is set, it must be an object with any
   of the following properties:
 
-  * **waitForSync**: `boolean` (Default: `false`)
+  - **type**: `string | null` (Default: `"auto"`)
+
+    Indicates which format the data uses.
+    Can be `"documents"`, `"array"` or `"auto"`.
+    Use `null` to explicitly set no type.
+
+  - **fromPrefix**: `string` (optional)
+
+    Prefix to prepend to `_from` attributes.
+
+  - **toPrefix**: `string` (optional)
+
+    Prefix to prepend to `_to` attributes.
+
+  - **overwrite**: `boolean` (Default: `false`)
+
+    If set to `true`, the collection is truncated before the data is imported.
+
+  - **waitForSync**: `boolean` (Default: `false`)
 
     Wait until the documents have been synced to disk.
 
-  * **details**: `boolean` (Default: `false`)
+  - **onDuplicate**: `string` (Default: `"error"`)
+
+    Controls behavior when a unique constraint is violated.
+    Can be `"error"`, `"update"`, `"replace"` or `"ignore"`.
+
+  - **complete**: `boolean` (Default: `false`)
+
+    If set to `true`, the import will abort if any error occurs.
+
+  - **details**: `boolean` (Default: `false`)
 
     Whether the response should contain additional details about documents that
-    could not be imported.false\*.
+    could not be imported.
 
-  * **type**: `string` (Default: `"auto"`)
-
-    Indicates which format the data uses. Can be `"documents"`, `"array"` or
-    `"auto"`.
-
-If _data_ is a JavaScript array, it will be transmitted as a line-delimited JSON
-stream. If _opts.type_ is set to `"array"`, it will be transmitted as regular
-JSON instead. If _data_ is a string, it will be transmitted as it is without any
-processing.
-
-For more information on the _opts_ object, see
-[the HTTP API documentation for bulk imports](../../../..//HTTP/BulkImports/ImportingSelfContained.html).
+For more information on the _opts_ object, see the
+[HTTP API documentation for bulk imports](../../../..//HTTP/BulkImports/index.html).
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('users');
+const collection = db.collection("users");
 
-// document stream
-const result = await collection.import([
-  {username: 'admin', password: 'hunter2'},
-  {username: 'jcd', password: 'bionicman'},
-  {username: 'jreyes', password: 'amigo'},
-  {username: 'ghermann', password: 'zeitgeist'}
-]);
-assert.equal(result.created, 4);
-
-// -- or --
-
-// array stream with header
-const result = await collection.import([
-  ['username', 'password'], // keys
-  ['admin', 'hunter2'], // row 1
-  ['jcd', 'bionicman'], // row 2
-  ['jreyes', 'amigo'],
-  ['ghermann', 'zeitgeist']
-]);
-assert.equal(result.created, 4);
+const result = await collection.import(
+  [
+    { username: "jcd", password: "bionicman" },
+    { username: "jreyes", password: "amigo" },
+    { username: "ghermann", password: "zeitgeist" }
+  ],
+  { type: "documents" } // optional
+);
 
 // -- or --
 
-// raw line-delimited JSON array stream with header
-const result = await collection.import([
-  '["username", "password"]',
-  '["admin", "hunter2"]',
-  '["jcd", "bionicman"]',
-  '["jreyes", "amigo"]',
-  '["ghermann", "zeitgeist"]'
-].join('\r\n') + '\r\n');
-assert.equal(result.created, 4);
+const buf = fs.readFileSync("dx_users.json");
+// [
+//   {"username": "jcd", "password": "bionicman"},
+//   {"username": "jreyes", "password": "amigo"},
+//   {"username": "ghermann", "password": "zeitgeist"}
+// ]
+const result = await collection.import(
+  buf,
+  { type: "array" } // optional
+);
+
+// -- or --
+
+const result = await collection.import(
+  [
+    ["username", "password"],
+    ["jcd", "bionicman"],
+    ["jreyes", "amigo"],
+    ["ghermann", "zeitgeist"]
+  ],
+  { type: null } // required
+);
 ```

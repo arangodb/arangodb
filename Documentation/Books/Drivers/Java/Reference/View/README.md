@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # View API
 
 These functions implement the
@@ -23,7 +23,7 @@ Checks whether the view exists
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoView view = db.view("potatoes");
+ArangoView view = db.view("potatos");
 
 boolean exists = view.exists();
 ```
@@ -41,7 +41,7 @@ Returns information about the view.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoView view = db.view("potatoes");
+ArangoView view = db.view("potatos");
 
 ViewEntity info = view.getInfo();
 ```
