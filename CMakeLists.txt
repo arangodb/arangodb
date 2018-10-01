@@ -559,6 +559,12 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++14")
 endif ()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  if (MSVC_VERSION VERSION_LESS 1915)
+    message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
+  endif()
+endif()
+
 if (CMAKE_COMPILER_IS_CLANG)
   if (APPLE)
     set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")

@@ -974,8 +974,6 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
 
   auto const& trx = builder->slice();
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "Trx: " << trx.toJson();
-
   if(trx.length() > 0) {
     // do it! fire and forget!
     agent->write(builder);
