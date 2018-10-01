@@ -415,23 +415,30 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
         return false;
       }
     }
-  } else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-    value = lhs.get("view");
-    if (value.isString()) {
+  }
+#ifdef USE_IRESEARCH
+  else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    auto lhValue = lhs.get("view");
+    auto rhValue = rhs.get("view");
+    if (lhValue.isString() && rhValue.isString()) {
       if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get("view"), false) != 0) {
-        auto ls = value.copyString();
-        auto rs = rhs.get("view").copyString();
+        auto ls = lhValue.copyString();
+        auto rs = rhValue.copyString();
         if (ls.size() > rs.size()) {
           std::swap(ls, rs);
         }
-        if (ls.back() != '/' ||
+        if (ls.empty() ||
+            ls.back() != '/' ||
             ls.compare(rs.substr(0, ls.size())) != 0) {
           return false;
         }
       }
+    } else {
+      return false;
     }
   }
+#endif
 
   // other index types: fields must be identical if present
   value = lhs.get(arangodb::StaticStrings::IndexFields);
