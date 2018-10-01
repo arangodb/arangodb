@@ -21,6 +21,8 @@ database. Each query is a JSON object with the following attributes:
 
 - *state*: the query's current execution state (as a string)
 
+- *stream*: whether or not the query uses a streaming cursor
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

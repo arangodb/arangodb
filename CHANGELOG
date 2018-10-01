@@ -1,25 +1,130 @@
 devel
 -----
 
-* the query editor within the web ui is now catching http 501 responses
-  propertly.
+* removed bundled Valgrind headers, removed JavaScript variable `valgrind`
+  from the `internal` module
 
 * upgraded JEMalloc version to 5.1.0
 
 * use `-std=c++14` for ArangoDB compilation
 
-* added startup parameter advertised-endpoints
-
 
 v3.4.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* upgraded arangosync version to 0.6.0
+
+* upgraded arangodb starter version to 0.13.3
+
+* fixed issue #6611: Properly display JSON properties of user defined foxx services 
+  configuration within the web UI 
+
+* improved shards display in web UI: included arrows to better visualize that 
+  collection name sections can be expanded and collapsed
+
+* added nesting support for `aql` template strings
+
+* added support for `undefined` and AQL literals to `aql.literal`
+
+* added `aql.join` function
+
+* fixed issue #6583: Agency node segfaults if sent an authenticated HTTP 
+  request is sent to its port
+
+* fixed issue #6601: Context cancelled (never ending query)
+
+* added more AQL query results cache inspection and control functionality
+
+* fixed undefined behavior in AQL query result cache
+
+* the query editor within the web UI is now catching HTTP 501 responses
+  properly
+
 * added AQL VERSION function to return the server version as a string
 
-* the ArangoDB starter is now part of the Windows packages (was missing before)
+* added startup parameter `--cluster.advertised-endpoints`
 
-* The Windows installer now offers a way to continue the installation if it 
-  failed because of a locked database
+* AQL query optimizer now makes better choices regarding indexes to use in a 
+  query when there are multiple competing indexes and some of them are prefixes
+  of others
+  
+  In this case, the optimizer could have preferred indexes that covered less
+  attributes, but it should rather pick the indexes that covered more attributes.
+  
+  For example, if there was an index on ["a"] and another index on ["a", "b"], then
+  previously the optimizer may have picked the index on just ["a"] instead the
+  index on ["a", "b"] for queries that used all index attributes but did range
+  queries on them (e.g. `FILTER doc.a == @val1 && doc.b >= @val2`).
+
+* Added compression for the AQL intermediate results transfer in the cluster, 
+  leading to less data being transferred between coordinator and database servers
+  in many cases
+
+* forward-ported a bugfix from RocksDB (https://github.com/facebook/rocksdb/pull/4386)
+  that fixes range deletions (used internally in ArangoDB when dropping or truncating 
+  collections)
+
+  The non-working range deletes could have triggered errors such as 
+  `deletion check in index drop failed - not all documents in the index have been deleted.`
+  when dropping or truncating collections
+
+* improve error messages in Windows installer
+
+* allow retrying installation in Windows installer in case an existing database is still
+  running and needs to be manually shut down before continuing with the installation
+
+* fix database backup functionality in Windows installer
+
+* fixed memory leak in `/_api/batch` REST handler
+
+* `db._profileQuery()` now also tracks operations triggered when using `LIMIT`
+  clauses in a query
+
+* added proper error messages when using views as an argument to AQL functions
+  (doing so triggered an `internal error` before)
+
+* fixed return value encoding for collection ids ("cid" attribute") in REST API
+  `/_api/replication/logger-follow`
+
+* fixed dumping and restoring of views with arangodump and arangorestore
+
+* fix replication from 3.3 to 3.4
+
+* fixed some TLS errors that occurred when combining HTTPS/TLS transport with the
+  VelocyStream protocol (VST)
+  
+  That combination could have led to spurious errors such as "TLS padding error"
+  or "Tag mismatch" and connections being closed 
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fixed issue #6379: RocksDB arangorestore time degeneration on dead documents
+
+* fixed issue #6495: Document not found when removing records
+
+* fixed undefined behavior is cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* reduce overhead of function initialization in AQL COLLECT aggregate functions,
+  for functions COUNT/LENGTH, SUM and AVG
+
+  this optimization will only be noticable when the COLLECT produces many groups
+  and the "hash" COLLECT variant is used
+
+* fixed potential out-of-bounds access in admin log REST handler `/_admin/log`,
+  which could have led to the server returning an HTTP 500 error
+
+* catch more exceptions in replication and handle them appropriately
+
+* agency endpoint updates now go through RAFT
+
+* fixed a cleanup issue in Current when a follower was removed from Plan
+
+* catch exceptions in MaintenanceWorker thread
+
+* fixed a bug in cleanOutServer which could lead to a cleaned out server
+  still being a follower for some shard
 
 
 v3.4.0-rc.1 (2018-09-06)

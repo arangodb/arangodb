@@ -272,13 +272,14 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 /// @brief report extra memory used by indexes etc.
 size_t RocksDBCollection::memory() const { return 0; }
 
-void RocksDBCollection::open(bool ignoreErrors) {
+void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
 
   // set the initial number of documents
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  auto counterValue = engine->settingsManager()->loadCounter(this->objectId());
+  TRI_ASSERT(engine != nullptr);
+  auto counterValue = engine->settingsManager()->loadCounter(_objectId);
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
 }
@@ -641,9 +642,8 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
-
+   
     rocksdb::WriteBatch batch;
-    
     // add the assertion again here, so we are sure we can use RangeDeletes   
     TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal());
   
@@ -675,19 +675,20 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
-        idx->afterTruncate(); // clears caches (if applicable)
+        idx->afterTruncate(); // clears caches / clears links (if applicable)
       }
     }
+    
+    state->addTruncateOperation(_logicalCollection.id());
     
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    uint64_t prevCount = _numberDocuments;
-    _numberDocuments = 0; // protected by collection lock
+    TRI_ASSERT(state->numRemoves() == _numberDocuments);
     
-    if (prevCount > 64 * 1024) {
+    if (_numberDocuments > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
@@ -729,7 +730,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid != 0);
     
-    RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
+    RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     
     state->prepareOperation(_logicalCollection.id(),
                             rid, // actual revision ID!!
@@ -842,8 +843,7 @@ bool RocksDBCollection::readDocumentWithCallback(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     IndexIterator::DocumentCallback const& cb) const {
   if (documentId.isSet()) {
-    auto res = lookupDocumentVPack(documentId, trx, cb, true);
-    return res.ok();
+    return lookupDocumentVPack(documentId, trx, cb, true).ok();
   }
   return false;
 }
@@ -869,11 +869,36 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
+ 
+  if (options.overwrite) { 
+    // special optimization for the overwrite case:
+    // in case the operation is a RepSert, we will first check if the specified
+    // primary key exists. we can abort this low-level insert early, before any
+    // modification to the data has been done. this saves us from creating a RocksDB
+    // transaction SavePoint.
+    // if we don't do the check here, we will always create a SavePoint first and
+    // insert the new document. when then inserting the key for the primary index and
+    // then detecting a unique constraint violation, the transaction would be rolled
+    // back to the SavePoint state, which will rebuild *all* data in the WriteBatch
+    // up to the SavePoint. this can be super-expensive for bigger transactions.
+    // to keep things simple, we are not checking for unique constraint violations
+    // in secondary indexes here, but defer it to the regular index insertion check
+    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    if (keySlice.isString()) {
+      LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, StringRef(keySlice));
+      if (documentId.isSet()) {
+        if (options.indexOperationMode == Index::OperationMode::internal) {
+          // need to return the key of the conflict document
+          return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+        }
+        return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      }
+    }
+  }
+
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   auto state = RocksDBTransactionState::toState(trx);
-  auto mthds = RocksDBTransactionState::toMethods(trx);
-  RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
-
   state->prepareOperation(
     _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT
   );
@@ -983,8 +1008,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1092,8 +1116,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1175,8 +1198,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   }
 
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
-                         trx->isSingleOperationTransaction());
+  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   // add possible log statement under guard
   state->prepareOperation(
@@ -1389,7 +1411,7 @@ Result RocksDBCollection::insertDocument(
   Result res = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
                           rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
                                          static_cast<size_t>(doc.byteSize())));
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1398,12 +1420,12 @@ Result RocksDBCollection::insertDocument(
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->insertInternal(trx, mthds, documentId, doc,
                                          options.indexOperationMode);
-    if (!tmpres.ok()) {
+    if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
-      } else if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-                 res.ok()) {
+      } 
+      if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) || res.ok()) {
         // "prefer" unique constraint violated over other errors
         res.reset(tmpres);
       }
@@ -1432,7 +1454,7 @@ Result RocksDBCollection::removeDocument(
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
   Result res = mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1445,7 +1467,7 @@ Result RocksDBCollection::removeDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     Result tmpres = idx->remove(trx, documentId, doc, options.indexOperationMode);
-    if (!tmpres.ok()) {
+    if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
@@ -1484,7 +1506,7 @@ Result RocksDBCollection::updateDocument(
   Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
                          rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
                                         static_cast<size_t>(newDoc.byteSize())));
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1494,7 +1516,7 @@ Result RocksDBCollection::updateDocument(
                static_cast<uint32_t>(oldKey->string().size()));
 
   res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1503,7 +1525,7 @@ Result RocksDBCollection::updateDocument(
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc, newDocumentId,
                                          newDoc, options.indexOperationMode);
-    if (!tmpres.ok()) {
+    if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
@@ -1531,12 +1553,12 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      std::string* value = mdr.string();
+      std::string* value = mdr.setManaged(documentId);
       value->append(reinterpret_cast<char const*>(f.value()->value()),
                     f.value()->valueSize());
-      mdr.setManagedAfterStringUsage(documentId);
       return TRI_ERROR_NO_ERROR;
-    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    } 
+    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
@@ -1544,7 +1566,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  std::string* value = mdr.string();
+  std::string* value = mdr.setManaged(documentId);
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
 
   if (res.ok()) {
@@ -1569,8 +1591,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         }
       }
     }
-
-    mdr.setManagedAfterStringUsage(documentId);
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
@@ -1601,7 +1621,8 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       cb(documentId,
          VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
       return TRI_ERROR_NO_ERROR;
-    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    } 
+    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
@@ -1782,7 +1803,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
       rocksutils::countKeyRange(engine->db(), documentBounds, true);
 
   // update counter manager value
-  res = engine->settingsManager()->setAbsoluteCounter(_objectId,
+  res = engine->settingsManager()->setAbsoluteCounter(_objectId, engine->currentTick(),
                                                       _numberDocuments);
   if (res.ok()) {
     // in case of fail the counter has never been written and hence does not
@@ -1847,6 +1868,7 @@ RocksDBCollection::serializeIndexEstimates(
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
+    
     if (cindex->needToPersistEstimate()) {
       LOG_TOPIC(TRACE, Logger::ENGINES)
         << "beginning estimate serialization for index '"
@@ -1898,17 +1920,12 @@ void RocksDBCollection::recalculateIndexEstimates(
   // issues with estimate integrity; please do not expose via a user-facing
   // method or endpoint unless the implementation changes
 
-  // start transaction to get a collection lock
-  auto ctx =
-    transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  arangodb::SingleCollectionTransaction trx(
-    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
-  );
-  auto res = trx.begin();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  // intentionally do not use transactions here, as we will only be called
+  // during recovery
+  RocksDBEngine* engine =
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  TRI_ASSERT(engine != nullptr);
+  TRI_ASSERT(engine->inRecovery());
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
@@ -1916,12 +1933,16 @@ void RocksDBCollection::recalculateIndexEstimates(
     TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
-
-  trx.commit();
 }
 
 arangodb::Result RocksDBCollection::serializeKeyGenerator(
     rocksdb::Transaction* rtrx) const {
+  if (!_logicalCollection.keyGenerator()->hasDynamicState()) {
+    // the key generator will not produce any dynamic data,
+    // so it does not need to be serialized (nor recovered)
+    return Result();
+  }
+
   VPackBuilder builder;
 
   builder.openObject();
@@ -1950,7 +1971,6 @@ void RocksDBCollection::deserializeKeyGenerator(RocksDBSettingsManager* mgr) {
 
   if (value > 0) {
     std::string k(basics::StringUtils::itoa(value));
-
     _logicalCollection.keyGenerator()->track(k.data(), k.size());
   }
 }

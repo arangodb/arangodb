@@ -1162,6 +1162,8 @@ bool RocksDBEngine::inRecovery() {
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
+  settingsManager()->clearIndexEstimators();
+  settingsManager()->clearKeyGenerators();
 }
 
 std::string RocksDBEngine::createCollection(

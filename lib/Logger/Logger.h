@@ -62,6 +62,7 @@
 #include "Basics/Common.h"
 #include "Basics/CleanupFunctions.h"
 #include "Basics/Mutex.h"
+#include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
@@ -234,6 +235,9 @@ class Logger {
   static void setUseMicrotime(bool);
   static bool getUseMicrotime() {return _useMicrotime;};
   static void setKeepLogrotate(bool);
+  
+  // can be called after fork()
+  static void clearCachedPid() { _cachedPid = 0; }
 
   static std::string const& translateLogLevel(LogLevel);
 
@@ -275,6 +279,7 @@ class Logger {
   static bool _keepLogRotate;
   static bool _useMicrotime;
   static char _role; // current server role to log
+  static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
 
   static std::unique_ptr<LogThread> _loggingThread;
