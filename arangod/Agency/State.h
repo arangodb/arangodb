@@ -65,7 +65,7 @@ class State {
 
   /// @brief Log entries (leader)
   std::vector<index_t> logLeaderMulti(query_t const& query,
-                           std::vector<bool> const& indices, term_t term);
+                           std::vector<apply_ret_t> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
   index_t logLeaderSingle(velocypack::Slice const& slice, term_t term,
@@ -204,11 +204,16 @@ class State {
   /// @brief Log single log entry. Must be guarded by caller.
   index_t logNonBlocking(
     index_t idx, velocypack::Slice const& slice, term_t term,
-    std::string const& clientId = std::string(), bool leading = false);
+    std::string const& clientId = std::string(), bool leading = false,
+    bool reconfiguration = false);
   
   /// @brief Save currentTerm, votedFor, log entries
   bool persist(index_t, term_t, arangodb::velocypack::Slice const&,
                std::string const&) const;
+
+  /// @brief Save currentTerm, votedFor, log entries for reconfiguration
+  bool persistconf(index_t, term_t, arangodb::velocypack::Slice const&,
+                   std::string const&) const;
 
   bool saveCompacted();
 
