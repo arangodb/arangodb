@@ -418,6 +418,8 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   }
 #ifdef USE_IRESEARCH
   else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    // must check if the "view" field is the same, otherwise we may confuse
+    // two links for different views on the same collection
     auto lhValue = lhs.get("view");
     auto rhValue = rhs.get("view");
     if (lhValue.isString() && rhValue.isString()) {
@@ -428,6 +430,9 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
         if (ls.size() > rs.size()) {
           std::swap(ls, rs);
         }
+        // in the cluster, we may have identifiers of the form
+        // `cxxx/` and `cxxx/yyy` which should be considered equal if the
+        // one is a prefix of the other up to the `/`
         if (ls.empty() ||
             ls.back() != '/' ||
             ls.compare(rs.substr(0, ls.size())) != 0) {
