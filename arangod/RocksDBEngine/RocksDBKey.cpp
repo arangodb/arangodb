@@ -314,11 +314,11 @@ LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
       // + 8 byte revision ID + 1-byte 0xff
       return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
     }
-      
+
     default: {
     }
   }
-  
+
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
 }
 
@@ -428,3 +428,33 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(size > sizeof(uint64_t));
   return VPackSlice(data + sizeof(uint64_t));
 }
+
+namespace arangodb {
+
+std::ostream& operator<<(std::ostream& stream, RocksDBKey const& key) {
+  stream << "[key type: " << arangodb::rocksDBEntryTypeName(RocksDBKey::type(key)) << " ";
+
+  auto dump = [&stream](rocksdb::Slice const& slice) {
+    size_t const n = slice.size();
+
+    for (size_t i = 0; i < n; ++i) {
+      stream << "0x";
+
+      uint8_t const value = static_cast<uint8_t>(slice[i]);
+      uint8_t x = value / 16;
+      stream << static_cast<char>((x < 10 ? ('0' + x) : ('a' + x - 10)));
+      x = value % 16;
+      stream << static_cast<char>(x < 10 ? ('0' + x) : ('a' + x - 10));
+
+      if (i + 1 != n) {
+        stream << " ";
+      }
+    }
+  };
+
+  dump(key.string());
+  stream << "]";
+
+  return stream;
+}
+}  // namespace arangodb

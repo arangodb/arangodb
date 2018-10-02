@@ -15,7 +15,7 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
-///
+///::ENGINES
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
@@ -323,7 +323,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 
     if (res.fail()) {
       physical->removeLocalDocumentId(localDocumentId, false);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
           << "inserting document into primary index failed with error: "
           << res.errorMessage();
 
@@ -487,8 +487,8 @@ bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker,
       FindDatafileStats(data, datafile->fid());
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "skipping marker type "
-                                              << TRI_NameMarkerDatafile(marker);
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+        << "skipping marker type " << TRI_NameMarkerDatafile(marker);
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -1371,7 +1371,7 @@ MMFilesCollection::datafilesInRange(TRI_voc_tick_t dataMin,
         << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
         << ", tick max: " << datafile->_tickMax;
-    
+
     LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
         << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
@@ -1422,7 +1422,7 @@ bool MMFilesCollection::applyForTickRange(
   // now we have a list of datafiles...
 
   size_t const n = datafiles.size();
-  
+
   LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
       << "getting datafiles in data range " << dataMin << " - " << dataMax << " produced " << n << " datafile(s)";
 
@@ -1725,16 +1725,16 @@ int MMFilesCollection::fillIndexes(
     }
   } catch (arangodb::basics::Exception const& ex) {
     queue->setStatus(ex.code());
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
         << "caught exception while filling indexes: " << ex.what();
   } catch (std::bad_alloc const&) {
     queue->setStatus(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
         << "caught exception while filling indexes: " << ex.what();
     queue->setStatus(TRI_ERROR_INTERNAL);
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
         << "caught unknown exception while filling indexes";
     queue->setStatus(TRI_ERROR_INTERNAL);
   }
@@ -1764,20 +1764,20 @@ int MMFilesCollection::openWorker(bool ignoreErrors) {
       engine->openCollection(&vocbase, &_logicalCollection, ignoreErrors);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << path()
-                                                << "', check failed";
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "cannot open '" << path() << "', check failed";
 
       return res;
     }
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "cannot load collection parameter file '" << path()
         << "': " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "cannot load collection parameter file '" << path()
         << "': " << ex.what();
     return TRI_ERROR_INTERNAL;
@@ -1917,7 +1917,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
 
   iterateDatafiles(cb);
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
       << "found " << openState._documents << " document markers, "
       << openState._deletions << " deletion markers for collection '"
       << _logicalCollection.name() << "'";
@@ -2087,7 +2087,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
          (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       for (auto const& it : _indexes) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it.get();
       }
   #endif
       std::string errorMsg("got invalid indexes for collection '");
@@ -2234,17 +2234,19 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
   try {
     builder = idx->toVelocyPack(Index::makeFlags(Index::Serialize::ObjectId));
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "cannot save index definition: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "cannot save index definition: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "cannot save index definition";
     return TRI_ERROR_INTERNAL;
   }
   if (builder == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "cannot save index definition";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -2266,10 +2268,12 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
 
       res = slotInfo.errorCode;
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "cannot save index definition: " << ex.what();
       res = ex.code();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "cannot save index definition: " << ex.what();
       return TRI_ERROR_INTERNAL;
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
@@ -2421,7 +2425,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
     if (res == TRI_ERROR_NO_ERROR) {
       events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
           << "could not save index drop marker in log: "
           << TRI_errno_string(res);
       events::DropIndex("", std::to_string(iid), res);
@@ -2520,15 +2524,14 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
 
           if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.setReaderBlocked(tid, &_logicalCollection)) {
             // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
                 << "deadlock detected while trying to acquire read-lock "
-                   "on collection '"
-                << _logicalCollection.name() << "'";
+                << "on collection '" << _logicalCollection.name() << "'";
 
             return TRI_ERROR_DEADLOCK;
           }
 
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "waiting for read-lock on collection '"
               << _logicalCollection.name() << "'";
           // intentionally falls through
@@ -2542,10 +2545,9 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
             _logicalCollection.vocbase()._deadlockDetector.unsetReaderBlocked(
                 tid, &_logicalCollection
             );
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
                 << "deadlock detected while trying to acquire read-lock "
-                   "on collection '"
-                << _logicalCollection.name() << "'";
+                << "on collection '" << _logicalCollection.name() << "'";
 
             return TRI_ERROR_DEADLOCK;
           }
@@ -2582,7 +2584,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
         );
       }
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
           << "timed out after " << timeout
           << " s waiting for read-lock on collection '"
           << _logicalCollection.name() << "'";
@@ -2644,15 +2646,15 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
 
           if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.setWriterBlocked(tid, &_logicalCollection)) {
             // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
                 << "deadlock detected while trying to acquire "
-                   "write-lock on collection '"
+                << "write-lock on collection '"
                 << _logicalCollection.name() << "'";
 
             return TRI_ERROR_DEADLOCK;
           }
 
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+          LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "waiting for write-lock on collection '"
               << _logicalCollection.name() << "'";
         } else if (++iterations >= 5) {
@@ -2665,7 +2667,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
             _logicalCollection.vocbase()._deadlockDetector.unsetWriterBlocked(
               tid, &_logicalCollection
             );
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
                 << "deadlock detected while trying to acquire "
                    "write-lock on collection '"
                 << _logicalCollection.name() << "'";
@@ -2705,7 +2707,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
         );
       }
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
           << "timed out after " << timeout
           << " s waiting for write-lock on collection '"
           << _logicalCollection.name() << "'";
@@ -2830,7 +2832,7 @@ Result MMFilesCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
     idx->afterTruncate();
   }
-  
+
   return Result();
 }
 
@@ -3223,8 +3225,9 @@ int MMFilesCollection::detectIndexes(transaction::Methods* trx) {
     bool ok = openIndex(it, trx);
 
     if (!ok) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot load index for collection '" << _logicalCollection.name() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "cannot load index for collection '"
+        << _logicalCollection.name() << "'";
     }
   }
 
@@ -3763,14 +3766,14 @@ Result MMFilesCollection::rollbackOperation(
       res = insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                                    Index::OperationMode::rollback);
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
           << "error rolling back remove operation";
     }
     return res;
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
       << "logic error. invalid operation type on rollback";
 #endif
   return TRI_ERROR_INTERNAL;

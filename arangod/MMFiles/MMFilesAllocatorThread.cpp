@@ -51,7 +51,7 @@ int MMFilesAllocatorThread::waitForResult(uint64_t timeout) {
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
- 
+
   int res = _allocatorResult;
 
   // convert "locked" into NO_ERROR
@@ -102,7 +102,7 @@ void MMFilesAllocatorThread::run() {
 
     int res = TRI_ERROR_NO_ERROR;
     bool worked = false;
-    
+
     try {
       if (requestedSize == 0 && !inRecovery() &&
           !_logfileManager->hasReserveLogfiles()) {
@@ -128,16 +128,20 @@ void MMFilesAllocatorThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got unexpected error in allocatorThread: "
-               << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "got unexpected error in allocatorThread: "
+          << TRI_errno_string(res);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got unspecific error in allocatorThread";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "got unspecific error in allocatorThread";
     }
 
     if (worked) {
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            << "unable to create new WAL reserve logfile: "
+            << TRI_errno_string(res);
       }
 
       // broadcast new allocator status
