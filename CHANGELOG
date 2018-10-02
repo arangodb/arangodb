@@ -1,6 +1,9 @@
 v3.3.17 (XXXX-XX-XX)
 --------------------
 
+* display shard synchronization progress for collections outside of the
+  `_system` database
+
 * fixed issue #6611: Properly display JSON properties of user defined foxx services
   configuration within the web UI
 

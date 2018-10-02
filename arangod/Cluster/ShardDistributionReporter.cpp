@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardDistributionReporter.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
@@ -316,7 +317,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0)  {
-            std::string path = "/_api/collection/" + s.first + "/count";
+            std::string path = "/_db/" + basics::StringUtils::urlEncode(dbName) + 
+                               "/_api/collection/" + basics::StringUtils::urlEncode(s.first) + "/count";
             auto body = std::make_shared<std::string const>();
 
             {
