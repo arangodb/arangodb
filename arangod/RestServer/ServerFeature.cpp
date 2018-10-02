@@ -53,7 +53,8 @@ ServerFeature::ServerFeature(
       _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER),
-      _codePage(65001) { // default to UTF8
+      _codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX) {
   setOptional(true);
 
   startsAfter("AQLPhase");
@@ -158,7 +159,10 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ServerFeature::start() {
 #if _WIN32
-  SetConsoleOutputCP(_codePage);
+  _originalCodePage = GetConsoleOutputCP();
+  if (IsValidCodePage(_codePage)) {
+    SetConsoleOutputCP(_codePage);
+  }
 #endif
 
   waitForHeartbeat();
@@ -187,6 +191,14 @@ void ServerFeature::start() {
     });
   }
 
+}
+
+void ServerFeature::stop() {
+#if _WIN32
+  if (IsValidCodePage(_originalCodePage)) {
+    SetConsoleOutputCP(_originalCodePage);
+  }
+#endif
 }
 
 void ServerFeature::beginShutdown() {
