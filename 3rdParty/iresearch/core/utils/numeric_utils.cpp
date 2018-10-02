@@ -28,7 +28,8 @@
 #include <cmath>
 
 #if defined(_MSC_VER)
-  #include <Winsock2.h>
+  #define INCL_EXTRA_HTON_FUNCTIONS
+  #include <WinSock2.h>
   #pragma comment(lib,"Ws2_32.lib")
 #elif defined(__APPLE__)
   #include <arpa/inet.h>
