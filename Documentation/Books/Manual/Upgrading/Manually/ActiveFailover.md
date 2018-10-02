@@ -16,8 +16,7 @@ Preparations
 
 The ArangoDB installation packages (e.g. for Debian or Ubuntu) set up a
 convenient standalone instance of `arangod`. During installation, this instance's
-database will be upgraded (see [`--database.auto-upgrade` in General
-Options](../../Programs/Arangod/Database.md#auto-upgrade))
+database will be upgraded (see [`--database.auto-upgrade`](../../Programs/Arangod/Database.md#auto-upgrade))
 and the service will be (re)started.
 
 You have to make sure that your _Active Failover_ deployment is independent of this
@@ -70,7 +69,8 @@ and Ubuntu systems using a SystemV-compatible _init_, you can use:
 $ update-rc.d -f arangodb3 remove
 ```
 
-### Set supervision into maintenance mode
+Set supervision into maintenance mode
+-------------------------------------
 
 **Important**: Supervision maintenance mode is supported from ArangoDB versions 
 3.3.8/3.2.14 or higher.
@@ -81,16 +81,14 @@ You have two main choices when performing an upgrade of the _Active Failover_ se
 - An upgrade with no leader-to-follower switch. 
 
 Turning the maintenance mode _on_ will enable the latter case. You might have a short 
-downtime during the leader upgrade, but there will be no potential loss of _acknowledged_ operations. 
+downtime during the _leader_ upgrade, but there will be no potential loss of _acknowledged_ operations. 
 
 To enable the maintenance mode means to essentially disable the Agency supervision for a limited amount 
 of time during the upgrade procedure. The following API calls will 
-activate and deactivate the maintenance mode of the supervision job:
-
-You might use _curl_ to send the API calls.
+activate and deactivate the maintenance mode of the supervision job. You might use _curl_ to send the API calls.
 The following examples assume there is an _Active Failover_ node running on `localhost` on port 7002.
 
-#### Activate Maintenance mode:
+### Activate Maintenance mode
 
 `curl -u username:password <single-server>/_admin/cluster/maintenance -XPUT -d'"on"'`
 
@@ -104,7 +102,7 @@ It will be reactivated automatically in 60 minutes unless this call is repeated 
 **Note:** In case the manual upgrade takes longer than 60 minutes, the API call has to be resent.
 
 
-#### Deactivate Maintenance mode:
+### Deactivate Maintenance mode
 
 The _cluster_ supervision resumes automatically 60 minutes after disabling it.
 It can be manually reactivated earlier at any point using the following API call:
@@ -118,12 +116,13 @@ curl -u "root:" http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"off"'
 {"error":false,"warning":"Cluster supervision reactivated."}
 ```
 
-### Upgrade the _Active Failover_ processes
+Upgrade the _Active Failover_ processes
+---------------------------------------
 
 Now all the _Active Failover_ (_Agents_, _Single-Server_) processes (_arangod_) have to be
 upgraded on each node.
 
-**Note:** Please read the section regarding the maintenance mode above
+**Note:** Please read the section regarding the maintenance mode above.
 
 In order to stop an _arangod_ process we will need to use a command like `kill -15`:
 
@@ -171,7 +170,7 @@ curl http://<single-server>:7002/_api/cluster/endpoints
 This will yield a list of endpoints, the _first_ of which is always the leader node.
 
 
-##### Stopping, upgrading and restarting an instance
+### Stopping, upgrading and restarting an instance
 
 To stop an instance, the currently running process has to be identified using the `ps`
 command above. 
@@ -201,7 +200,7 @@ Once an _Agent_ was upgraded and restarted successfully, repeat the procedure fo
 other _Agent_ instances in the setup and then repeat the procedure for the _Active Failover_
 instances, there starting with the followers.
 
-##### Final words
+### Final words
 
 The _Agency_ supervision then needs to be reactivated by issuing the following API call 
 to the leader:
