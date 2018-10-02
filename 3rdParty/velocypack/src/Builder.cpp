@@ -65,7 +65,7 @@ struct ObjectIndexSorterShort {
   explicit ObjectIndexSorterShort(uint8_t const* objBase) : objBase(objBase) {}
 
   bool operator()(arangodb::velocypack::ValueLength const& a, 
-                  arangodb::velocypack::ValueLength const& b) const noexcept {
+                  arangodb::velocypack::ValueLength const& b) const {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
     if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
@@ -89,7 +89,7 @@ struct ObjectIndexSorterShort {
 
 struct ObjectIndexSorterLong {
   bool operator()(arangodb::velocypack::Builder::SortEntry const& a, 
-                  arangodb::velocypack::Builder::SortEntry const& b) const noexcept {
+                  arangodb::velocypack::Builder::SortEntry const& b) const {
     // return true iff a < b:
     uint8_t const* pa = a.nameStart;
     uint64_t sizea = a.nameSize;
