@@ -171,7 +171,7 @@ bool ActiveFailoverJob::start() {
   
   std::string newLeader = findBestFollower();
   if (newLeader.empty() || _server == newLeader) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << "No server available, will retry job later";
+    LOG_TOPIC(INFO, Logger::SUPERVISION) << "No follower for fail-over available, will retry";
     return false; // job will retry later
   }
   LOG_TOPIC(INFO, Logger::SUPERVISION) << "Selected '" << newLeader << "' as leader";
@@ -268,30 +268,39 @@ std::string ActiveFailoverJob::findBestFollower() {
       trx->add(VPackValue("/" + Job::agencyPrefix + asyncReplTransientPrefix));
     }
     trans_ret_t res = _agent->transient(std::move(trx));
+    if (!res.accepted) {
+      LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not read from transient while"
+      << " determining follower ticks";
+    }
+    VPackSlice resp = res.result->slice();
+    if (!resp.isArray() || resp.length() == 0) {
+      LOG_TOPIC(ERR, Logger::SUPERVISION) << "no follower ticks in transient store";
+      return "";
+    }
     
-    if (res.accepted) {
-      VPackSlice resp = res.result->slice();
-      if (!resp.isArray() || resp.length() == 0) {
-        return "";
+    VPackSlice obj = resp.at(0).get({ Job::agencyPrefix, "AsyncReplication"});
+    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
+      std::string srvUUID = pair.key.copyString();
+      bool isAvailable = std::find(healthy.begin(), healthy.end(), srvUUID) != healthy.end();
+      if (!isAvailable) {
+        continue; // skip inaccessible servers
       }
-      VPackSlice obj = resp.at(0).get({ Job::agencyPrefix, "AsyncReplication"});
-      for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
-        std::string srvUUID = pair.key.copyString();
-        bool isAvailable = std::find(healthy.begin(), healthy.end(), srvUUID) != healthy.end();
-        if (!isAvailable) {
-          continue; // skip inaccessible servers
-        }
-        TRI_ASSERT(srvUUID != _server); // assumption: _server is unhealthy
-        
-        VPackSlice leader = pair.value.get("leader"); // broken leader
-        VPackSlice lastTick = pair.value.get("lastTick");
-        if (leader.isString() && leader.isEqualString(_server) &&
-            lastTick.isNumber()) {
-          ticks.emplace_back(std::move(srvUUID), lastTick.getUInt());
-        }
+      TRI_ASSERT(srvUUID != _server); // assumption: _server is unhealthy
+      
+      VPackSlice leader = pair.value.get("leader"); // broken leader
+      VPackSlice lastTick = pair.value.get("lastTick");
+      if (leader.isString() && leader.isEqualString(_server) &&
+          lastTick.isNumber()) {
+        ticks.emplace_back(std::move(srvUUID), lastTick.getUInt());
       }
     }
-  } catch (...) {}
+  } catch (basics::Exception const& e) {
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not determine follower: " << e.message();
+  } catch(std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not determine follower: " << e.what();
+  } catch(...) {
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << "internal error while determining best follower";
+  }
   
   std::sort(ticks.begin(), ticks.end(), [&](ServerTick const& a,
                                             ServerTick const& b) {
@@ -301,5 +310,6 @@ std::string ActiveFailoverJob::findBestFollower() {
     TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
     return ticks[0].first;
   }
+  LOG_TOPIC(ERR, Logger::SUPERVISION) << "no follower ticks available";
   return ""; // fallback to any available server
 }
