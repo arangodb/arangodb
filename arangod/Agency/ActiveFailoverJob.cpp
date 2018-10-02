@@ -279,7 +279,7 @@ std::string ActiveFailoverJob::findBestFollower() {
       return "";
     }
     
-    VPackSlice obj = resp.at(0).get({ Job::agencyPrefix, "AsyncReplication"});
+    VPackSlice obj = resp.at(0).get<std::string>({ Job::agencyPrefix, std::string("AsyncReplication") });
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
       std::string srvUUID = pair.key.copyString();
       bool isAvailable = std::find(healthy.begin(), healthy.end(), srvUUID) != healthy.end();
