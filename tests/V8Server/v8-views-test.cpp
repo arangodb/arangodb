@@ -348,7 +348,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
