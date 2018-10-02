@@ -159,7 +159,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ServerFeature::start() {
 #if _WIN32
-  _originalCodePage = GetConsoleOutputCP()
+  _originalCodePage = GetConsoleOutputCP();
   if (IsValidCodePage(_codePage)) {
     SetConsoleOutputCP(_codePage);
   }
