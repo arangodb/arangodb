@@ -123,6 +123,8 @@
     * [Cluster: Processes](Deployment/Distributed.md)
     * [Cluster: Docker](Deployment/Docker.md)
 #
+* [Backup & Restore](BackupRestore/README.md)
+#
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [Dashboard](Administration/WebInterface/Dashboard.md)
