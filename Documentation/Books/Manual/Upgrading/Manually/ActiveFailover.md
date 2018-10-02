@@ -8,6 +8,8 @@ should also stay fairly low.
 
 The manual upgrade procedure described in this section can be used to upgrade
 to a new hotfix version, or to perform an upgrade to a new minor version of ArangoDB.
+Please refer to the [Upgrade Paths](../GeneralInfo/README.md#upgrade-paths) section
+for detailed information.
 
 Preparations
 ------------
