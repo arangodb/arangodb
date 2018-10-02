@@ -294,11 +294,11 @@ size_t levenshteinDistance(std::vector<uint32_t>& vect1, std::vector<uint32_t>& 
   uint32_t const* r = vect2.data();
 
   if (lhsSize < std::numeric_limits<uint8_t>::max()) {
-    return static_cast<size_t>(::levenshtein<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint8_t>(l, r, static_cast<uint8_t>(lhsSize), static_cast<uint8_t>(rhsSize)));
   } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
-    return static_cast<size_t>(::levenshtein<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint16_t>(l, r, static_cast<uint16_t>(lhsSize), static_cast<uint16_t>(rhsSize)));
   } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
-    return static_cast<size_t>(::levenshtein<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint32_t>(l, r, static_cast<uint32_t>(lhsSize), static_cast<uint8_t>(rhsSize)));
   }
   return static_cast<size_t>(::levenshtein<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
 }
