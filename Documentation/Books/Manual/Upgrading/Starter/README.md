@@ -7,8 +7,8 @@ of a [Cluster](../../Architecture/DeploymentModes/Cluster/README.md) setup.
 
 The upgrade procedure of the _Starter_ described in this _Section_ can be used to
 upgrade to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
-Please refer to the [Upgrade Paths](../GeneralInfo/README.md#upgrade-paths) for detailed
-information.
+Please refer to the [Upgrade Paths](../GeneralInfo/README.md#upgrade-paths) section
+for detailed information.
 
 **Important:** rolling upgrades of Cluster setups from 3.2 to 3.3 are only supported
 from versions 3.2.15 and 3.3.9.
