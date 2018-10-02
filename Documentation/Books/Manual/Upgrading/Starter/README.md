@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Upgrading _Starter_ Deployments
 
 Starting from versions 3.2.15 and 3.3.8, the ArangoDB [_Starter_](../../Programs/Starter/README.md)
