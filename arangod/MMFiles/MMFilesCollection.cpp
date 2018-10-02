@@ -2956,6 +2956,7 @@ MMFilesDocumentPosition MMFilesCollection::lookupDocument(LocalDocumentId const&
   if (old) {
     return old;
   }
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "got invalid revision value on lookup");
 }
@@ -2969,6 +2970,7 @@ uint8_t const* MMFilesCollection::lookupDocumentVPack(LocalDocumentId const& doc
     TRI_ASSERT(VPackSlice(vpack).isObject());
     return vpack;
   }
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "got invalid vpack value on lookup");
 }
