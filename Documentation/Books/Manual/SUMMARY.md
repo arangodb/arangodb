@@ -302,6 +302,7 @@
     * [Upgrading on MacOS](Upgrading/OSSpecificInfo/MacOS.md)
   * [Upgrading _Starter_ Deployments](Upgrading/Starter/README.md)  
   * [Upgrading Manual Deployments](Upgrading/Manually/README.md)
+    * [Upgrading an Active Failover deployment](Upgrading/Manually/ActiveFailover.md)	
     * [Upgrading a Cluster](Upgrading/Manually/Cluster.md)	
   * [Version Specific Upgrade Information](Upgrading/VersionSpecific/README.md)
     * [Upgrading to 3.4](Upgrading/VersionSpecific/Upgrading34.md)

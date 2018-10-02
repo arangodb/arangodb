@@ -1,4 +1,4 @@
-<!-- don't edit here, it's from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Cursor API
 
 _Cursor_ instances provide an abstraction over the HTTP API's limitations.
