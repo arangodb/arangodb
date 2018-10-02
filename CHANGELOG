@@ -1,6 +1,12 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* support installation of ArangoDB on Windows into directories with multibyte
+  character filenames on Windows platforms that used a non-UTF8-codepage
+
+  This was supported on other platforms before, but never worked for ArangoDB's
+  Windows version
+
 * display shard synchronization progress for collections outside of the
   `_system` database
 
