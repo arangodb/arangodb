@@ -38,6 +38,9 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     tearDownAll : function () {
+      db._dropView("TestView");
+      db._dropView("TestView1");
+      db._dropView("TestView2");
       db._drop("TestCollection");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
@@ -723,12 +726,12 @@ function IResearchFeatureDDLTestSuite () {
 
       view2.properties(meta2, true); // partial update
 
-      var result = db._query("FOR doc IN TestView2 SEARCH EXISTS(doc.b) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView2 SEARCH EXISTS(doc.b) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(2, result[0].z);
       assertEqual(3, result[1].z);
 
-      var result = (db._query("RETURN APPEND(FOR doc IN TestView1 SEARCH doc.z < 2 OPTIONS { waitForSync: true } SORT doc.z RETURN doc, FOR doc IN TestView2 SEARCH doc.z > 1 OPTIONS { waitForSync: true } SORT doc.z RETURN doc)").toArray())[0];
+      result = (db._query("RETURN APPEND(FOR doc IN TestView1 SEARCH doc.z < 2 OPTIONS { waitForSync: true } SORT doc.z RETURN doc, FOR doc IN TestView2 SEARCH doc.z > 1 OPTIONS { waitForSync: true } SORT doc.z RETURN doc)").toArray())[0];
 
       assertEqual(4, result.length);
       result.forEach(function(r, i) {
