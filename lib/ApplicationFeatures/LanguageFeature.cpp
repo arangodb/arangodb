@@ -102,7 +102,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                         "'; please make sure it is available; "
                         "the variable ICU_DATA='";
       std::string icupath;
-      if (  TRI_GETENV("ICU_DATA", icupath)) {
+      if (TRI_GETENV("ICU_DATA", icupath)) {
         msg += icupath;
       }
       msg += "' should point to the directory containing '" + fn + "'";
