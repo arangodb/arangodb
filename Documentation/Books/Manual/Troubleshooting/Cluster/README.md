@@ -23,3 +23,5 @@ Cluster Troubleshooting
       nodes.
 	* Make sure that the nodes in question share the same `JWT_SECRET`
       and SSL operation mode with the functioning nodes.
+
+Dig deeper into cluster troubleshooting by going through [ArangoDB Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/).
