@@ -1207,7 +1207,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   size_t const n = parameters.size();
 
   if (n == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
+    return AqlValue(AqlValueHintEmptyObject());
   }
 
   // use the first argument as the preliminary result
@@ -1749,7 +1749,7 @@ AqlValue Functions::ToArray(ExpressionContext*,
   }
 
   if (value.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -2915,7 +2915,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
     if (limitNumber == 0) {
-      return AqlValue(VPackSlice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -3119,7 +3119,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
     if (limitNumber == 0) {
-      return AqlValue(VPackSlice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -4109,7 +4109,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -4173,7 +4173,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext,
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -6426,7 +6426,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   if (!list.isArray()) {
@@ -6487,7 +6487,7 @@ AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
   }
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   if (!list.isArray() || !values.isArray()) {
@@ -6522,7 +6522,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   if (!list.isArray()) {
@@ -7061,7 +7061,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
   if (!feature) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
     
   auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
@@ -7070,7 +7070,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
     std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
     if (!c) {
       ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
     c->collectAQLResults(builder);
     
@@ -7078,13 +7078,13 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
     std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
     if (!worker) {
       ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
     worker->aqlResult(builder);
   }
   
   if (builder.isEmpty()) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
   TRI_ASSERT(builder.slice().isArray());
   
