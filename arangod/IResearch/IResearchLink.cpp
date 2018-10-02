@@ -503,11 +503,10 @@ int IResearchLink::unload() {
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
     auto res = drop();
 
-    LOG_TOPIC_if(WARN, arangodb::iresearch::TOPIC, TRI_ERROR_NO_ERROR != res)
+    LOG_TOPIC_IF(WARN, arangodb::iresearch::TOPIC, TRI_ERROR_NO_ERROR != res)
         << "failed to drop collection from view while unloading dropped "
-        << "IResearch link '" << _id "' for IResearch view '"
+        << "IResearch link '" << _id << "' for IResearch view '"
         << _view->name() << "'";
-    }
 
     return res;
   }

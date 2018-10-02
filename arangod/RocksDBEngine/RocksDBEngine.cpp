@@ -94,6 +94,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchView.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -271,7 +275,7 @@ void RocksDBEngine::validateOptions(
 
   if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
     // _syncInterval = 0 means turned off!
-    LOG_TOPIC(FATAL, arangodb::Logger::OPTIONS)
+    LOG_TOPIC(FATAL, arangodb::Logger::CONFIG)
         << "invalid value for --rocksdb.sync-interval. Please use a value "
         << "of at least " << minSyncInterval;
     FATAL_ERROR_EXIT();
@@ -279,7 +283,7 @@ void RocksDBEngine::validateOptions(
 
 #ifdef _WIN32
   if (_syncInterval > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::OPTIONS)
+    LOG_TOPIC(WARN, arangodb::Logger::CONFIG)
         << "automatic syncing of RocksDB WAL via background thread is not "
         << " supported on this platform";
   }
@@ -1902,7 +1906,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE && USE_IRESEARCH
       if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
         LOG_TOPIC(DEBUG, Logger::VIEWS)
             << "arangosearch view '" << v->name()
