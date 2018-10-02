@@ -138,7 +138,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   bool isAborted() const override;
 
   /// @brief insert the batch id and barrier ID.
-  ///        For use in globalinitalsyncer
+  ///        For use in globalinitialsyncer
   // TODO worker safety
   void useAsChildSyncer(replutils::MasterInfo const& info, uint64_t barrierId,
                         double barrierUpdateTime, uint64_t batchId,

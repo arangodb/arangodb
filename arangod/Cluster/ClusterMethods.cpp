@@ -2594,7 +2594,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   if (nrok != (int)DBservers.size()) {
-    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)\
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
         << "could not flush WAL on all servers. confirmed: " << nrok
         << ", expected: " << DBservers.size();
     return globalErrorCode;

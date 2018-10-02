@@ -505,7 +505,7 @@ int IResearchLink::unload() {
 
     LOG_TOPIC_IF(WARN, arangodb::iresearch::TOPIC, TRI_ERROR_NO_ERROR != res)
         << "failed to drop collection from view while unloading dropped "
-        << "IResearch link '" << _id << "' for IResearch view '"
+        << "arangosearch link '" << _id << "' for arangosearch view '"
         << _view->name() << "'";
 
     return res;
