@@ -271,6 +271,7 @@ std::string ActiveFailoverJob::findBestFollower() {
     if (!res.accepted) {
       LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not read from transient while"
       << " determining follower ticks";
+      return "";
     }
     VPackSlice resp = res.result->slice();
     if (!resp.isArray() || resp.length() == 0) {
