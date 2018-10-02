@@ -35,7 +35,7 @@
       * [Edges Manipulation](Java/Reference/Graph/Edges.md)
     * [Route](Java/Reference/Route.md)
     * [Serialization](Java/Reference/Serialization.md)
-<!-- SYNC: https://@github.com/arangodb/arangodbjs.git;arangodbjs;docs/Drivers;;/ -->
+<!-- SYNC: https://@github.com/arangodb/arangojs.git;arangojs;docs/Drivers;;/ -->
 * [ArangoJS - JavaScript Driver](JS/README.md)
   * [Getting Started](JS/GettingStarted/README.md)
   * [Reference](JS/Reference/README.md)
