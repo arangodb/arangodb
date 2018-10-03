@@ -24,6 +24,8 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H 1
 
+#include <chrono>
+
 #include "curl/curl.h"
 
 #include "Basics/Common.h"
@@ -87,7 +89,7 @@ struct CurlHandle {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     curl_easy_setopt(_handle, CURLOPT_PRIVATE, _rip.get());
-    curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L); 
+    curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L);
   }
   ~CurlHandle() {
     if (_handle != nullptr) {
@@ -101,6 +103,64 @@ struct CurlHandle {
   CURL* _handle;
   std::unique_ptr<RequestInProgress> _rip;
 };
+
+
+class ConnectionCount {
+public:
+  ConnectionCount()
+    : cursorMinute(0),
+    nextMinute(std::chrono::steady_clock::now() + std::chrono::seconds(60))
+  {
+    for (int loop=0; loop<=eMinutesTracked; ++loop) {
+      maxInMinute[loop] = 0;
+    } //for
+  };
+
+  virtual ~ConnectionCount() {};
+
+  int newMaxConnections(int newRequestCount) {
+    int ret_val(eMinOpenConnects);
+
+    for (int loop=0; loop<=eMinutesTracked; ++loop) {
+      if (ret_val < maxInMinute[loop]) {
+        ret_val = maxInMinute[loop];
+      } // if
+    } // for
+    ret_val += newRequestCount;
+
+    return ret_val;
+  };
+
+  void updateMaxConnections(int openActions) {
+    // move to new minute?
+    if (nextMinute < std::chrono::steady_clock::now()) {
+      nextMinute += std::chrono::seconds(60);
+      cursorMinute = (cursorMinute + 1) % eMinutesTracked;
+      maxInMinute[cursorMinute] = 0;
+    } // if
+
+    // current have more active that previously measured?
+    if (maxInMinute[cursorMinute] < openActions) {
+      maxInMinute[cursorMinute] = openActions;
+    } // if
+  };
+
+protected:
+  enum {
+    eMinutesTracked = 6,
+    eMinOpenConnects = 5
+  };
+  int maxInMinute[eMinutesTracked + 1];
+  int cursorMinute;
+  std::chrono::steady_clock::time_point nextMinute;
+
+private:
+  ConnectionCount(ConnectionCount const &) = delete;
+  ConnectionCount(ConnectionCount &&) = delete;
+  ConnectionCount & operator=(ConnectionCount const &) = delete;
+
+
+}; // class ConnectionCount
 }
 }
 
@@ -147,7 +207,7 @@ class Communicator {
 
   Mutex _handlesLock;
   std::unordered_map<uint64_t, std::unique_ptr<CurlHandle>> _handlesInProgress;
-  
+
   CURLM* _curl;
   CURLMcode _mc;
   curl_waitfd _wakeup;

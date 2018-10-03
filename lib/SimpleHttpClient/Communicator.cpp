@@ -136,11 +136,12 @@ static std::vector<char> urlDotSeparators{'/', '#', '?'};
 Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
+  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, 0);  //default is -1, want unlimited
 
   if (_curl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "unable to initialize curl");
   }
-  
+
 #ifdef _WIN32
   int err = dumb_socketpair(_socks, 0);
   if (err != 0) {
@@ -174,7 +175,7 @@ Ticket Communicator::addRequest(Destination&& destination,
                                 Callbacks callbacks, Options options) {
   uint64_t id = NEXT_TICKET_ID.fetch_add(1, std::memory_order_seq_cst);
   TRI_ASSERT(request != nullptr);
-  
+
   {
     MUTEX_LOCKER(guard, _newRequestsLock);
     _newRequests.emplace_back(
@@ -271,7 +272,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
       newRequest._options, std::move(newRequest._request));
 
   auto handleInProgress = std::make_unique<CurlHandle>(rip);
-  
+
   auto request = (HttpRequest*)handleInProgress->_rip->_request.get();
 
   CURL* handle = handleInProgress->_handle;
@@ -316,7 +317,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
     thisHeader.append(": ", 2);
     thisHeader.append(header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());
-    
+
     thisHeader.clear();
   }
 
@@ -337,7 +338,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_easy_setopt(handle, CURLOPT_HEADERDATA, handleInProgress->_rip.get());
   curl_easy_setopt(handle, CURLOPT_ERRORBUFFER,
                    handleInProgress->_rip.get()->_errorBuffer);
-  
+
   // mop: XXX :S CURLE 51 and 60...
   curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -358,7 +359,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   // the requests immediately fail
   // if not this hack can go away
   if (connectTimeout <= 0) {
-    connectTimeout = 1;
+    connectTimeout = 5;
   }
 
   curl_easy_setopt(
@@ -429,11 +430,11 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   if (rip->_options._curlRcFn) {
     (*rip->_options._curlRcFn)(rc);
   }
-  
+
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
       << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
-  
+
   if (CURLE_OPERATION_TIMEDOUT == rc) {
     curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
@@ -668,8 +669,8 @@ std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   }
   return vec;
 }
-      
-// needs _handlesLock! 
+
+// needs _handlesLock!
 void Communicator::abortRequestInternal(Ticket ticketId) {
   _handlesLock.assertLockedByCurrentThread();
 
@@ -678,8 +679,8 @@ void Communicator::abortRequestInternal(Ticket ticketId) {
     return;
   }
 
-  LOG_TOPIC(WARN, Logger::REQUESTS) 
-      << ::buildPrefix(handle->second->_rip->_ticketId) 
+  LOG_TOPIC(WARN, Logger::REQUESTS)
+      << ::buildPrefix(handle->second->_rip->_ticketId)
       << "aborting request to " << handle->second->_rip->_destination.url();
   handle->second->_rip->_aborted = true;
 }
@@ -698,7 +699,7 @@ void Communicator::callErrorFn(Ticket const& ticketId, Destination const& destin
   auto total = TRI_microtime() - start;
 
   if (total > CALLBACK_WARN_TIME) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) 
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << ::buildPrefix(ticketId) << "error callback for request to " << destination.url() << " took " << total << "s";
   }
 }
@@ -714,7 +715,7 @@ void Communicator::callSuccessFn(Ticket const& ticketId, Destination const& dest
   auto total = TRI_microtime() - start;
 
   if (total > CALLBACK_WARN_TIME) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) 
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << ::buildPrefix(ticketId) << "success callback for request to " << destination.url() << " took " << (total) << "s";
   }
 }
