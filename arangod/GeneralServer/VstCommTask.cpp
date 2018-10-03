@@ -368,15 +368,15 @@ bool VstCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-header\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
-
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.payload().toJson()
-        << "\"";
-
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-payload\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.payload().toJson()
+          << "\"";
+    }
     // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
