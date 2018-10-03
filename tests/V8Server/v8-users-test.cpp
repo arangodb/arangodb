@@ -265,7 +265,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantArgs.size(), grantArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantArgs.size()), grantArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -289,7 +289,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeArgs.size(), revokeArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeArgs.size()), revokeArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -315,7 +315,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantArgs.size(), grantArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantArgs.size()), grantArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
@@ -339,7 +339,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeArgs.size(), revokeArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeArgs.size()), revokeArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
@@ -362,7 +362,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantArgs.size(), grantArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantArgs.size()), grantArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -389,7 +389,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeArgs.size(), revokeArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeArgs.size()), revokeArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -415,7 +415,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantWildcardArgs.size(), grantWildcardArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantWildcardArgs.size()), grantWildcardArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
@@ -439,7 +439,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeWildcardArgs.size(), revokeWildcardArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeWildcardArgs.size()), revokeWildcardArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
