@@ -49,7 +49,7 @@ unsafe input values before putting them into query strings. This may work in som
 but it's easy to overlook something or get it subtly wrong:
 
 ```js
-/* we're sanitzing now, but it's still evil ! */
+/* we're sanitizing now, but it's still evil ! */
 var value = req.params("searchValue").replace(/'/g, '');
 ...
 var query = "FOR doc IN collection FILTER doc.value == '" + value + "' RETURN doc";
