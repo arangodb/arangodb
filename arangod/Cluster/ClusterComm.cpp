@@ -426,7 +426,7 @@ OperationID ClusterComm::asyncRequest(
   bool doLogConnectionErrors = logConnectionErrors();
 
   if (callback) {
-    callbacks._onError = [callback, result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [callback, result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
         responses.erase(result->operationID);
@@ -435,12 +435,12 @@ OperationID ClusterComm::asyncRequest(
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         if (doLogConnectionErrors) {
           LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
+            << "cannot create connection to server (1) '" << result->serverID
+            << "' at endpoint '" << result->endpoint << "'" << initTimeout;
         } else {
           LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
+            << "cannot create connection to server (2)'" << result->serverID
+            << "' at endpoint '" << result->endpoint << "'" << initTimeout;
         }
       }
       /*bool ret =*/ ((*callback.get())(result.get()));
@@ -457,18 +457,18 @@ OperationID ClusterComm::asyncRequest(
       //TRI_ASSERT(ret == true);
     };
   } else {
-    callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         if (doLogConnectionErrors) {
           LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
+            << "cannot create connection to server (3)'" << result->serverID
+            << "' at endpoint '" << result->endpoint << "'" << initTimeout;
         } else {
           LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
+            << "cannot create connection to server (4)'" << result->serverID
+            << "' at endpoint '" << result->endpoint << "'" << initTimeout;
         }
       }
       somethingReceived.broadcast();
@@ -545,11 +545,11 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         if (doLogConnectionErrors) {
           LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
+            << "cannot create connection to server (5)'" << result->serverID
             << "' at endpoint '" << result->endpoint << "'";
         } else {
           LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
+            << "cannot create connection to server (6)'" << result->serverID
             << "' at endpoint '" << result->endpoint << "'";
         }
       }
@@ -1106,7 +1106,7 @@ size_t ClusterComm::performSingleRequest(
     size_t& nrDone, arangodb::LogTopic const& logTopic) {
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   ClusterCommRequest& req(requests[0]);
-  
+
   req.result = *syncRequest("", coordinatorTransactionID, req.destination,
                             req.requestType, req.path, req.getBody(),
                             req.getHeaders(), timeout);
@@ -1202,7 +1202,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 #endif
 #endif
 
-  
+
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {
