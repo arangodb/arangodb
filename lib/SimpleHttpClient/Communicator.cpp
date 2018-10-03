@@ -136,6 +136,9 @@ static std::vector<char> urlDotSeparators{'/', '#', '?'};
 Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
+
+  /// start with unlimited, non-closing connection count.  ConnectionCount object will
+  ///  moderate once requests start
   curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, 0);  //default is -1, want unlimited
 
   if (_curl == nullptr) {
@@ -200,11 +203,17 @@ Ticket Communicator::addRequest(Destination&& destination,
 
 int Communicator::work_once() {
   std::vector<NewRequest> newRequests;
+  int connections;
 
   {
     MUTEX_LOCKER(guard, _newRequestsLock);
     newRequests.swap(_newRequests);
   }
+
+  /// make sure there is enough room for every new request to get
+  ///  an independent connection
+  connections = connectionCount.newMaxConnections(newRequests.size());
+  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, connections);
 
   for (auto& newRequest : newRequests) {
     createRequestInProgress(std::move(newRequest));
@@ -217,6 +226,12 @@ int Communicator::work_once() {
         "Invalid curl multi result while performing! Result was " +
         std::to_string(_mc));
   }
+
+  /// use stillRunning as high water mark for open connections needed
+  connectionCount.updateMaxConnections(stillRunning);
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << "Communicator::work_once max connections " << connections
+      << ", active actions " << stillRunning;
 
   // handle all messages received
   CURLMsg* msg = nullptr;

@@ -105,13 +105,26 @@ struct CurlHandle {
 };
 
 
+/// @brief ConnectionCount
+///
+/// libcurl's native connection management has 3 modes based upon how
+///  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, xx) is set:
+///
+///  -1: default, close connections above 4 times the number of active connections,
+///       open more as needed
+///   0: never close connections, open more as needed
+/// int: never open more than "int", never close either
+///
+///  -1 caused bugs with clients using 64 threads.  The number of open connections
+///  would fluctuate wildly, and sometimes the reopening of connections timed out.
+///  This code smooths the rate at which connections get closed.
 class ConnectionCount {
 public:
   ConnectionCount()
     : cursorMinute(0),
     nextMinute(std::chrono::steady_clock::now() + std::chrono::seconds(60))
   {
-    for (int loop=0; loop<=eMinutesTracked; ++loop) {
+    for (int loop=0; loop<eMinutesTracked; ++loop) {
       maxInMinute[loop] = 0;
     } //for
   };
@@ -121,7 +134,7 @@ public:
   int newMaxConnections(int newRequestCount) {
     int ret_val(eMinOpenConnects);
 
-    for (int loop=0; loop<=eMinutesTracked; ++loop) {
+    for (int loop=0; loop<eMinutesTracked; ++loop) {
       if (ret_val < maxInMinute[loop]) {
         ret_val = maxInMinute[loop];
       } // if
@@ -134,9 +147,7 @@ public:
   void updateMaxConnections(int openActions) {
     // move to new minute?
     if (nextMinute < std::chrono::steady_clock::now()) {
-      nextMinute += std::chrono::seconds(60);
-      cursorMinute = (cursorMinute + 1) % eMinutesTracked;
-      maxInMinute[cursorMinute] = 0;
+      advanceCursor();
     } // if
 
     // current have more active that previously measured?
@@ -145,12 +156,20 @@ public:
     } // if
   };
 
-protected:
   enum {
     eMinutesTracked = 6,
     eMinOpenConnects = 5
   };
-  int maxInMinute[eMinutesTracked + 1];
+
+protected:
+  void advanceCursor() {
+    nextMinute += std::chrono::seconds(60);
+    cursorMinute = (cursorMinute + 1) % eMinutesTracked;
+    maxInMinute[cursorMinute] = 0;
+  };
+
+
+  int maxInMinute[eMinutesTracked];
   int cursorMinute;
   std::chrono::steady_clock::time_point nextMinute;
 
@@ -217,6 +236,7 @@ class Communicator {
   int _fds[2];
 #endif
   bool _enabled;
+  ConnectionCount connectionCount;
 
  private:
   void abortRequestInternal(Ticket ticketId);
