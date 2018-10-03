@@ -142,7 +142,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  UnicodeString pw(wpassword.c_str(), wpassword.length());
+  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H
