@@ -2430,7 +2430,9 @@ int ClusterInfo::ensureIndexCoordinator(
   std::shared_ptr<LogicalCollection> c;
   // Index is created in current, let's remove 'building' key so that
   // it is ready for use.
-  if (errorCode == TRI_ERROR_NO_ERROR) {
+  if (!slice.get(
+        arangodb::StaticStrings::IndexType).isEqualString("arangosearch")) {
+    if (errorCode == TRI_ERROR_NO_ERROR) {
     
     loadPlan();
     // find index in plan
@@ -2487,6 +2489,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
   }
+}
   
   if (errorCode == TRI_ERROR_NO_ERROR ||
       application_features::ApplicationServer::isStopping()) {
@@ -2589,6 +2592,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   auto numberOfShardsMutex = std::make_shared<Mutex>();
   auto numberOfShards = std::make_shared<int>(0);
   auto resBuilder = std::make_shared<VPackBuilder>();
+  auto type = slice.get(arangodb::StaticStrings::IndexType);
   VPackBuilder collectionBuilder;
 
   {
@@ -2683,7 +2687,9 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
           }
           // Adding this key to show to outside world that the index
           // creation is going on
-          newBuilder->add("isBuilding", VPackValue(true));
+          if (!type.isEqualString("arangosearch")) {
+            newBuilder->add("isBuilding", VPackValue(true));
+          }
           newBuilder->add("id", VPackValue(idString));
         }
         newBuilder->close();  // the array
