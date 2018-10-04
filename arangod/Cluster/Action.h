@@ -51,6 +51,11 @@ public:
   /// @brief construct with description
   Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const&);
 
+  Action(Action const&) = delete;
+  Action(Action &&) = delete;
+  Action() = delete;
+  Action& operator=(Action const&) = delete;
+
   /**
    * @brief construct with concrete action base
    * @param feature  Maintenance feature

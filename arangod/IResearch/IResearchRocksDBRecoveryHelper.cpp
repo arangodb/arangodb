@@ -368,8 +368,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         doc,
         Index::OperationMode::internal
       );
-      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // inserted: " << doc.toJson();
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+          << "recovery helper inserted: "
+          << doc.toJson(trx.transactionContext()->getVPackOptions());
     }
 
     trx.commit();
@@ -378,50 +379,52 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   }
 }
 
-void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
-                                              const rocksdb::Slice& key) {
-  if (column_family_id == _documentCF) {
-    auto coll =
-      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-
-    if (coll == nullptr) {
-      return;
-    }
-
-    auto const links = lookupLinks(*coll);
-
-    if (links.empty()) {
-      return;
-    }
-
-    auto docId = RocksDBKey::documentId(key);
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()),
-      *coll,
-      arangodb::AccessMode::Type::WRITE
-    );
-
-    trx.begin();
-
-    for (auto link : links) {
-      link->remove(
-        &trx,
-        docId,
-        arangodb::velocypack::Slice::emptyObjectSlice(),
-        Index::OperationMode::internal
-      );
-      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // removed: " << docId.id();
-    }
-
-    trx.commit();
-
-    return;
-  }
-}
-
-void IResearchRocksDBRecoveryHelper::SingleDeleteCF(uint32_t column_family_id,
+// common implementation for DeleteCF / SingleDeleteCF
+void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
                                                     const rocksdb::Slice& key) {
+  if (column_family_id == _documentCF) {
+    return;
+  }
+  auto coll =
+    lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+
+  if (coll == nullptr) {
+    return;
+  }
+
+  auto const links = lookupLinks(*coll);
+
+  if (links.empty()) {
+    return;
+  }
+
+  auto docId = RocksDBKey::documentId(key);
+  SingleCollectionTransaction trx(
+    transaction::StandaloneContext::Create(coll->vocbase()),
+    *coll,
+    arangodb::AccessMode::Type::WRITE
+  );
+
+  trx.begin();
+
+  for (auto link : links) {
+    link->remove(
+      &trx,
+      docId,
+      arangodb::velocypack::Slice::emptyObjectSlice(),
+      Index::OperationMode::internal
+    );
+    // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
+    // removed: " << docId.id();
+  }
+
+  trx.commit();
+}
+
+void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
+                                                   const rocksdb::Slice& end_key,
+                                                   const rocksdb::Slice& begin_key) {
+  // not needed for anything atm
 }
 
 void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
@@ -450,9 +453,20 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
       TRI_idx_iid_t const indexId = RocksDBLogValue::indexId(blob);
       dropCollectionFromView(*_dbFeature, dbId, collectionId, indexId, viewId);
     } break;
-    default: {
-      // shut up the compiler
-    } break;
+    case RocksDBLogType::CollectionTruncate: {
+      uint64_t objectId = RocksDBLogValue::objectId(blob);
+      auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
+
+      if (coll != nullptr) {
+        auto const links = lookupLinks(*coll);
+        for (auto link : links) {
+          link->afterTruncate();
+        }
+      }
+
+      break;
+    }
+    default: break; // shut up the compiler
   }
 }
 

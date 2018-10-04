@@ -64,7 +64,9 @@ ClientFeature::ClientFeature(
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false) {
+      _haveServerPassword(false),
+      _codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("GreetingsPhase");
@@ -130,6 +132,10 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
+#if _WIN32
+  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                           new UInt16Parameter(&_codePage));
+#endif
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -302,6 +308,23 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
   return {http};
 }
 
+void ClientFeature::start() {
+#if _WIN32
+  _originalCodePage = GetConsoleOutputCP();
+  if (IsValidCodePage(_codePage)) {
+    SetConsoleOutputCP(_codePage);
+  }
+#endif
+}
+
+void ClientFeature::stop() {
+#if _WIN32
+  if (IsValidCodePage(_originalCodePage)) {
+    SetConsoleOutputCP(_originalCodePage);
+  }
+#endif
+}
+
 int ClientFeature::runMain(
     int argc, char* argv[],
     std::function<int(int argc, char* argv[])> const& mainFunc) {
@@ -319,5 +342,5 @@ int ClientFeature::runMain(
     return EXIT_FAILURE;
   }
 }
-
+  
 } // arangodb

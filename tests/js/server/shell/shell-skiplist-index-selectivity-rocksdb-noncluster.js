@@ -77,6 +77,7 @@ function SkiplistIndexSuite() {
         docs.push({value: i % 100});
       }
       collection.save(docs);
+      idx = collection.ensureSkiplist("value");
       internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureSkiplist("value");
       let oldEstimate = idx.selectivityEstimate;

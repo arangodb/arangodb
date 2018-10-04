@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
 # Spring Data ArangoDB - Reference
 
 - [Template](Template/README.md)
@@ -22,3 +22,4 @@
   - [Indexes](Mapping/Indexes.md)
   - [Converter](Mapping/Converter.md)
   - [Events](Mapping/Events.md)
+  - [Auditing](Mapping/Auditing.md)

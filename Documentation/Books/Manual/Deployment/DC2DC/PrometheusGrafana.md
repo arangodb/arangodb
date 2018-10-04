@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Prometheus & Grafana (optional)
 
 _ArangoSync_ provides metrics in a format supported by [Prometheus](https://prometheus.io).

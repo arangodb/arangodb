@@ -222,6 +222,8 @@ void IndexBlock::executeExpressions() {
 void IndexBlock::initializeOnce() {
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
+      
+  _trx->pinData(_collection->id());
 
   // instantiate expressions:
   auto instantiateExpression = [&](AstNode* a,
