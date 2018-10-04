@@ -167,12 +167,10 @@ class Query {
 
   inline Collection* addCollection(std::string const& name, AccessMode::Type accessType) {
     // Either collection or view
-    TRI_ASSERT(_views.find(name) == _views.end());
     return _collections.add(name, accessType);
   }
 
   inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
-    TRI_ASSERT(_views.find(name.toString()) == _views.end());
     return _collections.add(name.toString(), accessType);
   }
 
@@ -300,7 +298,6 @@ class Query {
   /// @brief note that the query uses the view
   void addView(std::string const& name) {
     // Either collection or view
-    TRI_ASSERT(_collections.collections()->find(name) == _collections.collections()->end());
     _views.emplace(name);
   }
 
