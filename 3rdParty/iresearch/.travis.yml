@@ -765,12 +765,7 @@ install:
       GTEST_URL="https://github.com/google/googletest.git"
       cd ${DEPS_DIR}
       travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1
-#      cd ${GTEST_DIR}
-#      mkdir build && cd build
-#      cmake -DCMAKE_CXX_STANDARD=${CXX_STANDARD} -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
-#      make install
     fi
-#    export GTEST_ROOT=${GTEST_DIR}/build/package
     export GTEST_ROOT=${GTEST_DIR}/googletest
 
 before_script:

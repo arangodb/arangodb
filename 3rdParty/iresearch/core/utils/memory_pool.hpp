@@ -37,7 +37,7 @@
 NS_ROOT
 NS_BEGIN(memory)
 
-CONSTEXPR size_t align_up(size_t size, size_t alignment) NOEXCEPT {
+inline CONSTEXPR size_t align_up(size_t size, size_t alignment) NOEXCEPT {
   return (size + alignment - 1) & (0 - alignment);
 }
 

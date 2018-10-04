@@ -506,7 +506,7 @@ void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
 
   // estimate meta segment size
   for (auto& filename: segment.meta.files) {
-    size_t size;
+    uint64_t size;
 
     if (dir.length(size, filename)) {
       segment.meta.size += size;
