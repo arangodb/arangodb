@@ -2429,7 +2429,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
   std::shared_ptr<LogicalCollection> c;
   // Index is created in current, let's remove 'building' key so that
-  // it is 
+  // it is ready for use.
   if (errorCode == TRI_ERROR_NO_ERROR) {
     
     loadPlan();
@@ -2442,11 +2442,13 @@ int ClusterInfo::ensureIndexCoordinator(
     c->getIndexesVPack(oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
     VPackSlice const planIndexes = oldPlanIndexes.slice();
 
+    // Go through all indexes in collection, 
     if (planIndexes.isArray()) {
       VPackArrayBuilder a(&newPlanIndexes); 
       for (auto const& index : VPackArrayIterator(planIndexes)) {        
         auto idPlanSlice = index.get("id");
-        if (idPlanSlice.isString() && idPlanSlice.copyString() == idString) {
+        if (idPlanSlice.isString() && idPlanSlice.copyString() == idString &&
+            index.hasKey()) {
           found = true;
           VPackObjectBuilder o(&newPlanIndexes);
           for (auto const& i : VPackObjectIterator(index)) {

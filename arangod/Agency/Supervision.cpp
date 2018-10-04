@@ -1094,7 +1094,6 @@ void Supervision::readyOrphanedIndexCreations() {
                       _agencyPrefix + planColPrefix + colPath + "indexes")); 
                   envelope->add(indexes.first); }
               }}
-            LOG_TOPIC(ERR, Logger::FIXME) << envelope->toJson();
             write_ret_t res = _agent->write(envelope);
             if (!res.successful()) {
               LOG_TOPIC(DEBUG, Logger::SUPERVISION)
