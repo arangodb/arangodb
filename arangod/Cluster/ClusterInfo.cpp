@@ -2434,62 +2434,61 @@ int ClusterInfo::ensureIndexCoordinator(
         arangodb::StaticStrings::IndexType).isEqualString("arangosearch")) {
     if (errorCode == TRI_ERROR_NO_ERROR) {
     
-    loadPlan();
-    // find index in plan
-    VPackBuilder newPlanIndexes;
-    VPackBuilder oldPlanIndexes;
-    bool found = false;
+      loadPlan();
+      // find index in plan
+      VPackBuilder newPlanIndexes;
+      VPackBuilder oldPlanIndexes;
+      bool found = false;
 
-    c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
-    VPackSlice const planIndexes = oldPlanIndexes.slice();
+      c = getCollection(databaseName, collectionID);
+      c->getIndexesVPack(oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
+      VPackSlice const planIndexes = oldPlanIndexes.slice();
 
-    // Go through all indexes in collection, 
-    if (planIndexes.isArray()) {
-      VPackArrayBuilder a(&newPlanIndexes); 
-      for (auto const& index : VPackArrayIterator(planIndexes)) {        
-        auto idPlanSlice = index.get("id");
-        if (idPlanSlice.isString() && idPlanSlice.copyString() == idString &&
-            index.hasKey("isBuilding")) {
-          found = true;
-          VPackObjectBuilder o(&newPlanIndexes);
-          for (auto const& i : VPackObjectIterator(index)) {
-            auto const& key = i.key.copyString();
-            if (key != "isBuilding") {
-              newPlanIndexes.add(i.key.copyString(), i.value);
+      // Go through all indexes in collection, 
+      if (planIndexes.isArray()) {
+        VPackArrayBuilder a(&newPlanIndexes); 
+        for (auto const& index : VPackArrayIterator(planIndexes)) {
+          auto idPlanType = index.get("type");
+          auto idPlanFields = index.get("fields");
+          if (idPlanType == slice.get("type") && idPlanFields == slice.get("fields")) {
+            found = true;
+            VPackObjectBuilder o(&newPlanIndexes);
+            for (auto const& i : VPackObjectIterator(index)) {
+              auto const& key = i.key.copyString();
+              if (key != "isBuilding") {
+                newPlanIndexes.add(i.key.copyString(), i.value);
+              }
             }
+          } else {
+            newPlanIndexes.add(index);
           }
-        } else {
-          newPlanIndexes.add(index);
         }
       }
-    }
+      if (!found) {
+        // index has vanished from plan? not good.
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "index has disappeared from plan!";
+        return TRI_ERROR_INTERNAL;
+      }
 
-    if (!found) {
-      // index has vanished from plan? not good.
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "index has disappeared from plan!";
-      return TRI_ERROR_INTERNAL;
-    }
+      std::string const indexPath =
+        "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
+      AgencyWriteTransaction trx(
+        std::vector<AgencyOperation>
+        { AgencyOperation(
+            indexPath, AgencyValueOperationType::SET, newPlanIndexes.slice()),
+            AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+        std::vector<AgencyPrecondition>
+        { AgencyPrecondition(
+            indexPath, AgencyPrecondition::Type::VALUE, planIndexes) });
+      AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
 
-    std::string const indexPath =
-      "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
-    AgencyWriteTransaction trx(
-      std::vector<AgencyOperation>
-      { AgencyOperation(
-          indexPath, AgencyValueOperationType::SET, newPlanIndexes.slice()),
-        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      std::vector<AgencyPrecondition>
-      { AgencyPrecondition(
-        indexPath, AgencyPrecondition::Type::VALUE, planIndexes) });
-    AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
-
-    if (update.successful()) {
-      loadPlan();
-      return errorCode;
-    }
+      if (update.successful()) {
+        loadPlan();
+        return errorCode;
+      }
     
+    }
   }
-}
   
   if (errorCode == TRI_ERROR_NO_ERROR ||
       application_features::ApplicationServer::isStopping()) {
@@ -2549,7 +2548,6 @@ int ClusterInfo::ensureIndexCoordinator(
     std::chrono::duration<size_t, std::milli> waitTime(10);
     std::this_thread::sleep_for(waitTime);
   } while (++tries < 5);
-
   LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't roll back index creation of " << idString << ". Database: " << databaseName << ", Collection " << collectionID;
   return errorCode;
 }
