@@ -1882,7 +1882,7 @@ class pos_doc_iterator final: public doc_iterator {
     const index_input* pay_in
   ) final;
 
-  virtual void seek_notify(const skip_context &ctx) final {
+  virtual void seek_notify(const skip_context &ctx) override final {
     pos_.prepare(ctx); // notify positions
   }
 
@@ -3980,8 +3980,8 @@ class column_iterator final: public irs::doc_iterator {
 
   struct payload_iterator: public irs::payload_iterator {
     const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const {
+    virtual bool next() override { return nullptr != value_; }
+    virtual const irs::bytes_ref& value() const override {
       return value_ ? *value_ : irs::bytes_ref::NIL;
     }
   };
@@ -4401,7 +4401,7 @@ class dense_fixed_length_column final : public column {
       const block_ref* begin,
       const block_ref* end,
       doc_id_t key) const NOEXCEPT {
-    const auto min  = min_ + this->avg_block_count()*std::distance(refs_.data(), begin);
+    const auto min  = min_ + this->avg_block_count() * std::distance(refs_.data(), begin);
 
     if (key < min) {
       return begin;
@@ -4594,11 +4594,11 @@ column_factory_f g_column_factories[] {
   &sparse_column<sparse_block>::make,                          // CP_SPARSE == 0
   &sparse_column<dense_block>::make,                           // CP_DENSE  == 1
   &sparse_column<sparse_block>::make,                          // CP_FIXED  == 2
-  &dense_fixed_length_column<dense_fixed_length_block>::make, // CP_DENSE | CP_FIXED == 3
+  &dense_fixed_length_column<dense_fixed_length_block>::make,  // CP_DENSE | CP_FIXED == 3
   nullptr,                                                     // CP_MASK == 4
   nullptr,                                                     // CP_DENSE | CP_MASK == 5
-  &sparse_column<sparse_mask_block>::make,                    // CP_FIXED | CP_MASK == 6
-  &dense_fixed_length_column<dense_mask_block>::make          // CP_DENSE | CP_FIXED | CP_MASK == 7
+  &sparse_column<sparse_mask_block>::make,                     // CP_FIXED | CP_MASK == 6
+  &dense_fixed_length_column<dense_mask_block>::make           // CP_DENSE | CP_FIXED | CP_MASK == 7
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -4917,8 +4917,8 @@ class format : public irs::version10::format {
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
   virtual columnstore_reader::ptr get_columnstore_reader() const override final;
 
-  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const;
-  virtual postings_reader::ptr get_postings_reader() const;
+  virtual postings_writer::ptr get_postings_writer(bool volatile_state) const override;
+  virtual postings_reader::ptr get_postings_reader() const override;
 };
 
 format::format() NOEXCEPT : irs::version10::format(format::type()) {}

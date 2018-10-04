@@ -47,7 +47,7 @@ public:
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }
 
-  virtual sort::prepared::ptr prepare() const;
+  virtual sort::prepared::ptr prepare() const override;
 
 private:
   bool normalize_;

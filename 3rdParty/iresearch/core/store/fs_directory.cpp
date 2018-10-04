@@ -247,7 +247,7 @@ class fs_index_output : public buffered_index_output {
 class pooled_fs_index_input; // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
-  virtual int64_t checksum(size_t offset) const final {
+  virtual int64_t checksum(size_t offset) const override final {
     const auto begin = handle_->pos;
     const auto end = (std::min)(begin + offset, handle_->size);
 
@@ -419,8 +419,8 @@ class pooled_fs_index_input final : public fs_index_input {
 
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input();
-  virtual index_input::ptr dup() const NOEXCEPT;
-  virtual index_input::ptr reopen() const NOEXCEPT;
+  virtual index_input::ptr dup() const NOEXCEPT override;
+  virtual index_input::ptr reopen() const NOEXCEPT override;
 
  private:
   typedef unbounded_object_pool<file_handle> fd_pool_t;
