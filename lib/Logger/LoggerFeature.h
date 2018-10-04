@@ -61,6 +61,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _forceDirect = false;
   bool _useMicrotime = false;
   bool _showRole = false;
+  bool _logRequestParameters = true;
 
  private:
   bool _supervisor = false;

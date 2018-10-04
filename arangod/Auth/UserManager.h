@@ -106,10 +106,12 @@ class UserManager {
   bool checkPassword(std::string const& username, std::string const& password);
 
   /// Convenience method to refresh user rights
+  /// returns true if the user was actually refreshed and the caller may
+  /// need to update its own caches
 #ifdef USE_ENTERPRISE
-  void refreshUser(std::string const& username);
+  bool refreshUser(std::string const& username);
 #else
-  inline void refreshUser(std::string const& username) {}
+  inline bool refreshUser(std::string const& username) { return false; }
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,

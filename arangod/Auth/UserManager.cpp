@@ -678,6 +678,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
       return user.checkPassword(password);
     }
   }
+    
 
 #ifdef USE_ENTERPRISE
   bool userCached = it != _userCache.end();
@@ -690,7 +691,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
     return checkPasswordExt(username, password, userCached, readGuard);
   }
 #endif
-
+  
   return false;
 }
 

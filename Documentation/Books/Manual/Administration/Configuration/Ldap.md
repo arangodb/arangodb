@@ -156,24 +156,24 @@ TLS is not supported in the Windows version of ArangoDB!
 To configure the usage of encrypted TLS to communicate with the LDAP server
 the following options are available:
 
-  - `--ldap.tls` The main switch to active TLS. can either be 
+  - `--ldap.tls`: The main switch to active TLS. can either be 
       `true` (use TLS) or `false` (do not use TLS). It is switched
       off by default. If you switch this on and do not use the `ldaps`
       protocol via the [LDAP URL](#ldap-urls), then ArangoDB
       will use the `STARTTLS` protocol to initiate TLS. This is the
       recommended approach.
-  - `--ldap.tls-version` the minimal TLS version that ArangoDB should accept.
+  - `--ldap.tls-version`: the minimal TLS version that ArangoDB should accept.
       Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. If
       your LDAP server does not support Version 1.2, you have to change
       this setting.
-  - `--ldap.tls-cert-check-strategy` strategy to validate the LDAP server
+  - `--ldap.tls-cert-check-strategy`: strategy to validate the LDAP server
       certificate.  Available strategies are `never`, `hard`,
       `demand`, `allow` and `try`. The default is `hard`.
-  - `--ldap.tls-cacert-file` A file path to one or more (concatenated)
+  - `--ldap.tls-cacert-file`: A file path to one or more (concatenated)
       certificate authority certificates in PEM format.
       As default no file path is configured. This certificate
       is used to validate the server response.
-  - `--ldap.tls-cacert-dir` A directory path to certificate authority certificates in
+  - `--ldap.tls-cacert-dir`: A directory path to certificate authority certificates in
       [c_rehash](https://www.openssl.org/docs/man1.0.2/apps/c_rehash.html)
       format. As default no directory path is configured.
 
@@ -185,6 +185,38 @@ Assuming you have the TLS CAcert file that is given to the server at
     --ldap.tls-cacert-file /path/to/certificate.pem
 
 You can use TLS with any of the following authentication mechanisms.
+
+### Esoteric options
+
+The following options can be used to configure advanced options for LDAP
+connectivity: 
+  
+  - `--ldap.serialized`: whether or not calls into the underlying LDAP library should be serialized.
+    This option can be used to work around thread-unsafe LDAP library functionality.
+  - `--ldap.serialize-timeout`: sets the timeout value that is used when waiting to enter the 
+    LDAP library call serialization lock. This is only meaningful when `--ldap.serialized` has been
+    set to `true`. 
+  - `--ldap.retries`: number of tries to attempt a connection. Setting this to values greater than
+    one will make ArangoDB retry to contact the LDAP server in case no connection can be made
+    initially.
+
+Please note that some of the following options are platform-specific and may not work
+with all LDAP servers reliably:
+
+  - `--ldap.restart`: whether or not the LDAP library should implicitly restart connections
+  - `--ldap.referrals`: whether or not the LDAP library should implicitly chase referrals
+
+The following options can be used to adjust the LDAP configuration on Linux and MacOS 
+platforms only, but will not work on Windows:
+
+  - `--ldap.debug`: turn on internal OpenLDAP library output (warning: will print to stdout).
+  - `--ldap.timeout`: timeout value (in seconds) for synchronous LDAP API calls (a value of 0 
+    means default timeout).
+  - `--ldap.network-timeout`: timeout value (in seconds) after which network operations 
+    following the initial connection return in case of no activity (a value of 0 means default timeout).
+  - `--ldap.async-connect`: whether or not the connection to the LDAP library will be done 
+    asynchronously.
+
 
 Authentication methods
 ----------------------
