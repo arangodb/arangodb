@@ -120,8 +120,8 @@ bool addView(
   }
 
   // linked collections
-  auto visitor = [collections](TRI_voc_cid_t cid) {
-    collections->add(
+  auto visitor = [&query](TRI_voc_cid_t cid) {
+    query.addCollection(
       arangodb::basics::StringUtils::itoa(cid),
       arangodb::AccessMode::Type::READ
     );

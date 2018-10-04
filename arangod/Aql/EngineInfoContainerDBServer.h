@@ -37,6 +37,7 @@ namespace arangodb {
 
 class ClusterComm;
 class Result;
+class CollectionNameResolver;
 
 namespace aql {
 
@@ -223,7 +224,7 @@ class EngineInfoContainerDBServer {
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(GraphNode* node);
+  void addGraphNode(GraphNode* node, CollectionNameResolver const& resolver);
 
  private:
  /**

@@ -726,18 +726,17 @@ namespace aql {
 // TODO cleanup this f-ing aql::Collection(s) mess
 Collection* addCollectionToQuery(Query* query, std::string const& cname,
                                  bool assert) {
-  aql::Collections* colls = query->collections();
-  aql::Collection* coll = colls->get(cname);
 
-  if (coll == nullptr && !cname.empty()) {  // TODO: cleanup this mess
-    coll = colls->add(cname, AccessMode::Type::READ);
+  aql::Collection* coll = nullptr;
+
+  if (!cname.empty()) {
+    coll = query->addCollection(cname, AccessMode::Type::READ);
 
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
       auto cptr = query->trx()->vocbase().lookupCollection(cname);
 
       coll->setCollection(cptr.get());
-      // FIXME: does this need to happen in the coordinator?
       query->trx()->addCollectionAtRuntime(cname);
     }
   }
