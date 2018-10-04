@@ -401,6 +401,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)}); // only native function without a C++ implementation
 
   // special flags:
+  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version}); // deterministic, not cacheable. only on coordinator
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail}); // not deterministic and not cacheable
   add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Passthru}); // prevents all optimizations!
   add({"SLEEP", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Sleep}); // not deterministic and not cacheable

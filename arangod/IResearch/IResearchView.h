@@ -132,7 +132,7 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final
+class IResearchView
   : public arangodb::LogicalViewStorageEngine,
     public arangodb::FlushTransaction {
  public:
@@ -296,6 +296,12 @@ class IResearchView final
   /// @return 'visitor' success
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the number of documents indexed by the view
+  //////////////////////////////////////////////////////////////////////////////
+  size_t count();
+
 
  protected:
 

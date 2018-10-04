@@ -128,7 +128,7 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0].toVelocyPack(result, Index::SERIALIZE_BASICS);
+  idxHandles[0].toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -151,9 +151,12 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!idxHandles.empty());
   std::shared_ptr<Index> idx = idxHandles[0].getIndex();
   if (idx->hasSelectivityEstimate()) {
-    double expected = 1 / idx->selectivityEstimate();
-    nrItems += static_cast<size_t>(expected);
-    return expected;
+    double s = idx->selectivityEstimate();
+    if (s > 0.0) {
+      double expected = 1 / s;
+      nrItems += static_cast<size_t>(expected);
+      return expected;
+    } 
   }
   // Some hard-coded value
   nrItems += 1000;
@@ -170,16 +173,16 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _query(query),
-      _trx(query->trx()),
+    : _query(query),
+      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _trx(_query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _cache(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _query(other._query),
+    : _query(other._query),
+      _ctx(new aql::FixedVarExpressionContext(_query)),
       _trx(other._trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -190,9 +193,9 @@ BaseOptions::BaseOptions(BaseOptions const& other)
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
                          VPackSlice collections)
-    : _ctx(new aql::FixedVarExpressionContext()),
-      _query(query),
-      _trx(query->trx()),
+    : _query(query),
+      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _trx(_query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _cache(nullptr) {
@@ -335,7 +338,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, Index::SERIALIZE_BASICS);
+      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       builder.close();
     }
   }

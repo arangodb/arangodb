@@ -51,6 +51,11 @@ public:
   /// @brief construct with description
   Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const&);
 
+  Action(Action const&) = delete;
+  Action(Action &&) = delete;
+  Action() = delete;
+  Action& operator=(Action const&) = delete;
+
   /**
    * @brief construct with concrete action base
    * @param feature  Maintenance feature
@@ -105,6 +110,9 @@ public:
 
   /// @brief finalize statistics
   void endStats();
+
+  /// @brief check if action matches worker options
+  bool matches(std::unordered_set<std::string> const& labels) const;
 
   /// @brief return progress statistic
   uint64_t getProgress() const { return _action->getProgress(); }

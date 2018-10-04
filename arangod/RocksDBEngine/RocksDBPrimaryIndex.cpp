@@ -178,7 +178,8 @@ void RocksDBPrimaryIndex::load() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
+                                       std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   // hard-coded
@@ -289,11 +290,6 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
 
-
-
-  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
-  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
-
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
 
@@ -306,6 +302,9 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
+  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
   return IndexResult(status.errorNumber(), this);
@@ -353,6 +352,7 @@ Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
 
 /// @brief checks whether the index supports the condition
 bool RocksDBPrimaryIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {

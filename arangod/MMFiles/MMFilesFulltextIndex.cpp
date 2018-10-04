@@ -109,7 +109,8 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "destroying fulltext index";
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+        << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
@@ -119,7 +120,8 @@ size_t MMFilesFulltextIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
   builder.add(
@@ -184,13 +186,13 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;
@@ -246,7 +248,7 @@ void MMFilesFulltextIndex::unload() {
 }
 
 IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, 
+    transaction::Methods* trx, ManagedDocumentResult*,
     aql::AstNode const* condNode, aql::Variable const* var,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);

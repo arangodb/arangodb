@@ -30,6 +30,7 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -56,7 +57,7 @@ void DBServerAgencySync::work() {
   _heartbeat->dispatchedJobResult(result);
 }
 
-Result getLocalCollections(VPackBuilder& collections) {
+Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
   using namespace arangodb::basics;
   Result result;
@@ -71,7 +72,6 @@ Result getLocalCollections(VPackBuilder& collections) {
     return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
   }
 
-  collections.clear();
   VPackObjectBuilder c(&collections);
   for (auto const& database : Databases::list()) {
 
@@ -84,11 +84,14 @@ Result getLocalCollections(VPackBuilder& collections) {
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
-        collections.add(VPackValue(collection->name()));
-        VPackObjectBuilder col(&collections);
-        collection->toVelocyPack(collections,true,false);
-        collections.add(
-          "theLeader", VPackValue(collection->followers()->getLeader()));
+        if (!collection->system()) {
+          std::string const colname = collection->name();
+          collections.add(VPackValue(colname));
+          VPackObjectBuilder col(&collections);
+          collection->toVelocyPack(collections,true,false);
+          collections.add(
+            "theLeader", VPackValue(collection->followers()->getLeader()));
+        }
       }
     } catch (std::exception const& e) {
       return Result(
@@ -157,6 +160,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne done";
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
@@ -180,24 +184,22 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   if (rb.isClosed()) {
-    // FIXMEMAINTENANCE: when would rb not be closed? and if "catch"
-    // just happened, would you want to be doing this anyway?
 
     auto report = rb.slice();
     if (report.isObject()) {
 
-      std::vector<std::string> agency = {"phaseTwo", "agency"};
-      if (report.hasKey(agency) && report.get(agency).isObject()) {
-
-        auto phaseTwo = report.get(agency);
+      std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
+      if (report.hasKey(path) && report.get(path).isObject()) {
+        
+        auto agency = report.get(path);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync reporting to Current: " << phaseTwo.toJson();
+          << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
         // Report to current
-        if (!phaseTwo.isEmptyObject()) {
-
+        if (!agency.isEmptyObject()) {
+          
           std::vector<AgencyOperation> operations;
-          for (auto const& ao : VPackObjectIterator(phaseTwo)) {
+          for (auto const& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
             if (op == "set") {
@@ -221,10 +223,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             clusterInfo->invalidateCurrent();
           }
         }
-      }
 
-      // FIXMEMAINTENANCE: If comm.sendTransactionWithFailover()
-      // fails, the result is ok() based upon phaseTwo()'s execution?
+      }
+            
       result = DBServerAgencySyncResult(
         tmp.ok(),
         report.hasKey("Plan") ?
@@ -234,7 +235,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     }
   }
-  
+
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "

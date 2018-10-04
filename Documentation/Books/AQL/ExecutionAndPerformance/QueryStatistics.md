@@ -43,8 +43,8 @@ The meaning of the statistics attributes is as follows:
   the required index range from a collection, and the `filtered` value only indicates how much
   filtering was done by `FilterNode`s.
 * *fullCount*: the total number of documents that matched the search condition if the query's
-  final `LIMIT` statement were not present.
-  This attribute will only be returned if the `fullCount` option was set when starting the 
+  final top-level `LIMIT` statement were not present.
+  This attribute may only be returned if the `fullCount` option was set when starting the 
   query and will only contain a sensible value if the query contained a `LIMIT` operation on
   the top level.
 * *nodes*: _(optional)_ when the query was executed with the option `profile` set to at least *2*,

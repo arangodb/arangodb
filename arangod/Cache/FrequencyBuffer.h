@@ -42,57 +42,61 @@ namespace cache {
 /// @brief Lockless structure to calculate approximate relative event
 /// frequencies.
 ///
-/// Used to record events and then compute the number of occurrences of each
-/// within a certain time-frame. The underlying structure is a circular buffer
-/// which over-writes itself after it fills up (thus only maintaining a recent
-/// window on the records).
+/// Used to record events and then compute the approximate number of
+/// occurrences of each within a certain time-frame. Will write to randomized
+/// memory location inside the frequency buffer
 ////////////////////////////////////////////////////////////////////////////////
 template <class T, class Comparator = std::equal_to<T>,
           class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
+  
+  static_assert(sizeof(std::atomic<T>) == sizeof(T), "");
 
  private:
   size_t _capacity;
   size_t _mask;
-  std::unique_ptr<std::vector<T>> _buffer;
+  std::vector<std::atomic<T>> _buffer;
   Comparator _cmp;
   T _empty;
-
+  
+private:
+  
+  static size_t powerOf2(size_t capacity) {
+    // TODO maybe use https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+    size_t i = 0;
+    for (; (static_cast<size_t>(1) << i) < capacity; i++) {
+    }
+    return (static_cast<size_t>(1) << i);
+  }
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
   explicit FrequencyBuffer(size_t capacity)
-      : _capacity(0),
-        _mask(0),
-        _buffer(nullptr),
+      : _capacity(powerOf2(capacity)),
+        _mask(_capacity - 1),
+        _buffer(_capacity),
         _cmp(),
         _empty() {
-    size_t i = 0;
-    for (; (static_cast<size_t>(1) << i) < capacity; i++) {
-    }
-    _capacity = (static_cast<size_t>(1) << i);
-    _mask = _capacity - 1;
-    _buffer.reset(new std::vector<T>(_capacity));
-    TRI_ASSERT(_buffer->capacity() == _capacity);
-    TRI_ASSERT(_buffer->size() == _capacity);
+    TRI_ASSERT(_buffer.capacity() == _capacity);
+    TRI_ASSERT(_buffer.size() == _capacity);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
   static size_t allocationSize(size_t capacity) {
-    return sizeof(std::vector<T>) + (capacity * sizeof(T));
+    return capacity * sizeof(T);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
   size_t memoryUsage() const {
-    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) +
-            sizeof(std::vector<T>));
+    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -100,16 +104,19 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
     // we do not care about the order in which threads insert their values
-    (*_buffer)[basics::SharedPRNG::rand() & _mask] = record;
+    _buffer[basics::SharedPRNG::rand() & _mask].store(
+        record, std::memory_order_relaxed);
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.
   //////////////////////////////////////////////////////////////////////////////
   void purgeRecord(T record) {
     for (size_t i = 0; i < _capacity; i++) {
-      if (_cmp((*_buffer)[i], record)) {
-        (*_buffer)[i] = _empty;
+      auto tmp = _buffer[i].load(std::memory_order_relaxed);
+      if (_cmp(tmp, record)) {
+        _buffer[i].compare_exchange_strong(tmp, _empty,
+                                           std::memory_order_relaxed);
       }
     }
   }
@@ -122,7 +129,7 @@ class FrequencyBuffer {
     // calculate frequencies
     std::unordered_map<T, uint64_t, Hasher, Comparator> frequencies;
     for (size_t i = 0; i < _capacity; i++) {
-      T const entry = (*_buffer)[i];
+      T const entry = _buffer[i].load(std::memory_order_relaxed);
       if (!_cmp(entry, _empty)) {
         frequencies[entry]++;
       }
@@ -147,7 +154,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   void clear() {
     for (size_t i = 0; i < _capacity; i++) {
-      (*_buffer)[i] = T();
+      _buffer[i].store(T(), std::memory_order_relaxed);
     }
   }
 };

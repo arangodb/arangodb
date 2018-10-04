@@ -6,16 +6,16 @@ setup. The different nodes in a _cluster_ can be upgraded one at a time without
 incurring downtime of the _cluster_ and very short downtimes of the single nodes.
 
 The manual upgrade procedure described in this _Section_ can be used to upgrade
- to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
-
+to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
+Please refer to the [Upgrade Paths](../GeneralInfo/README.md#upgrade-paths) section
+for detailed information.
 
 Preparations
 ------------
 
 The ArangoDB installation packages (e.g. for Debian or Ubuntu) set up a
 convenient standalone instance of `arangod`. During installation, this instance's
-database will be upgraded (see [`--database.auto-upgrade` in General
-Options](../../Administration/Configuration/GeneralArangod.md#database-upgrade))
+database will be upgraded (see [`--database.auto-upgrade`](../../Programs/Arangod/Database.md#auto-upgrade))
 and the service will be (re)started.
 
 You have to make sure that your _cluster_ deployment is independent of this
@@ -54,7 +54,6 @@ $ dpkg -i arangodb3-3.3.9-1_amd64.deb
 
 after you have downloaded the corresponding file from https://download.arangodb.com/.
 
-
 #### Stop the Standalone Instance
 
 As the package will automatically start the standalone instance, you might want to
@@ -75,7 +74,8 @@ and Ubuntu systems using a SystemV-compatible _init_, you can use:
 $ update-rc.d -f arangodb3 remove
 ```
 
-### Set supervision in maintenance mode
+Set supervision in maintenance mode
+-----------------------------------
 
 **Important**: Maintenance mode is supported from versions 3.3.8/3.2.14.
 
@@ -84,7 +84,7 @@ following API calls will activate and de-activate the Maintenance mode of the Su
 
 You might use _curl_ to send the API call.
 
-#### Activate Maintenance mode:
+### Activate Maintenance mode
 
 `curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"on"'`
 
@@ -97,8 +97,7 @@ It will be reactivated automatically in 60 minutes unless this call is repeated 
 ```
 **Note:** In case the manual upgrade takes longer than 60 minutes, the API call has to be resend.
 
-
-#### Deactivate Maintenance mode:
+### Deactivate Maintenance mode
 
 The _cluster_ supervision reactivates 60 minutes after disabling it.
 It can be manually reactivated by the following API call:
@@ -112,7 +111,8 @@ curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"off"'
 {"error":false,"warning":"Cluster supervision reactivated."}
 ```
 
-### Upgrade the _cluster_ processes
+Upgrade the _cluster_ processes
+-------------------------------
 
 Now all the _cluster_ (_Agents_, _DBServers_ and _Coordinators_) processes (_arangod_) have to be
 upgraded on each node.
@@ -153,20 +153,19 @@ max      29938 16224  2 13:56 pts/3    00:02:13 arangod --server.authentication=
 
 ```
 
-
-#### Upgrade a _cluster_ node
+### Upgrade a _cluster_ node
 
 The following procedure is upgrading _Agent_, _DBServer_ and _Coordinator_ on one node.
 
 **Note:** The starting commands of _Agent_, _DBServer_ and _Coordinator_ have to be reused.
 
-##### Stop the _Agent_
+#### Stop the _Agent_
 
 ```
 kill -15 <pid-of-agent>
 ```
 
-##### Upgrade the _Agent_
+#### Upgrade the _Agent_
 
 The _arangod_ process of the _Agent_ has to be upgraded using the same command that has
 been used before with the additional option:
@@ -177,18 +176,18 @@ been used before with the additional option:
 
 The _Agent_ will stop automatically after the upgrade.
 
-##### Restart the _Agent_
+#### Restart the _Agent_
 
 The _arangod_ process of the _Agent_ has to be restarted using the same command that has
 been used before (without the additional option).
 
-##### Stop the _DBServer_
+#### Stop the _DBServer_
 
 ```
 kill -15 <pid-of-dbserver>
 ```
 
-##### Upgrade the _DBServer_
+#### Upgrade the _DBServer_
 
 The _arangod_ process of the _DBServer_ has to be upgraded using the same command that has
 been used before with the additional option:
@@ -199,18 +198,18 @@ been used before with the additional option:
 
 The _DBServer_ will stop automatically after the upgrade.
 
-##### Restart the _DBServer_
+#### Restart the _DBServer_
 
 The _arangod_ process of the _DBServer_ has to be restarted using the same command that has
 been used before (without the additional option).
 
-##### Stop the _Coordinator_
+#### Stop the _Coordinator_
 
 ```
 kill -15 <pid-of-coordinator>
 ```
 
-##### Upgrade the _Coordinator_
+#### Upgrade the _Coordinator_
 
 The _arangod_ process of the _Coordinator_ has to be upgraded using the same command that has
 been used before with the additional option:
@@ -221,7 +220,7 @@ been used before with the additional option:
 
 The _Coordinator_ will stop automatically after the upgrade.
 
-##### Restart the _Coordinator_
+#### Restart the _Coordinator_
 
 The _arangod_ process of the _Coordinator_ has to be restarted using the same command that has
 been used before (without the additional option).

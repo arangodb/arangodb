@@ -88,7 +88,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
   auto col = _collection->getCollection();
   builder.add(VPackValue("indexes"));
-  col->getIndexesVPack(builder, Index::SERIALIZE_BASICS, [](arangodb::Index const* idx) {
+  col->getIndexesVPack(builder, Index::makeFlags(Index::Serialize::Basics), [](arangodb::Index const* idx) {
       return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     });
 }

@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <fstream>
 #include <iostream>
+#include <unicode/locid.h>
 
 #include "3rdParty/valgrind/valgrind.h"
 #include "unicode/normalizer2.h"
@@ -312,7 +313,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder =
-      ApplicationServer::server->options({"server.password"});
+      ApplicationServer::server->options({"server.password", "ldap.bindpasswd"});
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -1279,10 +1280,18 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+#ifdef _WIN32
+  std::wstring wline;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wline);
+
+  TRI_V8_RETURN_STD_WSTRING(wline);
+#else
   std::string line;
   getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
+#endif
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2695,10 +2704,16 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
-
-  TRI_Utf8ValueNFC name(args[0]);
-
-  if (*name == nullptr) {
+#if _WIN32 // the wintendo needs utf16 filenames
+  v8::String::Value str(args[0]);
+  std::wstring name {
+    reinterpret_cast<wchar_t *>(*str),
+      static_cast<size_t>(str.length())};
+#else
+  TRI_Utf8ValueNFC str(args[0]);
+  std::string name(*str, str.length());
+#endif
+  if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
@@ -2722,7 +2737,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     errno = 0;
     // disable exceptions in the stream object:
     file.exceptions(std::ifstream::goodbit);
-    file.open(*name, std::ios::out | std::ios::binary);
+    file.open(name, std::ios::out | std::ios::binary);
 
     if (file.is_open() && file.good()) {
       file.write(data, size);
@@ -2752,7 +2767,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     errno = 0;
     // disable exceptions in the stream object:
     file.exceptions(std::ifstream::goodbit);
-    file.open(*name, std::ios::out | std::ios::binary);
+    file.open(name, std::ios::out | std::ios::binary);
 
     if (file.is_open() && file.good()) {
       file << *content;
@@ -4873,10 +4888,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
                                TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
-
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "VALGRIND"),
-      v8::Boolean::New(isolate, (RUNNING_ON_VALGRIND > 0)));
 
 #ifdef COVERAGE
   TRI_AddGlobalVariableVocbase(

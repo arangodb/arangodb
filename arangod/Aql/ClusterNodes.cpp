@@ -369,7 +369,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  if (elements().empty()) {
+  if (_elements.empty()) {
     return std::make_unique<UnsortingGatherBlock>(engine, *this);
   }
 

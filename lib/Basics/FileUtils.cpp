@@ -30,6 +30,7 @@
 #ifdef TRI_HAVE_DIRECT_H
 #include <direct.h>
 #endif
+#include <unicode/unistr.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/OpenFilesTracker.h"
@@ -38,15 +39,6 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
-#if defined(_WIN32) && defined(_MSC_VER)
-
-#define TRI_DIR_FN(item) item.name
-
-#else
-
-#define TRI_DIR_FN(item) item->d_name
-
-#endif
 
 namespace arangodb {
 namespace basics {
@@ -244,21 +236,6 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool rename(std::string const& oldName, std::string const& newName,
-            int* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = 0;
-  }
-
-  int result = std::rename(oldName.c_str(), newName.c_str());
-
-  if (errorNumber != nullptr) {
-    *errorNumber = errno;
-  }
-
-  return (result != 0) ? false : true;
-}
-
 bool createDirectory(std::string const& name, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
@@ -299,17 +276,22 @@ bool copyRecursive(std::string const& source, std::string const& target,
 
 bool copyDirectoryRecursive(std::string const& source,
                             std::string const& target, std::string& error) {
+  char* fn = nullptr;
   bool rc = true;
 
   auto isSubDirectory = [](std::string const& name) -> bool {
     return isDirectory(name);
   };
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  struct _finddata_t oneItem;
+  struct _wfinddata_t oneItem;
   intptr_t handle;
 
+  std::string rcs;
   std::string filter = source + "\\*";
-  handle = _findfirst(filter.c_str(), &oneItem);
+  
+  UnicodeString f(filter.c_str());
+
+  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + "not found";
@@ -317,6 +299,11 @@ bool copyDirectoryRecursive(std::string const& source,
   }
 
   do {
+    rcs.clear();
+    UnicodeString d((wchar_t*) oneItem.name,
+                    static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*) rcs.c_str();
 #else
   DIR* filedir = opendir(source.c_str());
 
@@ -334,16 +321,17 @@ bool copyDirectoryRecursive(std::string const& source,
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
   while ((oneItem = (readdir(filedir))) != nullptr) {
+    fn = oneItem->d_name;
 #endif
+
     // Now iterate over the items.
     // check its not the pointer to the upper directory:
-    if (!strcmp(TRI_DIR_FN(oneItem), ".") ||
-        !strcmp(TRI_DIR_FN(oneItem), "..")) {
+    if (!strcmp(fn, ".") ||
+        !strcmp(fn, "..")) {
       continue;
     }
-
-    std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
-    std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
+    std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
+    std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
     // Handle subdirectories:
     if (isSubDirectory(src)) {
@@ -370,7 +358,7 @@ bool copyDirectoryRecursive(std::string const& source,
       }
     }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  } while (_findnext(handle, &oneItem) != -1);
+  } while (_wfindnext(handle, &oneItem) != -1);
 
   _findclose(handle);
 
@@ -386,12 +374,15 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::vector<std::string> result;
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
+  char* fn = nullptr;
 
-  struct _finddata_t fd;
+  struct _wfinddata_t oneItem;
   intptr_t handle;
+  std::string rcs;
 
   std::string filter = directory + "\\*";
-  handle = _findfirst(filter.c_str(), &fd);
+  UnicodeString f(filter.c_str());
+  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -402,10 +393,19 @@ std::vector<std::string> listFiles(std::string const& directory) {
   }
 
   do {
-    if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
-      result.push_back(fd.name);
+    rcs.clear();
+    UnicodeString d((wchar_t*) oneItem.name,
+                    static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*) rcs.c_str();
+
+    if (!strcmp(fn, ".") ||
+        !strcmp(fn, "..")) {
+      continue;
     }
-  } while (_findnext(handle, &fd) != -1);
+
+    result.push_back(rcs);
+  } while (_wfindnext(handle, &oneItem) != -1);
 
   _findclose(handle);
 
@@ -578,7 +578,8 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  FILE* fp = _popen(program.c_str(), "r");
+  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif

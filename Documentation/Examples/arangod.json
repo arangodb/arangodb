@@ -212,7 +212,15 @@
   },
   "cluster.my-address" : {
     "default" : "",
-    "description" : "this server's endpoint",
+    "description" : "this server's endpoint (cluster internal)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "string"
+  },
+  "cluster.my-advertised-endpoint" : {
+    "default" : "",
+    "description" : "this server's advertised endpoint (e.g. external IP address or load balancer, optional)",
     "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "cluster",
@@ -500,6 +508,14 @@
     "section" : "",
     "type" : "boolean"
   },
+  "fortune" : {
+    "default" : false,
+    "description" : "show fortune cookie on startup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
   "foxx.queues" : {
     "default" : true,
     "description" : "enable Foxx queues",
@@ -605,6 +621,14 @@
     "hidden" : false,
     "section" : "javascript",
     "type" : "string"
+  },
+  "javascript.copy-installation" : {
+    "default" : false,
+    "description" : "copy contents of 'javascript.startup-directory' on first start",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "boolean"
   },
   "javascript.enabled" : {
     "default" : true,
@@ -715,6 +739,14 @@
     "section" : "javascript",
     "type" : "string..."
   },
+  "ldap.async-connect" : {
+    "default" : false,
+    "description" : "Whether or not the connection to the LDAP library will be done asynchronously",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
   "ldap.basedn" : {
     "default" : "",
     "description" : "ldap basedn, eg. dc=example,dc=com",
@@ -747,6 +779,14 @@
     "section" : "ldap",
     "type" : "boolean"
   },
+  "ldap.network-timeout" : {
+    "default" : 0,
+    "description" : "Timeout value (in seconds) after which network operations following the initial connection return in case of no activity (a value of 0 means default timeout)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "double"
+  },
   "ldap.port" : {
     "default" : 389,
     "description" : "port to use",
@@ -763,6 +803,14 @@
     "section" : "ldap",
     "type" : "string"
   },
+  "ldap.referrals" : {
+    "default" : false,
+    "description" : "Whether or not the LDAP library should implicitly chase referrals",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
   "ldap.refresh-rate" : {
     "default" : 300,
     "description" : "Refresh user settings after this time (in seconds)",
@@ -770,6 +818,22 @@
     "hidden" : false,
     "section" : "ldap",
     "type" : "double"
+  },
+  "ldap.restart" : {
+    "default" : false,
+    "description" : "Whether or not the LDAP library should implicitly restart connections",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.retries" : {
+    "default" : 1,
+    "description" : "Number of tries to attempt a connection",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "uint32"
   },
   "ldap.roles-attribute-name" : {
     "default" : "",
@@ -859,6 +923,14 @@
     "hidden" : false,
     "section" : "ldap",
     "type" : "string"
+  },
+  "ldap.timeout" : {
+    "default" : 0,
+    "description" : "Timeout value (in seconds) for synchronous LDAP API calls (a value of 0 means default timeout)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "double"
   },
   "ldap.tls" : {
     "default" : false,
@@ -1083,6 +1155,30 @@
     "section" : "query",
     "type" : "uint64"
   },
+  "query.cache-entries-max-size" : {
+    "default" : 268435456,
+    "description" : "maximum cumulated size of results in query result cache per database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-entry-max-size" : {
+    "default" : 16777216,
+    "description" : "maximum size of an invidiual result entry in query result cache",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-include-system-collections" : {
+    "default" : false,
+    "description" : "whether or not to include system collection queries in the query result cache",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
   "query.cache-mode" : {
     "default" : "off",
     "description" : "mode for the AQL query result cache (on, off, demand)",
@@ -1107,9 +1203,17 @@
     "section" : "query",
     "type" : "uint64"
   },
+  "query.optimizer-max-plans" : {
+    "default" : 128,
+    "description" : "maximum number of query plans to create for a query",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
   "query.registry-ttl" : {
     "default" : 600,
-    "description" : "Default time-to-live of query snippets (in seconds)",
+    "description" : "default time-to-live of query snippets (in seconds)",
     "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "query",
@@ -1460,6 +1564,14 @@
     "section" : "rocksdb",
     "type" : "boolean"
   },
+  "rocksdb.use-file-logging" : {
+    "default" : false,
+    "description" : "use a file-base logger for RocksDB's own logs",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
   "rocksdb.use-fsync" : {
     "default" : false,
     "description" : "issue an fsync when writing to disk (set to true for issuing fdatasync only)",
@@ -1605,6 +1717,30 @@
     "hidden" : false,
     "section" : "server",
     "type" : "boolean"
+  },
+  "server.maintenance-actions-block" : {
+    "default" : 2,
+    "description" : "minimum number of seconds finished Actions block duplicates",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "int32"
+  },
+  "server.maintenance-actions-linger" : {
+    "default" : 3600,
+    "description" : "minimum number of seconds finished Actions remain in deque",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "int32"
+  },
+  "server.maintenance-threads" : {
+    "default" : 3,
+    "description" : "maximum number of threads available for maintenance actions",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint32"
   },
   "server.maximal-queue-size" : {
     "default" : 4096,

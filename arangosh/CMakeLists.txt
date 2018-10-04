@@ -353,6 +353,8 @@ install(
   TARGETS ${BIN_ARANGOVPACK}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+install_config(arangovpack)
+
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
 else ()

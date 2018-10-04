@@ -33,23 +33,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 
-// FIXMAINTENANCE: These strings appear again in ActionDescription.h,
-// we should remove this duplication.
-const char ActionBase::KEY[]="key";
-const char ActionBase::FIELDS[]="fields";
-const char ActionBase::TYPE[]="type";
-const char ActionBase::INDEXES[]="indexes";
-const char ActionBase::INDEX[]="index";
-const char ActionBase::SHARDS[]="shards";
-const char ActionBase::DATABASE[]="database";
-const char ActionBase::COLLECTION[]="collection";
-const char ActionBase::EDGE[]="edge";
-const char ActionBase::NAME[]="name";
-const char ActionBase::ID[]="id";
-const char ActionBase::LEADER[]="theLeader";
-const char ActionBase::LOCAL_LEADER[]="localLeader";
-const char ActionBase::GLOB_UID[]="globallyUniqueId";
-const char ActionBase::OBJECT_ID[]="objectId";
+
+std::string const ActionBase::FAST_TRACK = "fastTrack";
 
 inline static std::chrono::system_clock::duration secs_since_epoch() {
   return std::chrono::system_clock::now().time_since_epoch();
@@ -95,6 +80,22 @@ void ActionBase::notify() {
   if (cf != nullptr) {
     cf->syncDBServerStatusQuo();
   }
+}
+
+
+bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
+  for (auto const& label : labels) {
+    if (_labels.find(label) == _labels.end()) {
+      LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+        << "Must not run in worker with " << label << ": " << *this;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool ActionBase::fastTrack() const {
+  return _labels.find(FAST_TRACK) != _labels.end();
 }
 
 
@@ -223,6 +224,14 @@ VPackBuilder ActionBase::toVelocyPack() const {
   return builder;
 }
 
+
+ActionState ActionBase::getState() const {
+  return _state;
+}
+
+void ActionBase::setState(ActionState state) {
+  _state = state;
+}
 
 
 /**

@@ -22,6 +22,14 @@
 
 #include "InitDatabaseFeature.h"
 
+#ifdef _WIN32
+#include <tchar.h>
+#include <unicode/locid.h>
+#include <string.h>
+#include <locale.h>
+#include <iomanip>
+#endif
+
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -86,13 +94,7 @@ void InitDatabaseFeature::validateOptions(
 
 void InitDatabaseFeature::prepare() {
   if (!_seenPassword) {
-    std::string env = "ARANGODB_DEFAULT_ROOT_PASSWORD";
-    char const* password = getenv(env.c_str());
-
-    if (password != nullptr) {
-      env += "=";
-      putenv(const_cast<char*>(env.c_str()));
-      _password = password;
+    if (TRI_GETENV("ARANGODB_DEFAULT_ROOT_PASSWORD", _password)){
       _seenPassword = true;
     }
   }
@@ -134,7 +136,15 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
-
+#ifdef _WIN32
+  TRI_SetStdinVisibility(false);
+  TRI_DEFER(TRI_SetStdinVisibility(true));
+  std::wstring wpassword;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wpassword);
+  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  pw.toUTF8String<std::string>(password);
+#else
 #ifdef TRI_HAVE_TERMIOS_H
   TRI_SetStdinVisibility(false);
   std::getline(std::cin, password);
@@ -143,7 +153,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 #else
   std::getline(std::cin, password);
 #endif
-
+#endif
   std::cout << std::endl;
 
   return password;

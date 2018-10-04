@@ -40,12 +40,12 @@ RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* r
 : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestPregelHandler::execute() {
-  try {    
+  try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
     parseVelocyPackBody(parseSuccess);
     VPackSlice body(parsedBody->start());// never nullptr
-    
+
     if (!parseSuccess || !body.isObject()) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Bad request body\n";
       // error message generated in parseVelocyPackBody
@@ -57,7 +57,7 @@ RestStatus RestPregelHandler::execute() {
       return RestStatus::DONE;
 
     }
-    
+
     VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
     if (suffix.size() != 2) {
@@ -88,10 +88,12 @@ RestStatus RestPregelHandler::execute() {
                     TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
     }
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exception in pregel REST handler: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::PREGEL)
+        << "Exception in pregel REST handler: " << ex.what();
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exception in pregel REST handler: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::PREGEL)
+        << "Exception in pregel REST handler: " << ex.what();
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
@@ -99,6 +101,6 @@ RestStatus RestPregelHandler::execute() {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_INTERNAL, "error in pregel handler");
   }
-    
+
   return RestStatus::DONE;
 }

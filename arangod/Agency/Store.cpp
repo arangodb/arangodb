@@ -148,32 +148,50 @@ Store::~Store() {}
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<bool> Store::applyTransactions(query_t const& query) {
-  std::vector<bool> success;
-
+std::vector<apply_ret_t> Store::applyTransactions(
+  query_t const& query, Agent::WriteMode const& wmode) {
+  std::vector<apply_ret_t> success;
+  
   if (query->slice().isArray()) {
     try {
       for (auto const& i : VPackArrayIterator(query->slice())) {
+        if (!wmode.privileged()) {
+          bool found = false;
+          for (auto const& o : VPackObjectIterator(i[0])) {
+            size_t pos = o.key.copyString().find(RECONFIGURE);
+            if (pos != std::string::npos && (pos == 0 || pos == 1)) {
+              found = true;
+              break;
+            }
+          }
+          if (found) {
+            
+            LOG_TOPIC(ERR, Logger::AGENCY) << "forbidden";
+            success.push_back(FORBIDDEN);
+            continue;
+          }
+        }
+        
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
-          case 1:  // No precondition
-            success.push_back(applies(i[0]));
-            break;
-          case 2: // precondition + uuid
-          case 3:
-            if (check(i[1]).successful()) {
-              success.push_back(applies(i[0]));
-            } else {  // precondition failed
-              LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
-              success.push_back(false);
-            }
-            break;
-          default:  // Wrong
-            LOG_TOPIC(ERR, Logger::AGENCY)
-              << "We can only handle log entry with or without precondition! "
-              << " however, We received " << i.toJson();
-            success.push_back(false);
-            break;
+        case 1:  // No precondition
+          success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
+          break;
+        case 2: // precondition + uuid
+        case 3:
+          if (check(i[1]).successful()) {
+            success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
+          } else {  // precondition failed
+            LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+            success.push_back(PRECONDITION_FAILED);
+          }
+          break;
+        default:  // Wrong
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "We can only handle log entry with or without precondition! "
+            << " however, We received " << i.toJson();
+          success.push_back(UNKNOWN_ERROR);
+          break;
         }
       }
 
@@ -184,9 +202,9 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
       }
 
     } catch (std::exception const& e) {  // Catch any errors
-      LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
-                                     << e.what();
-      success.push_back(false);
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << __FILE__ << ":" << __LINE__ << " " << e.what();
+      success.push_back(UNKNOWN_ERROR);
     }
 
   } else {
@@ -347,11 +365,12 @@ std::vector<bool> Store::applyLogEntries(
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        std::unordered_map<std::string, std::string> headerFields;
+        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+        std::unordered_map<std::string, std::string> hf;
 
         arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, endpoint, rest::RequestType::POST, path,
-          std::make_shared<std::string>(body.toString()), headerFields,
+          coordinatorTransactionID, endpoint, rest::RequestType::POST, path,
+          std::make_shared<std::string>(body.toString()), hf,
           std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
 
       } else {

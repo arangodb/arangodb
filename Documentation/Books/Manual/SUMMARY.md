@@ -15,16 +15,40 @@
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   * [Next Steps](GettingStarted/NextSteps.md)
 * [Tutorials](Tutorials/README.md)
-#   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter](Tutorials/Starter/README.md)
-#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
-#   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/ -->
   * [Kubernetes](Tutorials/Kubernetes/README.md)
-  * [Datacenter to datacenter Replication on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
+    * [GKE](Tutorials/Kubernetes/GKE.md)
+  * [DC2DC on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB Server](Programs/Arangod/README.md)
     * [Options](Programs/Arangod/Options.md)
+      * [Global](Programs/Arangod/Global.md)
+      * [Agency](Programs/Arangod/Agency.md)
+      * [ArangoSearch](Programs/Arangod/Arangosearch.md)
+      * [Audit](Programs/Arangod/Audit.md)
+      * [Cache](Programs/Arangod/Cache.md)
+      * [Cluster](Programs/Arangod/Cluster.md)
+      * [Compaction](Programs/Arangod/Compaction.md)
+      * [Database](Programs/Arangod/Database.md)
+      * [Foxx](Programs/Arangod/Foxx.md)
+      * [Frontend](Programs/Arangod/Frontend.md)
+      * [HTTP](Programs/Arangod/Http.md)
+      * [JavaScript](Programs/Arangod/Javascript.md)
+      * [LDAP](Programs/Arangod/Ldap.md)
+      * [Log](Programs/Arangod/Log.md)
+      * [Nonce](Programs/Arangod/Nonce.md)
+      * [Query](Programs/Arangod/Query.md)
+      * [Replication](Programs/Arangod/Replication.md)
+      * [RocksDB](Programs/Arangod/Rocksdb.md)
+      * [Server](Programs/Arangod/Server.md)
+      * [SSL](Programs/Arangod/Ssl.md)
+      * [Temp](Programs/Arangod/Temp.md)
+      * [VST](Programs/Arangod/Vst.md)
+      * [WAL](Programs/Arangod/Wal.md)
   * [Web Interface](Programs/WebInterface/README.md)
     * [Dashboard](Programs/WebInterface/Dashboard.md)
     * [Cluster](Programs/WebInterface/Cluster.md)
@@ -39,7 +63,7 @@
     * [Examples](Programs/Arangosh/Examples.md)
     * [Details](Programs/Arangosh/Details.md)
     * [Options](Programs/Arangosh/Options.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
     * [Security](Programs/Starter/Security.md)
@@ -67,7 +91,7 @@
     * [Options](Programs/Arangoinspect/Options.md)
   * [Datafile Debugger](Programs/Arango-dfdb/README.md)
     * [Examples](Programs/Arango-dfdb/Examples.md)
-#   https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/ -->
   * [Foxx CLI](Programs/FoxxCLI/README.md)
     * [Details](Programs/FoxxCLI/Details.md)
 
@@ -91,7 +115,7 @@
     * [View Methods](DataModeling/Views/ViewMethods.md)
   * [Naming Conventions](DataModeling/NamingConventions/README.md)
     * [Database Names](DataModeling/NamingConventions/DatabaseNames.md)
-    * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
+    * [Collection and View Names](DataModeling/NamingConventions/CollectionAndViewNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
 * [Indexing](Indexing/README.md)
@@ -143,7 +167,7 @@
       * [Architecture](Architecture/DeploymentModes/Cluster/Architecture.md)
       * [Data models](Architecture/DeploymentModes/Cluster/DataModels.md)
       * [Limitations](Architecture/DeploymentModes/Cluster/Limitations.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+    <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
     * [Datacenter to datacenter replication](Architecture/DeploymentModes/DC2DC/README.md)
       * [Introduction](Architecture/DeploymentModes/DC2DC/Introduction.md)
       * [Applicability](Architecture/DeploymentModes/DC2DC/Applicability.md)
@@ -214,6 +238,7 @@
 
 * [Installation](Installation/README.md)
   * [Linux](Installation/Linux.md)
+    * [Operating System Configuration](Installation/LinuxOSConfiguration.md)
   * [Mac OS X](Installation/MacOSX.md)
   * [Windows](Installation/Windows.md)
   * [Compiling](Installation/Compiling.md)
@@ -233,7 +258,7 @@
       * [Manual Start](Deployment/Cluster/ManualStart.md)
       * [Kubernetes](Deployment/Cluster/Kubernetes.md)	
       * [Mesos, DC/OS](Deployment/Cluster/Mesos.md)	
-    # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+    <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
     * [Multiple Datacenters](Deployment/DC2DC/README.md)
       * [Cluster](Deployment/DC2DC/Cluster.md) 
       * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
@@ -245,11 +270,13 @@
     * [Manually](Deployment/Manually/README.md)
     * [ArangoDB Starter](Deployment/ArangoDBStarter/README.md)
     * [Docker](Deployment/Docker/README.md)
-    # https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
+    <!-- SYNC: https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/ -->
     * [Kubernetes](Deployment/Kubernetes/README.md)
       * [Using the Operator](Deployment/Kubernetes/Usage.md)
+      * [Dashboards](Deployment/Kubernetes/Dashboards.md)
       * [Deployment Resource Reference](Deployment/Kubernetes/DeploymentResource.md)
       * [Driver Configuration](Deployment/Kubernetes/DriverConfiguration.md)
+      * [Helm](Deployment/Kubernetes/Helm.md)
       * [Authentication](Deployment/Kubernetes/Authentication.md)
       * [Scaling](Deployment/Kubernetes/Scaling.md)
       * [Upgrading](Deployment/Kubernetes/Upgrading.md)
@@ -267,6 +294,7 @@
   * [In the Cloud](Deployment/Cloud/README.md)
     * [AWS](Deployment/Cloud/AWS.md)
     * [Azure](Deployment/Cloud/Azure.md)
+* [Backup & Restore](BackupRestore/README.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
@@ -274,6 +302,7 @@
     * [Upgrading on MacOS](Upgrading/OSSpecificInfo/MacOS.md)
   * [Upgrading _Starter_ Deployments](Upgrading/Starter/README.md)  
   * [Upgrading Manual Deployments](Upgrading/Manually/README.md)
+    * [Upgrading an Active Failover deployment](Upgrading/Manually/ActiveFailover.md)	
     * [Upgrading a Cluster](Upgrading/Manually/Cluster.md)	
   * [Version Specific Upgrade Information](Upgrading/VersionSpecific/README.md)
     * [Upgrading to 3.4](Upgrading/VersionSpecific/Upgrading34.md)
@@ -290,24 +319,11 @@
 * [Downgrading](Downgrading/README.md)
 * [Scaling](Scaling/README.md)
 * [Administration](Administration/README.md)
-  * [Backup & Restore](Administration/BackupRestore.md)
+  * [Configuration](Administration/Configuration.md)
   * [Import & Export](Administration/ImportExport.md)
   * [User Management](Administration/ManagingUsers/README.md)
     * [In Arangosh](Administration/ManagingUsers/InArangosh.md)
-  * [Server Configuration](Administration/Configuration/README.md)
-    * [Operating System Configuration](Administration/Configuration/OperatingSystem.md)
-    * [Managing Endpoints](Administration/Configuration/Endpoint.md)
-    * [SSL Configuration](Administration/Configuration/SSL.md)
-    * [LDAP Options](Administration/Configuration/Ldap.md)
-    * [Logging Options](Administration/Configuration/Logging.md)
-    * [General Options](Administration/Configuration/GeneralArangod.md)
-    * [Write-Ahead Log Options](Administration/Configuration/Wal.md)
-    * [Compaction Options](Administration/Configuration/Compaction.md)
-    * [Cluster Options](Administration/Configuration/Cluster.md)
-    * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
-    * [Hash Cache Options](Administration/Configuration/Cache.md)
-    * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
-    * [Durability](Administration/Configuration/Durability.md)
+#    * [Durability](Administration/Configuration/Durability.md)
   * [Master/Slave](Administration/MasterSlave/README.md)
     * [Setting up](Administration/MasterSlave/SettingUp.md)
       * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
@@ -316,9 +332,9 @@
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)
   * [Cluster](Administration/Cluster/README.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
-# https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter Administration](Administration/Starter/README.md)
     * [ArangoDB Starter Removal Procedure](Administration/Starter/Removal.md)
     * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
@@ -328,24 +344,26 @@
   * [Auditing](Security/Auditing/README.md)
     * [Configuration](Security/Auditing/AuditConfiguration.md)
     * [Events](Security/Auditing/AuditEvents.md)
-# https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [Securing Starter Deployments](Security/Starter/README.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Cluster](Troubleshooting/Cluster/README.md)
     * [Agency Dump](Troubleshooting/Cluster/AgencyDump.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
 
 ---
 
 * [Release Notes](ReleaseNotes/README.md)
+  * [Version 3.5](ReleaseNotes/35.md)
+    * [What's New in 3.5](ReleaseNotes/NewFeatures35.md)
   * [Version 3.4](ReleaseNotes/34.md)
     * [What's New in 3.4](ReleaseNotes/NewFeatures34.md)
     * [Known Issues in 3.4](ReleaseNotes/KnownIssues34.md)

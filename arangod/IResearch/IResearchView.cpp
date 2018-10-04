@@ -24,6 +24,7 @@
 #include <array>
 
 #include "formats/formats.hpp"
+#include "search/all_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "utils/directory_utils.hpp"
@@ -151,7 +152,7 @@ void CompoundReader::add(irs::directory_reader const& reader) {
 
     if (!pkColumn) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "encountered a sub-reader without a primary key column while creating a reader for IResearch view, ignoring";
+        << "encountered a sub-reader without a primary key column while creating a reader for arangosearch view, ignoring";
 
       continue;
     }
@@ -233,7 +234,7 @@ size_t directoryMemory(irs::directory const& directory, TRI_voc_cid_t viewId) no
     });
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught error while calculating size of IResearch view '" << viewId << "': " << e.code() << " " << e.what();
+      << "caught error while calculating size of arangosearch view '" << viewId << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -454,32 +455,32 @@ bool syncStore(
   // skip if interval not reached or no valid policy to execute
   if (policy.policy() && policy.segmentThreshold() < segmentCount.load()) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "registering consolidation policy '" << policy.type() << "for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
+      << "registering consolidation policy '" << policy.type() << "for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
     try {
       writer.consolidate(policy.policy(), false);
       forceCommit = true; // a consolidation policy was found requiring commit
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
+        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with IResearch view '" << view.name() << "': " << e.what();
+        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with IResearch view '" << view.name() << "'";
+        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "'";
       IR_LOG_EXCEPTION();
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished registering consolidation policy '" << policy.type() << "' for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
+      << "finished registering consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
   }
 
   if (!forceCommit) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "skipping store sync since no consolidation policies matched and sync not forced for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
+      << "skipping store sync since no consolidation policies matched and sync not forced for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
     return false; // commit not done
   }
@@ -489,7 +490,7 @@ bool syncStore(
   // ...........................................................................
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting '" << storeName << "' store sync for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
+    << "starting '" << storeName << "' store sync for arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
 
   try {
     segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
@@ -509,20 +510,20 @@ bool syncStore(
     segmentCount += reader.size(); // add commited segments
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
+      << "caught exception during sync of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.what();
+      << "caught exception during sync of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << view.name() << "'";
+      << "caught exception during sync of '" << storeName << "' store of arangosearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished '" << storeName << "' store sync for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
+    << "finished '" << storeName << "' store sync for arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
 
   if (!runCleanupAfterCommit) {
     return true; // commit done
@@ -533,26 +534,26 @@ bool syncStore(
   // ...........................................................................
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting '" << storeName << "' store cleanup for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
+    << "starting '" << storeName << "' store cleanup for arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
   try {
     irs::directory_utils::remove_all_unreferenced(directory);
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
+      << "caught exception during cleanup of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.what();
+      << "caught exception during cleanup of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of '" << storeName << "' of IResearch view '" << view.name() << "'";
+      << "caught exception during cleanup of '" << storeName << "' of arangosearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished '" << storeName << "' store cleanup for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
+    << "finished '" << storeName << "' store cleanup for arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
   return true;
 }
@@ -746,13 +747,13 @@ IResearchView::IResearchView(
           viewPtr->_storePersisted.sync();
         } catch (arangodb::basics::Exception& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for IResearch view '" << viewPtr->id()
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id()
             << "': " << e.code() << " " << e.what();
           IR_LOG_EXCEPTION();
 
           return arangodb::Result(
             e.code(),
-            std::string("error committing persisted store for IResearch view '") + viewPtr->name() + "'"
+            std::string("error committing persisted store for arangosearch view '") + viewPtr->name() + "'"
           );
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -762,7 +763,7 @@ IResearchView::IResearchView(
 
           return arangodb::Result(
             TRI_ERROR_INTERNAL,
-            std::string("error committing persisted store for IResearch view '") + viewPtr->name() + "'"
+            std::string("error committing persisted store for arangosearch view '") + viewPtr->name() + "'"
           );
         } catch (...) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -771,7 +772,7 @@ IResearchView::IResearchView(
 
           return arangodb::Result(
             TRI_ERROR_INTERNAL,
-            std::string("error committing persisted store for IResearch view '") + viewPtr->name() + "'"
+            std::string("error committing persisted store for arangosearch view '") + viewPtr->name() + "'"
           );
         }
 
@@ -948,17 +949,17 @@ IResearchView::IResearchView(
 
       if (state->waitForSync() && !viewPtr->sync()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to sync while committing transaction for IResearch view '" << viewPtr->name()
+          << "failed to sync while committing transaction for arangosearch view '" << viewPtr->name()
           << "', tid '" << state->id() << "'";
       }
     } catch (arangodb::basics::Exception& e) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "caught exception while committing transaction for IResearch view '" << viewPtr->name()
+        << "caught exception while committing transaction for arangosearch view '" << viewPtr->name()
         << "', tid '" << state->id() << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "caught exception while committing transaction for IResearch view '" << viewPtr->name()
+        << "caught exception while committing transaction for arangosearch view '" << viewPtr->name()
         << "', tid '" << state->id() << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
@@ -990,7 +991,7 @@ IResearchView::~IResearchView() {
       } catch (...) {
         // must not propagate exception out of destructor
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while closing persisted store for IResearch view '" << name() << "'";
+          << "caught exception while closing persisted store for arangosearch view '" << name() << "'";
         IR_LOG_EXCEPTION();
       }
     }
@@ -1075,7 +1076,7 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     if (!state) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to get transaction state while generating json for IResearch view '") + name() + "'"
+        std::string("failed to get transaction state while generating json for arangosearch view '") + name() + "'"
       );
     }
 
@@ -1099,7 +1100,7 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
           if (!ptr->json(linkBuilder)) {
             LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
               << "failed to generate json for IResearch link '" << ptr->id()
-              << "' while generating json for IResearch view '" << id() << "'";
+              << "' while generating json for arangosearch view '" << id() << "'";
             continue; // skip invalid link definitions
           }
 
@@ -1115,21 +1116,21 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
 
     return arangodb::Result(
       e.code(),
-      std::string("caught exception while generating json for IResearch view '") + name() + "': " + e.what()
+      std::string("caught exception while generating json for arangosearch view '") + name() + "': " + e.what()
     );
   } catch (std::exception const& e) {
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception while generating json for IResearch view '") + name() + "': " + e.what()
+      std::string("caught exception while generating json for arangosearch view '") + name() + "': " + e.what()
     );
   } catch (...) {
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception while generating json for IResearch view '") + name() + "'"
+      std::string("caught exception while generating json for arangosearch view '") + name() + "'"
     );
   }
 
@@ -1205,21 +1206,21 @@ arangodb::Result IResearchView::drop(
 
     return arangodb::Result(
       e.code(),
-      std::string("caught exception while removing from IResearch view '") + name() + "', collection '" + std::to_string(cid) + "': " + e.what()
+      std::string("caught exception while removing from arangosearch view '") + name() + "', collection '" + std::to_string(cid) + "': " + e.what()
     );
   } catch (std::exception const& e) {
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception while removing from IResearch view '") + name() + "', collection '" + std::to_string(cid) + "': " + e.what()
+      std::string("caught exception while removing from arangosearch view '") + name() + "', collection '" + std::to_string(cid) + "': " + e.what()
     );
   } catch (...) {
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception while removing from IResearch view '") + name() + "', collection '" + std::to_string(cid) + "'"
+      std::string("caught exception while removing from arangosearch view '") + name() + "', collection '" + std::to_string(cid) + "'"
     );
   }
 
@@ -1256,7 +1257,7 @@ arangodb::Result IResearchView::dropImpl() {
   if (!res.ok()) {
     return arangodb::Result(
       res.errorNumber(),
-      std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+      std::string("failed to remove links while removing arangosearch view '") + name() + "': " + res.errorMessage()
     );
   }
 
@@ -1322,36 +1323,36 @@ arangodb::Result IResearchView::dropImpl() {
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing IResearch view '" << name() << "': " << e.code() << " " << e.what();
+      << "caught exception while removing arangosearch view '" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
-      std::string("caught exception while removing IResearch view '") + name() + "': " + e.what()
+      std::string("caught exception while removing arangosearch view '") + name() + "': " + e.what()
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing IResearch view '" << name() << "': " << e.what();
+      << "caught exception while removing arangosearch view '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception while removing IResearch view '") + name() + "': " + e.what()
+      std::string("caught exception while removing arangosearch view '") + name() + "': " + e.what()
     );
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing IResearch view '" << name() << "'";
+      << "caught exception while removing arangosearch view '" << name() << "'";
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception while removing IResearch view '") + name() + "'"
+      std::string("caught exception while removing arangosearch view '") + name() + "'"
     );
   }
 
   return arangodb::Result(
     TRI_ERROR_INTERNAL,
-    std::string("failed to remove IResearch view '") + name() + "'"
+    std::string("failed to remove arangosearch view '") + name() + "'"
   );
 }
 
@@ -1409,6 +1410,9 @@ arangodb::Result IResearchView::commit() {
     return {}; // nothing more to do
   }
 
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "beginning flush commit for " << name();
+
   auto& memoryStore = _toFlush->_store;
 
   try {
@@ -1421,6 +1425,8 @@ arangodb::Result IResearchView::commit() {
 
     // merge memory store into persisted
     if (!_storePersisted._writer->import(reader)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "error while flushing " << name();
       return {TRI_ERROR_INTERNAL};
     }
 
@@ -1448,6 +1454,8 @@ arangodb::Result IResearchView::commit() {
     memoryStore._reader = memoryStore._reader.reopen(); // update reader
     memoryStore._segmentCount += memoryStore._reader.size(); // add commited segments
 
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+        << "done with flush commit for " << name();
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception& e) {
@@ -1498,7 +1506,7 @@ int IResearchView::insert(
       if (!ViewStateHelper::write(state, *this, std::move(ptr))
           || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to store state into a TransactionState for insert into IResearch view '" << name() << "'"
+          << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
           << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "'";
 
         return TRI_ERROR_INTERNAL;
@@ -1522,6 +1530,10 @@ int IResearchView::insert(
 
   try {
     if (store->_writer->insert(insert)) {
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+          << "inserted '" << documentId.id() << "' with body '"
+          << doc.toJson(trx.transactionContext()->getVPackOptions())
+          << "'" << "into view '" << id() << "'";
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1581,7 +1593,7 @@ int IResearchView::insert(
       if (!ViewStateHelper::write(state, *this, std::move(ptr))
           || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to store state into a TransactionState for insert into IResearch view '" << name() << "'"
+          << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
           << "', tid '" << state.id() << "', collection '" << cid << "'";
 
         return TRI_ERROR_INTERNAL;
@@ -1659,6 +1671,7 @@ int IResearchView::insert(
   auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::DatabasePathFeature
   >("DatabasePath");
+
 
   if (!feature) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1795,7 +1808,7 @@ void IResearchView::open() {
   }
 
   LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-    << "failed to open IResearch view '" << name() << "' at: " << _storePersisted._path.utf8();
+    << "failed to open arangosearch view '" << name() << "' at: " << _storePersisted._path.utf8();
 
   throw std::runtime_error(
     std::string("failed to open iResearch view '") + name() + "' at: " + _storePersisted._path.utf8()
@@ -1839,7 +1852,7 @@ int IResearchView::remove(
     if (!ViewStateHelper::write(state, *this, std::move(ptr))
         || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to store state into a TransactionState for insert into IResearch view '" << name() << "'"
+        << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
         << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "'";
 
       return TRI_ERROR_INTERNAL;
@@ -1904,7 +1917,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
       // ingore existing cookie, recreate snapshot
       if (!const_cast<IResearchView*>(this)->sync()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
+          << "failed to sync while creating snapshot for arangosearch view '" << name() << "', previous snapshot will be used instead";
       }
       break;
   }
@@ -1924,6 +1937,9 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   TRI_ASSERT(reader);
 
   if (!_asyncSelf->get()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "current view no longer valid while creating arangosearch view "
+        << "snapshot";
     return nullptr; // the current view is no longer valid (checked after ReadLock aquisition)
   }
 
@@ -1940,21 +1956,21 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while collecting readers for snapshot of IResearch view '" << name()
+      << "caught exception while collecting readers for snapshot of arangosearch view '" << name()
       << "', tid '" << state->id() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while collecting readers for snapshot of IResearch view '" << name()
+      << "caught exception while collecting readers for snapshot of arangosearch view '" << name()
       << "', tid '" << state->id() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while collecting readers for snapshot of IResearch view '" << name()
+      << "caught exception while collecting readers for snapshot of arangosearch view '" << name()
       << "', tid '" << state->id() << "'";
     IR_LOG_EXCEPTION();
 
@@ -1963,7 +1979,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
   if (cookiePtr && !ViewStateHelper::read(*state, *this, std::move(cookiePtr))) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to store state into a TransactionState for snapshot of IResearch view '" << name()
+        << "failed to store state into a TransactionState for snapshot of arangosearch view '" << name()
         << "', tid '" << state->id() << "'";
 
     return nullptr;
@@ -2254,7 +2270,7 @@ void IResearchView::verifyKnownCollections() {
 
     if (!appendKnownCollections(cids, *snapshot(trx, Snapshot::FindOrCreate))) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to collect collection IDs for IResearch view '" << id() << "'";
+        << "failed to collect collection IDs for arangosearch view '" << id() << "'";
 
       return;
     }
@@ -2267,7 +2283,7 @@ void IResearchView::verifyKnownCollections() {
       // collection no longer exists, drop it and move on
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
         << "collection '" << cid
-        << "' no longer exists! removing from IResearch view '"
+        << "' no longer exists! removing from arangosearch view '"
         << id() << "'";
       drop(cid);
     } else {
@@ -2276,12 +2292,27 @@ void IResearchView::verifyKnownCollections() {
       if (!link) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "collection '" << cid
-          << "' no longer linked! removing from IResearch view '"
+          << "' no longer linked! removing from arangosearch view '"
           << id() << "'";
         drop(cid);
       }
     }
   }
+}
+
+size_t IResearchView::count() {
+  struct DummyTransaction : transaction::Methods {
+    explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
+      : transaction::Methods(ctx) {
+    }
+  };
+
+  transaction::StandaloneContext context(vocbase());
+  std::shared_ptr<transaction::Context> dummy;  // intentionally empty
+  DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
+  auto reader = snapshot(trx, IResearchView::Snapshot::FindOrCreate);
+  TRI_ASSERT(reader != nullptr);
+  return reader->docs_count();
 }
 
 NS_END // iresearch

@@ -129,7 +129,7 @@ Result TransactionalCache::insert(CachedValue* value) {
 
   bucket->unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());  // let function do the hard work
+    requestMigrate(source->idealSize());  // let function do the hard work
   }
 
   return status;
@@ -163,7 +163,7 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
 
   bucket->unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());
+    requestMigrate(source->idealSize());
   }
 
   return status;
@@ -198,7 +198,7 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
 
   bucket->unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());
+    requestMigrate(source->idealSize());
   }
 
   return status;
@@ -230,7 +230,7 @@ TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
 }
 
 TransactionalCache::~TransactionalCache() {
-  if (!_shutdown) {
+  if (!isShutdown()) {
     try {
       shutdown();
     } catch (...) {
@@ -262,11 +262,14 @@ uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
 
   bucket->unlock();
 
-  uint32_t size = _table->idealSize();
-  if (maybeMigrate) {
-    requestMigrate(size);
+  cache::Table* table = _table.load(std::memory_order_relaxed);
+  if (table) {
+    int32_t size = table->idealSize();
+    if (maybeMigrate) {
+      requestMigrate(size);
+    }
   }
-
+  
   return reclaimed;
 }
 
@@ -383,10 +386,10 @@ TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
   TransactionalBucket* bucket = nullptr;
   Table* source = nullptr;
 
-  Table* table = _table;
+  Table* table = _table.load(std::memory_order_relaxed);
   if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
-    return std::make_tuple(status, bucket, source);
+    return std::make_tuple(std::move(status), bucket, source);
   }
 
   if (singleOperation) {
@@ -404,7 +407,7 @@ TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
-  return std::make_tuple(status, bucket, source);
+  return std::make_tuple(std::move(status), bucket, source);
 }
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {

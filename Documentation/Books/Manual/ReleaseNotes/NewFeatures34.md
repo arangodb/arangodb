@@ -20,6 +20,8 @@ view in ArangoDB.
 New geo index implementation
 ----------------------------
 
+### S2 based geo index
+
 The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
 functionality. The new geo index allows indexing points, but also indexing of more
 complex geographical objects. The new implementation is much faster than the previous one for
@@ -31,6 +33,11 @@ geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
+
+### AQL Editor GeoJSON Support
+
+As a feature on top, the web ui embedded AQL editor now supports also displaying all
+GeoJSON supported data. 
 
 
 RocksDB storage engine
@@ -380,6 +387,16 @@ coordinator's startup.
 Previous versions of ArangoDB did not detect the usage of different storage
 engines in a cluster, but the runtime behavior of the cluster was undefined.
 
+### Advertised endpoints
+
+It is now possible to configure the endpoints advertised by the
+coordinators to clients to be different from the endpoints which are
+used for cluster internal communication. This is important for client
+drivers which refresh the list of endpoints during the lifetime of the
+cluster (which they should do!). In this way one can make the cluster
+advertise a load balancer or a separate set of IP addresses for external
+access. The new option is called `--cluster.my-advertised-endpoint`.
+
 ### Startup safety checks
 
 The new option `--cluster.require-persisted-id` can be used to prevent the startup
@@ -488,6 +505,7 @@ The following AQL functions have been added in ArangoDB 3.4:
 * `REGEX_SPLIT`: splits a string using a regular expression
 * `UUID`: generates a universally unique identifier value
 * `TOKENS`: splits a string into tokens using a language-specific text analyzer
+* `VERSION`: returns the server version as a string
  
 The following AQL functions have been added to make working with geographical 
 data easier:
@@ -632,7 +650,6 @@ Note that the default maximum value can be adjusted globally by setting the star
 option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
 `maxNumberOfPlans` option.
 
-
 ### Single document optimizations
 
 In a cluster, the cost of setting up a distributed query can be considerable for
@@ -759,6 +776,22 @@ This is a change to previous versions of ArangoDB, in which the `fullCount`
 value was produced by the sequential last `LIMIT` statement in a query,
 regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
+The `fullCount` result value will now also be returned for queries that are served
+from the query results cache.
+
+### Relaxed restrictions for LIMIT values
+
+The `offset` and `count` values used in an AQL LIMIT clause can now be expressions, as
+long as the expressions can be resolved at query compile time.
+For example, the following query will now work:
+
+    FOR doc IN collection
+      LIMIT 0, CEIL(@percent * @count / 100) 
+      RETURN doc
+
+Previous versions of ArangoDB required the `offset` and `count` values to be
+either number literals or numeric bind parameter values.
+
 ### Improved sparse index support
 
 The AQL query optimizer can now use sparse indexes in more cases than it was able to
@@ -786,6 +819,53 @@ the optimizer in 3.4 will now be able to use a sparse index on `value`:
 
 The optimizer in 3.3 was not able to detect this, and refused to use sparse indexes
 for such queries.
+
+### Query results cache
+
+The AQL query results cache in ArangoDB 3.4 has got additional parameters to 
+control which queries should be stored in the cache.
+
+In addition to the already existing configuration option `--query.cache-entries`
+that controls the maximum number of query results cached in each database's
+query results cache, there now exist the following extra options:
+
+- `--query.cache-entries-max-size`: maximum cumulated size of the results stored
+  in each database's query results cache
+- `--query.cache-entry-max-size`: maximum size for an individual cache result
+- `--query.cache-include-system-collections`: whether or not results of queries
+  that involve system collections should be stored in the query results cache
+
+These options allow more effective control of the amount of memory used by the
+query results cache, and can be used to better utilitize the cache memory.
+
+The cache configuration can be changed at runtime using the `properties` function
+of the cache. For example, to limit the per-database number of cache entries to
+256 MB and to limit the per-database cumulated size of query results to 64 MB, 
+and the maximum size of each individual cache entry to 1MB, the following call
+could be used:
+
+```
+require("@arangodb/aql/cache").properties({
+  maxResults: 256,
+  maxResultsSize: 64 * 1024 * 1024,
+  maxEntrySize: 1024 * 1024,
+  includeSystem: false
+});
+```
+
+The contents of the query results cache can now also be inspected at runtime using 
+the cache's new `toArray` function:
+
+```
+require("@arangodb/aql/cache").toArray();
+```
+
+This will show all query results currently stored in the query results cache of
+the current database, along with their query strings, sizes, number of results
+and original query run times.
+
+The functionality is also available via HTTP REST APIs.
+
 
 ### Miscellaneous changes
 
@@ -834,7 +914,7 @@ undesired. Creating a streaming cursor for such queries will solve both problems
 Please note that streaming cursors will use resources all the time till you
 fetch the last chunk of results.
 
-Depending on the storage engine you use this has different consequences:
+Depending on the storage engine used this has different consequences:
 
 - **MMFiles**: While before collection locks would only be held during the creation of the cursor
   (the first request) and thus until the result set was well prepared,
@@ -843,27 +923,28 @@ Depending on the storage engine you use this has different consequences:
 
   While Multiple reads are possible, one write operation will effectively stop
   all other actions from happening on the collections in question.
-- **Rocksdb**: Reading occurs on the state of the data when the query
+- **RocksDB**: Reading occurs on the state of the data when the query
   was started. Writing however will happen during working with the cursor.
   Thus be prepared for possible conflicts if you have other writes on the collections,
   and probably overrule them by `ignoreErrors: True`, else the query
   will abort by the time the conflict happenes.
 
 Taking into account the above consequences, you shouldn't use streaming
-cursors light minded for data modification queries.
+cursors light-minded for data modification queries.
 
 Please note that the query options `cache`, `count` and `fullCount` will not work with streaming
 cursors. Additionally, the query statistics, warnings and profiling data will only be available
-when the last result batch for the query is sent.
+when the last result batch for the query is sent. Using a streaming cursor will also prevent
+the query results being stored in the AQL query results cache.
 
 By default, query cursors created via the cursor API are non-streaming in ArangoDB 3.4,
 but streaming can be enabled on a per-query basis by setting the `stream` attribute
 in the request to the cursor API at endpoint `/_api/cursor`.
 
-However, streaming cursors are enabled for the following parts of ArangoDB in 3.4:
+However, streaming cursors are enabled automatically for the following parts of ArangoDB in 3.4:
 
 * when exporting data from collections using the arangoexport binary
-* when using `db.<collection>.toArray()` from the Arango shell.
+* when using `db.<collection>.toArray()` from the Arango shell
 
 Native implementations
 ----------------------

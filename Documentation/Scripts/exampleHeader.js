@@ -221,7 +221,8 @@ var runTestFuncCatch = function (execFunction, testName, expectError) {
 };
 
 var checkForOrphanTestCollections = function(msg) {
-  var cols = db._collections().map(function(c){
+  const colsAndViews = db._collections().concat(db._views());
+  var cols = colsAndViews.map(function(c){
       return c.name();
   });
   var orphanColls = [];
@@ -253,6 +254,10 @@ var addIgnoreCollection = function(collectionName) {
   ignoreCollectionAlreadyThere.push(collectionName);
 };
 
+var addIgnoreView = function(viewName) {
+  addIgnoreCollection(viewName);
+};
+
 var removeIgnoreCollection = function(collectionName) {
   // print("from now on checking again whether this collection dropped: " + collectionName);
   for (j = 0; j < collectionAlreadyThere.length; j++) {
@@ -268,6 +273,10 @@ var removeIgnoreCollection = function(collectionName) {
 
 };
 
+var removeIgnoreView = function (viewName) {
+  removeIgnoreCollection(viewName);
+};
+
 var checkIgnoreCollectionAlreadyThere = function () {
   if (ignoreCollectionAlreadyThere.length > 0) {
     allErrors += "some temporarily ignored collections haven't been cleaned up: " +
@@ -278,6 +287,6 @@ var checkIgnoreCollectionAlreadyThere = function () {
 
 // Set the first available list of already there collections:
 var err = allErrors;
-checkForOrphanTestCollections('Collections already there which we will ignore from now on:');
+checkForOrphanTestCollections('Collections or views already there which we will ignore from now on:');
 print(allErrors + '\n');
 allErrors = err;

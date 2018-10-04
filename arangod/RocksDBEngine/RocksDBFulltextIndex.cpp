@@ -85,7 +85,8 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
+                  std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
@@ -153,14 +154,14 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;

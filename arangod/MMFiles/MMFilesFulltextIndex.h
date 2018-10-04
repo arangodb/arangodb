@@ -62,7 +62,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 

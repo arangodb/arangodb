@@ -1,43 +1,56 @@
 R"=(
 {
   "Health": {
-    "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89": {
+    "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c": {
+      "AdvertisedEndpoint": "",
+      "Timestamp": "2018-10-01T09:38:59Z",
+      "SyncStatus": "SERVING",
       "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
       "Status": "GOOD",
-      "Endpoint": "tcp://[::1]:8629",
-      "Timestamp": "2018-08-15T16:07:46Z",
-      "ShortName": "DBServer0001",
-      "SyncStatus": "SERVING"
-    },
-    "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291": {
-      "Endpoint": "tcp://[::1]:8630",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
-      "Status": "GOOD",
-      "Timestamp": "2018-08-16T08:16:44Z",
-      "ShortName": "DBServer0002",
-      "SyncStatus": "SERVING"
-    },
-    "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83": {
-      "Endpoint": "tcp://[::1]:8631",
-      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
-      "Status": "GOOD",
-      "Timestamp": "2018-08-16T08:16:44Z",
       "ShortName": "DBServer0003",
-      "SyncStatus": "SERVING"
+      "Endpoint": "tcp://[::1]:11198"
     },
-    "CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8": {
-      "Endpoint": "tcp://[::1]:8530",
+    "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c": {
+      "AdvertisedEndpoint": "",
+      "Timestamp": "2018-10-01T09:38:59Z",
+      "SyncStatus": "SERVING",
       "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
       "Status": "GOOD",
-      "Timestamp": "2018-08-16T08:16:44Z",
+      "ShortName": "DBServer0002",
+      "Endpoint": "tcp://[::1]:11197"
+    },
+    "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5": {
+      "AdvertisedEndpoint": "",
+      "Timestamp": "2018-10-01T09:38:59Z",
+      "SyncStatus": "SERVING",
+      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
+      "Status": "GOOD",
+      "ShortName": "DBServer0001",
+      "Endpoint": "tcp://[::1]:11196"
+    },
+    "CRDN-57234819-26be-4b6e-a91e-521527fbe208": {
+      "AdvertisedEndpoint": "",
+      "SyncStatus": "SERVING",
+      "Timestamp": "2018-10-01T09:39:00Z",
+      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
+      "ShortName": "Coordinator0002",
+      "Status": "GOOD",
+      "Endpoint": "tcp://[::1]:11098"
+    },
+    "CRDN-4416fe9e-904c-4306-ad26-95c2b92c5020": {
+      "AdvertisedEndpoint": "",
+      "SyncStatus": "SERVING",
+      "Timestamp": "2018-10-01T09:39:01Z",
+      "Host": "ac8ddefc7d1f4364ba655b4debcd076f",
       "ShortName": "Coordinator0001",
-      "SyncStatus": "SERVING"
+      "Status": "GOOD",
+      "Endpoint": "tcp://[::1]:11097"
     }
   },
   "DBServers": {},
   "State": {
     "Mode": "Normal",
-    "Timestamp": "2018-08-15T16:07:46Z"
+    "Timestamp": "2018-10-01T09:38:59Z"
   },
   "Shards": {}
 }

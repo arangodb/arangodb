@@ -34,178 +34,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceFeature.h"
 
-//
-// structure used to store expected states of action properties
-//
-struct Expected {
-  int _id;
-  int _result;
-  int _state;
-  int _progress;
-};
-
-typedef std::vector<Expected> ExpectedVec_t;
-
-//
-// TestProgressHandler lets us know once ApplicationServer is ready
-//
-class TestProgressHandler : public arangodb::application_features::ProgressHandler {
-public:
-  TestProgressHandler() {
-    _serverReady=false;
-
-    using std::placeholders::_1;
-    _state = std::bind(& TestProgressHandler::StateChange, this, _1);
-
-    using std::placeholders::_2;
-    _feature = std::bind(& TestProgressHandler::FeatureChange, this, _1, _2);
-  }
-
-
-  void StateChange(arangodb::application_features::ServerState newState) {
-    if (arangodb::application_features::ServerState::IN_WAIT == newState) {
-      CONDITION_LOCKER(clock, _serverReadyCond);
-      _serverReady = true;
-      _serverReadyCond.broadcast();
-    }
-  }
-
-  void FeatureChange(arangodb::application_features::ServerState newState, std::string const &) {
-  }
-
-  arangodb::basics::ConditionVariable _serverReadyCond;
-  std::atomic_bool _serverReady;
-
-};// class TestProgressHandler
-
-
-using namespace arangodb::maintenance;
-
-//
-// TestFeature wraps MaintenanceFeature to all test specific action objects
-//  by overriding the actionFactory() virtual function.  Two versions:
-//  1. default constructor for non-threaded actions
-//  2. constructor with ApplicationServer pointer for threaded actions
-//
-class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
-public:
-  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
-    : arangodb::MaintenanceFeature(as) {
-
-    // force activation of the feature, even in agency/single-server mode
-    // (the catch tests use single-server mode)
-    _forceActivation = true;
-
-    // begin with no threads to allow queue validation
-    _maintenanceThreadsMax = 0;
-    as.addReporter(_progressHandler);
-  }
-
-  virtual ~TestMaintenanceFeature() {}
-
-  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
-
-  void setSecondsActionsBlock(uint32_t seconds) { _secondsActionsBlock = seconds; }
-
-  /// @brief set thread count, then activate the threads via start().  One time usage only.
-  ///   Code waits until background ApplicationServer known to have fully started.
-  void setMaintenanceThreadsMax(uint32_t threads) {
-    CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
-    while(!_progressHandler._serverReady) {
-      _progressHandler._serverReadyCond.wait();
-    } // while
-
-    _maintenanceThreadsMax = threads;
-    start();
-  } // setMaintenanceThreadsMax
-
-
-  virtual arangodb::Result addAction(
-    std::shared_ptr<arangodb::maintenance::Action> action, bool executeNow = false) override {
-    _recentAction = action;
-    return MaintenanceFeature::addAction(action, executeNow);
-  }
-
-  virtual arangodb::Result addAction(
-    std::shared_ptr<arangodb::maintenance::ActionDescription> const & description,
-    bool executeNow = false) override {
-    return MaintenanceFeature::addAction(description, executeNow);
-  }
-
-
-  bool verifyRegistryState(ExpectedVec_t & expected) {
-    bool good(true);
-
-    VPackBuilder registryBuilder(toVelocyPack());
-    VPackArrayIterator registry(registryBuilder.slice());
-
-    auto action = registry.begin();
-    auto check = expected.begin();
-
-    for ( ; registry.end() != action && expected.end()!=check; ++action, ++check) {
-      VPackSlice id = (*action).get("id");
-      if (!(id.isInteger() && id.getInt() == check->_id)) {
-        std::cerr << "Id mismatch: action has " << id.getInt()
-                  << " expected " << check->_id << std::endl;
-        good = false;
-      } // if
-
-      VPackSlice result = (*action).get("result");
-      if (!(result.isInteger() && check->_result == result.getInt())) {
-        std::cerr << "Result mismatch: action has " << result.getInt()
-                  << " expected " << check->_result << std::endl;
-        good = false;
-      } // if
-
-      VPackSlice state = (*action).get("state");
-      if (!(state.isInteger() && check->_state == state.getInt())) {
-        std::cerr << "State mismatch: action has " << state.getInt()
-                  << " expected " << check->_state << std::endl;
-        good = false;
-      } // if
-
-      VPackSlice progress = (*action).get("progress");
-      if (!(progress.isInteger() && check->_progress == progress.getInt())) {
-        std::cerr << "Progress mismatch: action has " << progress.getInt()
-                  << " expected " << check->_progress << std::endl;
-        good = false;
-      } // if
-    } // for
-
-    return good;
-
-  } // verifyRegistryState
-
-
-  /// @brief poll registry until all actions finish
-  void waitRegistryComplete() {
-    bool again;
-
-    do {
-      again = false;
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-
-      VPackBuilder registryBuilder(toVelocyPack());
-      VPackArrayIterator registry(registryBuilder.slice());
-      for (auto action : registry) {
-        VPackSlice state = action.get("state");
-        again = again || (COMPLETE != state.getInt() && FAILED != state.getInt());
-      } // for
-    } while (again);
-  } // waitRegistryComplete
-
-public:
-  std::shared_ptr<Action> _recentAction;
-  TestProgressHandler _progressHandler;
-
-};// TestMaintenanceFeature
-
+#include "MaintenanceFeatureMock.h"
 
 //
 // TestActionBasic simulates a multistep action by counting down
@@ -228,6 +61,10 @@ public:
         _iteration = 1;
       } // if
     } // if
+
+    if (description.get(FAST_TRACK, value).ok()) {
+      _labels.emplace(FAST_TRACK);
+    }
 
     if (description.get("result_code", value).ok()) {
       _resultCode = std::atol(value.c_str());
@@ -616,7 +453,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -675,7 +512,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -729,7 +566,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -749,6 +586,53 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
+  SECTION("Priority queue should be able to process fast tracked action") {
+    std::vector<Expected> pre_thread, post_thread;
+
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
+    as.addFeature(tf);
+    std::thread th(
+      &arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+
+    //
+    // 1. load up the queue without threads running
+    //   a. 100 iterations then fail
+    std::unique_ptr<ActionBase> action_base_ptr;
+    action_base_ptr.reset(
+      (ActionBase*) new TestActionBasic(
+        *tf, ActionDescription(std::map<std::string,std::string>{
+            {"name","TestActionBasic"},{"iterate_count","100"},
+            {TestActionBasic::FAST_TRACK, ""}})));
+    arangodb::Result result = tf->addAction(
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
+
+    REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
+    REQUIRE(tf->_recentAction->result().ok());
+
+    //
+    // 2. start threads AFTER ApplicationServer known to be running
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit-1);
+
+    //
+    // 3. loop while waiting for threads to complete all actions
+    tf->waitRegistryComplete();
+
+#if 0   // for debugging
+    std::cout << tf->toVelocyPack().toJson() << std::endl;
+#endif
+
+    //
+    // 4. bring down the ApplicationServer, i.e. clean up
+    as.beginShutdown();
+    th.join();
+  }
+
+  
   SECTION("Action delete") {
     std::vector<Expected> pre_thread, post_thread;
 
@@ -782,7 +666,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -802,5 +686,6 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
+  
 
  } // MaintenanceFeatureThreaded

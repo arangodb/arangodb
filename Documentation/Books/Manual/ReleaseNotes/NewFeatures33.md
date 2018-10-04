@@ -227,7 +227,7 @@ The following options have been added to it:
   - `--ldap.roles-exclude`
   - `--ldap.superuser-role`
 
-  Please refer to [LDAP](../Administration/Configuration/Ldap.md) for a detailed
+  Please refer to [LDAP](../Programs/Arangod/Ldap.md) for a detailed
   explanation.
 
 

@@ -746,7 +746,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
 
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found
-Slice Slice::get(std::string const& attribute) const {
+Slice Slice::get(StringRef const& attribute) const {
   if (VELOCYPACK_UNLIKELY(!isObject())) {
     throw Exception(Exception::InvalidValueType, "Expecting Object");
   }
@@ -934,12 +934,13 @@ int64_t Slice::getSmallInt() const {
   throw Exception(Exception::InvalidValueType, "Expecting type SmallInt");
 }
 
-int Slice::compareString(char const* value, size_t length) const {
+int Slice::compareString(StringRef const& value) const {
+  size_t const length = value.size();
   ValueLength keyLength;
   char const* k = getString(keyLength);
   size_t const compareLength =
       (std::min)(static_cast<size_t>(keyLength), length);
-  int res = memcmp(k, value, compareLength);
+  int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
     if (keyLength != length) {
@@ -949,12 +950,13 @@ int Slice::compareString(char const* value, size_t length) const {
   return res;
 }
 
-int Slice::compareStringUnchecked(char const* value, size_t length) const noexcept {
+int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
+  size_t const length = value.size();
   ValueLength keyLength;
   char const* k = getStringUnchecked(keyLength);
   size_t const compareLength =
       (std::min)(static_cast<size_t>(keyLength), length);
-  int res = memcmp(k, value, compareLength);
+  int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
     if (keyLength != length) {
@@ -964,7 +966,7 @@ int Slice::compareStringUnchecked(char const* value, size_t length) const noexce
   return res;
 }
 
-bool Slice::isEqualString(std::string const& attribute) const {
+bool Slice::isEqualString(StringRef const& attribute) const {
   ValueLength keyLength;
   char const* k = getString(keyLength);
   if (static_cast<size_t>(keyLength) != attribute.size()) {
@@ -973,7 +975,7 @@ bool Slice::isEqualString(std::string const& attribute) const {
   return (memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
-bool Slice::isEqualStringUnchecked(std::string const& attribute) const noexcept {
+bool Slice::isEqualStringUnchecked(StringRef const& attribute) const noexcept {
   ValueLength keyLength;
   char const* k = getStringUnchecked(keyLength);
   if (static_cast<size_t>(keyLength) != attribute.size()) {
@@ -982,7 +984,7 @@ bool Slice::isEqualStringUnchecked(std::string const& attribute) const noexcept 
   return (memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
-Slice Slice::getFromCompactObject(std::string const& attribute) const {
+Slice Slice::getFromCompactObject(StringRef const& attribute) const {
   ObjectIterator it(*this);
   while (it.valid()) {
     Slice key = it.key(false);
@@ -1116,7 +1118,7 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
 }
 
 // perform a linear search for the specified attribute inside an Object
-Slice Slice::searchObjectKeyLinear(std::string const& attribute,
+Slice Slice::searchObjectKeyLinear(StringRef const& attribute,
                                    ValueLength ieBase, ValueLength offsetSize,
                                    ValueLength n) const {
   bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
@@ -1128,7 +1130,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
     if (key.isString()) {
       if (!key.isEqualStringUnchecked(attribute)) {
         continue;
-      }
+      } 
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
       if (!useTranslator) {
@@ -1153,7 +1155,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
 
 // perform a binary search for the specified attribute inside an Object
 template<ValueLength offsetSize>
-Slice Slice::searchObjectKeyBinary(std::string const& attribute,
+Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
                                    ValueLength ieBase,
                                    ValueLength n) const {
   bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
@@ -1205,10 +1207,10 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
 }
 
 // template instanciations for searchObjectKeyBinary
-template Slice Slice::searchObjectKeyBinary<1>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
-template Slice Slice::searchObjectKeyBinary<2>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
-template Slice Slice::searchObjectKeyBinary<4>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
-template Slice Slice::searchObjectKeyBinary<8>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<1>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<2>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<4>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<8>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
 
 SliceScope::SliceScope() : _allocations() {}
 

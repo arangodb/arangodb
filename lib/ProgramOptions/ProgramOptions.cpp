@@ -473,7 +473,7 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
     // additionally add all options that have the search string as part
     // of their name
     walk(
-        [this, &value, &result](Section const&, Option const& option) {
+        [&value, &result](Section const&, Option const& option) {
           if (option.fullName().find(value) != std::string::npos) {
             result.emplace_back(option.displayName());
           }

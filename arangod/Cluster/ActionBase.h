@@ -38,7 +38,6 @@ class MaintenanceFeature;
 
 namespace maintenance {
 
-
 class Action;
 
 class ActionBase {
@@ -49,6 +48,9 @@ class ActionBase {
   ActionBase (MaintenanceFeature&, ActionDescription&&);
 
   ActionBase() = delete;
+  
+  ActionBase(ActionBase const&) = delete;
+  ActionBase& operator=(ActionBase const&) = delete;
 
   virtual ~ActionBase();
 
@@ -66,26 +68,6 @@ class ActionBase {
   /// @return true to continue processing, false done (result() set)
   virtual bool next() { return false; }
 
-  //
-  // common property or decription names
-  //
-
-  static const char KEY[];
-  static const char FIELDS[];
-  static const char TYPE[];
-  static const char INDEXES[];
-  static const char INDEX[];
-  static const char SHARDS[];
-  static const char DATABASE[];
-  static const char COLLECTION[];
-  static const char EDGE[];
-  static const char NAME[];
-  static const char ID[];
-  static const char LEADER[];
-  static const char LOCAL_LEADER[];
-  static const char GLOB_UID[];
-  static const char OBJECT_ID[];
-
   /// @brief execution finished successfully or failed ... and race timer expired
   virtual bool done() const;
 
@@ -99,6 +81,8 @@ class ActionBase {
   ActionState state() const {
     return _state;
   }
+
+  bool fastTrack() const;
 
   void notify();
 
@@ -115,15 +99,11 @@ class ActionBase {
   VPackSlice const properties() const;
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  ActionState getState() const {
-    return _state;
-  }
+  ActionState getState() const;
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  void setState(ActionState state) {
-    _state = state;
-  }
-
+  virtual void setState(ActionState state);
+  
   /// @brief update incremental statistics
   void startStats();
 
@@ -153,7 +133,7 @@ class ActionBase {
 
   /// @brief Save pointer to successor action
   void setPostAction(std::shared_ptr<ActionDescription> &post) {
-    _postAction=post;
+    _postAction = post;
   }
 
   /// @brief hash value of ActionDescription
@@ -197,16 +177,22 @@ class ActionBase {
   std::chrono::system_clock::time_point getDoneTime() const
     {return std::chrono::system_clock::time_point() + _actionDone.load(); }
 
+  /// @brief check if worker lables match ours
+  bool matches(std::unordered_set<std::string> const& options) const;
+  
+  std::string const static FAST_TRACK; 
 
 protected:
 
   /// @brief common initialization for all constructors
   void init();
 
-
   arangodb::MaintenanceFeature& _feature;
 
   ActionDescription _description;
+
+  // @brief optional labels for matching to woker labels
+  std::unordered_set<std::string> _labels;
 
   uint64_t _hash;
   std::string _clientId;
@@ -227,11 +213,9 @@ protected:
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
   std::atomic<uint64_t> _progress;
-
+  
   Result _result;
-
-
-
+  
 }; // class ActionBase
 
 } // namespace maintenance

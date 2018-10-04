@@ -69,7 +69,7 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
 
 // unregisters a transaction
 void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
-                                               bool markAsFailed) {
+                                                      bool markAsFailed) {
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     
@@ -109,6 +109,7 @@ void MMFilesTransactionManager::iterateActiveTransactions(std::function<void(TRI
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     for (auto const& it : _transactions[bucket]._activeTransactions) {
+      TRI_ASSERT(it.second != nullptr);
       callback(it.first, it.second.get());
     }
   }

@@ -632,7 +632,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
         << "Renaming system collection " << col->name();
   }
 
-  return Result(vocbase->renameCollection(col, name, true));
+  return vocbase->renameCollection(col->id(), name, true);
 }
 
 /// @brief changes the properties of a collection,
@@ -734,17 +734,19 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "view marker slice is no object");
   }
-  
+
   VPackSlice data = slice.get("data");
+
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "data slice is no object in view change marker");
   }
-  
+
   VPackSlice d = data.get("deleted");
   bool const isDeleted = (d.isBool() && d.getBool());
-  
+
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
   if (vocbase == nullptr) {
     if (isDeleted) {
       // not a problem if a view that is going to be deleted anyway
@@ -753,36 +755,43 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   VPackSlice guidSlice = data.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   auto view = vocbase->lookupView(guidSlice.copyString());
+
   if (view == nullptr) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
       return Result();
     }
+
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  
-  
+
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
+
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    int res = vocbase->renameView(view, nameSlice.copyString());
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = vocbase->renameView(view->id(), nameSlice.copyString());
+
+    if (!res.ok()) {
       return res;
     }
   }
-  
+
   VPackSlice properties = data.get("properties");
   if (properties.isObject()) {
     bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+
     return view->updateProperties(properties, false, doSync);
   }
+
   return {};
 }
 
@@ -1141,10 +1150,17 @@ retry:
 
   if (res.fail()) {
     // stop ourselves
-    {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << "stopping applier: " << res.errorMessage();
+    try {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalRequests++;
       getLocalState();
+    } catch (basics::Exception const& ex) {
+      res = Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      res = Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
     }
 
     _applier->stop(res);

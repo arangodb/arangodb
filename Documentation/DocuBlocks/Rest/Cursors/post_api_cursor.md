@@ -29,7 +29,7 @@ is useful to ensure garbage collection of cursors that are not fully fetched
 by clients. If not set, a server-defined value will be used.
 
 @RESTBODYPARAM{cache,boolean,optional,}
-flag to determine whether the AQL query cache
+flag to determine whether the AQL query results cache
 shall be used. If set to *false*, then any query cache lookup will be skipped
 for the query. If set to *true*, it will lead to the query cache being checked
 for the query if the query cache mode is either *on* or *demand*.
@@ -51,13 +51,13 @@ if set to *true* and the query contains a *LIMIT* clause, then the
 result will have an *extra* attribute with the sub-attributes *stats*
 and *fullCount*, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
 The *fullCount* attribute will contain the number of documents in the result before the
-last LIMIT in the query was applied. It can be used to count the number of documents that
-match certain filter criteria, but only return a subset of them, in one go.
+last top-level LIMIT in the query was applied. It can be used to count the number of 
+documents that match certain filter criteria, but only return a subset of them, in one go.
 It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
 will disable a few LIMIT optimizations and may lead to more documents being processed,
-and thus make queries run longer. Note that the *fullCount* attribute will only
-be present in the result if the query has a LIMIT clause and the LIMIT clause is
-actually used in the query.
+and thus make queries run longer. Note that the *fullCount* attribute may only
+be present in the result if the query has a top-level LIMIT clause and the LIMIT 
+clause is actually used in the query.
 
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
