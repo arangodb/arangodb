@@ -252,7 +252,7 @@ void dropCollectionFromAllViews(
 
       if (!view) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->id() << "': not an iresearch view";
+            << "error finding view: '" << view->id() << "': not an arangosearch view";
         return;
       }
 
@@ -289,7 +289,7 @@ void dropCollectionFromView(
       // don't remove the link if it's there
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "found link '" << indexId
-          << "' of type iresearch in collection '" << collectionId
+          << "' of type arangosearch in collection '" << collectionId
           << "' in database '" << dbId << "': skipping drop marker";
       return;
     }

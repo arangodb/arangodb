@@ -714,7 +714,7 @@ bool visitReaderCollections(
 
     if (!term_reader) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to get term reader for the 'cid' column while collecting CIDs for IResearch reader";
+        << "failed to get term reader for the 'cid' column while collecting CIDs for arangosearch reader";
 
       return false;
     }
@@ -723,7 +723,7 @@ bool visitReaderCollections(
 
     if (!term_itr) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to get term iterator for the 'cid' column while collecting CIDs for IResearch reader ";
+        << "failed to get term iterator for the 'cid' column while collecting CIDs for arangosearch reader ";
 
       return false;
     }
@@ -733,7 +733,7 @@ bool visitReaderCollections(
 
       if (!DocumentPrimaryKey::decode(cid, term_itr->value())) {
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "failed to decode CID while collecting CIDs for IResearch reader";
+          << "failed to decode CID while collecting CIDs for arangosearch reader";
 
         return false;
       }
