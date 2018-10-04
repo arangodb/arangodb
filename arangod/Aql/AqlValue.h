@@ -124,6 +124,14 @@ struct AqlValueHintUInt {
   uint64_t const value;
 };
 
+struct AqlValueHintEmptyArray {
+  constexpr AqlValueHintEmptyArray() noexcept {}
+};
+
+struct AqlValueHintEmptyObject {
+  constexpr AqlValueHintEmptyObject() noexcept {}
+};
+
 struct AqlValue final {
  friend struct std::hash<arangodb::aql::AqlValue>;
  friend struct std::equal_to<arangodb::aql::AqlValue>;
@@ -330,6 +338,16 @@ struct AqlValue final {
   // construct from std::string
   explicit AqlValue(std::string const& value) : AqlValue(value.c_str(), value.size()) {}
   
+  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept {
+    _data.internal[0] = 0x01; // empty array in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
+
+  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept {
+    _data.internal[0] = 0x0a; // empty object in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
+
   // construct from Buffer, potentially taking over its ownership
   // (by adjusting the boolean passed)
   AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete) {

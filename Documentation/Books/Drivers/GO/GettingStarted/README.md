@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/go-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/go-driver.git / docs/Drivers/ -->
 # ArangoDB GO Driver - Getting Started
 
 ## Supported versions

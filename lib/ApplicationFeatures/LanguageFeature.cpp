@@ -71,7 +71,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                                   std::string& path,
                                   std::string const& binaryName) {
   std::string fn("icudtl.dat");
-  TRI_GETENV("ICU_DATA", path);
+  if (TRI_GETENV("ICU_DATA", path)) {
+    path = FileUtils::buildFilename(path, fn);
+  }
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -99,8 +101,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
       std::string msg = std::string("cannot locate '") + path +
                         "'; please make sure it is available; "
                         "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
+      std::string icupath;
+      if (TRI_GETENV("ICU_DATA", icupath)) {
+        msg += icupath;
       }
       msg += "' should point to the directory containing '" + fn + "'";
 
