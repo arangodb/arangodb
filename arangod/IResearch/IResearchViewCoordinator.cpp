@@ -31,6 +31,8 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
@@ -306,6 +308,41 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
   }
 
   arangodb::velocypack::Builder links;
+  std::vector<std::string> collections;
+  for (auto& entry: _collections) {
+    collections.emplace_back(entry.second.first);
+  }
+
+  static std::vector<std::string> const EMPTY;
+  // use default lock timeout
+  arangodb::transaction::Options options;
+  options.waitForSync = false;
+  options.allowImplicitCollections = false;
+
+  Result result = arangodb::basics::catchToResult([&]() -> arangodb::Result {
+    arangodb::transaction::Methods trx(
+      transaction::StandaloneContext::Create(vocbase()),
+      collections, // readCollections
+      EMPTY, // writeCollections
+      EMPTY, // exclusiveCollections
+      options
+    );
+    auto res = trx.begin();
+
+    if (!res.ok()) {
+      return res; // nothing more to output
+    }
+
+    trx.commit();
+    return res;
+  });
+  if (result.fail()) {
+    IR_LOG_EXCEPTION();
+    return arangodb::Result(result.errorNumber(),
+                            "caught exception while generating json for "
+                            "arangosearch view '" + name() + "': " +
+                            result.errorMessage());
+  }
 
   // links are not persisted, their definitions are part of the corresponding collections
   if (!forPersistence) {

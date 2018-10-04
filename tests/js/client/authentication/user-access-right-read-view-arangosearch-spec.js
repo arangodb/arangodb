@@ -212,8 +212,6 @@ function hasIResearch (db) {
             if (properties != null) {
               view.properties(properties, false);
             }
-            require('internal').print("expected properties: " + JSON.stringify(properties))
-            require('internal').print("actual properties: " + JSON.stringify(view.properties()))
             helper.switchUser(name, dbName);
           };
 
