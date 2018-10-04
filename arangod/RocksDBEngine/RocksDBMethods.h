@@ -95,6 +95,10 @@ class RocksDBMethods {
   
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
+  /// contrary to Delete, a SingleDelete may only be used
+  /// when keys are inserted exactly once (and never overwritten)
+  virtual arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                        RocksDBKey const&) = 0;
 
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
@@ -133,6 +137,8 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                           RocksDBKey const& key) override;
+  arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                RocksDBKey const&) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
@@ -166,6 +172,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                           RocksDBKey const& key) override;
+  arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                RocksDBKey const&) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
@@ -188,6 +196,8 @@ class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                           RocksDBKey const& key) override;
+  arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                RocksDBKey const&) override;
 };
 
 /// wraps a writebatch - non transactional
@@ -207,6 +217,9 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                           RocksDBKey const& key) override;
+  arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                RocksDBKey const&) override;
+  
   std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
 

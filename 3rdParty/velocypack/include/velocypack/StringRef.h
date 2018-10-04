@@ -29,12 +29,14 @@
 
 #include <cstdint>
 #include <cstring>
+#include <algorithm>
+#include <string>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Slice.h"
 
 namespace arangodb {
 namespace velocypack {
+class Slice;
 
 class StringRef {
  public:
@@ -44,19 +46,18 @@ class StringRef {
   /// @brief create a StringRef from an std::string
   explicit StringRef(std::string const& str) noexcept : StringRef(str.data(), str.size()) {}
   
-  /// @brief create a StringRef from a null-terminated C string
-  explicit StringRef(char const* data) noexcept : StringRef(data, strlen(data)) {}
-  
-  /// @brief create a StringRef from a VPack slice (must be of type String)
-  explicit StringRef(arangodb::velocypack::Slice const& slice) {
-    VELOCYPACK_ASSERT(slice.isString());
-    arangodb::velocypack::ValueLength l;
-    _data = slice.getString(l);
-    _length = l;
-  }
-  
   /// @brief create a StringRef from a C string plus length
-  StringRef(char const* data, size_t length) noexcept : _data(data), _length(length) {}
+  constexpr StringRef(char const* data, size_t length) noexcept : _data(data), _length(length) {}
+  
+  /// @brief create a StringRef from a null-terminated C string
+#if __cplusplus >= 201703
+  constexpr explicit StringRef(char const* data) noexcept : StringRef(data, std::char_traits<char>::length(data)) {}
+#else
+  explicit StringRef(char const* data) noexcept : StringRef(data, strlen(data)) {}
+#endif
+   
+  /// @brief create a StringRef from a VPack slice (must be of type String)
+  explicit StringRef(arangodb::velocypack::Slice const& slice);
   
   /// @brief create a StringRef from another StringRef
   StringRef(StringRef const& other) noexcept
@@ -95,12 +96,7 @@ class StringRef {
   }
   
   /// @brief create a StringRef from a VPack slice of type String
-  StringRef& operator=(arangodb::velocypack::Slice const& slice) {
-    arangodb::velocypack::ValueLength l;
-    _data = slice.getString(l);
-    _length = l;
-    return *this;
-  }
+  StringRef& operator=(arangodb::velocypack::Slice const& slice);
 
   int compare(std::string const& other) const noexcept {
     int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
@@ -126,17 +122,17 @@ class StringRef {
     return (_length == 0);
   }
   
-  inline char const* begin() const {
+  inline char const* begin() const noexcept {
     return _data;
   }
   
-  inline char const* end() const {
+  inline char const* end() const noexcept {
     return _data + _length;
   }
 
-  inline char front() const { return _data[0]; }
+  inline char front() const noexcept { return _data[0]; }
 
-  inline char back() const { return _data[_length - 1]; }
+  inline char back() const noexcept { return _data[_length - 1]; }
   
   inline char operator[](size_t index) const noexcept { 
     return _data[index];

@@ -85,14 +85,15 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "intentionally writing corrupt marker into datafile";
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        << "intentionally writing corrupt marker into datafile";
     dfm->setCrc(0xdeadbeef);
   }
 }
 
 /// @brief calculate the CRC value for the source region (this will modify
 /// the source region) and copy the calculated marker data into the slot
-/// note that marker type has to be set already in the src 
+/// note that marker type has to be set already in the src
 void MMFilesWalSlot::fill(void* src, size_t size) {
   TRI_ASSERT(size == _size);
   TRI_ASSERT(src != nullptr);
@@ -115,7 +116,8 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "intentionally writing corrupt marker into datafile";
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        << "intentionally writing corrupt marker into datafile";
     marker->setCrc(0xdeadbeef);
   }
 

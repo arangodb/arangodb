@@ -28,7 +28,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesLogfileManager.h" 
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesCompactionLocker.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "VocBase/LogicalCollection.h"
@@ -172,7 +172,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
+    case TRI_DF_MARKER_VPACK_DROP_INDEX:
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       Append(dump, ",\"data\":");
 
@@ -195,7 +195,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
 
     default: {
       TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type " << static_cast<int>(type); 
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type " << static_cast<int>(type);
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -264,8 +264,8 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
-    case TRI_DF_MARKER_VPACK_DROP_VIEW: { 
+    case TRI_DF_MARKER_VPACK_DROP_INDEX:
+    case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       builder.add("data", slice);
@@ -281,7 +281,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
 
     default: {
       TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type " << static_cast<int>(type); 
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type " << static_cast<int>(type);
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -423,11 +423,11 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
-  
+
     LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
         << "dumped collection " << collection->id()
-        << ", tick range " << dataMin << " - " << dataMax 
-        << ", markers: " << numMarkers << ", last found tick: " << dump->_lastFoundTick 
+        << ", tick range " << dataMin << " - " << dataMax
+        << ", markers: " << numMarkers << ", last found tick: " << dump->_lastFoundTick
         << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
 
     return TRI_ERROR_NO_ERROR;
@@ -777,8 +777,8 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
       }
     }
 
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found transactions: " << transactions.size();
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last tick: " << lastFoundTick;
+    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found transactions: " << transactions.size();
+    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "last tick: " << lastFoundTick;
 
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Manipulating the collection
 
 These functions implement
@@ -73,8 +73,8 @@ Creates a collection with the given _options_ for this collection's name, then r
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-db.createCollection("potatoes", new CollectionCreateOptions());
-// the document collection "potatoes" now exists
+db.createCollection("potatos", new CollectionCreateOptions());
+// the document collection "potatos" now exists
 ```
 
 ## ArangoCollection.create
@@ -144,9 +144,9 @@ Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollectio
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatoes");
+ArangoCollection collection = db.collection("potatos");
 collection.create(new CollectionCreateOptions());
-// the document collection "potatoes" now exists
+// the document collection "potatos" now exists
 ```
 
 ## ArangoCollection.load
