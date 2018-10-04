@@ -910,6 +910,7 @@ bool term_iterator::next() {
 #ifdef IRESEARCH_DEBUG
       const SeekResult res = seek_equal(bytes_ref(term_));
       assert(SeekResult::FOUND == res);
+      UNUSED(res);
 #else
       seek_equal(bytes_ref(term_));
 #endif

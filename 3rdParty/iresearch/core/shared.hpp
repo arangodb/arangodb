@@ -86,17 +86,22 @@
   #define IRESEARCH_HELPER_TEMPLATE_IMPORT 
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
-#if _MSC_VER < 1900 // before msvc2015
-  #define CONSTEXPR
-  #define NOEXCEPT throw()
-  #define ALIGNOF(v) __alignof(v)
-  #define ALIGNAS(v) __declspec(align(v))
-#else
-  #define CONSTEXPR constexpr
-  #define NOEXCEPT noexcept 
-  #define ALIGNOF(v) alignof(v)
-  #define ALIGNAS(v) alignas(v)
-#endif
+  #if _MSC_VER < 1900 // before msvc2015
+    #define CONSTEXPR
+    #define NOEXCEPT throw()
+    #define ALIGNOF(v) __alignof(v)
+    #define ALIGNAS(v) __declspec(align(v))
+  #else
+    #define CONSTEXPR constexpr
+    #define NOEXCEPT noexcept
+    #define ALIGNOF(v) alignof(v)
+    #define ALIGNAS(v) alignas(v)
+  #endif
+
+  // MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
+  // FIXME TODO find a workaround or do not use alignas(...)
+  static_assert(_MSC_VER < 1900 || _MSC_VER >= 1915, "_MSC_VER >= 1900 && _MSC_VER < 1915");
+  #define _ENABLE_EXTENDED_ALIGNED_STORAGE 1
 
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)

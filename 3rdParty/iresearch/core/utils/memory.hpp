@@ -74,7 +74,7 @@ class aligned_storage {
     template<size_t Align> struct ALIGNAS(Align) align_t { };
   #endif
 
-  static_assert(ALIGNOF(align_t<Alignment>) == Alignment, "__alignof(align_t<Alignment>) != Alignment");
+  static_assert(ALIGNOF(align_t<Alignment>) == Alignment, "ALIGNOF(align_t<Alignment>) != Alignment");
 
  public:
   union {

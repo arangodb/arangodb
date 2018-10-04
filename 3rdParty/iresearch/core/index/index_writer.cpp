@@ -492,7 +492,7 @@ index_writer::active_segment_context& index_writer::active_segment_context::oper
 
 index_writer::documents_context::document::document(
     flush_context_ptr&& ctx,
-    const segment_context::ptr& segment,
+    const segment_context_ptr& segment,
     const segment_writer::update_context& update
 ): segment_writer::document(*(segment->writer_)),
    ctx_(*ctx),

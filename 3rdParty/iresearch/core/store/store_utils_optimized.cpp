@@ -118,7 +118,8 @@ void read_block_optimized(
       reqiured 
     );
     assert(read == reqiured);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
       reqiured 

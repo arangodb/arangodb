@@ -598,6 +598,13 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     : base_t(size) {
   }
 
+#if defined(_MSC_VER)
+  #pragma warning( disable : 4706 )
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
   /////////////////////////////////////////////////////////////////////////////
   /// @brief clears all cached objects
   /////////////////////////////////////////////////////////////////////////////
@@ -610,6 +617,12 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       this->free_slots_.push(*head);
     }
   }
+
+#if defined(_MSC_VER)
+  #pragma warning( default : 4706 )
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
   template<typename... Args>
   ptr emplace(Args&&... args) {

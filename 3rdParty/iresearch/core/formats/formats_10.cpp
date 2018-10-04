@@ -1538,6 +1538,7 @@ class offs_pay_iterator final: public pos_iterator {
           #ifdef IRESEARCH_DEBUG
             const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
             assert(read == size);
+            UNUSED(read);
           #else
             pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
           #endif // IRESEARCH_DEBUG
@@ -1564,6 +1565,7 @@ class offs_pay_iterator final: public pos_iterator {
         #ifdef IRESEARCH_DEBUG
           const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
           assert(read == size);
+          UNUSED(read);
         #else
           pay_in_->read_bytes(&(pay_data_[0]), size);
         #endif // IRESEARCH_DEBUG
@@ -1791,6 +1793,7 @@ class pay_iterator final : public pos_iterator {
           #ifdef IRESEARCH_DEBUG
             const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
             assert(read == size);
+            UNUSED(read);
           #else
             pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
           #endif // IRESEARCH_DEBUG
@@ -1818,6 +1821,7 @@ class pay_iterator final : public pos_iterator {
         #ifdef IRESEARCH_DEBUG
           const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
           assert(read == size);
+          UNUSED(read);
         #else
           pay_in_->read_bytes(&(pay_data_[0]), size);
         #endif // IRESEARCH_DEBUG
@@ -2646,6 +2650,7 @@ void read_compact(
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(&(decode_buf[0]), buf_size);
     assert(read == buf_size);
+    UNUSED(read);
 #else
     in.read_bytes(&(decode_buf[0]), buf_size);
 #endif // IRESEARCH_DEBUG
@@ -2657,6 +2662,7 @@ void read_compact(
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
   assert(read == buf_size);
+  UNUSED(read);
 #else
   in.read_bytes(&(encode_buf[0]), buf_size);
 #endif // IRESEARCH_DEBUG

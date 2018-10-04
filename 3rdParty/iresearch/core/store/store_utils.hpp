@@ -199,6 +199,7 @@ inline StringType read_string(data_input& in) {
 #ifdef IRESEARCH_DEBUG
   const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
   assert(read == len);
+  UNUSED(read);
 #else
   in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
 #endif // IRESEARCH_DEBUG

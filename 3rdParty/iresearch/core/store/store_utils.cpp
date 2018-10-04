@@ -129,7 +129,8 @@ void skip(data_input& in, size_t to_skip,
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(skip_buf, step);
     assert(read == step);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(skip_buf, step);
 #endif // IRESEARCH_DEBUG
 
@@ -187,7 +188,8 @@ void read_block(
       reqiured 
     );
     assert(read == reqiured);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
       reqiured 
@@ -219,7 +221,8 @@ void read_block(
       reqiured 
     );
     assert(read == reqiured);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
       reqiured
@@ -342,6 +345,7 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   #ifdef IRESEARCH_DEBUG
     const auto read = read_bytes(&(buf[0]) + used, size);
     assert(read == size);
+    UNUSED(read);
   #else
     read_bytes(&(buf[0]) + used, size);
   #endif // IRESEARCH_DEBUG
@@ -407,6 +411,7 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
   #ifdef IRESEARCH_DEBUG
     const auto read = read_bytes(&(buf[0]) + used, size);
     assert(read == size);
+    UNUSED(read);
   #else
     read_bytes(&(buf[0]) + used, size);
   #endif // IRESEARCH_DEBUG
@@ -423,6 +428,7 @@ void bytes_input::read_from(data_input& in, size_t size) {
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(buf_[0]), size);
   assert(read == size);
+  UNUSED(read);
 #else
   in.read_bytes(&(buf_[0]), size);
 #endif // IRESEARCH_DEBUG
