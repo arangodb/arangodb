@@ -11,7 +11,7 @@ EOF
 
 HTTP/1.1 202 Accepted
 x-content-type-options: nosniff
-x-arango-async-id: 153720596652054
+x-arango-async-id: 153868370421469
 content-type: text/plain; charset=utf-8
 
 shell> curl --dump - http://localhost:8529/_api/job/pending
@@ -21,9 +21,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"153720596652054"</span> 
+  <span class="hljs-string">"153868370421469"</span> 
 ]
-shell> curl -X DELETE --dump - http://localhost:8529/_api/job/153720596652054
+shell> curl -X DELETE --dump - http://localhost:8529/_api/job/153868370421469
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
