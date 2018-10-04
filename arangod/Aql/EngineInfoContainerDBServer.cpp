@@ -851,7 +851,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       }
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*>* cs =
+      std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
@@ -1067,7 +1067,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   return TRI_ERROR_NO_ERROR;
 }
 
-void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
+void EngineInfoContainerDBServer::addGraphNode(GraphNode* node, CollectionNameResolver const& resolver) {
   // Add all Edge Collections to the Transactions, Traversals do never write
   for (auto const& col : node->edgeColls()) {
     handleCollection(col.get(), AccessMode::Type::READ);
@@ -1078,10 +1078,13 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   if (vCols.empty()) {
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*>* cs =
+    std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
-      handleCollection(col.second, AccessMode::Type::READ);
+      auto source = resolver.getDataSource(col.second->id());
+      if (source->category() == LogicalDataSourceCategory::COLLECTION) {
+        handleCollection(col.second, AccessMode::Type::READ);
+      }
     }
   } else {
     for (auto const& col : node->vertexColls()) {

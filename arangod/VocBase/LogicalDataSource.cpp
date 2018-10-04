@@ -35,7 +35,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-//
 #include "Logger/Logger.h"
 
 namespace {
@@ -158,13 +157,11 @@ namespace arangodb {
 }
 
 LogicalDataSource::LogicalDataSource(
-    Category const& category,
     Type const& type,
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
-     category,
      type,
      vocbase,
      basics::VelocyPackHelper::extractIdValue(definition),
@@ -186,7 +183,6 @@ LogicalDataSource::LogicalDataSource(
 }
 
 LogicalDataSource::LogicalDataSource(
-    Category const& category,
     Type const& type,
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
@@ -197,7 +193,6 @@ LogicalDataSource::LogicalDataSource(
     bool system,
     bool deleted
 ): _name(std::move(name)),
-   _category(category),
    _type(type),
    _vocbase(vocbase),
    _id(ensureId(id)),
