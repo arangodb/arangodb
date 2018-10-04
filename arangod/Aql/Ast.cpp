@@ -3774,23 +3774,19 @@ std::pair<LogicalDataSourceCategory, StringRef> Ast::injectDataSourceInQuery(
   auto const& dataSourceName = dataSource->name();
   StringRef nameRef{_query->registerString(dataSourceName.data(), dataSourceName.size())};
   
+  _query->addCollection(nameRef, accessType);
+
   if (dataSource->category() == LogicalDataSourceCategory::COLLECTION) {
     // it's a collection!
     // add datasource to query
-    _query->addCollection(nameRef, accessType);
-
     if (nameRef != name) {
       _query->addCollection(name, accessType); // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalDataSourceCategory::VIEW) {
     // it's a view!
     _query->addView(nameRef.toString());
-
-    LOG_DEVEL << "Adding view to query: " << nameRef.toString() << " orignal " << name << " dsname: " << dataSourceName;
-
     // Make sure to add all collections now:
     resolver.visitCollections([&] (LogicalCollection& col) -> bool {
-        LOG_DEVEL << "Adding view collection" << col.name();
         _query->addCollection(col.name(), accessType);
         return true;
     }, dataSource->id());
