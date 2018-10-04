@@ -1990,7 +1990,7 @@ std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId,
   if (it == _collectionPaths.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "trying to determine directory for unknown database");
+        "trying to determine collection directory for unknown database");
   }
 
   auto it2 = (*it).second.find(id);
@@ -2019,7 +2019,7 @@ std::string MMFilesEngine::viewDirectory(TRI_voc_tick_t databaseId,
   if (it == _viewPaths.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "trying to determine directory for unknown database");
+        "trying to determine view directory for unknown database");
   }
 
   auto it2 = (*it).second.find(id);
