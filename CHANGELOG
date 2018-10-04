@@ -1,6 +1,8 @@
 v3.3.17 (2018-10-04)
 --------------------
 
+* upgraded arangosync version to 0.6.0
+
 * added several advanced options for configuring and debugging LDAP connections.
   Please note that some of the following options are platform-specific and may not 
   work on all platforms or with all LDAP servers reliably:
