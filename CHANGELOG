@@ -20,6 +20,8 @@ v3.3.17 (XXXX-XX-XX)
 
 * agency endpoint updates now go through RAFT
 
+* fixed a bug when cluster indexes were usable for queries, while
+  still being built on db servers
 
 v3.3.16 (2018-09-19)
 --------------------

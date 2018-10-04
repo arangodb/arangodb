@@ -508,11 +508,33 @@ void ClusterInfo::loadPlan() {
 
           for (auto const& collectionPairSlice :
                VPackObjectIterator(collectionsSlice)) {
+            
             VPackSlice const& collectionSlice = collectionPairSlice.value;
             if (!collectionSlice.isObject()) {
               continue;
             }
 
+            // We'll remove indexes from plan for this collection, if still `isBuilding`
+            VPackBuilder tmp;
+            { VPackObjectBuilder o(&tmp);
+              for (auto const& kvpair : VPackObjectIterator(collectionSlice)) {
+                auto const& key = kvpair.key.copyString();
+                auto const& val = kvpair.value;
+                if (key != "indexes") {
+                  tmp.add(key, val);
+                } else {
+                  tmp.add(VPackValue("indexes"));
+                  VPackArrayBuilder a(&tmp);
+                  for (auto const& index : VPackArrayIterator(val)) {
+                    if (index.hasKey("isBuilding")) { // This index is still being built
+                      continue;
+                    }
+                    tmp.add(index);
+                  }
+                }
+              }
+            }
+              
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
 
@@ -864,6 +886,8 @@ ClusterInfo::getCollections(DatabaseID const& databaseID) {
     if (c < '0' || c > '9') {
       // skip collections indexed by id
       result.push_back((*it2).second);
+
+      
     }
 
     ++it2;
@@ -1773,13 +1797,75 @@ int ClusterInfo::ensureIndexCoordinator(
   } catch (...) {
     errorCode = TRI_ERROR_INTERNAL;
   }
-  if (errorCode == TRI_ERROR_NO_ERROR || application_features::ApplicationServer::isStopping()) {
+
+  std::shared_ptr<LogicalCollection> c;
+  // Index is created in current, let's remove 'building' key so that
+  // it is ready for use.
+  if (errorCode == TRI_ERROR_NO_ERROR) {
+    
+    loadPlan();
+    // find index in plan
+    VPackBuilder newPlanIndexes;
+    VPackBuilder oldPlanIndexes;
+    bool found = false;
+
+    c = getCollection(databaseName, collectionID);
+    c->getIndexesVPack(oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
+    VPackSlice const planIndexes = oldPlanIndexes.slice();
+
+    // Go through all indexes in collection, 
+    if (planIndexes.isArray()) {
+      VPackArrayBuilder a(&newPlanIndexes); 
+      for (auto const& index : VPackArrayIterator(planIndexes)) {        
+        auto idPlanSlice = index.get("id");
+        if (idPlanSlice.isString() && idPlanSlice.copyString() == idString &&
+            index.hasKey("isBuilding")) {
+          found = true;
+          VPackObjectBuilder o(&newPlanIndexes);
+          for (auto const& i : VPackObjectIterator(index)) {
+            auto const& key = i.key.copyString();
+            if (key != "isBuilding") {
+              newPlanIndexes.add(i.key.copyString(), i.value);
+            }
+          }
+        } else {
+          newPlanIndexes.add(index);
+        }
+      }
+    }
+
+    if (!found) {
+      // index has vanished from plan? not good.
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "index has disappeared from plan!";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    std::string const indexPath =
+      "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
+    AgencyWriteTransaction trx(
+      std::vector<AgencyOperation>
+      { AgencyOperation(
+          indexPath, AgencyValueOperationType::SET, newPlanIndexes.slice()),
+        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+      std::vector<AgencyPrecondition>
+      { AgencyPrecondition(
+        indexPath, AgencyPrecondition::Type::VALUE, planIndexes) });
+    AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
+
+    if (update.successful()) {
+      loadPlan();
+      return errorCode;
+    }
+    
+  }
+  
+  if (errorCode == TRI_ERROR_NO_ERROR ||
+      application_features::ApplicationServer::isStopping()) {
     return errorCode;
   }
 
   std::shared_ptr<VPackBuilder> planValue;
   std::shared_ptr<VPackBuilder> oldPlanIndexes;
-  std::shared_ptr<LogicalCollection> c;
 
   size_t tries = 0;
   do {
@@ -1965,6 +2051,9 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
               newBuilder->add(tmpkey, e.value);
             }
           }
+          // Adding this key to show to outside world that the index
+          // creation is going on
+          newBuilder->add("isBuilding", VPackValue(true));
           newBuilder->add("id", VPackValue(idString));
         }
         newBuilder->close();  // the array
