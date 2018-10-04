@@ -124,7 +124,7 @@ void RocksDBEdgeIndexIterator::reset() {
   _builderIterator =
       VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
 }
-    
+
 // returns true if we have one more key for the index lookup.
 // if true, sets the `key` Slice to point to the new key's value
 // note that the underlying data for the Slice must remain valid
@@ -782,7 +782,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 100000) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Skipping the multithreaded loading";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
         queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
@@ -800,7 +800,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
         queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
@@ -809,7 +809,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   std::string firstKey = it->key().ToString();
   it->SeekForPrev(bounds.end());
   if (!it->Valid()) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
         queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
@@ -820,7 +820,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   std::string q1 = firstKey, q2, q3, q4, q5 = lastKey;
   q3 = FindMedian(it.get(), q1, q5);
   if (q3 == lastKey) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "Cannot use multithreaded edge index warmup";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
         queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
@@ -985,14 +985,14 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
   }
-  LOG_TOPIC(DEBUG, Logger::FIXME) << "loaded n: " << n ;
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "loaded n: " << n ;
 }
 
 // ===================== Helpers ==================
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createEqIterator(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -1013,7 +1013,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createInIterator(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak

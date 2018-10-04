@@ -1,10 +1,11 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # ArangoDB Java Driver - Getting Started
 
 ## Supported versions
 
 <table>
 <tr><th>arangodb-java-driver</th><th>ArangoDB</th><th>network protocol</th><th>Java version</th></tr>
+<tr><td>5.x.x+</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
 <tr><td>4.2.x+</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
 <tr><td>4.1.x</td><td>3.1.0+</td><td>VelocyStream</td><td>1.6+</td></tr>
 <tr><td>3.1.x</td><td>3.1.0+</td><td>HTTP</td><td>1.6+</td></tr>
@@ -26,7 +27,7 @@ ArangoDB 3.x.x
   <dependency>
     <groupId>com.arangodb</groupId>
     <artifactId>arangodb-java-driver</artifactId>
-    <version>4.6.0</version>
+    <version>5.0.0</version>
   </dependency>
 </dependencies>
 ```

@@ -591,6 +591,9 @@ JOB_STATUS MoveShard::pendingLeader() {
               pre.add(plan);
             }
           });
+        if (!_remainsFollower) {
+          addIncreasePlanVersion(trx);
+        }
         addPreconditionCollectionStillThere(pre, _database, _collection);
         addRemoveJobFromSomewhere(trx, "Pending", _jobId);
         Builder job;

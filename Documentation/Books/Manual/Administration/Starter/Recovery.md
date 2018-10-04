@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # ArangoDB Starter Recovery Procedure
 
 This procedure is intended to recover a cluster (that was started with the ArangoDB

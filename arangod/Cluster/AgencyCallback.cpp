@@ -62,8 +62,9 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Callback getValues to agency was not successful: "
-             << result.errorCode() << " " << result.errorMessage();
+    LOG_TOPIC(ERR, arangodb::Logger::AGENCY)
+        << "Callback getValues to agency was not successful: "
+        << result.errorCode() << " " << result.errorMessage();
     return;
   }
 

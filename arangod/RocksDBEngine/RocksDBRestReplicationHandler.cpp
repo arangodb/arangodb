@@ -143,7 +143,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     bool found;
     std::string const& value = _request->value("serverId", found);
     if (!found) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
+      LOG_TOPIC(DEBUG, Logger::ENGINES) << "no serverId parameter found in request to " << _request->fullUrl();
     }
 
     TRI_server_id_t serverId = ctx->id();
@@ -336,7 +336,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
-        //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(trxContext->getVPackOptions());
+        //LOG_TOPIC(INFO, Logger::ENGINES) << marker.toJson(trxContext->getVPackOptions());
       }
     }
   }
@@ -410,7 +410,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     TRI_ASSERT(builder.hasKey("collections") &&
                builder.hasKey("views"));
   }
-  
+
   if (res.fail()) {
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
@@ -666,7 +666,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 }
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "enter handleCommandDump";
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "enter handleCommandDump";
 
   bool found = false;
   uint64_t contextId = 0;
@@ -716,7 +716,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   } // we allow dumping in parallel
 
   // print request
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 

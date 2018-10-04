@@ -108,7 +108,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
-  
+
   uint64_t version = _userManager->globalVersion();
   if (_basicCacheVersion.load(std::memory_order_acquire) != version) {
      WRITE_LOCKER(guard, _basicLock);
@@ -236,13 +236,13 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
         << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "Got unknown exception trying to parse " << hint;
   }
 

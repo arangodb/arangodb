@@ -12,7 +12,6 @@ Installer
   and only some of them shall be upgraded, or they should be upgraded one after the
   other.
 
-* Ubuntu 14.04 is not yet supported
 
 Modify documents in cluster using AQL and an incorrect custom shard key
 -----------------------------------------------------------------------
@@ -36,6 +35,7 @@ Modify documents in cluster using AQL and an incorrect custom shard key
 
 More details can be found in [issue 6399](https://github.com/arangodb/arangodb/issues/6399).
 
+
 ArangoSearch
 ------------
 
@@ -48,3 +48,7 @@ ArangoSearch
 * "NONE" read permission is not checked for a single link in a view with multiple links where others are "RW" for a user in cluster (internal #452)
 * ArangoSearch doesn't support joins with satellite collections (internal #440)
 * RocksDB recovery fails sometimes after renaming a view (internal #469)
+* Link to a collection is not added to a view if it was already added to other view (internal #480)
+* View directory remains in FS after a view was deleted (internal #485)
+* Immediate deletion (right after creation) of a view with a link to one collection and indexed data reports failure but removes the link (internal #486)
+* Segmentation fault happens when trying to delete a link in a view that has improper (via internal #486) state (internal #487)

@@ -877,7 +877,7 @@ bool SynchronizeShard::first() {
           Result result = startReadLockOnLeader(
             ep, database, collection->name(), clientId, lockJobId);
           if (result.ok()) {
-            LOG_TOPIC(DEBUG, Logger::FIXME) << "lockJobId: " <<  lockJobId;
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
           } else {
             LOG_TOPIC(ERR, Logger::MAINTENANCE)
               << "synchronizeOneShard: error in startReadLockOnLeader:"
@@ -971,4 +971,3 @@ bool SynchronizeShard::first() {
 }
 
 SynchronizeShard::~SynchronizeShard() {};
-
