@@ -506,7 +506,6 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             std::string const& message) {
   char buf[1024];
   char linebuf[32];
-  LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
   TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
@@ -544,7 +543,6 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap) {
   char buf[1024];
   char linebuf[32];
-  LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
   TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 

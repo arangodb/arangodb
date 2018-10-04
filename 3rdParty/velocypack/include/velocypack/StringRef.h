@@ -31,6 +31,7 @@
 #include <cstring>
 #include <algorithm>
 #include <string>
+#include <functional>
 
 #include "velocypack/velocypack-common.h"
 

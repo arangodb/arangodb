@@ -137,7 +137,7 @@ class NearUtils {
   /// @brief remove closest buffered result
   void popNearest() { _buffer.pop(); }
 
-  /// @brief reset query to inital state
+  /// @brief reset query to initial state
   void reset();
 
   /// aid density estimation by reporting a result close

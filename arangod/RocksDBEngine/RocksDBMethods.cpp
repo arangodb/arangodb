@@ -39,9 +39,9 @@ using namespace arangodb;
 
 RocksDBSavePoint::RocksDBSavePoint(
     transaction::Methods* trx, TRI_voc_document_operation_e operationType)
-    : _trx(trx), 
+    : _trx(trx),
       _operationType(operationType),
-      _handled(_trx->isSingleOperationTransaction()) { 
+      _handled(_trx->isSingleOperationTransaction()) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
     auto mthds = RocksDBTransactionState::toMethods(_trx);
@@ -57,7 +57,7 @@ RocksDBSavePoint::~RocksDBSavePoint() {
       // not performed an intermediate commit in-between
       rollback();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught exception during rollback to savepoint: " << ex.what();
+      LOG_TOPIC(ERR, Logger::ENGINES) << "caught exception during rollback to savepoint: " << ex.what();
     } catch (...) {
       // whatever happens during rollback, no exceptions are allowed to escape from here
     }
@@ -78,16 +78,16 @@ void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
     auto mthds = RocksDBTransactionState::toMethods(_trx);
     mthds->PopSavePoint();
   }
-  
+
   // this will prevent the rollback call in the destructor
-  _handled = true;  
+  _handled = true;
 }
 
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
   auto mthds = RocksDBTransactionState::toMethods(_trx);
   mthds->RollbackToSavePoint();
-  
+
   auto state = RocksDBTransactionState::toState(_trx);
   state->rollbackOperation(_operationType);
 
@@ -125,13 +125,13 @@ rocksdb::ReadOptions RocksDBMethods::iteratorReadOptions() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange) {
   std::size_t count = 0;
-  
+
   //iterator is from read only / trx / writebatch
   std::unique_ptr<rocksdb::Iterator> iter = this->NewIterator(iteratorReadOptions(), bounds.columnFamily());
   iter->Seek(bounds.start());
   auto end = bounds.end();
   rocksdb::Comparator const * cmp = bounds.columnFamily()->GetComparator();
-  
+
   // extra check to aviod extra comparisons with isElementInRage later;
   if (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++count;
@@ -140,7 +140,7 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
     }
     iter->Next();
   }
-  
+
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     iter->Next();
     ++count;
@@ -219,7 +219,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 }
 
 // =================== RocksDBTrxMethods ====================
-  
+
 bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
     _state->_rocksTransaction->DisableIndexing();
@@ -346,7 +346,7 @@ arangodb::Result RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle*
   rocksdb::Status s = _state->_rocksTransaction->DeleteUntracked(cf, key.string());
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
-  
+
 arangodb::Result RocksDBTrxUntrackedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
                                                           RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
@@ -411,7 +411,7 @@ arangodb::Result RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle
   _wb->SingleDelete(cf, key.string());
   return arangodb::Result();
 }
-  
+
 std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
     rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);

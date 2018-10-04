@@ -143,6 +143,7 @@ class Logger {
   static LogTopic DUMP;
   static LogTopic ENGINES;
   static LogTopic FIXME;
+  static LogTopic FLUSH;
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
@@ -235,7 +236,7 @@ class Logger {
   static void setUseMicrotime(bool);
   static bool getUseMicrotime() {return _useMicrotime;};
   static void setKeepLogrotate(bool);
-  
+
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
