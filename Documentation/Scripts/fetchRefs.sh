@@ -8,19 +8,19 @@ GITAUTH="$1"
 
 for book in ${ALLBOOKS}; do 
 
-    repos=$(grep '^#' ../Books/${book}/SUMMARY.md |grep git |sed 's;#  *;;')
+    repos=$(grep '^ *<!-- SYNC: ' "../Books/${book}/SUMMARY.md" |sed -r 's;^ *<!-- SYNC: (.+) -->$;\1;')
 
     for oneRepo in ${repos}; do
 
-        export REPO=$(echo     $oneRepo |cut -d ';' -f 1)
-        export CLONEDIR=$(echo $oneRepo |cut -d ';' -f 2)
-        export SUBDIR=$(echo   $oneRepo |cut -d ';' -f 3)
-        export SRC=$(echo      $oneRepo |cut -d ';' -f 4)
-        export DST=$(echo      $oneRepo |cut -d ';' -f 5)
+        REPO=$(echo     "$oneRepo" |cut -d ';' -f 1)
+        CLONEDIR=$(echo "$oneRepo" |cut -d ';' -f 2)
+        SUBDIR=$(echo   "$oneRepo" |cut -d ';' -f 3)
+        SRC=$(echo      "$oneRepo" |cut -d ';' -f 4)
+        DST=$(echo      "$oneRepo" |cut -d ';' -f 5)
 
 
-        export CODIR="../Books/repos/${CLONEDIR}"
-        export AUTHREPO=$(echo "${REPO}" | sed "s;@;${GITAUTH}@;")
+        CODIR="../Books/repos/${CLONEDIR}"
+        AUTHREPO="${REPO/@/${GITAUTH}@}"
         if test -d "${CODIR}"; then
             (
                 cd "${CODIR}"
@@ -34,7 +34,7 @@ for book in ${ALLBOOKS}; do
         fi
 
         # extract branch/tag/... for checkout from VERSIONS file
-        branch=$(cat ../../VERSIONS|grep "EXTERNAL_DOC_${CLONEDIR}=" | sed "s/^EXTERNAL_DOC_${CLONEDIR}=//")
+        branch=$(grep "EXTERNAL_DOC_${CLONEDIR}=" "../../VERSIONS" | sed "s/^EXTERNAL_DOC_${CLONEDIR}=//")
 
         if [ -z "${branch}" ]; then
             echo "no branch for ${CLONEDIR}, specify in VERSIONS file."
@@ -45,19 +45,23 @@ for book in ${ALLBOOKS}; do
         (cd "${CODIR}" && git checkout "${branch}" && git pull)
 
         for oneMD in $(cd "${CODIR}/${SUBDIR}"; find "./${SRC}" -type f |sed "s;\./;;"); do
-            export oneMD
-            export NAME=$(basename ${oneMD})
-            export MDSUBDIR=$(echo "${oneMD}" | sed "s;${NAME};;")
-            export DSTDIR="../Books/${book}/${DST}/${MDSUBDIR}"
-            export TOPREF=$(echo ${MDSUBDIR} | sed 's;\([a-zA-Z]*\)/;../;g')
+            NAME=$(basename "${oneMD}")
+            MDSUBDIR="${oneMD/${NAME}/}"
+            DSTDIR="../Books/${book}/${DST}/${MDSUBDIR}"
+            TOPREF=$(echo "${MDSUBDIR}" | sed 's;\([a-zA-Z]*\)/;../;g')
             if test ! -d "${DSTDIR}"; then
                 mkdir -p "${DSTDIR}"
             fi
-            (
-                echo "<!-- don't edit here, its from ${REPO} / ${SUBDIR}/${SRC} -->"
-                cat "${CODIR}/${SUBDIR}/${SRC}/${oneMD}" |sed "s;https://docs.arangodb.com/latest;../${TOPREF};g"
-            ) > "${DSTDIR}/${NAME}"
-
+            sourcefile="${CODIR}/${SUBDIR}/${SRC}/${oneMD}"
+            targetfile="${DSTDIR}/${NAME}"
+            if [[ "$sourcefile" == *.md ]]; then
+                (
+                    echo "<!-- don't edit here, it's from ${REPO} / ${SUBDIR}/${SRC} -->"
+                    sed "s;https://docs.arangodb.com/latest;../${TOPREF};g" "$sourcefile"
+                ) > "$targetfile"
+            else
+                cp "$sourcefile" "$targetfile"
+            fi
         done
     done
 done

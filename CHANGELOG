@@ -1,5 +1,28 @@
-v3.4.0-rc.2 (XXXX-XX-XX)
+v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+
+* support installation of ArangoDB on Windows into directories with multibyte
+  character filenames on Windows platforms that used a non-UTF8-codepage
+
+  This was supported on other platforms before, but never worked for ArangoDB's
+  Windows version
+
+* display shard synchronization progress for collections outside of the
+  `_system` database
+
+* change memory protection settings for memory given back to by the bundled
+  JEMalloc memory allocator. This avoids splitting of existing memory mappings
+  due to changes of the protection settings
+
+* added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
+
+
+v3.4.0-rc.2 (2018-09-30)
+------------------------
+
+* upgraded arangosync version to 0.6.0
+
+* upgraded arangodb starter version to 0.13.3
 
 * fixed issue #6611: Properly display JSON properties of user defined foxx services 
   configuration within the web UI 
@@ -103,6 +126,13 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 * catch more exceptions in replication and handle them appropriately
 
 * agency endpoint updates now go through RAFT
+
+* fixed a cleanup issue in Current when a follower was removed from Plan
+
+* catch exceptions in MaintenanceWorker thread
+
+* fixed a bug in cleanOutServer which could lead to a cleaned out server
+  still being a follower for some shard
 
 
 v3.4.0-rc.1 (2018-09-06)

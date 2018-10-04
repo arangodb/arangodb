@@ -295,6 +295,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
 
+  TRI_GET_ARGV(ARGC, ARGV);
   ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
   runServer(ARGC, ARGV, context);
 
@@ -306,6 +307,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 #endif
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
 #if _WIN32
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
     ARGC = argc;

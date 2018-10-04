@@ -62,6 +62,12 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                      "invalid number of shards");
     }
   }
+      
+  VPackSlice v = info.get("numberOfShards");
+  if (!v.isNone() && !v.isNumber() && !v.isNull()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid number of shards");
+  }
 
   if (info.hasKey("avoidServers")) {
     auto avoidServersSlice = info.get("avoidServers");

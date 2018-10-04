@@ -219,7 +219,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                           SyncPhase);
 
   /// @brief handle the inventory response of the master
-  Result handleLeaderCollections(arangodb::velocypack::Slice const&, bool);
+  Result handleCollectionsAndViews(arangodb::velocypack::Slice const& colls,
+                                   arangodb::velocypack::Slice const& views,
+                                   bool incremental);
 
   /// @brief iterate over all collections from an array and apply an action
   Result iterateCollections(

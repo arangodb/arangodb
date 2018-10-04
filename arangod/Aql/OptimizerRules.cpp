@@ -4625,7 +4625,7 @@ void arangodb::aql::restrictToSingleShardRule(
                  currentType == ExecutionNode::DISTRIBUTE ||
                  currentType == ExecutionNode::SINGLETON) {
         // we reached a new snippet or the end of the plan - we can abort
-        // searching now additionally, we cannot yet handle UPSERT well
+        // searching now. additionally, we cannot yet handle UPSERT well
         break;
       }
 

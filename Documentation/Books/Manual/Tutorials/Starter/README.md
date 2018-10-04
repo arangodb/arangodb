@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Starting an ArangoDB cluster or database the easy way
 
 Starting an ArangoDB cluster is complex. It involves starting various servers with

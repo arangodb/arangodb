@@ -40,11 +40,11 @@ function runSetup () {
   internal.wal.flush(true, true);
   internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
 
+  internal.debugSetFailAt('CollectorThreadProcessQueuedOperations');
   for (i = 0; i < 10000; ++i) {
     c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
   }
-
-  internal.debugSetFailAt('CollectorThreadProcessQueuedOperations');
+  
   internal.wal.flush(true, false);
 
   // now let the write throttling become active

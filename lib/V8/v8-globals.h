@@ -273,6 +273,14 @@ static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate, v
       isolate, WHAT.c_str(), v8::String::kNormalString, (int)WHAT.length())); \
   return
 
+/// @brief return a std::wstring
+///   implicitly requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string variable
+#define TRI_V8_RETURN_STD_WSTRING(WHAT)                                 \
+  args.GetReturnValue().Set(v8::String::NewFromTwoByte(                 \
+      isolate, (const uint16_t *)WHAT.c_str(), v8::String::kNormalString, (int)WHAT.length())); \
+  return
+
 /// @brief return a string which you know the length of
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the char* variable
