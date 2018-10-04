@@ -588,7 +588,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -621,7 +621,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
+    return AqlValue(AqlValueHintEmptyObject());
   }
 
   // unordered map to make object keys unique afterwards
@@ -1398,7 +1398,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   // FILTER
@@ -1412,7 +1412,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -1431,7 +1431,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
 
     VPackBuilder builder;
@@ -1473,7 +1473,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
 
     mustDestroy = localMustDestroy; // maybe we need to destroy...

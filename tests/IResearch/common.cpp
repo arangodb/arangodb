@@ -261,7 +261,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 
 uint64_t getCurrentPlanVersion() {
   auto const result = arangodb::AgencyComm().getValues("Plan");
-  auto const planVersionSlice = result.slice()[0].get(
+  auto const planVersionSlice = result.slice()[0].get<std::string>(
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();

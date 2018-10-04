@@ -25,6 +25,8 @@
 #define ARANGOD_CLUSTER_DB_SERVER_AGENCY_SYNC_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
 class HeartbeatThread;
@@ -56,6 +58,12 @@ class DBServerAgencySync {
  public:
   void work();
 
+  /**
+   * @brief Get copy of current local state
+   * @param  collections  Builder to fill to
+   */
+  static arangodb::Result getLocalCollections(VPackBuilder& collections);
+  
  private:
   DBServerAgencySyncResult execute();
 

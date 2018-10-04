@@ -25,8 +25,6 @@
 #include <regex>
 #include <thread>
 
-#include "3rdParty/valgrind/valgrind.h"
-
 #include "Actions/actions.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
@@ -1531,22 +1529,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
         action->visit(isolate);
       });
 
-      double availableTime = 30.0;
-
-      if (RUNNING_ON_VALGRIND) {
-        // running under Valgrind
-        availableTime *= 10;
-        int tries = 0;
-
-        while (tries++ < 10 &&
-               TRI_RunGarbageCollectionV8(isolate, availableTime)) {
-          if (tries > 3) {
-            LOG_TOPIC(WARN, arangodb::Logger::V8) << "waiting for garbage v8 collection to end";
-          }
-        }
-      } else {
-        TRI_RunGarbageCollectionV8(isolate, availableTime);
-      }
+      TRI_RunGarbageCollectionV8(isolate, 30.0);
 
       TRI_GET_GLOBALS();
 

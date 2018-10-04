@@ -215,6 +215,9 @@ bool IResearchViewBlockBase::readDocument(
 
   TRI_ASSERT(_trx->state());
 
+  // this is necessary for MMFiles
+  _trx->pinData(docPk.cid());
+
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
   auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
 

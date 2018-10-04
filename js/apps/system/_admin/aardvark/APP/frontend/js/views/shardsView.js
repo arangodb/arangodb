@@ -46,11 +46,17 @@
       return this;
     },
 
+    renderArrows: function (e) {
+      $('#shardsContent .fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
+      $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+    },
+
     toggleSections: function (e) {
       var colName = $(e.currentTarget).parent().attr('id');
       this.visibleCollection = colName;
       $('.sectionShardContent').hide();
       $(e.currentTarget).next().show();
+      this.renderArrows(e);
 
       this.getShardDetails(colName);
     },
