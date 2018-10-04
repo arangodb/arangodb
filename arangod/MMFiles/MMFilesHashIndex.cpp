@@ -632,7 +632,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
       }
 
       // Already indexed elements will be removed by the rollback
-      return error;
+      return std::move(error);
     }
   }
 

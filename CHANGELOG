@@ -115,6 +115,8 @@ v3.4.0-rc.2 (2018-09-30)
 * fixed a bug in cleanOutServer which could lead to a cleaned out server
   still being a follower for some shard
 
+* fixed a bug where indexes are used in the cluster while still being
+  built on the db servers
 
 v3.4.0-rc.1 (2018-09-06)
 ------------------------

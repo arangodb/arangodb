@@ -2807,6 +2807,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_tick_t& revisionId) {
+
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
