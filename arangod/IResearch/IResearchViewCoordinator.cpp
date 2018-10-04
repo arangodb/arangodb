@@ -181,7 +181,7 @@ bool IResearchViewCoordinator::emplace(
 
   if (preCommit && !preCommit(view)) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "Failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
+      << "Failure during pre-commit while constructing arangosearch view in database '" << vocbase.id() << "'";
 
     return nullptr;
   }
@@ -192,7 +192,7 @@ bool IResearchViewCoordinator::emplace(
 
     if (!ci) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure to find ClusterInfo instance while constructing IResearch View in database '" << vocbase.id() << "'";
+        << "Failure to find ClusterInfo instance while constructing arangosearch view in database '" << vocbase.id() << "'";
 
       return nullptr;
     }
@@ -204,7 +204,7 @@ bool IResearchViewCoordinator::emplace(
     if (!res.ok()) {
       TRI_set_errno(res.errorNumber());
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure to generate definitionf created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+        << "Failure to generate definitionf created view while constructing arangosearch view in database '" << vocbase.id() << "', error: " << res.errorMessage();
 
       return nullptr;
     }
@@ -218,7 +218,7 @@ bool IResearchViewCoordinator::emplace(
     if (TRI_ERROR_NO_ERROR != resNum) {
       TRI_set_errno(resNum);
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << error;
+        << "Failure during commit of created view while constructing arangosearch view in database '" << vocbase.id() << "', error: " << error;
 
       return nullptr;
     }
@@ -275,7 +275,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
   if (!engine) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failure to get storage engine while updating IResearch View '") + name() + "'"
+      std::string("failure to get storage engine while updating arangosearch view '") + name() + "'"
     );
   }
 
@@ -428,7 +428,7 @@ Result IResearchViewCoordinator::drop() {
   if (!engine) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failure to get storage engine while dropping IResearch View '") + name() + "'"
+      std::string("failure to get storage engine while dropping arangosearch view '") + name() + "'"
     );
   }
 

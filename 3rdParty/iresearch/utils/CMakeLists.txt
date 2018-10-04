@@ -45,6 +45,7 @@ set_target_properties(${IResearchUtil_TARGET_NAME}
 target_link_libraries(${IResearchUtil_TARGET_NAME}
   ${IResearch_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
+  ${ATOMIC_LIBRARY}
 )
 
 target_compile_features(${IResearchUtil_TARGET_NAME}
@@ -103,6 +104,7 @@ endif()
 target_link_libraries(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
+  ${ATOMIC_LIBRARY}
   ${REGEX_LIBRARY}
 )
 

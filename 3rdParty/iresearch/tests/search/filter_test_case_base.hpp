@@ -44,7 +44,7 @@ NS_BEGIN(sort)
 struct boost : public iresearch::sort {
   class scorer: public iresearch::sort::scorer_base<iresearch::boost::boost_t> {
    public:
-    DECLARE_FACTORY(scorer);
+    DEFINE_FACTORY_INLINE(scorer);
 
     scorer(
         const irs::attribute_store::ref<irs::boost>::type& boost,
@@ -61,9 +61,9 @@ struct boost : public iresearch::sort {
     const irs::attribute_store::ref<irs::boost>::type& boost_;
   }; // sort::boost::scorer
 
-  class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
+  class prepared: public iresearch::sort::prepared_basic<iresearch::boost::boost_t> {
    public:
-    DECLARE_FACTORY(prepared);
+    DEFINE_FACTORY_INLINE(prepared);
     prepared() { }
 
     virtual const iresearch::flags& features() const override {
@@ -85,21 +85,13 @@ struct boost : public iresearch::sort {
        );
     }
 
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
-    }
-
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return std::less<score_t>()(lhs, rhs);
-    }
-
    private:
     const iresearch::boost* boost;
     const std::function<bool(score_t, score_t)>* less_;
   }; // sort::boost::prepared
 
   DECLARE_SORT_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   typedef iresearch::boost::boost_t score_t;
   boost() : sort(boost::type()) {}
   virtual sort::prepared::ptr prepare() const {
@@ -177,7 +169,7 @@ struct custom_sort: public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    DECLARE_FACTORY(prepared);
+    DEFINE_FACTORY_INLINE(prepared);
 
     prepared(const custom_sort& sort): sort_(sort) {
     }
@@ -211,18 +203,18 @@ struct custom_sort: public irs::sort {
       );
     }
 
-    virtual void prepare_score(irs::doc_id_t& score) const override {
-      score = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
-    virtual void add(irs::doc_id_t& dst, const irs::doc_id_t& src) const override {
+    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
       if (sort_.scorer_add) {
-        sort_.scorer_add(dst, src);
+        sort_.scorer_add(score_cast(dst), score_cast(src));
       }
     }
 
-    virtual bool less(const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(lhs, rhs) : false;
+    virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
+      return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }
 
    private:
@@ -237,7 +229,7 @@ struct custom_sort: public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   custom_sort(): sort(custom_sort::type()) {}
   virtual prepared::ptr prepare() const {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
@@ -260,7 +252,7 @@ struct frequency_sort: public iresearch::sort {
    public:
     struct count: public iresearch::basic_stored_attribute<size_t> {
       DECLARE_ATTRIBUTE_TYPE();
-      DECLARE_FACTORY_DEFAULT();
+      DECLARE_FACTORY();
       size_t value{};
     };
 
@@ -309,7 +301,7 @@ struct frequency_sort: public iresearch::sort {
       const size_t* docs_count;
     };
 
-    DECLARE_FACTORY(prepared);
+    DEFINE_FACTORY_INLINE(prepared);
 
     prepared() { }
 
@@ -333,13 +325,17 @@ struct frequency_sort: public iresearch::sort {
       return sort::scorer::make<frequency_sort::prepared::scorer>(docs_count, doc_id_t);
     }
 
-    virtual void prepare_score(score_t& score) const override {
+    virtual void prepare_score(irs::byte_type* score_buf) const override {
+      auto& score = score_cast(score_buf);
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
       score.prepared = true;
     }
 
-    virtual void add(score_t& dst, const score_t& src) const override {
+    virtual void add(irs::byte_type* dst_buf, const irs::byte_type* src_buf) const override {
+      auto& dst = score_cast(dst_buf);
+      auto& src = score_cast(src_buf);
+
       ASSERT_TRUE(src.prepared);
       ASSERT_TRUE(dst.prepared);
 
@@ -351,14 +347,17 @@ struct frequency_sort: public iresearch::sort {
       dst.value += src.value;
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
+    virtual bool less(const irs::byte_type* lhs_buf, const irs::byte_type* rhs_buf) const override {
+      auto& lhs = score_cast(lhs_buf);
+      auto& rhs = score_cast(rhs_buf);
+
       return lhs.value == rhs.value
         ? std::less<iresearch::doc_id_t>()(lhs.id, rhs.id)
         : std::less<double>()(lhs.value, rhs.value);
     }
   };
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   frequency_sort(): sort(frequency_sort::type()) {}
   virtual prepared::ptr prepare() const {
     return frequency_sort::prepared::make<frequency_sort::prepared>();
@@ -480,13 +479,6 @@ struct empty_index_reader : iresearch::singleton<empty_index_reader>, iresearch:
 }; // index_reader
 
 struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub_reader {
-  struct empty_docs_iterator: docs_iterator_t {
-    virtual bool next() { return false; }
-    virtual iresearch::doc_id_t value() const { 
-      return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
-    }
-  };
-
   virtual iresearch::column_iterator::ptr columns() const override {
     return iresearch::column_iterator::empty();
   }
@@ -497,10 +489,8 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
 
   virtual uint64_t live_docs_count() const override { return 0; }
 
-  virtual uint64_t docs_count(const iresearch::string_ref&) const override { return 0; }
-
-  virtual docs_iterator_t::ptr docs_iterator() const override { 
-    return docs_iterator_t::make<empty_docs_iterator>(); 
+  virtual irs::doc_iterator::ptr docs_iterator() const override {
+    return irs::doc_iterator::empty();
   }
 
   virtual uint64_t docs_count() const override { return 0; }

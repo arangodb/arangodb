@@ -84,7 +84,7 @@ struct IRESEARCH_API data_output
 struct IRESEARCH_API index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
-  DECLARE_FACTORY(index_output);
+  DEFINE_FACTORY_INLINE(index_output);
 
   virtual ~index_output();
 
@@ -134,17 +134,17 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
 
   virtual size_t file_pointer() const override;
 
-  virtual void write_byte(byte_type b) override final;
+  virtual void write_byte(byte_type b) final;
 
-  virtual void write_bytes(const byte_type* b, size_t length) override final;
+  virtual void write_bytes(const byte_type* b, size_t length) final;
 
-  virtual void write_vint(uint32_t v) override final;
+  virtual void write_vint(uint32_t v) final;
 
-  virtual void write_vlong(uint64_t v) override final;
+  virtual void write_vlong(uint64_t v) final;
 
-  virtual void write_int(int32_t v) override final;
+  virtual void write_int(int32_t v) final;
 
-  virtual void write_long(int64_t v) override final;
+  virtual void write_long(int64_t v) final;
 
  protected:
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;

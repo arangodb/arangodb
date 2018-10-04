@@ -37,7 +37,7 @@ public:
   }
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   typedef float_t score_t;
 
@@ -47,7 +47,7 @@ public:
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }
 
-  virtual sort::prepared::ptr prepare() const override;
+  virtual sort::prepared::ptr prepare() const;
 
 private:
   bool normalize_;

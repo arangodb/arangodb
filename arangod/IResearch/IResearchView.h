@@ -141,7 +141,7 @@ class IResearchView
   ///////////////////////////////////////////////////////////////////////////////
   class AsyncSelf: public ResourceMutex {
    public:
-    DECLARE_SPTR(AsyncSelf);
+    DECLARE_SHARED_PTR(AsyncSelf);
     explicit AsyncSelf(IResearchView* value): ResourceMutex(value) {}
     IResearchView* get() const {
       return static_cast<IResearchView*>(ResourceMutex::get());

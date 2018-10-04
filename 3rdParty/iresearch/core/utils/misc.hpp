@@ -50,20 +50,49 @@ NS_ROOT
   #define IRESEARCH_COUNTOF(x) sizeof(x) / sizeof(x[0])
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for simulating 'try/catch/finally' semantic
+////////////////////////////////////////////////////////////////////////////////
 template<typename Func>
 class finally {
  public:
   finally(const Func& func) : func_(func) { }
-  finally(Func&& func) : func_(std::move(func)) { }
+  finally(Func&& func) NOEXCEPT : func_(std::move(func)) { }
   ~finally() { func_(); }
 
  private:
   Func func_;
-};
+}; // finally
 
 template<typename Func>
 finally<Func> make_finally(Func&& func) {
   return finally<Func>(std::forward<Func>(func));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for simulating copy semantic for move-only types
+///        e.g. lambda capture statement before c++14
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class move_on_copy {
+ public:
+  move_on_copy(T&& value) NOEXCEPT : value_(std::move(value)) {}
+  move_on_copy(const move_on_copy& rhs) NOEXCEPT : value_(std::move(rhs.value_)) {}
+
+  T& value() NOEXCEPT { return value_; }
+  const T& value() const NOEXCEPT { return value_; }
+
+ private:
+  move_on_copy& operator=(move_on_copy&&) = delete;
+  move_on_copy& operator=(const move_on_copy&) = delete;
+
+  mutable T value_;
+}; // move_on_copy
+
+template<typename T>
+move_on_copy<T> make_move_on_copy(T&& value) NOEXCEPT {
+  static_assert(std::is_rvalue_reference<decltype(value)>::value, "parameter should be an rvalue");
+  return move_on_copy<T>(std::move(value));
 }
 
 NS_END

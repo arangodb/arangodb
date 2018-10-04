@@ -79,7 +79,7 @@ filter::prepared::ptr empty::prepare(
     boost_t,
     const attribute_view&
 ) const {
-  static filter::prepared::ptr instance = std::make_shared<empty_query>();
+  static filter::prepared::ptr instance = memory::make_shared<empty_query>();
   return instance;
 }
 

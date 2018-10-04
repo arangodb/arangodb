@@ -87,7 +87,7 @@ class phrase_query : public filter::prepared {
   > term_stats_t;
   typedef std::vector<term_stats_t> phrase_stats_t;
 
-  DECLARE_SPTR(phrase_query);
+  DECLARE_SHARED_PTR(phrase_query);
 
   phrase_query(states_t&& states, phrase_stats_t&& stats)
     : states_(std::move(states)),
@@ -135,7 +135,7 @@ class phrase_query : public filter::prepared {
         // positions not found
         return doc_iterator::empty();
       }
-      positions.emplace_back(std::cref(*pos), term_stats->second);
+      positions.emplace_back(std::ref(*pos), term_stats->second);
 
       // add base iterator
       itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
@@ -294,7 +294,7 @@ filter::prepared::ptr by_phrase::prepare(
     ++term_itr;
   }
 
-  auto q = memory::make_unique<phrase_query>(
+  auto q = memory::make_shared<phrase_query>(
     std::move(phrase_states),
     std::move(stats)
   );
