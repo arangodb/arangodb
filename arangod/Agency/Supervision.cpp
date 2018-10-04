@@ -945,6 +945,11 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
                         timepointToString(std::chrono::system_clock::now())));
                     }
                   }
+                  // increase current version
+                  builder->add(VPackValue("/arango/Current/Version"));
+                  {VPackObjectBuilder op(builder.get());
+                    builder->add("op", VPackValue("increment"));
+                  }
                 }
                 {VPackObjectBuilder precon(builder.get());
                   // pre condition:
