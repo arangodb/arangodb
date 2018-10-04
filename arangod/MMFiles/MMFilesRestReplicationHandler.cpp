@@ -959,7 +959,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
       << "requested collection dump for collection '" << collection
       << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 

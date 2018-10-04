@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,7 +65,6 @@ void SharedQueryState::setContinueHandler(std::function<void()> const& handler) 
 bool SharedQueryState::executeContinueCallback() const {
   TRI_ASSERT(_hasHandler);
   auto scheduler = SchedulerFeature::SCHEDULER;
-  TRI_ASSERT(scheduler != nullptr);
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
     return false;

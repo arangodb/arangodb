@@ -65,7 +65,7 @@ static factories_t const factories = factories_t {
 
   {DROP_INDEX,
    [](MaintenanceFeature& f,ActionDescription const& a) {
-      return std::unique_ptr<ActionBase>(new DropIndex(f,a)); }},    
+      return std::unique_ptr<ActionBase>(new DropIndex(f,a)); }},
 
   {ENSURE_INDEX,
    [](MaintenanceFeature& f,ActionDescription const& a) {
@@ -77,12 +77,12 @@ static factories_t const factories = factories_t {
 
   {SYNCHRONIZE_SHARD,
    [](MaintenanceFeature& f,ActionDescription const& a) {
-      return std::unique_ptr<ActionBase>(new SynchronizeShard(f,a)); }},    
+      return std::unique_ptr<ActionBase>(new SynchronizeShard(f,a)); }},
 
   {UPDATE_COLLECTION,
    [](MaintenanceFeature& f,ActionDescription const& a) {
       return std::unique_ptr<ActionBase>(new UpdateCollection(f,a)); }},
-  
+
 };
 
 Action::Action(
@@ -120,8 +120,8 @@ void Action::create(
   _action = (factory != factories.end()) ?
     factory->second(feature, description) :
     std::unique_ptr<ActionBase>(new NonAction(feature, description));
-    
-  
+
+
 }
 
 ActionDescription const& Action::describe() const {

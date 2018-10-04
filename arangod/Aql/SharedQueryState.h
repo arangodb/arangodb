@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,20 +28,20 @@
 
 namespace arangodb {
 namespace aql {
-
+  
 class SharedQueryState {
- public:
-  SharedQueryState(SharedQueryState const&) = delete; 
-  SharedQueryState& operator=(SharedQueryState const&) = delete; 
-
-  SharedQueryState() 
-      : _wasNotified(false),
-        _hasHandler(false),
-        _valid(true) {
+public:
+  SharedQueryState(SharedQueryState const&) = delete;
+  SharedQueryState& operator=(SharedQueryState const&) = delete;
+  
+  SharedQueryState()
+  : _wasNotified(false),
+  _hasHandler(false),
+  _valid(true) {
   }
-
+  
   ~SharedQueryState() = default;
-
+  
   void invalidate();
   
   /// @brief continueAfterPause is to be called on the query object to
@@ -85,7 +84,7 @@ class SharedQueryState {
   /// @brief setter for the continue callback:
   ///        We can either have a handler or a callback
   void setContinueCallback() noexcept;
-
+  
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
   void setContinueHandler(std::function<void()> const& handler);
@@ -94,8 +93,8 @@ private:
   
   /// execute the _continueCallback. must hold _mutex
   bool executeContinueCallback() const;
-
- private:
+  
+private:
   
   std::mutex _mutex;
   std::condition_variable _condition;
@@ -110,11 +109,9 @@ private:
   /// @brief decide if the _continueCallback needs to be pushed onto the ioservice
   ///        or if it has to be executed in this thread.
   bool _hasHandler;
-
+  
   bool _valid;
 };
-
-}
-}
-
+  
+}}
 #endif

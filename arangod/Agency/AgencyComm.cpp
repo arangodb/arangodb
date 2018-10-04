@@ -732,7 +732,7 @@ AgencyCommManager::createNewConnection() {
   std::string const& spec = _endpoints.front();
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(spec));
   if (endpoint.get() == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for "
+    LOG_TOPIC(ERR, arangodb::Logger::AGENCYCOMM) << "invalid value for "
       << "--server.endpoint ('" << spec << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -1762,7 +1762,6 @@ bool AgencyComm::tryInitializeStructure() {
       VPackObjectBuilder c(&builder);
       builder.add("LatestID", VPackValue(1));
       builder.add("UserVersion", VPackValue(1));
-      addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue(1000));
     }
 

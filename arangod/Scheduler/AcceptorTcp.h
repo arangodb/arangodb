@@ -34,7 +34,13 @@ class AcceptorTcp final : public Acceptor {
 
  public:
   void open() override;
-  void close() override { _acceptor->close(); };
+  void close() override {
+    _acceptor->close();
+    if (_peer) {
+      asio_ns::error_code ec;
+      _peer->close(ec);
+    }
+  };
   void asyncAccept(Acceptor::AcceptHandler const& handler) override;
 
  private:

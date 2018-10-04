@@ -28,8 +28,19 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var internal = require("internal");
 
-var db = arangodb.db;
-var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
+let db = arangodb.db;
+let ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
+let tasks = require("@arangodb/tasks");
+  
+let cleanTasks = function () {
+  tasks.get().forEach(function(task) {
+    if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
+      try {
+        tasks.unregister(task);
+      } catch (err) {}
+    }
+  });
+};
 
 function ThrowCollectionNotLoadedSuite() {
   'use strict';
@@ -47,13 +58,14 @@ function ThrowCollectionNotLoadedSuite() {
       db._drop(cn);
       // restore old settings
       internal.throwOnCollectionNotLoaded(old);
+      cleanTasks();
     },
 
     // test regular loading of collection
     testLoad: function() {
       internal.throwOnCollectionNotLoaded(false);
 
-      var c = db._create(cn);
+      let c = db._create(cn);
       c.save({
         value: 1
       });
@@ -94,17 +106,16 @@ function ThrowCollectionNotLoadedSuite() {
     // test parallel loading of collection
     testLoadParallel: function() {
       internal.throwOnCollectionNotLoaded(false);
-      var tasks = require("@arangodb/tasks");
-      var c = db._create(cn);
+      let c = db._create(cn);
 
-      for (var i = 0; i < 10000; ++i) {
-        c.save({
-          value: 1
-        });
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ value: i });
       }
+      c.insert(docs);
 
-      db._drop(cn + "Collect");
-      var cnCollect = cn + "Collect";
+      let cnCollect = cn + "Collect";
+      db._drop(cnCollect);
       db._create(cnCollect);
 
       c.unload();
@@ -113,20 +124,20 @@ function ThrowCollectionNotLoadedSuite() {
 
       while (db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
         db._collection(cn).unload();
-        internal.wait(0.5);
+        internal.wait(0.25, false);
       }
 
-      var task = {
+      let task = {
         offset: 0,
         params: {
-          cn: cn
+          cn
         },
         command: function(params) {
-          var db = require('internal').db;
-          var result = db._collection(params.cn + "Collect");
+          let db = require('internal').db;
+          let result = db._collection(params.cn + "Collect");
 
           try {
-            for (var i = 0; i < 100; ++i) {
+            for (let i = 0; i < 100; ++i) {
               db._collection(params.cn).load();
               db._collection(params.cn).unload();
             }
@@ -146,8 +157,8 @@ function ThrowCollectionNotLoadedSuite() {
       // spawn a few tasks that load and unload
       let iter = 20;
 
-      for (i = 0; i < iter; ++i) {
-        task.id = "loadtest" + i;
+      for (let i = 0; i < iter; ++i) {
+        task.id = "UnitTest" + i;
         tasks.register(task);
       }
 
@@ -155,13 +166,13 @@ function ThrowCollectionNotLoadedSuite() {
       let rc = db._collection(cnCollect);
 
       while (rc.count() < iter) {
-        internal.wait(0.5);
+        internal.wait(0.5, false);
       }
 
       // check for errors
-      var errors = internal.errors;
+      let errors = internal.errors;
 
-      var found = rc.byExample({
+      let found = rc.byExample({
         err: errors.ERROR_ARANGO_COLLECTION_NOT_LOADED.code
       }).toArray();
       db._drop(cnCollect);
@@ -173,17 +184,16 @@ function ThrowCollectionNotLoadedSuite() {
     // test parallel loading of collection, with flag
     testLoadParallelWithFlag: function() {
       internal.throwOnCollectionNotLoaded(true);
-      var tasks = require("@arangodb/tasks");
-      var c = db._create(cn);
+      let c = db._create(cn);
 
-      for (var i = 0; i < 10000; ++i) {
-        c.save({
-          value: 1
-        });
+      let docs = [];
+      for (let i = 0; i < 50000; ++i) {
+        docs.push({ value: i });
       }
+      c.insert(docs);
 
-      db._drop(cn + "Collect");
-      var cnCollect = cn + "Collect";
+      let cnCollect = cn + "Collect";
+      db._drop(cnCollect);
       db._create(cnCollect);
 
       c.unload();
@@ -192,25 +202,30 @@ function ThrowCollectionNotLoadedSuite() {
 
       while (db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
         db._collection(cn).unload();
-        internal.wait(0.5);
+        internal.wait(0.25, false);
       }
 
-      var task = {
+      let task = {
         offset: 0,
         params: {
-          cn: cn
+          cn
         },
         command: function(params) {
-          var db = require('internal').db;
-          var result = db._collection(params.cn + "Collect");
+          let db = require('internal').db;
+          let result;
 
           try {
-            for (var i = 0; i < 500; ++i) {
+            for (let i = 0; i < 500; ++i) {
+              result = db._collection(params.cn + "Collect");
+              if (result === null) {
+                // test is over already
+                return;
+              }
               db._collection(params.cn).load();
               db._collection(params.cn).unload();
             }
           } catch (err) {
-            db._collection(params.cn + "Collect").save({
+            result.save({
               err: err.errorNum
             });
             return;
@@ -225,22 +240,29 @@ function ThrowCollectionNotLoadedSuite() {
       // spawn a few tasks that load and unload
       let iter = 20;
 
-      for (i = 0; i < iter; ++i) {
-        task.id = "loadtest" + i;
+      for (let i = 0; i < iter; ++i) {
+        task.id = "UnitTest" + i;
         tasks.register(task);
       }
 
       // wait for tasks to join
       let rc = db._collection(cnCollect);
+      
+      // check for errors
+      let errors = internal.errors;
 
       while (rc.count() < iter) {
-        internal.wait(0.5);
+        if (db._collection(cnCollect).firstExample({
+          err: errors.ERROR_ARANGO_COLLECTION_NOT_LOADED.code
+        }) !== null) {
+          // already got one failure, so we can stop here
+          break;
+        }
+        internal.wait(0.25, false);
       }
+      cleanTasks();
 
-      // check for errors
-      var errors = internal.errors;
-
-      var found = db._collection(cnCollect).byExample({
+      let found = db._collection(cnCollect).byExample({
         err: errors.ERROR_ARANGO_COLLECTION_NOT_LOADED.code
       }).toArray();
       db._drop(cnCollect);

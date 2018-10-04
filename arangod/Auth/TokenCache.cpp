@@ -108,7 +108,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
-  
+
   uint64_t version = _userManager->globalVersion();
   if (_basicCacheVersion.load(std::memory_order_acquire) != version) {
      WRITE_LOCKER(guard, _basicLock);
@@ -236,13 +236,13 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
         << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "Got unknown exception trying to parse " << hint;
   }
 
@@ -313,10 +313,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   auth::TokenCache::Entry authResult("", false, 0);
   if (bodySlice.hasKey("preferred_username")) {
     VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-    if (!usernameSlice.isString()) {
+    if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
       return auth::TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
+    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
   } else {

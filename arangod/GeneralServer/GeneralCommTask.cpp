@@ -121,8 +121,14 @@ bool resolveRequestContext(GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
+  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(req, *vocbase));
+  if (!guard) {
+    return false;
+  }
+  
   // the vocbase context is now responsible for releasing the vocbase
-  req.setRequestContext(VocbaseContext::create(req, *vocbase), true);
+  req.setRequestContext(guard.get(), true);
+  guard.release();
 
   // the "true" means the request is the owner of the context
   return true;

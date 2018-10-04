@@ -721,7 +721,7 @@ arangodb::Result processInputDirectory(
           auto queueStats = jobQueue.statistics();
           // periodically report current status, but do not spam user
           LOG_TOPIC(INFO, Logger::RESTORE)
-              << "# Worker progress summary: restored " << stats.restoredCollections
+              << "# Current restore progress: restored " << stats.restoredCollections
               << " of " << stats.totalCollections << " collection(s), read " << stats.totalRead << " byte(s) from datafiles, "
               << "sent " << stats.totalBatches << " data batch(es) of " << stats.totalSent << " byte(s) total size"
               << ", queued jobs: " << std::get<0>(queueStats) << ", workers: " << std::get<1>(queueStats);
@@ -1043,9 +1043,7 @@ void RestoreFeature::start() {
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
 
-  if (_options.progress) {
-    LOG_TOPIC(INFO, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
-  }
+  LOG_TOPIC(DEBUG, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
 
   // run the actual restore
   try {
