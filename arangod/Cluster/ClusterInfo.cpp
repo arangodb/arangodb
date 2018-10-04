@@ -2448,11 +2448,11 @@ int ClusterInfo::ensureIndexCoordinator(
       for (auto const& index : VPackArrayIterator(planIndexes)) {        
         auto idPlanSlice = index.get("id");
         if (idPlanSlice.isString() && idPlanSlice.copyString() == idString &&
-            index.hasKey()) {
+            index.hasKey("isBuilding")) {
           found = true;
           VPackObjectBuilder o(&newPlanIndexes);
           for (auto const& i : VPackObjectIterator(index)) {
-            auto const key = i.key.copyString();
+            auto const& key = i.key.copyString();
             if (key != "isBuilding") {
               newPlanIndexes.add(i.key.copyString(), i.value);
             }
@@ -2485,8 +2485,6 @@ int ClusterInfo::ensureIndexCoordinator(
       loadPlan();
       return errorCode;
     }
-    std::chrono::duration<size_t, std::milli> waitTime(10);
-    std::this_thread::sleep_for(waitTime);
     
   }
   
