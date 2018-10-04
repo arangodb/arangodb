@@ -279,6 +279,8 @@ void RocksDBCollection::open(bool /*ignoreErrors*/) {
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   TRI_ASSERT(engine != nullptr);
+  TRI_ASSERT(!engine->inRecovery());
+  
   auto counterValue = engine->settingsManager()->loadCounter(_objectId);
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
