@@ -117,7 +117,7 @@ RocksDBCollection::RocksDBCollection(
         "volatile collections are unsupported in the RocksDB engine");
   }
 
-  TRI_ASSERT(_objectId != 0);
+  TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
   rocksutils::globalRocksEngine()->addCollectionMapping(
     _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id()
   );
