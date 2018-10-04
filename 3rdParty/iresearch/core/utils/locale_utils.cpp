@@ -911,7 +911,7 @@ bool codecvt8u_facet::append(
     std::basic_string<intern_type>& buf_;
     bool error_;
     sink_t(std::basic_string<intern_type>& buf): buf_(buf), error_(false) {}
-    virtual void Append(const char* bytes, int32_t n) {
+    virtual void Append(const char* bytes, int32_t n) override {
       if (n < 0 || error_) {
         error_ = true;
         return;
