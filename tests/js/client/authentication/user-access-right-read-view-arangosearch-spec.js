@@ -72,7 +72,7 @@ function hasIResearch (db) {
     if (db._views() === 0) {
       return; // arangosearch views are not supported
     }
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -212,6 +212,8 @@ function hasIResearch (db) {
             if (properties != null) {
               view.properties(properties, false);
             }
+            require('internal').print("expected properties: " + JSON.stringify(properties))
+            require('internal').print("actual properties: " + JSON.stringify(view.properties()))
             helper.switchUser(name, dbName);
           };
 
