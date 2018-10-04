@@ -1741,7 +1741,7 @@ void IResearchView::open() {
     if (format) {
       if (!_storePersisted._path.mkdir()) {
 #if defined(_WIN32)
-        errno = TRI_MapSystemError(GetLastError())
+        errno = TRI_MapSystemError(GetLastError());
 #endif
 
         throw std::runtime_error(
