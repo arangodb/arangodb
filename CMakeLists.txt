@@ -564,9 +564,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
   endif()
 
-  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()$
-  # MSVC2018.8 requires the following define$
-  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)$
+  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
+  # MSVC2018.8 requires the following define
+  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
