@@ -1740,8 +1740,9 @@ void IResearchView::open() {
 
     if (format) {
       if (!_storePersisted._path.mkdir()) {
-        // check errno
-        TRI_SYSTEM_ERROR();
+#if defined(_WIN32)
+        errno = TRI_MapSystemError(GetLastError())
+#endif
 
         throw std::runtime_error(
           std::string("failed to create data directory for arangosearch view '") + name()
