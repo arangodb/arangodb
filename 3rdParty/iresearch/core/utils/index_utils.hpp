@@ -43,10 +43,22 @@ IRESEARCH_API index_writer::consolidation_policy_t consolidate_count(float docs_
 // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
 IRESEARCH_API index_writer::consolidation_policy_t consolidate_fill(float fill_threshold = 0);
 
+IRESEARCH_API index_writer::consolidation_policy_t consolidate_tier(
+  size_t min_segments = 1,                              // minimum allowed number of segments to consolidate at once
+  size_t max_segments = 10,                             // maximum allowed number of segments to consolidate at once
+  size_t max_segments_bytes = size_t(5)*(1<<30),        // maxinum allowed size of all consolidated segments
+  size_t floor_segment_bytes = size_t(2)*(1<<20),       // treat all smaller segments as equal for consolidation selection
+  size_t lookahead = integer_traits<size_t>::const_max  // how many tiers have to be inspected
+);
+
 void read_document_mask(document_mask& docs_mask, const directory& dir, const segment_meta& meta);
 
-// returns filename
-std::string write_segment_meta(directory& dir, const segment_meta& meta);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes segment_meta to the supplied directory
+///        updates index_meta::index_segment_t::filename to the segment filename
+///        updates segment_meta::size to the size of files written
+////////////////////////////////////////////////////////////////////////////////
+void write_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
 NS_END
 NS_END

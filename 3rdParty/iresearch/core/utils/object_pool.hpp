@@ -27,7 +27,6 @@
 #include <algorithm>
 #include <atomic>
 #include <functional>
-#include <type_traits>
 #include <vector>
 
 #include "memory.hpp"

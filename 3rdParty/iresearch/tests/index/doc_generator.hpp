@@ -462,7 +462,8 @@ template<typename Indexed>
 bool insert(
     irs::index_writer& writer,
     Indexed ibegin, Indexed iend) {
-  auto doc = writer.documents().insert();
+  auto ctx = writer.documents();
+  auto doc = ctx.insert();
 
   return doc.insert(irs::action::index, ibegin, iend);
 }
@@ -472,7 +473,8 @@ bool insert(
     irs::index_writer& writer,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto doc = writer.documents().insert();
+  auto ctx = writer.documents();
+  auto doc = ctx.insert();
 
   return doc.insert(irs::action::index, ibegin, iend)
          && doc.insert(irs::action::store, sbegin, send);
@@ -483,7 +485,8 @@ bool update(
     irs::index_writer& writer,
     const irs::filter& filter,
     Indexed ibegin, Indexed iend) {
-  auto doc = writer.documents().replace(filter);
+  auto ctx = writer.documents();
+  auto doc = ctx.replace(filter);
 
   return doc.insert(irs::action::index, ibegin, iend);
 }
@@ -494,7 +497,8 @@ bool update(
     const irs::filter& filter,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto doc = writer.documents().replace(filter);
+  auto ctx = writer.documents();
+  auto doc = ctx.replace(filter);
 
   return doc.insert(irs::action::index, ibegin, iend)
          && doc.insert(irs::action::store, sbegin, send);
@@ -505,7 +509,8 @@ bool update(
     irs::index_writer& writer,
     irs::filter::ptr&& filter,
     Indexed ibegin, Indexed iend) {
-  auto doc = writer.documents().replace(std::move(filter));
+  auto ctx = writer.documents();
+  auto doc = ctx.replace(std::move(filter));
 
   return doc.insert(irs::action::index, ibegin, iend);
 }
@@ -516,7 +521,8 @@ bool update(
     irs::filter::ptr&& filter,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto doc = writer.documents().replace(std::move(filter));
+  auto ctx = writer.documents();
+  auto doc = ctx.replace(std::move(filter));
 
   return doc.insert(irs::action::index, ibegin, iend)
          && doc.insert(irs::action::store, sbegin, send);
@@ -527,7 +533,8 @@ bool update(
     irs::index_writer& writer,
     const std::shared_ptr<irs::filter>& filter,
     Indexed ibegin, Indexed iend) {
-  auto doc = writer.documents().replace(filter);
+  auto ctx = writer.documents();
+  auto doc = ctx.replace(filter);
 
   return doc.insert(irs::action::index, ibegin, iend);
 }
@@ -538,7 +545,8 @@ bool update(
     const std::shared_ptr<irs::filter>& filter,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto doc = writer.documents().replace(filter);
+  auto ctx = writer.documents();
+  auto doc = ctx.replace(filter);
 
   return doc.insert(irs::action::index, ibegin, iend)
          && doc.insert(irs::action::store, sbegin, send);

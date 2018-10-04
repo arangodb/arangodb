@@ -28,7 +28,6 @@
 #include <deque>
 #include <list>
 #include <numeric>
-#include <type_traits>
 
 #include "shared.hpp"
 

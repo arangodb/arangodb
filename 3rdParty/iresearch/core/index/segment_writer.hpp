@@ -164,15 +164,15 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   typedef std::vector<update_context> update_contexts;
 
   // begin document-write transaction
-  // @return 0-based doc_id
+  // @return doc_id_t as per type_limits<type_t::doc_id_t>
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
 
-  // expect 0-based doc_id
-  // FIXME TODO use valid doc_id_t range [min.. eof)
+  // @param doc_id the document id as returned by begin(...)
   // @return modifiable update_context for the specified doc_id
   update_context& doc_context(doc_id_t doc_id) {
-    assert(doc_id < docs_context_.size());
-    return docs_context_[doc_id];
+    assert(type_limits<type_t::doc_id_t>::valid(doc_id));
+    assert(doc_id - type_limits<type_t::doc_id_t>::min() < docs_context_.size());
+    return docs_context_[doc_id - type_limits<type_t::doc_id_t>::min()];
   }
 
   // adds stored document field
@@ -206,11 +206,15 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // @return aproximate amount of memory used by this writer
   size_t memory() const NOEXCEPT;
 
+  // @param doc_id the document id as returned by begin(...)
+  // @return success
+  bool remove(doc_id_t doc_id);
+
   // rollbacks document-write transaction,
   // implicitly NOEXCEPT since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    remove(docs_cached() - 1); // 0-based doc_id
+    remove(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
     valid_ = false;
   }
 
@@ -218,9 +222,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   const std::string& name() const NOEXCEPT { return seg_name_; }
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }
-  const document_mask& docs_mask() NOEXCEPT { return docs_mask_; }
   bool initialized() const NOEXCEPT { return initialized_; }
-  bool remove(doc_id_t doc_id); // expect 0-based doc_id
   bool valid() const NOEXCEPT { return valid_; }
   void reset();
   void reset(const segment_meta& meta);
@@ -255,16 +257,18 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       std::hash<irs::string_ref>()
     );
 
-    assert(docs_cached() < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-    const doc_id_t doc = docs_cached();
-    auto& stream = this->stream(doc, name);
+    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
+    auto doc_id =
+      doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+    auto& out = stream(doc_id, name);
 
-    if (!field.write(stream)) {
-      stream.reset();
-      return false;
+    if (field.write(out)) {
+      return true;
     }
 
-    return true;
+    out.reset();
+
+    return false;
   }
 
   // adds document field
@@ -301,15 +305,16 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     }
 
     // store field
-    assert(docs_cached() < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-    const doc_id_t doc = docs_cached();
-    auto& stream = this->stream(doc, name);
+    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
+    auto doc_id =
+      doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+    auto& out = stream(doc_id, name);
 
-    if (field.write(stream)) {
+    if (field.write(out)) {
       return true;
     }
 
-    stream.reset();
+    out.reset();
 
     return false; // store failed
   }

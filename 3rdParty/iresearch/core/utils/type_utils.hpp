@@ -24,8 +24,6 @@
 #ifndef IRESEARCH_TYPE_UTILS_H
 #define IRESEARCH_TYPE_UTILS_H
 
-#include <type_traits>
-
 #include "shared.hpp"
 #include "std.hpp"
 

@@ -98,6 +98,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -111,6 +112,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -472,7 +474,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+        - travis_retry sudo apt-get install g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -487,7 +489,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+        - travis_retry sudo apt-get install g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -502,7 +504,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+        - travis_retry sudo apt-get install g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -517,7 +519,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+        - travis_retry sudo apt-get install g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -532,7 +534,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+        - travis_retry sudo apt-get install g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -547,7 +549,7 @@ matrix:
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+        - travis_retry sudo apt-get install g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
@@ -569,6 +571,7 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -583,6 +586,7 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
@@ -597,6 +601,7 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
@@ -611,6 +616,7 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -625,6 +631,7 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
@@ -639,6 +646,7 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
@@ -651,30 +659,26 @@ install:
   - bison --version
 
   ############################################################################
-  # Travis machines have 2 cores
-  ############################################################################
-  - JOBS=4
-
-  ############################################################################
-  # Install a recent CMake (unless already installed on OS X)
-  ############################################################################
-  - if [[ "${CMAKE_VERSION}" == "default" ]]; then CMAKE_VERSION=3.2.2; fi
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
-      mkdir -p cmake && travis_retry wget --no-check-certificate -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
-      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
-    else
-      brew install cmake || brew upgrade cmake
-    fi
-  - which cmake
-  - cmake --version
-
-  ############################################################################
   # All the dependencies are installed in ${TRAVIS_BUILD_DIR}/deps/
   ############################################################################
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+
+  ############################################################################
+  # Install a recent CMake (unless already installed on OS X)
+  ############################################################################
+  - |
+    if [[ "${CMAKE_VERSION}" != "default" ]]; then 
+      if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+        CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+        mkdir -p ${DEPS_DIR}/cmake && travis_retry wget --no-check-certificate -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C ${DEPS_DIR}/cmake
+        export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+      else
+        brew install cmake || brew upgrade cmake
+      fi
+    fi
+  - which cmake
+  - cmake --version
 
   ############################################################################
   # Setup default versions and override compiler if needed
@@ -761,12 +765,13 @@ install:
       GTEST_URL="https://github.com/google/googletest.git"
       cd ${DEPS_DIR}
       travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1
-      cd ${GTEST_DIR}
-      mkdir build && cd build
-      cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
-      make install
+#      cd ${GTEST_DIR}
+#      mkdir build && cd build
+#      cmake -DCMAKE_CXX_STANDARD=${CXX_STANDARD} -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
+#      make install
     fi
-    export GTEST_ROOT=${GTEST_DIR}/build/package
+#    export GTEST_ROOT=${GTEST_DIR}/build/package
+    export GTEST_ROOT=${GTEST_DIR}/googletest
 
 before_script:
   ############################################################################
@@ -797,12 +802,12 @@ script:
           exit 1
         fi
       else
-        make -j${JOBS} iresearch-tests${BUILD_TYPE_SUFFIX}
+        make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
       # build utils
       if [[ "${STATIC_LIB}" == "true" ]]; then
-        make -j${JOBS} iresearch-index-util
-        make -j${JOBS} iresearch-benchmarks
+        make iresearch-index-util
+        make iresearch-benchmarks
       fi
       # execute tests
       ulimit -n 1024 # required for MacOS

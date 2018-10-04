@@ -825,7 +825,7 @@ bool write(
 
     // remap merge norms
     field_itr.visit(merge_norms); 
-   
+
     // write field terms
     auto terms = field_itr.iterator();
 
@@ -900,8 +900,7 @@ merge_writer::operator bool() const NOEXCEPT {
 }
 
 bool merge_writer::flush(
-    std::string& filename,
-    segment_meta& meta,
+    index_meta::index_segment_t& segment,
     bool persist_segment_meta /* = true */
 ) {
   REGISTER_TIMER_DETAILED();
@@ -947,42 +946,42 @@ bool merge_writer::flush(
     columns_itr.add(reader, reader_ctx.doc_map);
   }
 
-  meta.docs_count = base_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
-  meta.live_docs_count = meta.docs_count; // all merged documents are live
+  segment.meta.docs_count = base_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
+  segment.meta.live_docs_count = segment.meta.docs_count; // all merged documents are live
 
   //...........................................................................
   // write merged segment data
   //...........................................................................
   REGISTER_TIMER_DETAILED();
   tracking_directory track_dir(dir_); // track writer created files
-  columnstore cs(track_dir, meta);
+  columnstore cs(track_dir, segment.meta);
 
   if (!cs) {
     return false; // flush failure
   }
 
   // write columns
-  if (!write_columns(cs, track_dir, meta, columns_itr)) {
+  if (!write_columns(cs, track_dir, segment.meta, columns_itr)) {
     return false; // flush failure
   }
 
   // write field meta and field term data
-  if (!write(cs, track_dir, meta, fields_itr, field_metas, fields_features)) {
+  if (!write(cs, track_dir, segment.meta, fields_itr, field_metas, fields_features)) {
     return false; // flush failure
   }
 
-  meta.column_store = cs.flush();
+  segment.meta.column_store = cs.flush();
 
   // ...........................................................................
   // write segment meta
   // ...........................................................................
-  if (!track_dir.swap_tracked(meta.files)) {
+  if (!track_dir.swap_tracked(segment.meta.files)) {
     IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
     return false;
   }
 
   if (persist_segment_meta) {
-    filename = index_utils::write_segment_meta(dir_, meta);
+    index_utils::write_index_segment(dir_, segment);
   }
 
   return true;

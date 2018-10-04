@@ -26,6 +26,7 @@
 
 #include <vector>
 
+#include "index_meta.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
@@ -33,7 +34,6 @@
 NS_ROOT
 
 struct directory;
-struct segment_meta;
 struct sub_reader;
 
 class IRESEARCH_API merge_writer: public util::noncopyable {
@@ -78,8 +78,7 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
 
   // return merge successful
   bool flush(
-    std::string& filename,
-    segment_meta& meta,
+    index_meta::index_segment_t& segment,
     bool persist_segment_meta = true
   );
 

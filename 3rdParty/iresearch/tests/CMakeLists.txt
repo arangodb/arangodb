@@ -58,6 +58,7 @@ set(IReSearch_tests_sources
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
   ./index/segment_writer_tests.cpp
+  ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp

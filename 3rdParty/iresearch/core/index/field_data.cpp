@@ -712,12 +712,16 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
   state.fields_count = fields_.size();
 
   {
-    static struct less_t {
-      bool operator()(const field_data* lhs, const field_data* rhs) const {
+    struct less_t {
+      bool operator()(
+          const field_data* lhs,
+          const field_data* rhs
+      ) const NOEXCEPT {
         return lhs->meta().name < rhs->meta().name;
       };
-    } less;
-    std::set<const field_data*, decltype(less)> fields(less);
+    };
+
+    std::set<const field_data*, less_t> fields;
 
     // ensure fields are sorted
     for (auto& entry : fields_) {

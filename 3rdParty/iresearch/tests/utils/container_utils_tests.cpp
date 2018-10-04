@@ -249,6 +249,38 @@ TEST(container_utils_tests, compute_bucket_offset) {
   }
 }
 
+TEST(container_utils_array_tests, check_alignment) {
+  typedef irs::container_utils::array<size_t, 5> array_size_t;
+
+  static_assert(
+    ALIGNOF(array_size_t) == ALIGNOF(size_t),
+    "wrong data alignment"
+  );
+
+  typedef irs::container_utils::array<MAX_ALIGN_T, 5> array_aligned_max_t;
+
+  static_assert(
+    ALIGNOF(array_aligned_max_t) == ALIGNOF(MAX_ALIGN_T),
+    "wrong data alignment"
+  );
+
+  struct ALIGNAS(16) aligned16 { char c; };
+  typedef irs::container_utils::array<aligned16, 5> array_aligned16_t;
+
+  static_assert(
+    ALIGNOF(array_aligned16_t) == ALIGNOF(aligned16),
+    "wrong data alignment"
+  );
+
+  struct ALIGNAS(32) aligned32 { char c; };
+  typedef irs::container_utils::array<aligned32, 5> array_aligned32_t;
+
+  static_assert(
+    ALIGNOF(array_aligned32_t) == ALIGNOF(aligned32),
+    "wrong data alignment"
+  );
+}
+
 TEST(container_utils_array_tests, construct) {
   static size_t DEFAULT_CTOR;
   static size_t NON_DEFAULT_CTOR;

@@ -25,7 +25,6 @@
 #define IRESEARCH_EBO_H
 
 #include <functional>
-#include <type_traits>
 
 #include "shared.hpp"
 

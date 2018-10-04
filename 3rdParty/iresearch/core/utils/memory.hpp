@@ -44,6 +44,46 @@ NS_BEGIN(memory)
 IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @class aligned_storage
+/// @brief same as 'std::aligned_storage' but MSVC doesn't honor alignment on
+/// MSVC2013, 2017 (prior 15.8)
+///////////////////////////////////////////////////////////////////////////////
+template<size_t Size, size_t Alignment>
+class aligned_storage {
+ private:
+  #if defined(_MSC_VER) && (_MSC_VER < 1900)
+    // as per MSVC documentation:
+    // align(#) valid entries are integer powers of two from 1 to 8192 (bytes)
+    // e.g. 2, 4, 8, 16, 32, or 64
+    template<size_t Align> struct align_t {};
+    template<> struct ALIGNAS(1)    align_t<1> { };
+    template<> struct ALIGNAS(2)    align_t<2> { };
+    template<> struct ALIGNAS(4)    align_t<4> { };
+    template<> struct ALIGNAS(8)    align_t<8> { };
+    template<> struct ALIGNAS(16)   align_t<16> { };
+    template<> struct ALIGNAS(32)   align_t<32> { };
+    template<> struct ALIGNAS(64)   align_t<64> { };
+    template<> struct ALIGNAS(128)  align_t<128> { };
+    template<> struct ALIGNAS(256)  align_t<256> { };
+    template<> struct ALIGNAS(512)  align_t<512> { };
+    template<> struct ALIGNAS(1024) align_t<1024> { };
+    template<> struct ALIGNAS(2048) align_t<2048> { };
+    template<> struct ALIGNAS(4096) align_t<4096> { };
+    template<> struct ALIGNAS(8192) align_t<8192> { };
+  #else
+    template<size_t Align> struct ALIGNAS(Align) align_t { };
+  #endif
+
+  static_assert(ALIGNOF(align_t<Alignment>) == Alignment, "__alignof(align_t<Alignment>) != Alignment");
+
+ public:
+  union {
+    align_t<Alignment> align_;
+    char data[MSVC_ONLY(!Size ? 1 :) Size];
+  };
+}; // aligned_storage
+
+///////////////////////////////////////////////////////////////////////////////
 /// @struct aligned_union
 /// @brief Provides the member typedef type, which is a POD type of a size and
 ///        alignment suitable for use as uninitialized storage for an object of

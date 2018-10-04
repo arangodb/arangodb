@@ -25,7 +25,6 @@
 #define IRESEARCH_FORMAT_BURST_TRIE_H
 
 #include <list>
-#include <type_traits>
 
 #include "formats.hpp"
 #include "formats_10_attributes.hpp"

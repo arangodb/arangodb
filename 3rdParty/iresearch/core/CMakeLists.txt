@@ -19,7 +19,9 @@ if (NOT MSVC AND NOT APPLE)
 endif()
 
 # set required standard version
-set(CMAKE_CXX_STANDARD 11)
+if ("${CMAKE_CXX_STANDARD}" STREQUAL "") 
+  set(CMAKE_CXX_STANDARD 11)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # calculate version

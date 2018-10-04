@@ -29,12 +29,17 @@
 #include "map_utils.hpp"
 #include "math_utils.hpp"
 #include "noncopyable.hpp"
+#include "memory.hpp"
 
 #include <map>
 #include <memory>
 
 NS_ROOT
 NS_BEGIN(memory)
+
+CONSTEXPR size_t align_up(size_t size, size_t alignment) NOEXCEPT {
+  return (size + alignment - 1) & (0 - alignment);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class freelist
@@ -154,7 +159,7 @@ class freelist : private util::noncopyable {
 ///   typedef ... difference_type;
 ///
 ///   char* malloc(size_type size_in_bytes) NOEXCEPT;
-///   void free(char* const ptr) NOEXCEPT:
+///   void free(const char* ptr, size_t size) NOEXCEPT:
 /// };
 ///
 ///////////////////////////////////////////////////////////////////////////////
@@ -171,7 +176,7 @@ struct malloc_free_allocator {
     return static_cast<char*>(std::malloc(size));
   }
 
-  void deallocate(char* const ptr) NOEXCEPT {
+  void deallocate(char* const ptr, size_t /*size*/) NOEXCEPT {
     std::free(ptr);
   }
 }; // malloc_free_allocator
@@ -188,10 +193,84 @@ struct new_delete_allocator {
     return new (std::nothrow) char[size];
   }
 
-  void deallocate(char* const ptr) NOEXCEPT {
+  void deallocate(const char* ptr, size_t /*size*/) NOEXCEPT {
     delete[] ptr;
   }
 }; // new_delete_allocator
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class arena_allocator
+///////////////////////////////////////////////////////////////////////////////
+template<size_t Size, size_t Alignment>
+struct arena_allocator
+    : private memory::aligned_storage<Size, Alignment>,
+      private util::noncopyable {
+ public:
+  arena_allocator() = default;
+  ~arena_allocator() NOEXCEPT { p_ = nullptr; }
+
+  char* allocate(size_t size) {
+    assert(within_arena(p_));
+    auto* p = p_ + align_up(size, Alignment);
+
+    if (within_arena(p)) {
+      std::swap(p, p_);
+      return p;
+    }
+
+#if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
+//FIXME
+//    if (Alignment > ALIGNOF(MAX_ALIGN_T)) {
+//      return reinterpret_cast<char*>(::operator new(size, Alignment));
+//    }
+#else
+    static_assert(
+      Alignment <= ALIGNOF(MAX_ALIGN_T),
+      "new can't guarantee the requested alignment"
+    );
+#endif
+
+    return reinterpret_cast<char*>(::operator new(size));
+  }
+
+  void deallocate(char* p, size_t size) NOEXCEPT {
+    assert(within_arena(p_));
+
+    if (within_arena(p)) {
+      size = align_up(size, Alignment);
+
+      if (p + size == p_) {
+        p_ = p;
+      }
+    } else {
+#if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
+//FIXME
+//      if (Alignment > ALIGNOF(MAX_ALIGN_T)) {
+//        ::operator delete(p, Alignment);
+//      }
+#else
+      static_assert(
+        Alignment <= ALIGNOF(MAX_ALIGN_T),
+        "new can't guarantee the requested alignment"
+      );
+#endif
+      ::operator delete(p);
+    }
+  }
+
+  size_t used() const NOEXCEPT {
+    return p_ - buffer_t::data;
+  }
+
+  bool within_arena(const char* p) const NOEXCEPT {
+    return std::begin(buffer_t::data) <= p && p <= std::end(buffer_t::data);
+  }
+
+ private:
+  typedef memory::aligned_storage<Size, Alignment> buffer_t;
+
+  char* p_{ buffer_t::data }; // current position
+}; // arena_allocator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief GrowPolicy concept
@@ -345,7 +424,12 @@ template<
     // deallocate previously allocated blocks
     // in reverse order
     while (!blocks_.empty()) {
-      this->allocator().deallocate(static_cast<char*>(blocks_.pop()));
+      auto* block = blocks_.pop();
+
+      this->allocator().deallocate(
+        reinterpret_cast<char*>(block), // begin of the allocated block
+        *reinterpret_cast<size_t*>(block) // size of the block
+      );
     }
   }
 
@@ -412,18 +496,17 @@ template<
 
  private:
   static size_t adjust_initial_size(size_t next_size) NOEXCEPT {
-    return std::max(next_size, size_t(2)); // block chain + 1 slot
+    return (std::max)(next_size, size_t(2)); // block chain + 1 slot
   }
 
   static size_t adjust_slot_size(size_t slot_size) NOEXCEPT {
     using namespace iresearch::math;
     static_assert(is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
 
-    if (slot_size < freelist::MIN_SIZE) {
-      slot_size = freelist::MIN_SIZE;
-    }
-
-    slot_size = (slot_size + freelist::MIN_ALIGN - 1) & (0 - freelist::MIN_ALIGN);
+    slot_size = align_up(
+      (std::max)(slot_size, size_t(freelist::MIN_SIZE)),
+      freelist::MIN_ALIGN
+    );
 
     assert(slot_size >= freelist::MIN_SIZE);
     assert(!(slot_size % freelist::MIN_ALIGN));
@@ -435,12 +518,14 @@ template<
     assert(block_size && slot_size_);
 
     // allocate memory block
-    const auto size_in_bytes = block_size*slot_size_ + freelist::MIN_SIZE;
+    const auto size_in_bytes = block_size*slot_size_ + sizeof(size_t) + freelist::MIN_SIZE;
     char* begin = this->allocator().allocate(size_in_bytes);
 
     if (!begin) {
       throw std::bad_alloc();
     }
+
+    *reinterpret_cast<size_t*>(begin) = size_in_bytes; // remember size of the block
 
     // noexcept
     capacity_ += block_size;
@@ -448,9 +533,9 @@ template<
 
     // use 1st slot in a block to store pointer
     // to the prevoiusly allocated block
-    blocks_.push(begin);;
+    blocks_.push(begin);
 
-    return begin + freelist::MIN_SIZE;
+    return begin + sizeof(size_t) + freelist::MIN_SIZE;
   }
 
   void allocate_block() {

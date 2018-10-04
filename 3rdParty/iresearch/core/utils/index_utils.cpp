@@ -21,101 +21,330 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "bitvector.hpp"
 #include "formats/format_utils.hpp"
 #include "index_utils.hpp"
+
+#include <cmath>
 
 NS_LOCAL
 
 // FIXME
 // - FIX segment_consolidate_clear_commit
-// - store segment size in segment_meta
 
-//uint64_t segment_size(
-//    const irs::directory& dir,
-//    const irs::segment_meta& segment
-//) {
-//  uint64_t total_size = 0;
-//  uint64_t file_size = 0;
-//  for (const auto& file : segment.files) {
-//    if (dir.length(file_size, file)) {
-//      total_size += file_size;
-//    }
-//  }
-//  return total_size;
+/// @returns percentage of live documents
+inline double_t fill_factor(const irs::segment_meta& segment) NOEXCEPT {
+  return double(segment.live_docs_count)/segment.docs_count;
+}
+
+/// @returns approximated size of a segment in the absence of removals
+inline size_t size_without_removals(const irs::segment_meta& segment) NOEXCEPT{
+  return size_t(segment.size * fill_factor(segment));
+}
+
+struct segment_stat {
+  segment_stat(const irs::segment_meta& meta) NOEXCEPT
+    : meta(&meta), 
+      size(size_without_removals(meta)),
+      fill_factor(::fill_factor(meta)) {
+  }
+
+  bool operator<(const segment_stat& rhs) const NOEXCEPT {
+    auto& lhs = *this;
+
+    if (lhs.size == rhs.size) {
+      if (lhs.fill_factor == rhs.fill_factor) {
+        return lhs.meta->name < rhs.meta->name;
+      }
+
+      return lhs.fill_factor > rhs.fill_factor;
+    }
+
+    return lhs.size < rhs.size;
+  }
+
+  const irs::segment_meta* meta;
+  size_t size; // approximate size of segment without removals
+  double_t fill_factor;
+}; // segment_stat
+
+struct consolidation_candidate {
+  typedef std::set<segment_stat>::const_iterator iterator_t;
+  typedef std::pair<iterator_t, iterator_t> range_t;
+
+  consolidation_candidate() = default;
+
+  explicit consolidation_candidate(iterator_t i) NOEXCEPT
+    : segments(i, i) {
+  }
+
+  iterator_t begin() const NOEXCEPT { return segments.first; }
+  iterator_t end() const NOEXCEPT { return segments.second; }
+
+  const segment_stat& front() const NOEXCEPT {
+    assert(segments.first != segments.second);
+    return *segments.first;
+  }
+
+  const segment_stat& back() const NOEXCEPT {
+    assert(segments.first != segments.second);
+    auto end = segments.second;
+    return *(--end);
+  }
+
+  void reset() NOEXCEPT {
+    segments = range_t();
+    count = 0;
+    size = 0;
+    score = -1.;
+  }
+
+  range_t segments;
+  size_t count{ 0 };
+  size_t size{ 0 }; // estimated size of the level
+  double_t score{ -1. }; // how good this permutation is
+};
+
+struct consolidation {
+  explicit consolidation(
+      const consolidation_candidate& candidate
+  ) : size(candidate.size),
+      score(candidate.score) {
+    segments.reserve(candidate.count);
+    for (const auto& segment : candidate) {
+      segments.emplace_back(segment);
+    }
+  }
+
+  bool operator<(const consolidation& rhs) const NOEXCEPT {
+    if (score < rhs.score) {
+      return true;
+    } else if (score > rhs.score) {
+      return false;
+    }
+
+    return segments.size() > segments.size();
+  }
+
+  std::vector<segment_stat> segments;
+  size_t size{ 0 }; // estimated size of the level
+  double_t score{ -1. }; // how good this permutation is
+};
+
+//void print_segment(const segment_stat& stat) {
+//#ifdef IRESEARCH_DEBUG
+//  IR_FRMT_TRACE(
+//    "Name='%s', docs_count='" IR_SIZE_T_SPECIFIER "', live_docs_count='" IR_SIZE_T_SPECIFIER "', size='" IR_SIZE_T_SPECIFIER "'",
+//    stat.meta->name.c_str(), stat.meta->docs_count, stat.meta->live_docs_count, stat.size
+//  );
+//#else
+//  UNUSED(stat);
+//#endif
 //}
-//
-//double fill_factor(const irs::segment_meta& segment) NOEXCEPT {
-//  return double(segment.live_docs_count)/segment.docs_count;
-//}
-//
-//std::vector<const irs::segment_meta*> get_sorted_segments(
-//    const irs::index_meta& index,
-//    const irs::directory& dir
-//) {
-//  std::vector<const irs::segment_meta*> segments;
-//  segments.reserve(index.size());
-//
-//  // get segments from index meta
-//  auto push_segments = [&segments](
-//      const std::string& /*filename*/,
-//      const irs::segment_meta& segment
-//  ) NOEXCEPT { // NOEXCEPT - because we reserved enough space
-//    segments.push_back(&segment);
-//    return true;
-//  };
-//
-//  index.visit_segments(push_segments);
-//
-//  // sort segments by size
-//  auto less = [&dir](
-//      const irs::segment_meta* lhs,
-//      const irs::segment_meta* rhs) {
-//    const auto lhs_size = segment_size(dir, *lhs);
-//    const auto rhs_size = segment_size(dir, *rhs);
-//
-//    if (lhs_size == rhs_size) {
-//      const auto lhs_fill_factor = fill_factor(*lhs);
-//      const auto rhs_fill_factor = fill_factor(*rhs);
-//
-//      if (lhs_fill_factor == rhs_fill_factor) {
-//        return lhs->name < rhs->name;
-//      }
-//
-//      return lhs_fill_factor < rhs_fill_factor;
-//    }
-//
-//    return lhs_size < rhs_size;
-//  };
-//
-//  std::sort(segments.begin(), segments.end(), less);
-//
-//  return segments;
-//}
+
+/// @returns score of the consolidation bucket
+double_t consolidation_score(
+    const consolidation_candidate& consolidation,
+    const size_t segments_per_tier,
+    const size_t floor_segment_bytes
+) NOEXCEPT {
+  switch (consolidation.count) {
+    case 0:
+      return -1.;
+    case 1: {
+      auto& meta = *consolidation.segments.first->meta;
+      if (meta.docs_count == meta.live_docs_count) {
+        // singleton without removals makes no sense
+        // note: that is important to return score
+        // higher than default value to avoid infinite loop
+        return 0.;
+      }
+    } break;
+  }
+
+  size_t size_before_consolidation = 0;
+  size_t size_after_consolidation = 0;
+  for (auto& segment_stat : consolidation) {
+    size_before_consolidation += segment_stat.meta->size;
+    size_after_consolidation += segment_stat.size;
+  }
+
+  // detect how skewed the consolidation is, we want
+  // to consolidate segments of approximately the same size
+  const auto first = std::max(consolidation.front().size, floor_segment_bytes);
+  const auto last = std::max(consolidation.back().size, floor_segment_bytes);
+
+  auto score = double_t(first) / last;
+
+  // favor consolidations that contain approximately the requested number of segments
+  score *= std::pow(consolidation.count/double_t(segments_per_tier), 1.5);
+
+  // carefully prefer smaller consolidations over the bigger ones
+  score /= std::pow(size_after_consolidation, 0.05);
+
+  // favor consolidations which clean out removals
+  score /= std::pow(double_t(size_after_consolidation)/size_before_consolidation, 2.);
+
+  return score;
+}
 
 NS_END
 
 NS_ROOT
 NS_BEGIN(index_utils)
 
-//index_writer::consolidation_policy_t consolidate_tier(
-//    size_t max_segments /*=10*/,                // maximum allowed number of segments to consolidate at once
-//    size_t max_segments_bytes /*= 5*(1<<30)*/,  // maxinum allowed size of all consolidated segments
-//    size_t floor_segment_bytes /*= 2*(1<<20)*/, // treat all smaller segments as equal for consolidation selection
-//    double_t fill_factor /* = 0.7 */            // percentage of live documents in a segment
-//) {
-//  max_segments = (std::max)(size_t(1), max_segments); // can't merge less than 1 segment
-//  fill_factor = (std::max)(0., (std::min)(1., fill_factor));
-//
-//  return [max_segments, fill_factor, floor_segment_bytes, max_segments_bytes](
-//      std::set<const segment_meta*>& candidates,
-//      const directory& dir,
-//      const index_meta& meta,
-//      const index_writer::consolidating_segments_t& consolidating_segments
-//  ) ->void {
-//    auto sorted_segments = get_sorted_segments(meta, dir);
-//  };
-//}
+index_writer::consolidation_policy_t consolidate_tier(
+    size_t min_segments_per_tier /* = 1*/,                     // minumum allowed number of segments to consolidate at once
+    size_t max_segments_per_tier /*= 10*/,                     // maximum allowed number of segments to consolidate at once
+    size_t max_segments_bytes /*= 5*(1<<30)*/,                 // maxinum allowed size of all consolidated segments
+    size_t floor_segment_bytes /*= 2*(1<<20)*/,                // treat all smaller segments as equal for consolidation selection
+    size_t lookahead /*= integer_traits<size_t>::const_max */  // how many tiers have to be inspected
+) {
+  // validate input
+  min_segments_per_tier = (std::max)(size_t(1), min_segments_per_tier); // can't merge less than 1 segment
+  max_segments_per_tier = (std::max)(size_t(1), max_segments_per_tier); // can't merge less than 1 segment
+  min_segments_per_tier = (std::min)(min_segments_per_tier, max_segments_per_tier); // ensure min_segments_per_tier <= max_segments_per_tier
+  max_segments_bytes = (std::max)(size_t(1), max_segments_bytes);
+  floor_segment_bytes = (std::max)(size_t(1), floor_segment_bytes);
+  lookahead = std::max(size_t(1), lookahead);
+
+  return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes, max_segments_bytes, lookahead](
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& consolidating_segments
+  ) ->void {
+    size_t consolidating_size = 0; // size of segments in bytes that are currently under consolidation
+    size_t min_segment_size = integer_traits<size_t>::const_max; // the smallest segment
+    size_t total_index_size = 0; // total size in bytes of all segments in index
+    size_t total_docs_count = 0; // total number of documents in index
+    size_t total_live_docs_count = 0; // total number of live documents in index
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Stage 0
+    /// get sorted list of segments
+    ///////////////////////////////////////////////////////////////////////////
+
+    std::set<segment_stat> sorted_segments;
+
+    // get sorted segments from index meta
+    auto push_segments = [&sorted_segments](
+        const std::string& /*filename*/,
+        const irs::segment_meta& segment
+    ) {
+      sorted_segments.insert(segment);
+      return true;
+    };
+
+    meta.visit_segments(push_segments);
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Stage 1
+    /// calculate overall stats
+    ///////////////////////////////////////////////////////////////////////////
+
+    for (auto begin = sorted_segments.begin(); begin != sorted_segments.end();)  {
+      auto& segment = *begin;
+
+      min_segment_size = std::min(min_segment_size, segment.size);
+      total_index_size += segment.size;
+      total_live_docs_count += segment.meta->live_docs_count;
+
+      if (consolidating_segments.end() != consolidating_segments.find(segment.meta)) {
+        consolidating_size += segment.size;
+        total_docs_count += segment.meta->live_docs_count; // exclude removals from stats for consolidating segments
+        begin = sorted_segments.erase(begin); // segment is already marked for consolidation, filter it out
+      } else {
+        total_docs_count += segment.meta->docs_count;
+        ++begin;
+      }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Stage 2
+    /// filter out "too large segments", segment is meant to be treated as large if
+    /// - segment size is greater than 'max_segments_bytes / 2'
+    /// - segment has many documents but only few deletions
+    ///////////////////////////////////////////////////////////////////////////
+
+    const double_t total_fill_factor = double_t(total_live_docs_count) / total_docs_count;
+    const size_t too_big_segments_threshold = max_segments_bytes / 2;
+
+    for (auto begin = sorted_segments.begin(); begin != sorted_segments.end();)  {
+      auto& segment = *begin;
+      const double_t segment_fill_factor = double_t(segment.meta->live_docs_count) / segment.meta->docs_count;
+      if (segment.size > too_big_segments_threshold && (total_fill_factor <= segment_fill_factor)) {
+        // filter out segments that are too big
+        begin = sorted_segments.erase(begin);
+      } else {
+        ++begin;
+      }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Stage 3
+    /// find candidates
+    ///////////////////////////////////////////////////////////////////////////
+
+    std::vector<consolidation> consolidation_candidates;
+
+    for (consolidation_candidate best; sorted_segments.size() >= min_segments_per_tier; best.reset()) {
+      for (auto i = sorted_segments.begin(), end = sorted_segments.end(); i != end; ++i) {
+        consolidation_candidate candidate(i);
+
+        while (
+            candidate.segments.second != end
+            && candidate.count < max_segments_per_tier
+            && candidate.size < max_segments_bytes
+        ) {
+          candidate.size += candidate.segments.second->size;
+          ++candidate.count;
+          ++candidate.segments.second;
+
+          if (candidate.count < min_segments_per_tier) {
+            continue;
+          }
+
+          candidate.score = ::consolidation_score(
+            candidate, max_segments_per_tier, floor_segment_bytes
+          );
+
+          if (best.score < candidate.score) {
+            best = candidate;
+          }
+        }
+      }
+
+      assert(best.count);
+
+      if (best.count) {
+        // remember the best candidate
+        consolidation_candidates.emplace_back(best);
+        std::push_heap(consolidation_candidates.begin(), consolidation_candidates.end());
+
+        // remove picked segments from the list
+        sorted_segments.erase(best.segments.first, best.segments.second);
+
+        if (consolidating_segments.size() >= lookahead) {
+          break;
+        }
+      }
+    }
+
+    if (consolidation_candidates.empty()) {
+      // nothing ot merge
+      return;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// Stage 4
+    /// pick the best candidate
+    ///////////////////////////////////////////////////////////////////////////
+
+    for (auto& segment : consolidation_candidates.front().segments) {
+      candidates.insert(segment.meta);
+    }
+  };
+}
 
 index_writer::consolidation_policy_t consolidate_all() {
   return [](
@@ -271,28 +500,23 @@ void read_document_mask(
   reader->read(dir, meta, docs_mask);
 }
 
-std::string write_segment_meta(
-    directory& dir,
-    const segment_meta& meta
-) {
-  assert(meta.codec);
-  assert(!meta.size); // assume segment size will be calculated in a single place, here
-  auto segment = meta;
+void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
+  assert(segment.meta.codec);
+  assert(!segment.meta.size); // assume segment size will be calculated in a single place, here
 
   // estimate meta segment size
-  for (auto& filename: meta.files) {
+  for (auto& filename: segment.meta.files) {
     size_t size;
 
     if (dir.length(size, filename)) {
-      segment.size += size;
+      segment.meta.size += size;
     }
   }
 
-  auto writer = meta.codec->get_segment_meta_writer();
+  auto writer = segment.meta.codec->get_segment_meta_writer();
 
-  writer->write(dir, segment);
-
-  return writer->filename(meta);
+  segment.filename = writer->filename(segment.meta);
+  writer->write(dir, segment.meta);
 }
 
 NS_END // index_utils

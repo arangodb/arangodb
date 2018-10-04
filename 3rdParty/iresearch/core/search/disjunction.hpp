@@ -38,17 +38,21 @@ NS_BEGIN(detail)
 // Our approach is to refresh top iterator (next or seek) and then remove it
 // or move to lead. So we don't need this check.
 // It is quite difficult to disable check since it managed by _ITERATOR_DEBUG_LEVEL
-// macros which is affect ABI (it must be the same for all libs and objs).
+// macros which affects ABI (it must be the same for all libs and objs).
 template<typename Iterator, typename Pred>
 inline void pop_heap(Iterator first, Iterator last, Pred comp) {
+  assert(first != last); // pop requires non-empty range
+
   #ifdef _MSC_VER
-    if (1 < std::distance(first, last)) {
-      #if _MSC_FULL_VER < 190024000
-        std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
+    #if _MSC_FULL_VER < 190024000
+      std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
+    #else
+      #if _MSC_FULL_VER >= 191526726
+        std::_Pop_heap_unchecked(&*first, &*last, comp);
       #else
         std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
       #endif
-    }
+    #endif
   #else
     std::pop_heap(first, last, comp);
   #endif
@@ -499,12 +503,17 @@ class disjunction : public doc_iterator_base {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes lead iterator
   /// @returns true - if the disjunction condition still can be satisfied,
-  //           false - otherwise
+  ///          false - otherwise
   //////////////////////////////////////////////////////////////////////////////
   inline bool remove_lead() {
     itrs_.pop_back();
-    pop(itrs_.begin(), itrs_.end());
-    return !itrs_.empty();
+
+    if (!itrs_.empty()) {
+      pop(itrs_.begin(), itrs_.end());
+      return true;
+    }
+
+    return false;
   }
 
   inline void refresh_lead() {
