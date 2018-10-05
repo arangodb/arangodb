@@ -2127,7 +2127,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
   const std::string readLockId = readLockIdSlice.copyString();
-  const std::string checksum = checksumSlice.copyString();
 
   std::string referenceChecksum;
   {
