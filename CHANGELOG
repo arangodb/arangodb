@@ -1,12 +1,3 @@
-v3.3.18 (XXXX-XX-XX)
---------------------
-
-* increased default timeouts in replication
-
-  this decreases the chances of followers not getting in sync with leaders because
-  of replication operations timing out
-
-
 v3.3.17 (2018-10-04)
 --------------------
 
