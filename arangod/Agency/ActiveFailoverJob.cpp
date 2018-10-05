@@ -279,11 +279,6 @@ std::string ActiveFailoverJob::findBestFollower() {
       return "";
     }
     
-    VPackSlice resp = res.result->slice();
-    if (!resp.isArray() || resp.length() == 0) {
-      return "";
-    }
-
     VPackSlice obj = resp.at(0).get({ Job::agencyPrefix, "AsyncReplication"});
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
       std::string srvUUID = pair.key.copyString();
