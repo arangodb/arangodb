@@ -473,7 +473,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
       generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
     } else {
-      if (failed > 0) { // Some/all requests failed
+      if (failed) { // Some/all requests failed
         generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
       } else {          // All good (or indeed unknown in case 1)
         generateResult(rest::ResponseCode::OK, body.slice());
