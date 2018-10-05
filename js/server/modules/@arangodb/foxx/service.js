@@ -108,7 +108,7 @@ module.exports =
       return manifest;
     }
 
-    static validateServiceFiles (servicePath, manifest, rev) {
+    static validateServiceFiles (servicePath, manifest) {
       if (manifest.main) {
         parseFile(servicePath, manifest.main);
       }
