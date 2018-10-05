@@ -778,13 +778,6 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void RocksDBEngine::addParametersForNewIndex(VPackBuilder& builder,
-                                             VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection,
