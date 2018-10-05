@@ -64,7 +64,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection.system()) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_cacheEnabled) {
@@ -90,7 +90,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection.system()) {
+      _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
