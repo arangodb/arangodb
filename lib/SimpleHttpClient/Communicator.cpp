@@ -227,11 +227,10 @@ int Communicator::work_once() {
         std::to_string(_mc));
   }
 
-  /// use stillRunning as high water mark for open connections needed
-  connectionCount.updateMaxConnections(stillRunning);
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-      << "Communicator::work_once max connections " << connections
-      << ", active actions " << stillRunning;
+  /// use stillRunning as high water mark for open connections needed.
+  ///  curl/lib/multi.c uses stillRunning * 4 to estimate connections retained,
+  ///  starting with *2
+  connectionCount.updateMaxConnections(stillRunning * 2);
 
   // handle all messages received
   CURLMsg* msg = nullptr;
@@ -243,6 +242,12 @@ int Communicator::work_once() {
 
       handleResult(handle, msg->data.result);
     }
+#if 0
+    /// still testing this
+    if (0 == (msgsLeft % 10)) {
+      curl_multi_perform(_curl, &stillRunning);
+    }
+#endif
   }
   return stillRunning;
 }
@@ -432,7 +437,6 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
 }
 
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
-  // remove request in progress
   double connectTime = 0.0;
   curl_multi_remove_handle(_curl, handle);
 

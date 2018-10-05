@@ -27,7 +27,6 @@
 #include <chrono>
 
 #include "curl/curl.h"
-
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
@@ -165,6 +164,10 @@ protected:
   void advanceCursor() {
     nextMinute += std::chrono::seconds(60);
     cursorMinute = (cursorMinute + 1) % eMinutesTracked;
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << "ConnectionCount::advanceCursor cursorMinute " << cursorMinute
+      << ", retired period " << maxInMinute[cursorMinute]
+      << ", newMaxConnections " << newMaxConnections(0);
     maxInMinute[cursorMinute] = 0;
   };
 
@@ -207,7 +210,6 @@ class Communicator {
   void abortRequests();
   void disable() { _enabled = false; };
   void enable()  { _enabled = true; };
-
 
  private:
   struct NewRequest {
