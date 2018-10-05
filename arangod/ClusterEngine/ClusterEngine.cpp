@@ -161,11 +161,6 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void ClusterEngine::addParametersForNewIndex(VPackBuilder& builder,
-                                             VPackSlice info) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
     LogicalCollection& collection,
