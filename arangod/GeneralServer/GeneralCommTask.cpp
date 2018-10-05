@@ -523,6 +523,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+
+    if (req.authenticated()) {
+      req.setAuthenticated(false);
+    }
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
