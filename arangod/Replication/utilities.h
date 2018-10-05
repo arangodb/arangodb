@@ -101,10 +101,11 @@ struct ProgressInfo {
 };
 
 struct BarrierInfo {
+  static constexpr double DefaultTimeout = 900.0;
   /// @brief WAL barrier id
   uint64_t id{0};
   /// @brief ttl for WAL barrier
-  int ttl{900};
+  int ttl{static_cast<int>(DefaultTimeout)};
   /// @brief WAL barrier last update time
   double updateTime{0.0};
 
