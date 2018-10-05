@@ -477,7 +477,7 @@ class term_iterator : public iresearch::seek_term_iterator {
       : state(rhs.state), 
         weight(std::move(rhs.weight)),
         block(rhs.block) {
-      rhs.block = 0;
+      rhs.block = nullptr;
     }
 
     arc(stateid_t state, const byte_weight& weight, block_iterator* block)

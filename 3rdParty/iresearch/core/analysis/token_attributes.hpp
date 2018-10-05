@@ -179,7 +179,7 @@ class IRESEARCH_API position
   DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
-  const irs::attribute_view& attributes() const NOEXCEPT { return attrs_; }
+  const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
   virtual void clear() = 0;
   virtual bool next() = 0;
 

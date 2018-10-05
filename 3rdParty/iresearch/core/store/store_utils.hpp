@@ -420,12 +420,12 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return pos_ >= data_.end();
   }
 
-  virtual byte_type read_byte() final {
+  virtual byte_type read_byte() override final {
     assert(pos_ < data_.end());
     return *pos_++;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) final;
+  virtual size_t read_bytes(byte_type* b, size_t size) override final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -451,23 +451,23 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return dup();
   }
 
-  virtual int32_t read_int() final {
+  virtual int32_t read_int() override final {
     return irs::read<uint32_t>(pos_);
   }
 
-  virtual int64_t read_long() final {
+  virtual int64_t read_long() override final {
     return irs::read<uint64_t>(pos_);
   }
 
-  virtual uint64_t read_vlong() final {
+  virtual uint64_t read_vlong() override final {
     return irs::vread<uint64_t>(pos_);
   }
 
-  virtual uint32_t read_vint() final {
+  virtual uint32_t read_vint() override final {
     return irs::vread<uint32_t>(pos_);
   }
 
-  virtual int64_t checksum(size_t offset) const final;
+  virtual int64_t checksum(size_t offset) const override final;
 
  private:
   bytes_ref data_;
@@ -509,29 +509,29 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
     return pos_ >= this->end();
   }
 
-  virtual byte_type read_byte() final {
+  virtual byte_type read_byte() override final {
     assert(pos_ < this->end());
     return *pos_++;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) final;
+  virtual size_t read_bytes(byte_type* b, size_t size) override final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
 
-  virtual int32_t read_int() final {
+  virtual int32_t read_int() override final {
     return irs::read<uint32_t>(pos_);
   }
 
-  virtual int64_t read_long() final {
+  virtual int64_t read_long() override final {
     return irs::read<uint64_t>(pos_);
   }
 
-  virtual uint32_t read_vint() final {
+  virtual uint32_t read_vint() override final {
     return irs::vread<uint32_t>(pos_);
   }
 
-  virtual uint64_t read_vlong() final {
+  virtual uint64_t read_vlong() override final {
     return irs::vread<uint64_t>(pos_);
   }
 
