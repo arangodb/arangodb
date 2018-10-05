@@ -358,14 +358,17 @@ bool VstCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-header\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
-        << "\"";*/
+      /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-payload\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
+          << "\"";
+      */
+    }
 
     // get type of request, message header is validated earlier
     TRI_ASSERT(header.isArray() && header.length() >= 2);
