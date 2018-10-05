@@ -2002,7 +2002,7 @@
               if (position === data.result.length) {
                 if (markers.length > 0) {
                   try {
-                    var show = new L.featureGroup(markers);
+                    var show = new L.FeatureGroup(markers);
                     self.maps[counter].fitBounds(show.getBounds());
                   } catch (ignore) {
                   }
