@@ -61,7 +61,7 @@ struct IncrementalSyncStats {
 
 class InitialSyncer : public Syncer {
  public:
-  static constexpr double defaultBatchTimeout = 1800.0; // half an hour
+  static constexpr double defaultBatchTimeout = 7200.0; // two hours
 
  public:
   explicit InitialSyncer(ReplicationApplierConfiguration const&);
