@@ -729,6 +729,10 @@ bool Scheduler::threadShouldStop(double now) {
 }
 
 void Scheduler::startNewThread() {
+  TRI_IF_FAILURE("Scheduler::startNewThread") {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Debug: preventing thread from starting";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   auto thread = new SchedulerThread(this, _ioContext.get());
   if (!thread->start()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
