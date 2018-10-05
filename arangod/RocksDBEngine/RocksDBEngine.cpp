@@ -1909,11 +1909,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       view->open();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef USE_IRESEARCH
       if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
         LOG_TOPIC(DEBUG, Logger::VIEWS)
             << "arangosearch view '" << v->name()
             << "' contains " << v->count() << " documents";
       }
+#endif
 #endif
     }
   } catch (std::exception const& ex) {
