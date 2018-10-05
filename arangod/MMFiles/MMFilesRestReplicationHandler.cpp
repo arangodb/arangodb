@@ -186,7 +186,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BarrierInfo::DefaultTimeout);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -230,7 +230,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BarrierInfo::DefaultTimeout);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
