@@ -683,7 +683,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   
   // initialize a container with the keys
   auto keys =
-      std::make_unique<MMFilesCollectionKeys>(_vocbase, std::move(guard), id, 900.0);
+      std::make_unique<MMFilesCollectionKeys>(_vocbase, std::move(guard), id, 300.0);
 
   std::string const idString(std::to_string(keys->id()));
 
