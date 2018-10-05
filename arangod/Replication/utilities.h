@@ -104,7 +104,7 @@ struct BarrierInfo {
   /// @brief WAL barrier id
   uint64_t id{0};
   /// @brief ttl for WAL barrier
-  int ttl{600};
+  int ttl{900};
   /// @brief WAL barrier last update time
   double updateTime{0.0};
 
@@ -117,7 +117,7 @@ struct BarrierInfo {
 };
 
 struct BatchInfo {
-  static constexpr double DefaultTimeout = 300.0;
+  static constexpr double DefaultTimeout = 7200.0;
 
   /// @brief dump batch id
   uint64_t id{0};
