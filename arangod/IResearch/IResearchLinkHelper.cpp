@@ -520,7 +520,7 @@ namespace iresearch {
       );
     }
 
-    auto* dbServerView = LogicalView::cast<IResearchViewDBServer>(&view);
+    auto* dbServerView = dynamic_cast<IResearchViewDBServer*>(&view);
 
     // dbserver has both IResearchViewDBServer and IResearchView instances
     if (dbServerView) {
