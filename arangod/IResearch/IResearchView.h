@@ -378,8 +378,6 @@ class IResearchView
     uint64_t planVersion
   );
 
-  MemoryStore& activeMemoryStore() const;
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback for flush feature
   ////////////////////////////////////////////////////////////////////////////////
@@ -396,9 +394,6 @@ class IResearchView
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   IResearchViewMetaState _metaState; // the per-instance configuration state
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
-  MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
-  MemoryStoreNode* _memoryNode; // points to the current memory store
-  MemoryStoreNode* _toFlush; // points to memory store to be flushed
   PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)

@@ -434,12 +434,12 @@ SECTION("test_defaults") {
 }
 
 SECTION("test_cleanup") {
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"cleanupIntervalStep\":1, \"consolidationIntervalMsec\": 1000 }");
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"cleanupIntervalStep\":1, \"consolidationIntervalMsec\": 1000 }");
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-  CHECK((false == !viewImpl));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-  CHECK((nullptr != view));
+  auto logicalView = vocbase.createView(json->slice());
+  REQUIRE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  REQUIRE((false == !view));
 
   std::vector<std::string> const EMPTY;
 
@@ -620,12 +620,12 @@ SECTION("test_drop_cid") {
 
   // cid not in list of collections for snapshot (view definition not updated, not persisted)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -686,12 +686,12 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition updated+persisted)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -752,12 +752,12 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition updated, not persisted until recovery is complete)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -835,12 +835,12 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition persist failure)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -913,12 +913,12 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition persist failure on recovery completion)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -1012,12 +1012,12 @@ SECTION("test_truncate_cid") {
 
   // cid not in list of collections for snapshot (view definition not updated, not persisted)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -1078,12 +1078,12 @@ SECTION("test_truncate_cid") {
 
   // cid in list of collections for snapshot (view definition not updated+persisted)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // fill with test data
     {
@@ -1146,12 +1146,12 @@ SECTION("test_truncate_cid") {
 SECTION("test_emplace_cid") {
   // emplace (already in list)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // collection in view before
     {
@@ -1195,12 +1195,12 @@ SECTION("test_emplace_cid") {
 
   // emplace (not in list)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // collection in view before
     {
@@ -1244,12 +1244,12 @@ SECTION("test_emplace_cid") {
 
   // emplace (not in list, not persisted until recovery is complete)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\"  }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // collection in view before
     {
@@ -1296,12 +1296,12 @@ SECTION("test_emplace_cid") {
 
   // emplace (not in list, view definition persist failure)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // collection in view before
     {
@@ -1343,12 +1343,12 @@ SECTION("test_emplace_cid") {
 
   // emplace (not in list, view definition persist failure on recovery completion)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
-    CHECK((false == !viewImpl));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    CHECK((nullptr != view));
+    auto logicalView = vocbase.createView(json->slice());
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    REQUIRE((false == !view));
 
     // collection in view before
     {
@@ -1501,7 +1501,7 @@ SECTION("test_insert") {
         arangodb::transaction::Options()
       );
     auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK((2 == snapshot->docs_count()));
+    CHECK((2 == snapshot->live_docs_count()));
   }
 
   // not in recovery
@@ -1512,6 +1512,7 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+    view->open();
 
     // validate cid count
     {
@@ -1596,6 +1597,7 @@ SECTION("test_insert") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
     CHECK(view->category() == arangodb::LogicalView::category());
+    view->open();
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1638,6 +1640,7 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+    view->open();
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -1681,6 +1684,7 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+    view->open();
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
