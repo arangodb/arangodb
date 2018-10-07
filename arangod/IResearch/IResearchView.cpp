@@ -651,9 +651,8 @@ class IResearchView::ViewStateHelper {
     static_assert(sizeof(IResearchView) > Writer, "'Writer' offset >= sizeof(IResearchView)");
     auto* key = &view + Writer;
     auto prev = state.cookie(key, nullptr); // get existing cookie
-    TRI_ASSERT(prev);
 
-    if (rollback) {
+    if (rollback && prev) {
       // TODO FIXME find a better way to look up a ViewState
       #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         dynamic_cast<IResearchView::ViewStateWrite&>(*prev).reset();
@@ -1369,6 +1368,11 @@ int IResearchView::insert(
 
   if (!trx.state()) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction state required
+  }
+
+  if (trx.isSingleOperationTransaction()) {
+    auto ctx = _storePersisted._writer->documents();
+    return insertImpl(ctx);
   }
 
   auto& state = *(trx.state());

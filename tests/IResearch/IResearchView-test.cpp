@@ -1631,6 +1631,47 @@ SECTION("test_insert") {
     CHECK((4 == snapshot->docs_count()));
   }
 
+  // not in recovery : single operation transaction
+  {
+    StorageEngineMock::inRecoveryResult = false;
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+    CHECK(view->category() == arangodb::LogicalView::category());
+    view->open();
+
+    {
+      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      arangodb::transaction::Options options;
+      arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        options
+      );
+      trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
+
+      linkMeta._includeAllFields = true;
+      CHECK((trx.begin().ok()));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta)));
+      CHECK((trx.commit().ok()));
+    }
+
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    CHECK((1 == snapshot->docs_count()));
+  }
+
   // not in recovery batch
   {
     StorageEngineMock::inRecoveryResult = false;
