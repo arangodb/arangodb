@@ -650,8 +650,6 @@ SECTION("test_query") {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    options.waitForSync = true;
-
     arangodb::aql::Variable variable("testVariable", 0);
 
     // test insert + query
@@ -682,7 +680,7 @@ SECTION("test_query") {
           arangodb::transaction::Options{}
         );
         CHECK((trx.begin().ok()));
-        auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+        auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
         CHECK(i == snapshot->docs_count());
         CHECK((trx.commit().ok()));
       }

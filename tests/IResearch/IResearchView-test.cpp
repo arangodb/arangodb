@@ -1588,7 +1588,7 @@ SECTION("test_insert") {
     }
   }
 
-  // not in recovery (with waitForSync)
+  // not in recovery
   {
     StorageEngineMock::inRecoveryResult = false;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1603,7 +1603,6 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
-      options.waitForSync = true;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -1628,7 +1627,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1676,7 +1675,7 @@ SECTION("test_insert") {
     CHECK((4 == snapshot->docs_count()));
   }
 
-  // not in recovery batch (waitForSync)
+  // not in recovery batch
   {
     StorageEngineMock::inRecoveryResult = false;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1690,7 +1689,6 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
-      options.waitForSync = true;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -1717,7 +1715,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK((4 == snapshot->docs_count()));
   }
 }
@@ -1930,8 +1928,6 @@ SECTION("test_query") {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    options.waitForSync = true;
-
     arangodb::aql::Variable variable("testVariable", 0);
 
     // test insert + query
@@ -1961,7 +1957,7 @@ SECTION("test_query") {
           EMPTY,
           options
         );
-        auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+        auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
         CHECK(i == snapshot->docs_count());
       }
     }
