@@ -1,6 +1,14 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* fix variable replacements by the AQL query optimizer in arangosearch view 
+  search conditions
+
+  The consequence of the missing replacements was that some queries using view
+  search conditions could have failed with error messages such as
+
+  "missing variable #3 (a) for node #7 (EnumerateViewNode) while planning registers"
+
 * support installation of ArangoDB on Windows into directories with multibyte
   character filenames on Windows platforms that used a non-UTF8-codepage
 
