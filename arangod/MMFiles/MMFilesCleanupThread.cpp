@@ -38,8 +38,8 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
-  
-MMFilesCleanupThread::MMFilesCleanupThread(TRI_vocbase_t* vocbase) 
+
+MMFilesCleanupThread::MMFilesCleanupThread(TRI_vocbase_t* vocbase)
     : Thread("MMFilesCleanup"), _vocbase(vocbase) {}
 
 MMFilesCleanupThread::~MMFilesCleanupThread() { shutdown(); }
@@ -75,10 +75,11 @@ void MMFilesCleanupThread::run() {
         try {
           cursors->garbageCollect(true);
         } catch (...) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception during cursor cleanup";
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+              << "caught exception during cursor cleanup";
         }
       }
-        
+
       // check if we can get the compactor lock exclusively
       // check if compaction is currently disallowed
       engine->tryPreventCompaction(_vocbase, [this, &collections](TRI_vocbase_t* vocbase) {
@@ -94,12 +95,12 @@ void MMFilesCleanupThread::run() {
 
           TRI_vocbase_col_status_e status = collection->getStatusLocked();
 
-          if (status != TRI_VOC_COL_STATUS_LOADED && 
+          if (status != TRI_VOC_COL_STATUS_LOADED &&
               status != TRI_VOC_COL_STATUS_UNLOADING &&
               status != TRI_VOC_COL_STATUS_DELETED) {
             continue;
           }
-            
+
           // we're the only ones that can unload the collection, so using
           // the collection pointer outside the lock is ok
           cleanupCollection(collection);
@@ -130,7 +131,7 @@ void MMFilesCleanupThread::run() {
     }
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down cleanup thread";
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "shutting down cleanup thread";
 }
 
 /// @brief checks all datafiles of a collection
@@ -143,10 +144,10 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   bool isInShutdown = application_features::ApplicationServer::isStopping();
 
   // loop until done
-    
+
   auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
   TRI_ASSERT(mmfiles != nullptr);
-    
+
   while (true) {
     auto ditches = mmfiles->ditches();
 
@@ -178,7 +179,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       // absolutely nothing to do
       return;
     }
-  
+
     TRI_ASSERT(ditch != nullptr);
 
     if (!popped) {
@@ -209,7 +210,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           return;
         }
       }
-      
+
       MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(collection->getPhysical());
       if (!mmColl->isFullyCollected()) {
         bool isDeleted = false;
@@ -247,7 +248,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
 
     // execute callback, some of the callbacks might delete or unload our collection
     auto const type = ditch->type();
-  
+
     if (type == arangodb::MMFilesDitch::TRI_DITCH_DATAFILE_DROP) {
       static_cast<arangodb::MMFilesDropDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
@@ -278,7 +279,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else {
       // unknown type
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown ditch type '" << type << "'"; 
+      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+          << "unknown ditch type '" << type << "'";
       FATAL_ERROR_EXIT();
     }
 

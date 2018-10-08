@@ -32,12 +32,7 @@ var shallowCopy = require('@arangodb/util').shallowCopy;
 // //////////////////////////////////////////////////////////////////////////////
 
 function getFrontendCollection () {
-  var frontend = db._collection('_frontend');
-
-  if (frontend === null) {
-    throw new Error('_frontend collection not (yet) available');
-  }
-  return frontend;
+  return db._collection('_frontend');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -54,7 +49,11 @@ exports.notifications.versions = function () {
   var n = 'notifications';
   var v = 'versions';
   var d;
-  var frontend = getFrontendCollection();
+  let frontend = getFrontendCollection();
+  if (!frontend) {
+    // collection not (yet) available
+    return { versions: {} };
+  }
 
   try {
     d = frontend.document(n);
@@ -84,14 +83,18 @@ exports.notifications.versions = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.notifications.setVersions = function (data) {
-  var n = 'notifications';
-  var d;
-  var frontend = getFrontendCollection();
+  const n = 'notifications';
+
+  let frontend = getFrontendCollection();
+  if (!frontend) {
+    // collection not (yet) available
+    return;
+  }
 
   try {
-    d = frontend.document(n);
+    frontend.document(n);
   } catch (err) {
-    d = frontend.save({ _key: n });
+    frontend.save({ _key: n });
   }
 
   frontend.update(n, data);

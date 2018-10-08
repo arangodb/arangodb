@@ -1017,7 +1017,7 @@ void TRI_vocbase_t::inventory(
                 idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
-      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString" }, true, false);
+      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString", "indexes" }, true, false);
       result.close();
 
       result.close();

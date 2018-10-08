@@ -1,8 +1,8 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # ArangoSearch API
 
 These functions implement the
-[HTTP API for ArangoSearch Views](../../../..//HTTP/Views/ArangoSearch.html).
+[HTTP API for ArangoSearch views](../../../..//HTTP/Views/ArangoSearch.html).
 
 ## ArangoDatabase.createArangoSearch
 
@@ -10,7 +10,7 @@ These functions implement the
 ArangoDatabase.createArangoSearch(String name, ArangoSearchCreateOptions options) : ViewEntity
 ```
 
-Creates a ArangoSearch View with the given _options_, then returns view information from the server.
+Creates a ArangoSearch view with the given _options_, then returns view information from the server.
 
 **Arguments**
 
@@ -20,11 +20,7 @@ Creates a ArangoSearch View with the given _options_, then returns view informat
 
 - **options**: `ArangoSearchCreateOptions`
 
-  - **locale**: `String`
-
-    The default locale used for queries on analyzed string values (default: C).
-
-  - **commitIntervalMsec**: `Long`
+  - **consolidationIntervalMsec**: `Long`
 
     Wait at least this many milliseconds between committing index data changes and making them visible to queries (default: 60000, to disable use: 0). For the case where there are a lot of inserts/updates, a lower value, until commit, will cause the index not to account for them and memory usage would continue to grow. For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each commit call without any added benefits.
 
@@ -32,17 +28,31 @@ Creates a ArangoSearch View with the given _options_, then returns view informat
 
     Wait at least this many commits between removing unused files in data directory (default: 10, to disable use: 0). For the case where the consolidation policies merge segments often (i.e. a lot of commit+consolidate), a lower value will cause a lot of disk space to be wasted. For the case where the consolidation policies rarely merge segments (i.e. few inserts/deletes), a higher value will impact performance without any added benefits.
 
-  - **threshold**: `ConsolidateThreshold[]`
+  - **consolidationPolicy**:
 
-    A list of consolidate thresholds
+    - **type**: `ConsolidationType`
+
+      The type of the consolidation policy.
+
+    - **threshold**: `Double`
+
+      Select a given segment for "consolidation" if and only if the formula based on type (as defined above) evaluates to true, valid value range [0.0, 1.0] (default: 0.85)
+
+    - **segmentThreshold**: `Long`
+
+      Apply the "consolidation" operation if and only if (default: 300): {segmentThreshold} < number_of_segments
+
+    - **link**: `CollectionLink[]`
+
+      A list of linked collections
 
 **Examples**
 
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-db.createArangoSearch("potatoes", new ArangoSearchPropertiesOptions());
-// the ArangoSearch View "potatoes" now exists
+db.createArangoSearch("potatos", new ArangoSearchPropertiesOptions());
+// the ArangoSearch view "potatos" now exists
 ```
 
 ## ArangoSearch.create
@@ -51,19 +61,15 @@ db.createArangoSearch("potatoes", new ArangoSearchPropertiesOptions());
 ArangoSearch.create(ArangoSearchCreateOptions options) : ViewEntity
 ```
 
-Creates a ArangoSearch View with the given _options_, then returns view information from the server.
+Creates a ArangoSearch view with the given _options_, then returns view information from the server.
 
-Alternative for [ArangoDatabase.createArangoSearch](#arangodatabasecreatearangosearch).
+Alternative for `ArangoDatabase.createArangoSearch`.
 
 **Arguments**
 
 - **options**: `ArangoSearchCreateOptions`
 
-  - **locale**: `String`
-
-    The default locale used for queries on analyzed string values (default: C).
-
-  - **commitIntervalMsec**: `Long`
+  - **consolidationIntervalMsec**: `Long`
 
     Wait at least this many milliseconds between committing index data changes and making them visible to queries (default: 60000, to disable use: 0). For the case where there are a lot of inserts/updates, a lower value, until commit, will cause the index not to account for them and memory usage would continue to grow. For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each commit call without any added benefits.
 
@@ -71,19 +77,33 @@ Alternative for [ArangoDatabase.createArangoSearch](#arangodatabasecreatearangos
 
     Wait at least this many commits between removing unused files in data directory (default: 10, to disable use: 0). For the case where the consolidation policies merge segments often (i.e. a lot of commit+consolidate), a lower value will cause a lot of disk space to be wasted. For the case where the consolidation policies rarely merge segments (i.e. few inserts/deletes), a higher value will impact performance without any added benefits.
 
-  - **threshold**: `ConsolidateThreshold[]`
+  - **consolidationPolicy**:
 
-    A list of consolidate thresholds
+    - **type**: `ConsolidationType`
+
+      The type of the consolidation policy.
+
+    - **threshold**: `Double`
+
+      Select a given segment for "consolidation" if and only if the formula based on type (as defined above) evaluates to true, valid value range [0.0, 1.0] (default: 0.85)
+
+    - **segmentThreshold**: `Long`
+
+      Apply the "consolidation" operation if and only if (default: 300): {segmentThreshold} < number_of_segments
+
+    - **link**: `CollectionLink[]`
+
+      A list of linked collections
 
 **Examples**
 
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoSearch view = db.arangoSearch("potatoes");
+ArangoSearch view = db.arangoSearch("potatos");
 
 view.create(new ArangoSearchPropertiesOptions());
-// the ArangoSearch View "potatoes" now exists
+// the ArangoSearch view "potatos" now exists
 ```
 
 ## ArangoSearch.getProperties
@@ -99,7 +119,7 @@ Reads the properties of the specified view.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoSearch view = db.arangoSearch("potatoes");
+ArangoSearch view = db.arangoSearch("potatos");
 
 ArangoSearchPropertiesEntity properties = view.getProperties();
 ```
@@ -116,11 +136,7 @@ Partially changes properties of the view.
 
 - **options**: `ArangoSearchPropertiesOptions`
 
-  - **locale**: `String`
-
-    The default locale used for queries on analyzed string values (default: C).
-
-  - **commitIntervalMsec**: `Long`
+  - **consolidationIntervalMsec**: `Long`
 
     Wait at least this many milliseconds between committing index data changes and making them visible to queries (default: 60000, to disable use: 0). For the case where there are a lot of inserts/updates, a lower value, until commit, will cause the index not to account for them and memory usage would continue to grow. For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each commit call without any added benefits.
 
@@ -128,13 +144,23 @@ Partially changes properties of the view.
 
     Wait at least this many commits between removing unused files in data directory (default: 10, to disable use: 0). For the case where the consolidation policies merge segments often (i.e. a lot of commit+consolidate), a lower value will cause a lot of disk space to be wasted. For the case where the consolidation policies rarely merge segments (i.e. few inserts/deletes), a higher value will impact performance without any added benefits.
 
-  - **threshold**: `ConsolidateThreshold[]`
+  - **consolidationPolicy**:
 
-    A list of consolidate thresholds
+    - **type**: `ConsolidationType`
 
-  - **link**: `CollectionLink[]`
+      The type of the consolidation policy.
 
-    A list of linked collections
+    - **threshold**: `Double`
+
+      Select a given segment for "consolidation" if and only if the formula based on type (as defined above) evaluates to true, valid value range [0.0, 1.0] (default: 0.85)
+
+    - **segmentThreshold**: `Long`
+
+      Apply the "consolidation" operation if and only if (default: 300): {segmentThreshold} < number_of_segments
+
+    - **link**: `CollectionLink[]`
+
+      A list of linked collections
 
 **Examples**
 
@@ -158,11 +184,7 @@ Changes properties of the view.
 
 - **options**: `ArangoSearchPropertiesOptions`
 
-  - **locale**: `String`
-
-    The default locale used for queries on analyzed string values (default: C).
-
-  - **commitIntervalMsec**: `Long`
+  - **consolidationIntervalMsec**: `Long`
 
     Wait at least this many milliseconds between committing index data changes and making them visible to queries (default: 60000, to disable use: 0). For the case where there are a lot of inserts/updates, a lower value, until commit, will cause the index not to account for them and memory usage would continue to grow. For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each commit call without any added benefits.
 
@@ -170,13 +192,23 @@ Changes properties of the view.
 
     Wait at least this many commits between removing unused files in data directory (default: 10, to disable use: 0). For the case where the consolidation policies merge segments often (i.e. a lot of commit+consolidate), a lower value will cause a lot of disk space to be wasted. For the case where the consolidation policies rarely merge segments (i.e. few inserts/deletes), a higher value will impact performance without any added benefits.
 
-  - **threshold**: `ConsolidateThreshold[]`
+  - **consolidationPolicy**:
 
-    A list of consolidate thresholds
+    - **type**: `ConsolidationType`
 
-  - **link**: `CollectionLink[]`
+      The type of the consolidation policy.
 
-    A list of linked collections
+    - **threshold**: `Double`
+
+      Select a given segment for "consolidation" if and only if the formula based on type (as defined above) evaluates to true, valid value range [0.0, 1.0] (default: 0.85)
+
+    - **segmentThreshold**: `Long`
+
+      Apply the "consolidation" operation if and only if (default: 300): {segmentThreshold} < number_of_segments
+
+    - **link**: `CollectionLink[]`
+
+      A list of linked collections
 
 **Examples**
 

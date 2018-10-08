@@ -65,6 +65,7 @@ bool Logger::_useEscaped(true);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
+bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
 char Logger::_role('\0');
 std::string Logger::_outputPrefix("");
@@ -257,6 +258,16 @@ void Logger::setKeepLogrotate(bool keep) {
   }
 
   _keepLogRotate = keep;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setLogRequestParameters(bool log) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change logging of request parameters if logging is active");
+  }
+
+  _logRequestParameters = log;
 }
 
 std::string const& Logger::translateLogLevel(LogLevel level) {

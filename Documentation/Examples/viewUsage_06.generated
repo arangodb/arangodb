@@ -17,9 +17,9 @@ arangosh&gt; view.properties({<span class="hljs-attr">links</span>: {<span class
       <span class="hljs-string">"includeAllFields"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"trackListPositions"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"storeValues"</span> : <span class="hljs-string">"none"</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"131408"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"132755"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
-      <span class="hljs-string">"view"</span> : <span class="hljs-string">"hC4048A4AEAB4/131393"</span> 
+      <span class="hljs-string">"view"</span> : <span class="hljs-string">"h276A05F98A0E/132736"</span> 
     }, 
     <span class="hljs-string">"colB"</span> : { 
       <span class="hljs-string">"analyzers"</span> : [ 
@@ -32,9 +32,9 @@ arangosh&gt; view.properties({<span class="hljs-attr">links</span>: {<span class
       <span class="hljs-string">"includeAllFields"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"trackListPositions"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"storeValues"</span> : <span class="hljs-string">"none"</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"131416"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"132764"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
-      <span class="hljs-string">"view"</span> : <span class="hljs-string">"hC4048A4AEAB4/131393"</span> 
+      <span class="hljs-string">"view"</span> : <span class="hljs-string">"h276A05F98A0E/132736"</span> 
     } 
   } 
 }

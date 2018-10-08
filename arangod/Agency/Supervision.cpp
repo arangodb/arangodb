@@ -945,6 +945,11 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
                         timepointToString(std::chrono::system_clock::now())));
                     }
                   }
+                  // increase current version
+                  builder->add(VPackValue("/arango/Current/Version"));
+                  {VPackObjectBuilder op(builder.get());
+                    builder->add("op", VPackValue("increment"));
+                  }
                 }
                 {VPackObjectBuilder precon(builder.get());
                   // pre condition:
@@ -973,8 +978,6 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
   }
 
   auto const& trx = builder->slice();
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "Trx: " << trx.toJson();
 
   if(trx.length() > 0) {
     // do it! fire and forget!

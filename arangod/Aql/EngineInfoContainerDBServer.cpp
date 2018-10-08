@@ -150,7 +150,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       }
 
       // do not set '_type' of the engine here,
-      // bacause satellite collections may consists of
+      // because satellite collections may consist of
       // multiple "main nodes"
 
       break;

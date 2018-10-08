@@ -141,7 +141,6 @@ class CollectionVariableTracker final
                                    arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
   using VariableSet = std::unordered_set<arangodb::aql::Variable const*>;
-  arangodb::aql::ExecutionPlan* _plan;
   bool _stop;
   std::unordered_map<arangodb::aql::Variable const*, DependencySet>
       _dependencies;
@@ -180,8 +179,7 @@ class CollectionVariableTracker final
   }
 
  public:
-  explicit CollectionVariableTracker(arangodb::aql::ExecutionPlan* plan)
-      : _plan{plan}, _stop{false} {}
+  explicit CollectionVariableTracker() : _stop{false} {}
 
   bool isSafeForOptimization() const { return !_stop; }
 
@@ -4508,7 +4506,7 @@ void arangodb::aql::restrictToSingleShardRule(
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
 
-  CollectionVariableTracker tracker(plan.get());
+  CollectionVariableTracker tracker;
   plan->root()->walk(tracker);
   if (!tracker.isSafeForOptimization()) {
     // encountered errors while working on optimization, do not continue
@@ -4625,7 +4623,7 @@ void arangodb::aql::restrictToSingleShardRule(
                  currentType == ExecutionNode::DISTRIBUTE ||
                  currentType == ExecutionNode::SINGLETON) {
         // we reached a new snippet or the end of the plan - we can abort
-        // searching now additionally, we cannot yet handle UPSERT well
+        // searching now. additionally, we cannot yet handle UPSERT well
         break;
       }
 

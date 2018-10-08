@@ -572,6 +572,66 @@ function BaseTestConfig() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with views
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSyncView: function() {
+      connectToMaster();
+
+      // create view & collection on master
+      db._flushCache();
+      let c = db._create(cn);
+      db._createView(cn + "View", "arangosearch");
+
+    
+      db._flushCache();
+      connectToSlave();    
+      internal.wait(0.1, false);
+      // sync on slave
+      replication.sync({endpoint: masterEndpoint});
+    
+      db._flushCache();
+      {
+        // check state is the same
+        let view = db._view(cn + "View");
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty("links"));
+        assertEqual(Object.keys(props.links).length, 0);
+      }
+
+      connectToMaster();
+
+      // update view properties
+      {
+        let view = db._view(cn + "View");
+        let links = {};
+        links[cn] = {
+          includeAllFields: true,
+          fields: {
+            text: { analyzers: ["text_en"] }
+          }
+        };
+        view.properties({links});
+      }
+
+
+      db._flushCache();
+      connectToSlave();    
+
+      replication.sync({endpoint: masterEndpoint});
+
+      {
+        let view = db._view(cn + "View");
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty("links"));
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty(cn));
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test with edges
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -1372,6 +1432,9 @@ function ReplicationSuite() {
 
   suite.setUp = function() {
     connectToMaster();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
   };
 
@@ -1381,9 +1444,15 @@ function ReplicationSuite() {
 
   suite.tearDown = function() {
     connectToMaster();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
 
     connectToSlave();
+    try {
+      db._dropView(cn + "View");
+    } catch(ignored) {}
     db._drop(cn);
   };
 

@@ -36,15 +36,10 @@ var ERRORS = require("@arangodb").errors;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
+function IResearchAqlTestSuite(args) {
   var c;
   var v;
 
-  // provided arguments
-  var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
-  };
   console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
@@ -473,7 +468,7 @@ jsunity.run(function IResearchAqlTestSuite_s1_r2() {
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
 });
 
 return jsunity.done();
