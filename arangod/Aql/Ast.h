@@ -32,7 +32,6 @@
 #include "Aql/VariableGenerator.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/LogicalDataSourceCategory.h"
 
 #include <functional>
 #include <iterator>
@@ -575,25 +574,6 @@ class Ast {
                                             std::string const& nameString, AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(AstNode const* graphNode);
-
-  /**
-   * @brief Register the given datasource with the given accesstype in the query.
-   *        Will be noop if the datasource is already used and has the same or higher
-   *        accessType.
-   *        Will upgrade the accessType if datasource is used with lower one before.
-   *
-   * @param resolver CollectionNameResolver to identify category
-   * @param accessType Access of this Source, NONE/READ/WRITE/EXCLUSIVE
-   * @param failIfDoesNotExist If true => throws error im SourceNotFound. False => Treat non-existing like a collection
-   * @param name Name of the datasource
-   *
-   * @return The Category of this datasource (Collection or View), and a reference to the translated name (cid => name if required).
-   */
-  std::pair<LogicalDataSourceCategory, StringRef> injectDataSourceInQuery(
-      arangodb::CollectionNameResolver const& resolver,
-      AccessMode::Type accessType,
-      bool failIfDoesNotExist,
-      std::string const& name);
 
  public:
   /// @brief negated comparison operators

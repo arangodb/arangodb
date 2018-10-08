@@ -101,7 +101,7 @@ class LogicalCollection: public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
   //////////////////////////////////////////////////////////////////////////////
-  LogicalDataSourceCategory category() const override {return LogicalDataSourceCategory::COLLECTION;}
+  static Category const& category() noexcept;
 
   virtual std::unique_ptr<LogicalCollection> clone() {
     return std::unique_ptr<LogicalCollection>(new LogicalCollection(*this));

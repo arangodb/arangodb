@@ -176,6 +176,7 @@ LogicalCollection::LogicalCollection(
     bool isAStub,
     uint64_t planVersion /*= 0*/
 ): LogicalDataSource(
+     LogicalCollection::category(),
      ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
      vocbase,
      arangodb::basics::VelocyPackHelper::extractIdValue(info),
@@ -249,6 +250,12 @@ LogicalCollection::LogicalCollection(
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
   prepareIndexes(info.get("indexes"));
+}
+
+/*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
+  static const Category category;
+
+  return category;
 }
    
 LogicalCollection::~LogicalCollection() {}
