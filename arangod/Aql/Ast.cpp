@@ -98,11 +98,13 @@ std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery
   auto const& dataSourceName = dataSource->name();
   StringRef nameRef{query.registerString(dataSourceName.data(), dataSourceName.size())};
 
+  // add views to the collection list
+  // to register them with transaction as well
+  query.addCollection(nameRef, accessType);
+
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
     // add datasource to query
-    query.addCollection(nameRef, accessType);
-
     if (nameRef != name) {
       query.addCollection(name, accessType); // Add collection by ID as well
     }
@@ -110,14 +112,14 @@ std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery
     // it's a view!
     query.addView(nameRef.toString());
 
-    LOG_DEVEL << "Adding view to query: " << nameRef.toString() << " orignal " << name << " dsname: " << dataSourceName;
-
     // Make sure to add all collections now:
-    resolver.visitCollections([&] (LogicalCollection& col) -> bool {
-        LOG_DEVEL << "Adding view collection" << col.name();
+    resolver.visitCollections(
+      [&query, accessType] (LogicalCollection& col) -> bool {
         query.addCollection(col.name(), accessType);
         return true;
-    }, dataSource->id());
+      },
+      dataSource->id()
+    );
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected datasource type");
   }
