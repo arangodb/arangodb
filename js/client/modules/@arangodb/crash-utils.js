@@ -252,7 +252,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
     if (!instanceInfo.hasOwnProperty('monitor')) {
-      print("your process wasn't monitored by procdump, won't have a coredump!")
+      print("your process wasn't monitored by procdump, won't have a coredump!");
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
     }
