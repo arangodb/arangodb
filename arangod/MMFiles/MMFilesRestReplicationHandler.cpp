@@ -186,7 +186,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BarrierInfo::DefaultTimeout);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -230,7 +230,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BarrierInfo::DefaultTimeout);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -667,7 +667,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
 
   // initialize a container with the keys
   auto keys = std::make_unique<MMFilesCollectionKeys>(
-    _vocbase, std::move(guard), id, 300.0
+    _vocbase, std::move(guard), id, 900.0
   );
 
   std::string const idString(std::to_string(keys->id()));
