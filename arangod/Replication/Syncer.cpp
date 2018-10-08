@@ -66,7 +66,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
       _connection(nullptr),
       _client(nullptr),
       _barrierId(0),
-      _barrierTtl(600),
+      _barrierTtl(900),
       _barrierUpdateTime(0),
       _isChildSyncer(false) {
   

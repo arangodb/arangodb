@@ -1,6 +1,11 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
+
 * fixed internal issue #1983: the Web UI was showing a deletion confirmation
   multiple times.
 
