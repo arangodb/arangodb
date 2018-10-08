@@ -95,7 +95,8 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new StringParameter(&_clientModule));
   
   options->addOption("--javascript.copy-directory",
-                     "target directory to copy files from 'javascript.startup-directory' into (only used when `--javascript.copy-installation` is enabled)",
+                     "target directory to copy files from 'javascript.startup-directory' into"
+                     "(only used when `--javascript.copy-installation` is enabled)",
                      new StringParameter(&_copyDirectory));
 
   options->addHiddenOption(

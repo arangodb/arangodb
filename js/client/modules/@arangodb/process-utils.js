@@ -805,10 +805,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
-      print(arangod.url + '/_admin/shutdown');
+      print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
       if (options.extremeVerbosity) {
-        print('Shutdown response: ' + JSON.stringify(reply));
+        print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
       }
     }
   } else {

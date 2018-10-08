@@ -34,7 +34,7 @@ size_t SocketUnixDomain::writeSome(basics::StringBuffer* buffer,
 
 void SocketUnixDomain::asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                                   AsyncHandler const& handler) {
-  return asio_ns::async_write(*_socket, buffer, _strand->wrap(handler));
+  return asio_ns::async_write(*_socket, buffer, handler);
 }
 
 size_t SocketUnixDomain::readSome(asio_ns::mutable_buffers_1 const& buffer,
@@ -48,7 +48,7 @@ std::size_t SocketUnixDomain::available(asio_ns::error_code& ec) {
 
 void SocketUnixDomain::asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                                  AsyncHandler const& handler) {
-  return _socket->async_read_some(buffer, _strand->wrap(handler));
+  return _socket->async_read_some(buffer, handler);
 }
 
 void SocketUnixDomain::shutdownReceive(asio_ns::error_code& ec) {

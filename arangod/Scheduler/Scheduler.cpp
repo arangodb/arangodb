@@ -351,6 +351,12 @@ bool Scheduler::queue(RequestPriority prio,
       break;
   }
 
+  // THIS IS A UGLY HACK TO SUPPORT THE NEW IO CONTEXT INFRASTRUCTURE
+  //  This is needed, since a post on the scheduler does no longer result in a
+  //  drain immerdiately. The reason for that is, that no worker thread returns
+  //  from `run_once`.
+  this->drain();
+
   return ok;
 }
 

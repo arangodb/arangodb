@@ -45,19 +45,42 @@ segment_writer::column::column(
   this->handle = columnstore.push_column();
 }
 
+doc_id_t segment_writer::begin(
+    const update_context& ctx,
+    size_t reserve_rollback_extra /*= 0*/
+) {
+  assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof());
+  valid_ = true;
+  norm_fields_.clear(); // clear norm fields
+  docs_mask_.reserve(
+    docs_mask_.size() + 1 + reserve_rollback_extra
+  ); // reserve space for potential rollback
+  docs_context_.emplace_back(ctx);
+
+  return docs_cached() + type_limits<type_t::doc_id_t>::min() - 1; // -1 for 0-based offset
+}
+
 segment_writer::ptr segment_writer::make(directory& dir) {
-  PTR_NAMED(segment_writer, ptr, dir);
-  return ptr;
+  // can't use make_unique becuase of the private constructor
+  return memory::maker<segment_writer>::make(dir);
+}
+
+size_t segment_writer::memory() const NOEXCEPT {
+  return sizeof(segment_writer)
+    + (sizeof(update_contexts::value_type) * docs_context_.size())
+    + (sizeof(document_mask::value_type) * docs_mask_.size())
+    + fields_.memory()
+    ;
+}
+
+bool segment_writer::remove(doc_id_t doc_id) {
+  return type_limits<type_t::doc_id_t>::valid(doc_id)
+    && (doc_id - type_limits<type_t::doc_id_t>::min()) < docs_cached()
+    && docs_mask_.insert(doc_id).second;
 }
 
 segment_writer::segment_writer(directory& dir) NOEXCEPT
   : dir_(dir), initialized_(false) {
-}
-
-// expect 0-based doc_id
-bool segment_writer::remove(doc_id_t doc_id) {
-  return doc_id < docs_cached()
-    && docs_mask_.insert(type_limits<type_t::doc_id_t>::min() + doc_id).second;
 }
 
 bool segment_writer::index(
@@ -66,7 +89,9 @@ bool segment_writer::index(
     const flags& features) {
   REGISTER_TIMER_DETAILED();
 
-  const doc_id_t doc_id = docs_cached();
+  assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
+  auto doc_id =
+    doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
   auto& slot = fields_.get(name);
   auto& slot_features = slot.meta().features;
 
@@ -124,12 +149,16 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
 
   // flush columnstore and columns indices
   if (col_writer_->flush() && !columns_.empty()) {
-    static struct less_t {
-      bool operator()(const column* lhs, const column* rhs) {
+    struct less_t {
+      bool operator()(
+          const column* lhs,
+          const column* rhs
+      ) const NOEXCEPT {
         return lhs->name < rhs->name;
       };
-    } less;
-    std::set<const column*, decltype(less)> columns(less);
+    };
+
+    std::set<const column*, less_t> columns;
 
     // ensure columns are sorted
     for (auto& entry : columns_) {
@@ -149,7 +178,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   // flush fields metadata & inverted data
-  {
+  if (docs_cached()) {
     flush_state state;
     state.dir = &dir_;
     state.doc_count = docs_cached();
@@ -159,7 +188,16 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     fields_.flush(*field_writer_, state);
   }
 
+  // write non-empty document mask
+  if (!docs_mask_.empty()) {
+    auto writer = meta.codec->get_document_mask_writer();
+
+    writer->write(dir_, meta, docs_mask_);
+  }
+
+  assert(docs_cached() >= docs_mask_.size());
   meta.docs_count = docs_cached();
+  meta.live_docs_count = meta.docs_count - docs_mask_.size();
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {

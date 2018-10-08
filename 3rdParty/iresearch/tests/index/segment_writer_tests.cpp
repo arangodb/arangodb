@@ -25,6 +25,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "index/segment_writer.hpp"
+#include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
 
 NS_LOCAL

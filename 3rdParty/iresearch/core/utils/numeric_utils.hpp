@@ -44,6 +44,21 @@ NS_LOCAL
   };
 #endif
 
+template <typename T, size_t N>
+struct equal_size_type;
+
+template<>
+struct equal_size_type<long, 4> { typedef int32_t type; };
+
+template<>
+struct equal_size_type<long, 8> { typedef int64_t type; };
+
+template<>
+struct equal_size_type<unsigned long, 4> { typedef uint32_t type; };
+
+template<>
+struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
+
 NS_END
 
 NS_ROOT
@@ -173,9 +188,17 @@ struct numeric_traits<uint64_t> {
   CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
 };
 
-#ifndef FLOAT_T_IS_DOUBLE_T
+// MacOS 'unsigned long' is a different type from any of the above
+// MSVC 'unsigned long' is a different type from any of the above
+#if defined (__APPLE__) || defined(_MSC_VER)
+  template<>
+  struct numeric_traits<unsigned long>
+    : public numeric_traits<equal_size_type<unsigned long, sizeof(unsigned long)>::type> {
+  };
+#endif
+
 template<>
-struct numeric_traits<float_t> {
+struct numeric_traits<float> {
   typedef int32_t integral_t;
   static const bytes_ref& ninf() { return nfinf32(); }
   static const bytes_ref& (min)() { return minf32(); } 
@@ -191,10 +214,9 @@ struct numeric_traits<float_t> {
     return floating(decodef32(in));
   }
 }; // numeric_traits
-#endif
 
 template<>
-struct numeric_traits<double_t> {
+struct numeric_traits<double> {
   typedef int64_t integral_t;
   static const bytes_ref& ninf() { return ndinf64(); }
   static const bytes_ref& (min)() { return mind64(); } 
@@ -209,6 +231,10 @@ struct numeric_traits<double_t> {
   static double_t decode(const byte_type* in) {
     return floating(decoded64(in));
   }
+}; // numeric_traits
+
+template<>
+struct numeric_traits<long double> {
 }; // numeric_traits
 
 NS_END // numeric_utils
