@@ -71,7 +71,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                                   std::string& path,
                                   std::string const& binaryName) {
   std::string fn("icudtl.dat");
-  TRI_GETENV("ICU_DATA", path);
+  if (TRI_GETENV("ICU_DATA", path)) {
+    path = FileUtils::buildFilename(path, fn);
+  }
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)

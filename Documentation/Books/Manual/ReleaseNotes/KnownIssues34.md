@@ -12,8 +12,6 @@ Installer
   and only some of them shall be upgraded, or they should be upgraded one after the
   other.
 
-* Ubuntu 14.04 is not yet supported
-
 
 Modify documents in cluster using AQL and an incorrect custom shard key
 -----------------------------------------------------------------------

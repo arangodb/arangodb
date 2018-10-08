@@ -44,6 +44,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+  void stop() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
@@ -71,6 +72,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   OperationMode _operationMode;
   bool _isStopping = false;
   uint16_t _codePage;
+  uint16_t _originalCodePage;
 };
 
 }
