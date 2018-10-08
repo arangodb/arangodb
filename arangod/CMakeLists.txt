@@ -53,7 +53,6 @@ if (USE_IRESEARCH)
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
-    IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
     IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
     IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h

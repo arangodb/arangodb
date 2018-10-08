@@ -34,9 +34,9 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API segment_reader final
     : public sub_reader,
-      private atomic_base<std::shared_ptr<sub_reader>> {
+      private atomic_shared_ptr_helper<const sub_reader> {
  public:
-  typedef atomic_base<std::shared_ptr<sub_reader>> atomic_utils;
+  typedef atomic_shared_ptr_helper<const sub_reader> atomic_utils;
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
 
@@ -50,6 +50,14 @@ class IRESEARCH_API segment_reader final
   segment_reader& operator=(const segment_reader& other) NOEXCEPT;
 
   explicit operator bool() const NOEXCEPT { return bool(impl_); }
+
+  bool operator==(const segment_reader& rhs) const NOEXCEPT {
+    return impl_ == rhs.impl_;
+  }
+
+  bool operator!=(const segment_reader& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
 
   segment_reader& operator*() NOEXCEPT { return *this; }
   const segment_reader& operator*() const NOEXCEPT { return *this; }
@@ -75,7 +83,7 @@ class IRESEARCH_API segment_reader final
     return impl_->docs_count();
   }
 
-  virtual docs_iterator_t::ptr docs_iterator() const override {
+  virtual doc_iterator::ptr docs_iterator() const override {
     return impl_->docs_iterator();
   }
 
@@ -112,8 +120,15 @@ class IRESEARCH_API segment_reader final
     return impl_->column_reader(field);
   }
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief converts current 'segment_reader' to 'sub_reader::ptr'
+  ////////////////////////////////////////////////////////////////////////////////
+  explicit operator sub_reader::ptr() const NOEXCEPT {
+    return impl_;
+  }
+
  private:
-  typedef std::shared_ptr<sub_reader> impl_ptr;
+  typedef std::shared_ptr<const sub_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;

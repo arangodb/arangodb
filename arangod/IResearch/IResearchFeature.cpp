@@ -361,7 +361,7 @@ void registerViewFactory() {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       res.errorNumber(),
-      std::string("failure registering IResearch view factory: ") + res.errorMessage()
+      std::string("failure registering arangosearch view factory: ") + res.errorMessage()
     );
   }
 }
@@ -823,7 +823,7 @@ void IResearchFeature::start() {
       registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+        << "failure to find feature 'AQLFunctions' while registering arangosearch filters";
     }
 
   }

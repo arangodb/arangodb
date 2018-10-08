@@ -43,7 +43,7 @@ NS_ROOT
  * ------------------------------------------------------------------*/
 
 class format;
-typedef std::shared_ptr<format> format_ptr;
+typedef std::shared_ptr<const format> format_ptr;
 
 NS_END
 
@@ -62,8 +62,10 @@ struct IRESEARCH_API segment_meta {
     std::string&& name,
     format_ptr codec,
     uint64_t docs_count,
+    uint64_t live_docs_count,
     bool column_store,
-    file_set&& files
+    file_set&& files,
+    size_t size = 0
   );
 
   segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
@@ -74,10 +76,12 @@ struct IRESEARCH_API segment_meta {
 
   file_set files;
   std::string name;
-  uint64_t docs_count{};
+  uint64_t docs_count{}; // total number of documents in a segment
+  uint64_t live_docs_count{}; // total number of live documents in a segment
   format_ptr codec;
-  bool column_store{};
+  size_t size{}; // size of a segment in bytes
   uint64_t version{};
+  bool column_store{};
 };
 
 /* -------------------------------------------------------------------
@@ -104,7 +108,7 @@ class IRESEARCH_API index_meta {
   }; // index_segment_t
 
   typedef std::vector<index_segment_t> index_segments_t;
-  DECLARE_PTR(index_meta);
+  DECLARE_UNIQUE_PTR(index_meta);
 
   index_meta();
   index_meta(index_meta&& rhs) NOEXCEPT;
@@ -114,10 +118,14 @@ class IRESEARCH_API index_meta {
 
   bool operator==(const index_meta& other) const NOEXCEPT;
 
-  template<typename _ForwardIterator>
-  void add(_ForwardIterator begin, _ForwardIterator end) {
+  template<typename ForwardIterator>
+  void add(ForwardIterator begin, ForwardIterator end) {
     segments_.reserve(segments_.size() + std::distance(begin, end));
     std::move(begin, end, std::back_inserter(segments_));
+  }
+
+  void add(index_segment_t&& segment) {
+    segments_.emplace_back(std::move(segment));
   }
 
   template<typename Visitor>
@@ -136,6 +144,16 @@ class IRESEARCH_API index_meta {
         if (!visitor(const_cast<std::string&>(file))) {
           return false;
         }
+      }
+    }
+    return true;
+  }
+
+  template<typename Visitor>
+  bool visit_segments(const Visitor& visitor) const {
+    for (auto& segment : segments_) {
+      if (!visitor(segment.filename, segment.meta)) {
+        return false;
       }
     }
     return true;
@@ -169,8 +187,14 @@ class IRESEARCH_API index_meta {
     segments_ = rhs.segments_;
   }
 
-  const index_segment_t& segment(size_t i) const {
+  const index_segment_t& segment(size_t i) const NOEXCEPT {
     return segments_[i];
+  }
+  const index_segment_t& operator[](size_t i) const NOEXCEPT {
+    return segments_[i];
+  }
+  const index_segments_t& segments() const NOEXCEPT {
+    return segments_;
   }
 
  private:

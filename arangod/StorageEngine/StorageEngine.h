@@ -108,10 +108,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // creation data with engine-specific information
   virtual void addParametersForNewCollection(VPackBuilder&, VPackSlice /*info*/) {}
 
-  // when a new index is created, this method is called to augment the index
-  // creation data with engine-specific information
-  virtual void addParametersForNewIndex(VPackBuilder&, VPackSlice /*info*/) {}
-
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
     LogicalCollection& collection,

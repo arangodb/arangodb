@@ -777,13 +777,6 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void RocksDBEngine::addParametersForNewIndex(VPackBuilder& builder,
-                                             VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection,
@@ -1906,12 +1899,14 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE && USE_IRESEARCH
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef USE_IRESEARCH
       if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
         LOG_TOPIC(DEBUG, Logger::VIEWS)
             << "arangosearch view '" << v->name()
             << "' contains " << v->count() << " documents";
       }
+#endif
 #endif
     }
   } catch (std::exception const& ex) {
