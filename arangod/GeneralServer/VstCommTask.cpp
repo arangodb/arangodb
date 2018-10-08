@@ -63,7 +63,7 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
   if (!slice.isArray() || slice.length() < 2) {
     throw std::runtime_error("VST message does not contain a valid request header");
   }
-  
+
   VPackSlice vSlice = slice.at(0);
   if (!vSlice.isNumber<short>() || vSlice.getNumber<int>() != 1) {
     throw std::runtime_error("VST message header has an unsupported version");
@@ -75,12 +75,12 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
 }
 
 
-VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
+VstCommTask::VstCommTask(GeneralServer &server, GeneralServer::IoContext &context,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion,
                          bool skipInit)
-    : Task(scheduler, "VstCommTask"),
-      GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
+    : IoTask(server, context, "VstCommTask"),
+      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
@@ -109,7 +109,7 @@ void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType r
   VstResponse resp(code, messageId);
   TRI_ASSERT(respType == rest::ContentType::VPACK); // or not ?
   resp.setContentType(respType);
-  
+
   try {
     if (!buffer.empty()) {
       resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
@@ -184,7 +184,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       ++c;
     }
   }
-  
+
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
@@ -192,7 +192,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-  
+
   // process remaining requests ?
   //processAll();
 }
@@ -274,7 +274,7 @@ bool VstCommTask::isChunkComplete(char* start) {
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                    uint64_t messageId) {
-  
+
   std::string authString;
   std::string user = "";
   _authorized = false;
@@ -292,13 +292,14 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   } else {
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
-  
+
   auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
   _authorized = entry.authenticated();
-  
+
   if (_authorized || !_auth->isActive()) {
     _authenticatedUser = std::move(entry._username);
     // simon: drivers expect a response for their auth request
+
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
                      "auth successful");
   } else {
@@ -311,7 +312,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
   TRI_ASSERT(_peer->runningInThisThread());
-  
+
   auto& prv = _processReadVariables;
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
@@ -373,13 +374,14 @@ bool VstCommTask::processRead(double startTime) {
     // get type of request, message header is validated earlier
     TRI_ASSERT(header.isArray() && header.length() >= 2);
     TRI_ASSERT(header.at(1).isNumber<int>()); // va
-    
+
     int type = header.at(1).getNumber<int>();
+
     // handle request types
     if (type == 1000) { // auth
       handleAuthHeader(header, chunkHeader._messageID);
     } else if (type == 1) { // request
-      
+
       // the handler will take ownership of this pointer
       auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
                                               chunkHeader._messageID);
@@ -390,8 +392,9 @@ bool VstCommTask::processRead(double startTime) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
-      
+
       RequestFlow cont = prepareExecution(*req.get());
+
       if (cont == RequestFlow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
                                                   chunkHeader._messageID);
