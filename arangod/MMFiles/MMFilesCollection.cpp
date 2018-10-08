@@ -2446,8 +2446,12 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
   }
 
   TRI_voc_tid_t tid = state->id();
+  // set end time for lock waiting
+  if (timeout <= 0.0) {
+    timeout = defaultLockTimeout;
+  }
 
-  int iterations = 0;
+  int iterations = 1;
   bool wasBlocked = false;
   uint64_t waitTime = 0;  // indicate that time is uninitialized
   double startTime = 0.0;
@@ -2455,7 +2459,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
   uint32_t next = ::PREFER_READER;
 
   while (true) {
-    TRY_CONDITIONAL_READ_LOCKER(locker, _dataLock, next & ::PREFER_READER);
+    TRY_CONDITIONAL_READ_LOCKER(locker, _dataLock, (next & ::PREFER_READER) || (iterations == 0));
 
     if (locker.isLocked()) {
       // when we are here, we've got the read lock
@@ -2469,6 +2473,11 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
       locker.steal();
 
       return TRI_ERROR_NO_ERROR;
+    }
+
+    ++iterations;
+    if (iterations == 6) {
+      iterations = 0;
     }
 
     if (useDeadlockDetector) {
@@ -2491,11 +2500,9 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
               << "waiting for read-lock on collection '"
               << _logicalCollection.name() << "'";
           // intentionally falls through
-        } else if (++iterations >= 5) {
+        } else if (iterations == 0) {
           // periodically check for deadlocks
           TRI_ASSERT(wasBlocked);
-          iterations = 0;
-
           if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.detectDeadlock(tid, &_logicalCollection, false)) {
             // deadlock
             _logicalCollection.vocbase()._deadlockDetector.unsetReaderBlocked(
@@ -2525,11 +2532,6 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
     double now = TRI_microtime();
 
     if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
       startTime = now;
       waitTime = 1;
     }
@@ -2549,6 +2551,9 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
       return TRI_ERROR_LOCK_TIMEOUT;
     }
 
+    std::this_thread::yield();
+#if 0
+    next = _next.load(std::memory_order_acquire);
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
@@ -2557,7 +2562,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
         waitTime *= 2;
       }
     }
-    next = _next.load(std::memory_order_acquire);
+#endif
   }
 }
 
@@ -2571,8 +2576,13 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
   }
 
   TRI_voc_tid_t tid = state->id();
+      
+  // set end time for lock waiting
+  if (timeout <= 0.0) {
+    timeout = defaultLockTimeout;
+  }
 
-  int iterations = 0;
+  int iterations = 1;
   bool wasBlocked = false;
   uint64_t waitTime = 0;  // indicate that time is uninitialized
   double startTime = 0.0;
@@ -2580,7 +2590,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
   uint32_t next = ::PREFER_WRITER;
 
   while (true) {
-    TRY_CONDITIONAL_WRITE_LOCKER(locker, _dataLock, next & ::PREFER_WRITER);
+    TRY_CONDITIONAL_WRITE_LOCKER(locker, _dataLock, (next & ::PREFER_WRITER) || (iterations == 0));
 
     if (locker.isLocked()) {
       // register writer
@@ -2594,6 +2604,11 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
       locker.steal();
 
       return TRI_ERROR_NO_ERROR;
+    }
+
+    ++iterations;
+    if (iterations == 6) {
+      iterations = 0;
     }
 
     if (useDeadlockDetector) {
@@ -2615,11 +2630,9 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
               << "waiting for write-lock on collection '"
               << _logicalCollection.name() << "'";
-        } else if (++iterations >= 5) {
+        } else if (iterations == 0) {
           // periodically check for deadlocks
           TRI_ASSERT(wasBlocked);
-          iterations = 0;
-
           if (TRI_ERROR_DEADLOCK == _logicalCollection.vocbase()._deadlockDetector.detectDeadlock(tid, &_logicalCollection, true)) {
             // deadlock
             _logicalCollection.vocbase()._deadlockDetector.unsetWriterBlocked(
@@ -2649,11 +2662,6 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
     double now = TRI_microtime();
 
     if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
       startTime = now;
       waitTime = 1;
     }
@@ -2672,16 +2680,19 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
 
       return TRI_ERROR_LOCK_TIMEOUT;
     }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
-    }
+    
     next = _next.load(std::memory_order_acquire);
+
+//    if ((next & ::PREFER_WRITER) == 0) {
+      if (now - startTime < 0.001) {
+        std::this_thread::yield();
+      } else {
+        std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
+        if (waitTime < 32) {
+          waitTime *= 2;
+        }
+      }
+//    }
   }
 }
 
