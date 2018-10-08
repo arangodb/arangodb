@@ -59,6 +59,17 @@
 NS_LOCAL
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flush segment when it reached approximately this size
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t MAX_SEGMENT_SIZE = 32*(size_t(1)<<20); // 32MB
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of threads that will not be blocked
+///        when inserting/removing data into/from a view
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t MAX_NON_BLOCKING_SEGMENTS_COUNT = 64;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::aql::AstNode ALL(true, arangodb::aql::VALUE_TYPE_BOOL);
@@ -1614,6 +1625,8 @@ void IResearchView::open() {
         // do not lock index, ArangoDB has it's own lock
         irs::index_writer::options options;
         options.lock_repository = false;
+        options.segment_memory_max = MAX_SEGMENT_SIZE;
+        options.segment_pool_size = MAX_NON_BLOCKING_SEGMENTS_COUNT;
 
         // create writer before reader to ensure data directory is present
         _storePersisted._writer = irs::index_writer::make(
