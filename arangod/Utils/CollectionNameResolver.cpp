@@ -447,7 +447,7 @@ bool CollectionNameResolver::visitCollections(
     return visitor(*collection);
   }
 
-  if (LogicalCollection::category() == dataSource->category()) {
+  if (LogicalView::category() == dataSource->category()) {
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto view = std::dynamic_pointer_cast<LogicalView>(dataSource);
     #else
