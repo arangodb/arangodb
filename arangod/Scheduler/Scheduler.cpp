@@ -211,6 +211,17 @@ Scheduler::~Scheduler() {
   }
 }
 
+void Scheduler::post(std::function<void()> const callback, bool isV8,
+            uint64_t timeout) {
+    if (isV8) {
+      queue(RequestPriority::V8, callback);
+    } else {
+      queue(RequestPriority::HIGH, callback);
+    } // else
+
+    return;
+  };
+
 // do not pass callback by reference, might get deleted before execution
 void Scheduler::post_internal(std::function<void()> const callback, bool isV8,
                      uint64_t timeout) {
@@ -481,7 +492,7 @@ bool Scheduler::popFifo(int64_t fifo) {
     });
 
     if (!job->_isV8 || _queuedV8 < _maxQueuedV8) {
-      post(job->_callback, job->_isV8);
+      post_internal(job->_callback, job->_isV8);
     } else {
       pushToFifo(FIFO8, job->_callback, job->_isV8);
     }
