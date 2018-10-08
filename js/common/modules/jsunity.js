@@ -47,7 +47,7 @@ function setTestFilter(filter) {
 }
 
 jsUnity.results.begin = function (total, suiteName) {
-  print('Running ' + (suiteName || 'unnamed test suite'));
+  print(Date() + ' Running ' + (suiteName || 'unnamed test suite'));
   print(' ' + total + ' test(s) found');
   print();
   RESULTS = {};
