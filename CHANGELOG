@@ -3,8 +3,8 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 
 * include forward-ported diagnostic options for debugging LDAP connections
 
-* fix variable replacements by the AQL query optimizer in arangosearch view 
-  search conditions
+* fixed internal issue #3065: fix variable replacements by the AQL query 
+  optimizer in arangosearch view search conditions
 
   The consequence of the missing replacements was that some queries using view
   search conditions could have failed with error messages such as
