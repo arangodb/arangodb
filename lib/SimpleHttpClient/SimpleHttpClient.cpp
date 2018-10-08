@@ -30,6 +30,7 @@
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "lib/ApplicationFeatures/ApplicationServer.h"
 
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
@@ -174,6 +175,11 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage << " - no retries left";
       break;
+    }
+
+    if (application_features::ApplicationServer::isStopping()) {
+      // abort this client, will also lead to exiting this loop next
+      setAborted(true);
     }
 
     if (isAborted()) {
@@ -391,6 +397,11 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
       default:
         break;
+    }
+
+    if ( application_features::ApplicationServer::isStopping()) {
+      setErrorMessage("Command locally aborted");
+      return nullptr;
     }
 
     remainingTime = endTime - TRI_microtime();
