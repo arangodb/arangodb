@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
 * removed bundled Valgrind headers, removed JavaScript variable `valgrind`
   from the `internal` module
 
