@@ -50,6 +50,9 @@ function IResearchAqlTestSuite(args) {
       db._drop("AnotherUnitTestsCollection");
       var ac = db._create("AnotherUnitTestsCollection", args);
 
+      db._drop("UnitTestsGraph");
+      var g = db._createEdgeCollection("UnitTestsGraph", args);
+
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
       var meta = {
@@ -84,6 +87,10 @@ function IResearchAqlTestSuite(args) {
       c.save({ name: "null", anotherNullField: null });
       c.save({ name: "bool", anotherBoolField: true });
       c.save({ _key: "foo", xyz: 1 });
+
+      c.save({ _key: "begin", vName: "vBegin" });
+      c.save({ _key: "end", vName: "vEnd" });
+      g.save({ _from: "UnitTestsCollection/begin", _to: "UnitTestsCollection/end" });
     },
 
     tearDown : function () {
@@ -92,6 +99,7 @@ function IResearchAqlTestSuite(args) {
       v.drop();
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
+      db._drop("UnitTestsGraph");
     },
     
     testViewInFunctionCall : function () {
@@ -446,6 +454,28 @@ function IResearchAqlTestSuite(args) {
         assertEqual(doc.b, res.b);
         assertEqual(doc.c, res.c);
       });
+    },
+
+    testWithKeywordForViewInGraph : function() {
+      var result1 = db._query(
+        "WITH UnitTestsCollection " + 
+        "FOR doc IN UnitTestsView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      assertEqual(result1.length, 1);
+      assertEqual(result1[0].vName, "vEnd");
+
+      var result2 = db._query(
+        "WITH UnitTestsView " +
+        "FOR doc IN UnitTestsView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      assertEqual(result1.length, result2.length);
+      assertEqual(result1[0].vName, result2[0].vName);
     },
 
   };
