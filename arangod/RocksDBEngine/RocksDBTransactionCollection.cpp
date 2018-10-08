@@ -328,8 +328,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   if (commitSeq != 0) { // is '0' for filling new indexes
     if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
       RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
-      coll->adjustNumberDocuments(adjustment);
-      coll->setRevision(_revision);
+      coll->adjustNumberDocuments(_revision, adjustment);
 
       RocksDBEngine* engine = rocksutils::globalRocksEngine();
       RocksDBSettingsManager::CounterAdjustment update(commitSeq, _numInserts, _numRemoves,

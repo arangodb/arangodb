@@ -262,7 +262,7 @@ void RocksDBSettingsManager::setMaxUpdateSequenceNumber(rocksdb::SequenceNumber 
 
   if (!res) {
     // someone else has updated the max sequence number
-    TRI_ASSERT(current > seqNo);
+    TRI_ASSERT(current >= seqNo);
   }
 }
 

@@ -118,12 +118,13 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
           break; // try the next codec
         }
 
-        ref = iresearch::directory_utils::reference(
-          const_cast<iresearch::directory&>(dir), filename
+        ref = irs::directory_utils::reference(
+          const_cast<irs::directory&>(dir), filename
         );
       }
 
-      std::time_t mtime;
+      // initialize to a value that will never pass 'if' below (to make valgrind happy)
+      std::time_t mtime = std::numeric_limits<std::time_t>::min();
 
       if (ref && dir.mtime(mtime, *ref) && mtime > newest.mtime) {
         newest.mtime = std::move(mtime);
@@ -171,7 +172,7 @@ struct context<segment_reader> {
 class directory_reader_impl :
   public composite_reader_impl<segment_reader> {
  public:
-  DECLARE_SPTR(directory_reader_impl); // required for NAMED_PTR(...)
+  DECLARE_SHARED_PTR(directory_reader_impl); // required for NAMED_PTR(...)
 
   const directory& dir() const NOEXCEPT {
     return dir_;
@@ -235,9 +236,9 @@ directory_reader directory_reader::reopen(
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
 #ifdef IRESEARCH_DEBUG
-  auto& reader_impl = dynamic_cast<directory_reader_impl&>(*impl);
+  auto& reader_impl = dynamic_cast<const directory_reader_impl&>(*impl);
 #else
-  auto& reader_impl = static_cast<directory_reader_impl&>(*impl);
+  auto& reader_impl = static_cast<const directory_reader_impl&>(*impl);
 #endif
 
   return directory_reader_impl::open(
@@ -273,10 +274,10 @@ directory_reader_impl::directory_reader_impl(
   }
 
 #ifdef IRESEARCH_DEBUG
-  auto* cached_impl = dynamic_cast<directory_reader_impl*>(cached.get());
+  auto* cached_impl = dynamic_cast<const directory_reader_impl*>(cached.get());
   assert(!cached || cached_impl);
 #else
-  auto* cached_impl = static_cast<directory_reader_impl*>(cached.get());
+  auto* cached_impl = static_cast<const directory_reader_impl*>(cached.get());
 #endif
 
   if (cached_impl && cached_impl->meta() == meta) {

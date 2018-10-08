@@ -35,9 +35,9 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API directory_reader final
     : public composite_reader,
-      private atomic_base<std::shared_ptr<composite_reader>> {
+      private atomic_shared_ptr_helper<const composite_reader> {
  public:
-  typedef atomic_base<std::shared_ptr<composite_reader>> atomic_utils;
+  typedef atomic_shared_ptr_helper<const composite_reader> atomic_utils;
   typedef directory_reader element_type; // type same as self
   typedef directory_reader ptr; // pointer to self
 
@@ -47,6 +47,14 @@ class IRESEARCH_API directory_reader final
 
   explicit operator bool() const NOEXCEPT { return bool(impl_); }
 
+  bool operator==(const directory_reader& rhs) const NOEXCEPT {
+    return impl_ == rhs.impl_;
+  }
+
+  bool operator!=(const directory_reader& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
   directory_reader& operator*() NOEXCEPT { return *this; }
   const directory_reader& operator*() const NOEXCEPT { return *this; }
   directory_reader* operator->() NOEXCEPT { return this; }
@@ -54,10 +62,6 @@ class IRESEARCH_API directory_reader final
 
   virtual const sub_reader& operator[](size_t i) const override {
     return (*impl_)[i];
-  }
-
-  virtual doc_id_t base(size_t i) const override {
-    return impl_->base(i);
   }
 
   virtual index_reader::reader_iterator begin() const override {
@@ -70,10 +74,6 @@ class IRESEARCH_API directory_reader final
 
   virtual uint64_t docs_count() const override {
     return impl_->docs_count();
-  }
-
-  virtual uint64_t docs_count(const string_ref& field) const override {
-    return impl_->docs_count(field);
   }
 
   virtual uint64_t live_docs_count() const override {
@@ -106,16 +106,15 @@ class IRESEARCH_API directory_reader final
     impl_.reset();
   }
 
-  bool operator==(const directory_reader& rhs) const NOEXCEPT {
-    return impl_ == rhs.impl_;
-  }
-
-  bool operator!=(const directory_reader& rhs) const NOEXCEPT {
-    return !(*this == rhs);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief converts current directory_reader to 'index_reader::ptr'
+  ////////////////////////////////////////////////////////////////////////////////
+  explicit operator index_reader::ptr() const NOEXCEPT {
+    return impl_;
   }
 
  private:
-  typedef std::shared_ptr<composite_reader> impl_ptr;
+  typedef std::shared_ptr<const composite_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
