@@ -3568,7 +3568,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
         auto member = node->getMember(i);
 
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            member->getString() == attributeName) {
+            StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
