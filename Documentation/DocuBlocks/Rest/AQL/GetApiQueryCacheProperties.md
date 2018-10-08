@@ -1,18 +1,27 @@
 
 @startDocuBlock GetApiQueryCacheProperties
-@brief returns the global configuration for the AQL query cache
+@brief returns the global configuration for the AQL query results cache
 
-@RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query cache}
+@RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query results cache}
 
 @RESTDESCRIPTION
-Returns the global AQL query cache configuration. The configuration is a
+Returns the global AQL query results cache configuration. The configuration is a
 JSON object with the following properties:
 
-- *mode*: the mode the AQL query cache operates in. The mode is one of the following
+- *mode*: the mode the AQL query results cache operates in. The mode is one of the following
   values: *off*, *on* or *demand*.
 
 - *maxResults*: the maximum number of query results that will be stored per database-specific
   cache.
+
+- *maxResultsSize*: the maximum cumulated size of query results that will be stored per 
+  database-specific cache.
+
+- *maxEntrySize*: the maximum individual result size of queries that will be stored per 
+  database-specific cache.
+
+- *includeSystem*: whether or not results of queries that involve system collections will be
+  stored in the query results cache.
 
 @RESTRETURNCODES
 

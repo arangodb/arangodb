@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertNull, assertTypeOf, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the view interface
@@ -70,14 +70,31 @@ function IResearchLinkSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief should ignore links specified at creation
+    /// @brief should honor links specified at creation
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithLinks : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
-      var view = db._createView("badView", "arangosearch", meta);
+      var view = db._createView("someView", "arangosearch", meta);
       var links = view.properties().links;
-      assertEqual(links['testCollection'], undefined);
+      assertNotEqual(links['testCollection'], undefined);
       view.drop();
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief don't create view when collections do not exist or the user
+    ///   is not allowed to access them.
+    ////////////////////////////////////////////////////////////////////////////
+    testHandlingCreateWithBadLinks : function () {
+      var meta = { links: { 'nonExistentCollection': {}, 'testCollection' : { includeAllFields: true } } };
+      var view;
+      try {
+        view = db._createView("someView", "arangosearch", meta);
+        fail();
+      } catch(e) {
+         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e.errorNum);
+      }
+
+      assertNull(db._view("someView"));
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -98,11 +115,7 @@ function IResearchLinkSuite () {
       assertEqual(links['testCollection'], undefined);
 
       view.drop();
-      try {
-        view = db._view('testView');
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view('testView'));
     }
 
   };

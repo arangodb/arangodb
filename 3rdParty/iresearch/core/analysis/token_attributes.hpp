@@ -30,6 +30,7 @@
 #include "index/iterators.hpp"
 
 #include "utils/attributes.hpp"
+#include "utils/attributes_provider.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/iterator.hpp"
@@ -118,7 +119,7 @@ struct IRESEARCH_API document: basic_attribute<doc_id_t> {
 /// @class frequency 
 /// @brief how many times term appears in a document
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API frequency : basic_attribute<uint64_t> {
+struct IRESEARCH_API frequency : basic_attribute<uint32_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
   frequency() = default;
@@ -143,7 +144,7 @@ struct IRESEARCH_API granularity_prefix : attribute {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API norm : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   FORCE_INLINE static CONSTEXPR float_t DEFAULT() {
     return 1.f;
@@ -170,76 +171,34 @@ struct IRESEARCH_API norm : stored_attribute {
 /// @class position 
 /// @brief represents a term positions in document (iterator)
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API position : public attribute {
+class IRESEARCH_API position
+  : public attribute, public util::const_attribute_view_provider {
  public:
   typedef uint32_t value_t;
 
-  class IRESEARCH_API impl : 
-      public iterator<value_t>, 
-      public util::const_attribute_view_provider {
-   public:
-    DECLARE_PTR(impl);
-
-    impl() = default;
-    explicit impl(size_t reserve_attrs);
-    virtual void clear() = 0;
-
-    const attribute_view& attributes() const NOEXCEPT override {
-      return attrs_;
-    }
-
-   protected:
-    attribute_view attrs_;
-  };
-
-  static const uint32_t INVALID = integer_traits<value_t>::const_max;
-  static const uint32_t NO_MORE = INVALID - 1;
-
-  DECLARE_CREF(position);
+  DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
-  position() = default;
+  const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
+  virtual void clear() = 0;
+  virtual bool next() = 0;
 
-  explicit operator bool() const NOEXCEPT { return bool(impl_); }
+  value_t seek(value_t target) {
+    irs::seek(
+      *this,
+      target,
+      [](value_t lhs, value_t rhs) { return 1 + lhs < 1 + rhs; } // FIXME TODO: make INVALID = 0, remove this
+    );
 
-  const attribute_view& attributes() const NOEXCEPT {
-    assert(impl_);
-    return impl_->attributes();
+    return value();
   }
 
-  void clear() {
-    assert(impl_);
-    impl_->clear();
-  }
+  virtual value_t value() const = 0;
 
-  impl* get() NOEXCEPT { return impl_.get(); }
-  const impl* get() const NOEXCEPT { return impl_.get(); }
+ protected:
+  attribute_view attrs_;
 
-  bool next() const {
-    assert(impl_);
-    return impl_->next();
-  }
-
-  void reset(impl::ptr&& impl = nullptr) NOEXCEPT { impl_ = std::move(impl); }
-
-  value_t seek(value_t target) const {
-    iresearch::seek(
-      *impl_, target,
-      [](value_t lhs, value_t rhs) {
-        return 1 + lhs < 1 + rhs;
-    });
-    return impl_->value();
-  }
-
-  value_t value() const {
-    assert(impl_);
-    return impl_->value();
-  }
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  mutable impl::ptr impl_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+  position(size_t reserve_attrs);
 }; // position
 
 NS_END // ROOT

@@ -59,8 +59,9 @@ namespace {
 /// create a collection if it does not exists.
 bool createSystemCollection(TRI_vocbase_t* vocbase,
                             std::string const& name) {
-  auto res =
-    methods::Collections::lookup(vocbase, name, [](LogicalCollection& coll) {});
+  auto res = methods::Collections::lookup(
+    vocbase, name, [](std::shared_ptr<LogicalCollection> const&)->void {}
+  );
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     uint32_t defaultReplFactor = 1;
@@ -84,15 +85,21 @@ bool createSystemCollection(TRI_vocbase_t* vocbase,
     }
 
     bb.close();
-    res =
-        Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
-                            /*waitsForSyncReplication*/ true,
-                            /*enforceReplicationFactor*/ true,
-                            [](LogicalCollection& coll)->void {});
+    res = Collections::create(
+      vocbase,
+      name,
+      TRI_COL_TYPE_DOCUMENT,
+      bb.slice(),
+      /*waitsForSyncReplication*/ true,
+      /*enforceReplicationFactor*/ true,
+      [](std::shared_ptr<LogicalCollection> const&)->void {}
+    );
   }
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return true;
 }
 
@@ -107,8 +114,10 @@ bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
   res1 = methods::Collections::lookup(
     vocbase,
     name,
-    [&](LogicalCollection& coll)->void {
-      res2 = methods::Indexes::createIndex(&coll, type, fields, unique, sparse);
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+      res2 =
+        methods::Indexes::createIndex(coll.get(), type, fields, unique, sparse);
     }
   );
 
@@ -126,7 +135,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   TRI_idx_iid_t iid = oldIndex->id();
 
   VPackBuilder oldDesc;
-  oldIndex->toVelocyPack(oldDesc, Index::SERIALIZE_BASICS);
+  oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
   VPackBuilder overw;
 
   overw.openObject();

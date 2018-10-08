@@ -29,7 +29,6 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 (function () {
   var startupPath = global.STARTUP_PATH;
   var load = global.SYS_LOAD;
@@ -70,5 +69,3 @@ require('@arangodb/actions').startup();
 
 // initialize AQL
 require('@arangodb/aql');
-
-

@@ -63,15 +63,15 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
     return link && link->init(definition) ? ptr : nullptr;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.code() << " " << e.what();
+      << "caught exception while creating arangosearch view MMFiles link '" << id << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.what();
+      << "caught exception while creating arangosearch view MMFiles link '" << id << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "'";
+      << "caught exception while creating arangosearch view MMFiles link '" << id << "'";
     IR_LOG_EXCEPTION();
   }
 
@@ -80,12 +80,12 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 
 void IResearchMMFilesLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    unsigned int flags
+    std::underlying_type<arangodb::Index::Serialize>::type flags
 ) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
     ));
   }
 
@@ -94,11 +94,11 @@ void IResearchMMFilesLink::toVelocyPack(
   if (!json(builder)) {
     THROW_ARANGO_EXCEPTION(arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
     ));
   }
 
-  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();

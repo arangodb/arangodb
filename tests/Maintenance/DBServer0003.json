@@ -1,1157 +1,2087 @@
 R"=(
 {
   "_system": {
-    "s2010050": {
-      "id": "3010009",
-      "name": "s2010050",
-      "type": 3,
-      "status": 3,
-      "planId": "2010049",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010049/s2010050",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10032697",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010050/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s2010050/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gi"
-          ],
-          "geoJson": false,
-          "id": "s2010050/2010116",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gij"
-          ],
-          "geoJson": true,
-          "id": "s2010050/2010122",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "hi",
-            "_key"
-          ],
-          "id": "s2010050/2010126",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "pi"
-          ],
-          "id": "s2010050/2010130",
-          "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "persistent",
-          "unique": false
-        },
-        {
-          "fields": [
-            "fi"
-          ],
-          "id": "s2010050/2010132",
-          "minLength": 3,
-          "sparse": true,
-          "type": "fulltext",
-          "unique": false
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "sli"
-          ],
-          "id": "s2010050/2010136",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s2010052": {
-      "id": "3010007",
-      "name": "s2010052",
-      "type": 3,
-      "status": 3,
-      "planId": "2010049",
-      "theLeader": "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010049/s2010052",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10032687",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010052/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s2010052/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gi"
-          ],
-          "geoJson": false,
-          "id": "s2010052/2010116",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gij"
-          ],
-          "geoJson": true,
-          "id": "s2010052/2010122",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "hi",
-            "_key"
-          ],
-          "id": "s2010052/2010126",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "pi"
-          ],
-          "id": "s2010052/2010130",
-          "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "persistent",
-          "unique": false
-        },
-        {
-          "fields": [
-            "fi"
-          ],
-          "id": "s2010052/2010132",
-          "minLength": 3,
-          "sparse": true,
-          "type": "fulltext",
-          "unique": false
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "sli"
-          ],
-          "id": "s2010052/2010136",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s2010053": {
-      "id": "3010011",
-      "name": "s2010053",
-      "type": 3,
-      "status": 3,
-      "planId": "2010049",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010049/s2010053",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10032731",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010053/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s2010053/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gi"
-          ],
-          "geoJson": false,
-          "id": "s2010053/2010116",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gij"
-          ],
-          "geoJson": true,
-          "id": "s2010053/2010122",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "hi",
-            "_key"
-          ],
-          "id": "s2010053/2010126",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "pi"
-          ],
-          "id": "s2010053/2010130",
-          "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "persistent",
-          "unique": false
-        },
-        {
-          "fields": [
-            "fi"
-          ],
-          "id": "s2010053/2010132",
-          "minLength": 3,
-          "sparse": true,
-          "type": "fulltext",
-          "unique": false
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "sli"
-          ],
-          "id": "s2010053/2010136",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s2010055": {
-      "id": "3010010",
-      "name": "s2010055",
-      "type": 3,
-      "status": 3,
-      "planId": "2010049",
-      "theLeader": "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010049/s2010055",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10032726",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010055/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s2010055/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gi"
-          ],
-          "geoJson": false,
-          "id": "s2010055/2010116",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gij"
-          ],
-          "geoJson": true,
-          "id": "s2010055/2010122",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "hi",
-            "_key"
-          ],
-          "id": "s2010055/2010126",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "pi"
-          ],
-          "id": "s2010055/2010130",
-          "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "persistent",
-          "unique": false
-        },
-        {
-          "fields": [
-            "fi"
-          ],
-          "id": "s2010055/2010132",
-          "minLength": 3,
-          "sparse": true,
-          "type": "fulltext",
-          "unique": false
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "sli"
-          ],
-          "id": "s2010055/2010136",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s2010056": {
-      "id": "3010006",
-      "name": "s2010056",
-      "type": 3,
-      "status": 3,
-      "planId": "2010049",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010049/s2010056",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10032682",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010056/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s2010056/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gi"
-          ],
-          "geoJson": false,
-          "id": "s2010056/2010116",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gij"
-          ],
-          "geoJson": true,
-          "id": "s2010056/2010122",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "hi",
-            "_key"
-          ],
-          "id": "s2010056/2010126",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "pi"
-          ],
-          "id": "s2010056/2010130",
-          "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "persistent",
-          "unique": false
-        },
-        {
-          "fields": [
-            "fi"
-          ],
-          "id": "s2010056/2010132",
-          "minLength": 3,
-          "sparse": true,
-          "type": "fulltext",
-          "unique": false
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "sli"
-          ],
-          "id": "s2010056/2010136",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s2010058": {
-      "id": "3010008",
-      "name": "s2010058",
-      "type": 3,
-      "status": 3,
-      "planId": "2010049",
-      "theLeader": "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010049/s2010058",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10032692",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010058/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s2010058/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gi"
-          ],
-          "geoJson": false,
-          "id": "s2010058/2010116",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "bestIndexedLevel": 17,
-          "fields": [
-            "gij"
-          ],
-          "geoJson": true,
-          "id": "s2010058/2010122",
-          "maxNumCoverCells": 8,
-          "sparse": true,
-          "type": "geo",
-          "unique": false,
-          "worstIndexedLevel": 4
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "hi",
-            "_key"
-          ],
-          "id": "s2010058/2010126",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        },
-        {
-          "deduplicate": false,
-          "fields": [
-            "pi"
-          ],
-          "id": "s2010058/2010130",
-          "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "persistent",
-          "unique": false
-        },
-        {
-          "fields": [
-            "fi"
-          ],
-          "id": "s2010058/2010132",
-          "minLength": 3,
-          "sparse": true,
-          "type": "fulltext",
-          "unique": false
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "sli"
-          ],
-          "id": "s2010058/2010136",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s2010062": {
-      "id": "3010013",
-      "name": "s2010062",
+    "s4010027": {
+      "id": "2000011",
+      "name": "s4010027",
+      "cid": "2000011",
       "type": 2,
       "status": 3,
-      "planId": "2010061",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010061/s2010062",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010026/s4010027",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10032901",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010319",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010062/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010026",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010027": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
     },
-    "s2010063": {
-      "id": "3010012",
-      "name": "s2010063",
-      "type": 2,
+    "s4010020": {
+      "id": "2000010",
+      "name": "s4010020",
+      "cid": "2000010",
+      "type": 3,
       "status": 3,
-      "planId": "2010061",
-      "theLeader": "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010061/s2010063",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010011/s4010020",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10032898",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010035",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010063/0",
-          "selectivityEstimate": 1,
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "4010021",
+          "type": "geo",
+          "fields": [
+            "gi"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": false,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010022",
+          "type": "geo",
+          "fields": [
+            "gij"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": true,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010023",
+          "type": "hash",
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "unique": true,
           "sparse": false,
-          "type": "primary",
-          "unique": true
+          "deduplicate": false
+        },
+        {
+          "id": "4010024",
+          "type": "persistent",
+          "fields": [
+            "pi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "deduplicate": false
+        },
+        {
+          "id": "2010132",
+          "type": "fulltext",
+          "fields": [
+            "fi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "minLength": 3
+        },
+        {
+          "id": "4010025",
+          "type": "skiplist",
+          "fields": [
+            "sli"
+          ],
+          "unique": false,
+          "sparse": false,
+          "deduplicate": true
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010011",
+      "numberOfShards": 9,
+      "shards": {
+        "s4010019": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010018": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010012": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010013": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010014": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010015": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010020": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010016": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010017": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
     },
-    "s2010064": {
-      "id": "3010015",
-      "name": "s2010064",
-      "type": 2,
+    "s4010018": {
+      "id": "2000009",
+      "name": "s4010018",
+      "cid": "2000009",
+      "type": 3,
       "status": 3,
-      "planId": "2010061",
-      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010061/s2010064",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010011/s4010018",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10032907",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010030",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010064/0",
-          "selectivityEstimate": 1,
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "4010021",
+          "type": "geo",
+          "fields": [
+            "gi"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": false,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010022",
+          "type": "geo",
+          "fields": [
+            "gij"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": true,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010023",
+          "type": "hash",
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "unique": true,
           "sparse": false,
-          "type": "primary",
-          "unique": true
+          "deduplicate": false
+        },
+        {
+          "id": "4010024",
+          "type": "persistent",
+          "fields": [
+            "pi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "deduplicate": false
+        },
+        {
+          "id": "2010132",
+          "type": "fulltext",
+          "fields": [
+            "fi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "minLength": 3
+        },
+        {
+          "id": "4010025",
+          "type": "skiplist",
+          "fields": [
+            "sli"
+          ],
+          "unique": false,
+          "sparse": false,
+          "deduplicate": true
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010011",
+      "numberOfShards": 9,
+      "shards": {
+        "s4010019": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010018": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010012": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010013": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010014": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010015": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010020": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010016": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010017": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
     },
-    "s2010065": {
-      "id": "3010014",
-      "name": "s2010065",
-      "type": 2,
+    "s4010017": {
+      "id": "2000008",
+      "name": "s4010017",
+      "cid": "2000008",
+      "type": 3,
       "status": 3,
-      "planId": "2010061",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010061/s2010065",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010011/s4010017",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10032904",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010027",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010065/0",
-          "selectivityEstimate": 1,
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "4010021",
+          "type": "geo",
+          "fields": [
+            "gi"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": false,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010022",
+          "type": "geo",
+          "fields": [
+            "gij"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": true,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010023",
+          "type": "hash",
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "unique": true,
           "sparse": false,
-          "type": "primary",
-          "unique": true
+          "deduplicate": false
+        },
+        {
+          "id": "4010024",
+          "type": "persistent",
+          "fields": [
+            "pi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "deduplicate": false
+        },
+        {
+          "id": "2010132",
+          "type": "fulltext",
+          "fields": [
+            "fi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "minLength": 3
+        },
+        {
+          "id": "4010025",
+          "type": "skiplist",
+          "fields": [
+            "sli"
+          ],
+          "unique": false,
+          "sparse": false,
+          "deduplicate": true
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010011",
+      "numberOfShards": 9,
+      "shards": {
+        "s4010019": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010018": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010012": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010013": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010014": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010015": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010020": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010016": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010017": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010015": {
+      "id": "2000007",
+      "name": "s4010015",
+      "cid": "2000007",
+      "type": 3,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010011/s4010015",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010017",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "4010021",
+          "type": "geo",
+          "fields": [
+            "gi"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": false,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010022",
+          "type": "geo",
+          "fields": [
+            "gij"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": true,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010023",
+          "type": "hash",
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false,
+          "deduplicate": false
+        },
+        {
+          "id": "4010024",
+          "type": "persistent",
+          "fields": [
+            "pi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "deduplicate": false
+        },
+        {
+          "id": "2010132",
+          "type": "fulltext",
+          "fields": [
+            "fi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "minLength": 3
+        },
+        {
+          "id": "4010025",
+          "type": "skiplist",
+          "fields": [
+            "sli"
+          ],
+          "unique": false,
+          "sparse": false,
+          "deduplicate": true
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010011",
+      "numberOfShards": 9,
+      "shards": {
+        "s4010019": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010018": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010012": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010013": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010014": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010015": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010020": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010016": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010017": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
+    },
+    "s4010012": {
+      "id": "2000005",
+      "name": "s4010012",
+      "cid": "2000005",
+      "type": 3,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010011/s4010012",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010015",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "4010021",
+          "type": "geo",
+          "fields": [
+            "gi"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": false,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010022",
+          "type": "geo",
+          "fields": [
+            "gij"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": true,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010023",
+          "type": "hash",
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false,
+          "deduplicate": false
+        },
+        {
+          "id": "4010024",
+          "type": "persistent",
+          "fields": [
+            "pi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "deduplicate": false
+        },
+        {
+          "id": "2010132",
+          "type": "fulltext",
+          "fields": [
+            "fi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "minLength": 3
+        },
+        {
+          "id": "4010025",
+          "type": "skiplist",
+          "fields": [
+            "sli"
+          ],
+          "unique": false,
+          "sparse": false,
+          "deduplicate": true
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010011",
+      "numberOfShards": 9,
+      "shards": {
+        "s4010019": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010018": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010012": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010013": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010014": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010015": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010020": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010016": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010017": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
+    },
+    "s4010014": {
+      "id": "2000006",
+      "name": "s4010014",
+      "cid": "2000006",
+      "type": 3,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010011/s4010014",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010016",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "4010021",
+          "type": "geo",
+          "fields": [
+            "gi"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": false,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010022",
+          "type": "geo",
+          "fields": [
+            "gij"
+          ],
+          "maxNumCoverCells": 8,
+          "worstIndexedLevel": 4,
+          "bestIndexedLevel": 17,
+          "geoJson": true,
+          "unique": false,
+          "sparse": true
+        },
+        {
+          "id": "4010023",
+          "type": "hash",
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false,
+          "deduplicate": false
+        },
+        {
+          "id": "4010024",
+          "type": "persistent",
+          "fields": [
+            "pi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "deduplicate": false
+        },
+        {
+          "id": "2010132",
+          "type": "fulltext",
+          "fields": [
+            "fi"
+          ],
+          "unique": false,
+          "sparse": true,
+          "minLength": 3
+        },
+        {
+          "id": "4010025",
+          "type": "skiplist",
+          "fields": [
+            "sli"
+          ],
+          "unique": false,
+          "sparse": false,
+          "deduplicate": true
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010011",
+      "numberOfShards": 9,
+      "shards": {
+        "s4010019": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010018": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010012": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010013": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010014": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010015": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010020": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010016": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010017": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
     }
   },
   "foo": {
-    "s2010098": {
-      "id": "3010019",
-      "name": "s2010098",
-      "type": 3,
+    "s4010064": {
+      "id": "2000028",
+      "name": "s4010064",
+      "cid": "2000028",
+      "type": 2,
       "status": 3,
-      "planId": "2010097",
-      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010097/s2010098",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010058/s4010064",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035163",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010984",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010098/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010058",
+      "numberOfShards": 6,
+      "shards": {
+        "s4010063": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010064": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010062": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010059": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010061": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010060": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010043": {
+      "id": "2000017",
+      "name": "s4010043",
+      "cid": "2000017",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010042/s4010043",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010589",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
           "type": "primary",
-          "unique": true
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010042",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010043": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010041": {
+      "id": "2000016",
+      "name": "s4010041",
+      "cid": "2000016",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010040/s4010041",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010547",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010040",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010041": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010039": {
+      "id": "2000015",
+      "name": "s4010039",
+      "cid": "2000015",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010038/s4010039",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010506",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010038",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010039": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010034": {
+      "id": "2000014",
+      "name": "s4010034",
+      "cid": "2000014",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010033/s4010034",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 4010037
+      },
+      "objectId": "4010463",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010033",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010034": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010030": {
+      "id": "2000012",
+      "name": "s4010030",
+      "cid": "2000012",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010029/s4010030",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010386",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010029",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010030": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010032": {
+      "id": "2000013",
+      "name": "s4010032",
+      "cid": "2000013",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010031/s4010032",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010424",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010031",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010032": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010045": {
+      "id": "2000018",
+      "name": "s4010045",
+      "cid": "2000018",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010044/s4010045",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010632",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
         },
         {
+          "id": "4010046",
+          "type": "skiplist",
           "fields": [
-            "_from",
-            "_to"
+            "queue",
+            "status",
+            "delayUntil"
           ],
-          "id": "s2010098/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        }
-      ]
-    },
-    "s2010099": {
-      "id": "3010016",
-      "name": "s2010099",
-      "type": 3,
-      "status": 3,
-      "planId": "2010097",
-      "theLeader": "PRMR-1b81e8d4-7119-49ba-a423-8684d59dde89",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010097/s2010099",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10035148",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010099/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": true,
+          "deduplicate": true
         },
         {
+          "id": "4010047",
+          "type": "skiplist",
           "fields": [
-            "_from",
-            "_to"
+            "status",
+            "queue",
+            "delayUntil"
           ],
-          "id": "s2010099/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
+          "unique": true,
+          "sparse": true,
+          "deduplicate": true
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010044",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010045": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
     },
-    "s2010100": {
-      "id": "3010017",
-      "name": "s2010100",
-      "type": 3,
+    "s4010049": {
+      "id": "2000019",
+      "name": "s4010049",
+      "cid": "2000019",
+      "type": 2,
       "status": 3,
-      "planId": "2010097",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010097/s2010100",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010048/s4010049",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035153",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010761",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010100/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
         },
         {
+          "id": "4010050",
+          "type": "hash",
           "fields": [
-            "_from",
-            "_to"
+            "mount"
           ],
-          "id": "s2010100/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
+          "unique": true,
+          "sparse": true,
+          "deduplicate": true
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010048",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010049": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
     },
-    "s2010101": {
-      "id": "3010018",
-      "name": "s2010101",
+    "s4010052": {
+      "id": "2000020",
+      "name": "s4010052",
+      "cid": "2000020",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010051/s4010052",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010853",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010051",
+      "numberOfShards": 1,
+      "shards": {
+        "s4010052": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010054": {
+      "id": "2000021",
+      "name": "s4010054",
+      "cid": "2000021",
       "type": 3,
       "status": 3,
-      "planId": "2010097",
-      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010097/s2010101",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010053/s4010054",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035158",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010904",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010101/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
         },
         {
+          "id": "1",
+          "type": "edge",
           "fields": [
-            "_from",
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
             "_to"
           ],
-          "id": "s2010101/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
+          "unique": false,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "4010053",
+      "numberOfShards": 4,
+      "shards": {
+        "s4010057": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010056": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010054": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010055": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 3,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+    },
+    "s4010055": {
+      "id": "2000022",
+      "name": "s4010055",
+      "cid": "2000022",
+      "type": 3,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010053/s4010055",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "4010905",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
           "type": "edge",
-          "unique": false
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010053",
+      "numberOfShards": 4,
+      "shards": {
+        "s4010057": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010056": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010054": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010055": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 3,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
     },
-    "s2010104": {
-      "id": "3010021",
-      "name": "s2010104",
-      "type": 2,
+    "s4010056": {
+      "id": "2000023",
+      "name": "s4010056",
+      "cid": "2000023",
+      "type": 3,
       "status": 3,
-      "planId": "2010102",
-      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010102/s2010104",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010053/s4010056",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035494",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010906",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010104/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010053",
+      "numberOfShards": 4,
+      "shards": {
+        "s4010057": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010056": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010054": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010055": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 3,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
     },
-    "s2010105": {
-      "id": "3010025",
-      "name": "s2010105",
-      "type": 2,
+    "s4010057": {
+      "id": "2000024",
+      "name": "s4010057",
+      "cid": "2000024",
+      "type": 3,
       "status": 3,
-      "planId": "2010102",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010102/s2010105",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010053/s4010057",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035506",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010916",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010105/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
+        },
+        {
+          "id": "1",
+          "type": "edge",
+          "fields": [
+            "_from"
+          ],
+          "unique": false,
+          "sparse": false
+        },
+        {
+          "id": "2",
+          "type": "edge",
+          "fields": [
+            "_to"
+          ],
+          "unique": false,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010053",
+      "numberOfShards": 4,
+      "shards": {
+        "s4010057": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010056": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010054": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010055": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ]
+      },
+      "replicationFactor": 3,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
     },
-    "s2010107": {
-      "id": "3010020",
-      "name": "s2010107",
+    "s4010059": {
+      "id": "2000025",
+      "name": "s4010059",
+      "cid": "2000025",
       "type": 2,
       "status": 3,
-      "planId": "2010102",
-      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010102/s2010107",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010058/s4010059",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035491",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010978",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010107/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010058",
+      "numberOfShards": 6,
+      "shards": {
+        "s4010063": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010064": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010062": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010059": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010061": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010060": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
     },
-    "s2010108": {
-      "id": "3010022",
-      "name": "s2010108",
+    "s4010061": {
+      "id": "2000026",
+      "name": "s4010061",
+      "cid": "2000026",
       "type": 2,
       "status": 3,
-      "planId": "2010102",
-      "theLeader": "",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010102/s2010108",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010058/s4010061",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035497",
-      "statusString": "loaded",
-      "waitForSync": false,
+      "objectId": "4010979",
+      "cacheEnabled": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010108/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010058",
+      "numberOfShards": 6,
+      "shards": {
+        "s4010063": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010064": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010062": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010059": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010061": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010060": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
     },
-    "s2010110": {
-      "id": "3010023",
-      "name": "s2010110",
+    "s4010062": {
+      "id": "2000027",
+      "name": "s4010062",
+      "cid": "2000027",
       "type": 2,
       "status": 3,
-      "planId": "2010102",
-      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
-      "cacheEnabled": false,
-      "globallyUniqueId": "c2010102/s2010110",
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c4010058/s4010062",
       "isSystem": false,
+      "allowUserKeys": true,
       "keyOptions": {
         "allowUserKeys": true,
         "type": "traditional",
         "lastValue": 0
       },
-      "objectId": "10035500",
-      "statusString": "loaded",
-      "waitForSync": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s2010110/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s2010111": {
-      "id": "3010024",
-      "name": "s2010111",
-      "type": 2,
-      "status": 3,
-      "planId": "2010102",
-      "theLeader": "",
+      "objectId": "4010981",
       "cacheEnabled": false,
-      "globallyUniqueId": "c2010102/s2010111",
-      "isSystem": false,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "10035503",
-      "statusString": "loaded",
-      "waitForSync": false,
       "indexes": [
         {
+          "id": "0",
+          "type": "primary",
           "fields": [
             "_key"
           ],
-          "id": "s2010111/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
+          "unique": true,
+          "sparse": false
         }
-      ]
+      ],
+      "isSmart": false,
+      "planId": "4010058",
+      "numberOfShards": 6,
+      "shards": {
+        "s4010063": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ],
+        "s4010064": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010062": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010059": [
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c",
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c"
+        ],
+        "s4010061": [
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5",
+          "PRMR-50478eb8-afe1-41b7-a78c-351bfe02b31c"
+        ],
+        "s4010060": [
+          "PRMR-c18eb708-81bf-446f-977d-61b2c28e407c",
+          "PRMR-f3a3c23f-6cc1-4d7e-ab17-e37fb662b4f5"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": ""
     }
   }
 }

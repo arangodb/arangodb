@@ -184,7 +184,7 @@ TEST_CASE("IResearchQueryTestNullTerm", "[iresearch][iresearch-query]") {
   // create collection0
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
-    auto* collection = vocbase.createCollection(createJson->slice());
+    auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
@@ -220,7 +220,7 @@ TEST_CASE("IResearchQueryTestNullTerm", "[iresearch][iresearch-query]") {
   // create collection1
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-    auto* collection = vocbase.createCollection(createJson->slice());
+    auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {

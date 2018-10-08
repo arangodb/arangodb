@@ -158,11 +158,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
@@ -183,11 +184,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   bool hasBatchInsert() const override { return true; }
 
-  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom.get(); }
+  TRI_MMFilesEdgeIndexHash_t* from() const { return _edgesFrom.get(); }
 
-  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo.get(); }
+  TRI_MMFilesEdgeIndexHash_t* to() const { return _edgesTo.get(); }
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

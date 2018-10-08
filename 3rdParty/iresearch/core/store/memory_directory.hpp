@@ -25,8 +25,8 @@
 #define IRESEARCH_MEMORYDIRECTORY_H
 
 #include "directory.hpp"
+#include "directory_attributes.hpp"
 #include "utils/attributes.hpp"
-#include "utils/container_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/async_utils.hpp"
 
@@ -34,43 +34,38 @@
 #include <unordered_map>
 #include <unordered_set>
 
-NS_LOCAL
-
-inline void touch(std::time_t& time) {
-  time = std::chrono::system_clock::to_time_t(
-    std::chrono::system_clock::now()
-  );
-}
-
-NS_END
-
 NS_ROOT
 
-// -------------------------------------------------------------------
-// metadata for a memory_file
-// -------------------------------------------------------------------
-struct memory_file_meta {
-  std::time_t mtime;
-};
-
-/* -------------------------------------------------------------------
-* memory_file
-* ------------------------------------------------------------------*/
-
-MSVC_ONLY(template class IRESEARCH_API iresearch::container_utils::raw_block_vector<iresearch::byte_type, 16, 8>);
-
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
-class IRESEARCH_API memory_file:
-  public container_utils::raw_block_vector<byte_type, 16, 8> {
- public:
-  DECLARE_PTR(memory_file);
+MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
+  memory_allocator::allocator_type::SIZE, // total number of levels
+  8, // size of the first level 2^8
+  memory_allocator::allocator_type
+>);
 
-  memory_file() {
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_file
+/// @brief in memory file
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API memory_file
+    : public container_utils::raw_block_vector<16, 8, memory_allocator::allocator_type> {
+ private:
+  typedef container_utils::raw_block_vector<
+    memory_allocator::allocator_type::SIZE, // total number of levels
+    8, // size of the first level 2^8
+    memory_allocator::allocator_type
+  > raw_block_vector_t;
+
+ public:
+  memory_file(const memory_allocator& alloc) NOEXCEPT
+    : raw_block_vector_t(alloc) {
     touch(meta_.mtime);
   }
 
   memory_file(memory_file&& rhs) NOEXCEPT
-    : raw_block_vector_t(std::move(rhs)), len_(rhs.len_) {
+    : raw_block_vector_t(std::move(rhs)),
+      meta_(rhs.meta_),
+      len_(rhs.len_) {
     rhs.len_ = 0;
   }
 
@@ -90,15 +85,17 @@ class IRESEARCH_API memory_file:
     return *this;
   }
 
-  size_t length() const { return len_; }
+  size_t length() const NOEXCEPT {
+    return len_;
+  }
 
-  void length(size_t length) { 
+  void length(size_t length) NOEXCEPT {
     len_ = length; 
     touch(meta_.mtime);
   }
 
   // used length of the buffer based on total length
-  size_t buffer_length(size_t i) const {
+  size_t buffer_length(size_t i) const NOEXCEPT {
     auto last_buf = buffer_offset(len_);
 
     if (i == last_buf) {
@@ -111,11 +108,21 @@ class IRESEARCH_API memory_file:
     return i < last_buf ? get_buffer(i).size : 0;
   }
 
-  std::time_t mtime() const NOEXCEPT { return meta_.mtime; }
+  std::time_t mtime() const NOEXCEPT {
+    return meta_.mtime;
+  }
 
-  void reset() { len_ = 0; }
+  void reset() NOEXCEPT {
+    len_ = 0;
+  }
 
-  void clear() {
+  void reset(const memory_allocator& alloc) NOEXCEPT {
+    reset();
+    // change internal allocator
+    static_cast<allocator_ref_t&>(*this) = static_cast<allocator_type&>(alloc);
+  }
+
+  void clear() NOEXCEPT {
     raw_block_vector_t::clear();
     reset();
   }
@@ -131,26 +138,42 @@ class IRESEARCH_API memory_file:
   }
 
  private:
-  memory_file_meta meta_;
+  static_assert(
+    raw_block_vector_t::NUM_BUCKETS == memory_allocator::allocator_type::SIZE,
+    "memory allocator is not compatible with a file"
+  );
+
+  // metadata for a memory_file
+  struct meta {
+    std::time_t mtime;
+  };
+
+  static void touch(std::time_t& time) NOEXCEPT {
+    time = std::chrono::system_clock::to_time_t(
+      std::chrono::system_clock::now()
+    );
+  }
+
+  meta meta_;
   size_t len_{};
-};
+}; // memory_file
 
-/* -------------------------------------------------------------------
- * memory_index_input 
- * ------------------------------------------------------------------*/
-
-struct memory_buffer;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_index_input
+/// @brief in memory input stream
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_index_input final : public index_input {
  public:
+  DECLARE_UNIQUE_PTR(memory_index_input); // allow private construction
+
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
-  virtual ptr dup() const NOEXCEPT override;
+  virtual index_input::ptr dup() const NOEXCEPT override;
   virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual ptr reopen() const NOEXCEPT override;
+  virtual index_input::ptr reopen() const NOEXCEPT override;
   virtual size_t length() const override;
 
   virtual size_t file_pointer() const override;
@@ -177,19 +200,19 @@ class IRESEARCH_API memory_index_input final : public index_input {
   const byte_type* begin_{ buf_ }; // current position
   const byte_type* end_{ buf_ }; // end of the valid bytes
   size_t start_{}; // buffer offset in file
-};
+}; // memory_index_input
 
-/* -------------------------------------------------------------------
- * memory_index_output
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_index_output
+/// @brief in memory output stream
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_index_output : public index_output {
  public:
   explicit memory_index_output(memory_file& file) NOEXCEPT;
   memory_index_output(const memory_index_output&) = default; 
   memory_index_output& operator=(const memory_index_output&) = delete;
 
-  void reset();
+  void reset() NOEXCEPT;
 
   // data_output
 
@@ -229,16 +252,21 @@ class IRESEARCH_API memory_index_output : public index_output {
  protected:
   memory_file::buffer_t buf_; // current buffer
   byte_type* pos_; // position in current buffer
+
  private:
   memory_file& file_; // underlying file
   byte_type* end_;
 };
 
-// -------------------------------------------------------------------
-//                                                    memory_directory
-// -------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @class memory_directory
+/// @brief in memory index directory
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_directory final : public directory {
  public:
+  // 0 == pool_size -> use global allocator, noexcept
+  explicit memory_directory(size_t pool_size = 0);
+
   virtual ~memory_directory();
 
   using directory::attributes;
@@ -271,7 +299,8 @@ class IRESEARCH_API memory_directory final : public directory {
   virtual bool remove(const std::string& name) NOEXCEPT override;
 
   virtual bool rename(
-    const std::string& src, const std::string& dst
+    const std::string& src,
+    const std::string& dst
   ) NOEXCEPT override;
 
   virtual bool sync(const std::string& name) NOEXCEPT override;
@@ -280,10 +309,11 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, memory_file::ptr> file_map;
+  typedef std::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
   typedef std::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const memory_allocator* alloc_;
   mutable async_utils::read_write_mutex flock_;
   std::mutex llock_;
   attribute_store attributes_;
@@ -292,25 +322,32 @@ class IRESEARCH_API memory_directory final : public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-/* -------------------------------------------------------------------
- * memory_output
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @struct memory_output
+/// @brief memory_file + memory_stream
+////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API memory_output {
-  memory_output() = default;
+  explicit memory_output(const memory_allocator& alloc) NOEXCEPT
+    : file(alloc) {
+  }
 
   memory_output(memory_output&& rhs) NOEXCEPT
     : file(std::move(rhs.file)) {
   }
 
-  void reset() {
+  void reset() NOEXCEPT {
     file.reset();
+    stream.reset();
+  }
+
+  void reset(const memory_allocator& alloc) NOEXCEPT {
+    file.reset(alloc);
     stream.reset();
   }
 
   memory_file file;
   memory_index_output stream{ file };
-};
+}; // memory_output
 
 NS_END
 

@@ -363,6 +363,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
     'define': 'TOP_DIR=' + TOP_DIR,
     'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
+    'javascript.copy-installation': false,
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
     'cluster.create-waits-for-sync-replication': false,
     'temp.path': tmpDir
@@ -1309,10 +1310,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      let rc = { endpoint: options.server,
-               rootDir: options.serverRoot,
-               url: options.server.replace('tcp', 'http'),
-               arangods: []
+      let rc = { 
+                 endpoint: options.server,
+                 rootDir: options.serverRoot,
+                 url: options.server.replace('tcp', 'http'),
+                 arangods: []
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
@@ -1410,13 +1412,9 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
-// exports.startInstanceCluster = startInstanceCluster;
 exports.startArango = startArango;
-// exports.startInstanceAgency = startInstanceAgency;
-// exports.startInstanceSingleServer = startInstanceSingleServer;
 exports.startInstance = startInstance;
 exports.setupBinaries = setupBinaries;
-
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashed;
 

@@ -104,6 +104,9 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestStatus reportBadQuery(std::string const& message = "bad parameter");
   RestStatus reportMethodNotAllowed();
   RestStatus reportGone();
+  RestStatus reportMessage(arangodb::rest::ResponseCode, std::string const&);
+  RestStatus reportError(VPackSlice);
+  void redirectRequest(std::string const& leaderId);
 
   consensus::Agent* _agent;
 };

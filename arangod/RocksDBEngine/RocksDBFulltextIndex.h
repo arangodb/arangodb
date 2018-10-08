@@ -87,7 +87,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
+  void toVelocyPack(VPackBuilder&,
+            std::underlying_type<Index::Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 

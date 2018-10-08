@@ -552,3 +552,9 @@
     height: auto;
   }
 }
+
+.leaflet-popup-content {
+  pre {
+    max-height: 250px;
+  }
+}

@@ -24,8 +24,6 @@
 #include "ServerState.h"
 
 #include <iomanip>
-#include <iostream>
-#include <sstream>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -59,7 +57,8 @@ ServerState::ServerState()
       _id(),
       _shortId(0),
       _javaScriptStartupPath(),
-      _address(),
+      _myEndpoint(),
+      _advertisedEndpoint(),
       _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
@@ -101,6 +100,19 @@ void ServerState::findHost(std::string const& fallback) {
       return;
     }
   } catch (...) { }
+
+#ifdef __APPLE__
+  static_assert(sizeof(uuid_t) == 16, "");
+  uuid_t localUuid;
+  struct timespec timeout;
+  timeout.tv_sec = 5;
+  timeout.tv_nsec = 0;
+  int res = gethostuuid(localUuid, &timeout);
+  if (res == 0) {
+    _host = StringUtils::encodeHex(reinterpret_cast<char*>(localUuid), sizeof(uuid_t));
+    return;
+  }
+#endif
 
   // Finally, as a last resort, take the fallback, coming from
   // the ClusterFeature with the value of --cluster.my-address
@@ -318,8 +330,8 @@ bool ServerState::unregister() {
 /// @brief try to integrate into a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
-                                       std::string const& myAddress) {
+bool ServerState::integrateIntoCluster(ServerState::RoleEnum role, std::string const& myEndpoint,
+                                       std::string const& advEndpoint) {
   WRITE_LOCKER(writeLocker, _lock);
 
   AgencyComm comm;
@@ -360,6 +372,10 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     << roleToString(role) << " and our id is "
     << id;
 
+  _myEndpoint = myEndpoint;
+  _advertisedEndpoint = advEndpoint;
+  TRI_ASSERT(!_myEndpoint.empty());
+
   return true;
 }
 
@@ -390,7 +406,8 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 void mkdir (std::string const& path) {
   if (!TRI_IsDirectory(path.c_str())) {
     if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't create file directory " << path << " (UUID)";
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+          << "Couldn't create file directory " << path << " (UUID)";
       FATAL_ERROR_EXIT();
     }
   }
@@ -433,19 +450,24 @@ std::string ServerState::generatePersistedId(RoleEnum const& role) {
 }
 
 std::string ServerState::getPersistedId() {
+  std::string uuidFilename = getUuidFilename();
   if (hasPersistedId()) {
-    std::string uuidFilename = getUuidFilename();
-    std::ifstream ifs(uuidFilename);
-
-    std::string id;
-    if (ifs.is_open()) {
-      std::getline(ifs, id);
-      ifs.close();
-      return id;
+    try {
+      auto uuidBuf = arangodb::basics::FileUtils::slurp(uuidFilename);
+      basics::StringUtils::trimInPlace(uuidBuf);
+      if (!uuidBuf.empty()) {
+        return uuidBuf;
+      }
+    }
+    catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+        << "Couldn't read UUID file '" << uuidFilename << "' - " << ex.what();
+      FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << getUuidFilename() << "'";
+  LOG_TOPIC(FATAL, Logger::STARTUP)
+      << "Couldn't open UUID file '" << uuidFilename << "'";
   FATAL_ERROR_EXIT();
 }
 
@@ -633,22 +655,18 @@ void ServerState::setShortId(uint32_t id) {
 /// @brief get the server address
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ServerState::getAddress() {
+std::string ServerState::getEndpoint() {
   READ_LOCKER(readLocker, _lock);
-  return _address;
+  return _myEndpoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the server address
+/// @brief get the server advertised endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setAddress(std::string const& address) {
-  if (address.empty()) {
-    return;
-  }
-
-  WRITE_LOCKER(writeLocker, _lock);
-  _address = address;
+std::string ServerState::getAdvertisedEndpoint() {
+  READ_LOCKER(readLocker, _lock);
+  return _advertisedEndpoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -794,6 +812,10 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
     if (!r.successful()) {
       return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
     }
+    // This is propagated to all servers via the heartbeat, which happens
+    // once per second. So to ensure that every server has taken note of
+    // the change, we delay here for 2 seconds.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
   }
   setReadOnly(mode);
   return Result();

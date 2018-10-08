@@ -279,7 +279,7 @@
     "type" : "string"
   },
   "overwrite" : {
-    "default" : true,
+    "default" : false,
     "description" : "overwrite data in output directory",
     "enterpriseOnly" : false,
     "hidden" : false,

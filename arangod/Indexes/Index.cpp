@@ -66,16 +66,16 @@ std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                     "invalid index description");
   }
-  
+
   size_t const n = static_cast<size_t>(fields.length());
   result.reserve(n);
-  
+
   for (auto const& name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                       "invalid index description");
     }
-    
+
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes,
                               allowExpansion);
@@ -115,7 +115,7 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
                    std::unordered_set<std::string>& nonNullAttributes) {
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
-  
+
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -123,8 +123,8 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
     const_cast<arangodb::aql::AstNode*>(op)->setExcludesNull(true);
   }
   // all other node types will be ignored here
-   
-  try { 
+
+  try {
     nonNullAttributes.emplace(access->toString());
   } catch (...) {
     // stringification may throw
@@ -163,10 +163,10 @@ Index::Index(
                             Index::allowExpansion(Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())))),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, arangodb::StaticStrings::IndexUnique.c_str(), false
+          slice, arangodb::StaticStrings::IndexUnique, false
       )),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, arangodb::StaticStrings::IndexSparse.c_str(), false
+          slice, arangodb::StaticStrings::IndexSparse, false
       )) {
 }
 
@@ -416,6 +416,34 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
       }
     }
   }
+#ifdef USE_IRESEARCH
+  else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    // must check if the "view" field is the same, otherwise we may confuse
+    // two links for different views on the same collection
+    auto lhValue = lhs.get("view");
+    auto rhValue = rhs.get("view");
+    if (lhValue.isString() && rhValue.isString()) {
+      if (arangodb::basics::VelocyPackHelper::compare(
+              value, rhs.get("view"), false) != 0) {
+        auto ls = lhValue.copyString();
+        auto rs = rhValue.copyString();
+        if (ls.size() > rs.size()) {
+          std::swap(ls, rs);
+        }
+        // in the cluster, we may have identifiers of the form
+        // `cxxx/` and `cxxx/yyy` which should be considered equal if the
+        // one is a prefix of the other up to the `/`
+        if (ls.empty() ||
+            ls.back() != '/' ||
+            ls.compare(rs.substr(0, ls.size())) != 0) {
+          return false;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+#endif
 
   // other index types: fields must be identical if present
   value = lhs.get(arangodb::StaticStrings::IndexFields);
@@ -484,7 +512,7 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(unsigned flags) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(std::underlying_type<Index::Serialize>::type flags) const {
   auto builder = std::make_shared<VPackBuilder>();
   toVelocyPack(*builder, flags);
   return builder;
@@ -493,7 +521,8 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(unsigned flags) const {
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void Index::toVelocyPack(VPackBuilder& builder,
+                         std::underlying_type<Index::Serialize>::type flags) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(
     arangodb::StaticStrings::IndexId,
@@ -517,11 +546,12 @@ void Index::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   builder.close();
 
-  if (hasSelectivityEstimate() && (flags & SERIALIZE_ESTIMATES)) {
+  if (hasSelectivityEstimate() &&
+      Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
-  if (flags & SERIALIZE_FIGURES) {
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
@@ -579,14 +609,14 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), false
+                   info, arangodb::StaticStrings::IndexSparse, false
                  )
       ) {
     return false;
@@ -612,7 +642,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(StringRef const* extra) const {
+double Index::selectivityEstimate(StringRef const&) const {
   if (_unique) {
     return 1.0;
   }
@@ -655,7 +685,8 @@ int Index::sizeHint(transaction::Methods*, size_t) {
 bool Index::hasBatchInsert() const { return false; }
 
 /// @brief default implementation for supportsFilterCondition
-bool Index::supportsFilterCondition(arangodb::aql::AstNode const*,
+bool Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
+                                    arangodb::aql::AstNode const*,
                                     arangodb::aql::Variable const*,
                                     size_t itemsInIndex, size_t& estimatedItems,
                                     double& estimatedCost) const {
@@ -783,7 +814,7 @@ bool Index::canUseConditionPart(
         if (::canBeNull(op, access, nonNullAttributes)) {
           return false;
         }
-        
+
         // range definitely exludes the "null" value
         ::markAsNonNull(op, access, nonNullAttributes);
       }
@@ -794,7 +825,7 @@ bool Index::canUseConditionPart(
     // in execution phase, we do not need to check the variable usage again
     return true;
   }
-      
+
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
     // none of the indexes can use !=, so we can exit here
     // note that this function may have been called for operator !=. this is
@@ -819,7 +850,7 @@ bool Index::canUseConditionPart(
   } else {
     // a.b == value  OR  a.b IN values
     if (!other->isConstant()) {
-      // don't look for referenced variables if we only access a 
+      // don't look for referenced variables if we only access a
       // constant value (there will be no variables then...)
       arangodb::aql::Ast::getReferencedVariables(other, variables);
     }

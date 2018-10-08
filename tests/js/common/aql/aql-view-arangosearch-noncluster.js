@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -89,6 +90,14 @@ function iResearchAqlTestSuite () {
       v.drop();
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
+    },
+
+    testViewInFunctionCall : function () {
+      try {
+        db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+      }
     },
 
     testTransactionRegistration : function () {

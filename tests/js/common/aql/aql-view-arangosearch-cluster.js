@@ -30,20 +30,16 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
+function IResearchAqlTestSuite(args) {
   var c;
   var v;
 
-  // provided arguments
-  var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
-  };
   console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
@@ -96,6 +92,14 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       v.drop();
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
+    },
+    
+    testViewInFunctionCall : function () {
+      try {
+        db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+      }
     },
 
     testAttributeEqualityFilter : function () {
@@ -464,7 +468,7 @@ jsunity.run(function IResearchAqlTestSuite_s1_r2() {
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
 });
 
 return jsunity.done();

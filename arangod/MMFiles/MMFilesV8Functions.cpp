@@ -38,6 +38,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
@@ -54,10 +55,9 @@ static void JS_RotateVocbaseCol(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -72,9 +72,10 @@ static void JS_RotateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult result = trx.rotateActiveJournal(collection->name(), OperationOptions());
-  res.reset(result.result);
+  OperationResult result =
+    trx.rotateActiveJournal(collection->name(), OperationOptions());
 
+  res.reset(result.result);
   trx.finish(res);
 
   if (!res.ok()) {
@@ -93,10 +94,9 @@ static void JS_DatafilesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -104,13 +104,16 @@ static void JS_DatafilesVocbaseCol(
 
   // TODO: move this into engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
+  auto status = collection->getStatusLocked();
+
   if (status != TRI_VOC_COL_STATUS_UNLOADED &&
       status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  MMFilesEngineCollectionFiles structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->getPhysical()->path());
+  auto structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(
+   collection->getPhysical()->path()
+  );
 
   // build result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -153,10 +156,9 @@ static void JS_DatafileScanVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -168,7 +170,8 @@ static void JS_DatafileScanVocbaseCol(
 
   v8::Handle<v8::Object> result;
   {
-    TRI_vocbase_col_status_e status = collection->getStatusLocked();
+    auto status = collection->getStatusLocked();
+
     if (status != TRI_VOC_COL_STATUS_UNLOADED &&
         status != TRI_VOC_COL_STATUS_CORRUPTED) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
@@ -239,10 +242,9 @@ static void JS_TryRepairDatafileVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -253,8 +255,8 @@ static void JS_TryRepairDatafileVocbaseCol(
   }
 
   std::string path = TRI_ObjectToString(args[0]);
+  auto status = collection->getStatusLocked();
 
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
   if (status != TRI_VOC_COL_STATUS_UNLOADED &&
       status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
@@ -276,10 +278,9 @@ static void JS_TruncateDatafileVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -291,8 +292,7 @@ static void JS_TruncateDatafileVocbaseCol(
 
   std::string path = TRI_ObjectToString(args[0]);
   size_t size = (size_t)TRI_ObjectToInt64(args[1]);
-
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
+  auto status = collection->getStatusLocked();
 
   if (status != TRI_VOC_COL_STATUS_UNLOADED &&
       status != TRI_VOC_COL_STATUS_CORRUPTED) {

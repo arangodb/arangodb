@@ -29,7 +29,6 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/BaseExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
@@ -56,34 +55,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-
-/// @brief register warning
-static void registerWarning(arangodb::aql::Ast const* ast,
-                            char const* functionName, int code) {
-  std::string msg;
-
-  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
-  } else {
-    if (strlen(functionName) <= 2) {
-      // only an operator but no "real" function
-      msg.append("in operator ");
-      msg.append(functionName);
-      msg.append(": ");
-    } else {
-      msg.append("in function '");
-      msg.append(functionName);
-      msg.append("()': ");
-    }
-    msg.append(TRI_errno_string(code));
-  }
-
-  ast->query()->registerWarning(code, msg.c_str());
-}
-
-}
 
 /// @brief create the expression
 Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
@@ -236,7 +207,7 @@ void Expression::invalidate() {
   // expression data will be freed in the destructor
 }
 
-/// @brief find a value in an AQL list node
+/// @brief find a value in an AQL array node
 /// this performs either a binary search (if the node is sorted) or a
 /// linear search (if the node is not sorted)
 bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
@@ -476,6 +447,8 @@ AqlValue Expression::executeSimpleExpression(
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
     case NODE_TYPE_COLLECTION:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in ArangoDB 3.4");
+    case NODE_TYPE_VIEW:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'view' is not supported in ArangoDB 3.4");
 
     default:
       std::string msg("unhandled type '");
@@ -615,7 +588,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -648,7 +621,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
+    return AqlValue(AqlValueHintEmptyObject());
   }
 
   // unordered map to make object keys unique afterwards
@@ -887,13 +860,13 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   TRI_ASSERT(parameters.size() == destroyParameters.size());
   TRI_ASSERT(parameters.size() == n);
 
-  AqlValue a = func->implementation(_ast->query(), trx, parameters);
+  AqlValue a = func->implementation(_expressionContext, trx, parameters);
   mustDestroy = true; // function result is always dynamic
 
   return a;
 }
 
-AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
+AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
                                       transaction::Methods* trx,
                                       std::string const& jsName,
                                       std::string const& ucInvokeFN,
@@ -922,14 +895,13 @@ AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
 
   try {
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-  }
-  catch (arangodb::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
       throw;
     }
     std::string message("while invoking '");
     message +=  ucInvokeFN + "' via '" + AFN + "': " + ex.message();
-    query->registerWarning(ex.code(), message.c_str());
+    expressionContext->registerWarning(ex.code(), message.c_str());
     return AqlValue(AqlValueHintNull());
   }
   if (result.IsEmpty() || result->IsUndefined()) {
@@ -1013,7 +985,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
       }
     }
 
-    return invokeV8Function(_ast->query(), trx, jsName, "", "", true, callArgs, args.get(), mustDestroy);
+    return invokeV8Function(_expressionContext, trx, jsName, "", "", true, callArgs, args.get(), mustDestroy);
   }
 }
 
@@ -1426,7 +1398,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   // FILTER
@@ -1440,7 +1412,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -1459,7 +1431,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
 
     VPackBuilder builder;
@@ -1501,7 +1473,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
 
     mustDestroy = localMustDestroy; // maybe we need to destroy...
@@ -1626,15 +1598,15 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   }
 
   if (r == 0.0) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       // division by zero
-      registerWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(AqlValueHintNull());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      // modulo zero
-      registerWarning(_ast, "%", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-      TRI_ASSERT(!mustDestroy);
+      std::string msg("in operator ");
+      msg.append(node->type == NODE_TYPE_OPERATOR_BINARY_DIV ? "/" : "%");
+      msg.append(": ");
+      msg.append(TRI_errno_string(TRI_ERROR_QUERY_DIVISION_BY_ZERO));
+      _expressionContext->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO, msg.c_str());
       return AqlValue(AqlValueHintNull());
     }
   }

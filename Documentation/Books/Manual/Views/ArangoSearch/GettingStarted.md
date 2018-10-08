@@ -1,4 +1,4 @@
-# Getting started with ArangoSearch views
+# Getting started with ArangoSearch Views
 
 ## The DDL configuration
 
@@ -8,7 +8,9 @@ especially database schemas.
 
 All DDL operations on Views can be done via JavaScript or REST calls. The DDL
 syntax follows the well established ArangoDB guidelines and thus is very
-similar between JavaScript and REST. This article uses the JavaScript syntax.
+similar between the [JavaScript interface for views](../../DataModeling/Views/README.md)
+and the [HTTP interface for views](../../../HTTP/Views/index.html).This article
+uses the JavaScript syntax.
 
 Assume the following collections were initially defined in a database using
 the following commands:
@@ -40,29 +42,40 @@ v0 = db._createView("ExampleView", "arangosearch", {});
 v0 = db._view("ExampleView");
 v0.properties({
     links: {
-      'ExampleCollection0': /* collection Link 0 with additional custom configuration */
+      /* collection Link 0 with additional custom configuration: */
+      'ExampleCollection0':
       {
-        includeAllFields: true, /* examine fields of all linked collections  using default configuration */
+        /* examine fields of all linked collections,
+           using default configuration: */
+        includeAllFields: true,
         fields:
         {
-          name: /* a field to apply custom configuration that will index English text */
+          /* a field to apply custom configuration
+             that will index English text: */
+          name:
           {
             analyzers: ["text_en"]
           },
-          text: /* another field to apply custom that will index Chineese text */
+          /* another field to apply custom configuration
+             that will index Chinese text: */
+          text:
           {
             analyzers: ["text_zh"]
           }
         }
       },
-      'ExampleCollection1': /* collection Link 1 with custom configuration */
+      /* collection Link 1 with custom configuration: */
+      'ExampleCollection1':
       {
-        includeAllFields: true, /* examine all fields using default configuration */
+        /* examine all fields using default configuration: */
+        includeAllFields: true,
         fields:
         {
           a:
           {
-            analyzers: ["text_en"] /* a field to apply custom configuration that will index English text */
+            /* a field to apply custom configuration
+                that will index English text: */
+            analyzers: ["text_en"]
           }
         }
       }

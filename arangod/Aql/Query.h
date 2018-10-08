@@ -70,6 +70,7 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Query;
+struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
 
@@ -208,7 +209,7 @@ class Query {
   /// @brief register a warning
   virtual void registerWarning(int, char const* = nullptr);
 
-  void prepare(QueryRegistry*, uint64_t queryHash);
+  void prepare(QueryRegistry*);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
@@ -309,6 +310,9 @@ class Query {
  private:
   /// @brief initializes the query
   void init();
+  
+  /// @brief calculate a hash for the query, once
+  uint64_t hash() const;
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
@@ -319,8 +323,8 @@ class Query {
   /// @brief log a query
   void log();
 
-  /// @brief calculate a hash value for the query and bind parameters
-  uint64_t hash();
+  /// @brief calculate a hash value for the query string and bind parameters
+  uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
@@ -448,6 +452,17 @@ class Query {
 
   /// @brief names of views used by the query. needed for the query cache
   std::unordered_set<std::string> _views;
+  
+  /// @brief query cache entry built by the query
+  /// only populated when the query has generated its result(s) and before storing
+  /// the cache entry in the query cache
+  std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
+
+  /// @brief hash for this query. will be calculated only once when needed
+  mutable uint64_t _queryHash = DontCache;
+  
+  /// @brief whether or not the hash was already calculated
+  mutable bool _queryHashCalculated = false;
 };
 
 }

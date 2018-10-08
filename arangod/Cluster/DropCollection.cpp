@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -41,6 +42,8 @@ DropCollection::DropCollection(
   ActionBase(feature, d) {
 
   std::stringstream error;
+  
+  _labels.emplace(FAST_TRACK);
 
   if (!d.has(COLLECTION)) {
     error << "collection must be specified. ";
@@ -74,31 +77,43 @@ bool DropCollection::first() {
 
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-
     Result found = methods::Collections::lookup(
-      vocbase, collection, [&](LogicalCollection& coll) {
+      vocbase,
+      collection,
+      [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+        TRI_ASSERT(coll);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Dropping local collection " + collection;
-        _result = Collections::drop(vocbase, &coll, false, 120);
-      });
+        _result = Collections::drop(vocbase, coll.get(), false, 120);
+      }
+    );
 
     if (found.fail()) {
       std::stringstream error;
+
       error << "failed to lookup local collection " << database << "/" << collection;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+
       return false;
     }
 
   } catch (std::exception const& e) {
     std::stringstream error;
+
     error << " action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+
     return false;
   }
 
+  // We're removing the shard version from MaintenanceFeature before notifying
+  // for new Maintenance run. This should make sure that the next round does not
+  // get rejected.
+  _feature.delShardVersion(collection);
   notify();
+
   return false;
 
 }

@@ -40,6 +40,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
@@ -101,11 +102,11 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
   TRI_ASSERT(_leftEndpoint->size() > 8);
   TRI_ASSERT(_rightEndpoint->size() > 8);
 
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "prefix: " <<
+  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "prefix: " <<
   // fasthash64(prefix.c_str(), prefix.size(), 0);
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "iterator left key: " <<
+  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "iterator left key: " <<
   // left.toJson();
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "iterator right key: " <<
+  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "iterator right key: " <<
   // right.toJson();
 
   _cursor.reset(_db->GetBaseDB()->NewIterator(rocksdb::ReadOptions()));
@@ -137,13 +138,13 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
     }
 
     rocksdb::Slice key = _cursor->key();
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cursor key: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "cursor key: " <<
     // VPackSlice(key.data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson();
 
     int res = comparator->Compare(
         key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _leftEndpoint->data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
@@ -160,7 +161,7 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
 
     res = comparator->Compare(
         key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _rightEndpoint->data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
@@ -172,9 +173,9 @@ bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
       VPackValueLength const n = keySlice.length();
       TRI_ASSERT(n > 1);  // one value + _key
 
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "looking up document with
+      // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "looking up document with
       // key: " << keySlice.toJson();
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "looking up document with
+      // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "looking up document with
       // primary key: " << keySlice[n - 1].toJson();
 
       // use primary index to lookup the document
@@ -220,13 +221,13 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
     }
 
     rocksdb::Slice key = _cursor->key();
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cursor key: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "cursor key: " <<
     // VPackSlice(key.data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson();
 
     int res = comparator->Compare(
         key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _leftEndpoint->data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
@@ -244,7 +245,7 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
 
     res = comparator->Compare(
         key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "comparing: " <<
     // VPackSlice(key.data() + MMFilesPersistentIndex::keyPrefixSize()).toJson()
     // << " with " << VPackSlice((char const*) _rightEndpoint->data() +
     // MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
@@ -256,9 +257,9 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
       VPackValueLength const n = keySlice.length();
       TRI_ASSERT(n > 1);  // one value + _key
 
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "looking up document with
+      // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "looking up document with
       // key: " << keySlice.toJson();
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "looking up document with
+      // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "looking up document with
       // primary key: " << keySlice[n - 1].toJson();
 
       // use primary index to lookup the document
@@ -287,7 +288,7 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
       _probe = false;
     }
   }
-  
+
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   physical->readDocumentWithCallback(_trx, _documentIds, cb);
   return !done;
@@ -554,7 +555,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   size_t const count = elements.size();
 
   for (size_t i = 0; i < count; ++i) {
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing key: " <<
+    // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "removing key: " <<
     // VPackSlice(values[i].c_str() + keyPrefixSize()).toJson();
     auto status = rocksTransaction->Delete(values[i]);
 
@@ -683,10 +684,11 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
 }
 
 bool MMFilesPersistentIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference,
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
                                                                   itemsInIndex, estimatedItems, estimatedCost);
 }
 

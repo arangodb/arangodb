@@ -66,7 +66,6 @@ void GraphOperations::checkForUsedEdgeCollections(
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
     Graph& graph, EdgeDefinition const& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
-
   VPackBuilder builder;
   // remove old definition, insert the new one instead
   Result res = graph.replaceEdgeDefinition(newEdgeDef);
@@ -82,7 +81,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   std::set<std::string> newCollections;
 
   // add collections that didn't exist in the graph before to newCollections:
-  for (auto const &it : boost::join(newEdgeDef.getFrom(), newEdgeDef.getTo())) {
+  for (auto const& it : boost::join(newEdgeDef.getFrom(), newEdgeDef.getTo())) {
     if (!graph.hasVertexCollection(it) && !graph.hasOrphanCollection(it)) {
       newCollections.emplace(it);
     }
@@ -156,9 +155,11 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection& coll) {
-            resIn = methods::Collections::drop(&_vocbase, &coll, false,
-                                               -1.0);
+          &_vocbase, collection,
+          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+            TRI_ASSERT(coll);
+            resIn =
+                methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
           });
 
       if (found.fail()) {
@@ -176,6 +177,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   if (result.ok() && res.fail()) {
     return OperationResult(res);
   }
+
   return result;
 }
 
@@ -261,9 +263,10 @@ OperationResult GraphOperations::editEdgeDefinition(
   }
 
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
-    result =
-        changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
+    std::unique_ptr<Graph> graph =
+        Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
+    result = changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition,
+                                          waitForSync, trx);
   }
   if (result.fail()) {
     return result;
@@ -310,10 +313,10 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       }
     } else {
       return OperationResult(
-              Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
-                     collectionName + " " +
+          Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+                 collectionName + " " +
                      std::string{TRI_errno_string(
-                             TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
+                         TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
     }
   } else {
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
@@ -405,14 +408,17 @@ OperationResult GraphOperations::eraseOrphanCollection(
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
     GraphManager gmngr{_vocbase};
-    gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
+    gmngr.pushCollectionIfMayBeDropped(collectionName, "",
+                                       collectionsToBeRemoved);
 
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection& coll) {
-            resIn = methods::Collections::drop(&_vocbase, &coll, false,
-                                               -1.0);
+          &_vocbase, collection,
+          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+            TRI_ASSERT(coll);
+            resIn =
+                methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
           });
 
       if (found.fail()) {
@@ -426,12 +432,14 @@ OperationResult GraphOperations::eraseOrphanCollection(
   if (result.ok() && res.fail()) {
     return OperationResult(res);
   }
+
   return result;
 }
 
 OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
-  ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
+  ResultT<EdgeDefinition const*> defRes =
+      _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
     return OperationResult(defRes);
   }
@@ -441,7 +449,8 @@ OperationResult GraphOperations::addEdgeDefinition(
   // ... in different graph
   GraphManager gmngr{_vocbase};
 
-  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()), _graph.name())};
+  OperationResult result{
+      gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()), _graph.name())};
   if (result.fail()) {
     // If this fails we will not persist.
     return result;
@@ -759,8 +768,8 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
 }
 
 OperationResult GraphOperations::removeEdgeOrVertex(
-        const std::string& collectionName, const std::string& key,
-        boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+    const std::string& collectionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
   OperationOptions options;
   options.waitForSync = waitForSync;
   options.returnOld = returnOld;
@@ -775,7 +784,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   std::unordered_set<std::string> possibleEdgeCollections;
 
   auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
-    checkForUsedEdgeCollections(*graph, collectionName, possibleEdgeCollections);
+    checkForUsedEdgeCollections(*graph, collectionName,
+                                possibleEdgeCollections);
     return Result{};
   };
   Result res = gmngr.applyOnAllGraphs(callback);
@@ -792,8 +802,9 @@ OperationResult GraphOperations::removeEdgeOrVertex(
     trxCollections.emplace_back(it);
   }
   for (auto const& it : possibleEdgeCollections) {
-    trxCollections.emplace_back(it); // add to trx collections
-    edgeCollections.emplace(it); // but also to edgeCollections for later iteration
+    trxCollections.emplace_back(it);  // add to trx collections
+    edgeCollections.emplace(
+        it);  // but also to edgeCollections for later iteration
   }
 
   transaction::Options trxOptions;
@@ -830,7 +841,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(
                                  nullptr, arangodb::aql::PART_DEPENDENT);
       query.setTransactionContext(context);
 
-      auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+      auto queryResult =
+          query.executeSync(QueryRegistryFeature::QUERY_REGISTRY.load());
 
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
         return OperationResult(queryResult.code);
@@ -877,8 +889,8 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection,
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix
-                                     << "Permissions are turned off.";
+    LOG_TOPIC(DEBUG, Logger::GRAPHS)
+        << logprefix << "Permissions are turned off.";
     return true;
   }
 
@@ -902,8 +914,8 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix
-                                     << "Permissions are turned off.";
+    LOG_TOPIC(DEBUG, Logger::GRAPHS)
+        << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -918,14 +930,14 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
     if (!execContext->canUseCollection(col, auth::Level::RO)) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to "
-                                       << databaseName << "." << col;
+      LOG_TOPIC(DEBUG, Logger::GRAPHS)
+          << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;
     }
     if (!collectionExists(col) && !canUseDatabaseRW) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Creation of "
-                                       << databaseName << "." << col
-                                       << " is not allowed.";
+      LOG_TOPIC(DEBUG, Logger::GRAPHS)
+          << logprefix << "Creation of " << databaseName << "." << col
+          << " is not allowed.";
       return TRI_ERROR_FORBIDDEN;
     }
   }

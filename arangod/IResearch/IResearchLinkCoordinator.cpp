@@ -123,7 +123,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   if (!view->emplace(_collection.id(), _collection.name(), definition)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error emplacing link to collection '" << _collection.name() << "' into IResearch view '" << viewId << "' link '" << id() << "'";
+        << "error emplacing link to collection '" << _collection.name() << "' into arangosearch view '" << viewId << "' link '" << id() << "'";
 
     return false;
   }
@@ -151,15 +151,15 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return link && link->init(definition) ? ptr : nullptr;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
+      << "caught exception while creating arangosearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.what();
+      << "caught exception while creating arangosearch view Coordinator link '" << id << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "'";
+      << "caught exception while creating arangosearch view Coordinator link '" << id << "'";
     IR_LOG_EXCEPTION();
   }
 
@@ -175,7 +175,7 @@ bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const 
 
 void IResearchLinkCoordinator::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    unsigned flags
+    std::underlying_type<arangodb::Index::Serialize>::type flags
 ) const {
   TRI_ASSERT(_view);
   TRI_ASSERT(!builder.isOpenObject());
@@ -197,7 +197,7 @@ void IResearchLinkCoordinator::toVelocyPack(
     arangodb::velocypack::Value(_view->guid())
   );
 
-  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     builder.add(
       "figures",
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)

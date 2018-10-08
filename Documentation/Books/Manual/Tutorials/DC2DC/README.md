@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter Replication
 
 {% hint 'info' %}
@@ -72,7 +72,8 @@ ArangoSync is not a good solution when one of the following applies:
 
 To use ArangoSync you need the following:
 
-- Two datacenters, each running an ArangoDB Enterprise Edition cluster, version 3.3 or higher.
+- Two datacenters, each running an ArangoDB Enterprise Edition cluster,
+  version 3.3 or higher, using the RocksDB storage engine.
 - A network connection between both datacenters with accessible endpoints
   for several components (see individual components for details).
 - TLS certificates for ArangoSync master instances (can be self-signed).
@@ -103,12 +104,12 @@ consult the [reference manual](../../Deployment/DC2DC/README.md).
 ### ArangoDB cluster
 
 Datacenter to datacenter replication requires an ArangoDB cluster in both data centers,
-configured with the RocksDB storage engine.
+configured with the `rocksdb` storage engine.
 
 Since the cluster agents are so critical to the availability of both the ArangoDB and the ArangoSync cluster,
 it is recommended to run agents on dedicated machines. Consider these machines "pets".
 
-Coordinators and dbservers can be deployed of other machines that should be considered "cattle".
+Coordinators and DBServers can be deployed on other machines that should be considered "cattle".
 
 ### Sync Master
 
@@ -135,7 +136,7 @@ Consider these machines "pets".
 
 The Sync Worker is responsible for executing synchronization tasks.
 <br/> For optimal performance at least 1 worker instance must be placed on
-every machine that has an ArangoDB `dbserver` running. This ensures that tasks
+every machine that has an ArangoDB DBServer running. This ensures that tasks
 can be executed with minimal network traffic outside of the machine.
 
 Since sync workers will automatically stop once their TLS server certificate expires
@@ -147,7 +148,7 @@ down for a restart.
 The sync worker must be reachable on a TCP port 8729 (default).
 This port must be reachable from inside the datacenter (by sync masters).
 
-The sync workers should be run on all machines that also contain an ArangoDB dbserver.
+The sync workers should be run on all machines that also contain an ArangoDB DBServer.
 The sync worker can be memory intensive when running lots of databases & collections.
 
 Consider these machines "cattle".

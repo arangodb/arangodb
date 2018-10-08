@@ -147,7 +147,6 @@ struct IResearchLinkCoordinatorSetup {
     // setup required application features
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
@@ -359,7 +358,7 @@ SECTION("test_create_drop") {
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -398,7 +397,7 @@ SECTION("test_create_drop") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+      auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -468,7 +467,7 @@ SECTION("test_create_drop") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+      auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -489,7 +488,7 @@ SECTION("test_create_drop") {
     // ensure jSON is still valid after unload()
     {
       index->unload();
-      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+      auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")

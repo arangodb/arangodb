@@ -39,6 +39,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
+const uint32_t MaintenanceFeature::minThreadLimit = 2;
+const uint32_t MaintenanceFeature::maxThreadLimit = 64;
+
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Maintenance"),
     _forceActivation(false),
@@ -62,7 +65,8 @@ void MaintenanceFeature::init() {
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
 
   // these parameters might be updated by config and/or command line options
-  _maintenanceThreadsMax = (std::max)(static_cast<uint32_t>(2),
+
+  _maintenanceThreadsMax = (std::max)(static_cast<uint32_t>(minThreadLimit),
     static_cast<uint32_t>(TRI_numberProcessors() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
@@ -91,12 +95,14 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
-  if (_maintenanceThreadsMax < 2) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Need at least 2 maintenance-threads";
-    _maintenanceThreadsMax = 2;
-  } else if (_maintenanceThreadsMax >= 64) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "maintenance-threads limited to 64";
-    _maintenanceThreadsMax = 64;
+  if (_maintenanceThreadsMax < minThreadLimit) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "Need at least" << minThreadLimit << "maintenance-threads";
+    _maintenanceThreadsMax = minThreadLimit;
+  } else if (_maintenanceThreadsMax >= maxThreadLimit) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "maintenance-threads limited to " << maxThreadLimit;
+    _maintenanceThreadsMax = maxThreadLimit;
   }
 }
 
@@ -118,7 +124,16 @@ void MaintenanceFeature::start() {
 
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
+
+    // First worker will be available only to fast track
+    std::unordered_set<std::string> labels {};
+    if (loop == 0) {
+      labels.emplace(ActionBase::FAST_TRACK);
+    }
+    
+    auto newWorker =  
+      std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
+    
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "MaintenanceFeature::start:  newWorker start failed";
@@ -350,7 +365,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
 
 
 std::shared_ptr<Action> MaintenanceFeature::findAction(
-  std::shared_ptr<ActionDescription> const description) {
+  std::shared_ptr<ActionDescription> const& description) {
   return findActionHash(description->hash());
 }
 
@@ -405,7 +420,8 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 } // MaintenanceFeature::findActionIdNoLock
 
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
+  std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while(!_isShuttingDown && !ret_ptr) {
@@ -416,7 +432,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
         auto state = (*loop)->getState();
-        if (state == maintenance::READY) {
+        if (state == maintenance::READY && (*loop)->matches(labels)) {
           ret_ptr=*loop;
           ret_ptr->setState(maintenance::EXECUTING);
         } else if ((*loop)->done()) {
@@ -442,15 +458,20 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 
 VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
+  toVelocyPack(vb);
+  return vb;
+}
+
+
+void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
+
   READ_LOCKER(rLock, _actionRegistryLock);
 
   { VPackArrayBuilder ab(&vb);
     for (auto const& action : _actionRegistry ) {
       action->toVelocyPack(vb);
     } // for
-
   }
-  return vb;
 
 } // MaintenanceFeature::toVelocyPack
 #if 0
@@ -728,6 +749,32 @@ arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {
     errors.databases = _dbErrors;
   }
   return Result();
+}
+
+
+uint64_t MaintenanceFeature::shardVersion (std::string const& shname) const {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "getting shard version for '"  << shname << "' from " << _shardVersion;
+  return (it != _shardVersion.end()) ? it->second : 0;
+}
+
+
+uint64_t MaintenanceFeature::incShardVersion (std::string const& shname) {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto ret = ++_shardVersion[shname];
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "incremented shard version for " << shname << " to " << ret;
+  return ret;
+}
+
+void MaintenanceFeature::delShardVersion (std::string const& shname) {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  if (it != _shardVersion.end()) {
+    _shardVersion.erase(it);
+  }
 }
 
 

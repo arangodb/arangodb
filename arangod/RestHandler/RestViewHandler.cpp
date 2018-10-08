@@ -303,12 +303,12 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       }
 
       auto newNameStr = newName.copyString();
-      int res = _vocbase.renameView(view, newNameStr);
+      auto res = _vocbase.renameView(view->id(), newNameStr);
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         getView(newNameStr, false);
       } else {
-        generateError(GeneralResponse::responseCode(res), res);
+        generateError(res);
       }
 
       return;
@@ -344,29 +344,35 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       body, partialUpdate, true
     );  // TODO: not force sync?
 
-    if (result.ok()) {
-      VPackBuilder updated;
-
-      updated.openObject();
-
-      auto res = view->toVelocyPack(updated, true, false);
-
-      updated.close();
-
-      if (!res.ok()) {
-        generateError(res);
-
-        return;
-      }
-
-      generateResult(rest::ResponseCode::OK, updated.slice());
-
-      return;
-    } else {
+    if (!result.ok()) {
       generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(), result.errorMessage());
 
       return;
     }
+
+    view = _vocbase.lookupView(view->id()); // ensure have the latest definition
+
+    if (!view) {
+      generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+
+      return;
+    }
+
+    arangodb::velocypack::Builder updated;
+
+    updated.openObject();
+
+    auto res = view->toVelocyPack(updated, true, false);
+
+    updated.close();
+
+    if (!res.ok()) {
+      generateError(res);
+
+      return;
+    }
+
+    generateResult(rest::ResponseCode::OK, updated.slice());
   } catch (...) {
     // TODO: cleanup?
     throw;

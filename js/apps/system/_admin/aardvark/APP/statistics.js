@@ -32,8 +32,8 @@ const cluster = require('@arangodb/cluster');
 const db = require('@arangodb').db;
 const _ = require('lodash');
 
-const STATISTICS_INTERVAL = require('@arangodb/statistics').STATISTICS_INTERVAL;
-const STATISTICS_HISTORY_INTERVAL = require('@arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
+const STATISTICS_INTERVAL = 10; // seconds
+const STATISTICS_HISTORY_INTERVAL = 15 * 60; // seconds
 
 const joi = require('joi');
 const httperr = require('http-errors');

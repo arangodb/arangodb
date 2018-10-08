@@ -30,6 +30,12 @@
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+
+  class LogicalDataSource; // forward declaration
+
+}
+
 /// @brief shortcut for fetching the isolate from the thread context
 #define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
 
@@ -273,6 +279,14 @@ static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate, v
       isolate, WHAT.c_str(), v8::String::kNormalString, (int)WHAT.length())); \
   return
 
+/// @brief return a std::wstring
+///   implicitly requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string variable
+#define TRI_V8_RETURN_STD_WSTRING(WHAT)                                 \
+  args.GetReturnValue().Set(v8::String::NewFromTwoByte(                 \
+      isolate, (const uint16_t *)WHAT.c_str(), v8::String::kNormalString, (int)WHAT.length())); \
+  return
+
 /// @brief return a string which you know the length of
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the char* variable
@@ -311,6 +325,28 @@ static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate, v
 
 /// @brief globals stored in the isolate
 struct TRI_v8_global_t {
+  /// @brief wrapper around a v8::Persistent to hold a shared_ptr and cleanup
+  class DataSourcePersistent {
+   public:
+    DataSourcePersistent(
+      v8::Isolate* isolate,
+      std::shared_ptr<arangodb::LogicalDataSource> const& datasource,
+      std::function<void()>&& cleanupCallback // function to call at the end of the Persistent WeakCallbackInfo::Callback (to avoid linking against arangod)
+    );
+    DataSourcePersistent(DataSourcePersistent&&) = delete;
+    DataSourcePersistent(DataSourcePersistent const&) = delete;
+    ~DataSourcePersistent();
+    DataSourcePersistent& operator=(DataSourcePersistent&&) = delete;
+    DataSourcePersistent& operator=(DataSourcePersistent const&) = delete;
+    v8::Local<v8::External> get() const { return _persistent.Get(_isolate); }
+
+   private:
+    std::function<void()> _cleanupCallback;
+    std::shared_ptr<arangodb::LogicalDataSource> _datasource;
+    v8::Isolate* _isolate;
+    v8::Persistent<v8::External> _persistent;
+  };
+
   explicit TRI_v8_global_t(v8::Isolate*);
 
   ~TRI_v8_global_t();
@@ -324,11 +360,8 @@ struct TRI_v8_global_t {
   /// @brief decrease the number of active externals
   inline void decreaseActiveExternals() { --_activeExternals; }
 
-  /// @brief collections mapping for weak pointers
-  std::unordered_map<void*, v8::Persistent<v8::External>> JSCollections;
-  
-  /// @brief views mapping for weak pointers
-  std::unordered_map<void*, v8::Persistent<v8::External>> JSViews;
+  /// @brief datasource mapping for weak pointers
+  std::unordered_map<void*, DataSourcePersistent> JSDatasources;
 
   /// @brief agency template
   v8::Persistent<v8::ObjectTemplate> AgencyTempl;
@@ -420,9 +453,6 @@ struct TRI_v8_global_t {
 
   /// @brief "client" key name
   v8::Persistent<v8::String> ClientKey;
-
-  /// @brief "clientTransactionID" key name
-  v8::Persistent<v8::String> ClientTransactionIDKey;
 
   /// @brief "code" key name
   v8::Persistent<v8::String> CodeKey;

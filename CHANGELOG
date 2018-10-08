@@ -1,13 +1,181 @@
 devel
 -----
 
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
+* removed bundled Valgrind headers, removed JavaScript variable `valgrind`
+  from the `internal` module
+
+* upgraded JEMalloc version to 5.1.0
+
+* use `-std=c++14` for ArangoDB compilation
+
+
+v3.4.0-rc.3 (XXXX-XX-XX)
+------------------------
+
+* disable in-memory cache for edge and traversal data on agency nodes, as it
+  is not needed there
+
+* include forward-ported diagnostic options for debugging LDAP connections
+
+* support installation of ArangoDB on Windows into directories with multibyte
+  character filenames on Windows platforms that used a non-UTF8-codepage
+
+  This was supported on other platforms before, but never worked for ArangoDB's
+  Windows version
+
+* display shard synchronization progress for collections outside of the
+  `_system` database
+
+* change memory protection settings for memory given back to by the bundled
+  JEMalloc memory allocator. This avoids splitting of existing memory mappings
+  due to changes of the protection settings
+
+* added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
+
+
+v3.4.0-rc.2 (2018-09-30)
+------------------------
+
+
+
+v3.4.0-rc.2 (XXXX-XX-XX)
+------------------------
+
+* upgraded arangosync version to 0.6.0
+
+* upgraded arangodb starter version to 0.13.3
+
+* fixed issue #6611: Properly display JSON properties of user defined foxx services 
+  configuration within the web UI 
+
+* improved shards display in web UI: included arrows to better visualize that 
+  collection name sections can be expanded and collapsed
+
+* added nesting support for `aql` template strings
+
+* added support for `undefined` and AQL literals to `aql.literal`
+
+* added `aql.join` function
+
+* fixed issue #6583: Agency node segfaults if sent an authenticated HTTP 
+  request is sent to its port
+
+* fixed issue #6601: Context cancelled (never ending query)
+
+* added more AQL query results cache inspection and control functionality
+
+* fixed undefined behavior in AQL query result cache
+
+* the query editor within the web UI is now catching HTTP 501 responses
+  properly
+
+* added AQL VERSION function to return the server version as a string
+
+* added startup parameter `--cluster.advertised-endpoints`
+
+* AQL query optimizer now makes better choices regarding indexes to use in a 
+  query when there are multiple competing indexes and some of them are prefixes
+  of others
+  
+  In this case, the optimizer could have preferred indexes that covered less
+  attributes, but it should rather pick the indexes that covered more attributes.
+  
+  For example, if there was an index on ["a"] and another index on ["a", "b"], then
+  previously the optimizer may have picked the index on just ["a"] instead the
+  index on ["a", "b"] for queries that used all index attributes but did range
+  queries on them (e.g. `FILTER doc.a == @val1 && doc.b >= @val2`).
+
+* Added compression for the AQL intermediate results transfer in the cluster, 
+  leading to less data being transferred between coordinator and database servers
+  in many cases
+
+* forward-ported a bugfix from RocksDB (https://github.com/facebook/rocksdb/pull/4386)
+  that fixes range deletions (used internally in ArangoDB when dropping or truncating 
+  collections)
+
+  The non-working range deletes could have triggered errors such as 
+  `deletion check in index drop failed - not all documents in the index have been deleted.`
+  when dropping or truncating collections
+
+* improve error messages in Windows installer
+
+* allow retrying installation in Windows installer in case an existing database is still
+  running and needs to be manually shut down before continuing with the installation
+
+* fix database backup functionality in Windows installer
+
+* fixed memory leak in `/_api/batch` REST handler
+
+* `db._profileQuery()` now also tracks operations triggered when using `LIMIT`
+  clauses in a query
+
+* added proper error messages when using views as an argument to AQL functions
+  (doing so triggered an `internal error` before)
+
+* fixed return value encoding for collection ids ("cid" attribute") in REST API
+  `/_api/replication/logger-follow`
+
+* fixed dumping and restoring of views with arangodump and arangorestore
+
+* fix replication from 3.3 to 3.4
+
+* fixed some TLS errors that occurred when combining HTTPS/TLS transport with the
+  VelocyStream protocol (VST)
+  
+  That combination could have led to spurious errors such as "TLS padding error"
+  or "Tag mismatch" and connections being closed 
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fixed issue #6379: RocksDB arangorestore time degeneration on dead documents
+
+* fixed issue #6495: Document not found when removing records
+
+* fixed undefined behavior is cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* reduce overhead of function initialization in AQL COLLECT aggregate functions,
+  for functions COUNT/LENGTH, SUM and AVG
+
+  this optimization will only be noticable when the COLLECT produces many groups
+  and the "hash" COLLECT variant is used
+
+* fixed potential out-of-bounds access in admin log REST handler `/_admin/log`,
+  which could have led to the server returning an HTTP 500 error
+
+* catch more exceptions in replication and handle them appropriately
+
+* agency endpoint updates now go through RAFT
+
+* fixed a cleanup issue in Current when a follower was removed from Plan
+
+* catch exceptions in MaintenanceWorker thread
+
+* fixed a bug in cleanOutServer which could lead to a cleaned out server
+  still being a follower for some shard
+
+
+v3.4.0-rc.1 (2018-09-06)
+------------------------
+
+* Release Candidate for 3.4.0, please check the `ReleaseNotes/KnownIssues34.md`
+  file for a list of known issues
+
 * upgraded bundled RocksDB version to 5.16.0
 
 * upgraded bundled Snappy compression library to 1.1.7
 
-* fixed issue #5941 if using breath first search in traversals uniqueness checks
+* fixed issue #5941 if using breadth first search in traversals uniqueness checks
   on path (vertices and edges) have not been applied. In SmartGraphs the checks
   have been executed properly.
+
+* added more detailed progress output to arangorestore, showing the percentage of
+  how much data is restored for bigger collections plus a set of overview statistics
+  after each processed collection
 
 * added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
   informational LOG files into RocksDB's database directory.
@@ -522,11 +690,194 @@ devel
 * only load Plan and Current from agency when actually needed
 
 
-v3.3.13 (XXXX-XX-XX)
+v3.3.15 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #5941 if using breadth-first search in traversals uniqueness checks
+  on path (vertices and edges) have not been applied. In SmartGraphs the checks
+  have been executed properly.
+
+* added more detailed progress output to arangorestore, showing the percentage of
+  how much data is restored for bigger collections plus a set of overview statistics
+  after each processed collection
+
+* added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
+  informational LOG files into RocksDB's database directory.
+
+  This option is turned off by default, but can be enabled for debugging RocksDB
+  internals and performance.
+
+* improved error messages when managing Foxx services
+
+  Install/replace/upgrade will now provide additional information when an error
+  is encountered during setup. Errors encountered during a `require` call will
+  also include information about the underlying cause in the error message.
+
+* fixed some Foxx script names being displayed incorrectly in web UI and Foxx CLI
+
+* added startup option `--query.optimizer-max-plans value`
+
+  This option allows limiting the number of query execution plans created by the 
+  AQL optimizer for any incoming queries. The default value is `128`.
+
+  By adjusting this value it can be controlled how many different query execution 
+  plans the AQL query optimizer will generate at most for any given AQL query. 
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  but there are some cases in which it creates multiple competing plans. More plans
+  can lead to better optimized queries, however, plan creation has its costs. The
+  more plans are created and shipped through the optimization pipeline, the more time 
+  will be spent in the optimizer.
+
+  Lowering this option's value will make the optimizer stop creating additional plans 
+  when it has already created enough plans.
+
+  Note that this setting controls the default maximum number of plans to create. The
+  value can still be adjusted on a per-query basis by setting the *maxNumberOfPlans*
+  attribute when running a query.
+
+  This change also lowers the default maximum number of query plans from 192 to 128.
+
+* bug fix: facilitate faster shutdown of coordinators and db servers
+
+* upgraded arangodb starter version to 0.13.2
+
+* cluster nodes should retry registering in agency until successful
+
+* fixed some web ui action events related to Running Queries view and Slow
+  Queries History view
+
+* Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
+  on VMs with limited disk throughput
+
+* backport PR 6150: establish unique function to indicate when
+  application is terminating and therefore network retries should not occur
+
+* backport PR #5201: eliminate race scenario where handlePlanChange
+  could run infinite times after an execution exceeded 7.4 second time span
+
+
+v3.3.14 (2018-08-15)
+--------------------
+
+* upgraded arangodb starter version to 0.13.1
+
+* Foxx HTTP API errors now log stacktraces
+
+* fixed issue #5736: Foxx HTTP API responds with 500 error when request body
+  is too short
+
+* fixed issue #5831: custom queries in the ui could not be loaded if the user
+  only has read access to the _system database.
+
+* fixed internal issue #2566: corrected web UI alignment of the nodes table
+
+* fixed internal issue #2869: when attaching a follower with global applier to an
+  authenticated leader already existing users have not been replicated, all users
+  created/modified later are replicated.
+
+* fixed internal issue #2865: dumping from an authenticated arangodb the users have
+  not been included
+
+* fixed issue #5943: misplaced database ui icon and wrong cursor type were used
+
+* fixed issue #5354: updated the web UI JSON editor, improved usability
+
+* fixed issue #5648: fixed error message when saving unsupported document types
+
+* fixed issue #6076: Segmentation fault after AQL query
+
+  This also fixes issues #6131 and #6174
+
+* fixed issue #5884: Subquery nodes are no longer created on DBServers
+
+* fixed issue #6031: Broken LIMIT in nested list iterations
+
+* fixed internal issue #2812: Cluster fails to create many indexes in parallel
+
+* intermediate commits in the RocksDB engine are now only enabled in standalone AQL
+  queries (not within a JS transaction), standalone truncate as well as for the
+  "import" API
+
+* Bug fix: race condition could request data from Agency registry that did not
+  exist yet.  This caused a throw that would end the Supervision thread.
+  All registry query APIs no longer throw exceptions.
+
+
+v3.3.13 (2018-07-26)
+--------------------
+
+* fixed internal issue #2567: the Web UI was showing the possibility to move a
+  shard from a follower to the current leader
+
+* fixed issue #5977: Unexpected execution plan when subquery contains COLLECT
+
+* Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
+  _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
+
+* put an upper bound on the number of documents to be scanned when using
+  `db.<collection>.any()` in the RocksDB storage engine
+
+  previous versions of ArangoDB did a scan of a random amount of documents in
+  the collection, up to the total number of documents available. this produced
+  a random selection with a good quality, but needed to scan half the number
+  of documents in the collection on average.
+
+  The new version will only scan up to 500 documents, so it produces a less
+  random result, but will be a lot faster especially for large collections.
+
+  The implementation of `any()` for the MMFiles engine remains unchanged. The
+  MMFiles engine will pick a random document from the entire range of the
+  in-memory primary index without performing scans.
+
+* return an empty result set instead of an "out of memory" exception when
+  querying the geo index with invalid (out of range) coordinates
+
+* added load balancer support and user-restriction to cursor API.
+
+  If a cursor is accessed on a different coordinator than where it was created,
+  the requests will be forwarded to the correct coordinator. If a cursor is
+  accessed by a different user than the one who created it, the request will
+  be denied.
+
+* keep failed follower in followers list in Plan.
+
+  This increases the changes of a failed follower getting back into sync if the
+  follower comes back after a short time. In this case the follower can try to
+  get in sync again, which normally takes less time than seeding a completely
+  new follower.
+
+* fix assertion failure and undefined behavior in Unix domain socket connections,
+  introduced by 3.3.12
+
+* added configuration option `--rocksdb.sync-interval`
+
+  This option specifies interval (in milliseconds) that ArangoDB will use to
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to
+  disk. Automatic syncs will only be performed for not-yet synchronized data,
+  and only for operations that have been executed without the *waitForSync*
+  attribute.
+
+  Automatic synchronization is performed by a background thread. The default
+  sync interval is 0, meaning the automatic background syncing is turned off.
+  Background syncing in 3.3 is opt-in, whereas in ArangoDB 3.4 the default sync
+  interval will be 100 milliseconds.
+
+  Note: this option is not supported on Windows platforms. Setting the sync
+  interval to a value greater 0 will produce a startup warning.
+
+* fixed graph creation sometimes failing with 'edge collection
+  already used in edge def' when the edge definition contained multiple vertex
+  collections, despite the edge definitions being identical
+
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
 
 * fixed issue #5827: Batch request handling incompatible with .NET's default
   ContentType format
+
+* fixed agency's log compaction for internal issue #2249
+
+* inspector collects additionally disk data size and storage engine statistics
 
 
 v3.3.12 (2018-07-12)

@@ -94,7 +94,7 @@ void RocksDBRecoveryManager::start() {
 
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
-  _inRecovery = false;
+  _inRecovery.store(false);
 
   // notify everyone that recovery is now done
   auto databaseFeature =
@@ -112,29 +112,56 @@ void RocksDBRecoveryManager::runRecovery() {
       << res.errorMessage();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RECOVERY);
   }
+  
+  // now restore collection counts into collections
 }
 
-bool RocksDBRecoveryManager::inRecovery() const { return _inRecovery; }
+bool RocksDBRecoveryManager::inRecovery() const { return _inRecovery.load(); }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
-  std::unordered_map<uint64_t, RocksDBSettingsManager::CounterAdjustment>
-      deltas;
+
+  struct Operations {
+    Operations(rocksdb::SequenceNumber seq) : startSequenceNumber(seq) {}
+    Operations(Operations const&) = delete;
+    Operations& operator=(Operations const&) = delete;
+    Operations(Operations&&) = default;
+    Operations& operator=(Operations&&) = default;
+
+    rocksdb::SequenceNumber startSequenceNumber;
+    rocksdb::SequenceNumber lastSequenceNumber = 0;
+    uint64_t added = 0;
+    uint64_t removed = 0;
+    TRI_voc_rid_t lastRevisionId = 0;
+    bool mustTruncate = false;
+  };
+
   rocksdb::SequenceNumber currentSeqNum;
 
  private:
-  // must be retrieved from settings manager
-  std::unordered_map<uint64_t, rocksdb::SequenceNumber> _seqStart;
+
+  // contains the operations we counted
+  std::unordered_map<uint64_t, WBReader::Operations> _deltas;
+  // used to track used IDs for key-generators
   std::unordered_map<uint64_t, uint64_t> _generators;
 
+  // max tick found
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
   /// @brief last document removed
   TRI_voc_rid_t _lastRemovedDocRid = 0;
 
  public:
+
+  /// @param seqs sequence number from which to count operations
   explicit WBReader(std::unordered_map<uint64_t, rocksdb::SequenceNumber> const& seqs)
-      : currentSeqNum(0), _seqStart(seqs) {}
+      : currentSeqNum(0) {
+        for (auto const& pair : seqs) {
+          try {
+            _deltas.emplace(pair.first, Operations(pair.second));
+          } catch(...) {}
+        }
+      }
 
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
@@ -145,8 +172,49 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       TRI_UpdateTickServer(_maxTick);
       TRI_HybridLogicalClock(_maxHLC);
 
-      // TODO update generators
       auto dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+      
+      LOG_TOPIC(TRACE, Logger::ENGINES) << "finished WAL scan with " << _deltas.size() << " entries";
+      
+      RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+      RocksDBSettingsManager* mgr = engine->settingsManager();
+      for (auto& pair : _deltas) {
+        WBReader::Operations const& ops = pair.second;
+        if (ops.mustTruncate) { // first we must reset the counter
+          mgr->setAbsoluteCounter(pair.first, ops.lastSequenceNumber, 0);
+        }
+        RocksDBSettingsManager::CounterAdjustment adj{};
+        adj._sequenceNum = ops.lastSequenceNumber;
+        adj._added = ops.added;
+        adj._removed = ops.removed;
+        adj._revisionId = ops.lastRevisionId;
+        
+        mgr->updateCounter(pair.first, adj);
+        LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "WAL recovered " << adj.added() << " PUTs and "
+        << adj.removed() << " DELETEs for objectID " << pair.first;
+        
+        // now adjust the counter in collections which are already loaded
+        auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
+        if (dbColPair.second == 0 && dbColPair.first == 0) {
+          // collection with this objectID not known.Skip.
+          continue;
+        }
+        auto vocbase = dbfeature->useDatabase(dbColPair.first);
+        if (vocbase == nullptr) {
+          continue;
+        }
+        TRI_DEFER(vocbase->release());
+        auto collection = vocbase->lookupCollection(dbColPair.second);
+        if (collection == nullptr) {
+          continue;
+        }
+        if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
+          auto* rcoll = static_cast<RocksDBCollection*>(collection->getPhysical());
+          rcoll->loadInitialNumberDocuments();
+        }
+      }
+      
       for (auto gen : _generators) {
         if (gen.second > 0) {
           auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
@@ -168,20 +236,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           collection->keyGenerator()->track(k.data(), k.size());
         }
       }
+      
     });
     return rv;
   }
 
-  bool shouldHandleDocument(const rocksdb::Slice& key) {
-    uint64_t objectId = RocksDBKey::objectId(key);
-    auto const& it = _seqStart.find(objectId);
-    if (it != _seqStart.end()) {
-      if (deltas.find(objectId) == deltas.end()) {
-        deltas.emplace(objectId, RocksDBSettingsManager::CounterAdjustment());
-      }
-      return it->second <= currentSeqNum;
+  bool shouldHandleCollection(uint64_t objectId, Operations** ops) {
+    auto it = _deltas.find(objectId);
+    if (it != _deltas.end()) {
+      *ops = &(it->second);
+      return it->second.startSequenceNumber <= currentSeqNum;
     }
-    return false;
+    auto res = _deltas.emplace(objectId, currentSeqNum); // do not ignore unknown counters
+    *ops = &(res.first->second);
+    return true;
   }
 
   void storeMaxHLC(uint64_t hlc) {
@@ -202,7 +270,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     auto it = _generators.find(objectId);
-
     if (it == _generators.end()) {
       try {
         _generators.emplace(objectId, keyValue);
@@ -303,16 +370,17 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
-    updateMaxTick(column_family_id, key, value);
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID() &&
-        shouldHandleDocument(key)) {
-      uint64_t objectId = RocksDBKey::objectId(key);
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
 
-      auto const& it = deltas.find(objectId);
-      if (it != deltas.end()) {
-        it->second._sequenceNum = currentSeqNum;
-        it->second._added++;
-        it->second._revisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
+    updateMaxTick(column_family_id, key, value);
+    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+      uint64_t objectId = RocksDBKey::objectId(key);
+      Operations* ops = nullptr;
+      if (shouldHandleCollection(objectId, &ops)) {
+        TRI_ASSERT(ops != nullptr);
+        ops->lastSequenceNumber = currentSeqNum;
+        ops->added++;
+        ops->lastRevisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
       }
     } else {
       // We have to adjust the estimate with an insert
@@ -342,28 +410,31 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
-  rocksdb::Status DeleteCF(uint32_t column_family_id,
-                           const rocksdb::Slice& key) override {
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+  void handleDeleteCF(uint32_t cfId,
+                      const rocksdb::Slice& key) {
+
+    if (cfId == RocksDBColumnFamily::documents()->GetID()) {
+      uint64_t objectId = RocksDBKey::objectId(key);
       
-      if (shouldHandleDocument(key)) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto const& it = deltas.find(objectId);
-        if (it != deltas.end()) {
-          it->second._sequenceNum = currentSeqNum;
-          it->second._removed++;
-          if (_lastRemovedDocRid != 0) {
-            it->second._revisionId = _lastRemovedDocRid;
-          }
+      storeMaxHLC(RocksDBKey::documentId(key).id());
+      storeMaxTick(objectId);
+      
+      Operations* ops = nullptr;
+      if (shouldHandleCollection(objectId, &ops)) {
+        TRI_ASSERT(ops != nullptr);
+        ops->lastSequenceNumber = currentSeqNum;
+        ops->removed++;
+        if (_lastRemovedDocRid != 0) {
+          ops->lastRevisionId = _lastRemovedDocRid;
         }
       }
       _lastRemovedDocRid = 0; // reset in any case
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hash = 0;
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
+      if (cfId == RocksDBColumnFamily::vpack()->GetID()) {
         hash = RocksDBVPackIndex::HashForKey(key);
-      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+      } else if (cfId == RocksDBColumnFamily::edge()->GetID()) {
         hash = RocksDBEdgeIndex::HashForKey(key);
       }
 
@@ -376,7 +447,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
       }
     }
+  }
 
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           const rocksdb::Slice& key) override {
+    LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "recovering DELETE " << RocksDBKey(key);
+    
+    handleDeleteCF(column_family_id, key);
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
@@ -388,6 +466,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
                                  const rocksdb::Slice& key) override {
+    LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "recovering SINGLE DELETE " << RocksDBKey(key);
+
+    handleDeleteCF(column_family_id, key);
+
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
@@ -397,20 +480,26 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
+  rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
+                                const rocksdb::Slice& begin_key,
+                                const rocksdb::Slice& end_key) override {
+    LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "recovering DELETE RANGE from " << RocksDBKey(begin_key)
+        << " to " << RocksDBKey(end_key);
+    // drop and truncate can use this, truncate is handled via a Log marker
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    for (auto helper : engine->recoveryHelpers()) {
+      helper->DeleteRangeCF(column_family_id, begin_key, end_key);
+    }
+
+    return rocksdb::Status(); // make WAL iterator happy
+  }
+
   void LogData(const rocksdb::Slice& blob) override {
     // a delete log message appears directly before a Delete
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch(type) {
-      case RocksDBLogType::CollectionTruncate: {
-        uint64_t objectId = RocksDBLogValue::objectId(blob);
-        auto const& it = deltas.find(objectId);
-        if (it != deltas.end()) {
-          it->second._removed = 0;
-          it->second._added = 0;
-        }
-        _lastRemovedDocRid = 0; // reset in any other case
-        break;
-      }
       case RocksDBLogType::DocumentRemoveV2: // remove within a trx
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
@@ -419,6 +508,25 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
+      case RocksDBLogType::CollectionTruncate: {
+        uint64_t objectId = RocksDBLogValue::objectId(blob);
+        Operations* ops = nullptr;
+        if (shouldHandleCollection(objectId, &ops)) {
+          TRI_ASSERT(ops != nullptr);
+          ops->lastSequenceNumber = currentSeqNum;
+          ops->removed = 0;
+          ops->added = 0;
+          ops->mustTruncate = true;
+          auto est = findEstimator(objectId);
+          if (est != nullptr && est->commitSeq() < currentSeqNum) {
+            // We track estimates for this index
+            est->bufferTruncate(currentSeqNum + 1);
+          }
+        }
+
+        _lastRemovedDocRid = 0; // reset in any other case
+        break;
+      }
       default:
         _lastRemovedDocRid = 0; // reset in any other case
         break;
@@ -473,17 +581,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         }
 
         iterator->Next();
-      }
-
-      if (rv.ok()) {
-        LOG_TOPIC(TRACE, Logger::ENGINES)
-            << "finished WAL scan with " << handler.deltas.size();
-        for (auto& pair : handler.deltas) {
-          engine->settingsManager()->updateCounter(pair.first, pair.second);
-          LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "WAL recovered " << pair.second.added() << " PUTs and "
-              << pair.second.removed() << " DELETEs for objectID " << pair.first;
-        }
       }
     }
 

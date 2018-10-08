@@ -131,12 +131,17 @@ public:
   /// @brief Create a VPackBuilder object with snapshot of current action registry
   VPackBuilder toVelocyPack() const;
 
+  /// @brief Fill the envelope with snapshot of current action registry
+  void toVelocyPack(VPackBuilder& envelope) const;
+
   /// @brief Returns json array of all MaintenanceActions within the deque
   Result toJson(VPackBuilder & builder);
 
   /// @brief Return pointer to next ready action, or nullptr
-  std::shared_ptr<maintenance::Action> findReadyAction();
-
+  std::shared_ptr<maintenance::Action> findReadyAction(
+    std::unordered_set<std::string> const& options =
+    std::unordered_set<std::string>());
+  
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
   uint64_t nextActionId() {return _nextActionId++;};
@@ -151,7 +156,7 @@ public:
    * @param desc Description of sought action
    */
   std::shared_ptr<maintenance::Action> findAction(
-    std::shared_ptr<maintenance::ActionDescription> const desc);
+    std::shared_ptr<maintenance::ActionDescription> const& desc);
 
   /**
    * @brief add index error to bucket
@@ -290,6 +295,28 @@ public:
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
+  /// @brief Lowest limit for worker threads
+  static uint32_t const minThreadLimit;
+
+  /// @brief Highest limit for worker threads
+  static uint32_t const maxThreadLimit;
+
+  /**
+   * @brief get volatile shard version
+   */
+  uint64_t shardVersion(std::string const& shardId) const;
+
+  /**
+   * @brief increment volatile local shard version
+   */
+  uint64_t incShardVersion(std::string const& shardId);
+
+  /**
+   * @brief clean up after shard has been dropped locally
+   * @param  shard  Shard name
+   */
+  void delShardVersion(std::string const& shardId);
+  
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -310,7 +337,6 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
- protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
@@ -375,6 +401,15 @@ protected:
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
+
+  /// @brief lock for shard version map
+  mutable arangodb::Mutex _versionLock;
+  /// @brief shards have versions in order to be able to distinguish between
+  /// independant actions
+  std::unordered_map<std::string, size_t> _shardVersion;
+
+  
+  
 };
 
 }

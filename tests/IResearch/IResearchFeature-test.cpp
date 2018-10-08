@@ -137,6 +137,8 @@ SECTION("IResearch_version") {
   CHECK(IResearch_version == arangodb::rest::Version::Values["iresearch-version"]);
 }
 
+// Temporarily surpress for MSVC
+#ifndef _MSC_VER
 SECTION("test_async") {
   // schedule task (null resource mutex)
   {
@@ -566,6 +568,7 @@ SECTION("test_async") {
     CHECK((std::chrono::milliseconds(100) < diff));
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests

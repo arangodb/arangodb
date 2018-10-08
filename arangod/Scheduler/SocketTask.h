@@ -34,11 +34,13 @@
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
 
+#include "GeneralServer/IoTask.h"
+
 namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
-class SocketTask : virtual public Task {
+class SocketTask : virtual public IoTask {
   friend class HttpCommTask;
 
   explicit SocketTask(SocketTask const&) = delete;
@@ -48,13 +50,17 @@ class SocketTask : virtual public Task {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(Scheduler*, std::unique_ptr<Socket>, ConnectionInfo&&,
+  SocketTask(GeneralServer &server, GeneralServer::IoContext &context,
+             std::unique_ptr<Socket>, ConnectionInfo&&,
              double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();
 
  public:
   bool start();
+  
+  // whether or not this task can mix sync and async I/O
+  virtual bool canUseMixedIO() const = 0;
 
  protected:
   // caller will hold the _lock
@@ -144,11 +150,10 @@ class SocketTask : virtual public Task {
   // method returns true. Used for VST upgrade
   bool abandon() { return !(_abandoned.exchange(true)); }
 
-  /// lease a string buffer from pool
+  // lease a string buffer from pool
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
 
- protected:
   bool processAll();
   void triggerProcessAll();
 

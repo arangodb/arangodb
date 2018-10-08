@@ -68,11 +68,9 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -86,11 +84,14 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
 
   VPackBuilder output;
-  Result res = methods::Indexes::ensureIndex(collection, builder.slice(),
-                                             create, output);
+  auto res = methods::Indexes::ensureIndex(
+    collection, builder.slice(), create, output
+  );
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());
   TRI_V8_RETURN(result);
 }
@@ -134,11 +135,9 @@ static void JS_DropIndexVocbaseCol(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -149,10 +148,12 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
 
-  Result res = methods::Indexes::drop(collection, builder.slice());
+  auto res = methods::Indexes::drop(collection, builder.slice());
+
   if (res.ok()) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -166,21 +167,27 @@ static void JS_GetIndexesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  bool withFigures = false;
-  if (args.Length() > 0) {
-    withFigures = TRI_ObjectToBoolean(args[0]);
+  auto flags = Index::makeFlags(Index::Serialize::Estimates);
+
+  if (args.Length() > 0 && TRI_ObjectToBoolean(args[0])) {
+    flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
+  }
+
+  bool withLinks = false;
+
+  if (args.Length() > 1) {
+    withLinks = TRI_ObjectToBoolean(args[1]);
   }
 
   VPackBuilder output;
-  Result res = methods::Indexes::getAll(collection, withFigures, output);
+  auto res = methods::Indexes::getAll(collection, flags, withLinks, output);
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -262,15 +269,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     propSlice,
     createWaitsForSyncReplication,
     enforceReplicationFactor,
-    [&isolate, &result](LogicalCollection& coll)->void {
-      if (ServerState::instance()->isCoordinator()) {
-        std::unique_ptr<LogicalCollection> cc = coll.clone();
-
-        result = WrapCollection(isolate, cc.get());
-        cc.release();
-      } else {
-        result = WrapCollection(isolate, &coll);
-      }
+    [&isolate, &result](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+      result = WrapCollection(isolate, coll);
     }
   );
 

@@ -20,7 +20,7 @@ opaque strings when they store or use it locally.
 Collection Name
 ---------------
 
-A collection name identifies a collection in a database. It is a string and is unique within the database. Unlike the collection identifier it is supplied by the creator of the collection. The collection name must consist of letters, digits, and the _ (underscore) and - (dash) characters only. Please refer to [NamingConventions](../DataModeling/NamingConventions/CollectionNames.md) for more information on valid collection names.
+A collection name identifies a collection in a database. It is a string and is unique within the database. Unlike the collection identifier it is supplied by the creator of the collection. The collection name must consist of letters, digits, and the _ (underscore) and - (dash) characters only. Please refer to [NamingConventions](../DataModeling/NamingConventions/CollectionAndViewNames.md) for more information on valid collection names.
 
 Database
 --------
@@ -222,7 +222,7 @@ renamed. Renaming a view will change the view name, but not the view identifier.
 The conceptual transformation function employed by a view type is implementation
 specific. The type is specified by the user when the view is created, and cannot
 be changed later. The following view types are currently supported:
-* [arangosearch](../Views/ArangoSearch/README.md)
+* [`arangosearch`](../Views/ArangoSearch/README.md)
 
 View Identifier
 ---------------
@@ -244,7 +244,7 @@ A view name identifies a view in a database. It is a string and is unique within
 the database. Unlike the view identifier it is supplied by the creator of the
 view. The view name must consist of letters, digits, and the _ (underscore)
 and - (dash) characters only. Please refer to
-[NamingConventions](../DataModeling/NamingConventions/CollectionNames.md) for
+[Naming Conventions](../DataModeling/NamingConventions/CollectionAndViewNames.md) for
 more information on valid view names, which follow the same guidelines as
 collection names.
 

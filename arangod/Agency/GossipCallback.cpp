@@ -32,14 +32,65 @@ GossipCallback::GossipCallback(Agent* agent, size_t version) :
   _agent(agent), _version(version) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
-  if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got result of gossip message, code: "
-      << res->result->getHttpReturnCode() << " body: "
-      << res->result->getBodyVelocyPack()->slice().toJson();
-    _agent->gossip(res->result->getBodyVelocyPack(), true, _version);
-  } else {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got error from gossip message, status:"
-      << res->status;
+  
+  std::string newLocation;
+  
+  if (res->status == CL_COMM_SENT) {
+    auto const& returnCode = res->result->getHttpReturnCode();
+    
+    switch (returnCode) {
+
+    case 200 : // Digest other configuration
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Got result of gossip message, code: " << returnCode 
+        << " body: " << res->result->getBodyVelocyPack()->slice().toJson();
+      _agent->gossip(res->result->getBodyVelocyPack(), true, _version);
+      break;
+      
+    case 307 : // Add new endpoint to gossip peers
+      bool found;
+      newLocation = res->result->getHeaderField("location", found);
+      
+      if (found) {
+
+        std::string ep;
+        if (newLocation.compare(0, 5, "https") == 0) {
+          newLocation = newLocation.replace(0, 5, "ssl");
+        } else if (newLocation.compare(0, 4, "http") == 0) {
+          newLocation = newLocation.replace(0, 4, "tcp");
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCY)
+            << "Invalid URL specified as gossip endpoint";
+          FATAL_ERROR_EXIT();
+        }
+        
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Got redirect to " << newLocation << ". Adding peer to gossip peers"; 
+        bool added = _agent->addGossipPeer(newLocation);
+        if (added) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Added " << newLocation << " to gossip peers";
+        } else {
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Endpoint " << newLocation << " already known";
+        }
+      } else {
+        LOG_TOPIC(ERR, Logger::AGENCY) << "Redirect lacks 'Location' header";
+      }
+      break;
+      
+    default:
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Got error " << returnCode  << " from gossip endpoint";
+      break;
+      
+    }
+    
   }
+  
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Got error from gossip message, status:" << res->status;
+  
   return true;
+  
 }

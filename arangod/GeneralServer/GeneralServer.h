@@ -27,32 +27,126 @@
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Basics/Common.h"
-
-#include "GeneralServer/HttpCommTask.h"
-#include "Scheduler/ListenTask.h"
+#include "Basics/asio_ns.h"
+#include "Basics/Thread.h"
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
 class EndpointList;
-class ListenTask;
 
 namespace rest {
+
+
+
 class GeneralServer {
+
   GeneralServer(GeneralServer const&) = delete;
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
  public:
-  GeneralServer() = default;
+  GeneralServer(uint64_t numIoThreads);
 
  public:
   void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
 
+  class IoContext;
+
+private:
+  class IoThread final : public Thread {
+  public:
+    IoThread(IoContext &iocontext);
+    ~IoThread();
+    void run();
+  private:
+    IoContext &_iocontext;
+  };
+
+public:
+  class IoContext {
+    friend class IoThread;
+    friend class GeneralServer;
+  public:
+    std::atomic<uint64_t> _clients;
+  private:
+    IoThread _thread;
+    asio_ns::io_context _asioIoContext;
+    asio_ns::io_context::work _asioWork;
+    std::atomic<bool> _stopped;
+
+  public:
+    IoContext();
+    ~IoContext();
+
+    template <typename T>
+    asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
+      return new asio_ns::deadline_timer(_asioIoContext, timeout);
+    }
+
+    asio_ns::steady_timer* newSteadyTimer() {
+      return new asio_ns::steady_timer(_asioIoContext);
+    }
+
+    asio_ns::io_context::strand* newStrand() {
+      return new asio_ns::io_context::strand(_asioIoContext);
+    }
+
+    asio_ns::ip::tcp::acceptor* newAcceptor() {
+      return new asio_ns::ip::tcp::acceptor(_asioIoContext);
+    }
+
+  #ifndef _WIN32
+    asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
+      return new asio_ns::local::stream_protocol::acceptor(_asioIoContext);
+    }
+  #endif
+
+    asio_ns::ip::tcp::socket* newSocket() {
+      return new asio_ns::ip::tcp::socket(_asioIoContext);
+    }
+
+  #ifndef _WIN32
+    asio_ns::local::stream_protocol::socket* newDomainSocket() {
+      return new asio_ns::local::stream_protocol::socket(_asioIoContext);
+    }
+  #endif
+
+    asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
+        asio_ns::ssl::context& sslContext) {
+      return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(_asioIoContext,
+                                                                sslContext);
+    }
+
+    asio_ns::ip::tcp::resolver* newResolver() {
+      return new asio_ns::ip::tcp::resolver(_asioIoContext);
+    }
+
+
+    void post(std::function<void()> && handler) {
+      _asioIoContext.post(std::move(handler));
+    }
+
+    void start();
+    void stop();
+
+    bool runningInThisThread() { return _thread.runningInThisThread(); }
+  private:
+
+  };
+
+  GeneralServer::IoContext &selectIoContext();
+
  protected:
-  bool openEndpoint(Endpoint* endpoint);
+  bool openEndpoint(IoContext &ioContext, Endpoint* endpoint);
 
  private:
-  std::vector<std::unique_ptr<ListenTask>> _listenTasks;
+
+  friend class IoThread;
+  friend class IoContext;
+
+  uint64_t _numIoThreads;
+  std::vector<IoContext> _contexts;
   EndpointList const* _endpointList = nullptr;
 };
 }
