@@ -121,8 +121,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     TRI_ASSERT(_cacheTx == nullptr);
 
     // start cache transaction
-    _cacheTx =
-        CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
+    if (CacheManagerFeature::MANAGER != nullptr) {
+      _cacheTx =
+          CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
+    }
 
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
@@ -232,6 +234,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
   _rocksTransaction = nullptr;
   if (_cacheTx != nullptr) {
     // note: endTransaction() will delete _cacheTrx!
+    TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
     CacheManagerFeature::MANAGER->endTransaction(_cacheTx);
     _cacheTx = nullptr;
   }

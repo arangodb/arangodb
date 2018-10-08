@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
 * removed bundled Valgrind headers, removed JavaScript variable `valgrind`
   from the `internal` module
 
@@ -11,6 +14,11 @@ devel
 
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+
+* disable in-memory cache for edge and traversal data on agency nodes, as it
+  is not needed there
+
+* include forward-ported diagnostic options for debugging LDAP connections
 
 * support installation of ArangoDB on Windows into directories with multibyte
   character filenames on Windows platforms that used a non-UTF8-codepage

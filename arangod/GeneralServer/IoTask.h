@@ -22,54 +22,43 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_LISTEN_TASK_H
-#define ARANGOD_SCHEDULER_LISTEN_TASK_H 1
+#ifndef ARANGOD_SCHEDULER_IO_TASK_H
+#define ARANGOD_SCHEDULER_IO_TASK_H 1
 
+#include "Basics/Common.h"
 #include "GeneralServer/GeneralServer.h"
-#include "GeneralServer/IoTask.h"
-
-#include "Scheduler/Task.h"
-
-#include "Basics/Mutex.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Endpoint/Endpoint.h"
-#include "Scheduler/Acceptor.h"
-#include "Scheduler/Socket.h"
-
-
-
 
 namespace arangodb {
-
-class ListenTask : virtual public rest::IoTask {
- public:
-  static size_t const MAX_ACCEPT_ERRORS = 128;
-
- public:
-  ListenTask(rest::GeneralServer &server, rest::GeneralServer::IoContext&, Endpoint*);
-  ~ListenTask();
-
- public:
-  virtual void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&) = 0;
-
- public:
-  Endpoint* endpoint() const { return _endpoint; }
-
-  bool start();
-  void stop();
-
- private:
-  void accept();
-
-  Endpoint* _endpoint;
-  size_t _acceptFailures = 0;
-
-  bool _bound;
-
-  std::unique_ptr<Acceptor> _acceptor;
-  std::function<void(asio_ns::error_code const&)> _handler;
-};
+namespace velocypack {
+class Builder;
 }
 
+namespace rest {
+
+class IoTask : public std::enable_shared_from_this<IoTask> {
+  IoTask(IoTask const&) = delete;
+  IoTask& operator=(IoTask const&) = delete;
+
+ public:
+  IoTask(GeneralServer &server, GeneralServer::IoContext&, std::string const& name);
+  virtual ~IoTask() = default;
+
+ public:
+  std::string const& name() const { return _name; }
+
+  // get a VelocyPack representation of the IoTask for reporting
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
+
+ protected:
+  GeneralServer::IoContext &_context;
+  GeneralServer &_server;
+  uint64_t const _taskId;
+
+ private:
+  std::string const _name;
+};
+}
+}
 
 #endif

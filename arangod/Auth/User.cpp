@@ -328,6 +328,9 @@ auth::User::User(std::string&& key, TRI_voc_rid_t rid)
 
 // ======================= Methods ==========================
 
+void auth::User::touch() {
+  _loaded = TRI_microtime();}
+
 bool auth::User::checkPassword(std::string const& password) const {
   std::string hash;
   int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);

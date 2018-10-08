@@ -52,7 +52,9 @@ void AcceptorUnixDomain::open() {
 
 void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
   TRI_ASSERT(!_peer);
-  _peer.reset(new SocketUnixDomain(_scheduler));
+  auto &context = _server.selectIoContext();
+
+  _peer.reset(new SocketUnixDomain(context));
   auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
   if (peer == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
