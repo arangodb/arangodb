@@ -116,6 +116,7 @@ RocksDBCollection::RocksDBCollection(
         "volatile collections are unsupported in the RocksDB engine");
   }
 
+  TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
   rocksutils::globalRocksEngine()->addCollectionMapping(
     _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id()
   );
@@ -273,14 +274,12 @@ size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
-
-  // set the initial number of documents
   RocksDBEngine* engine =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   TRI_ASSERT(engine != nullptr);
-  auto counterValue = engine->settingsManager()->loadCounter(_objectId);
-  _numberDocuments = counterValue.added() - counterValue.removed();
-  _revisionId = counterValue.revisionId();
+  if (!engine->inRecovery()) {
+    loadInitialNumberDocuments();
+  }
 }
 
 void RocksDBCollection::prepareIndexes(
@@ -1665,16 +1664,31 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   return res;
 }
 
-void RocksDBCollection::setRevision(TRI_voc_rid_t revisionId) {
-  _revisionId = revisionId;
-}
-
-void RocksDBCollection::adjustNumberDocuments(int64_t adjustment) {
+/// may never be called unless recovery is finished
+void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
+                                              int64_t adjustment) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  RocksDBEngine* engine =
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  TRI_ASSERT(engine != nullptr);
+  TRI_ASSERT(!engine->inRecovery());
+#endif
+  if (revId != 0) {
+    _revisionId = revId;
+  }
   if (adjustment < 0) {
     _numberDocuments -= static_cast<uint64_t>(-adjustment);
   } else if (adjustment > 0) {
     _numberDocuments += static_cast<uint64_t>(adjustment);
   }
+}
+
+/// load the number of docs from storage, use careful
+void RocksDBCollection::loadInitialNumberDocuments() {
+  auto* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto counterValue = engine->settingsManager()->loadCounter(_objectId);
+  _numberDocuments = counterValue.added() - counterValue.removed();
+  _revisionId = counterValue.revisionId();
 }
 
 /// @brief write locks a collection, with a timeout
