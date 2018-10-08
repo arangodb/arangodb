@@ -37,7 +37,7 @@ public:
   }
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   typedef float_t score_t;
 

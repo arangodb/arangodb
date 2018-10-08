@@ -105,6 +105,7 @@ const std::string SCORER = "scorer";
 const std::string SCORER_ARG = "scorer-arg";
 const std::string SCORER_ARG_FMT = "scorer-arg-format";
 const std::string DIR_TYPE = "dir-type";
+const std::string FORMAT = "format";
 
 static bool v = false;
 
@@ -825,6 +826,7 @@ static int search(const std::string& path, std::istream& in, std::ostream& out,
 int search(
     const std::string& path,
     const std::string& dir_type,
+    const std::string& format,
     std::istream& in,
     std::ostream& out,
     size_t tasks_max,
@@ -869,6 +871,13 @@ int search(
     return 1;
   }
 
+  auto codec = irs::formats::get(format);
+
+  if (!codec) {
+    std::cerr << "Unable to find format of type '" << format << "'" << std::endl;
+    return 1;
+  }
+
   repeat = (std::max)(size_t(1), repeat);
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
@@ -893,7 +902,7 @@ int search(
 
   {
     SCOPED_TIMER("Index read time");
-    reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
+    reader = irs::directory_reader::open(*dir, codec);
   }
 
   {
@@ -1050,20 +1059,19 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score* score = docs->attributes().get<irs::score>().get();            
+            const irs::score& score = irs::score::extract(docs->attributes());
 
 #ifdef IRESEARCH_COMPLEX_SCORING
             // ensure we avoid COW for pre c++11 std::basic_string
             const irs::bytes_ref raw_score_value = score->value();                        
 #endif
-            const auto& score_value = score
-              ? order.get<float>(score->c_str(), 0)
+            const auto& score_value = &score != &irs::score::no_score()
+              ? order.get<float>(score.c_str(), 0)
               : EMPTY_SCORE;
             
             while (docs->next()) {
               ++doc_count;
-              assert(score); // score must exist for any ordered doc_iterator::next() == true
-              score->evaluate();
+              score.evaluate();
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
@@ -1140,6 +1148,7 @@ int search(const cmdline::parser& args) {
   const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::NIL;
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
+  const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
             << "Task repeat count="                          << repeat             << '\n'
@@ -1168,10 +1177,10 @@ int search(const cmdline::parser& args) {
       return 1;
     }
 
-    return search(path, dir_type, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
+    return search(path, dir_type, format, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
   }
 
-  return search(path, dir_type, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
+  return search(path, dir_type, format, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
 }
 
 int search(int argc, char* argv[]) {
@@ -1180,6 +1189,7 @@ int search(int argc, char* argv[]) {
   cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
   cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
+  cmdsearch.add(FORMAT, 0, "Format (1_0|1_0-optimized)", false, std::string("1_0"));
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
   cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));

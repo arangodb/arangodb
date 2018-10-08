@@ -32,9 +32,51 @@
 #include <math.h> //required for float_t
 #include <string> //need to include this really early...
 
-//////////////////////////////////////////////////////////
+#if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
+  // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
+  #error "GCC 8.0 isn't officially supported (https://gcc.gnu.org/releases.html)"
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// C++ standard
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef __cplusplus
+  #error C++ is required
+#endif
+
+#define IRESEARCH_CXX_98 199711L // c++03/c++98
+#define IRESEARCH_CXX_11 201103L // c++11
+#define IRESEARCH_CXX_14 201402L // c++14
+#define IRESEARCH_CXX_17 201703L // c++17
+
+#if defined(_MSC_VER)
+  // MSVC doesn't honor __cplusplus macro,
+  // it always equals to IRESEARCH_CXX_98
+  // therefore we use _MSC_VER
+  #if _MSC_VER < 1800 // before MSVC2013
+    #error "at least C++11 is required"
+  #elif _MSC_VER >= 1800 && _MSC_VER < 1910 // MSVC2013-2015
+    // not MSVC2015 nor MSVC2017 are not c++14 compatible
+    #define IRESEARCH_CXX IRESEARCH_CXX_11
+  #elif _MSC_VER >= 1910 // MSVC2017 and later
+    #define IRESEARCH_CXX IRESEARCH_CXX_14
+  #endif
+#else // GCC/Clang
+  #if __cplusplus < IRESEARCH_CXX_11
+    #error "at least C++11 is required"
+  #elif __cplusplus >= IRESEARCH_CXX_11 && __cplusplus < IRESEARCH_CXX_14
+    #define IRESEARCH_CXX IRESEARCH_CXX_11
+  #elif __cplusplus >= IRESEARCH_CXX_14 && __cplusplus < IRESEARCH_CXX_17
+    #define IRESEARCH_CXX IRESEARCH_CXX_14
+  #elif __cplusplus >= IRESEARCH_CXX_17
+    #define IRESEARCH_CXX IRESEARCH_CXX_17
+  #endif
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// Export/Import definitions
-//////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 // Generic helper definitions for shared library support
 #if defined _MSC_VER || defined __CYGWIN__
@@ -44,19 +86,26 @@
   #define IRESEARCH_HELPER_TEMPLATE_IMPORT 
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
-#if _MSC_VER < 1900 // prior the vc14    
-  #define CONSTEXPR
-  #define NOEXCEPT throw()
-#else
-  #define CONSTEXPR constexpr
-  #define NOEXCEPT noexcept 
-#endif
+  #if _MSC_VER < 1900 // before msvc2015
+    #define CONSTEXPR
+    #define NOEXCEPT throw()
+    #define ALIGNOF(v) __alignof(v)
+    #define ALIGNAS(v) __declspec(align(v))
+  #else
+    #define CONSTEXPR constexpr
+    #define NOEXCEPT noexcept
+    #define ALIGNOF(v) alignof(v)
+    #define ALIGNAS(v) alignas(v)
 
-  #define ALIGNOF(v) __alignof(v)
+    // MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
+    // FIXME TODO find a workaround or do not use alignas(...) and remove definition from CMakeLists.txt
+    static_assert(_MSC_VER <= 1900 || _MSC_VER >= 1915, "_MSC_VER > 1900 && _MSC_VER < 1915");
+  #endif
+
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)
   #define RESTRICT __restrict 
-  #define ALIGNED_VALUE(_value, _type) union { _value; _type ___align; }
+  #define IRESEARCH_IGNORE_UNUSED /* unused */
 #else
   #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
@@ -67,17 +116,25 @@
     #define IRESEARCH_HELPER_DLL_IMPORT
     #define IRESEARCH_HELPER_DLL_EXPORT
     #define IRESEARCH_HELPER_DLL_LOCAL
-    #define CONSTEXPR const
+    #define CONSTEXPR
   #endif
   #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT 
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT 
 
   #define NOEXCEPT noexcept
   #define ALIGNOF(v) alignof(v)
+  #define ALIGNAS(v) alignas(v)
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
-  #define ALIGNED_VALUE(_value, _type) _value alignas( _type );
+  #define IRESEARCH_IGNORE_UNUSED __attribute__ ((unused))
+#endif
+
+#if (defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ < 9)
+  // GCC4.8 doesn't have std::max_align_t
+  #define MAX_ALIGN_T ::max_align_t
+#else
+  #define MAX_ALIGN_T std::max_align_t
 #endif
 
 // GCC before v5 does not implicitly call the move constructor on local values
@@ -97,17 +154,19 @@
   #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
-// hook for MSVC2017.3, MSVC2017.4 MSVC2017.5 optimized code
+// hook for MSVC2017.3-8 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 #if defined(_MSC_VER) \
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
         || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
-        || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)))
-  #define MSVC2017_345_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+        || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) \
+        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
+        || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)))
+  #define MSVC2017_34567_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_345_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_34567_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
@@ -138,9 +197,14 @@
   #define MSVC2015_OPTIMIZED_ONLY(...)
 #endif
 
-// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5)
+// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6 || 2017.7 || 2017.8)
 #if defined(_MSC_VER) \
-    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912)
+    && (_MSC_VER == 1910 \
+        || _MSC_VER == 1911 \
+        || _MSC_VER == 1912 \
+        || _MSC_VER == 1913 \
+        || _MSC_VER == 1914 \
+        || _MSC_VER == 1915)
   #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2017_ONLY(...)
@@ -242,17 +306,33 @@
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
 #endif
 
-//////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// SSE compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __SSE2__
+#define IRESEARCH_SSE2
+#endif
+
+#ifdef __SSE4_1__
+#define IRESEARCH_SSE4_1
+#endif
+
+#ifdef __SSE4_2__
+#define IRESEARCH_SSE4_2
+#endif
+
+#ifdef __AVX__
+#define IRESEARCH_AVX
+#endif
+
+#ifdef __AVX2__
+#define IRESEARCH_AVX2
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 
 #define UNUSED(par) (void)(par)
-
-#ifndef AGB_IGNORE_UNUSED
-#if defined(__GNUC__)
-#define ADB_IGNORE_UNUSED __attribute__((unused))
-#else
-#define ADB_IGNORE_UNUSED /* unused */
-#endif
-#endif
 
 #define NS_BEGIN(ns) namespace ns {
 #define NS_LOCAL namespace {

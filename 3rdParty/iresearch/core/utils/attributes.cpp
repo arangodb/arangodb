@@ -49,8 +49,16 @@ NS_ROOT
 }
 
 /*static*/ const attribute::type_id* attribute::type_id::get(
-    const string_ref& name) {
-  return attribute_register::instance().get(name);
+    const string_ref& name
+) NOEXCEPT {
+  try {
+    return attribute_register::instance().get(name);
+  } catch (...) {
+    IR_FRMT_ERROR("Caught exception while getting an attribute instance");
+    IR_LOG_EXCEPTION();
+  }
+
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------
