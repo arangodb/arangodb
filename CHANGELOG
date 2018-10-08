@@ -11,6 +11,9 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 
   "missing variable #3 (a) for node #7 (EnumerateViewNode) while planning registers"
 
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
 * support installation of ArangoDB on Windows into directories with multibyte
   character filenames on Windows platforms that used a non-UTF8-codepage
 
