@@ -88,6 +88,8 @@ let optionsDocumentation = [
   '   - `rr`: if set to true arangod instances are run with rr',
   '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
   '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
+  '                        or a coma separated list for multiple exceptions; ',
+  '                        filtering by asterisk is possible',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
   '',

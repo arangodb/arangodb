@@ -374,6 +374,42 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
   return args;
 }
 
+
+function runProcdump (options, instanceInfo, rootDir, pid) {
+  let procdumpArgs = [ ];
+  if (options.exceptionFilter != null) {
+    procdumpArgs = [
+      '-accepteula',
+      '-64',
+      '-e',
+      '1'
+    ];
+    let filters = options.exceptionFilter.split(',');
+    for (let exceptionFilter in filters) {
+      procdumpArgs.push('-f');
+      procdumpArgs.push(exceptionFilter);
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(fs.join(rootDir, 'core.dmp'));
+  } else {
+    procdumpArgs = [
+      '-accepteula',
+      '-e',
+      '-ma',
+      pid,
+      fs.join(rootDir, 'core.dmp')
+    ];
+  }
+  try {
+    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+  } catch (x) {
+    print('failed to start procdump - is it installed?');
+    // throw x;
+  }
+
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -433,34 +469,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     let res = executeExternal(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
-    let procdumpArgs = [ ];
-    if (options.exceptionFilter != null) {
-      procdumpArgs = [
-        '-accepteula',
-        '-64',
-        '-e',
-        '1',
-        '-f',
-        options.exceptionFilter,
-        '-ma',
-        res.pid,
-        fs.join(rootDir, 'core.dmp')
-      ];
-    } else {
-      procdumpArgs = [
-        '-accepteula',
-        '-e',
-        '-ma',
-        res.pid,
-        fs.join(rootDir, 'core.dmp')
-      ];
-    }
-    try {
-      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
-    } catch (x) {
-      print('failed to start procdump - is it installed?');
-      // throw x;
-    }
+    runProcdump(options, instanceInfo, rootDir, res.pid);
     Object.assign(instanceInfo.exitStatus, 
                   statusExternal(res.pid, true));
   } else {
@@ -1243,34 +1252,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   instanceInfo.role = role;
 
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    let procdumpArgs = [ ];
-    if (options.exceptionFilter != null) {
-      procdumpArgs = [
-        '-accepteula',
-        '-64',
-        '-e',
-        '1',
-        '-f',
-        options.exceptionFilter,
-        '-ma',
-        instanceInfo.pid,
-        fs.join(rootDir, 'core.dmp')
-      ];
-    } else {
-      procdumpArgs = [
-        '-accepteula',
-        '-e',
-        '-ma',
-        instanceInfo.pid,
-        fs.join(rootDir, 'core.dmp')
-      ];
-    }
-    try {
-      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
-    } catch (x) {
-      print('failed to start procdump - is it installed?');
-      // throw x;
-    }
+    runProcdump(options, instanceInfo, rootDir, instanceInfo.pid);
   }
   return instanceInfo;
 }
