@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,30 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Dr. Frank Celler
+/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H
-#define ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H 1
+#include "IoTask.h"
 
-#include "Scheduler/Acceptor.h"
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-class AcceptorUnixDomain final : public Acceptor {
- public:
-  AcceptorUnixDomain(rest::GeneralServer &server,
-                     rest::GeneralServer::IoContext &context, Endpoint* endpoint)
-      : Acceptor(server, context, endpoint),
-        _acceptor(context.newDomainAcceptor()) {}
+using namespace arangodb::rest;
 
- public:
-  void open() override;
-  void close() override;
-  void asyncAccept(AcceptHandler const& handler) override;
-
- private:
-  std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
-};
+namespace {
+std::atomic_uint_fast64_t NEXT_IO_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
+                                                             100000.0));
 }
 
-#endif
+IoTask::IoTask(GeneralServer &server, GeneralServer::IoContext &context,
+               std::string const& name)
+    : _context(context),
+      _server(server),
+      _taskId(NEXT_IO_TASK_ID++),
+      _name(name) {}
