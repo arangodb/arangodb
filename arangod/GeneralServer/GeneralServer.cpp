@@ -125,7 +125,6 @@ GeneralServer::IoContext::IoContext() :
   _asioWork(_asioIoContext),
   _stopped(false)
 {
-  LOG_TOPIC(ERR, Logger::FIXME) << "Starting IO Thread";
   _thread.start();
 }
 
@@ -134,15 +133,7 @@ GeneralServer::IoContext::~IoContext() {
 }
 
 void GeneralServer::IoContext::stop() {
-  bool stopped = false;
-
-  if (_stopped.compare_exchange_weak(stopped, true)){
-    LOG_TOPIC(ERR, Logger::FIXME) << "Stopping IO Thread";
-    _asioIoContext.stop();
-  } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Already stopped. asio: " << _asioIoContext.stopped();
-  }
-
+  _asioIoContext.stop();
 }
 
 
