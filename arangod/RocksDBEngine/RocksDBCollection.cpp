@@ -108,7 +108,8 @@ RocksDBCollection::RocksDBCollection(
       _cachePresent(false),
       _cacheEnabled(!collection.system() &&
                     basics::VelocyPackHelper::readBooleanValue(
-                        info, "cacheEnabled", false)) {
+                        info, "cacheEnabled", false) && 
+                    CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -139,7 +140,8 @@ RocksDBCollection::RocksDBCollection(
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(
-          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
+          static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
+          CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(
     _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id()
@@ -172,7 +174,8 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice,
   auto isSys = _logicalCollection.system();
 
   _cacheEnabled = !isSys && basics::VelocyPackHelper::readBooleanValue(
-                                slice, "cacheEnabled", _cacheEnabled);
+                                slice, "cacheEnabled", _cacheEnabled) &&
+                  CacheManagerFeature::MANAGER != nullptr;
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
   if (_cacheEnabled) {
