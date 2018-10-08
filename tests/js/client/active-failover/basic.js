@@ -5,8 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2014 triagens GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany 
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -259,13 +258,11 @@ function ActiveFailoverSuite() {
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
-      print("</setUp>");
     },
 
     tearDown: function () {
       //db._collection(cname).drop();
       //serverTeardown();
-      print("<tearDown>");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);
@@ -284,8 +281,6 @@ function ActiveFailoverSuite() {
       let endpoints = getClusterEndpoints();
       assertTrue(endpoints.length === servers.length);
       assertTrue(endpoints[0] === currentLead);
-
-      print("</tearDown>");
     },
 
     // Basic test if followers get in sync
