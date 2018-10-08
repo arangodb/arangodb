@@ -216,6 +216,11 @@
 
     prepDeleteIndex: function (e) {
       var self = this;
+
+      if ($('#indexDeleteModal').length) {
+        return;
+      }
+
       this.lastTarget = e;
 
       this.lastId = $(this.lastTarget.currentTarget).parent().parent().first().children().first().text();
