@@ -242,12 +242,6 @@ int Communicator::work_once() {
 
       handleResult(handle, msg->data.result);
     }
-#if 0
-    /// still testing this
-    if (0 == (msgsLeft % 10)) {
-      curl_multi_perform(_curl, &stillRunning);
-    }
-#endif
   }
   return stillRunning;
 }
