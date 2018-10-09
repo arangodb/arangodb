@@ -650,7 +650,7 @@ class IResearchView::ViewStateHelper {
       #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         dynamic_cast<IResearchView::ViewStateWrite&>(*prev).reset();
       #else
-        return static_cast<IResearchView::ViewStateWrite&>(*prev).reset();
+        static_cast<IResearchView::ViewStateWrite&>(*prev).reset();
       #endif
     }
 
