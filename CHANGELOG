@@ -1,5 +1,6 @@
 v3.3.18 (XXXX-XX-XX)
---------------------
+
+* improved logging in case of replication errors
 
 * increased default timeouts in replication
 
