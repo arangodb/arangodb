@@ -136,6 +136,12 @@ lastDocuBlock = None
 currentExample = 0
 
 ################################################################################
+### @brief index of hint block we're reading
+################################################################################
+
+currentHint = 0
+
+################################################################################
 ### @brief the current returncode we're working on
 ################################################################################
 
@@ -536,6 +542,7 @@ def restheader(cargo, r=Regexen()):
 
     currentReturnCode = 0
     currentExample = 0
+    currentHint = 0
     restReplyBodyParam = None
     restBodyParam = None
 
@@ -573,6 +580,7 @@ def restheader(cargo, r=Regexen()):
 
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
+        'x-hints': [],
         'x-examples': [],
         'tags': [currentTag],
         'summary': summary.strip(),
@@ -905,16 +913,17 @@ def restdescription(cargo, r=Regexen()):
 
 def hint(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    swagger['paths'][httpPath][method]['x-hint'] = '\n\n'
+    global currentHint
+    operation['x-hints'].append('\n\n')
 
-    ret = generic_handler_desc(cargo, r, "hint", None,
-                               swagger['paths'][httpPath][method],
-                               'x-hint')
+    ret = generic_handler_desc(cargo, r, "hints", None, operation('x-hints'), currentHint)
 
-    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hint']):
+    if r.TRIPLENEWLINEATSTART.match(operation['x-hints']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @HINT in file %s' % (fp.name)
         exit(1)
+
+    currentHint += 1
 
     return ret
 
@@ -1447,13 +1456,13 @@ for route in swagger['paths'].keys():
             #print thisVerb['description']
 
         # Replace hint box tags with something that works in Swagger UI
-        if 'x-hint' in thisVerb and len(thisVerb['x-hint']) > 0:
-            for nHint in range(0, len(thisVerb['x-hint'])):
+        if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
+            for nHint in range(0, len(thisVerb['x-hints'])):
                 tmp = re.sub("{% hint '([^']+?)' %}(?:\r\n|\r|\n)?",
                             lambda match: "\n**{}:**  ".format(match.group(1).title()),
-                            thisVerb['x-hint'][nHint])
+                            thisVerb['x-hints'][nHint])
                 tmp = re.sub('{%[^%]*?%}', '', tmp)
-                thisVerb['x-hint'][nHint] = tmp
+                thisVerb['x-hints'][nHint] = tmp
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
