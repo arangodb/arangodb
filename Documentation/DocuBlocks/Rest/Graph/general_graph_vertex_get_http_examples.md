@@ -1,29 +1,37 @@
-
 @startDocuBlock general_graph_vertex_get_http_examples
 @brief fetches an existing vertex
 
-@RESTHEADER{GET /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Get a vertex}
+@RESTHEADER{GET /_api/gharial/{graph}/vertex/{collection}/{vertex}, Get a vertex}
 
 @RESTDESCRIPTION
 Gets a vertex from the given collection.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name,string,required}
+@RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name,string,required} 
+@RESTURLPARAM{collection,string,required} 
 The name of the vertex collection the vertex belongs to.
 
-@RESTURLPARAM{vertex-key,string,required} 
+@RESTURLPARAM{vertex,string,required} 
 The *_key* attribute of the vertex.
+
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{rev,string,optional}
+Must contain a revision 
 
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{if-match,string,optional}
 If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned,
 if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
-you can supply the Etag in an attribute rev in the URL.
+you can supply the Etag in an query parameter *rev*.
+
+@RESTHEADERPARAM{if-none-match,string,optional}
+If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned,
+only if it has a different revision as the given Etag. Otherwise a HTTP 304 is returned. 
 
 @RESTRETURNCODES
 
@@ -51,4 +59,3 @@ Returned if if-match header is given, but the documents revision is different.
   examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
