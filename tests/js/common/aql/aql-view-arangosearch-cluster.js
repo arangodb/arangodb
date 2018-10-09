@@ -39,6 +39,8 @@ var ERRORS = require("@arangodb").errors;
 function IResearchAqlTestSuite(args) {
   var c;
   var v;
+  var vg;
+  var meta;
 
   console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -50,12 +52,9 @@ function IResearchAqlTestSuite(args) {
       db._drop("AnotherUnitTestsCollection");
       var ac = db._create("AnotherUnitTestsCollection", args);
 
-      db._drop("UnitTestsGraph");
-      var g = db._createEdgeCollection("UnitTestsGraph", args);
-
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = {
+      meta = {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
@@ -67,6 +66,26 @@ function IResearchAqlTestSuite(args) {
         }
       };
       v.properties(meta);
+
+      db._drop("UnitTestsGraphCollection");
+      cg = db._create("UnitTestsGraphCollection", args);
+
+      vg = db._createView("UnitTestsGraphView", "arangosearch", {});
+      meta = {
+        links: { 
+          "UnitTestsGraphCollection": { 
+            includeAllFields: true,
+            storeValues: "id",
+            fields: {
+              text: { analyzers: [ "text_en" ] }
+            }
+          }
+        }
+      };
+      vg.properties(meta);
+
+      db._drop("UnitTestsGraph");
+      var g = db._createEdgeCollection("UnitTestsGraph", args);
 
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
@@ -88,18 +107,27 @@ function IResearchAqlTestSuite(args) {
       c.save({ name: "bool", anotherBoolField: true });
       c.save({ _key: "foo", xyz: 1 });
 
-      c.save({ _key: "begin", vName: "vBegin" });
-      c.save({ _key: "end", vName: "vEnd" });
-      g.save({ _from: "UnitTestsCollection/begin", _to: "UnitTestsCollection/end" });
+      cg.save({ _key: "begin", vName: "vBegin" });
+      cg.save({ _key: "intermediate", vName: "vIntermediate" });
+      cg.save({ _key: "end", vName: "vEnd" });
+
+      g.save({ _from: "UnitTestsGraphCollection/begin", _to: "UnitTestsGraphCollection/intermediate" });
+      g.save({ _from: "UnitTestsGraphCollection/intermediate", _to: "UnitTestsGraphCollection/end" });
     },
 
     tearDown : function () {
-      var meta = { links : { "UnitTestsCollection": null } };
+      meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
+
+      meta = { links : { "UnitTestsGraphCollection": null } };
+      vg.properties(meta);
+      vg.drop();
+
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
       db._drop("UnitTestsGraph");
+      db._drop("UnitTestsGraphCollection");
     },
     
     testViewInFunctionCall : function () {
@@ -457,43 +485,28 @@ function IResearchAqlTestSuite(args) {
     },
 
     testWithKeywordForViewInGraph : function() {
-      var result1 = db._query(
-        "WITH UnitTestsCollection " + 
-        "FOR doc IN UnitTestsView " +
+      var results = [];
+
+      results[0] = db._query(
+        "WITH UnitTestsGraphCollection " + 
+        "FOR doc IN UnitTestsGraphView " +
         "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
-        "FOR v IN OUTBOUND doc UnitTestsGraph " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
         "RETURN v").toArray();
 
-      assertEqual(result1.length, 1);
-      assertEqual(result1[0].vName, "vEnd");
-
-      var result2 = db._query(
-        "WITH UnitTestsView " +
-        "FOR doc IN UnitTestsView " +
+      results[1] = db._query(
+        "WITH UnitTestsGraphView " +
+        "FOR doc IN UnitTestsGraphView " +
         "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
-        "FOR v IN OUTBOUND doc UnitTestsGraph " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
         "RETURN v").toArray();
 
-      assertEqual(result1.length, result2.length);
-      assertEqual(result1[0].vName, result2[0].vName);
-    },
-
-    testViewInInnerLoopOptimized : function() {
-      var expected = [];
-      expected.push({ a: "foo", b: "bar", c: 0 });
-      expected.push({ a: "foo", b: "baz", c: 0 });
-
-      var result = db._query("LET outer = (FOR out1 IN UnitTestsCollection FILTER out1.a == 'foo' && out1.c == 0 RETURN out1) FOR a IN outer FOR d IN UnitTestsView SEARCH d.a == a.a && d.c == a.c && d.b == a.b OPTIONS {waitForSync: true} SORT d.b ASC RETURN d").toArray();
-
-    assertEqual(result.length, expected.length);
-      var i = 0;
-      result.forEach(function(res) {
-        var doc = expected[i++];
-        assertEqual(doc.a, res.a);
-        assertEqual(doc.b, res.b);
-        assertEqual(doc.c, res.c);
+      results.forEach(function(res) {
+        assertTrue(res.length, 1);
+        assertEqual(res[0].vName, "vEnd");
       });
     },
+
   };
 }
 
