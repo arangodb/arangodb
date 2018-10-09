@@ -300,7 +300,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 
-  print('Shutting down...');
+  print(Date() + ' Shutting down...');
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
                                                                serverOptions,

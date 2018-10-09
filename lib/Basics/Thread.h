@@ -96,7 +96,7 @@ class Thread {
   /// @brief flags the thread as stopping
   virtual void beginShutdown();
 
-  bool runningInThisThread() {
+  bool runningInThisThread() const {
     return currentThreadNumber() == this->threadNumber();
   }
 

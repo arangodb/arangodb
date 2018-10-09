@@ -36,15 +36,13 @@ class EndpointList;
 
 namespace rest {
 
-
-
 class GeneralServer {
 
   GeneralServer(GeneralServer const&) = delete;
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
  public:
-  GeneralServer(uint64_t numIoThreads);
+  explicit GeneralServer(uint64_t numIoThreads);
 
  public:
   void setEndpointList(EndpointList const* list);
@@ -56,9 +54,9 @@ class GeneralServer {
 private:
   class IoThread final : public Thread {
   public:
-    IoThread(IoContext &iocontext);
+    IoThread(IoContext& iocontext);
     ~IoThread();
-    void run();
+    void run() override;
   private:
     IoContext &_iocontext;
   };
@@ -123,19 +121,19 @@ public:
     }
 
 
-    void post(std::function<void()> && handler) {
+    void post(std::function<void()>&& handler) {
       _asioIoContext.post(std::move(handler));
     }
 
     void start();
     void stop();
 
-    bool runningInThisThread() { return _thread.runningInThisThread(); }
+    bool runningInThisThread() const { return _thread.runningInThisThread(); }
   private:
 
   };
 
-  GeneralServer::IoContext &selectIoContext();
+  GeneralServer::IoContext& selectIoContext();
 
  protected:
   bool openEndpoint(IoContext &ioContext, Endpoint* endpoint);
