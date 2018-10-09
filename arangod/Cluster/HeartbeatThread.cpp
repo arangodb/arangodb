@@ -966,9 +966,7 @@ void HeartbeatThread::runCoordinator() {
         if (failedServersSlice.isObject()) {
           std::vector<std::string> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
-            if (server.value.isArray() && server.value.length() == 0) {
-              failedServers.push_back(server.key.copyString());
-            }
+            failedServers.push_back(server.key.copyString());
           }
           // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);

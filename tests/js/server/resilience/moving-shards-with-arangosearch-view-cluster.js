@@ -704,6 +704,15 @@ function MovingShardsWithViewSuite (options) {
     assertTrue(waitForViewsToGetInSync());
   }
 
+  function waitAndAssertViewEqualCollectionServers() {
+    assertTrue(waitForSupervision());
+    c.forEach( c_v => {
+      assertTrue(waitForPlanEqualCurrent(c_v));
+      assertEqual(getShardedViewServers("_system", c_v),
+        findCollectionShardServers("_system", c_v.name()));
+    });
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual tests
 ////////////////////////////////////////////////////////////////////////////////
