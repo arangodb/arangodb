@@ -279,11 +279,9 @@ class IResearchView
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
-  /// @param maxMsec try not to exceed the specified time, casues partial sync
-  ///                0 == full sync
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  bool sync(size_t maxMsec = 0);
+  bool sync();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
@@ -297,14 +295,7 @@ class IResearchView
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the number of documents indexed by the view
-  //////////////////////////////////////////////////////////////////////////////
-  size_t count();
-
-
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
@@ -342,10 +333,6 @@ class IResearchView
     void sync();
   };
 
-  struct MemoryStore: public DataStore {
-    MemoryStore(); // initialize _directory and _writer during allocation
-  };
-
   struct PersistedStore: public DataStore {
     const irs::utf8_path _path;
     PersistedStore(irs::utf8_path&& path);
@@ -357,13 +344,6 @@ class IResearchView
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
-  };
-
-  struct MemoryStoreNode {
-    MemoryStore _store;
-    MemoryStoreNode* _next; // pointer to the next MemoryStore
-    std::mutex _readMutex; // for use with obtaining _reader FIXME TODO find a better way
-    std::mutex _reopenMutex; // for use with _reader.reopen() FIXME TODO find a better way
   };
 
   typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;

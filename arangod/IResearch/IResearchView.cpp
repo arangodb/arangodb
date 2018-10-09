@@ -56,7 +56,7 @@
 
 #include "IResearchView.h"
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush segment when it reached approximately this size
@@ -501,10 +501,10 @@ bool consolidateCleanupStore(
   return true;
 }
 
-NS_END
+}
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                    IResearchView implementation
@@ -532,24 +532,6 @@ void IResearchView::DataStore::sync() {
   _writer->commit();
   _reader = _reader.reopen(); // update reader
   _segmentCount += _reader.size(); // add commited segments
-}
-
-IResearchView::MemoryStore::MemoryStore() {
-  auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
-
-  _directory = irs::directory::make<irs::memory_directory>();
-
-  // do not lock repository
-  irs::index_writer::options options;
-  options.lock_repository = false;
-
-  // create writer before reader to ensure data directory is present
-  _writer = irs::index_writer::make(
-    *_directory, format, irs::OM_CREATE | irs::OM_APPEND, options
-  );
-
-  _writer->commit(); // initialize 'store'
-  _reader = irs::directory_reader::open(*_directory); // open after 'commit' for valid 'store'
 }
 
 IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
@@ -1333,6 +1315,8 @@ int IResearchView::insert(
     arangodb::velocypack::Slice const& doc,
     IResearchLinkMeta const& meta
 ) {
+  TRI_ASSERT(_storePersisted);
+
   auto insertImpl = [this, cid, &meta, doc, &documentId](irs::index_writer::documents_context& ctx) ->int {
     FieldIterator body(doc, meta);
 
@@ -1422,6 +1406,8 @@ int IResearchView::insert(
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
 ) {
+  TRI_ASSERT(_storePersisted);
+
   auto insertImpl = [this, cid, &batch, &meta](irs::index_writer::documents_context& ctx) -> int {
     auto begin = batch.begin();
     auto const end = batch.end();
@@ -1676,10 +1662,12 @@ void IResearchView::open() {
 }
 
 int IResearchView::remove(
-  transaction::Methods& trx,
-  TRI_voc_cid_t cid,
-  arangodb::LocalDocumentId const& documentId
+    transaction::Methods& trx,
+    TRI_voc_cid_t cid,
+    arangodb::LocalDocumentId const& documentId
 ) {
+  TRI_ASSERT(_storePersisted);
+
   std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, documentId.id()));
 
   if (_inRecovery) {
@@ -1696,7 +1684,6 @@ int IResearchView::remove(
   auto* ctx = ViewStateHelper::write(state, *this);
 
   if (!ctx) {
-    TRI_ASSERT(_storePersisted._writer);
     auto ptr = irs::memory::make_unique<ViewStateWrite>(
       _asyncSelf->mutex(), *_storePersisted._writer
     ); // will aquire read-lock to prevent data-store deallocation
@@ -1751,6 +1738,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
+  TRI_ASSERT(_storePersisted);
   auto* state = trx.state();
 
   if (!state) {
@@ -1801,12 +1789,10 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   }
 
   try {
-    ReadMutex mutex(_mutex); // _memoryNodes/_storePersisted can be asynchronously updated
+    ReadMutex mutex(_mutex); // _storePersisted can be asynchronously updated
     SCOPED_LOCK(mutex);
 
-    if (_storePersisted) {
-      reader->add(_storePersisted._reader);
-    }
+    reader->add(_storePersisted._reader);
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while collecting readers for snapshot of arangosearch view '" << name()
@@ -1845,39 +1831,33 @@ IResearchView::AsyncSelf::ptr IResearchView::self() const {
   return _asyncSelf;
 }
 
-bool IResearchView::sync(size_t maxMsec /*= 0*/) {
+bool IResearchView::sync() {
   ReadMutex mutex(_mutex);
-  auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
 
   try {
     SCOPED_LOCK(mutex);
 
-    bool invalidateCache = false;
-
-    auto cacheInvalidator = irs::make_finally([&invalidateCache, this]() {
-      if (invalidateCache) {
-        // invalidate query cache if there were some data changes
-        arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
-      }
-    });
-
-    // must sync persisted store as well to ensure removals are applied
     if (_storePersisted) {
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
         << "starting persisted-sync sync for arangosearch view '" << id() << "'";
+
       _storePersisted._writer->commit();
 
       auto const reader = _storePersisted._reader;
       _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
       _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
-      invalidateCache = invalidateCache  || (reader != _storePersisted._reader);
+
+      if (reader != _storePersisted._reader) {
+        // invalidate query cache if there were some data changes
+        arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
+      }
 
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
         << "finished persisted-sync sync for arangosearch view '" << id() << "'";
     }
 
     return true;
-  } catch (arangodb::basics::Exception& e) {
+  } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during sync of arangosearch view '" << id() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
@@ -2100,23 +2080,8 @@ void IResearchView::verifyKnownCollections() {
   }
 }
 
-size_t IResearchView::count() {
-  struct DummyTransaction : transaction::Methods {
-    explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
-      : transaction::Methods(ctx) {
-    }
-  };
-
-  transaction::StandaloneContext context(vocbase());
-  std::shared_ptr<transaction::Context> dummy;  // intentionally empty
-  DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
-  auto reader = snapshot(trx, IResearchView::Snapshot::FindOrCreate);
-  TRI_ASSERT(reader != nullptr);
-  return reader->docs_count();
-}
-
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
