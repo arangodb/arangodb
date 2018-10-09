@@ -459,7 +459,7 @@ SECTION("test_cleanup") {
     CHECK((trx.begin().ok()));
     view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   auto const memory = view->memory();
@@ -477,7 +477,7 @@ SECTION("test_cleanup") {
     CHECK((trx.begin().ok()));
     view->remove(trx, 42, arangodb::LocalDocumentId(0));
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // wait for commit thread
@@ -642,7 +642,7 @@ SECTION("test_drop_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -667,7 +667,7 @@ SECTION("test_drop_cid") {
 
       CHECK((true == view->drop(42).ok()));
       CHECK((!persisted)); // drop() does not modify view meta if cid did not exist previously
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -708,7 +708,7 @@ SECTION("test_drop_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -733,7 +733,7 @@ SECTION("test_drop_cid") {
 
       CHECK((true == view->drop(42).ok()));
       CHECK((persisted)); // drop() modifies view meta if cid existed previously
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -774,7 +774,7 @@ SECTION("test_drop_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -802,7 +802,7 @@ SECTION("test_drop_cid") {
 
       CHECK((true == view->drop(42).ok()));
       CHECK((!persisted)); // drop() modifies view meta if cid existed previously (but not persisted until after recovery)
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -857,7 +857,7 @@ SECTION("test_drop_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -880,7 +880,7 @@ SECTION("test_drop_cid") {
       StorageEngineMock::before = []()->void { throw std::exception(); };
 
       CHECK((true != view->drop(42).ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -935,7 +935,7 @@ SECTION("test_drop_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -963,7 +963,7 @@ SECTION("test_drop_cid") {
 
       CHECK((true == view->drop(42).ok()));
       CHECK((!persisted)); // drop() modifies view meta if cid existed previously (but not persisted until after recovery)
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -1034,7 +1034,7 @@ SECTION("test_truncate_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -1059,7 +1059,7 @@ SECTION("test_truncate_cid") {
 
       CHECK((true == view->drop(42, false).ok()));
       CHECK((!persisted)); // truncate() does not modify view meta
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -1100,7 +1100,7 @@ SECTION("test_truncate_cid") {
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -1125,7 +1125,7 @@ SECTION("test_truncate_cid") {
 
       CHECK((true == view->drop(42, false).ok()));
       CHECK((!persisted)); // truncate() does not modify view meta
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     // query
@@ -1444,7 +1444,7 @@ SECTION("test_insert") {
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta))); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
-      CHECK((view->sync()));
+      CHECK(view->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
@@ -1490,7 +1490,7 @@ SECTION("test_insert") {
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta)));
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
-      CHECK((view->sync()));
+      CHECK(view->commit().ok());
     }
 
       arangodb::transaction::Methods trx(
@@ -1550,7 +1550,7 @@ SECTION("test_insert") {
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta))); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
-      CHECK((view->sync()));
+      CHECK(view->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
@@ -1702,7 +1702,7 @@ SECTION("test_insert") {
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta)));
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
-      CHECK((view->sync()));
+      CHECK(view->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
@@ -1834,7 +1834,7 @@ SECTION("test_query") {
       }
 
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
@@ -1886,7 +1886,7 @@ SECTION("test_query") {
       }
 
       CHECK((trx.commit().ok()));
-      view->sync();
+      CHECK(view->commit().ok());
     }
 
     arangodb::transaction::Methods trx0(
@@ -1919,7 +1919,7 @@ SECTION("test_query") {
       }
 
       CHECK(trx.commit().ok());
-      CHECK(view->sync());
+      CHECK(view->commit().ok());
     }
 
     // old reader sees same data as before
@@ -2101,7 +2101,7 @@ SECTION("test_register_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -2125,7 +2125,7 @@ SECTION("test_register_link") {
     CHECK((true == persisted)); // link instantiation does modify and persist view meta
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
-    view->sync();
+    CHECK(view->commit().ok());
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
@@ -2164,7 +2164,7 @@ SECTION("test_register_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -2196,7 +2196,7 @@ SECTION("test_register_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -2226,7 +2226,7 @@ SECTION("test_register_link") {
     CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
-    view->sync();
+    CHECK(view->commit().ok());
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
@@ -2300,7 +2300,7 @@ SECTION("test_unregister_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -2337,7 +2337,7 @@ SECTION("test_unregister_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -2399,7 +2399,7 @@ SECTION("test_unregister_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
@@ -2432,7 +2432,7 @@ SECTION("test_unregister_link") {
 
     {
       std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
+      CHECK(view->commit().ok());
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,

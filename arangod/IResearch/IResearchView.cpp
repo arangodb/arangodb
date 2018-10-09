@@ -531,7 +531,7 @@ void IResearchView::DataStore::sync() {
   _segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
   _writer->commit();
   _reader = _reader.reopen(); // update reader
-  _segmentCount += _reader.size(); // add commited segments
+  _segmentCount = _reader.size(); // add commited segments
 }
 
 IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
@@ -1023,6 +1023,7 @@ arangodb::Result IResearchView::drop(
     TRI_voc_cid_t cid,
     bool unlink /*= true*/
 ) {
+  TRI_ASSERT(_storePersisted);
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex rmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   WriteMutex wmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
@@ -1068,9 +1069,7 @@ arangodb::Result IResearchView::drop(
   // ...........................................................................
 
   try {
-    if (_storePersisted) {
-      _storePersisted._writer->documents().remove(shared_filter);
-    }
+    _storePersisted._writer->documents().remove(shared_filter);
   } catch (arangodb::basics::Exception& e) {
     IR_LOG_EXCEPTION();
 
@@ -1268,40 +1267,38 @@ arangodb::Result IResearchView::commit() {
     return {}; // nothing more to do
   }
 
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "beginning flush commit for " << name();
-
   try {
-    _storePersisted._writer->commit(); // finishing flush transaction
-    const auto newReader = _storePersisted._reader.reopen(); // update reader
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "starting persisted-sync sync for arangosearch view '" << name() << "'";
 
-    if (newReader != _storePersisted._reader) {
+    _storePersisted._writer->commit(); // finishing flush transaction
+    const auto reader = _storePersisted._reader.reopen(); // update reader
+
+    if (reader && reader != _storePersisted._reader) {
        // invalidate query cache if there were some data changes
        arangodb::aql::QueryCache::instance()->invalidate(
-         &vocbase(),
-         name()
+         &vocbase(), name()
        );
 
-       _storePersisted._reader = newReader;
+       _storePersisted._reader = reader;
+       _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
     }
 
-    _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
-
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "done with flush commit for " << name();
+      << "finished persisted-sync sync for arangosearch view '" << name() << "'";
 
-    return TRI_ERROR_NO_ERROR;
+    return {};
   } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while committing memory store for arangosearch view '" << id() << "': " << e.code() << " " << e.what();
+      << "caught exception while committing memory store for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while committing memory store for arangosearch view '" << id() << "': " << e.what();
+      << "caught exception while committing memory store for arangosearch view '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while committing memory store for arangosearch view '" << id();
+      << "caught exception while committing memory store for arangosearch view '" << name() << "'";
     IR_LOG_EXCEPTION();
   }
 
@@ -1758,13 +1755,16 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
         return &cookie->_snapshot;
       }
       break;
-    case Snapshot::SyncAndReplace:
+    case Snapshot::SyncAndReplace: {
       // ingore existing cookie, recreate snapshot
-      if (!const_cast<IResearchView*>(this)->sync()) {
+      auto const res = const_cast<IResearchView*>(this)->commit();
+
+      if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to sync while creating snapshot for arangosearch view '" << name() << "', previous snapshot will be used instead";
+          << "failed to sync while creating snapshot for arangosearch view '" << name()
+          << "', previous snapshot will be used instead, error: '" << res.errorMessage() << "'";
       }
-      break;
+    } break;
   }
 
   std::unique_ptr<ViewStateRead> cookiePtr;
@@ -1829,49 +1829,6 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
 IResearchView::AsyncSelf::ptr IResearchView::self() const {
   return _asyncSelf;
-}
-
-bool IResearchView::sync() {
-  ReadMutex mutex(_mutex);
-
-  try {
-    SCOPED_LOCK(mutex);
-
-    if (_storePersisted) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "starting persisted-sync sync for arangosearch view '" << id() << "'";
-
-      _storePersisted._writer->commit();
-
-      auto const reader = _storePersisted._reader;
-      _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
-      _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
-
-      if (reader != _storePersisted._reader) {
-        // invalidate query cache if there were some data changes
-        arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
-      }
-
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "finished persisted-sync sync for arangosearch view '" << id() << "'";
-    }
-
-    return true;
-  } catch (arangodb::basics::Exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of arangosearch view '" << id() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of arangosearch view '" << id() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of arangosearch view '" << id() << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return false;
 }
 
 arangodb::Result IResearchView::updateProperties(

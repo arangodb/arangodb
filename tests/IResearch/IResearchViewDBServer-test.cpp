@@ -498,7 +498,7 @@ SECTION("test_query") {
       }
 
       CHECK((trx.commit().ok()));
-      viewImpl->sync();
+      CHECK(viewImpl->commit().ok());
     }
 
     arangodb::transaction::Methods trx(

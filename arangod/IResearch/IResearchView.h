@@ -277,12 +277,6 @@ class IResearchView
     Snapshot mode = Snapshot::Find
   ) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for a flush of all index data to its respective stores
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  bool sync();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
@@ -322,7 +316,7 @@ class IResearchView
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
-    std::atomic<size_t> _segmentCount{}; // total number of segments in the writer
+    std::atomic<size_t> _segmentCount{}; // FIXME remove total number of segments in the writer
     irs::index_writer::ptr _writer;
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
