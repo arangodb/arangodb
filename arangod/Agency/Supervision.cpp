@@ -329,7 +329,7 @@ void handleOnStatusSingle(
    Agent* agent, Node const& snapshot, HealthRecord& persisted,
    HealthRecord& transisted, std::string const& serverID,
    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
-  
+
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -556,7 +556,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   return ret;
 }
 
-
 // Update local agency snapshot, guarded by callers
 bool Supervision::updateSnapshot() {
   _lock.assertLockedByCurrentThread();
@@ -587,6 +586,7 @@ bool Supervision::doChecks() {
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) == "Singles");
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
+
   return true;
 }
 
@@ -791,6 +791,132 @@ void Supervision::handleShutdown() {
   }
 }
 
+void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *agent, std::string const& jobId) {
+
+  std::unordered_set<std::string> failedServers;
+
+  // Search for failed server
+  //  Could also use `Target/FailedServers`
+  auto const& health = snapshot.hasAsChildren(healthPrefix);
+  if (!health.second) {
+    return ;
+  }
+
+  for (auto const& server : health.first) {
+    HealthRecord record(*server.second.get());
+
+    if (record.status == Supervision::HEALTH_STATUS_FAILED) {
+      failedServers.insert(server.first);
+    }
+  }
+
+  if (failedServers.size() == 0) {
+    return ;
+  }
+
+  // Now iterate over all shards and look for failed leaders.
+  auto const& collections = snapshot.hasAsChildren("/Current/Collections");
+  if (!collections.second) {
+    return ;
+  }
+
+  auto builder = std::make_shared<VPackBuilder>();
+  {VPackArrayBuilder trxs(builder.get());
+
+    for (auto const& database : collections.first) {
+      auto const& dbname = database.first;
+
+      auto const& collections = database.second->children();
+
+      for (auto const& collection : collections) {
+        auto const& colname = collection.first;
+
+        for (auto const& shard : collection.second->children()) {
+
+          auto const& servers = shard.second->hasAsArray("servers").first;
+
+          TRI_ASSERT(servers.isArray());
+
+          if (servers.length() >= 1) {
+            TRI_ASSERT(servers[0].isString());
+            auto const& servername = servers[0].copyString();
+
+            if (failedServers.find(servername) != failedServers.end()) {
+              // lost shard
+              LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Found a lost shard: " << shard.first;
+              auto const& shardname = shard.first;
+
+              auto const& planurl = "/arango/Plan/Collections/" + dbname + "/" + colname + "/shards/" + shardname;
+              auto const& currenturl = "/arango/Current/Collections/" + dbname + "/" + colname + "/" + shardname;
+              auto const& healthurl = "/arango/Supervision/Health/" + servername + "/Status";
+              // check if it exists in Plan
+              if (snapshot.has(planurl)) {
+                continue ;
+              }
+              // Now remove that shard
+              {VPackArrayBuilder trx(builder.get());
+                {VPackObjectBuilder update(builder.get());
+                  // remove the shard in current
+                  builder->add(VPackValue(currenturl));
+                  {VPackObjectBuilder op(builder.get());
+                    builder->add("op", VPackValue("delete"));
+                  }
+                  // add a job done entry to "Target/Finished"
+                  builder->add(VPackValue("/arango/Target/Finished"));
+                  {VPackObjectBuilder op(builder.get());
+                    builder->add("op", VPackValue("push"));
+                    builder->add(VPackValue("new"));
+                    {VPackObjectBuilder job(builder.get());
+                      builder->add("type", VPackValue("cleanUpLostCollection"));
+                      builder->add("server", VPackValue(shardname));
+                      builder->add("jobId", VPackValue(jobId));
+                      builder->add("creator", VPackValue("supervision"));
+                      builder->add("timeCreated", VPackValue(
+                        timepointToString(std::chrono::system_clock::now())));
+                    }
+                  }
+                  // increase current version
+                  builder->add(VPackValue("/arango/Current/Version"));
+                  {VPackObjectBuilder op(builder.get());
+                    builder->add("op", VPackValue("increment"));
+                  }
+                }
+                {VPackObjectBuilder precon(builder.get());
+                  // pre condition:
+                  //  still in current
+                  //  not in plan
+                  //  still failed
+                  builder->add(VPackValue(planurl));
+                  {VPackObjectBuilder cond(builder.get());
+                    builder->add("oldEmpty", VPackValue(true));
+                  }
+                  builder->add(VPackValue(currenturl));
+                  {VPackObjectBuilder cond(builder.get());
+                    builder->add("oldEmpty", VPackValue(false));
+                  }
+                  builder->add(VPackValue(healthurl));
+                  {VPackObjectBuilder cond(builder.get());
+                    builder->add("old", VPackValue(Supervision::HEALTH_STATUS_FAILED));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  auto const& trx = builder->slice();
+
+  LOG_TOPIC(ERR, Logger::FIXME) << "Trx: " << trx.toJson();
+
+  if(trx.length() > 0) {
+    // do it! fire and forget!
+    agent->write(builder);
+  }
+}
+
 // Guarded by caller
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
@@ -799,6 +925,7 @@ bool Supervision::handleJobs() {
   shrinkCluster();
   enforceReplication();
   readyOrphanedIndexCreations();
+  cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
   workJobs();
 
   return true;

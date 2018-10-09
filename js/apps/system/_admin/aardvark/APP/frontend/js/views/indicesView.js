@@ -217,9 +217,11 @@
     prepDeleteIndex: function (e) {
       var self = this;
       this.lastTarget = e;
-
       this.lastId = $(this.lastTarget.currentTarget).parent().parent().first().children().first().text();
-      // window.modalView.hide()
+
+      if ($('#indexDeleteModal').length) {
+        return;
+      }
 
       // delete modal
       $('#content #modal-dialog .modal-footer').after(

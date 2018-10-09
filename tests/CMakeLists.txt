@@ -7,6 +7,7 @@ add_executable(
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
+  Agency/CleanUpLostCollectionTest.cpp
   Agency/FailedFollowerTest.cpp
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp

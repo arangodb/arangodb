@@ -1,5 +1,53 @@
-v3.3.17 (XXXX-XX-XX)
+v3.3.18 (XXXX-XX-XX)
+
+* improved logging in case of replication errors
+
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
+
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
+
+v3.3.17 (2018-10-04)
 --------------------
+
+* upgraded arangosync version to 0.6.0
+
+* added several advanced options for configuring and debugging LDAP connections.
+  Please note that some of the following options are platform-specific and may not 
+  work on all platforms or with all LDAP servers reliably:
+
+  - `--ldap.serialized`: whether or not calls into the underlying LDAP library 
+    should be serialized.
+    This option can be used to work around thread-unsafe LDAP library functionality.
+  - `--ldap.serialize-timeout`: sets the timeout value that is used when waiting to 
+    enter the LDAP library call serialization lock. This is only meaningful when 
+    `--ldap.serialized` has been set to `true`. 
+  - `--ldap.retries`: number of tries to attempt a connection. Setting this to values 
+    greater than one will make ArangoDB retry to contact the LDAP server in case no 
+    connection can be made initially.
+  - `--ldap.restart`: whether or not the LDAP library should implicitly restart 
+    connections
+  - `--ldap.referrals`: whether or not the LDAP library should implicitly chase 
+    referrals
+  - `--ldap.debug`: turn on internal OpenLDAP library output (warning: will print 
+    to stdout).
+  - `--ldap.timeout`: timeout value (in seconds) for synchronous LDAP API calls 
+    (a value of 0 means default timeout).
+  - `--ldap.network-timeout`: timeout value (in seconds) after which network operations 
+    following the initial connection return in case of no activity (a value of 0 means 
+    default timeout).
+  - `--ldap.async-connect`: whether or not the connection to the LDAP library will 
+    be done asynchronously.
+
+* fixed a shutdown race in ArangoDB's logger, which could have led to some buffered
+  log messages being discarded on shutdown
+
+* display shard synchronization progress for collections outside of the
+  `_system` database
 
 * fixed issue #6611: Properly display JSON properties of user defined foxx services
   configuration within the web UI
@@ -830,7 +878,7 @@ v3.3.1 (2017-12-28)
 * Fix agency integer overflow in timeout calculation.
 
 
-v3.3.0 (2012-12-14)
+v3.3.0 (2017-12-14)
 -------------------
 
 * release version

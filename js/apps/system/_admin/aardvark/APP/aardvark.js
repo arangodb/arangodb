@@ -367,8 +367,13 @@ authRouter.delete('/job/:id', function (req, res) {
 `);
 
 authRouter.get('/job', function (req, res) {
-  const result = db._frontend.all().toArray();
-  res.json(result);
+  try {
+    const result = db._frontend.all().toArray();
+    res.json(result);
+  } catch (err) {
+    // collection not (yet) available
+    res.json([]);
+  }
 })
 .summary('Return all job ids.')
 .description(dd`
