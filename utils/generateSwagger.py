@@ -918,7 +918,7 @@ def hint(cargo, r=Regexen()):
 
     ret = generic_handler_desc(cargo, r, "hints", None, swagger['paths'][httpPath][method]['x-hints'], currentHint)
 
-    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints'][currentHint]):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @HINT in file %s' % (fp.name)
         exit(1)
