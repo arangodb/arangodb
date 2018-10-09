@@ -8,43 +8,107 @@ The creation of a graph requires the name of the graph and a
 definition of its edges.
 [See also edge definitions](../../Manual/Graphs/GeneralGraphs/Management.html#edge-definitions).
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{waitForSync,boolean,optional}
+define if the request should wait until everything is synced to disc.
+Will change the success response code.
+
 @RESTBODYPARAM{name,string,required,string}
 Name of the graph.
 
-@RESTBODYPARAM{edgeDefinitions,string,optional,string}
-An array of definitions for the edge
-
-@RESTBODYPARAM{orphanCollections,string,optional,string}
-An array of additional vertex collections.
+@RESTBODYPARAM{edgeDefinitions,array,optional,graph_edge_definition}
+An array of definitions for the relations of the graph.
+Each has the following type:
 
 @RESTBODYPARAM{isSmart,boolean,optional,boolean}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
 
 @RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
-a JSON object which is only useful in Enterprise Edition and with isSmart set to true.
+a JSON object to define options for creating collections within this graph.
 It can contain the following attributes:
 
-@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,required,}
+@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,optional,}
+Only has effect in Enterprise Edition and it is required if isSmart is true.
 The attribute name that is used to smartly shard the vertices of a graph.
-Every vertex in this Graph has to have this attribute.
+Every vertex in this SmartGraph has to have this attribute.
 Cannot be modified later.
 
 @RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
 The number of shards that is used for every collection within this graph.
 Cannot be modified later.
 
+@RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,required,}
+The replication factor used when initially creating collections for this graph.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
 Is returned if the graph could be created and waitForSync is enabled
-for the `_graphs` collection.  The response body contains the
-graph configuration that has been stored.
+for the `_graphs` collection, or given in the request.
+The response body contains the graph configuration that has been stored.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is false in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{graph,object,required,graph_representation}
+The information about the newly created graph.
 
 @RESTRETURNCODE{202}
 Is returned if the graph could be created and waitForSync is disabled
-for the `_graphs` collection. The response body contains the
-graph configuration that has been stored.
+for the `_graphs` collection and not given in the request.
+The response body contains the graph configuration that has been stored.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is false in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{graph,object,required,graph_representation}
+The information about the newly created graph.
+
+@RESTRETURNCODE{400}
+Returned if the request is in a wrong format.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
+
+@RESTRETURNCODE{403}
+Returned if your user has insufficient rights.
+In order to create a graph you at least need to have the following privileges:
+
+  1. `Administrate` access on the Database.
+  2. `Read Only` access on every collection used within this graph.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
 
 @RESTRETURNCODE{409}
 Returned if there is a conflict storing the graph.  This can occur
@@ -52,6 +116,19 @@ either if a graph with this name is already stored, or if there is one
 edge definition with a the same
 [edge collection](../../Manual/Appendix/Glossary.html#edge-collection) but a
 different signature used in any other graph.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
 
 @EXAMPLES
 
@@ -94,6 +171,7 @@ different signature used in any other graph.
     }],
     isSmart: true,
     options: {
+      replicationFactor: 2,
       numberOfShards: 9,
       smartGraphAttribute: "region"
     }
