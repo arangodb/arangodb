@@ -1338,7 +1338,7 @@ topdir = sys.argv[4]
 files = {}
 
 
-# Intentionaly not there: 
+# Intentionally not there: 
 #  "structure" : [ "js/actions/api-structure.js" ],
 
 for chapter in os.listdir(topdir):
@@ -1374,7 +1374,7 @@ def descOffsetGet(value):
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
-        offsetPlus = 0;
+        offsetPlus = 0
         thisVerb = swagger['paths'][route][verb]
         if len(thisVerb['description']) == 0:
             print >> sys.stderr, "Description of Route empty; @RESTDESCRIPTION missing?"
@@ -1445,6 +1445,15 @@ for route in swagger['paths'].keys():
 
             #print '-'*80
             #print thisVerb['description']
+
+        # Replace hint box tags with something that works in Swagger UI
+        if 'x-hint' in thisVerb and len(thisVerb['x-hint']) > 0:
+            for nHint in range(0, len(thisVerb['x-hint'])):
+                tmp = re.sub("{% hint '([^']+?)' %}(?:\r\n|\r|\n)?",
+                            lambda match: "\n**{}:**  ".format(match.group(1).title()),
+                            thisVerb['x-hint'][nHint])
+                tmp = re.sub('{%[^%]*?%}', '', tmp)
+                thisVerb['x-hint'][nHint] = tmp
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
