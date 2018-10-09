@@ -38,6 +38,8 @@
 #include <vector>
 
 namespace arangodb {
+class StringRef;
+
 namespace velocypack {
 class Slice;
 }
@@ -566,12 +568,12 @@ class Ast {
   AstNode* createNode(AstNodeType);
 
   /// @brief validate the name of the given datasource
-  std::string validateDataSourceName(char const* name, size_t nameLength, bool validateStrict);
+  /// in case validation fails, will throw an exception
+  void validateDataSourceName(arangodb::StringRef const& name, bool validateStrict);
   
   /// @brief create an AST collection node
   /// private function, does no validation
-  AstNode* createNodeCollectionNoValidation(char const* name, size_t nameLength, 
-                                            std::string const& nameString, AccessMode::Type accessType);
+  AstNode* createNodeCollectionNoValidation(arangodb::StringRef const& name, AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(AstNode const* graphNode);
 

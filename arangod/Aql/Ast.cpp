@@ -65,13 +65,14 @@ auto doNothingVisitor = [](AstNode const*) {};
  *
  * @return The Category of this datasource (Collection or View), and a reference to the translated name (cid => name if required).
  */
-std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery(
+LogicalDataSource::Category const* injectDataSourceInQuery(
     Query& query,
     arangodb::CollectionNameResolver const& resolver,
     AccessMode::Type accessType,
     bool failIfDoesNotExist,
-    std::string const& name
+    arangodb::StringRef& nameRef
 ) {
+  std::string const name = nameRef.toString();
   // NOTE The name may be modified if a numeric collection ID is given instead of a collection Name.
   // Afterwards it will contain the name.
   auto const dataSource = resolver.getDataSource(name);
@@ -90,13 +91,19 @@ std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery
     // the names of datasources used in the query
     query.addCollection(name, accessType);
 
-    return {LogicalCollection::category(), StringRef{name}};
+    return LogicalCollection::category();
   }
   // query actual name from datasource... this may be different to the
   // name passed into this function, because the user may have accessed
   // the collection by its numeric id
   auto const& dataSourceName = dataSource->name();
-  StringRef nameRef{query.registerString(dataSourceName.data(), dataSourceName.size())};
+
+  if (nameRef != name) {
+    // name has changed by the lookup, so we need to reserve the collection
+    // name on the heap and update our StringRef
+    char* p = query.registerString(dataSourceName.data(), dataSourceName.size());
+    nameRef = StringRef(p, dataSourceName.size());
+  }
 
   // add views to the collection list
   // to register them with transaction as well
@@ -110,7 +117,7 @@ std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
-    query.addView(nameRef.toString());
+    query.addView(dataSourceName);
 
     // Make sure to add all collections now:
     resolver.visitCollections(
@@ -123,7 +130,7 @@ std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected datasource type");
   }
-  return {dataSource->category(), nameRef};
+  return dataSource->category();
 }
 
 }
@@ -710,21 +717,24 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
                                    AccessMode::Type accessType,
                                    bool validateName,
                                    bool failIfDoesNotExist) {
-  std::string const nameString = validateDataSourceName(name, nameLength, validateName);
+  StringRef nameRef(name, nameLength);
 
-  LogicalCollection::Category const* category = LogicalCollection::category();
-  StringRef nameRef;
-  std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, accessType, failIfDoesNotExist, nameString);
+  // will throw if validation fails
+  validateDataSourceName(nameRef, validateName);
+  // this call may update nameRef
+  LogicalCollection::Category const* category = injectDataSourceInQuery(*_query, resolver, accessType, failIfDoesNotExist, nameRef);
 
   if (category == LogicalCollection::category()) {
-    return createNodeCollectionNoValidation(name, nameLength, nameString, accessType);
-  } else if (category == LogicalView::category()) {
+    return createNodeCollectionNoValidation(nameRef, accessType);
+  } 
+  if (category == LogicalView::category()) {
     AstNode* node = createNode(NODE_TYPE_VIEW);
     node->setStringValue(nameRef.data(), nameRef.size());
     return node;
   }
   // injectDataSourceInQuery is supposed to throw in this case.
   TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid data source category in createNodeDataSource");
 }
 
 /// @brief create an AST collection node
@@ -732,17 +742,19 @@ AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resol
                                    char const* name,
                                    size_t nameLength,
                                    AccessMode::Type accessType) {
-  std::string const nameString = validateDataSourceName(name, nameLength, true);
-  LogicalCollection::Category const* category = LogicalCollection::category();
-  StringRef nameRef;
-  // namestring might be empty
-  std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, accessType, false, nameString);
+  StringRef nameRef(name, nameLength);
+
+  // will throw if validation fails
+  validateDataSourceName(nameRef, true);
+  // this call may update nameRef
+  LogicalCollection::Category const* category = injectDataSourceInQuery(*_query, resolver, accessType, false, nameRef);
+
   if (category == LogicalCollection::category()) {
     // add collection to query
     _query->addCollection(nameRef, accessType);
 
     // call private function after validation
-    return createNodeCollectionNoValidation(nameRef.data(), nameRef.size(), nameRef.toString(), accessType);
+    return createNodeCollectionNoValidation(nameRef, accessType);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, nameRef.toString() + " is required to be a collection.");
 }
@@ -1195,11 +1207,10 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
 
     if (c->isStringValue()) {
       std::string const name = c->getString();
-      LogicalDataSource::Category const* category = LogicalCollection::category();
-      StringRef nameRef;
-      std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, name);
+      // this call may update nameRef
+      StringRef nameRef(name);
+      LogicalDataSource::Category const* category = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
-
         _query->addCollection(name, AccessMode::Type::READ);
 
         if (ServerState::instance()->isCoordinator()) {
@@ -1212,11 +1223,11 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
             auto names = coll->realNames();
 
             for (auto const& n : names) {
-              std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, n);
-              TRI_ASSERT(category == LogicalCollection::category());
+              StringRef shardsNameRef(n);
+              LogicalDataSource::Category const* shardsCategory = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, shardsNameRef);
+              TRI_ASSERT(shardsCategory == LogicalCollection::category());
             }
-          }
-          catch (...) {
+          } catch (...) {
           }
         }
       } else {
@@ -1244,9 +1255,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections, Collectio
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    LogicalDataSource::Category const* category = LogicalCollection::category();
-    StringRef nameRef;
-    std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, name);
+    StringRef nameRef(name);
+    LogicalDataSource::Category const* category = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
         try {
@@ -1254,11 +1264,11 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections, Collectio
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
-            std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, n);
-            TRI_ASSERT(category == LogicalCollection::category());
+            StringRef shardsNameRef(n);
+            LogicalDataSource::Category const* shardsCategory = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, shardsNameRef);
+            TRI_ASSERT(shardsCategory == LogicalCollection::category());
           }
-        }
-        catch (...) {
+        } catch (...) {
           // TODO Should we really not react?
         }
       }
@@ -3732,37 +3742,27 @@ AstNode* Ast::createNode(AstNodeType type) {
 }
 
 /// @brief validate the name of the given datasource
-std::string Ast::validateDataSourceName(char const* name, 
-                                        size_t nameLength, 
-                                        bool validateStrict) {
+/// in case validation fails, will throw an exception
+void Ast::validateDataSourceName(StringRef const& name, bool validateStrict) {
   // common validation
-  if (name == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  std::string const nameString(name, nameLength);
-
-  if (*name == '\0' || nameLength == 0 ||
-      (validateStrict && !TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name, nameLength)))) {
+  if (name.empty() ||
+      (validateStrict && !TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name.data(), name.size())))) {
+    // will throw
+    std::string const nameString(name.data(), name.size());
     _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, nameString.c_str());
-    return StaticStrings::Empty;
   }
-  
-  return nameString;
 } 
 
 /// @brief create an AST collection node
 /// private function, does no validation
-AstNode* Ast::createNodeCollectionNoValidation(char const* name,
-                                               size_t nameLength,
-                                               std::string const& nameString,
+AstNode* Ast::createNodeCollectionNoValidation(StringRef const& name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
     auto ci = ClusterInfo::instance();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
     try {
-      auto coll = ci->getCollection(_query->vocbase().name(), nameString);
+      auto coll = ci->getCollection(_query->vocbase().name(), name.toString());
 
       if (coll->isSmart()) {
         // add names of underlying smart-edge collections
@@ -3775,7 +3775,7 @@ AstNode* Ast::createNodeCollectionNoValidation(char const* name,
   }
 
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
-  node->setStringValue(name, nameLength);
+  node->setStringValue(name.data(), name.size());
 
   return node;
 }
