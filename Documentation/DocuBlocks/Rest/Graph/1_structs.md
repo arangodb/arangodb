@@ -55,14 +55,6 @@ The _from value of the stored data.
 @RESTSTRUCT{_to,edge_representation,string,required,}
 The _to value of the stored data.
 
-@RESTSTRUCT{_from,edge_param_representation,string,required,}
-The source vertex of this edge. Has to be valid within
-the used edge definition.
-
-@RESTSTRUCT{_to,edge_param_representation,string,required,}
-The target vertex of this edge. Has to be valid within
-the used edge definition.
-
 @RESTSTRUCT{collection,graph_edge_definition,string,required,}
 Name of the edge collection, where the edge are stored in.
 
