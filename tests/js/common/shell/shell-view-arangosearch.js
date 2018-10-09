@@ -110,7 +110,7 @@ function ViewSuite () {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief bad name (conflict with collection)
     ////////////////////////////////////////////////////////////////////////////
-    testErrorHandlingBadNameDuplicate : function () {
+    testErrorHandlingBadNameDuplicateOfCollection : function () {
       try {
         db._create("abc");
         db._createView("abc", "arangosearch", {});
