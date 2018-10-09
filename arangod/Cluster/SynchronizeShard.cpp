@@ -679,8 +679,21 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci =
-      clusterInfo->getCollection(database, planId);
+    std::shared_ptr<LogicalCollection> ci;
+    try {   // ci->getCollection can throw
+      ci = clusterInfo->getCollection(database, planId);
+    } catch(...) {
+      auto const endTime = system_clock::now();
+      std::stringstream msg;
+      msg << "exception in getCollection, " << database << "/"
+          << shard << ", " << database
+          << "/" << planId << ", started " << startTimeStr << ", ended "
+          << timepointToString(endTime);
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: "
+          << msg.str();
+      _result.reset(TRI_ERROR_FAILED, msg.str());
+      return false;
+    }
     TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
