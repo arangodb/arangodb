@@ -2441,16 +2441,17 @@ int ClusterInfo::ensureIndexCoordinator(
       bool found = false;
 
       c = getCollection(databaseName, collectionID);
-      c->getIndexesVPack(oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
+      c->getIndexesVPack(
+        oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
       VPackSlice const planIndexes = oldPlanIndexes.slice();
 
       // Go through all indexes in collection, 
       if (planIndexes.isArray()) {
         VPackArrayBuilder a(&newPlanIndexes); 
         for (auto const& index : VPackArrayIterator(planIndexes)) {
-          auto idPlanType = index.get("type");
-          auto idPlanFields = index.get("fields");
-          if (idPlanType == slice.get("type") && idPlanFields == slice.get("fields")) {
+          auto idPlan = index.get("id");
+          auto idResult = resultBuilder.slice().get("id");
+          if (idPlan == idResult) {
             found = true;
             VPackObjectBuilder o(&newPlanIndexes);
             for (auto const& i : VPackObjectIterator(index)) {
