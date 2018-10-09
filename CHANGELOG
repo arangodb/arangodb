@@ -286,6 +286,8 @@ v3.3.13 (2018-07-26)
 
 * inspector collects additionally disk data size and storage engine statistics
 
+* fixed a bug in the replication protocol which could lead to followers not
+  getting in sync for a long time
 
 v3.3.12 (2018-07-12)
 --------------------
