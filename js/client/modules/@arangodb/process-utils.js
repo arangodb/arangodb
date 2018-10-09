@@ -437,12 +437,12 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print(res);
     let instanceInfo = {
       rootDir: rootDir,
       pid: res.pid,
       exitStatus: res
     };
+    print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
@@ -692,6 +692,7 @@ function checkArangoAlive (arangod, options) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
       serverCrashed = true;
+      print("checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
     }
   }
 
@@ -923,6 +924,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
         if (arangod.exitStatus.hasOwnProperty('signal')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
+          print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashed = true;
         }
       } else {
