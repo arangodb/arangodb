@@ -136,12 +136,6 @@ lastDocuBlock = None
 currentExample = 0
 
 ################################################################################
-### @brief index of hint block we're reading
-################################################################################
-
-currentHint = 0
-
-################################################################################
 ### @brief the current returncode we're working on
 ################################################################################
 
@@ -542,7 +536,6 @@ def restheader(cargo, r=Regexen()):
 
     currentReturnCode = 0
     currentExample = 0
-    currentHint = 0
     restReplyBodyParam = None
     restBodyParam = None
 
@@ -913,17 +906,15 @@ def restdescription(cargo, r=Regexen()):
 
 def hint(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    global currentHint
-    swagger['paths'][httpPath][method]['x-hints'].append('\n\n')
+    currentHint = len(operation['x-hints'])
+    operation['x-hints'].append('\n\n')
 
-    ret = generic_handler_desc(cargo, r, "hints", None, swagger['paths'][httpPath][method]['x-hints'], currentHint)
+    ret = generic_handler_desc(cargo, r, "hints", None, operation['x-hints'], currentHint)
 
-    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints'][currentHint]):
+    if r.TRIPLENEWLINEATSTART.match(operation['x-hints'][currentHint]):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @HINT in file %s' % (fp.name)
         exit(1)
-
-    currentHint += 1
 
     return ret
 
