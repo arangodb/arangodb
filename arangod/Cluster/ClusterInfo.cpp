@@ -731,7 +731,8 @@ void ClusterInfo::loadPlan() {
                   tmp.add(VPackValue("indexes"));
                   VPackArrayBuilder a(&tmp);
                   for (auto const& index : VPackArrayIterator(val)) {
-                    if (index.hasKey("isBuilding")) { // This index is still being built
+                    if (index.hasKey("isBuilding")) {
+                      // This index is still being built
                       continue;
                     }
                     tmp.add(index);
@@ -740,8 +741,7 @@ void ClusterInfo::loadPlan() {
               }
             }
               
-            std::string const collectionId =
-                collectionPairSlice.key.copyString();
+            auto const collectionId = collectionPairSlice.key.copyString();
 
             try {
               std::shared_ptr<LogicalCollection> newCollection;
@@ -2448,9 +2448,11 @@ int ClusterInfo::ensureIndexCoordinator(
       if (planIndexes.isArray()) {
         VPackArrayBuilder a(&newPlanIndexes); 
         for (auto const& index : VPackArrayIterator(planIndexes)) {
-          auto idPlanType = index.get("type");
-          auto idPlanFields = index.get("fields");
-          if (idPlanType == slice.get("type") && idPlanFields == slice.get("fields")) {
+          auto idPlan = index.get("id");
+          TRI_ASSERT(resultBuilder.slice().hasKey("id"));
+          auto idResult = resultBuilder.slice().get("id");
+          if (idPlan == idResult) {
+            
             found = true;
             VPackObjectBuilder o(&newPlanIndexes);
             for (auto const& i : VPackObjectIterator(index)) {
