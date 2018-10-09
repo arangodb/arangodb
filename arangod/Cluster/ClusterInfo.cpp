@@ -2450,6 +2450,7 @@ int ClusterInfo::ensureIndexCoordinator(
         VPackArrayBuilder a(&newPlanIndexes); 
         for (auto const& index : VPackArrayIterator(planIndexes)) {
           auto idPlan = index.get("id");
+          TRI_ASSERT(resultBuilder.slice().hasKey("id"));
           auto idResult = resultBuilder.slice().get("id");
           if (idPlan == idResult) {
             found = true;
