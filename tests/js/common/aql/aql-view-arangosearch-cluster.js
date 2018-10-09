@@ -39,6 +39,7 @@ var ERRORS = require("@arangodb").errors;
 function IResearchAqlTestSuite(args) {
   var c;
   var v;
+  var cg;
   var vg;
   var meta;
 
@@ -496,6 +497,13 @@ function IResearchAqlTestSuite(args) {
 
       results[1] = db._query(
         "WITH UnitTestsGraphView " +
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results[2] = db._query(
+        "WITH UnitTestsGraphCollection, UnitTestsGraphView " +
         "FOR doc IN UnitTestsGraphView " +
         "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
         "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
