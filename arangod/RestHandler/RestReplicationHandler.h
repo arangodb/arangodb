@@ -27,6 +27,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+
+#include "Aql/types.h"
+#include "Cluster/ResultT.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -409,6 +412,43 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandDump() = 0;
+
+ private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a blocking transaction for the given collectionName,
+  ///        It will be registered with the given id, and it will have
+  ///        the given time to live.
+  //////////////////////////////////////////////////////////////////////////////
+  Result createBlockingTransaction(aql::QueryId id,
+                                   std::string const& colName,
+                                   double ttl) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if we already have the read-lock
+  ///        Will return true, if we have it and can use it
+  ///        Will return false, if we are still in the process of getting it.
+  ///        Will return error, if the lock has expired.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<bool> isLockHeld(aql::QueryId id) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief compute a local checksum for the given collection
+  ///        Will return error if the lock has expired.
+  //////////////////////////////////////////////////////////////////////////////
+  
+  ResultT<std::string> computeCollectionChecksum(aql::QueryId readLockId,
+                                                 LogicalCollection* col) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Cacnel the lock with the given id
+  ///        Will return true, if we did have the lock
+  ///        Will return false, if we were still in the process of getting it.
+  ///        Will return error if the lock has expired or is not found.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
 };
 }
 #endif

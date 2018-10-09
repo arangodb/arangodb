@@ -67,7 +67,7 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared) {
+void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared, bool keepLease) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register query with id " << id << " : " << query->queryString();
@@ -75,6 +75,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
 
   // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared);
+  p->_isOpen = keepLease;
 
   // now insert into table of running queries
   {
