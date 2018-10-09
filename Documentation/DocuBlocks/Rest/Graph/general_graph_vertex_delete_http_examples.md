@@ -95,7 +95,7 @@ A message created for this error.
 Returned in the following cases:
 * No graph with this name could be found.
 * This collection is not part of the graph.
-* The vertex to replace does not exist.
+* The vertex to remove does not exist.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false)

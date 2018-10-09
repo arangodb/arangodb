@@ -98,7 +98,7 @@ Will only be present if returnOld is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to replace vertices in the graph  you at least need to have the following privileges:
+In order to update vertices in the graph  you at least need to have the following privileges:
 
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
@@ -120,7 +120,7 @@ A message created for this error.
 Returned in the following cases:
 * No graph with this name could be found.
 * This collection is not part of the graph.
-* The vertex to replace does not exist.
+* The vertex to update does not exist.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false)
