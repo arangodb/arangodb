@@ -57,6 +57,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 #include <boost/optional.hpp>
 #include <tuple>
 
@@ -1959,9 +1963,10 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
 class arangodb::aql::RedundantCalculationsReplacer final
     : public WalkerWorker<ExecutionNode> {
  public:
-  explicit RedundantCalculationsReplacer(
+  explicit RedundantCalculationsReplacer(Ast* ast,
       std::unordered_map<VariableId, Variable const*> const& replacements)
-      : _replacements(replacements) {}
+      : _ast(ast), 
+        _replacements(replacements) {}
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
@@ -1998,12 +2003,51 @@ class arangodb::aql::RedundantCalculationsReplacer final
     }
   }
 
+#ifdef USE_IRESEARCH
+  void replaceInView(ExecutionNode* en) {
+    auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
+    if (view->filterConditionIsEmpty()) {
+      // nothing to do
+      return;
+    }
+    AstNode const& search = view->filterCondition();
+    std::unordered_set<Variable const*> variables;
+    Ast::getReferencedVariables(&search, variables);
+
+    // check if the search condition uses any of the variables that we want to
+    // replace
+    AstNode* cloned = nullptr;
+    for (auto const& it : variables) {
+      if (_replacements.find(it->id) != _replacements.end()) {
+        if (cloned == nullptr) {
+          // only clone the original search condition once
+          cloned = _ast->clone(&search);
+        }
+        // calculation uses a to-be-replaced variable
+        _ast->replaceVariables(cloned, _replacements);
+      }
+    }
+
+    if (cloned != nullptr) {
+      // exchange the filter condition
+      view->filterCondition(cloned);
+    }
+  }
+#endif
+
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::ENUMERATE_LIST: {
         replaceInVariable<EnumerateListNode>(en);
         break;
       }
+
+#ifdef USE_IRESEARCH
+      case EN::ENUMERATE_IRESEARCH_VIEW: {
+        replaceInView(en);
+        break;
+      }
+#endif
 
       case EN::RETURN: {
         replaceInVariable<ReturnNode>(en);
@@ -2151,6 +2195,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
   }
 
  private:
+  Ast* _ast;
   std::unordered_map<VariableId, Variable const*> const& _replacements;
 };
 
@@ -2279,7 +2324,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
 
   if (!replacements.empty()) {
     // finally replace the variables
-    RedundantCalculationsReplacer finder(replacements);
+    RedundantCalculationsReplacer finder(plan->getAst(), replacements);
     plan->root()->walk(finder);
   }
 
@@ -2369,7 +2414,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
           replacements.emplace(outvars[0]->id, static_cast<Variable const*>(
                                                    rootNode->getData()));
 
-          RedundantCalculationsReplacer finder(replacements);
+          RedundantCalculationsReplacer finder(plan->getAst(), replacements);
           plan->root()->walk(finder);
           toUnlink.emplace(n);
           continue;
@@ -5977,7 +6022,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.emplace(listNode->outVariable()->id,
                                returnNode->inVariable());
-          RedundantCalculationsReplacer finder(replacements);
+          RedundantCalculationsReplacer finder(plan->getAst(), replacements);
           plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();
