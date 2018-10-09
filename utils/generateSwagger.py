@@ -916,7 +916,7 @@ def hint(cargo, r=Regexen()):
     global currentHint
     operation['x-hints'].append('\n\n')
 
-    ret = generic_handler_desc(cargo, r, "hints", None, operation('x-hints'), currentHint)
+    ret = generic_handler_desc(cargo, r, "hints", None, operation['x-hints'], currentHint)
 
     if r.TRIPLENEWLINEATSTART.match(operation['x-hints']):
         (fp, last) = cargo
