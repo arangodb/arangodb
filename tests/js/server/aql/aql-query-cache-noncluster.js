@@ -1149,7 +1149,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
-      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
@@ -1203,7 +1203,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
-      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
