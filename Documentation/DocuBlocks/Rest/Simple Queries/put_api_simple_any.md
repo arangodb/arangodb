@@ -8,12 +8,19 @@
 Returns a random document from a collection. The call expects a JSON object
 as body with the following attributes:
 
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required, string}
 The identifier or name of the collection to query.
 
 Returns a JSON object with the document stored in the attribute
 *document* if the collection contains at least one document. If
-the collection is empty, the *document* attrbute contains null.
+the collection is empty, the *document* attribute contains null.
 
 @RESTRETURNCODES
 

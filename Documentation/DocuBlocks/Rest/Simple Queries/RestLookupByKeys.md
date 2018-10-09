@@ -22,6 +22,13 @@ attribute. The *documents* attribute is an array containing the
 matching documents. The order in which matching documents are present
 in the result array is unspecified.
 
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

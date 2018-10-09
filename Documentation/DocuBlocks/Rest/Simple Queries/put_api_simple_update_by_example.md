@@ -51,6 +51,12 @@ Using it will result in an error.
 
 Returns the number of documents that were updated.
 
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
 
 @RESTRETURNCODES
 

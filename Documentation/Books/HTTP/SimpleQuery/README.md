@@ -2,7 +2,8 @@ HTTP Interface for Simple Queries
 =================================
 
 {% hint 'warning' %}
-The Simple Queries API is deprecated and superseded by AQL Queries.
+The Simple Queries API is deprecated. These endpoints should no longer be used.
+They are superseded by AQL queries.
 {% endhint %}
 
 Simple Queries

@@ -48,9 +48,15 @@ This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
 to issue an [AQL query](../../AQL/Functions/Geo.html) using the *WITHIN* function as follows: 
 
-
     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
       RETURN doc
+
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
 
 @RESTRETURNCODES
 

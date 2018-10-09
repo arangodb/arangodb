@@ -39,11 +39,17 @@ The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection within a specific range
 is to use an AQL query as follows: 
 
-
     FOR doc IN @@collection 
       FILTER doc.value >= @left && doc.value < @right 
       LIMIT @skip, @limit 
       RETURN doc`
+
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
 
 @RESTRETURNCODES
 

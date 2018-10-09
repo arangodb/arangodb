@@ -41,6 +41,13 @@ contain the number of actually removed documents. The *ignored* attribute
 will contain the number of keys in the request for which no matching document
 could be found.
 
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

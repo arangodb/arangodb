@@ -21,6 +21,13 @@ If more than one document in the collection matches the specified example, only
 one of these documents will be returned, and it is undefined which of the matching
 documents is returned.
 
+@HINT
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
