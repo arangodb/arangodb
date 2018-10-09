@@ -1000,6 +1000,13 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
     res = opResult.result;
   }
 
+  if (collectionName == "_appbundles") {
+    // if result is ok and the collection is the '_appbundles (which contains
+    // the content of a foxx service) collection, we need to trigger the foxx
+    // selfHeal function in order to make them publicly available.
+    ServerState::instance()->setFoxxmasterQueueupdate(true);
+  }
+
   return res;
 }
 
