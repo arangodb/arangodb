@@ -211,19 +211,8 @@ Scheduler::~Scheduler() {
   }
 }
 
-void Scheduler::post(std::function<void()> const callback, bool isV8,
-            uint64_t timeout) {
-    if (isV8) {
-      queue(RequestPriority::V8, callback);
-    } else {
-      queue(RequestPriority::HIGH, callback);
-    } // else
-
-    return;
-  };
-
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post_internal(std::function<void()> const callback, bool isV8,
+void Scheduler::post(std::function<void()> const callback, bool isV8,
                      uint64_t timeout) {
   // increment number of queued and guard against exceptions
   incQueued();
@@ -330,7 +319,7 @@ bool Scheduler::queue(RequestPriority prio,
       if (0 < _fifoSize[FIFO1] || !canPostDirectly()) {
         ok = pushToFifo(FIFO1, callback, false);
       } else {
-        post_internal(callback, false);
+        post(callback, false);
       }
       break;
 
@@ -343,7 +332,7 @@ bool Scheduler::queue(RequestPriority prio,
           0 < _fifoSize[FIFO2] || !canPostDirectly()) {
         ok = pushToFifo(FIFO2, callback, false);
       } else {
-        post_internal(callback, false);
+        post(callback, false);
       }
       break;
 
@@ -463,7 +452,7 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback,
     auto nrQueued = numQueued(counters);
 
     if (0 == nrWorking + nrQueued) {
-      post_internal([] { /*wakeup call for scheduler thread*/ }, false);
+      post([] { /*wakeup call for scheduler thread*/ }, false);
     }
   } catch (...) {
     return false;
@@ -492,7 +481,7 @@ bool Scheduler::popFifo(int64_t fifo) {
     });
 
     if (!job->_isV8 || _queuedV8 < _maxQueuedV8) {
-      post_internal(job->_callback, job->_isV8);
+      post(job->_callback, job->_isV8);
     } else {
       pushToFifo(FIFO8, job->_callback, job->_isV8);
     }
