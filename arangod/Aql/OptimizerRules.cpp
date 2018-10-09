@@ -1545,6 +1545,9 @@ void arangodb::aql::moveCalculationsDownRule(
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
+  std::vector<ExecutionNode*> stack;
+  std::unordered_set<Variable const*> vars;
+  std::unordered_set<Variable const*> usedHere;
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -1558,20 +1561,20 @@ void arangodb::aql::moveCalculationsDownRule(
     // this is the variable that the calculation will set
     auto variable = nn->outVariable();
 
-    std::vector<ExecutionNode*> stack;
+    stack.clear();
     n->parents(stack);
 
-    bool shouldMove = false;
     ExecutionNode* lastNode = nullptr;
 
     while (!stack.empty()) {
       auto current = stack.back();
       stack.pop_back();
 
-      lastNode = current;
       bool done = false;
 
-      for (auto const& v : current->getVariablesUsedHere()) {
+      usedHere.clear();
+      current->getVariablesUsedHere(usedHere);
+      for (auto const& v : usedHere) {
         if (v == variable) {
           // the node we're looking at needs the variable we're setting.
           // can't push further!
@@ -1596,13 +1599,12 @@ void arangodb::aql::moveCalculationsDownRule(
           // as possible, because this will mean we may need to transfer a lot
           // more data between DB servers and the coordinator
 
-          // assume we want to move the node past the limit
-          shouldMove = true;
+          // assume first that we want to move the node past the limit
 
           // however, if our calculation uses any data from a
           // collection/index/view, it probably makes sense to move it anyway,
           // because the result set may be huge
-          std::unordered_set<Variable const*> vars;
+          vars.clear();
           Ast::getReferencedVariables(nn->expression()->node(), vars);
           for (auto const& it : vars) {
             auto setter = plan->getVarSetBy(it->id);
@@ -1617,12 +1619,14 @@ void arangodb::aql::moveCalculationsDownRule(
                 setter->getType() == EN::SUBQUERY ||
                 setter->getType() == EN::TRAVERSAL ||
                 setter->getType() == EN::SHORTEST_PATH) {
-              shouldMove = false;
+              done = true;
               break;
             }
           }
-        } else {
-          shouldMove = true;
+        } 
+        
+        if (!done) {
+          lastNode = current;
         }
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
@@ -1634,23 +1638,23 @@ void arangodb::aql::moveCalculationsDownRule(
                  currentType == EN::SHORTEST_PATH ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
-        shouldMove = false;
+        done = true;
         break;
       }
-
-      if (!current->hasParent()) {
+      
+      if (done || !current->hasParent()) {
         break;
       }
 
       current->parents(stack);
     }
 
-    if (shouldMove && lastNode != nullptr) {
+    if (lastNode != nullptr && lastNode->getFirstParent() != nullptr) {
       // first, unlink the calculation from the plan
       plan->unlinkNode(n);
 
-      // and re-insert into before the current node
-      plan->insertDependency(lastNode, n);
+      // and re-insert into after the last "good" node
+      plan->insertDependency(lastNode->getFirstParent(), n);
       modified = true;
     }
   }
@@ -2198,6 +2202,168 @@ class arangodb::aql::RedundantCalculationsReplacer final
   Ast* _ast;
   std::unordered_map<VariableId, Variable const*> const& _replacements;
 };
+
+/// @brief simplify conditions in CalculationNodes
+void arangodb::aql::simplifyConditionsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::CALCULATION, true);
+ 
+  if (nodes.empty()) {
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
+  auto p = plan.get();
+
+  auto visitor = [p](AstNode* node) {
+again:
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      auto accessed = node->getMember(0);
+
+      if (accessed->type != NODE_TYPE_REFERENCE) {
+        return node;
+      }
+
+      Variable const* v = static_cast<Variable const*>(accessed->getData());
+      TRI_ASSERT(v != nullptr);
+
+      auto setter = p->getVarSetBy(v->id);
+      
+      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+        return node;
+      }
+
+      AstNode const* referenced = ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
+      if (referenced == nullptr) {
+        return node;
+      }
+
+      if (referenced->type == NODE_TYPE_OBJECT) {
+        StringRef attributeName(node->getStringValue(), node->getStringLength());
+
+        size_t const n = referenced->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = referenced->getMember(i);
+
+          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+              StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            // found the attribute!
+            node = member->getMember(0);
+            goto again;
+          }
+        } 
+      }
+    }
+
+    return node;
+  };
+   
+  bool modified = false;
+  for (auto const& n : nodes) {
+    auto nn = ExecutionNode::castTo<CalculationNode*>(n);
+
+    if (!nn->expression()->isDeterministic()) {
+      // If this node is non-deterministic, we must not touch it!
+      continue;
+    }
+
+    AstNode* root = nn->expression()->nodeForModification();
+
+    if (root != nullptr) {
+      AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
+      if (simplified != root) {
+        nn->expression()->replaceNode(simplified);
+        modified = true;
+      }
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief fuse filter conditions that follow each other
+void arangodb::aql::fuseFiltersRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::FILTER, true);
+ 
+  if (nodes.size() < 2) {
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
+  std::unordered_set<ExecutionNode*> seen;
+  // candidates of CalculationNode, FilterNode
+  std::vector<std::pair<ExecutionNode*, ExecutionNode*>> candidates;
+
+  bool modified = false;
+  
+  for (auto const& n : nodes) {
+    if (seen.find(n) != seen.end()) {
+      // already processed
+      continue;
+    }
+
+    Variable const* nextExpectedVariable = nullptr;
+    ExecutionNode* lastFilter = nullptr;
+    candidates.clear();
+
+    ExecutionNode* current = n;
+    while (current != nullptr) {
+      if (current->getType() == EN::CALCULATION) {
+        auto cn = ExecutionNode::castTo<CalculationNode*>(current);
+        if (!cn->isDeterministic() || cn->outVariable() != nextExpectedVariable) {
+          break;
+        }
+        TRI_ASSERT(lastFilter != nullptr);
+        candidates.emplace_back(current, lastFilter);
+        nextExpectedVariable = nullptr;
+      } else if (current->getType() == EN::FILTER) {
+        seen.emplace(current);
+
+        if (nextExpectedVariable != nullptr) {
+          // an unexpected order of nodes
+          break;
+        }
+        nextExpectedVariable = ExecutionNode::castTo<FilterNode const*>(current)->inVariable();
+        TRI_ASSERT(nextExpectedVariable != nullptr);
+        if (current->isVarUsedLater(nextExpectedVariable)) {
+          // filter input variable is also used for other things. we must not
+          // remove it or the corresponding calculation
+          break;
+        }
+        lastFilter = current;
+      } else {
+        // all other types of nodes we cannot optimize
+        break;
+      }
+      current = current->getFirstDependency();
+    }
+
+    if (candidates.size() >= 2) {
+      modified = true;
+      AstNode* root = ExecutionNode::castTo<CalculationNode*>(candidates[0].first)->expression()->nodeForModification();
+      for (size_t i = 1; i < candidates.size(); ++i) {
+        root = plan->getAst()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, ExecutionNode::castTo<CalculationNode const*>(candidates[i].first)->expression()->node(), root); 
+        
+        // throw away all now-unused filters and calculations
+        plan->unlinkNode(candidates[i - 1].second);
+        plan->unlinkNode(candidates[i - 1].first);
+      }
+
+      ExecutionNode* en = candidates.back().first;
+      TRI_ASSERT(en->getType() == EN::CALCULATION);
+      ExecutionNode::castTo<CalculationNode*>(en)->expression()->replaceNode(root);
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
 
 /// @brief remove CalculationNode(s) that are repeatedly used in a query
 /// (i.e. common expressions)

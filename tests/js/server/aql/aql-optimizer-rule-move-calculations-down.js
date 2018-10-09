@@ -104,7 +104,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = i + 1 LET test = (FOR j IN 1..result RETURN j) RETURN test",
         "FOR i IN 1..10 LIMIT 2 LET result = i < 5 RETURN i",
         "FOR i IN 1..10 LET result = IS_STRING(i) FOR j IN 1..2 RETURN j",
-        "FOR i IN 1..10 LET result = IS_STRING(i) FILTER i < 10 FOR j IN 1..2 RETURN j",
+        "FOR i IN 1..10 FILTER i < 10 LET result = IS_STRING(i) FOR j IN 1..2 RETURN j",
         "FOR i IN 1..10 LET result = IS_STRING(i) COLLECT r = result RETURN r",
         "FOR i IN 1..10 LET result = MAX(i) FILTER result < 3 RETURN result",
         "FOR i IN 1..10 LET result = RAND() FILTER i < 10 RETURN result"
