@@ -125,7 +125,7 @@ bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb,
 
 bool RocksDBVPackUniqueIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-    
+
   if (limit == 0 || _done) {
     // already looked up something
     return false;
@@ -298,7 +298,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(
     arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
 )
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(), /*useCache*/false), 
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(), /*useCache*/false),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
       _allowPartialIndex(true),
@@ -328,7 +328,7 @@ double RocksDBVPackIndex::selectivityEstimate(
   if (_unique) {
     return 1.0;
   }
-  TRI_ASSERT(_estimator != nullptr);  
+  TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
 }
 
@@ -384,7 +384,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
                                    std::vector<RocksDBKey>& elements,
                                    std::vector<uint64_t>& hashes) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
@@ -980,7 +980,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
-  
+
   VPackBuilder searchValues;
   searchValues.openArray();
   bool needNormalize = false;
@@ -1006,7 +1006,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
         found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    
+
     PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
                                                      nonNullAttributes, true);
 
@@ -1220,7 +1220,7 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
     return true;
   }
   // We simply drop the current estimator and steal the one from recovery
-  // We are than save for resizing issues in our _estimator format
+  // We are then safe for resizing issues in our _estimator format
   // and will use the old size.
 
   TRI_ASSERT(mgr != nullptr);
@@ -1253,6 +1253,9 @@ void RocksDBVPackIndex::recalculateEstimates() {
 }
 
 void RocksDBVPackIndex::afterTruncate() {
+  if (unique()) {
+    return;
+  }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
   RocksDBIndex::afterTruncate();

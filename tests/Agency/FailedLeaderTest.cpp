@@ -112,7 +112,8 @@ TEST_CASE("FailedLeader", "[agency][supervision]") {
   Builder builder;
   baseStructure.toBuilder(builder);
 
-  write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    
+  write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   auto transBuilder = std::make_shared<Builder>();
   { VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1)); }
@@ -123,7 +124,7 @@ SECTION("creating a job should create a job in todo") {
   Mock<AgentInterface> mockAgent;
 
   std::string jobId = "1";
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO(q->slice().toJson());
     auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
     REQUIRE(std::string(q->slice().typeName()) == "array" );
@@ -200,7 +201,7 @@ SECTION("if we want to start and the collection went missing from plan (our trut
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO(q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
@@ -256,7 +257,7 @@ SECTION("if we are supposed to fail a distributeShardsLike job we immediately fa
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO(q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
@@ -321,7 +322,7 @@ SECTION("if the leader is healthy again we fail the job") {
     auto transBuilder = std::make_shared<Builder>(createBuilder(json));
     return trans_ret_t(true, "", 0, 1, transBuilder);
   });
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0]; \
     REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
@@ -450,7 +451,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
   Mock<AgentInterface> moveShardMockAgent;
 
   Builder moveShardBuilder;
-  When(Method(moveShardMockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(moveShardMockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction(create): " << q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
@@ -506,7 +507,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     // check that moveshard is being moved to failed
     INFO("WriteTransaction: " << q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array");
@@ -681,7 +682,7 @@ SECTION("if we want are working and our collection went missing from plan the jo
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO(q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
@@ -817,7 +818,7 @@ SECTION("in case of a timeout the job should be aborted") {
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO(q->slice().toJson());
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
@@ -896,37 +897,23 @@ SECTION("when everything is finished there should be proper cleanup") {
   REQUIRE(builder);
   Node agency = createNodeFromBuilder(*builder);
 
-  size_t numWrites = 0;
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("Write: " << q->slice().toJson());
-    numWrites++;
 
-    if (numWrites == 1) {
-      REQUIRE(std::string(q->slice().typeName()) == "array" );
-      REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
-      REQUIRE(q->slice()[0][0].length() == 1);
+    REQUIRE(std::string(q->slice().typeName()) == "array" );
+    REQUIRE(q->slice().length() == 1);
+    REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
 
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Target/FailedServers/" + SHARD_LEADER).typeName()) == "object");
-      REQUIRE(writes.get("/arango/Target/FailedServers/" + SHARD_LEADER).get("op").copyString() == "erase");
-      REQUIRE(writes.get("/arango/Target/FailedServers/" + SHARD_LEADER).get("val").copyString() == SHARD);
-      return fakeWriteResult;
-    } else {
-      REQUIRE(std::string(q->slice().typeName()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-      REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
-
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Supervision/Shards/" + SHARD).typeName()) == "object");
-      REQUIRE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
-      REQUIRE(std::string(writes.get("/arango/Target/Pending/1").get("op").typeName()) == "string");
-      CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-      CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
-      return fakeWriteResult;
-    }
+    auto writes = q->slice()[0][0];
+    REQUIRE(std::string(writes.get("/arango/Supervision/Shards/" + SHARD).typeName()) == "object");
+    REQUIRE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
+    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").get("op").typeName()) == "string");
+    CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
+    CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
+    return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();

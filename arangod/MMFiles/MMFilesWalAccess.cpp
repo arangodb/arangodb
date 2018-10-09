@@ -86,7 +86,7 @@ TRI_voc_tick_t MMFilesWalAccess::lastTick() const {
 WalAccessResult MMFilesWalAccess::openTransactions(
     uint64_t tickStart, uint64_t tickEnd, WalAccess::Filter const& filter,
     TransactionCallback const& cb) const {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
       << "determining transactions, tick range " << tickStart << " - "
       << tickEnd;
 
@@ -104,7 +104,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(
   TRI_voc_tick_t lastFoundTick = 0;
   WalAccessResult res;
 
-  // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found logfiles: " <<
+  // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found logfiles: " <<
   // logfiles.size();
 
   try {
@@ -118,7 +118,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr,
                                                                 end);
 
-      // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "scanning logfile " << i;
+      // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "scanning logfile " << i;
       while (ptr < end) {
         auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
 
@@ -179,9 +179,9 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       }
     }
 
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found transactions: " <<
+    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found transactions: " <<
     // transactions.size();
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last tick: " <<
+    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "last tick: " <<
     // lastFoundTick;
     for (auto const& it : transactions) {
       if (it.second - 1 < lastFoundTick) {
@@ -195,17 +195,17 @@ WalAccessResult MMFilesWalAccess::openTransactions(
     res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick, 0,
               /*latest*/ state.lastCommittedTick);
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
         << "caught exception while determining open transactions: "
         << ex.what();
     res.reset(ex.code(), false, 0, 0, 0);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
         << "caught exception while determining open transactions: "
         << ex.what();
     res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
         << "caught unknown exception while determining open transactions";
     res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   }
@@ -232,7 +232,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
     return true;
   }
-  
+
   bool isViewWalMarker(MMFilesMarker const* marker) const {
     MMFilesMarkerType t = marker->getType();
     return t == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
@@ -345,7 +345,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", VPackValue(view->guid()));
-      
+
     } else {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
@@ -393,7 +393,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
 
       default: {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type "
+        LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type "
                                                 << static_cast<int>(type);
         TRI_ASSERT(false);
         return TRI_ERROR_INTERNAL;
@@ -481,7 +481,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
-        
+
           if (foundTick <= tickEnd) {
             lastScannedTick = foundTick;
           }
@@ -540,15 +540,15 @@ struct MMFilesWalAccessContext : WalAccessContext {
         }
       }
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
           << "caught exception while dumping replication log: " << ex.what();
       res = ex.code();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
           << "caught exception while dumping replication log: " << ex.what();
       res = TRI_ERROR_INTERNAL;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
           << "caught unknown exception while dumping replication log";
       res = TRI_ERROR_INTERNAL;
     }
@@ -564,7 +564,7 @@ WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                        TRI_voc_tid_t barrierId,
                                        WalAccess::Filter const& filter,
                                        MarkerCallback const& callback) const {
-  /*OG_TOPIC(WARN, Logger::FIXME)
+  /*OG_TOPIC(WARN, Logger::REPLICATION)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "
       << tickEnd << " chunkSize " << chunkSize << " includeSystem "
       << filter.includeSystem << " firstRegularTick" <<

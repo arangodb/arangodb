@@ -4,9 +4,9 @@ arangosh&gt; <span class="hljs-keyword">for</span> (<span class="hljs-keyword">v
 arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">2000</span> * <span class="hljs-number">1000</span>).distance().toArray();
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5586"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5586"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xdu--D"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5598"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5598"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Ntm--H"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
       <span class="hljs-number">0</span> 
@@ -15,9 +15,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">0</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5589"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5589"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xdy--_"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5601"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5601"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Ntm--J"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
       <span class="hljs-number">10</span> 
@@ -26,9 +26,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1111949.2664455874</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5583"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5583"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xdu--B"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5595"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5595"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Ntm--F"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
       <span class="hljs-number">-10</span> 
@@ -37,9 +37,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1111949.2664455874</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5697"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5697"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xem--D"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5709"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5709"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2NuC--B"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">10</span>, 
       <span class="hljs-number">0</span> 
@@ -48,9 +48,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1111949.2664455874</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5475"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5475"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xc6--B"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5487"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5487"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2NtO--B"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">-10</span>, 
       <span class="hljs-number">0</span> 
@@ -59,9 +59,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1111949.2664455874</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5694"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5694"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xem--B"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5706"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5706"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2NuC--_"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">10</span>, 
       <span class="hljs-number">-10</span> 
@@ -70,9 +70,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5700"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5700"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xeq--_"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5712"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5712"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2NuC--D"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">10</span>, 
       <span class="hljs-number">10</span> 
@@ -81,9 +81,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5472"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5472"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xc6--_"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5484"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5484"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2NtO--_"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">-10</span>, 
       <span class="hljs-number">-10</span> 
@@ -92,9 +92,9 @@ arangosh&gt; db.geo.within(<span class="hljs-number">0</span>, <span class="hljs
     <span class="hljs-string">"distance"</span> : <span class="hljs-number">1568520.5567985761</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5478"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5478"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XYq1xc6--D"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/5490"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5490"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2NtO--D"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">-10</span>, 
       <span class="hljs-number">10</span> 

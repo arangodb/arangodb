@@ -1267,9 +1267,11 @@ void ClusterCommThread::run() {
       _cc->communicator()->wait();
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in ClusterCommThread: " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "caught exception in ClusterCommThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in ClusterCommThread";
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "caught unknown exception in ClusterCommThread";
     }
   }
   _cc->communicator()->abortRequests();

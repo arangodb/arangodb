@@ -24,6 +24,8 @@
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 
+#include <iostream>
+
 namespace arangodb {
 
 GreetingsFeature::GreetingsFeature(
@@ -35,6 +37,14 @@ GreetingsFeature::GreetingsFeature(
 }
 
 void GreetingsFeature::prepare() {
+#ifdef __linux__
+  if (isatty(STDOUT_FILENO)) {
+    std::cout << "\x1b[0;1;35;95m┏━\x1b[0;1;31;91m┓┏\x1b[0;1;33;93m━┓\x1b[0;1;32;92m┏━\x1b[0;1;36;96m┓┏\x1b[0;1;34;94m┓╻\x1b[0;1;35;95m┏━\x1b[0;1;31;91m╸┏\x1b[0;1;33;93m━┓\x1b[0;1;32;92m╺┳\x1b[0;1;36;96m┓┏\x1b[0;1;34;94m┓\x1b[0m    \x1b[0;1;31;91m┏\x1b[0;1;33;93m━┓\x1b[0m \x1b[0;1;32;92m╻\x1b[0m \x1b[0;1;36;96m╻\x1b[0m   \x1b[0;1;35;95m┏\x1b[0;1;31;91m━┓\x1b[0;1;33;93m┏━\x1b[0;1;32;92m╸┏\x1b[0;1;36;96m━┓\x1b[0m" << std::endl;
+    std::cout << "\x1b[0;1;31;91m┣━\x1b[0;1;33;93m┫┣\x1b[0;1;32;92m┳┛\x1b[0;1;36;96m┣━\x1b[0;1;34;94m┫┃\x1b[0;1;35;95m┗┫\x1b[0;1;31;91m┃╺\x1b[0;1;33;93m┓┃\x1b[0m \x1b[0;1;32;92m┃\x1b[0m \x1b[0;1;36;96m┃\x1b[0;1;34;94m┃┣\x1b[0;1;35;95m┻┓\x1b[0m   \x1b[0;1;33;93m╺\x1b[0;1;32;92m━┫\x1b[0m \x1b[0;1;36;96m┗\x1b[0;1;34;94m━┫\x1b[0;1;35;95m╺━\x1b[0;1;31;91m╸┣\x1b[0;1;33;93m┳┛\x1b[0;1;32;92m┃\x1b[0m  \x1b[0;1;36;96m╺\x1b[0;1;34;94m━┫\x1b[0m" << std::endl;
+    std::cout << "\x1b[0;1;33;93m╹\x1b[0m \x1b[0;1;32;92m╹╹\x1b[0;1;36;96m┗╸\x1b[0;1;34;94m╹\x1b[0m \x1b[0;1;35;95m╹╹\x1b[0m \x1b[0;1;31;91m╹\x1b[0;1;33;93m┗━\x1b[0;1;32;92m┛┗\x1b[0;1;36;96m━┛\x1b[0;1;34;94m╺┻\x1b[0;1;35;95m┛┗\x1b[0;1;31;91m━┛\x1b[0m   \x1b[0;1;32;92m┗\x1b[0;1;36;96m━┛\x1b[0;1;34;94m╹\x1b[0m  \x1b[0;1;35;95m╹\x1b[0m   \x1b[0;1;33;93m╹\x1b[0;1;32;92m┗╸\x1b[0;1;36;96m┗━\x1b[0;1;34;94m╸┗\x1b[0;1;35;95m━┛\x1b[0m" << std::endl;
+    std::cout << std::endl;
+  }
+#endif
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << rest::Version::getVerboseVersionString();
 }
 

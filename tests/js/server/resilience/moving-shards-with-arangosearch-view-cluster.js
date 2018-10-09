@@ -31,7 +31,8 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require("lodash");
-const wait = require("internal").wait;
+const internal = require("internal");
+const wait = internal.wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 
 function getDBServers() {
@@ -114,7 +115,7 @@ function MovingShardsWithViewSuite (options) {
     }
     return true;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get cleaned out servers
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,10 +127,10 @@ function MovingShardsWithViewSuite (options) {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    
+
     var res;
     try {
-      var envelope = 
+      var envelope =
           { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
       res = request(envelope);
     } catch (err) {
@@ -181,11 +182,11 @@ function MovingShardsWithViewSuite (options) {
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
       }
-      
+
     } else {
-    
+
       for (var i = fromCollNr; i <= toCollNr; ++i) {
-        
+
         while (--count > 0) {
           wait(1.0);
           global.ArangoClusterInfo.flush();
@@ -214,9 +215,9 @@ function MovingShardsWithViewSuite (options) {
         if (!ok) {
           return false;
         }
-        
+
       }
-      
+
     }
     return ok;
   }
@@ -254,7 +255,7 @@ function MovingShardsWithViewSuite (options) {
       }
       if (count-- < 0) {
         console.error(
-          "Timeout in waiting for cleanOutServer to complete: " 
+          "Timeout in waiting for cleanOutServer to complete: "
           + JSON.stringify(body));
         return false;
       }
@@ -345,7 +346,7 @@ function MovingShardsWithViewSuite (options) {
       }
       if (count-- < 0) {
         console.error(
-          "Timeout in waiting for moveShard to complete: " 
+          "Timeout in waiting for moveShard to complete: "
           + JSON.stringify(body));
         return false;
       }
@@ -366,7 +367,7 @@ function MovingShardsWithViewSuite (options) {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var req;
-    try {      
+    try {
       req = request({ method: "PUT",
                       url: url + "/_admin/cluster/maintenance",
                       body: JSON.stringify(mode) });
@@ -379,7 +380,7 @@ function MovingShardsWithViewSuite (options) {
     return true;
   }
 
-  
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
@@ -435,7 +436,7 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findServerNotOnList(list) {
-    var count = 0;    
+    var count = 0;
     while (list.indexOf(dbservers[count]) >= 0) {
       count += 1;
     }
@@ -468,6 +469,28 @@ function MovingShardsWithViewSuite (options) {
     return false;
   }
 
+  function waitForPlanEqualCurrent(collection) {
+    const iterations = 120;
+    const waitTime = 1.0;
+    const maxTime = iterations * waitTime;
+
+    for (let i = 0; i < iterations; i++) {
+      global.ArangoClusterInfo.flush();
+      const shardDist = internal.getCollectionShardDistribution(collection._id);
+      const Plan = shardDist[collection.name()].Plan;
+      const Current = shardDist[collection.name()].Current;
+
+      if (_.isObject(Plan) && _.isEqual(Plan, Current)) {
+        return true;
+      }
+
+      wait(waitTime);
+    }
+
+    console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime} sec`);
+    return false;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get DBServers for a shard view of collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +511,7 @@ function MovingShardsWithViewSuite (options) {
 
         var res;
         try {
-          var envelope = 
+          var envelope =
               { method: "GET", url: url + "/_api/view" };
           res = request(envelope);
         } catch (err) {
@@ -503,7 +526,7 @@ function MovingShardsWithViewSuite (options) {
         views.forEach(v => {
           var res;
           try {
-            var envelope = 
+            var envelope =
                 { method: "GET", url: url + "/_api/view/" + v.name + "/properties" };
             res = request(envelope);
           } catch (err) {
@@ -514,7 +537,7 @@ function MovingShardsWithViewSuite (options) {
           var body = res.body;
           if (typeof body === "string") {
             var links = JSON.parse(body).links;
-            if (links !== undefined 
+            if (links !== undefined
                 && links.hasOwnProperty(shard)
                 && links.shard !== {}) {
               sViewServers.push(serverId);
@@ -526,6 +549,15 @@ function MovingShardsWithViewSuite (options) {
 
     if (unique) sViewServers = Array.from(new Set(sViewServers));
     return sort ? sViewServers.sort() : sViewServers;
+  }
+
+  function waitAndAssertViewEqualCollectionServers() {
+    assertTrue(waitForSupervision());
+    c.forEach( c_v => {
+      assertTrue(waitForPlanEqualCurrent(c_v));
+      assertEqual(getShardedViewServers("_system", c_v),
+        findCollectionShardServers("_system", c_v.name()));
+    });
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +583,7 @@ function MovingShardsWithViewSuite (options) {
         v[i].drop();
         c[i].drop();
       }
-      c = []; 
+      c = [];
       v = [];
       resetCleanedOutServers();
     },
@@ -562,44 +594,28 @@ function MovingShardsWithViewSuite (options) {
 
     testSetup : function () {
       dbservers = getDBServers();
-      assertTrue(waitForSynchronousReplication("_system"));
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = servers;
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
       assertTrue(testServerEmpty(_dbservers[4], true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
       assertTrue(shrinkCluster(3));
       assertTrue(testServerEmpty(_dbservers[3], true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
       assertTrue(shrinkCluster(2));
       assertTrue(testServerEmpty(_dbservers[2], true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a follower
 ////////////////////////////////////////////////////////////////////////////////
@@ -614,11 +630,7 @@ function MovingShardsWithViewSuite (options) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer), false);
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,11 +647,7 @@ function MovingShardsWithViewSuite (options) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer), false);
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,11 +665,7 @@ function MovingShardsWithViewSuite (options) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -679,11 +683,7 @@ function MovingShardsWithViewSuite (options) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -701,11 +701,7 @@ function MovingShardsWithViewSuite (options) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -723,11 +719,7 @@ function MovingShardsWithViewSuite (options) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -740,11 +732,7 @@ function MovingShardsWithViewSuite (options) {
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -757,11 +745,7 @@ function MovingShardsWithViewSuite (options) {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -775,11 +759,7 @@ function MovingShardsWithViewSuite (options) {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,11 +773,7 @@ function MovingShardsWithViewSuite (options) {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,11 +787,7 @@ function MovingShardsWithViewSuite (options) {
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -829,11 +801,7 @@ function MovingShardsWithViewSuite (options) {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,7 +817,7 @@ function MovingShardsWithViewSuite (options) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(maintenanceMode("on"));      
+      assertTrue(maintenanceMode("on"));
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true));
       var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
           arango.Supervision.State, state;
@@ -868,11 +836,7 @@ function MovingShardsWithViewSuite (options) {
         arango.Supervision.State;
       assertTrue(state.Timestamp !== first.Timestamp);
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-      c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
-                  findCollectionShardServers("_system", c_v.name()));
-      });
+      waitAndAssertViewEqualCollectionServers();
     },
 
 ////////////////////////////////////////////////////////////////////////////////

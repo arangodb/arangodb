@@ -273,7 +273,8 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isAgent(role)) {
     runSimpleServer();
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
+    LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
   }
 
@@ -965,9 +966,7 @@ void HeartbeatThread::runCoordinator() {
         if (failedServersSlice.isObject()) {
           std::vector<std::string> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
-            if (server.value.isArray() && server.value.length() == 0) {
-              failedServers.push_back(server.key.copyString());
-            }
+            failedServers.push_back(server.key.copyString());
           }
           // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
@@ -1157,8 +1156,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         int res = databaseFeature->createDatabase(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
-                   << "' failed: " << TRI_errno_string(res);
+          LOG_TOPIC(ERR, arangodb::Logger::HEARTBEAT)
+              << "creating local database '" << name
+              << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce.store(true, std::memory_order_release);
         }

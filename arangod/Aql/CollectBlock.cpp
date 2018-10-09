@@ -688,7 +688,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   }
 
   // if no group exists for the current row yet, this builds a new group.
-  auto buildNewGroup = [this, en, &aggregatorFactories](
+  auto buildNewGroup = [this, &aggregatorFactories](
       const AqlItemBlock* cur, size_t const pos,
       const size_t n) -> std::pair<std::unique_ptr<AggregateValuesType>,
                                    std::vector<AqlValue>> {

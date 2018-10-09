@@ -1,10 +1,10 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Queries
 
 This function implements the
-[HTTP API for single roundtrip AQL queries](../../../..//HTTP/AqlQueryCursor/QueryResults.html).
+[HTTP API for single round-trip AQL queries](../../../..//HTTP/AqlQueryCursor/QueryResults.html).
 
-For collection-specific queries see [simple queries](../Collection/SimpleQueries.md).
+For collection-specific queries see [Simple Queries](../Collection/SimpleQueries.md).
 
 ## database.query
 
@@ -31,8 +31,11 @@ Performs a database query using the given _query_ and _bindVars_, then returns a
 
 If _opts.count_ is set to `true`, the cursor will have a _count_ property set to
 the query result count.
-Possible key options in _opts.options_ include: _failOnWarning_, _cache_, profile or _skipInaccessibleCollections_.
-For a complete list of query settings please reference the [arangodb.com documentation](../../../..//AQL/Invocation/WithArangosh.html#setting-options).
+
+Possible key options in _opts.options_ include: _failOnWarning_, _cache_,
+profile or _skipInaccessibleCollections_.
+For a complete list of query settings please reference the
+[setting options](../../../..//AQL/Invocation/WithArangosh.html#setting-options).
 
 If _query_ is an object with _query_ and _bindVars_ properties, those will be
 used as the values of the respective arguments instead.

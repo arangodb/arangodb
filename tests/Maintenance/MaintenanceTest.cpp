@@ -643,11 +643,11 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
   SECTION("Modify journalSize in plan should update the according collection") {
 
     VPackBuilder v; v.add(VPackValue(0));
+    std::string dbname("foo");
 
     for (auto node : localNodes) {
 
       std::vector<ActionDescription> actions;
-      std::string dbname = "_system";
       std::string prop = arangodb::maintenance::JOURNAL_SIZE;
 
       auto cb =
@@ -662,20 +662,19 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, errors, actions);
 
-      /*
+
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
-
         REQUIRE(action.name() == "UpdateCollection");
         REQUIRE(action.get("shard") == shname);
         REQUIRE(action.get("database") == dbname);
         auto const props = action.properties();
 
       }
-      */
+
     }
   }
 
@@ -728,12 +727,15 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     for (auto& node : localNodes) {
 
       std::vector<ActionDescription> actions;
-      node.second("db3") = node.second("_system");
+      node.second("db3") = node.second("foo");
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, errors, actions);
 
+      if (actions.size() != node.second("db3").children().size()) {
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
+      }
       REQUIRE(actions.size() == node.second("db3").children().size());
       for (auto const& action : actions) {
         REQUIRE(action.name() == "DropCollection");
@@ -797,6 +799,48 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
   }
 
+  SECTION( "Removed follower in Plan must be dropped" ) {
+    plan = originalPlan;
+    std::string const dbname("_system");
+    std::string const colname("bar");
+    auto cid = collectionMap(plan).at(dbname + "/" + colname);
+    Node::Children& shards = plan({"Collections",dbname,cid,"shards"}).children();
+    auto firstShard = shards.begin();
+    VPackBuilder b = firstShard->second->toBuilder();
+    std::string const shname = firstShard->first;
+    std::string const leaderName = b.slice()[0].copyString();
+    std::string const followerName = b.slice()[1].copyString();
+    firstShard->second->handle<POP>(
+      arangodb::velocypack::Slice::emptyObjectSlice());
+
+    for (auto const& node : localNodes) {
+      std::vector<ActionDescription> actions;
+      
+      arangodb::maintenance::diffPlanLocal (
+        plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
+        errors, actions);
+
+      if (node.first == followerName) {
+        // Must see an action dropping the shard
+        REQUIRE(actions.size() == 1);
+        REQUIRE(actions.front().name() == "DropCollection");
+        REQUIRE(actions.front().get(DATABASE) == dbname);
+        REQUIRE(actions.front().get(COLLECTION) == shname);
+      } else if (node.first == leaderName) {
+        // Must see an UpdateCollection action to drop the follower
+        REQUIRE(actions.size() == 1);
+        REQUIRE(actions.front().name() == "UpdateCollection");
+        REQUIRE(actions.front().get(DATABASE) == dbname);
+        REQUIRE(actions.front().get(SHARD) == shname);
+        REQUIRE(actions.front().get(FOLLOWERS_TO_DROP) == followerName);
+      } else {
+        // No actions required
+        REQUIRE(actions.size() == 0);
+      }
+    }
+
+  }
+
 }
 
 TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
@@ -840,8 +884,8 @@ TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
       REQUIRE(pt.isEmptyObject());
       
     }
-  }
-*/
+  }*/
+
 }
 
 
