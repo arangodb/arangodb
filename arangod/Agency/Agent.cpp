@@ -1775,15 +1775,18 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
     
   std::string err;
+  bool changed = false;
     
   /// Pool incomplete or the other guy is in my pool: I'll gossip.
   if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
-      
+
+    auto before = _config.version();
     if (!_config.upsertPool(pslice, id)) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
       FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
     }
     auto pool = _config.pool();
+    changed = before < _config.version();
       
     // Wrapped in envelope in RestAgencyPrivHandler
     out->add(VPackValue("pool"));
@@ -1860,7 +1863,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
     
   // let gossip loop know that it has new data
-  if ( _inception != nullptr && isCallback) {
+  if ( _inception != nullptr && changed) {
     _inception->signalConditionVar();
   }
     
