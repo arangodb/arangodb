@@ -2,6 +2,15 @@ v3.3.18 (XXXX-XX-XX)
 
 * improved logging in case of replication errors
 
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
+
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
+
 v3.3.17 (2018-10-04)
 --------------------
 
@@ -867,7 +876,7 @@ v3.3.1 (2017-12-28)
 * Fix agency integer overflow in timeout calculation.
 
 
-v3.3.0 (2012-12-14)
+v3.3.0 (2017-12-14)
 -------------------
 
 * release version
