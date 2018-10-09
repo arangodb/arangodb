@@ -914,11 +914,11 @@ def restdescription(cargo, r=Regexen()):
 def hint(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
     global currentHint
-    operation['x-hints'].append('\n\n')
+    swagger['paths'][httpPath][method]['x-hints'].append('\n\n')
 
-    ret = generic_handler_desc(cargo, r, "hints", None, operation['x-hints'], currentHint)
+    ret = generic_handler_desc(cargo, r, "hints", None, swagger['paths'][httpPath][method]['x-hints'], currentHint)
 
-    if r.TRIPLENEWLINEATSTART.match(operation['x-hints']):
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @HINT in file %s' % (fp.name)
         exit(1)
