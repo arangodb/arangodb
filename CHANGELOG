@@ -1,6 +1,9 @@
 devel
 -----
 
+* disable in-memory cache for edge and traversal data on agency nodes, as it
+  is not needed there
+
 * fixed internal issue #1983: the Web UI was showing a deletion confirmation
   multiple times.
 
@@ -15,10 +18,15 @@ devel
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
-* disable in-memory cache for edge and traversal data on agency nodes, as it
-  is not needed there
-
 * include forward-ported diagnostic options for debugging LDAP connections
+
+* fix internal issue #3065: fix variable replacements by the AQL query 
+  optimizer in arangosearch view search conditions
+
+  The consequence of the missing replacements was that some queries using view
+  search conditions could have failed with error messages such as
+
+  "missing variable #3 (a) for node #7 (EnumerateViewNode) while planning registers"
 
 * support installation of ArangoDB on Windows into directories with multibyte
   character filenames on Windows platforms that used a non-UTF8-codepage
@@ -1453,7 +1461,7 @@ v3.3.1 (2017-12-28)
 * Fix agency integer overflow in timeout calculation.
 
 
-v3.3.0 (2012-12-14)
+v3.3.0 (2017-12-14)
 -------------------
 
 * release version
