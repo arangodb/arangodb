@@ -1023,7 +1023,6 @@ arangodb::Result IResearchView::drop(
     TRI_voc_cid_t cid,
     bool unlink /*= true*/
 ) {
-  TRI_ASSERT(_storePersisted);
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex rmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   WriteMutex wmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
@@ -1069,7 +1068,9 @@ arangodb::Result IResearchView::drop(
   // ...........................................................................
 
   try {
-    _storePersisted._writer->documents().remove(shared_filter);
+    if (_storePersisted) {
+      _storePersisted._writer->documents().remove(shared_filter);
+    }
   } catch (arangodb::basics::Exception& e) {
     IR_LOG_EXCEPTION();
 
@@ -1371,7 +1372,6 @@ int IResearchView::insert(
   auto* ctx = ViewStateHelper::write(state, *this);
 
   if (!ctx) {
-    TRI_ASSERT(_storePersisted._writer);
     auto ptr = irs::memory::make_unique<ViewStateWrite>(
       _asyncSelf->mutex(), *_storePersisted._writer
     ); // will aquire read-lock to prevent data-store deallocation
@@ -1462,7 +1462,6 @@ int IResearchView::insert(
   auto* ctx = ViewStateHelper::write(state, *this);
 
   if (!ctx) {
-    TRI_ASSERT(_storePersisted._writer);
     auto ptr = irs::memory::make_unique<ViewStateWrite>(
       _asyncSelf->mutex(), *_storePersisted._writer
     ); // will aquire read-lock to prevent data-store deallocation
@@ -1735,7 +1734,6 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
-  TRI_ASSERT(_storePersisted);
   auto* state = trx.state();
 
   if (!state) {
@@ -1792,7 +1790,9 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     ReadMutex mutex(_mutex); // _storePersisted can be asynchronously updated
     SCOPED_LOCK(mutex);
 
-    reader->add(_storePersisted._reader);
+    if (_storePersisted) {
+      reader->add(_storePersisted._reader);
+    }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while collecting readers for snapshot of arangosearch view '" << name()

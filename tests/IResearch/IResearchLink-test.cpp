@@ -660,6 +660,7 @@ SECTION("test_write") {
   CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
   logicalCollection->dropIndex(link->id());
+  CHECK((view->commit().ok()));
   CHECK((0 == reader.reopen().live_docs_count()));
 }
 
