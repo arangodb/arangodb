@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Start ArangoDB on Kubernetes in 5 minutes
 
 Starting an ArangoDB database (either single server or full blown cluster)
@@ -38,7 +38,6 @@ For now, any recent Kubernetes cluster will do (e.g. `minikube`).
 Then run (replace `<version>` with the version of the operator that you want to install):
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/crd.yaml
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-deployment.yaml
 # Optional
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-storage.yaml

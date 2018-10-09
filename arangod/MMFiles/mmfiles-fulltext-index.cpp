@@ -1224,7 +1224,8 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
     match = query->_matches[i];
     operation = query->_operations[i];
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "searching for word: '" << word << "'";
+    LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
         i > 0 && result.empty()) {
@@ -1245,7 +1246,8 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
         // prefix matching
         GetSubNodeDocs(node, current);
       } else {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid matching option for fulltext index query";
+        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+            << "invalid matching option for fulltext index query";
       }
     }
 

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Accessing views
 
 These functions implement the
@@ -32,7 +32,7 @@ ArangoView view = db.view("myView");
 ArangoDatabase.arangoSearch(String name) : ArangoSearch
 ```
 
-Returns a _ArangoSearch_ instance for the given ArangoSearch View name.
+Returns a _ArangoSearch_ instance for the given ArangoSearch view name.
 
 **Arguments**
 

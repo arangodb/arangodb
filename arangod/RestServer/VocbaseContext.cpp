@@ -87,7 +87,10 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   }
   
   auth::UserManager* um = auth->userManager();
-  TRI_ASSERT(um != nullptr);
+  if (um == nullptr) {
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "users are not supported on this server";
+    return nullptr;
+  }
   
   auth::Level dbLvl = um->databaseAuthLevel(req.user(), req.databaseName());
   auth::Level sysLvl = dbLvl;

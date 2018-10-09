@@ -141,7 +141,7 @@ class IResearchView
   ///////////////////////////////////////////////////////////////////////////////
   class AsyncSelf: public ResourceMutex {
    public:
-    DECLARE_SPTR(AsyncSelf);
+    DECLARE_SHARED_PTR(AsyncSelf);
     explicit AsyncSelf(IResearchView* value): ResourceMutex(value) {}
     IResearchView* get() const {
       return static_cast<IResearchView*>(ResourceMutex::get());
@@ -296,6 +296,12 @@ class IResearchView
   /// @return 'visitor' success
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the number of documents indexed by the view
+  //////////////////////////////////////////////////////////////////////////////
+  size_t count();
+
 
  protected:
 

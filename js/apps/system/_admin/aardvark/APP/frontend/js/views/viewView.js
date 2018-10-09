@@ -106,7 +106,7 @@
       }
 
       $.ajax({
-        type: 'PATCH',
+        type: 'PUT',
         cache: false,
         url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.name) + '/properties'),
         contentType: 'application/json',

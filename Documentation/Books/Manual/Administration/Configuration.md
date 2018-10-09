@@ -106,3 +106,16 @@ this file and later upgrade to a new version of ArangoDB, then the package
 manager normally warns you about the conflict. In order to avoid these warning
 for small adjustments, you can put local overrides into a file
 *arangod.conf.local*.
+
+## Fetch Current Configuration Options
+
+To list the configuration options of a running `arangod` instance, you can
+connect with an [ArangoShell](../Programs/Arangosh/README.md) and invoke a
+[Transaction](../Transactions/README.md) providing a description
+to the `db._executeTransaction()` JavaScript function:
+
+    @startDocuBlockInline listCurrentConfigOpts
+    @EXAMPLE_ARANGOSH_OUTPUT{listCurrentConfigOpts}
+    db._executeTransaction({ collections: {}, action: function() {return require("internal").options(); } })
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock listCurrentConfigOpts

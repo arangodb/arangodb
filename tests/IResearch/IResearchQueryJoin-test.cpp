@@ -86,24 +86,24 @@ struct CustomScorer : public irs::sort {
       : i(i) {
     }
 
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
+    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
+      score_cast(dst) += score_cast(src);
     }
 
     virtual irs::flags const& features() const override {
       return irs::flags::empty_instance();
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return lhs < rhs;
+    virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
+      return score_cast(lhs) < score_cast(rhs);
     }
 
     virtual irs::sort::collector::ptr prepare_collector() const override {
       return nullptr;
     }
 
-    virtual void prepare_score(score_t& score) const override {
-      score = 0.f;
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = 0.f;
     }
 
     virtual irs::sort::scorer::ptr prepare_scorer(
@@ -1516,6 +1516,42 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
       arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // dedicated to https://github.com/arangodb/planning/issues/3065$
+  // Optimizer rule "inline sub-queries" which doesn't handle views correctly$
+  {
+    std::string const query = "LET fullAccounts = (FOR acc1 IN [1] RETURN { 'key': 'A' }) for a IN fullAccounts for d IN testView SEARCH d.name == a.key return d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        arangodb::aql::OptimizerRule::inlineSubqueriesRule
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);

@@ -227,3 +227,8 @@ target_include_directories(
   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson
 )
 
+################################################################################
+### SIMDCOMP library
+################################################################################
+
+add_subdirectory(simdcomp)

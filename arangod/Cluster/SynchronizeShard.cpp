@@ -679,8 +679,21 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci =
-      clusterInfo->getCollection(database, planId);
+    std::shared_ptr<LogicalCollection> ci;
+    try {   // ci->getCollection can throw
+      ci = clusterInfo->getCollection(database, planId);
+    } catch(...) {
+      auto const endTime = system_clock::now();
+      std::stringstream msg;
+      msg << "exception in getCollection, " << database << "/"
+          << shard << ", " << database
+          << "/" << planId << ", started " << startTimeStr << ", ended "
+          << timepointToString(endTime);
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: "
+          << msg.str();
+      _result.reset(TRI_ERROR_FAILED, msg.str());
+      return false;
+    }
     TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
@@ -870,7 +883,8 @@ bool SynchronizeShard::first() {
           Result result = startReadLockOnLeader(
             ep, database, collection->name(), clientId, lockJobId);
           if (result.ok()) {
-            LOG_TOPIC(DEBUG, Logger::FIXME) << "lockJobId: " <<  lockJobId;
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                << "lockJobId: " <<  lockJobId;
           } else {
             LOG_TOPIC(ERR, Logger::MAINTENANCE)
               << "synchronizeOneShard: error in startReadLockOnLeader:"
@@ -965,15 +979,12 @@ bool SynchronizeShard::first() {
 
 
 void SynchronizeShard::setState(ActionState state) {
-  
+
   if ((COMPLETE==state || FAILED==state) && _state != state) {
     TRI_ASSERT(_description.has("shard"));
     _feature.incShardVersion(_description.get("shard"));
   }
-  
+
   ActionBase::setState(state);
-  
+
 }
-
-
-

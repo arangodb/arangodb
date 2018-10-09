@@ -5,8 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2014 triagens GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +21,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -122,7 +121,8 @@ function getApplierState(endpoint) {
     }
   });
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200);
   assertTrue(res.hasOwnProperty('json'));
   return arangosh.checkRequestResult(res.json);
 }
@@ -254,18 +254,15 @@ function ActiveFailoverSuite() {
   return {
     setUp: function () {
       let col = db._create(cname);
-      print("<setUp>");
       assertTrue(checkInSync(currentLead, servers));
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
-      print("</setUp>");
     },
 
     tearDown: function () {
       //db._collection(cname).drop();
       //serverTeardown();
-      print("<tearDown>");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);
@@ -284,8 +281,6 @@ function ActiveFailoverSuite() {
       let endpoints = getClusterEndpoints();
       assertTrue(endpoints.length === servers.length);
       assertTrue(endpoints[0] === currentLead);
-
-      print("</tearDown>");
     },
 
     // Basic test if followers get in sync

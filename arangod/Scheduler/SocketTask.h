@@ -34,11 +34,13 @@
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
 
+#include "GeneralServer/IoTask.h"
+
 namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
-class SocketTask : virtual public Task {
+class SocketTask : virtual public IoTask {
   friend class HttpCommTask;
 
   explicit SocketTask(SocketTask const&) = delete;
@@ -48,7 +50,8 @@ class SocketTask : virtual public Task {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(Scheduler*, std::unique_ptr<Socket>, ConnectionInfo&&,
+  SocketTask(GeneralServer &server, GeneralServer::IoContext &context,
+             std::unique_ptr<Socket>, ConnectionInfo&&,
              double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();

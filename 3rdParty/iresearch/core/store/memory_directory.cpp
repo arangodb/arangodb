@@ -25,6 +25,7 @@
 #include "memory_directory.hpp"
 
 #include "error/error.hpp"
+#include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
@@ -32,26 +33,11 @@
 #include "utils/utf8_path.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/numeric_utils.hpp"
+#include "utils/crc.hpp"
 
 #include <cassert>
 #include <cstring>
 #include <algorithm>
-
-#if defined(_MSC_VER)
-  #pragma warning(disable : 4244)
-  #pragma warning(disable : 4245)
-#elif defined (__GNUC__)
-  // NOOP
-#endif
-
-#include <boost/crc.hpp>
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4244)
-  #pragma warning(default: 4245)
-#elif defined (__GNUC__)
-  // NOOP
-#endif
   
 NS_ROOT
 
@@ -103,9 +89,9 @@ class single_instance_lock : public index_lock {
   memory_directory* parent;
 }; // single_instance_lock
 
-/* -------------------------------------------------------------------
- * memory_index_input 
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                 memory_index_imput implementation
+// -----------------------------------------------------------------------------
 
 memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
   : file_(&file) {
@@ -113,8 +99,7 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
 
 index_input::ptr memory_index_input::dup() const NOEXCEPT {
   try {
-    PTR_NAMED(memory_index_input, ptr, *this);
-    return ptr;
+    return index_input::make<memory_index_input>(*this);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }
@@ -123,7 +108,7 @@ index_input::ptr memory_index_input::dup() const NOEXCEPT {
 }
 
 int64_t memory_index_input::checksum(size_t offset) const {
-  boost::crc_32_type crc;
+  crc32c crc;
 
   auto buffer_idx = file_->buffer_offset(file_pointer());
   size_t to_process;
@@ -257,10 +242,13 @@ uint64_t memory_index_input::read_vlong() {
     : irs::vread<uint64_t>(begin_);
 }
 
-/* -------------------------------------------------------------------
- * memory_index_output
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                memory_index_output implementation
+// -----------------------------------------------------------------------------
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class checksum_memory_index_output
+//////////////////////////////////////////////////////////////////////////////
 class checksum_memory_index_output final : public memory_index_output {
  public:
   explicit checksum_memory_index_output(memory_file& file) NOEXCEPT
@@ -289,7 +277,7 @@ class checksum_memory_index_output final : public memory_index_output {
 
  private:
   mutable byte_type* crc_begin_;
-  mutable boost::crc_32_type crc_;
+  mutable crc32c crc_;
 }; // checksum_memory_index_output
 
 memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
@@ -297,7 +285,7 @@ memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
   reset();
 }
 
-void memory_index_output::reset() {
+void memory_index_output::reset() NOEXCEPT {
   buf_.data = nullptr;
   buf_.offset = 0;
   buf_.size = 0;
@@ -388,9 +376,13 @@ void memory_index_output::operator>>( data_output& out ) {
   file_ >> out;
 }
 
-/* -------------------------------------------------------------------
- * memory_directory
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                   memory_directory implementation
+// -----------------------------------------------------------------------------
+
+memory_directory::memory_directory(size_t pool_size /* = 0*/) {
+  alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
+}
 
 memory_directory::~memory_directory() { }
 
@@ -426,14 +418,14 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
       std::forward_as_tuple(name),
       std::forward_as_tuple()
     );
-    auto& it = res.first;
-    auto& file = it->second;
 
-    if (!res.second) { // file exists
-      file->reset();
-    } else {
-      file = memory::make_unique<memory_file>();
+    auto& file = res.first->second;
+
+    if (res.second) {
+      file = memory::make_unique<memory_file>(*alloc_);
     }
+
+    file->reset(*alloc_);
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
@@ -451,7 +443,7 @@ bool memory_directory::length(
 
   const auto it = files_.find(name);
 
-  if (it == files_.end() || !it->second) {
+  if (it == files_.end()) {
     return false;
   }
 
@@ -482,7 +474,7 @@ bool memory_directory::mtime(
 
   const auto it = files_.find(name);
 
-  if (it == files_.end() || !it->second) {
+  if (it == files_.end()) {
     return false;
   }
 
@@ -558,15 +550,23 @@ bool memory_directory::sync(const std::string& /*name*/) NOEXCEPT {
 }
 
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
-  std::string filename;
+  std::vector<std::string> files;
 
-  // note that using non const functions in 'visitor' will cuase deadlock
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  SCOPED_LOCK(mutex);
+  // take a snapshot of existing files in directory
+  // to avoid potential recursive read locks in visitor
+  {
+    async_utils::read_write_mutex::read_mutex mutex(flock_);
+    SCOPED_LOCK(mutex);
 
-  for (auto& entry : files_) {
-    filename = entry.first;
-    if (!visitor(filename)) {
+    files.reserve(files_.size());
+
+    for (auto& entry : files_) {
+      files.emplace_back(entry.first);
+    }
+  }
+
+  for (auto& file : files) {
+    if (!visitor(file)) {
       return false;
     }
   }
@@ -575,7 +575,3 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

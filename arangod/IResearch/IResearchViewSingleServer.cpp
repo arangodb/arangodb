@@ -110,5 +110,3 @@ namespace iresearch {
 
 }
 }
-
-
