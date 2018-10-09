@@ -312,7 +312,7 @@ bool TRI_vocbase_t::unregisterCollection(
   auto itr = _dataSourceById.find(collection->id());
 
   if (itr == _dataSourceById.end()
-      || itr->second->category() != LogicalDataSourceCategory::COLLECTION) {
+      || itr->second->category() != LogicalCollection::category()) {
     return true; // no such collection
   }
 
@@ -405,7 +405,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
   auto itr = _dataSourceById.find(view.id());
 
   if (itr == _dataSourceById.end()
-      || itr->second->category() != LogicalDataSourceCategory::VIEW) {
+      || itr->second->category() != LogicalView::category()) {
     return true; // no such view
   }
 
@@ -912,7 +912,7 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
   for (auto& entry: _dataSourceByName) {
       TRI_ASSERT(entry.second);
 
-      if (entry.second->category() != LogicalDataSourceCategory::COLLECTION) {
+      if (entry.second->category() != LogicalCollection::category()) {
         continue;
       }
 
@@ -1035,7 +1035,7 @@ void TRI_vocbase_t::inventory(
     }
   } else {
     for (auto const& dataSource : dataSourceById) {
-      if (dataSource.second->category() != LogicalDataSourceCategory::VIEW) {
+      if (dataSource.second->category() != LogicalView::category()) {
         continue;
       }
       LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
@@ -1059,7 +1059,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
   #else
     auto dataSource = lookupDataSource(id);
 
-    return dataSource && dataSource->category() == LogicalDataSourceCategory::COLLECTION
+    return dataSource && dataSource->category() == LogicalCollection::category()
       ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -1075,7 +1075,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
   #else
     auto dataSource = lookupDataSource(nameOrId);
 
-    return dataSource && dataSource->category() == LogicalDataSourceCategory::COLLECTION
+    return dataSource && dataSource->category() == LogicalCollection::category()
       ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -1095,7 +1095,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
       ;
   #else
     return itr == _dataSourceByUuid.end()
-           || itr->second->category() != LogicalDataSourceCategory::COLLECTION
+           || itr->second->category() != LogicalCollection::category()
       ? nullptr
       : std::static_pointer_cast<LogicalCollection>(itr->second)
       ;
@@ -1161,7 +1161,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   #else
     auto dataSource = lookupDataSource(id);
 
-    return dataSource && dataSource->category() == LogicalDataSourceCategory::VIEW
+    return dataSource && dataSource->category() == LogicalView::category()
       ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
   #endif
 }
@@ -1181,7 +1181,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   #else
     auto dataSource = lookupDataSource(nameOrId);
 
-    return dataSource && dataSource->category() == LogicalDataSourceCategory::VIEW
+    return dataSource && dataSource->category() == LogicalView::category()
       ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
   #endif
 }
@@ -1394,7 +1394,7 @@ int TRI_vocbase_t::renameView(
   auto itr1 = _dataSourceByName.find(oldName);
 
   if (itr1 == _dataSourceByName.end()
-      || LogicalDataSourceCategory::VIEW != itr1->second->category()) {
+      || LogicalView::category() != itr1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
@@ -1500,7 +1500,7 @@ int TRI_vocbase_t::renameCollection(
   auto itr1 = _dataSourceByName.find(oldName);
 
   if (itr1 == _dataSourceByName.end()
-      || LogicalDataSourceCategory::COLLECTION != itr1->second->category()) {
+      || LogicalCollection::category() != itr1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
@@ -1577,7 +1577,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
     auto it = _dataSourceByName.find(name);
 
     if (it != _dataSourceByName.end()
-        && it->second->category() == LogicalDataSourceCategory::COLLECTION) {
+        && it->second->category() == LogicalCollection::category()) {
       TRI_ASSERT(std::dynamic_pointer_cast<LogicalCollection>(it->second));
       collection = static_cast<LogicalCollection*>(it->second.get());
     }
@@ -2027,7 +2027,7 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
     for (auto& entry: _dataSourceById) {
       TRI_ASSERT(entry.second);
 
-      if (entry.second->category() != LogicalDataSourceCategory::VIEW) {
+      if (entry.second->category() != LogicalView::category()) {
         continue;
       }
 
@@ -2057,7 +2057,7 @@ void TRI_vocbase_t::processCollections(
     for (auto& entry: _dataSourceById) {
       TRI_ASSERT(entry.second);
 
-      if (entry.second->category() != LogicalDataSourceCategory::COLLECTION) {
+      if (entry.second->category() != LogicalCollection::category()) {
         continue;
       }
 
@@ -2093,7 +2093,7 @@ std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
       for (auto& entry: _dataSourceById) {
         TRI_ASSERT(entry.second);
 
-        if (entry.second->category() != LogicalDataSourceCategory::COLLECTION) {
+        if (entry.second->category() != LogicalCollection::category()) {
           continue;
         }
 

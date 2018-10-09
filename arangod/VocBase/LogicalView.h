@@ -117,11 +117,10 @@ class LogicalView : public LogicalDataSource {
   #endif
   }
 
-
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the category representing a logical collection
+  /// @brief the category representing a logical view
   //////////////////////////////////////////////////////////////////////////////
-  LogicalDataSourceCategory category() const override {return LogicalDataSourceCategory::VIEW;}
+  static Category const& category() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates view according to a definition

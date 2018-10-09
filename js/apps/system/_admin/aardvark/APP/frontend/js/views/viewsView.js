@@ -6,6 +6,7 @@
 
   window.ViewsView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('viewsView.ejs'),
 
@@ -97,6 +98,13 @@
       var strLength = searchInput.val().length;
       searchInput.focus();
       searchInput[0].setSelectionRange(strLength, strLength);
+
+      arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
+    },
+
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('#createView').parent().parent().addClass('disabled');
     },
 
     setSearchString: function (string) {
@@ -159,8 +167,10 @@
     },
 
     createView: function (e) {
-      e.preventDefault();
-      this.createViewModal();
+      if (!this.readOnly) {
+        e.preventDefault();
+        this.createViewModal();
+      }
     },
 
     createViewModal: function () {

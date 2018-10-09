@@ -1595,7 +1595,7 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
-    CHECK(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    CHECK(view->category() == arangodb::LogicalView::category());
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -3314,7 +3314,7 @@ SECTION("test_update_overwrite") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
-    REQUIRE((logicalView->category() == arangodb::LogicalDataSourceCategory::VIEW));
+    REQUIRE((logicalView->category() == arangodb::LogicalView::category()));
     CHECK((true == logicalCollection->getIndexes().empty()));
 
     // initial link creation
@@ -3466,7 +3466,7 @@ SECTION("test_update_overwrite") {
     REQUIRE((nullptr != logicalCollection1));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
     CHECK((true == logicalCollection0->getIndexes().empty()));
     CHECK((true == logicalCollection1->getIndexes().empty()));
 
@@ -3639,7 +3639,7 @@ SECTION("test_update_overwrite") {
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     // initial add of link
     {
@@ -4259,7 +4259,7 @@ SECTION("test_update_partial") {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -4322,7 +4322,7 @@ SECTION("test_update_partial") {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -4388,7 +4388,7 @@ SECTION("test_update_partial") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
-    REQUIRE((logicalView->category() == arangodb::LogicalDataSourceCategory::VIEW));
+    REQUIRE((logicalView->category() == arangodb::LogicalView::category()));
     CHECK((true == logicalCollection->getIndexes().empty()));
 
     // initial link creation
@@ -4560,7 +4560,7 @@ SECTION("test_update_partial") {
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": { \"testCollection\": {} } }"
@@ -4713,7 +4713,7 @@ SECTION("test_update_partial") {
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     {
       static std::vector<std::string> const EMPTY;
@@ -4817,7 +4817,7 @@ SECTION("test_update_partial") {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -4884,7 +4884,7 @@ SECTION("test_update_partial") {
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
-    REQUIRE(view->category() == arangodb::LogicalDataSourceCategory::VIEW);
+    REQUIRE(view->category() == arangodb::LogicalView::category());
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(

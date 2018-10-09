@@ -51,6 +51,7 @@ LogicalView::LogicalView(
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
+     LogicalView::category(),
      LogicalDataSource::Type::emplace(
        arangodb::basics::VelocyPackHelper::getStringRef(
          definition, StaticStrings::DataSourceType, ""
@@ -81,6 +82,12 @@ LogicalView::LogicalView(
 
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
+}
+
+/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
+  static const Category category;
+
+  return category;
 }
 
 /*static*/ std::shared_ptr<LogicalView> LogicalView::create(

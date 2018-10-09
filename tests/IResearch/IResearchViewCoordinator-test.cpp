@@ -270,7 +270,7 @@ SECTION("test_rename") {
   CHECK(false == view->deleted());
   CHECK(1 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(&vocbase == &view->vocbase());
 
   auto const res = view->rename("otherName", true);
@@ -290,7 +290,7 @@ SECTION("visit_collections") {
   CHECK(false == view->deleted());
   CHECK(1 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(&vocbase == &view->vocbase());
 
   CHECK((true == view->emplace(1, "1", arangodb::velocypack::Slice::emptyObjectSlice())));
@@ -321,7 +321,7 @@ SECTION("test_defaults") {
   CHECK(false == view->deleted());
   CHECK(1 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(&vocbase == &view->vocbase());
 
   // visit default view
@@ -494,7 +494,7 @@ SECTION("test_create_drop_view") {
     CHECK(false == view->deleted());
     CHECK(viewId == std::to_string(view->id()));
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+    CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
     // create duplicate view
@@ -543,7 +543,7 @@ SECTION("test_create_drop_view") {
     CHECK(false == view->deleted());
     CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+    CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
     // create duplicate view
@@ -728,7 +728,7 @@ SECTION("test_update_properties") {
     CHECK(false == view->deleted());
     CHECK(viewId == std::to_string(view->id()));
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+    CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
     // check default properties
@@ -763,7 +763,7 @@ SECTION("test_update_properties") {
       CHECK(false == fullyUpdatedView->deleted());
       CHECK(viewId == std::to_string(fullyUpdatedView->id()));
       CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == fullyUpdatedView->type());
-      CHECK(arangodb::LogicalDataSourceCategory::VIEW == fullyUpdatedView->category());
+      CHECK(arangodb::LogicalView::category() == fullyUpdatedView->category());
       CHECK(vocbase == &fullyUpdatedView->vocbase());
 
       // check recently updated properties
@@ -814,7 +814,7 @@ SECTION("test_update_properties") {
       CHECK(false == partiallyUpdatedView->deleted());
       CHECK(viewId == std::to_string(partiallyUpdatedView->id()));
       CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == partiallyUpdatedView->type());
-      CHECK(arangodb::LogicalDataSourceCategory::VIEW == partiallyUpdatedView->category());
+      CHECK(arangodb::LogicalView::category() == partiallyUpdatedView->category());
       CHECK(vocbase == &partiallyUpdatedView->vocbase());
 
       // check recently updated properties
@@ -973,7 +973,7 @@ SECTION("test_update_links_partial_remove") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -1213,7 +1213,7 @@ SECTION("test_update_links_partial_remove") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -1532,7 +1532,7 @@ SECTION("test_update_links_partial_add") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -1711,7 +1711,7 @@ SECTION("test_update_links_partial_add") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -2138,7 +2138,7 @@ SECTION("test_update_links_replace") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -2328,7 +2328,7 @@ SECTION("test_update_links_replace") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -2450,7 +2450,7 @@ SECTION("test_update_links_replace") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -2710,7 +2710,7 @@ SECTION("test_update_links_clear") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -2958,7 +2958,7 @@ SECTION("test_update_links_clear") {
   CHECK(false == view->deleted());
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+  CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(vocbase == &view->vocbase());
 
   // visit collections
@@ -3097,7 +3097,7 @@ SECTION("test_drop_link") {
     CHECK(false == view->deleted());
     CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+    CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
     // visit collections
@@ -3213,7 +3213,7 @@ SECTION("test_drop_link") {
     CHECK(false == view->deleted());
     CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+    CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
     // visit collections
@@ -4344,7 +4344,7 @@ SECTION("IResearchViewNode::createBlock") {
     CHECK(false == view->deleted());
     CHECK(viewId == std::to_string(view->id()));
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    CHECK(arangodb::LogicalDataSourceCategory::VIEW == view->category());
+    CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
     // dummy query

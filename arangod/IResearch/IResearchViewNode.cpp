@@ -356,6 +356,7 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+  TRI_ASSERT(LogicalView::category() == _view->category());
 
   // FIXME any other way to validate options before object creation???
   std::string error;
@@ -673,7 +674,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       IResearchView::Snapshot::SyncAndReplace
     };
 
-    TRI_ASSERT(view.category() == LogicalDataSourceCategory::VIEW);
     reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(
       *trx, _shards, SNAPSHOT[size_t(_options.forceSync)]
     );
@@ -683,7 +683,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       IResearchView::Snapshot::SyncAndReplace
     };
 
-    TRI_ASSERT(view.category() == LogicalDataSourceCategory::VIEW);
     reader = LogicalView::cast<IResearchView>(view).snapshot(
       *trx, SNAPSHOT[size_t(_options.forceSync)]
     );

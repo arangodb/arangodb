@@ -49,7 +49,83 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
+
 auto doNothingVisitor = [](AstNode const*) {};
+
+/**
+ * @brief Register the given datasource with the given accesstype in the query.
+ *        Will be noop if the datasource is already used and has the same or higher
+ *        accessType.
+ *        Will upgrade the accessType if datasource is used with lower one before.
+ *
+ * @param resolver CollectionNameResolver to identify category
+ * @param accessType Access of this Source, NONE/READ/WRITE/EXCLUSIVE
+ * @param failIfDoesNotExist If true => throws error im SourceNotFound. False => Treat non-existing like a collection
+ * @param name Name of the datasource
+ *
+ * @return The Category of this datasource (Collection or View), and a reference to the translated name (cid => name if required).
+ */
+std::pair<LogicalDataSource::Category const*, StringRef> injectDataSourceInQuery(
+    Query& query,
+    arangodb::CollectionNameResolver const& resolver,
+    AccessMode::Type accessType,
+    bool failIfDoesNotExist,
+    std::string const& name
+) {
+  // NOTE The name may be modified if a numeric collection ID is given instead of a collection Name.
+  // Afterwards it will contain the name.
+  auto const dataSource = resolver.getDataSource(name);
+  if (dataSource == nullptr) {
+    // datasource not found...
+    if (failIfDoesNotExist) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "name: %s",
+        name.c_str());
+    }
+
+    // still add datasource to query, simply because the AST will also be built
+    // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
+    // case it is ok that the datasource does not exist, but we need to track
+    // the names of datasources used in the query
+    query.addCollection(name, accessType);
+
+    return {LogicalCollection::category(), StringRef{name}};
+  }
+  // query actual name from datasource... this may be different to the
+  // name passed into this function, because the user may have accessed
+  // the collection by its numeric id
+  auto const& dataSourceName = dataSource->name();
+  StringRef nameRef{query.registerString(dataSourceName.data(), dataSourceName.size())};
+
+  // add views to the collection list
+  // to register them with transaction as well
+  query.addCollection(nameRef, accessType);
+
+  if (dataSource->category() == LogicalCollection::category()) {
+    // it's a collection!
+    // add datasource to query
+    if (nameRef != name) {
+      query.addCollection(name, accessType); // Add collection by ID as well
+    }
+  } else if (dataSource->category() == LogicalView::category()) {
+    // it's a view!
+    query.addView(nameRef.toString());
+
+    // Make sure to add all collections now:
+    resolver.visitCollections(
+      [&query, accessType] (LogicalCollection& col) -> bool {
+        query.addCollection(col.name(), accessType);
+        return true;
+      },
+      dataSource->id()
+    );
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected datasource type");
+  }
+  return {dataSource->category(), nameRef};
+}
+
 }
 
 /// @brief initialize a singleton no-op node instance
@@ -636,13 +712,13 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
                                    bool failIfDoesNotExist) {
   std::string const nameString = validateDataSourceName(name, nameLength, validateName);
 
-  LogicalDataSourceCategory category = LogicalDataSourceCategory::COLLECTION;
+  LogicalCollection::Category const* category = LogicalCollection::category();
   StringRef nameRef;
-  std::tie(category, nameRef) = injectDataSourceInQuery(resolver, accessType, failIfDoesNotExist, nameString);
+  std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, accessType, failIfDoesNotExist, nameString);
 
-  if (category == LogicalDataSourceCategory::COLLECTION) {
+  if (category == LogicalCollection::category()) {
     return createNodeCollectionNoValidation(name, nameLength, nameString, accessType);
-  } else if (category == LogicalDataSourceCategory::VIEW) {
+  } else if (category == LogicalView::category()) {
     AstNode* node = createNode(NODE_TYPE_VIEW);
     node->setStringValue(nameRef.data(), nameRef.size());
     return node;
@@ -657,11 +733,11 @@ AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resol
                                    size_t nameLength,
                                    AccessMode::Type accessType) {
   std::string const nameString = validateDataSourceName(name, nameLength, true);
-  LogicalDataSourceCategory category = LogicalDataSourceCategory::COLLECTION;
+  LogicalCollection::Category const* category = LogicalCollection::category();
   StringRef nameRef;
   // namestring might be empty
-  std::tie(category, nameRef) = injectDataSourceInQuery(resolver, accessType, false, nameString);
-  if (category == LogicalDataSourceCategory::COLLECTION) {
+  std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, accessType, false, nameString);
+  if (category == LogicalCollection::category()) {
     // add collection to query
     _query->addCollection(nameRef, accessType);
 
@@ -1119,10 +1195,10 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
 
     if (c->isStringValue()) {
       std::string const name = c->getString();
-      LogicalDataSourceCategory category = LogicalDataSourceCategory::COLLECTION;
+      LogicalDataSource::Category const* category = LogicalCollection::category();
       StringRef nameRef;
-      std::tie(category, nameRef) = injectDataSourceInQuery(resolver, AccessMode::Type::READ, false, name);
-      if (category == LogicalDataSourceCategory::COLLECTION) {
+      std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, name);
+      if (category == LogicalCollection::category()) {
 
         _query->addCollection(name, AccessMode::Type::READ);
 
@@ -1136,8 +1212,8 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
             auto names = coll->realNames();
 
             for (auto const& n : names) {
-              std::tie(category, nameRef) = injectDataSourceInQuery(resolver, AccessMode::Type::READ, false, n);
-              TRI_ASSERT(category == LogicalDataSourceCategory::COLLECTION);
+              std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, n);
+              TRI_ASSERT(category == LogicalCollection::category());
             }
           }
           catch (...) {
@@ -1168,18 +1244,18 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections, Collectio
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    LogicalDataSourceCategory category = LogicalDataSourceCategory::COLLECTION;
+    LogicalDataSource::Category const* category = LogicalCollection::category();
     StringRef nameRef;
-    std::tie(category, nameRef) = injectDataSourceInQuery(resolver, AccessMode::Type::READ, false, name);
-    if (category == LogicalDataSourceCategory::COLLECTION) {
+    std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, name);
+    if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
         try {
           auto c = ci->getCollection(_query->vocbase().name(), name);
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
-            std::tie(category, nameRef) = injectDataSourceInQuery(resolver, AccessMode::Type::READ, false, n);
-            TRI_ASSERT(category == LogicalDataSourceCategory::COLLECTION);
+            std::tie(category, nameRef) = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, n);
+            TRI_ASSERT(category == LogicalCollection::category());
           }
         }
         catch (...) {
@@ -3492,7 +3568,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
         auto member = node->getMember(i);
 
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            member->getString() == attributeName) {
+            StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
@@ -3741,57 +3817,4 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
       }
     }
   }
-}
-
-std::pair<LogicalDataSourceCategory, StringRef> Ast::injectDataSourceInQuery(
-                                                              arangodb::CollectionNameResolver const& resolver,
-                                                              AccessMode::Type accessType,
-                                                              bool failIfDoesNotExist,
-                                                              std::string const& name) {
-  // NOTE The name may be modified if a numeric collection ID is given instead of a collection Name.
-  // Afterwards it will contain the name.
-  auto const dataSource = resolver.getDataSource(name);
-  if (dataSource == nullptr) {
-    // datasource not found...
-    if (failIfDoesNotExist) {
-      THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        "name: %s",
-        name.c_str());
-    }
-
-    // still add datasource to query, simply because the AST will also be built
-    // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
-    // case it is ok that the datasource does not exist, but we need to track
-    // the names of datasources used in the query
-    _query->addCollection(name, accessType);
-
-    return {LogicalDataSourceCategory::COLLECTION, StringRef{name}};
-  }
-  // query actual name from datasource... this may be different to the
-  // name passed into this function, because the user may have accessed
-  // the collection by its numeric id
-  auto const& dataSourceName = dataSource->name();
-  StringRef nameRef{_query->registerString(dataSourceName.data(), dataSourceName.size())};
-  
-  _query->addCollection(nameRef, accessType);
-
-  if (dataSource->category() == LogicalDataSourceCategory::COLLECTION) {
-    // it's a collection!
-    // add datasource to query
-    if (nameRef != name) {
-      _query->addCollection(name, accessType); // Add collection by ID as well
-    }
-  } else if (dataSource->category() == LogicalDataSourceCategory::VIEW) {
-    // it's a view!
-    _query->addView(nameRef.toString());
-    // Make sure to add all collections now:
-    resolver.visitCollections([&] (LogicalCollection& col) -> bool {
-        _query->addCollection(col.name(), accessType);
-        return true;
-    }, dataSource->id());
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected datasource type");   
-  }
-  return {dataSource->category(), nameRef};
 }

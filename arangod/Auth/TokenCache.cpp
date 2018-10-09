@@ -120,9 +120,16 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     READ_LOCKER(guard, _basicLock);
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {
+      // copy entry under the read-lock
+      auth::TokenCache::Entry res = it->second;
+      // and now give up on the read-lock
+      guard.unlock();
+
       // LDAP rights might need to be refreshed
-      _userManager->refreshUser(it->second.username());
-      return it->second;
+      if (!_userManager->refreshUser(res.username())) {
+        return res;
+      }
+      // fallthrough intentional here
     }
   }
 

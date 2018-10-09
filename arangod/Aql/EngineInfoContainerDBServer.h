@@ -224,7 +224,7 @@ class EngineInfoContainerDBServer {
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(GraphNode* node, CollectionNameResolver const& resolver);
+  void addGraphNode(GraphNode* node);
 
  private:
  /**

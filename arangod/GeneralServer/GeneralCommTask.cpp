@@ -523,6 +523,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+
+    if (req.authenticated()) {
+      req.setAuthenticated(false);
+    }
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
@@ -530,7 +534,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!req.authenticated()) {
+  if (!req.authenticated() || result == rest::ResponseCode::UNAUTHORIZED) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
