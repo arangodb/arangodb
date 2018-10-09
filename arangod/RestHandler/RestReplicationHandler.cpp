@@ -842,6 +842,13 @@ void RestReplicationHandler::handleCommandRestoreData() {
                         res.errorMessage());
     }
   } else {
+    // if result is ok and the collection is the '_apps' service collection,
+    // we need to trigger the foxx selfHeal function in order to make them
+    // publicly available.
+    if (colName == "_apps") {
+      ServerState::instance()->setFoxxmasterQueueupdate(true);
+    }
+
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("result", VPackValue(true));
