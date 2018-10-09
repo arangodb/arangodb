@@ -1155,16 +1155,15 @@ function ahuacatlQueryCacheViewTestSuite () {
         c1.insert({ value: i }, { waitForSync: i === 5 });
       }
 
-      {
-        AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-        result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
-        assertFalse(result.cached);
-        assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-  
-        result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
-        assertTrue(result.cached);
-        assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
       try {
         internal.debugSetFailAt("FlushThreadDisableAll");
@@ -1178,7 +1177,7 @@ function ahuacatlQueryCacheViewTestSuite () {
         result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
         assertFalse(result.cached);
         assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-      
+
         result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
         assertTrue(result.cached);
         assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -1191,7 +1190,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       // invalidate view query cache
       AQL_EXECUTE("FOR doc in @@view OPTIONS { waitForSync: true } COLLECT WITH COUNT INTO count RETURN count", { "@view": v.name() });
 
-      result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
+      result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
       
