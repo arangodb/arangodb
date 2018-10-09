@@ -849,11 +849,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& it : edges) {
         knownEdges.emplace(it->name());
       }
+
+      TRI_ASSERT(_query);
+      auto& resolver = _query->resolver();
+
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
       std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
+        if (!resolver.getCollection(collection.first)) {
+          // not a collection, filter out
+          continue;
+        }
+
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
@@ -1067,7 +1076,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   return TRI_ERROR_NO_ERROR;
 }
 
-void EngineInfoContainerDBServer::addGraphNode(GraphNode* node, CollectionNameResolver const& resolver) {
+void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // Add all Edge Collections to the Transactions, Traversals do never write
   for (auto const& col : node->edgeColls()) {
     handleCollection(col.get(), AccessMode::Type::READ);
@@ -1076,15 +1085,20 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node, CollectionNameRe
   // Add all Vertex Collections to the Transactions, Traversals do never write
   auto& vCols = node->vertexColls();
   if (vCols.empty()) {
+    TRI_ASSERT(_query);
+    auto& resolver = _query->resolver();
+
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
     std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
-      auto source = resolver.getDataSource(col.second->id());
-      if (source->category() == LogicalCollection::category()) {
-        handleCollection(col.second, AccessMode::Type::READ);
+      if (!resolver.getCollection(col.first)) {
+        // not a collection, filter out
+        continue;
       }
+
+      handleCollection(col.second, AccessMode::Type::READ);
     }
   } else {
     for (auto const& col : node->vertexColls()) {
