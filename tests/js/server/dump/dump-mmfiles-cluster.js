@@ -349,16 +349,16 @@ function dumpTestSuite () {
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
-      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(5000, res.length);
 
-      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(2500, res.length);
 
-      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 
