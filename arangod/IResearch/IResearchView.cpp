@@ -56,7 +56,18 @@
 
 #include "IResearchView.h"
 
-NS_LOCAL
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush segment when it reached approximately this size
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t MAX_SEGMENT_SIZE = 32*(size_t(1)<<20); // 32MB
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of threads that will not be blocked
+///        when inserting/removing data into/from a view
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t MAX_NON_BLOCKING_SEGMENTS_COUNT = 64;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
@@ -414,17 +425,15 @@ arangodb::Result persistProperties(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief syncs an IResearch DataStore if required
-/// @return a sync was executed
+/// @brief consolidates and optionally cleanups an IResearch DataStore if required
+/// @return at least consolidation was executed
 ////////////////////////////////////////////////////////////////////////////////
-bool syncStore(
+bool consolidateCleanupStore(
     irs::directory& directory,
-    irs::directory_reader& reader,
     irs::index_writer& writer,
     std::atomic<size_t>& segmentCount,
     arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& policy,
-    bool forceCommit,
-    bool runCleanupAfterCommit,
+    bool runCleanupAfterConsolidation,
     arangodb::iresearch::IResearchView const& view,
     const char* storeName
 ) {
@@ -441,7 +450,6 @@ bool syncStore(
 
     try {
       writer.consolidate(policy.policy());
-      forceCommit = true; // a consolidation policy was found requiring commit
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
@@ -460,54 +468,7 @@ bool syncStore(
       << "finished registering consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
   }
 
-  if (!forceCommit) {
-    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "skipping store sync since no consolidation policies matched and sync not forced for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
-
-    return false; // commit not done
-  }
-
-  // ...........................................................................
-  // apply data store commit
-  // ...........................................................................
-
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting '" << storeName << "' store sync for arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
-
-  try {
-    segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
-    writer.commit();
-    const auto newReader = reader.reopen(); // update reader
-
-    if (newReader != reader) {
-      // invalidate query cache if there were some data changes
-      arangodb::aql::QueryCache::instance()->invalidate(
-        &view.vocbase(),
-        view.name()
-      );
-
-      reader = newReader;
-    }
-
-    segmentCount += reader.size(); // add commited segments
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of arangosearch view '" << view.name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of arangosearch view '" << view.name() << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished '" << storeName << "' store sync for arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
-
-  if (!runCleanupAfterCommit) {
+  if (!runCleanupAfterConsolidation) {
     return true; // commit done
   }
 
@@ -540,10 +501,10 @@ bool syncStore(
   return true;
 }
 
-NS_END
+}
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                    IResearchView implementation
@@ -570,25 +531,7 @@ void IResearchView::DataStore::sync() {
   _segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
   _writer->commit();
   _reader = _reader.reopen(); // update reader
-  _segmentCount += _reader.size(); // add commited segments
-}
-
-IResearchView::MemoryStore::MemoryStore() {
-  auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
-
-  _directory = irs::directory::make<irs::memory_directory>();
-
-  // do not lock repository
-  irs::index_writer::options options;
-  options.lock_repository = false;
-
-  // create writer before reader to ensure data directory is present
-  _writer = irs::index_writer::make(
-    *_directory, format, irs::OM_CREATE | irs::OM_APPEND, options
-  );
-
-  _writer->commit(); // initialize 'store'
-  _reader = irs::directory_reader::open(*_directory); // open after 'commit' for valid 'store'
+  _segmentCount = _reader.size(); // add commited segments
 }
 
 IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
@@ -610,14 +553,15 @@ struct IResearchView::ViewStateRead: public arangodb::TransactionState::Cookie {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewStateWrite
   : public arangodb::TransactionState::Cookie,
-    public IResearchView::MemoryStore {
-  // removal filters to be applied to during merge
-  // transactions are single-threaded so no mutex is required
-  std::vector<std::shared_ptr<irs::filter>> _removals;
+    public irs::index_writer::documents_context {
   std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
 
-  explicit ViewStateWrite(ReadMutex& viewMutex) noexcept
-    : _viewLock(viewMutex) {
+  explicit ViewStateWrite(
+      ReadMutex& viewMutex,
+      irs::index_writer& writer
+  ) noexcept
+    : irs::index_writer::documents_context(writer.documents()),
+      _viewLock(viewMutex) {
   }
 };
 
@@ -692,6 +636,27 @@ class IResearchView::ViewStateHelper {
     return false;
   }
 
+  static void commitWrite(
+      arangodb::TransactionState& state,
+      IResearchView const& view,
+      bool rollback
+  ) noexcept {
+    static_assert(sizeof(IResearchView) > Writer, "'Writer' offset >= sizeof(IResearchView)");
+    auto* key = &view + Writer;
+    auto prev = state.cookie(key, nullptr); // get existing cookie
+
+    if (rollback && prev) {
+      // TODO FIXME find a better way to look up a ViewState
+      #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        dynamic_cast<IResearchView::ViewStateWrite&>(*prev).reset();
+      #else
+        static_cast<IResearchView::ViewStateWrite&>(*prev).reset();
+      #endif
+    }
+
+    prev.reset();
+  }
+
  private:
   enum offsets { Reader, Writer }; // offsets from key
 };
@@ -702,13 +667,11 @@ IResearchView::IResearchView(
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion
 ): LogicalViewStorageEngine(vocbase, info, planVersion),
-    FlushTransaction(toString(*this)),
+   FlushTransaction(toString(*this)),
    _asyncFeature(nullptr),
    _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
    _asyncTerminate(false),
    _meta(std::make_shared<AsyncMeta>()),
-   _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
-   _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
    _storePersisted(getPersistedPath(dbPathFeature, vocbase, id())),
    _inRecovery(false) {
   // set up in-recovery insertion hooks
@@ -780,43 +743,22 @@ IResearchView::IResearchView(
     });
   }
 
-  // initialize round-robin memory store chain
-  auto it = _memoryNodes;
-  for (auto next = it + 1, end = std::end(_memoryNodes); next < end; ++it, ++next) {
-    it->_next = next;
-  }
-  it->_next = _memoryNodes;
-
-  auto* viewPtr = this;
-
   _asyncFeature = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::iresearch::IResearchFeature
   >();
 
   // add asynchronous commit tasks
   if (_asyncFeature) {
-    struct State: public IResearchViewMeta {
+    struct State : public IResearchViewMeta {
       size_t _cleanupIntervalCount{ 0 };
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
-    };
+    } state;
 
-    typedef std::pair<DataStore*, const char*> DataStoreEntry;
-
-    #if defined(__APPLE__)
-      std::vector<DataStoreEntry> dataStores = {
-    #else
-      std::array<DataStoreEntry, 3> dataStores = {
-    #endif
-      DataStoreEntry{ &(_memoryNode[0]._store), "memory store 0" },
-      DataStoreEntry{ &(_memoryNode[1]._store), "memory store 1" },
-      DataStoreEntry{ &_storePersisted, "persistent store" }
-    };
-
-    State state;
-
-    for (auto& storeEntry: dataStores) {
-      auto task = [this, storeEntry, state](size_t& timeoutMsec, bool) mutable ->bool {
-        auto* store = storeEntry.first;
+    _asyncFeature->async(
+      self(),
+      [this, state](size_t& timeoutMsec, bool) mutable ->bool {
+        auto* store = &_storePersisted;
+        char const* name = "persistent store";
 
         if (_asyncTerminate.load()) {
           return false; // termination requested
@@ -851,40 +793,35 @@ IResearchView::IResearchView(
         state._last = std::chrono::system_clock::now(); // remember last task start time
         timeoutMsec = state._consolidationIntervalMsec;
 
-        auto const runCleanupAfterCommit =
+        auto const runCleanupAfterConsolidation =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
 
         ReadMutex mutex(_mutex); // 'store' can be asynchronously modified
         SCOPED_LOCK(mutex);
 
-        const auto readerBeforeSync = store->_reader;
-
         if (store->_directory
             && store->_writer
-            && syncStore(*(store->_directory),
-                         store->_reader,
-                         *(store->_writer),
-                         store->_segmentCount,
-                         state._consolidationPolicy,
-                         true,
-                         runCleanupAfterCommit,
-                         *this,
-                         storeEntry.second
-                        )
+            && consolidateCleanupStore(
+                 *(store->_directory),
+                 *(store->_writer),
+                 store->_segmentCount,
+                 state._consolidationPolicy,
+                 runCleanupAfterConsolidation,
+                 *this,
+                 name)
             && state._cleanupIntervalStep
             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0;
         };
 
         return true; // reschedule
-      };
-
-      _asyncFeature->async(self(), std::move(task));
-    }
+    });
   }
 
+  auto& viewRef = *this;
+
   // initialize transaction read callback
-  _trxReadCallback = [viewPtr](
+  _trxReadCallback = [&viewRef](
       arangodb::transaction::Methods& trx,
       arangodb::transaction::Status status
   )->void {
@@ -892,76 +829,24 @@ IResearchView::IResearchView(
       return; // NOOP
     }
 
-    viewPtr->snapshot(trx, IResearchView::Snapshot::FindOrCreate);
+    viewRef.snapshot(trx, IResearchView::Snapshot::FindOrCreate);
   };
 
   // initialize transaction write callback
-  _trxWriteCallback = [viewPtr](
+  _trxWriteCallback = [&viewRef](
       arangodb::transaction::Methods& trx,
       arangodb::transaction::Status status
   )->void {
     auto* state = trx.state();
 
     // check state of the top-most transaction only
-    if (!state || arangodb::transaction::Status::COMMITTED != state->status()) {
+    if (!state) {
       return; // NOOP
     }
 
-    auto* cookie = ViewStateHelper::write(*state, *viewPtr);
-    TRI_ASSERT(cookie); // must have been added together with this callback
-    ReadMutex mutex(viewPtr->_mutex); // '_memoryStore'/'_storePersisted' can be asynchronously modified
-
-    try {
-      {
-        SCOPED_LOCK(mutex);
-
-        // transfer filters first since they only apply to pre-merge data
-        // transactions are single-threaded so no mutex is required for '_removals'
-        for (auto& filter: cookie->_removals) {
-          // FIXME TODO potential problem of loss of 'remove' if:
-          // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
-          // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
-          viewPtr->_memoryNode->_store._writer->documents().remove(filter);
-          viewPtr->_toFlush->_store._writer->documents().remove(filter);
-        }
-
-        // transfer filters to persisted store as well otherwise query resuts will be incorrect
-        // on recovery the same removals will be replayed from the WAL
-        if (viewPtr->_storePersisted) {
-          // transactions are single-threaded so no mutex is required for '_removals'
-          for (auto& filter: cookie->_removals) {
-            viewPtr->_storePersisted._writer->documents().remove(filter);
-          }
-        }
-
-        auto& memoryStore = viewPtr->activeMemoryStore();
-
-        cookie->_writer->commit(); // ensure have latest view in reader
-        memoryStore._writer->import(cookie->_reader.reopen());
-        ++memoryStore._segmentCount; // a new segment was imported
-      }
-
-      if (state->waitForSync() && !viewPtr->sync()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to sync while committing transaction for arangosearch view '" << viewPtr->name()
-          << "', tid '" << state->id() << "'";
-      }
-    } catch (arangodb::basics::Exception& e) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "caught exception while committing transaction for arangosearch view '" << viewPtr->name()
-        << "', tid '" << state->id() << "': " << e.code() << " " << e.what();
-      IR_LOG_EXCEPTION();
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "caught exception while committing transaction for arangosearch view '" << viewPtr->name()
-        << "', tid '" << state->id() << "': " << e.what();
-      IR_LOG_EXCEPTION();
-    } catch (...) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "caught exception while committing transaction for arangosearch view '" << viewPtr->name()
-        << "', tid '" << state->id() << "'";
-      IR_LOG_EXCEPTION();
-    }
+    ViewStateHelper::commitWrite(
+      *state, viewRef, arangodb::transaction::Status::COMMITTED != state->status()
+    );
   };
 }
 
@@ -997,10 +882,6 @@ IResearchView::~IResearchView() {
     TRI_ASSERT(engine);
     engine->destroyView(vocbase(), *this);
   }
-}
-
-IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
-  return _memoryNode->_store;
 }
 
 arangodb::Result IResearchView::appendVelocyPackDetailed(
@@ -1079,7 +960,7 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     for (auto& collectionName: state->collectionNames()) {
       for (auto& index: trx.indexesForCollection(collectionName)) {
         if (index && arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
-          // TODO FIXME find a better way to retrieve an iResearch Link
+          // TODO FIXME find a better way to retrieve an IResearch Link
           // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
           auto* ptr = dynamic_cast<IResearchLink*>(index.get());
 
@@ -1187,11 +1068,6 @@ arangodb::Result IResearchView::drop(
   // ...........................................................................
 
   try {
-    // FIXME TODO remove from in-progress transactions, i.e. ViewStateWrite ???
-    // FIXME TODO remove from '_toFlush' memory-store ???
-    auto& memoryStore = activeMemoryStore();
-    memoryStore._writer->documents().remove(shared_filter);
-
     if (_storePersisted) {
       _storePersisted._writer->documents().remove(shared_filter);
     }
@@ -1289,18 +1165,6 @@ arangodb::Result IResearchView::dropImpl() {
   // if an exception occurs below than a drop retry would most likely happen
   // ...........................................................................
   try {
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(_memoryNodes); i < count; ++i) {
-      auto& memoryStore = _memoryNodes[i]._store;
-
-      // ensure no error on double-drop
-      if (memoryStore) {
-        memoryStore._writer->close();
-        memoryStore._writer.reset();
-        memoryStore._directory->close();
-        memoryStore._directory.reset();
-      }
-    }
-
     if (_storePersisted) {
       _storePersisted._writer->close();
       _storePersisted._writer.reset();
@@ -1404,65 +1268,38 @@ arangodb::Result IResearchView::commit() {
     return {}; // nothing more to do
   }
 
-  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "beginning flush commit for " << name();
-
-  auto& memoryStore = _toFlush->_store;
-
   try {
-    memoryStore._writer->commit(); // ensure have latest view in reader
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "starting persisted-sync sync for arangosearch view '" << name() << "'";
 
-    // intentional copy since `memoryStore._reader` may be updated
-    const auto reader = (
-      memoryStore._reader = memoryStore._reader.reopen() // update reader
-    );
-
-    // merge memory store into persisted
-    if (!_storePersisted._writer->import(reader)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "error while flushing " << name();
-      return {TRI_ERROR_INTERNAL};
-    }
-
-    SCOPED_LOCK(_toFlush->_reopenMutex); // do not allow concurrent reopen
-    _storePersisted._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
     _storePersisted._writer->commit(); // finishing flush transaction
+    const auto reader = _storePersisted._reader.reopen(); // update reader
 
-    memoryStore._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
-    memoryStore._writer->clear(); // prepare the store for reuse
-
-    SCOPED_LOCK(_toFlush->_readMutex); // do not allow concurrent read since _storePersisted/_toFlush need to be updated atomically
-    const auto newReader = _storePersisted._reader.reopen(); // update reader
-
-    if (newReader != _storePersisted._reader) {
+    if (reader && reader != _storePersisted._reader) {
        // invalidate query cache if there were some data changes
        arangodb::aql::QueryCache::instance()->invalidate(
-         &vocbase(),
-         name()
+         &vocbase(), name()
        );
 
-       _storePersisted._reader = newReader;
+       _storePersisted._reader = reader;
+       _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
     }
 
-    _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
-    memoryStore._reader = memoryStore._reader.reopen(); // update reader
-    memoryStore._segmentCount += memoryStore._reader.size(); // add commited segments
-
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "done with flush commit for " << name();
+      << "finished persisted-sync sync for arangosearch view '" << name() << "'";
 
-    return TRI_ERROR_NO_ERROR;
-  } catch (arangodb::basics::Exception& e) {
+    return {};
+  } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while committing memory store for arangosearch view '" << id() << "': " << e.code() << " " << e.what();
+      << "caught exception while committing memory store for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while committing memory store for arangosearch view '" << id() << "': " << e.what();
+      << "caught exception while committing memory store for arangosearch view '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-      << "caught exception while committing memory store for arangosearch view '" << id();
+      << "caught exception while committing memory store for arangosearch view '" << name() << "'";
     IR_LOG_EXCEPTION();
   }
 
@@ -1476,75 +1313,88 @@ int IResearchView::insert(
     arangodb::velocypack::Slice const& doc,
     IResearchLinkMeta const& meta
 ) {
-  DataStore* store;
+  TRI_ASSERT(_storePersisted);
+
+  auto insertImpl = [this, cid, &meta, doc, &documentId](irs::index_writer::documents_context& ctx) ->int {
+    FieldIterator body(doc, meta);
+
+    if (!body.valid()) {
+      return TRI_ERROR_NO_ERROR; // nothing to index
+    }
+
+    try {
+      auto doc = ctx.insert();
+      insertDocument(doc, body, cid, documentId.id());
+
+      if (doc) {
+        return TRI_ERROR_NO_ERROR;
+      }
+
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed inserting into arangosearch view '" << id()
+        << "', collection '" << cid << "', revision '" << documentId.id() << "'";
+    } catch (arangodb::basics::Exception const& e) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while inserting into arangosearch view '" << id()
+        << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.code() << " " << e.what();
+      IR_LOG_EXCEPTION();
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while inserting into arangosearch view '" << id()
+        << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.what();
+      IR_LOG_EXCEPTION();
+    } catch (...) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while inserting into arangosearch view '" << id()
+        << "', collection '" << cid << "', revision '" << documentId.id() << "'";
+      IR_LOG_EXCEPTION();
+    }
+
+    return TRI_ERROR_INTERNAL;
+  };
 
   if (_inRecovery) {
-    _storePersisted._writer->documents().remove(FilterFactory::filter(cid, documentId.id()));
-    store = &_storePersisted;
-  } else if (!trx.state()) {
+    auto ctx = _storePersisted._writer->documents();
+    ctx.remove(FilterFactory::filter(cid, documentId.id()));
+    return insertImpl(ctx);
+  }
+
+  if (!trx.state()) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction state required
-  } else {
-    auto& state = *(trx.state());
+  }
 
-    store = ViewStateHelper::write(state, *this);
+  if (trx.isSingleOperationTransaction()) {
+    auto ctx = _storePersisted._writer->documents();
+    return insertImpl(ctx);
+  }
 
-    if (!store) {
-      auto ptr = irs::memory::make_unique<ViewStateWrite>(_asyncSelf->mutex()); // will aquire read-lock to prevent data-store deallocation
+  auto& state = *(trx.state());
+  auto* ctx = ViewStateHelper::write(state, *this);
 
-      if (!_asyncSelf->get()) {
-        return TRI_ERROR_INTERNAL; // the current view is no longer valid (checked after ReadLock aquisition)
-      }
+  if (!ctx) {
+    auto ptr = irs::memory::make_unique<ViewStateWrite>(
+      _asyncSelf->mutex(), *_storePersisted._writer
+    ); // will aquire read-lock to prevent data-store deallocation
 
-      store = ptr.get();
+    if (!_asyncSelf->get()) {
+      return TRI_ERROR_INTERNAL; // the current view is no longer valid (checked after ReadLock aquisition)
+    }
 
-      if (!ViewStateHelper::write(state, *this, std::move(ptr))
-          || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
-          << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "'";
+    ctx = ptr.get();
 
-        return TRI_ERROR_INTERNAL;
-      }
+    if (!ViewStateHelper::write(state, *this, std::move(ptr))
+        || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
+        << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "'";
+
+      return TRI_ERROR_INTERNAL;
     }
   }
 
-  TRI_ASSERT(store && false == !*store);
+  TRI_ASSERT(ctx);
 
-  FieldIterator body(doc, meta);
-
-  if (!body.valid()) {
-    return TRI_ERROR_NO_ERROR; // nothing to index
-  }
-
-  try {
-    auto doc = store->_writer->documents().insert();
-    insertDocument(doc, body, cid, documentId.id());
-
-    if (doc) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed inserting into arangosearch view '" << id()
-      << "', collection '" << cid << "', revision '" << documentId.id() << "'";
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting into arangosearch view '" << id()
-      << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting into arangosearch view '" << id()
-      << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting into arangosearch view '" << id()
-      << "', collection '" << cid << "', revision '" << documentId.id() << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return TRI_ERROR_INTERNAL;
+  return insertImpl(*ctx);
 }
 
 int IResearchView::insert(
@@ -1553,85 +1403,88 @@ int IResearchView::insert(
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
 ) {
-  DataStore* store;
+  TRI_ASSERT(_storePersisted);
+
+  auto insertImpl = [this, cid, &batch, &meta](irs::index_writer::documents_context& ctx) -> int {
+    auto begin = batch.begin();
+    auto const end = batch.end();
+
+    try {
+      {
+        for (FieldIterator body; begin != end; ++begin) {
+          body.reset(begin->second, meta);
+
+          if (!body.valid()) {
+            // find first valid document
+            continue;
+          }
+
+          auto doc = ctx.insert();
+          insertDocument(doc, body, cid, begin->first.id());
+
+          if (!doc) {
+            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+              << "failed inserting batch into arangosearch view '" << id() << "', collection '" << cid;
+            return TRI_ERROR_INTERNAL;
+          }
+        }
+      }
+    } catch (arangodb::basics::Exception const& e) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch view '" << id() << "', collection '" << cid << "': " << e.code() << " " << e.what();
+      IR_LOG_EXCEPTION();
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch view '" << id() << "', collection '" << cid << "': " << e.what();
+      IR_LOG_EXCEPTION();
+    } catch (...) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch view '" << id() << "', collection '" << cid << "'";
+      IR_LOG_EXCEPTION();
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  };
 
   if (_inRecovery) {
+    auto ctx = _storePersisted._writer->documents();
     for (auto& doc : batch) {
-      _storePersisted._writer->documents().remove(FilterFactory::filter(cid, doc.first.id()));
+      ctx.remove(FilterFactory::filter(cid, doc.first.id()));
     }
+    return insertImpl(ctx);
+  }
 
-    store = &_storePersisted;
-  } else if (!trx.state()) {
+  if (!trx.state()) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction state required
-  } else {
-    auto& state = *(trx.state());
+  }
 
-    store = ViewStateHelper::write(state, *this);
+  auto& state = *(trx.state());
+  auto* ctx = ViewStateHelper::write(state, *this);
 
-    if (!store) {
-      auto ptr = irs::memory::make_unique<ViewStateWrite>(_asyncSelf->mutex()); // will aquire read-lock to prevent data-store deallocation
+  if (!ctx) {
+    auto ptr = irs::memory::make_unique<ViewStateWrite>(
+      _asyncSelf->mutex(), *_storePersisted._writer
+    ); // will aquire read-lock to prevent data-store deallocation
 
-      if (!_asyncSelf->get()) {
-        return TRI_ERROR_INTERNAL; // the current view is no longer valid (checked after ReadLock aquisition)
-      }
+    if (!_asyncSelf->get()) {
+      return TRI_ERROR_INTERNAL; // the current view is no longer valid (checked after ReadLock aquisition)
+    }
 
-      store = ptr.get();
+    ctx = ptr.get();
 
-      if (!ViewStateHelper::write(state, *this, std::move(ptr))
-          || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
-          << "', tid '" << state.id() << "', collection '" << cid << "'";
+    if (!ViewStateHelper::write(state, *this, std::move(ptr))
+        || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to store state into a TransactionState for insert into arangosearch view '" << name() << "'"
+        << "', tid '" << state.id() << "', collection '" << cid << "'";
 
-        return TRI_ERROR_INTERNAL;
-      }
+      return TRI_ERROR_INTERNAL;
     }
   }
 
-  TRI_ASSERT(store && false == !*store);
+  TRI_ASSERT(ctx);
 
-  auto begin = batch.begin();
-  auto const end = batch.end();
-
-  try {
-    {
-      auto segment = store->_writer->documents();
-
-      for (FieldIterator body; begin != end; ++begin) {
-        body.reset(begin->second, meta);
-
-        if (!body.valid()) {
-          // find first valid document
-          continue;
-        }
-
-        auto doc = segment.insert();
-        insertDocument(doc, body, cid, begin->first.id());
-
-        if (!doc) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "failed inserting batch into arangosearch view '" << id() << "', collection '" << cid;
-          return TRI_ERROR_INTERNAL;
-        }
-      }
-    }
-
-    store->_writer->commit(); // no need to consolidate if batch size is set correctly
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch view '" << id() << "', collection '" << cid << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch view '" << id() << "', collection '" << cid << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch view '" << id() << "', collection '" << cid << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return insertImpl(*ctx);
 }
 
 /*static*/ std::shared_ptr<LogicalView> IResearchView::make(
@@ -1704,10 +1557,6 @@ size_t IResearchView::memory() const {
   }
 
   size += _metaState.memory();
-  // FIXME TODO somehow compute the size of TransactionState cookies for this view
-  size += sizeof(_memoryNode) + sizeof(_toFlush) + sizeof(_memoryNodes);
-  size += directoryMemory(*(_memoryNode->_store._directory), id());
-  size += directoryMemory(*(_toFlush->_store._directory), id());
 
   if (_storePersisted) {
     size += directoryMemory(*(_storePersisted._directory), id());
@@ -1758,6 +1607,8 @@ void IResearchView::open() {
         // do not lock index, ArangoDB has it's own lock
         irs::index_writer::options options;
         options.lock_repository = false;
+        options.segment_memory_max = MAX_SEGMENT_SIZE;
+        options.segment_pool_size = MAX_NON_BLOCKING_SEGMENTS_COUNT;
 
         // create writer before reader to ensure data directory is present
         _storePersisted._writer = irs::index_writer::make(
@@ -1807,18 +1658,15 @@ void IResearchView::open() {
 }
 
 int IResearchView::remove(
-  transaction::Methods& trx,
-  TRI_voc_cid_t cid,
-  arangodb::LocalDocumentId const& documentId
+    transaction::Methods& trx,
+    TRI_voc_cid_t cid,
+    arangodb::LocalDocumentId const& documentId
 ) {
+  TRI_ASSERT(_storePersisted);
+
   std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, documentId.id()));
 
   if (_inRecovery) {
-    // FIXME TODO potential problem of loss of 'remove' if:
-    // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
-    // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
-    _memoryNode->_store._writer->documents().remove(shared_filter);
-    _toFlush->_store._writer->documents().remove(shared_filter);
     _storePersisted._writer->documents().remove(shared_filter);
 
     return TRI_ERROR_NO_ERROR;
@@ -1829,16 +1677,18 @@ int IResearchView::remove(
   }
 
   auto& state = *(trx.state());
-  auto* store = ViewStateHelper::write(state, *this);
+  auto* ctx = ViewStateHelper::write(state, *this);
 
-  if (!store) {
-    auto ptr = irs::memory::make_unique<ViewStateWrite>(_asyncSelf->mutex()); // will aquire read-lock to prevent data-store deallocation
+  if (!ctx) {
+    auto ptr = irs::memory::make_unique<ViewStateWrite>(
+      _asyncSelf->mutex(), *_storePersisted._writer
+    ); // will aquire read-lock to prevent data-store deallocation
 
     if (!_asyncSelf->get()) {
       return TRI_ERROR_INTERNAL; // the current view is no longer valid (checked after ReadLock aquisition)
     }
 
-    store = ptr.get();
+    ctx = ptr.get();
 
     if (!ViewStateHelper::write(state, *this, std::move(ptr))
         || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
@@ -1850,18 +1700,17 @@ int IResearchView::remove(
     }
   }
 
-  TRI_ASSERT(store && false == !*store);
+  TRI_ASSERT(ctx);
 
   // ...........................................................................
   // if an exception occurs below than the transaction is droped including all
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    store->_writer->documents().remove(shared_filter);
-    store->_removals.emplace_back(shared_filter); // transactions are single-threaded so no mutex is required for '_removals'
+    ctx->remove(shared_filter);
 
     return TRI_ERROR_NO_ERROR;
-  } catch (arangodb::basics::Exception& e) {
+  } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while removing from arangosearch view '" << id()
       << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.code() << " " << e.what();
@@ -1904,13 +1753,16 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
         return &cookie->_snapshot;
       }
       break;
-    case Snapshot::SyncAndReplace:
+    case Snapshot::SyncAndReplace: {
       // ingore existing cookie, recreate snapshot
-      if (!const_cast<IResearchView*>(this)->sync()) {
+      auto const res = const_cast<IResearchView*>(this)->commit();
+
+      if (!res.ok()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to sync while creating snapshot for arangosearch view '" << name() << "', previous snapshot will be used instead";
+          << "failed to sync while creating snapshot for arangosearch view '" << name()
+          << "', previous snapshot will be used instead, error: '" << res.errorMessage() << "'";
       }
-      break;
+    } break;
   }
 
   std::unique_ptr<ViewStateRead> cookiePtr;
@@ -1935,12 +1787,8 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   }
 
   try {
-    ReadMutex mutex(_mutex); // _memoryNodes/_storePersisted can be asynchronously updated
+    ReadMutex mutex(_mutex); // _storePersisted can be asynchronously updated
     SCOPED_LOCK(mutex);
-
-    reader->add(_memoryNode->_store._reader);
-    SCOPED_LOCK(_toFlush->_readMutex);
-    reader->add(_toFlush->_store._reader);
 
     if (_storePersisted) {
       reader->add(_storePersisted._reader);
@@ -1981,95 +1829,6 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
 IResearchView::AsyncSelf::ptr IResearchView::self() const {
   return _asyncSelf;
-}
-
-bool IResearchView::sync(size_t maxMsec /*= 0*/) {
-  ReadMutex mutex(_mutex);
-  auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
-
-  try {
-    SCOPED_LOCK(mutex);
-
-    bool invalidateCache = false;
-
-    auto cacheInvalidator = irs::make_finally([&invalidateCache, this]() {
-      if (invalidateCache) {
-        // invalidate query cache if there were some data changes
-        arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
-      }
-    });
-
-    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "starting active memory-store sync for arangosearch view '" << id() << "'";
-    {
-      auto const reader = _memoryNode->_store._reader;
-      _memoryNode->_store.sync();
-      invalidateCache = invalidateCache  || (reader != _memoryNode->_store._reader);
-    }
-
-    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished memory-store sync for arangosearch view '" << id() << "'";
-
-    if (maxMsec && TRI_microtime() >= thresholdSec) {
-      return true; // skip if timout exceeded
-    }
-
-    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "starting pending memory-store sync for arangosearch view '" << id() << "'";
-    _toFlush->_store._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
-    _toFlush->_store._writer->commit();
-
-
-    {
-      SCOPED_LOCK(_toFlush->_reopenMutex);
-      auto const reader = _toFlush->_store._reader;
-      _toFlush->_store._reader = _toFlush->_store._reader.reopen(); // update reader
-      _toFlush->_store._segmentCount += _toFlush->_store._reader.size(); // add commited segments
-      invalidateCache = invalidateCache  || (reader != _toFlush->_store._reader);
-    }
-
-    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished pending memory-store sync for arangosearch view '" << id() << "'";
-
-    if (maxMsec && TRI_microtime() >= thresholdSec) {
-      return true; // skip if timout exceeded
-    }
-
-    // must sync persisted store as well to ensure removals are applied
-    if (_storePersisted) {
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "starting persisted-sync sync for arangosearch view '" << id() << "'";
-      _storePersisted._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
-      _storePersisted._writer->commit();
-
-      {
-        SCOPED_LOCK(_toFlush->_reopenMutex);
-        auto const reader = _storePersisted._reader;
-        _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
-        _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
-        invalidateCache = invalidateCache  || (reader != _storePersisted._reader);
-      }
-
-      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-        << "finished persisted-sync sync for arangosearch view '" << id() << "'";
-    }
-
-    return true;
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of arangosearch view '" << id() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of arangosearch view '" << id() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of arangosearch view '" << id() << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return false;
 }
 
 arangodb::Result IResearchView::updateProperties(
@@ -2192,19 +1951,6 @@ void IResearchView::registerFlushCallback() {
   }
 
   flush->registerCallback(this, [this]() noexcept {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief opens a flush transaction and returns a control object to be used
-    ///        by FlushThread spawned by FlushFeature
-    /// @returns empty object if something's gone wrong
-    ////////////////////////////////////////////////////////////////////////////////
-    WriteMutex mutex(_mutex); // ensure that _memoryNode->_store is not in use
-    SCOPED_LOCK(mutex);
-
-    _toFlush = _memoryNode; // memory store to be flushed into the persisted store
-    _memoryNode = _memoryNode->_next; // switch to the next node
-
-    mutex.unlock(true); // downgrade to a read-lock
-
     return IResearchView::FlushTransactionPtr(
       this,
       [](arangodb::FlushTransaction*){} // empty deleter
@@ -2291,23 +2037,8 @@ void IResearchView::verifyKnownCollections() {
   }
 }
 
-size_t IResearchView::count() {
-  struct DummyTransaction : transaction::Methods {
-    explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
-      : transaction::Methods(ctx) {
-    }
-  };
-
-  transaction::StandaloneContext context(vocbase());
-  std::shared_ptr<transaction::Context> dummy;  // intentionally empty
-  DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
-  auto reader = snapshot(trx, IResearchView::Snapshot::FindOrCreate);
-  TRI_ASSERT(reader != nullptr);
-  return reader->docs_count();
-}
-
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
