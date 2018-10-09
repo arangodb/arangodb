@@ -1810,16 +1810,17 @@ int ClusterInfo::ensureIndexCoordinator(
     bool found = false;
 
     c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(oldPlanIndexes, Index::makeFlags(Index::Serialize::Basics));
+    c->getIndexesVPack(oldPlanIndexes, false, false);
     VPackSlice const planIndexes = oldPlanIndexes.slice();
 
     // Go through all indexes in collection, 
     if (planIndexes.isArray()) {
       VPackArrayBuilder a(&newPlanIndexes); 
       for (auto const& index : VPackArrayIterator(planIndexes)) {        
-        auto idPlanSlice = index.get("id");
-        if (idPlanSlice.isString() && idPlanSlice.copyString() == idString &&
-            index.hasKey("isBuilding")) {
+        auto idPlan = index.get("id");
+        TRI_ASSERT(resultBuilder.slice().hasKey("id"));
+        auto idResult = resultBuilder.slice().get("id");
+        if (idPlan == idResult) {
           found = true;
           VPackObjectBuilder o(&newPlanIndexes);
           for (auto const& i : VPackObjectIterator(index)) {
