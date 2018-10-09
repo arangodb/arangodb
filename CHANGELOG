@@ -1,6 +1,14 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* recover short server id from agency after a restart of a cluster node
+
+  this fixes problems with short server ids being set to 0 after a node restart,
+  which then prevented cursor result load-forwarding between multiple coordinators
+  to work properly
+
+  this should fix arangojs#573
+
 * increased default timeouts in replication
 
   this decreases the chances of followers not getting in sync with leaders because
