@@ -335,6 +335,32 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
   return Result();
 }
   
+/// @brief send a "remove barrier" command
+Result BarrierInfo::remove(Connection& connection) noexcept {
+  using basics::StringUtils::itoa;
+  if (id == 0) {
+    return Result();
+  }
+  
+  try {
+    std::string const url = replutils::ReplicationUrl + "/barrier/" + itoa(id);
+    
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response(
+        connection.client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+    
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, connection);
+    }
+    id = 0;
+    updateTime = 0;
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  return Result();
+}
+  
+  
 constexpr double BatchInfo::DefaultTimeout;
 
 Result BatchInfo::start(replutils::Connection& connection,
