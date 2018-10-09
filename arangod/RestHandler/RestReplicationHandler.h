@@ -307,31 +307,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   int createCollection(VPackSlice, arangodb::LogicalCollection**);
 
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief condition locker to wake up holdReadLockCollection jobs
-  //////////////////////////////////////////////////////////////////////////////
-
-  static arangodb::basics::ConditionVariable _condVar;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief global set of ids of holdReadLockCollection jobs, an
-  /// id mapping to false here indicates that a request to get the
-  /// read lock has been started, the mapped value holds the
-  /// actual transaction. if the read lock is not yet acquired, the
-  /// shared_ptr will contain a nullptr still.
-  /// To cancel the read lock,
-  /// remove the entry here (under the protection of the mutex of
-  /// condVar) and send a broadcast to the condition variable,
-  /// the job with that id is terminated. If it timeouts, then
-  /// the read lock is released automatically and the entry here
-  /// is deleted.
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::unordered_map<std::string,
-                            std::shared_ptr<SingleCollectionTransaction>>
-      _holdReadLockJobs;
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
@@ -421,7 +396,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
   Result createBlockingTransaction(aql::QueryId id,
-                                   std::string const& colName,
+                                   LogicalCollection& col,
                                    double ttl) const;
 
   //////////////////////////////////////////////////////////////////////////////

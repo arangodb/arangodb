@@ -2258,7 +2258,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  Result res = createBlockingTransaction(id, col->name(), ttl);
+  Result res = createBlockingTransaction(id, *col, ttl);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2590,32 +2590,13 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 }
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
-                                                         std::string const& colName,
+                                                         LogicalCollection& col,
                                                          double ttl) const {
-  // we need to lock in EXCLUSIVE mode here, because simply locking
-  // in READ mode will not stop other writers in RocksDB. In order
-  // to stop other writers, we need to fetch the EXCLUSIVE lock
-  bool exclusive = EngineSelectorFeature::ENGINE->typeName() == "rocksdb";
-
   // This is a constant JSON structure for Queries.
   // We do not need nodes or variables.
   // We only need collections, with corresponding lock type
   auto planBuilder = std::make_shared<VPackBuilder>();
   planBuilder->openObject();
-    planBuilder->add(VPackValue("collections"));
-    planBuilder->openArray();
-      planBuilder->openObject();
-        planBuilder->add("name", VPackValue(colName));
-        planBuilder->add("type", exclusive ? VPackValue("EXCLUSIVE") : VPackValue("READ"));
-      planBuilder->close();
-    planBuilder->close();
-    planBuilder->add("initialize", VPackValue(false));
-    planBuilder->add(VPackValue("nodes"));
-    planBuilder->openArray();
-    planBuilder->close();
-    planBuilder->add(VPackValue("variables"));
-    planBuilder->openArray();
-    planBuilder->close();
   planBuilder->close();
 
   auto query = std::make_unique<aql::Query>(
@@ -2625,9 +2606,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
     nullptr, /* options */
     aql::QueryPart::PART_MAIN /* Do locking */
   );
-  auto trx = query->trx();
-  trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
-  // NOTE: The collections are on purpose not locked here.
+ // NOTE: The collections are on purpose not locked here.
   // To accuire an EXCLUSIVE lock may require time under load,
   // we want to allow to cancel this operation while waiting
   // for the lock.
@@ -2638,6 +2617,21 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
+  {
+    // we need to lock in EXCLUSIVE mode here, because simply locking
+    // in READ mode will not stop other writers in RocksDB. In order
+    // to stop other writers, we need to fetch the EXCLUSIVE lock
+    AccessMode::Type access = EngineSelectorFeature::ENGINE->typeName() == "rocksdb"
+      ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ;
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
+    query->setTransactionContext(ctx);
+    query->injectTransaction(trx.release());
+  }
+  auto trx = query->trx();
+  TRI_ASSERT(trx != nullptr);
+  trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+ 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
   try {
@@ -2680,14 +2674,14 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   try {
     auto query = queryRegistry->open(&_vocbase, id);
     if (query == nullptr) {
-      // Query exists, but is in use.
-      // So in Locking phase
-      return false;
+      return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND, "no hold read lock job found for 'id'");
     }
     TRI_DEFER(queryRegistry->close(&_vocbase, id));
     return true;
   } catch (...) {
-    return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND, "no hold read lock job found for 'id'");
+    // Query exists, but is in use.
+    // So in Locking phase
+    return false;
   }
 }
 
@@ -2736,17 +2730,3 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::Quer
     return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "read transaction was cancelled");
   }
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief condition locker to wake up holdReadLockCollection jobs
-//////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::ConditionVariable RestReplicationHandler::_condVar;
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief global table of flags to cancel holdReadLockCollection jobs, if
-/// the flag is set of the ID of a job, the job is cancelled
-//////////////////////////////////////////////////////////////////////////////
-
-std::unordered_map<std::string, std::shared_ptr<SingleCollectionTransaction>>
-    RestReplicationHandler::_holdReadLockJobs;
