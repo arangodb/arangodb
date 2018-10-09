@@ -79,13 +79,12 @@ namespace arangodb {
 class HeartbeatBackgroundJobThread : public Thread {
 
 public:
-  HeartbeatBackgroundJobThread(HeartbeatThread *heartbeatThread) :
-    Thread("Maintenance"),
-    _heartbeatThread(heartbeatThread),
-    _stop(false),
-    _sleeping(false),
-    _backgroundJobsLaunched(0)
-  {}
+  explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread) 
+      : Thread("Maintenance"),
+        _heartbeatThread(heartbeatThread),
+        _stop(false),
+        _sleeping(false),
+        _backgroundJobsLaunched(0) {}
 
   ~HeartbeatBackgroundJobThread() { shutdown(); }
 

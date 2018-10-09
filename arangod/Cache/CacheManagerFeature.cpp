@@ -33,6 +33,7 @@
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -87,7 +88,7 @@ void CacheManagerFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_cacheSize < (CacheManagerFeature::minRebalancingInterval)) {
+  if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.rebalancing-interval', need at least "
         << (CacheManagerFeature::minRebalancingInterval);
@@ -96,6 +97,12 @@ void CacheManagerFeature::validateOptions(
 }
 
 void CacheManagerFeature::start() {
+  if (ServerState::instance()->isAgent()) {
+    // we intentionally do not activate the cache on an agency node, as it
+    // is not needed there
+    return;
+  }
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
     scheduler->post(fn, false);

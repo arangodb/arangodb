@@ -777,13 +777,6 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void RocksDBEngine::addParametersForNewIndex(VPackBuilder& builder,
-                                             VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection,
@@ -2063,12 +2056,22 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
-  auto rates = manager->globalHitRates();
-  builder.add("cache.limit", VPackValue(manager->globalLimit()));
-  builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
-  // handle NaN
-  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
-  builder.add("cache.hit-rate-recent", VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
+  if (manager != nullptr) {
+    // cache turned on
+    auto rates = manager->globalHitRates();
+    builder.add("cache.limit", VPackValue(manager->globalLimit()));
+    builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
+    // handle NaN
+    builder.add("cache.hit-rate-lifetime", VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
+    builder.add("cache.hit-rate-recent", VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
+  } else {
+    // cache turned off
+    builder.add("cache.limit", VPackValue(0));
+    builder.add("cache.allocated", VPackValue(0));
+    // handle NaN
+    builder.add("cache.hit-rate-lifetime", VPackValue(0));
+    builder.add("cache.hit-rate-recent", VPackValue(0));
+  }
 
   // print column family statistics
   builder.add("columnFamilies", VPackValue(VPackValueType::Object));

@@ -30,7 +30,6 @@
 #include "search/scorers.hpp"
 
 #include "AqlHelper.h"
-#include "IResearchAttributes.h"
 #include "IResearchFeature.h"
 #include "IResearchOrderFactory.h"
 #include "VelocyPackHelper.h"

@@ -97,7 +97,7 @@ void IResearchLink::batchInsert(
   }
 
   if (!queue) {
-    throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
+    throw std::runtime_error(std::string("failed to report status during batch insert for arangosearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
   if (!trx) {
@@ -139,7 +139,7 @@ int IResearchLink::drop() {
   if (!res.ok()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to drop collection '" << _collection.name()
-      << "' from IResearch View '" << _view->name() << "': " << res.errorMessage();
+      << "' from arangosearch view '" << _view->name() << "': " << res.errorMessage();
 
     return res.errorNumber();
   }

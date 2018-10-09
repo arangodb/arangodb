@@ -144,16 +144,16 @@ UpgradeResult Upgrade::startup(
         LOG_TOPIC(ERR, Logger::STARTUP)
             << "It seems like you have upgraded the ArangoDB binary.";
         LOG_TOPIC(ERR, Logger::STARTUP)
-            << "If this is what you wanted to do, please restart with the'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  --database.auto-upgrade true'";
+            << "If this is what you wanted to do, please restart with the";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  --database.auto-upgrade true";
         LOG_TOPIC(ERR, Logger::STARTUP)
-            << "option to upgrade the data in the database directory.'";
+            << "option to upgrade the data in the database directory.";
 
         LOG_TOPIC(ERR, Logger::STARTUP) << "Normally you can use the control "
                                            "script to upgrade your database'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start'";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start";
         LOG_TOPIC(ERR, Logger::STARTUP)
         << "----------------------------------------------------------------------'";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
