@@ -2593,8 +2593,8 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col,
                                                          double ttl) const {
   // This is a constant JSON structure for Queries.
-  // We do not need nodes or variables.
-  // We only need collections, with corresponding lock type
+  // we actually do not need a plan, as we only want the query registry to have
+  // a hold of our transaction
   auto planBuilder = std::make_shared<VPackBuilder>();
   planBuilder->openObject();
   planBuilder->close();
@@ -2607,12 +2607,11 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
     aql::QueryPart::PART_MAIN /* Do locking */
   );
  // NOTE: The collections are on purpose not locked here.
-  // To accuire an EXCLUSIVE lock may require time under load,
+  // To acquire an EXCLUSIVE lock may require time under load,
   // we want to allow to cancel this operation while waiting
   // for the lock.
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  TRI_ASSERT(queryRegistry != nullptr);
   if (queryRegistry == nullptr) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -2667,7 +2666,6 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   // there it should return false.
   // In all other cases it is released quickly.
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  TRI_ASSERT(queryRegistry != nullptr);
   if (queryRegistry == nullptr) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -2691,7 +2689,6 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
   auto res = isLockHeld(id);
   if (res.ok()) {
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-    TRI_ASSERT(queryRegistry != nullptr);
     if (queryRegistry == nullptr) {
       return {TRI_ERROR_SHUTTING_DOWN};
     }
@@ -2708,7 +2705,6 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
 
 ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::QueryId id, LogicalCollection* col) const {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  TRI_ASSERT(queryRegistry != nullptr);
   if (queryRegistry == nullptr) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
