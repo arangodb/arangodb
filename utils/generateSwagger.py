@@ -890,8 +890,8 @@ def restdescription(cargo, r=Regexen()):
     swagger['paths'][httpPath][method]['description'] += '\n\n'
 
     ret = generic_handler_desc(cargo, r, "restdescription", None,
-                                swagger['paths'][httpPath][method],
-                                'description')
+                               swagger['paths'][httpPath][method],
+                               'description')
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, last) = cargo
@@ -907,9 +907,10 @@ def restdescription(cargo, r=Regexen()):
 def hints(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
 
-    ret = generic_handler_desc(cargo, r, "hints", None, operation, 'x-hints')
+    ret = generic_handler_desc(cargo, r, "hints", None,
+                               swagger['paths'][httpPath][method], 'x-hints')
 
-    if r.TRIPLENEWLINEATSTART.match(operation['x-hints']):
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
         exit(1)
