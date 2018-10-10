@@ -84,11 +84,14 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
-  GDB_OUTPUT += fs.read(gdbOutputFile);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+  let thisDump = fs.read(gdbOutputFile);
+  GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
-    print(GDB_OUTPUT);
+    print(thisDump);
   }
-  
+
   command = 'gdb ' + storeArangodPath + ' ';
 
   if (options.coreDirectory === '') {
@@ -128,9 +131,12 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
 
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
-  GDB_OUTPUT += fs.read(lldbOutputFile);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+  let thisDump = fs.read(lldbOutputFile);
+  GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
-    print(GDB_OUTPUT);
+    print(thisDump);
   }
   return 'lldb ' + storeArangodPath + ' -c /cores/core.' + pid;
 }
@@ -141,6 +147,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDumpWindows (instanceInfo) {
+  let cdbOutputFile = fs.getTempFile();
   const coreFN = instanceInfo.rootDir + '\\' + 'core.dmp';
 
   if (!fs.exists(coreFN)) {
@@ -148,7 +155,9 @@ function analyzeCoreDumpWindows (instanceInfo) {
     return;
   }
 
+
   const dbgCmds = [
+    '.logopen ' + cdbOutputFile,
     'kp', // print curren threads backtrace with arguments
     '~*kb', // print all threads stack traces
     'dv', // analyze local variables (if)
@@ -160,14 +169,20 @@ function analyzeCoreDumpWindows (instanceInfo) {
     '-z',
     coreFN,
     '-lines',
+    '-logo',
+    cdbOutputFile,
     '-c',
     dbgCmds.join('; ')
   ];
 
   sleep(5);
   print('running cdb ' + JSON.stringify(args));
+  process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
-
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+  // cdb will output to stdout anyways, so we can't turn this off here.
+  GDB_OUTPUT += fs.read(cdbOutputFile);
   return 'cdb ' + args.join(' ');
 }
 
