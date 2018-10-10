@@ -11,8 +11,6 @@ It is considered as deprecated from version 3.4 on.
 {% endhint %}
 
 @RESTDESCRIPTION
-*THIS API IS DEPRECATED*
-
 Returns an array of all configured endpoints the server is listening on.
 
 The result is a JSON array of JSON objects, each with `"entrypoint"' as

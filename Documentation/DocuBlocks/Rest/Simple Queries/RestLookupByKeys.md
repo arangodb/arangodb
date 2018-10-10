@@ -24,6 +24,10 @@ will be returned.  Keys for which no document can be found in the
 underlying collection are ignored, and no exception will be thrown for
 them.
 
+Equivalent AQL query:
+
+    FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc
+
 The body of the response contains a JSON object with a *documents*
 attribute. The *documents* attribute is an array containing the
 matching documents. The order in which matching documents are present

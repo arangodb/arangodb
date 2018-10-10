@@ -42,6 +42,11 @@ contained in the *keys* array. Keys for which no document can be found in
 the underlying collection are ignored, and no exception will be thrown for
 them.
 
+Equivalent AQL query (the RETURN clause is optional):
+
+    FOR key IN @keys REMOVE key IN @@collection
+      RETURN OLD
+
 The body of the response contains a JSON object with information how many
 documents were removed (and how many were not). The *removed* attribute will
 contain the number of actually removed documents. The *ignored* attribute 
