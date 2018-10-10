@@ -1273,17 +1273,23 @@ arangodb::Result IResearchView::commit() {
       << "starting persisted-sync sync for arangosearch view '" << name() << "'";
 
     _storePersisted._writer->commit(); // finishing flush transaction
-    const auto reader = _storePersisted._reader.reopen(); // update reader
+    auto reader = _storePersisted._reader.reopen(); // update reader
 
-    if (reader && reader != _storePersisted._reader) {
+    if (!reader) {
+      // nothing more to do
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to update snapshot after commit, reuse the existing snapshot for arangosearch view '" << name() << "'";
+      return {};
+    }
+
+    if (!std::atomic_compare_exchange_strong(&reader, &_storePersisted._reader, nullptr)) {
        // invalidate query cache if there were some data changes
        arangodb::aql::QueryCache::instance()->invalidate(
          &vocbase(), name()
        );
-
-       _storePersisted._reader = reader;
-       _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
     }
+
+    _storePersisted._segmentCount = _storePersisted._reader.size(); // set commited segments
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished persisted-sync sync for arangosearch view '" << name() << "'";
