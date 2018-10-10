@@ -2,14 +2,14 @@
 @startDocuBlock put_api_simple_any
 @brief returns a random document from a collection
 
+@RESTHEADER{PUT /_api/simple/any, Return a random document}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/any, Return a random document}
 
 @RESTDESCRIPTION
 Returns a random document from a collection. The call expects a JSON object

@@ -2,14 +2,14 @@
 @startDocuBlock put_api_simple_all
 @brief returns all documents of a collection
 
+@RESTHEADER{PUT /_api/simple/all, Return all documents}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/all, Return all documents}
 
 @RESTALLBODYPARAM{query,string,required}
 Contains the query.

@@ -373,6 +373,7 @@ class Regexen:
         self.DESCRIPTION_BL = re.compile('^\s*$')
         self.EMPTY_LINE = re.compile('^\s*$')
         self.START_DOCUBLOCK = re.compile('.*@startDocuBlock ')
+        self.HINTS = re.compile('.*@HINTS')
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
         self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
@@ -380,7 +381,6 @@ class Regexen:
         self.RESTSTRUCT = re.compile('.*@RESTSTRUCT')
         self.RESTALLBODYPARAM = re.compile('.*@RESTALLBODYPARAM')
         self.RESTDESCRIPTION = re.compile('.*@RESTDESCRIPTION')
-        self.HINTS = re.compile('.*@HINTS')
         self.RESTDONE = re.compile('.*@RESTDONE')
         self.RESTHEADER = re.compile('.*@RESTHEADER{')
         self.RESTHEADERPARAM = re.compile('.*@RESTHEADERPARAM{')
@@ -413,12 +413,12 @@ def next_step(fp, line, r):
     if not line:                              return eof, (fp, line)
     elif check_end_of_comment(line, r):       return skip_code, (fp, line)
     elif r.START_DOCUBLOCK.match(line):       return start_docublock, (fp, line)
+    elif r.HINTS.match(line):                 return hints, (fp, line)
     elif r.EXAMPLE_ARANGOSH_RUN.match(line):  return example_arangosh_run, (fp, line)
     elif r.RESTBODYPARAM.match(line):         return restbodyparam, (fp, line)
     elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
     elif r.RESTALLBODYPARAM.match(line):      return restallbodyparam, (fp, line)
     elif r.RESTDESCRIPTION.match(line):       return restdescription, (fp, line)
-    elif r.HINTS.match(line):                 return hints, (fp, line)
     elif r.RESTHEADER.match(line):            return restheader, (fp, line)
     elif r.RESTHEADERPARAM.match(line):       return restheaderparam, (fp, line)
     elif r.RESTHEADERPARAMETERS.match(line):  return restheaderparameters, (fp, line)
@@ -882,6 +882,23 @@ def restqueryparam(cargo, r=Regexen()):
     return generic_handler_desc(cargo, r, "restqueryparam", None, para, 'description')
 
 ################################################################################
+### @brief hints
+################################################################################
+
+def hints(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
+
+    ret = generic_handler_desc(cargo, r, "hints", None,
+                               swagger['paths'][httpPath][method], 'x-hints')
+
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
+        (fp, last) = cargo
+        print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
+        exit(1)
+
+    return ret
+
+################################################################################
 ### @brief restdescription
 ################################################################################
 
@@ -896,23 +913,6 @@ def restdescription(cargo, r=Regexen()):
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
-        exit(1)
-
-    return ret
-
-################################################################################
-### @brief hints
-################################################################################
-
-def hints(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method
-
-    ret = generic_handler_desc(cargo, r, "hints", None,
-                               swagger['paths'][httpPath][method], 'x-hints')
-
-    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
-        (fp, last) = cargo
-        print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
         exit(1)
 
     return ret
@@ -1181,6 +1181,7 @@ automat.add_state(comment)
 automat.add_state(eof, end_state=1)
 automat.add_state(error, end_state=1)
 automat.add_state(start_docublock)
+automat.add_state(hints)
 automat.add_state(example_arangosh_run)
 automat.add_state(examples)
 automat.add_state(skip_code)
@@ -1188,7 +1189,6 @@ automat.add_state(restbodyparam)
 automat.add_state(reststruct)
 automat.add_state(restallbodyparam)
 automat.add_state(restdescription)
-automat.add_state(hints)
 automat.add_state(restheader)
 automat.add_state(restheaderparam)
 automat.add_state(restheaderparameters)

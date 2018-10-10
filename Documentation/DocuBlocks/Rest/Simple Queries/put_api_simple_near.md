@@ -2,14 +2,14 @@
 @startDocuBlock put_api_simple_near
 @brief returns all documents of a collection near a given location
 
+@RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
 
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.

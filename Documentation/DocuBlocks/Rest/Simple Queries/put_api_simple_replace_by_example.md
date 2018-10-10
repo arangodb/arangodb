@@ -1,14 +1,14 @@
 @startDocuBlock put_api_simple_replace_by_example
 @brief replaces the body of all documents of a collection that match an example
 
+@RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
 
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to replace within.

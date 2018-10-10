@@ -2,14 +2,14 @@
 @startDocuBlock put_api_simple_first_example
 @brief returns one document of a collection matching a given example
 
+@RESTHEADER{PUT /_api/simple/first-example, Find documents matching an example}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/first-example, Find documents matching an example}
 
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.

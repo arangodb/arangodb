@@ -2,13 +2,13 @@
 @startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
+@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 It is considered as deprecated from version 3.4 on.
 {% endhint %}
-
-@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
 
 @RESTQUERYPARAMETERS
 

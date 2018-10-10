@@ -2,14 +2,14 @@
 @startDocuBlock put_api_simple_within_rectangle
 @brief returns all documents of a collection within a rectangle
 
+@RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}
 
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.

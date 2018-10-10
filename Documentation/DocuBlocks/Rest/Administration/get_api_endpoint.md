@@ -2,13 +2,13 @@
 @startDocuBlock get_api_endpoint
 @brief This API call returns the list of all endpoints (single server).
 
+@RESTHEADER{GET /_api/endpoint, Return list of all endpoints}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 It is considered as deprecated from version 3.4 on.
 {% endhint %}
-
-@RESTHEADER{GET /_api/endpoint, Return list of all endpoints}
 
 @RESTDESCRIPTION
 *THIS API IS DEPRECATED*

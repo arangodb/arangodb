@@ -1,14 +1,14 @@
 @startDocuBlock RestRemoveByKeys
 @brief removes multiple documents by their keys
 
+@RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
+
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
-
-@RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
 
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to look in for the documents to remove
