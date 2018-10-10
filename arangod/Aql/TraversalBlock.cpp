@@ -215,7 +215,7 @@ std::pair<ExecutionState, Result> TraversalBlock::shutdown(int errorCode) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
         auto res = cc->syncRequest(
-            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+            coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
             url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
             30.0);
 
@@ -444,7 +444,9 @@ TraversalBlock::getSome(size_t atMost) {
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -461,6 +463,7 @@ std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
     BufferState bufferState = getBlockIfNeeded(atMost);
 
     if (bufferState == BufferState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
       return {ExecutionState::WAITING, 0};
     }
     if (bufferState == BufferState::NO_MORE_BLOCKS) {
@@ -500,5 +503,7 @@ std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
 
   size_t skipped = _skipped;
   _skipped = 0;
-  return {getHasMoreState(), skipped};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }

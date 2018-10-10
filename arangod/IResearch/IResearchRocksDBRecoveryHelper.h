@@ -68,12 +68,24 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
                      const rocksdb::Slice& value) override;
 
   virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key) override;
+                        const rocksdb::Slice& key) override {
+    handleDeleteCF(column_family_id, key);
+  }
 
   virtual void SingleDeleteCF(uint32_t column_family_id,
-                              const rocksdb::Slice& key) override;
+                              const rocksdb::Slice& key) override {
+    handleDeleteCF(column_family_id, key);
+  }
+  
+  virtual void DeleteRangeCF(uint32_t column_family_id,
+                             const rocksdb::Slice& begin_key,
+                             const rocksdb::Slice& end_key) override;
 
   virtual void LogData(const rocksdb::Slice& blob) override;
+  
+ private:
+  
+  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key);
 
  private:
   std::set<IndexId> _recoveredIndexes; // set of already recovered indexes

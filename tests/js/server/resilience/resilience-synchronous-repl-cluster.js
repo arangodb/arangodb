@@ -35,7 +35,6 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-const download = require('internal').download;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

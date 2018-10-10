@@ -44,7 +44,6 @@ class StringBuffer;
 }
 
 namespace aql {
-
 class AqlItemBlock;
 struct AqlValue;
 class Ast;
@@ -145,8 +144,8 @@ class Expression {
     return "unknown";
   }
 
-  // @brief invoke javascript aql functions with args as param.
-  static AqlValue invokeV8Function(arangodb::aql::Query* query,
+  // @brief invoke JavaScript aql functions with args as param.
+  static AqlValue invokeV8Function(arangodb::aql::ExpressionContext* expressionContext,
                                    transaction::Methods* trx,
                                    std::string const& jsName,
                                    std::string const& ucInvokeFN,

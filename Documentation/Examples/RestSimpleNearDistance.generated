@@ -16,20 +16,9 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104864"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104864"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFDC--D"</span>, 
-      <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">-0.002</span>, 
-        <span class="hljs-number">0</span> 
-      ], 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
-    }, 
-    { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104870"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104870"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFDG--_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104896"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104896"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zpa--B"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -38,14 +27,25 @@ x-content-type-options: nosniff
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104873"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104873"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFDG--B"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104890"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104890"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zpW--F"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">0.004</span>, 
+        <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.004/"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104887"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104887"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zpW--D"</span>, 
+      <span class="hljs-string">"loc"</span> : [ 
+        <span class="hljs-number">-0.004</span>, 
+        <span class="hljs-number">0</span> 
+      ], 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.004/"</span>, 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span> 
     } 
   ], 

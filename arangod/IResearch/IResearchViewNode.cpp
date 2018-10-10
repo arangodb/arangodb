@@ -689,11 +689,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '";
+      << "failed to get snapshot while creating arangosearch view ExecutionBlock for view '" << view.name() << "' tid '";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
-      "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView"
+      "failed to get snapshot while creating arangosearch view ExecutionBlock"
     );
   }
 

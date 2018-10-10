@@ -172,6 +172,7 @@ class StaticStrings {
 
   // misc strings
   static std::string const LastValue;
+  static std::string const checksumFileJs;
 };
 }
 

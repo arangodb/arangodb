@@ -75,6 +75,7 @@
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/LogicalView.h"
 
@@ -93,6 +94,10 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchView.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -190,14 +195,16 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     // do a final WAL sync here before shutting down
     Result res = RocksDBSyncThread::sync(_db->GetBaseDB());
     if (res.fail()) {
-      LOG_TOPIC(WARN, Logger::ROCKSDB) << "could not sync RocksDB WAL: " << res.errorMessage();
+      LOG_TOPIC(WARN, Logger::ENGINES)
+          << "could not sync RocksDB WAL: " << res.errorMessage();
     }
 
     rocksdb::Status status = _db->Close();
 
     if (!status.ok()) {
       Result res = rocksutils::convertStatus(status);
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << "could not shutdown RocksDB: " << res.errorMessage();
+      LOG_TOPIC(ERR, Logger::ENGINES)
+          << "could not shutdown RocksDB: " << res.errorMessage();
     }
   } catch (...) {
     // this is allowed to go wrong on shutdown
@@ -269,14 +276,17 @@ void RocksDBEngine::validateOptions(
 
   if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
     // _syncInterval = 0 means turned off!
-    LOG_TOPIC(FATAL, arangodb::Logger::ROCKSDB) << "invalid value for --rocksdb.sync-interval. Please use a value "
-                  "of at least " << minSyncInterval;
+    LOG_TOPIC(FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --rocksdb.sync-interval. Please use a value "
+        << "of at least " << minSyncInterval;
     FATAL_ERROR_EXIT();
   }
 
 #ifdef _WIN32
   if (_syncInterval > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << "automatic syncing of RocksDB WAL via background thread is not supported on this platform";
+    LOG_TOPIC(WARN, arangodb::Logger::CONFIG)
+        << "automatic syncing of RocksDB WAL via background thread is not "
+        << " supported on this platform";
   }
 #endif
 }
@@ -364,9 +374,9 @@ void RocksDBEngine::start() {
     _options.wal_dir = opts->_walDirectory;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ROCKSDB) << "initializing RocksDB, path: '"
-                                              << _path << "', WAL directory '"
-                                              << _options.wal_dir << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      << "initializing RocksDB, path: '" << _path << "', WAL directory '"
+      << _options.wal_dir << "'";
 
   if (opts->_skipCorrupted) {
     _options.wal_recovery_mode =
@@ -428,13 +438,13 @@ void RocksDBEngine::start() {
       // we only want real errors
       _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
     }
-  } 
+  }
 
   std::shared_ptr<RocksDBLogger> logger;
- 
+
   if (!opts->_useFileLogging) {
     // if option "--rocksdb.use-file-logging" is set to false, we will use
-    // our own logger that logs to ArangoDB's logfile 
+    // our own logger that logs to ArangoDB's logfile
     logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
     _options.info_log = logger;
 
@@ -768,13 +778,6 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
-void RocksDBEngine::addParametersForNewIndex(VPackBuilder& builder,
-                                             VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection,
@@ -942,7 +945,7 @@ int RocksDBEngine::getViews(
        iter->Valid() && iter->key().compare(bounds.end()) < 0; iter->Next()) {
     auto slice = VPackSlice(iter->value().data());
 
-    LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();
+    LOG_TOPIC(TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();
 
     if (arangodb::basics::VelocyPackHelper::readBooleanValue(
           slice, StaticStrings::DataSourceDeleted, false
@@ -1162,6 +1165,8 @@ bool RocksDBEngine::inRecovery() {
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
+  settingsManager()->clearIndexEstimators();
+  settingsManager()->clearKeyGenerators();
 }
 
 std::string RocksDBEngine::createCollection(
@@ -1210,7 +1215,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   auto* coll = toRocksDBCollection(collection);
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
-  
+
   rocksdb::WriteOptions wo;
 
   // If we get here the collection is safe to drop.
@@ -1299,7 +1304,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       // We try to remove all indexed values.
       // If it does not work they cannot be accessed any more and leaked.
       // User View remains consistent.
-      LOG_TOPIC(ERR, Logger::FIXME) << "unable to drop index: "
+      LOG_TOPIC(ERR, Logger::ENGINES) << "unable to drop index: "
                                     << TRI_errno_string(dropRes);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1377,6 +1382,9 @@ Result RocksDBEngine::createView(
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
 ) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::createView";
+#endif
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;
 
@@ -1394,6 +1402,8 @@ Result RocksDBEngine::createView(
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   auto res = _db->Write(wo, &batch);
+  LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
+      << "could not create view: " << res.ToString();
   return rocksutils::convertStatus(res);
 }
 
@@ -1401,6 +1411,9 @@ arangodb::Result RocksDBEngine::dropView(
     TRI_vocbase_t& vocbase,
     LogicalView& view
 ) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
+#endif
   VPackBuilder builder;
 
   builder.openObject();
@@ -1420,7 +1433,10 @@ arangodb::Result RocksDBEngine::dropView(
   batch.PutLogData(logValue.slice());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
-  return rocksutils::convertStatus(db->Write(wo, &batch));
+  auto res = db->Write(wo, &batch);
+  LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
+      << "could not create view: " << res.ToString();
+  return rocksutils::convertStatus(res);
 }
 
 void RocksDBEngine::destroyView(
@@ -1428,6 +1444,9 @@ void RocksDBEngine::destroyView(
     LogicalView& /*view*/
 ) noexcept {
   // nothing to do here
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::destroyView";
+#endif
 }
 
 Result RocksDBEngine::changeView(
@@ -1435,6 +1454,9 @@ Result RocksDBEngine::changeView(
     arangodb::LogicalView const& view,
     bool /*doSync*/
 ) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::changeView";
+#endif
   if (inRecovery()) {
     // nothing to do
     return {};
@@ -1456,15 +1478,22 @@ Result RocksDBEngine::changeView(
   rocksdb::Status s;
   s = batch.PutLogData(log.slice());
   if (!s.ok()) {
+    LOG_TOPIC(TRACE, Logger::VIEWS)
+        << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
   s = batch.Put(RocksDBColumnFamily::definitions(),
             key.string(), value.string());
   if (!s.ok()) {
+    LOG_TOPIC(TRACE, Logger::VIEWS)
+        << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
   auto db = rocksutils::globalRocksDB();
-  return rocksutils::convertStatus(db->Write(wo, &batch));
+  auto res = db->Write(wo, &batch);
+  LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
+      << "could not change view: " << res.ToString();
+  return rocksutils::convertStatus(res);
 }
 
 void RocksDBEngine::signalCleanup(TRI_vocbase_t& vocbase) {
@@ -1548,8 +1577,8 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
   }
   return it->second;
 }
-   
-   
+
+
 /// @brief return a list of the currently open WAL files
 std::vector<std::string> RocksDBEngine::currentWalFiles() const {
   rocksdb::VectorLogPtr files;
@@ -1649,7 +1678,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+          LOG_TOPIC(DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
               << " added to prunable list";
@@ -1670,8 +1699,8 @@ void RocksDBEngine::pruneWalFiles() {
        /* no hoisting */) {
     // check if WAL file is expired
     if ((*it).second < TRI_microtime()) {
-      LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "deleting RocksDB WAL file '"
-                                        << (*it).first << "'";
+      LOG_TOPIC(DEBUG, Logger::ENGINES)
+        << "deleting RocksDB WAL file '" << (*it).first << "'";
       auto s = _db->DeleteFile((*it).first);
       // apparently there is a case where a file was already deleted
       // but is still in _prunableWalFiles. In this case we get an invalid
@@ -1716,7 +1745,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   iterateBounds(bounds, [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
-    
+
     uint64_t const objectId =
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
     auto const cnt = _settingsManager->loadCounter(objectId);
@@ -1733,9 +1762,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
         auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
-          it, StaticStrings::IndexUnique.c_str(), false
+          it, StaticStrings::IndexUnique, false
         );
-        
+
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
@@ -1752,7 +1781,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
       }
     }
-    
+
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
@@ -1778,7 +1807,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     return res;
   }
 
-  
+
   // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);
@@ -1865,19 +1894,39 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
 
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
       }
 
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
+
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+      struct DummyTransaction : transaction::Methods {
+        explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
+          : transaction::Methods(ctx) {
+        }
+      };
+
+      transaction::StandaloneContext context(view->vocbase());
+      std::shared_ptr<transaction::Context> dummy;  // intentionally empty
+      DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
+      auto& viewImpl = dynamic_cast<iresearch::IResearchView&>(*view);
+      auto reader = viewImpl.snapshot(trx, iresearch::IResearchView::Snapshot::FindOrCreate);
+      TRI_ASSERT(reader);
+
+      LOG_TOPIC(DEBUG, Logger::VIEWS)
+          << "arangosearch view '" << view->name()
+          << "' contains " << reader->docs_count() << " documents";
+#endif
+
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
-                                            << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
     throw;
   }
@@ -1909,17 +1958,17 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       physical->deserializeIndexEstimates(settingsManager());
       physical->deserializeKeyGenerator(settingsManager());
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
-                                                << collection->name() << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "added document collection '" << collection->name() << "'";
     }
 
     return vocbase;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
-                                            << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
     throw;
   }
@@ -2019,12 +2068,22 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
-  auto rates = manager->globalHitRates();
-  builder.add("cache.limit", VPackValue(manager->globalLimit()));
-  builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
-  // handle NaN
-  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
-  builder.add("cache.hit-rate-recent", VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
+  if (manager != nullptr) {
+    // cache turned on
+    auto rates = manager->globalHitRates();
+    builder.add("cache.limit", VPackValue(manager->globalLimit()));
+    builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
+    // handle NaN
+    builder.add("cache.hit-rate-lifetime", VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
+    builder.add("cache.hit-rate-recent", VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
+  } else {
+    // cache turned off
+    builder.add("cache.limit", VPackValue(0));
+    builder.add("cache.allocated", VPackValue(0));
+    // handle NaN
+    builder.add("cache.hit-rate-lifetime", VPackValue(0));
+    builder.add("cache.hit-rate-recent", VPackValue(0));
+  }
 
   // print column family statistics
   builder.add("columnFamilies", VPackValue(VPackValueType::Object));

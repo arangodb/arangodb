@@ -650,14 +650,10 @@ static void JS_RenameViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); // skip view
   }
 
-  // need to get the sharedPtr from the vocbase
-  arangodb::CollectionNameResolver resolver(view->vocbase());
-  auto viewPtr = resolver.getView(view->id());
+  auto res = view->vocbase().renameView(view->id(), name);
 
-  int res = view->vocbase().renameView(viewPtr, name);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename view");
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();

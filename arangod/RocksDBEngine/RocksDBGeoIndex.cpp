@@ -69,8 +69,8 @@ class RDBNearIterator final : public IndexIterator {
   }
 
   /// internal retrieval loop
-  template<typename T>
-  inline bool nextToken(T cb, size_t limit) {
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -79,7 +79,7 @@ class RDBNearIterator final : public IndexIterator {
 
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest())) {
+        if (std::forward<F>(cb)(_near.nearest())) {
           limit--;
         }
         _near.popNearest();
@@ -113,10 +113,10 @@ class RDBNearIterator final : public IndexIterator {
                 return;
               }
             }
-            cb(gdoc.token, doc);  // return result
+            cb(gdoc.token, doc);  // return document
             result = true;
           })) {
-            return false;
+            return false; // ignore document
           }
           return result;
         },
@@ -165,7 +165,7 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
+    // LOG_TOPIC(INFO, Logger::ENGINES) << "# intervals: " << scan.size();
     // size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
@@ -199,7 +199,7 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
+        // LOG_TOPIC(INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
         // seeks++;
         _iter->Seek(bds.start());
       }
@@ -213,7 +213,7 @@ class RDBNearIterator final : public IndexIterator {
     }
 
     _near.didScanIntervals(); // calculate next bounds
-    // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    // LOG_TOPIC(INFO, Logger::ENGINES) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -301,14 +301,14 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;

@@ -1,0 +1,62 @@
+R"=(
+{
+  "arango": {
+    "Current": {
+      "Collections": {
+        "database": {
+          "collection": {
+            "s99": {
+              "servers": [
+                "leader"
+              ]
+            }
+          },
+          "other": {
+            "s12": {
+              "servers": [
+                "otherleader"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Plan": {
+      "Collections": {
+      },
+      "DBServers": {
+        "leader": "none",
+        "otherleader": "none"
+      }
+    },
+    "Supervision": {
+      "DBServers": {},
+      "Health": {
+        "leader": {
+          "Status": "FAILED"
+        },
+        "otherleader": {
+          "Status": "GOOD"
+        }
+      },
+      "Shards": {}
+    },
+    "Target": {
+      "CleanedServers": [],
+      "Failed": {},
+      "FailedServers": {},
+      "Finished": {},
+      "MapUniqueToShortID": {
+        "leader": {
+          "ShortName": "leader"
+        },
+        "otherleader": {
+          "ShortName": "otherleader"
+        }
+      },
+      "Pending": {},
+      "ToDo": {}
+    }
+  }
+}
+)="

@@ -332,7 +332,7 @@ function printIndexes (indexes) {
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else {
+      } else { 
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
@@ -877,6 +877,9 @@ function processQuery (query, explain) {
           return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' && '));
         }
         return '';
+      case 'parameter':
+      case 'datasource parameter':
+        return value('@' + node.name);
       default:
         return 'unhandled node type (' + node.type + ')';
     }
@@ -982,11 +985,11 @@ function processQuery (query, explain) {
     if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
-      if (variable !== false) {
+      if (variable !== false && variable !== undefined) {
         idx.condition = variable;
       }
     }
-    if (idx.condition === '') {
+    if (idx.condition === '' || idx.condition === undefined) {
       idx.condition = '*'; // empty condition. this is likely an index used for sorting or scanning only
     }
     indexes.push(idx);
@@ -1495,6 +1498,7 @@ function processQuery (query, explain) {
 
   var printNode = function (node) {
     preHandle(node);
+    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';

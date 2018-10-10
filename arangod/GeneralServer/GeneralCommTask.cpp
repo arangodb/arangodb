@@ -64,15 +64,16 @@ static std::string const Open("/_open/");
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
+GeneralCommTask::GeneralCommTask(GeneralServer &server,
+                                 GeneralServer::IoContext &context,
                                  std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
-    : Task(scheduler, "GeneralCommTask"),
-      SocketTask(scheduler, std::move(socket), std::move(info),
+    : IoTask(server, context, "GeneralCommTask"),
+      SocketTask(server, context, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
-      _server(server),
       _auth(AuthenticationFeature::instance()) {
+
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -120,8 +121,14 @@ bool resolveRequestContext(GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
+  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(req, *vocbase));
+  if (!guard) {
+    return false;
+  }
+  
   // the vocbase context is now responsible for releasing the vocbase
-  req.setRequestContext(VocbaseContext::create(req, *vocbase), true);
+  req.setRequestContext(guard.get(), true);
+  guard.release();
 
   // the "true" means the request is the owner of the context
   return true;
@@ -131,23 +138,24 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-  
+
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
     addResponse(*res, nullptr);
     return RequestFlow::Abort;
   }
-  
+
   bool found;
   std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
   if (found) { // log request source in cluster for debugging
     LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
     << "\",\"" << source << "\"";
   }
-  
+
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
+
   ServerState::Mode mode = ServerState::mode();
   switch (mode) {
     case ServerState::Mode::MAINTENANCE: {
@@ -199,7 +207,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // no special handling required
       break;
   }
-  
+
   // Step 3: Try to resolve vocbase and use
   if (!::resolveRequestContext(req)) { // false if db not found
     if (_auth->isActive()) {
@@ -453,18 +461,14 @@ void GeneralCommTask::handleRequestDirectly(
 
   auto self = shared_from_this();
   handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
-    RequestStatistics* stat = handler->stealStatistics();
-    // TODO we could reduce all of this to strand::dispatch ?
-    if (doLock || !_peer->runningInThisThread()) {
-      // Note that the latter is for the case that a handler was put to sleep
-      // and woke up in a different thread.
-      auto h = handler->shared_from_this();
 
-      _peer->post(
-          [self, this, stat, h]() { addResponse(*(h->response()), stat); });
-    } else {
-      addResponse(*handler->response(), stat);
-    }
+    RequestStatistics* stat = handler->stealStatistics();
+    auto h = handler->shared_from_this();
+    // Pass the response the io context
+    _peer->post(
+        [self, this, stat, h]() {
+          addResponse(*(h->response()), stat);
+        });
   });
 }
 
@@ -517,6 +521,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+
+    if (req.authenticated()) {
+      req.setAuthenticated(false);
+    }
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
@@ -524,7 +532,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!req.authenticated()) {
+  if (!req.authenticated() || result == rest::ResponseCode::UNAUTHORIZED) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint

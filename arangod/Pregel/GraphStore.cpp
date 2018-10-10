@@ -84,6 +84,9 @@ GraphStore<V, E>::~GraphStore() {
   delete _edges;
 }
 
+static const char* shardError = "Collections need to have the same number of shards"
+" use distributeShardsLike";
+
 template <typename V, typename E>
 std::map<CollectionID, std::vector<VertexShardInfo>>
   GraphStore<V, E>::_allocateSpace() {
@@ -98,22 +101,32 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
   
+  // Contains the shards located on this db server in the right order
+  // assuming edges are sharded after _from, vertices after _key
+  // then every ith vertex shard has the corresponding edges in
+  // the ith edge shard
   std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
   _config->vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
   _config->edgeCollectionShards();
+  size_t numShards = SIZE_MAX;
   
   // Allocating some memory
   uint64_t vCount = 0;
   uint64_t eCount = 0;
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
+    if (numShards == SIZE_MAX) {
+      numShards = vertexShards.size();
+    } else if (numShards != vertexShards.size()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
+    }
+    
     for (size_t i = 0; i < vertexShards.size(); i++) {
 
       VertexShardInfo info;
       info.vertexShard = vertexShards[i];
       info.trx = _createTransaction();
-      info.edgeDataOffset = eCount;
       
       TRI_voc_cid_t cid = info.trx->addCollectionAtRuntime(info.vertexShard);
       info.trx->pinData(cid);  // will throw when it fails
@@ -129,14 +142,12 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         continue;
       }
       
-      std::vector<ShardID> edgeLookups;
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       for (auto const& pair2 : edgeCollMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
         if (vertexShards.size() != edgeShards.size()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "Collections need to have the same number of shards");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
         }
         
         ShardID const& eShard = edgeShards[i];
@@ -149,8 +160,9 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         if (opResult.fail() || _destroyed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
-        eCount += opResult.slice().getUInt();
+        info.numEdges += opResult.slice().getUInt();;
       }
+      eCount += info.numEdges;
       
       result[pair.first].push_back(std::move(info));
     }
@@ -187,15 +199,31 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->post([this, scheduler, callback] {
-    uint64_t vertexOffset = 0;
-    // Contains the shards located on this db server in the right order
-    // assuming edges are sharded after _from, vertices after _key
-    // then every ith vertex shard has the corresponding edges in
-    // the ith edge shard
     
-    auto shards = _allocateSpace();
-    for (auto& pair : shards) {
-      for (VertexShardInfo& info : pair.second) {
+    // hold the current position where the ith vertex shard can
+    // start to write its data. At the end the offset should equal the
+    // sum of the counts of all ith edge shards
+    auto collectionShards = _allocateSpace();
+    
+    
+    uint64_t vertexOff = 0;
+    std::vector<size_t> edgeDataOffsets; // will contain # off edges in ith shard
+    for (auto& collection : collectionShards) {
+      if (edgeDataOffsets.size() == 0) {
+        edgeDataOffsets.resize(collection.second.size() + 1);
+        std::fill(edgeDataOffsets.begin(), edgeDataOffsets.end(), 0);
+      }
+      TRI_ASSERT(collection.second.size() < edgeDataOffsets.size());
+      size_t shardIdx = 0;
+      for (VertexShardInfo& info : collection.second) {
+        edgeDataOffsets[++shardIdx] += info.numEdges;
+      }
+    }
+    
+    for (auto& collection : collectionShards) {
+
+      size_t shardIdx = 0;
+      for (VertexShardInfo& info : collection.second) {
         
         try {
           // we might have already loaded these shards
@@ -205,20 +233,22 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
           _loadedShards.insert(info.vertexShard);
           _runningThreads++;
           TRI_ASSERT(info.numVertices > 0);
-          TRI_ASSERT(vertexOffset < _index.size());
-          TRI_ASSERT(info.edgeDataOffset < _edges->size());
-          scheduler->post([this, &info, vertexOffset] {
+          TRI_ASSERT(vertexOff < _index.size());
+          TRI_ASSERT(info.numEdges == 0 || edgeDataOffsets[shardIdx] < _edges->size());
+          
+          scheduler->post([this, &info, &edgeDataOffsets, vertexOff, shardIdx] {
             TRI_DEFER(_runningThreads--);// exception safe
             _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
-                          vertexOffset, info.edgeDataOffset);
+                          vertexOff, edgeDataOffsets[shardIdx]);
           }, false);
           // update to next offset
-          vertexOffset += info.numVertices;
+          vertexOff += info.numVertices;
         } catch(...) {
           LOG_TOPIC(WARN, Logger::PREGEL) << "unhandled exception while "
             <<"loading pregel graph";
         }
         
+        shardIdx++;
       }
       
       // we can only load one vertex collection at a time

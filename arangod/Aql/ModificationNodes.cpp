@@ -31,19 +31,17 @@
 
 using namespace arangodb::aql;
 
-static bool const Optional = true;
-
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       CollectionAccessingNode(plan, base),
       _options(base),
       _outVariableOld(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
+          Variable::varFromVPack(plan->getAst(), base, "outVariableOld", true)),
       _outVariableNew(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)),
-      _countStats(base.get("countStats").getBool()) {
-}
+          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", true)),
+      _countStats(base.get("countStats").getBool()),
+      _producesResults(base.hasKey("producesResults") ? base.get("producesResults").getBool() : true) {}
 
 /// @brief toVelocyPack
 void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
@@ -56,6 +54,8 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));
+  
+  builder.add("producesResults", VPackValue(_producesResults));
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -70,18 +70,25 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 
   _options.toVelocyPack(builder);
 }
-
+  
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.
 CostEstimate ModificationNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
-  if (_outVariableOld == nullptr && _outVariableNew == nullptr) {
+  if (_outVariableOld == nullptr && _outVariableNew == nullptr && !_producesResults) {
     // node produces no output
     estimate.estimatedNrItems = 0;
   }
   return estimate;
+}
+
+void ModificationNode::cloneCommon(ModificationNode* c) const {
+  if (!_countStats) {
+    c->disableStatistics();
+  }
+  c->producesResults(_producesResults);
 }
 
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -122,9 +129,7 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<RemoveNode>(plan, _id, _collection, _options,
                           inVariable, outVariableOld);
-  if (!_countStats) {
-    c->disableStatistics();
-  }
+  ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -174,24 +179,19 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<InsertNode>(plan, _id, _collection, _options,
                           inVariable, outVariableOld, outVariableNew);
-  if (!_countStats) {
-    c->disableStatistics();
-  }
+  ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
       _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
-          Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
+          Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", true)) {}
 
-/// @brief toVelocyPack
-void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   ModificationNode::toVelocyPackHelper(nodes, flags);
-  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
-
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 
@@ -200,8 +200,15 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     nodes.add(VPackValue("inKeyVariable"));
     _inKeyVariable->toVelocyPack(nodes);
   }
+}
 
-  // And close it:
+UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : UpdateReplaceNode(plan, base) {}
+
+/// @brief toVelocyPack
+void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  UpdateReplaceNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
   nodes.close();
 }
 
@@ -239,35 +246,19 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<UpdateNode>(plan, _id, _collection, _options, inDocVariable,
                      inKeyVariable, outVariableOld, outVariableNew);
-  if (!_countStats) {
-    c->disableStatistics();
-  }
+  ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
-    : ModificationNode(plan, base),
-      _inDocVariable(Variable::varFromVPack(plan->getAst(), base, "inDocVariable")),
-      _inKeyVariable(
-          Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
+    : UpdateReplaceNode(plan, base) {}
 
 /// @brief toVelocyPack
 void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags);
+  UpdateReplaceNode::toVelocyPackHelper(nodes, flags);
   ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
-
-  nodes.add(VPackValue("inDocVariable"));
-  _inDocVariable->toVelocyPack(nodes);
-
-  // inKeyVariable might be empty
-  if (_inKeyVariable != nullptr) {
-    nodes.add(VPackValue("inKeyVariable"));
-    _inKeyVariable->toVelocyPack(nodes);
-  }
-
-  // And close it:
   nodes.close();
 }
 
@@ -305,9 +296,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<ReplaceNode>(plan, _id, _collection, _options, inDocVariable,
                       inKeyVariable, outVariableOld, outVariableNew);
-  if (!_countStats) {
-    c->disableStatistics();
-  }
+  ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -367,9 +356,7 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<UpsertNode>(plan, _id, _collection, _options,
                           inDocVariable, insertVariable, updateVariable,
                           outVariableNew, _isReplace);
-  if (!_countStats) {
-    c->disableStatistics();
-  }
+  ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

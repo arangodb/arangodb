@@ -303,12 +303,12 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       }
 
       auto newNameStr = newName.copyString();
-      int res = _vocbase.renameView(view, newNameStr);
+      auto res = _vocbase.renameView(view->id(), newNameStr);
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res.ok()) {
         getView(newNameStr, false);
       } else {
-        generateError(GeneralResponse::responseCode(res), res);
+        generateError(res);
       }
 
       return;

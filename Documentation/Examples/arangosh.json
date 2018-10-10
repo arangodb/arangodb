@@ -129,6 +129,22 @@
     "section" : "javascript",
     "type" : "string"
   },
+  "javascript.copy-directory" : {
+    "default" : "",
+    "description" : "target directory to copy files from 'javascript.startup-directory' into (only used when `--javascript.copy-installation` is enabled)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.copy-installation" : {
+    "default" : false,
+    "description" : "copy contents of 'javascript.startup-directory'",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
   "javascript.current-module-directory" : {
     "default" : true,
     "description" : "add current directory to module path",
@@ -157,7 +173,7 @@
   },
   "javascript.gc-interval" : {
     "default" : 50,
-    "description" : "request-based garbage collection interval (each n.th commands)",
+    "description" : "request-based garbage collection interval (each n.th command)",
     "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "javascript",

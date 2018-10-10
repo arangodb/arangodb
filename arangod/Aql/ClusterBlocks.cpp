@@ -70,7 +70,7 @@ class OurLessThan {
  public:
   OurLessThan(
       arangodb::transaction::Methods* trx,
-      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
       std::vector<SortRegister>& sortRegisters) noexcept
     : _trx(trx),
       _gatherBlockBuffer(gatherBlockBuffer),
@@ -84,7 +84,7 @@ class OurLessThan {
 
  private:
   arangodb::transaction::Methods* _trx;
-  std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
+  std::vector<std::deque<AqlItemBlock*>> const& _gatherBlockBuffer;
   std::vector<SortRegister>& _sortRegisters;
 }; // OurLessThan
 
@@ -148,7 +148,7 @@ class HeapSorting final : public SortingStrategy, private OurLessThan  {
  public:
   HeapSorting(
       arangodb::transaction::Methods* trx,
-      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
       std::vector<SortRegister>& sortRegisters) noexcept
     : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
   }
@@ -196,7 +196,7 @@ class MinElementSorting final : public SortingStrategy, public OurLessThan {
  public:
   MinElementSorting(
       arangodb::transaction::Methods* trx,
-      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<std::deque<AqlItemBlock*>> const& gatherBlockBuffer,
       std::vector<SortRegister>& sortRegisters) noexcept
     : OurLessThan(trx, gatherBlockBuffer, sortRegisters),
       _blockPos(nullptr) {
@@ -837,7 +837,6 @@ Result RemoteBlock::sendAsyncRequest(
   }
 
   // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
@@ -853,39 +852,11 @@ Result RemoteBlock::sendAsyncRequest(
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+  cc->asyncRequest(coordTransactionId, _server, type,
                    std::move(url), body, headers, callback, defaultTimeOut,
                    true);
 
   return {TRI_ERROR_NO_ERROR};
-}
-
-/// @brief local helper to send a request
-std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
-    arangodb::rest::RequestType type, std::string const& urlPart,
-    std::string const& body) const {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens on controlled shutdown
-    return std::make_unique<ClusterCommResult>();
-  }
-
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
-  }
-
-  std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-    urlPart + _queryId;
-
-  ++_engine->_stats.requests;
-
-  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                         std::move(url), body, headers, defaultTimeOut);
 }
 
 /// @brief initializeCursor, could be called multiple times
@@ -956,7 +927,7 @@ bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
     _lastResponse = result->result;
   }
   return true;
-};
+}
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
@@ -1099,7 +1070,9 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
-
+  
+  traceSkipSomeBegin(atMost);
+  
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
 
@@ -1123,8 +1096,10 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 
     // TODO Check if we can get better with HASMORE/DONE
     if (skipped == 0) {
+      traceSkipSomeEnd(skipped, ExecutionState::DONE);
       return {ExecutionState::DONE, skipped};
     }
+    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, skipped};
   }
 
@@ -1143,7 +1118,8 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+  traceSkipSomeEnd(0, ExecutionState::WAITING);
+  return {ExecutionState::WAITING, 0};
 }
 
 // -----------------------------------------------------------------------------
@@ -1200,13 +1176,16 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::g
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
   // the simple case . . .
   auto res = _dependencies[_atDep]->skipSome(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceSkipSomeEnd(res.second, ExecutionState::WAITING);
     return res;
   }
 
@@ -1214,13 +1193,16 @@ std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) 
     _atDep++;
     res = _dependencies[_atDep]->skipSome(atMost);
     if (res.first == ExecutionState::WAITING) {
+      traceSkipSomeEnd(res.second, ExecutionState::WAITING);
       return res;
     }
   }
 
   _done = (res.second == 0);
 
-  return {getHasMoreState(), res.second};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(res.second, state);
+  return {state, res.second};
 }
 
 // -----------------------------------------------------------------------------
@@ -1266,14 +1248,12 @@ SortingGatherBlock::~SortingGatherBlock() {
 }
 
 void SortingGatherBlock::clearBuffers() noexcept {
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y : x) {
-      delete y;
+  for (std::deque<AqlItemBlock*>& it : _gatherBlockBuffer) {
+    for (AqlItemBlock* b : it) {
+      delete b;
     }
-    x.clear();
+    it.clear();
   }
-  _gatherBlockBuffer.clear();
-  _gatherBlockPos.clear();
 }
 
 /// @brief initializeCursor
@@ -1286,12 +1266,31 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
 
   clearBuffers();
-  _gatherBlockBuffer.reserve(_dependencies.size());
-  _gatherBlockPos.reserve(_dependencies.size());
-  for (size_t i = 0; i < _dependencies.size(); i++) {
-    _gatherBlockBuffer.emplace_back();
-    _gatherBlockPos.emplace_back(i, 0);
+
+  TRI_ASSERT(!_dependencies.empty());
+
+  if (_gatherBlockBuffer.empty()) {
+    // only do this initialization once
+    _gatherBlockBuffer.reserve(_dependencies.size());
+    _gatherBlockPos.reserve(_dependencies.size());
+    _gatherBlockPosDone.reserve(_dependencies.size());
+
+    for (size_t i = 0; i < _dependencies.size(); ++i) {
+      _gatherBlockBuffer.emplace_back();
+      _gatherBlockPos.emplace_back(i, 0);
+      _gatherBlockPosDone.push_back(false);
+    }
+  } else {
+    for (size_t i = 0; i < _dependencies.size(); i++) {
+      TRI_ASSERT(_gatherBlockBuffer[i].empty());
+      _gatherBlockPos[i].second = 0;
+      _gatherBlockPosDone[i] = false;
+    }
   }
+  
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockPosDone.size() == _dependencies.size());
 
   _strategy->reset();
 
@@ -1315,6 +1314,9 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
     size_t atMost) {
   size_t available = 0;
+  
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
 
   // In the future, we should request all blocks in parallel. But not everything
   // is yet thread safe for that to work, so we have to return immediately on
@@ -1323,7 +1325,7 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
     // reset position to 0 if we're going to fetch a new block.
     // this doesn't hurt, even if we don't get one.
     if (_gatherBlockBuffer[i].empty()) {
-      _gatherBlockPos[i] = std::make_pair(i, 0);
+      _gatherBlockPos[i].second = 0;
     }
     ExecutionState state;
     bool blockAppended;
@@ -1342,8 +1344,11 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
 size_t SortingGatherBlock::availableRows(size_t i) const {
   size_t available = 0;
 
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(i < _dependencies.size());
+
   auto const& blocks = _gatherBlockBuffer[i];
-  auto const& curRowIdx = _gatherBlockPos[i].second;
+  size_t curRowIdx = _gatherBlockPos[i].second;
 
   if (!blocks.empty()) {
     TRI_ASSERT(blocks[0]->size() >= curRowIdx);
@@ -1401,7 +1406,7 @@ SortingGatherBlock::getSome(size_t atMost) {
 
   // the following is similar to AqlItemBlock's slice method . . .
   std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
-  cache.resize(_gatherBlockBuffer.size());
+  cache.resize(_dependencies.size());
 
   size_t nrRegs = getNrInputRegisters();
 
@@ -1414,7 +1419,7 @@ SortingGatherBlock::getSome(size_t atMost) {
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
     auto const val = _strategy->nextValue();
-    auto& blocks = _gatherBlockBuffer[val.first];
+    auto const& blocks = _gatherBlockBuffer[val.first];
 
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
@@ -1453,7 +1458,9 @@ SortingGatherBlock::getSome(size_t atMost) {
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -1465,12 +1472,14 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
     ExecutionState blockState;
     std::tie(blockState, available) = fillBuffers(atMost);
     if (blockState == ExecutionState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
       return {blockState, 0};
     }
   }
 
   if (available == 0) {
     _done = true;
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -1486,13 +1495,19 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
   }
 
   // Maybe we can optimize here DONE/HASMORE
-  return {getHasMoreState(), skipped};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 /// @brief Step to the next row in line in the buffers of dependency i, i.e.,
 /// updates _gatherBlockBuffer and _gatherBlockPos. If necessary, steps to the
 /// next block and removes the previous one. Will not fetch more blocks.
 void SortingGatherBlock::nextRow(size_t i) {
+  TRI_ASSERT(i < _dependencies.size());
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
+
   auto& blocks = _gatherBlockBuffer[i];
   auto& blocksPos = _gatherBlockPos[i];
   if (++blocksPos.second == blocks.front()->size()) {
@@ -1511,6 +1526,13 @@ void SortingGatherBlock::nextRow(size_t i) {
 std::pair<ExecutionState, bool> SortingGatherBlock::getBlocks(size_t i,
                                                               size_t atMost) {
   TRI_ASSERT(i < _dependencies.size());
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockPos.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockPosDone.size() == _dependencies.size());
+
+  if (_gatherBlockPosDone[i]) {
+    return {ExecutionState::DONE, false};
+  }
 
   bool blockAppended = false;
   size_t rowsAvailable = availableRows(i);
@@ -1526,6 +1548,10 @@ std::pair<ExecutionState, bool> SortingGatherBlock::getBlocks(size_t i,
 
     // Assert that state == WAITING => itemBlock == nullptr
     TRI_ASSERT(state != ExecutionState::WAITING || itemBlock == nullptr);
+
+    if (state == ExecutionState::DONE) {
+      _gatherBlockPosDone[i] = true;
+    }
 
     if (itemBlock && itemBlock->size() > 0) {
       rowsAvailable += itemBlock->size();

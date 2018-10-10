@@ -230,6 +230,8 @@ void ClusterInfo::cleanup() {
   if (theInstance == nullptr) {
     return;
   }
+  
+  MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);  
 
   TRI_ASSERT(theInstance->_newPlannedViews.empty()); // only non-empty during loadPlan()
   theInstance->_plannedViews.clear();
@@ -646,9 +648,9 @@ void ClusterInfo::loadPlan() {
       //  "_system": {
       //    "3010001": {
       //      "deleted": false,
-      //      "doCompact": true,
+      //      DO_COMPACT: true,
       //      "id": "3010001",
-      //      "indexBuckets": 8,
+      //      INDEX_BUCKETS: 8,
       //      "indexes": [
       //        {
       //          "fields": [
@@ -663,7 +665,7 @@ void ClusterInfo::loadPlan() {
       //      "isSmart": false,
       //      "isSystem": true,
       //      "isVolatile": false,
-      //      "journalSize": 1048576,
+      //      JOURNAL_SIZE: 1048576,
       //      "keyOptions": {
       //        "allowUserKeys": true,
       //        "lastValue": 0,
@@ -685,14 +687,14 @@ void ClusterInfo::loadPlan() {
       //      "status": 3,
       //      "statusString": "loaded",
       //      "type": 2,
-      //      "waitForSync": false
+      //      StaticStrings::WaitForSyncString: false
       //    },...
       //  },...
       // }}
 
       databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
-        bool isCoordinator = ServerState::instance()->isCoordinator();
+        bool const isCoordinator = ServerState::instance()->isCoordinator();
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
@@ -718,16 +720,6 @@ void ClusterInfo::loadPlan() {
 
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
-
-            decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivity;
-            double selectivityTTL = 0;
-            if (isCoordinator) {
-              auto collection = _plannedCollections[databaseName][collectionId];
-              if(collection){
-                selectivity = collection->clusterIndexEstimates(/*do not update*/ true);
-                selectivityTTL = collection->clusterIndexEstimatesTTL();
-              }
-            }
 
             try {
               std::shared_ptr<LogicalCollection> newCollection;
@@ -758,14 +750,26 @@ void ClusterInfo::loadPlan() {
 
               auto& collectionName = newCollection->name();
 
-              if (isCoordinator && !selectivity.empty()){
-                LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
-                newCollection->clusterIndexEstimates(std::move(selectivity));
-                newCollection->clusterIndexEstimatesTTL(selectivityTTL);
-                for(std::shared_ptr<Index>& idx : newCollection->getIndexes()){
-                  auto it = selectivity.find(std::to_string(idx->id()));
-                  if (it != selectivity.end()) {
-                    idx->updateClusterSelectivityEstimate(it->second);
+              if (isCoordinator) {
+                // copying over index estimates from the old version of the collection
+                // into the new one
+                LOG_TOPIC(TRACE, Logger::CLUSTER) << "copying index estimates";
+                // it is effectively safe to access _plannedCollections in read-only mode
+                // here, as the only places that modify _plannedCollections are the shutdown
+                // and this function itself, which is protected by a mutex
+                auto it = _plannedCollections.find(databaseName);
+                if (it != _plannedCollections.end()) {
+                  auto it2 = (*it).second.find(collectionId);
+                  if (it2 != (*it).second.end()) {
+                    try {
+                      auto estimates = (*it2).second->clusterIndexEstimates(false);
+                      if (!estimates.empty()) {
+                        // already have an estimate... now copy it over
+                        newCollection->clusterIndexEstimates(std::move(estimates));
+                      }
+                    } catch (...) {
+                      // this may fail during unit tests, when mocks are used
+                    }
                   }
                 }
               }
@@ -800,7 +804,7 @@ void ClusterInfo::loadPlan() {
               // cluster should not fail.
               LOG_TOPIC(ERR, Logger::AGENCY)
                 << "Failed to load information for collection '" << collectionId
-                << "': " << ex.what() << ". invalid information in plan. The"
+                << "': " << ex.what() << ". invalid information in plan. The "
                 "collection will be ignored for now and the invalid information"
                 "will be repaired. VelocyPack: "
                 << collectionSlice.toJson();
@@ -2014,7 +2018,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 
   VPackBuilder temp;
   temp.openObject();
-  temp.add("waitForSync", VPackValue(info->waitForSync()));
+  temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
@@ -2228,7 +2232,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
   }
 
-  auto const view = res.slice()[0].get(
+  auto const view = res.slice()[0].get<std::string>(
     { AgencyCommManager::path(), "Plan", "Views", databaseName, viewID }
   );
 
@@ -3040,6 +3044,7 @@ void ClusterInfo::loadServers() {
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
+      decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
@@ -3048,6 +3053,9 @@ void ClusterInfo::loadServers() {
           std::string server =
             arangodb::basics::VelocyPackHelper::getStringValue(
               slice, "endpoint", "");
+          std::string advertised =
+            arangodb::basics::VelocyPackHelper::getStringValue(
+              slice, "advertisedEndpoint", "");
 
           std::string serverId = res.key.copyString();
           try {
@@ -3061,6 +3069,7 @@ void ClusterInfo::loadServers() {
             }
           } catch (...) {}
           newServers.emplace(std::make_pair(serverId, server));
+          newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
         }
       }
 
@@ -3069,6 +3078,7 @@ void ClusterInfo::loadServers() {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
         _servers.swap(newServers);
         _serverAliases.swap(newAliases);
+        _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
@@ -3124,7 +3134,55 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
       }
     }
 
+    if (++tries >= 2) {
+      break;
+    }
 
+    // must call loadServers outside the lock
+    loadServers();
+  }
+
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the advertised endpoint of a server from its ID.
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
+#ifdef DEBUG_SYNC_REPLICATION
+  if (serverID == "debug-follower") {
+    return "tcp://127.0.0.1:3000";
+  }
+#endif
+  int tries = 0;
+
+  if (!_serversProt.isValid) {
+    loadServers();
+    tries++;
+  }
+
+  std::string serverID_ = serverID;
+
+  while (true) {
+    {
+      READ_LOCKER(readLocker, _serversProt.lock);
+
+      // _serversAliases is a map-type <Alias, ServerID>
+      auto ita = _serverAliases.find(serverID_);
+      
+      if (ita != _serverAliases.end()) {
+        serverID_ = (*ita).second;
+      }
+      
+      // _serversAliases is a map-type <ServerID, std::string>
+      auto it = _serverAdvertisedEndpoints.find(serverID_);
+      if (it != _serverAdvertisedEndpoints.end()) {
+        return (*it).second;
+      }
+    }
 
     if (++tries >= 2) {
       break;
@@ -3249,23 +3307,18 @@ void ClusterInfo::loadCurrentMappings() {
 
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
-      decltype(_dbserverIdMap) newDBServerIdMap;
-      decltype(_nameMap) newNameMap;
 
       for (auto const& mapping : VPackObjectIterator(mappings)) {
         ServerID fullId = mapping.key.copyString();
         auto mapObject = mapping.value;
         if (mapObject.isObject()) {
           ServerShortName shortName = mapObject.get("ShortName").copyString();
-          newNameMap.emplace(shortName, fullId);
 
           ServerShortID shortId = mapObject.get("TransactionID").getNumericValue<ServerShortID>();
           static std::string const expectedPrefix{"Coordinator"};
           if (shortName.size() > expectedPrefix.size() &&
               shortName.substr(0, expectedPrefix.size()) == expectedPrefix) {
             newCoordinatorIdMap.emplace(shortId, fullId);
-          } else {
-            newDBServerIdMap.emplace(shortId, fullId);
           }
         }
       }
@@ -3273,9 +3326,7 @@ void ClusterInfo::loadCurrentMappings() {
       // Now set the new value:
       {
         WRITE_LOCKER(writeLocker, _mappingsProt.lock);
-        _nameMap.swap(newNameMap);
         _coordinatorIdMap.swap(newCoordinatorIdMap);
-        _dbserverIdMap.swap(newDBServerIdMap);
         _mappingsProt.doneVersion = storedVersion;
         _mappingsProt.isValid = true;
       }
@@ -3536,50 +3587,6 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup full dbserver ID from short ID
-////////////////////////////////////////////////////////////////////////////////
-
-ServerID ClusterInfo::getDBServerByShortID(ServerShortID shortId) {
-  ServerID result;
-
-  if (!_mappingsProt.isValid) {
-    loadCurrentMappings();
-  }
-
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _dbserverIdMap.find(shortId);
-  if (it != _dbserverIdMap.end()) {
-    result = it->second;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup full server ID from short name
-////////////////////////////////////////////////////////////////////////////////
-
-ServerID ClusterInfo::getServerByShortName(ServerShortName const& shortName) {
-  ServerID result;
-
-  if (!_mappingsProt.isValid) {
-    loadCurrentMappings();
-  }
-
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _nameMap.find(shortName);
-  if (it != _nameMap.end()) {
-    result = it->second;
-  }
-
-  return result;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate plan
 //////////////////////////////////////////////////////////////////////////////
@@ -3671,7 +3678,16 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string,std::string> ret;
   for (const auto& i : _serverAliases) {
-    ret.emplace(i.second,i.first);
+    ret.emplace(i.second, i.first);
+  }
+  return ret;
+}
+
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<std::string,std::string> ret;
+  for (const auto& i : _serverAdvertisedEndpoints) {
+    ret.emplace(i.second, i.first);
   }
   return ret;
 }

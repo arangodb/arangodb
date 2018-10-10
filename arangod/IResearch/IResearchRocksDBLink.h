@@ -34,7 +34,7 @@ NS_BEGIN(iresearch)
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchRocksDBLink();
 

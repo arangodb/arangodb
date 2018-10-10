@@ -69,6 +69,7 @@ V8ClientConnection::V8ClientConnection()
 }
 
 V8ClientConnection::~V8ClientConnection() {
+  _builder.onFailure(nullptr); // reset callback
   shutdownConnection();
 }
 

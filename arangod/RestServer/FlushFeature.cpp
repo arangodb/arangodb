@@ -75,13 +75,19 @@ void FlushFeature::prepare() {
 }
 
 void FlushFeature::start() {
-  _flushThread.reset(new FlushThread(_flushInterval));
+  {
+    WRITE_LOCKER(lock, _threadLock);
+    _flushThread.reset(new FlushThread(_flushInterval));
+  }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback(
     [this]() -> Result {
+      READ_LOCKER(lock, _threadLock);
       if (!this->_flushThread->start()) {
-        LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
+        LOG_TOPIC(FATAL, Logger::FLUSH) << "unable to start FlushThread";
         FATAL_ERROR_ABORT();
+      } else {
+        LOG_TOPIC(DEBUG, Logger::FLUSH) << "started FlushThread";
       }
 
       this->_isRunning.store(true);
@@ -93,22 +99,31 @@ void FlushFeature::start() {
 
 void FlushFeature::beginShutdown() {
   // pass on the shutdown signal
+  READ_LOCKER(lock, _threadLock);
   if (_flushThread != nullptr) {
     _flushThread->beginShutdown();
   }
 }
 
 void FlushFeature::stop() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping FlushThread";
+  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "stopping FlushThread";
   // wait until thread is fully finished
 
-  if (_flushThread != nullptr) {
-    while (_flushThread->isRunning()) {
+  FlushThread* thread = nullptr;
+  {
+    READ_LOCKER(lock, _threadLock);
+    thread = _flushThread.get();
+  }
+  if (thread != nullptr) {
+    while (thread->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
-    _isRunning.store(false);
-    _flushThread.reset();
+    {
+      WRITE_LOCKER(wlock, _threadLock);
+      _isRunning.store(false);
+      _flushThread.reset();
+    }
   }
 }
 
@@ -120,6 +135,7 @@ void FlushFeature::unprepare() {
 void FlushFeature::registerCallback(void* ptr, FlushFeature::FlushCallback const& cb) {
   WRITE_LOCKER(locker, _callbacksLock);
   _callbacks.emplace(ptr, std::move(cb));
+  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "registered new flush callback";
 }
 
 bool FlushFeature::unregisterCallback(void* ptr) {
@@ -131,6 +147,7 @@ bool FlushFeature::unregisterCallback(void* ptr) {
   }
 
   _callbacks.erase(it);
+  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "unregistered flush callback";
   return true;
 }
 
@@ -144,6 +161,7 @@ void FlushFeature::executeCallbacks() {
   // there are callbacks
   for (auto const& cb : _callbacks) {
     // copy elision, std::move(..) not required
+    LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "executing flush callback";
     transactions.emplace_back(cb.second());
   }
 
@@ -151,13 +169,14 @@ void FlushFeature::executeCallbacks() {
 
   // commit all transactions
   for (auto const& trx : transactions) {
-    LOG_TOPIC(DEBUG, Logger::FIXME) << "commiting flush transaction '" << trx->name() << "'";
+    LOG_TOPIC(DEBUG, Logger::FLUSH)
+        << "commiting flush transaction '" << trx->name() << "'";
 
     Result res = trx->commit();
 
-    if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush transaction '" << trx->name() << "': " << res.errorMessage();
-    }
+    LOG_TOPIC_IF(ERR, Logger::FLUSH, res.fail())
+      << "could not commit flush transaction '" << trx->name() << "': "
+      << res.errorMessage();
     // TODO: honor the commit results here
   }
 }

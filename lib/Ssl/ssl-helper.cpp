@@ -47,6 +47,9 @@ asio::ssl::context arangodb::sslContext(
   context::method meth;
 
   switch (protocol) {
+    case SSL_V2:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "support for SSLv2 has been dropped");
+
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = context::method::sslv3;
@@ -103,6 +106,9 @@ asio::ssl::context arangodb::sslContext(
 
 std::string arangodb::protocolName(SslProtocol protocol) {
   switch (protocol) {
+    case SSL_V2:
+      return "SSLv2";
+
     case SSL_V23:
       return "SSLv23";
 
@@ -118,6 +124,22 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     default:
       return "unknown";
   }
+}
+   
+std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
+  return std::unordered_set<uint64_t>{
+    SslProtocol::SSL_V2, // unsupported! 
+    SslProtocol::SSL_V23, 
+    SslProtocol::SSL_V3, 
+    SslProtocol::TLS_V1, 
+    SslProtocol::TLS_V12
+  };
+}
+
+std::string arangodb::availableSslProtocolsDescription() {
+  return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
+         "(negotiated), 3 = SSLv3, 4 = "
+         "TLSv1, 5 = TLSv1.2)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -61,8 +61,8 @@ struct NearIterator final : public IndexIterator {
   char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
-  inline bool nextToken(
-      std::function<bool(geo_index::Document const& gdoc)>&& cb, size_t limit) {
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -71,7 +71,7 @@ struct NearIterator final : public IndexIterator {
 
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest())) {
+        if (std::forward<F>(cb)(_near.nearest())) {
           limit--;
         }
         _near.popNearest();
@@ -278,14 +278,14 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;
@@ -343,7 +343,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << "
+  // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
@@ -369,7 +369,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  // LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << "
+  // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty());
 

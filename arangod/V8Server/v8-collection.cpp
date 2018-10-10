@@ -172,7 +172,6 @@ static std::string ExtractIdString(v8::Isolate* isolate,
 
 static int ParseDocumentOrDocumentHandle(
     v8::Isolate* isolate,
-    TRI_vocbase_t* vocbase,
     CollectionNameResolver const* resolver,
     std::shared_ptr<arangodb::LogicalCollection>& collection,
     std::string& collectionName,
@@ -211,16 +210,8 @@ static int ParseDocumentOrDocumentHandle(
   if (collection == nullptr) {
     // no collection object was passed, now check the user-supplied collection
     // name
-    if (ServerState::instance()->isCoordinator()) {
-      ClusterInfo* ci = ClusterInfo::instance();
-      try {
-        collection = ci->getCollection(vocbase->name(), collectionName);
-      } catch (...) {
-        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-      }
-    } else {
-      collection = resolver->getCollectionStruct(collectionName);
-    }
+    collection = resolver->getCollection(collectionName);
+
     if (collection == nullptr) {
       // collection not found
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -344,7 +335,6 @@ static void ExistsVocbaseVPack(
 
     res = ParseDocumentOrDocumentHandle(
       isolate,
-      vocbase,
       &(transactionContext->resolver()),
       collection,
       collectionName,
@@ -511,7 +501,6 @@ static void DocumentVocbase(
     VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
       isolate,
-      &vocbase,
       &(transactionContext->resolver()),
       collection,
       collectionName,
@@ -749,7 +738,6 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
       isolate,
-      &vocbase,
       &(transactionContext->resolver()),
       collection,
       collectionName,
@@ -1733,7 +1721,6 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
     res = ParseDocumentOrDocumentHandle(
       isolate,
-      &vocbase,
       &(transactionContext->resolver()),
       collection,
       collectionName,

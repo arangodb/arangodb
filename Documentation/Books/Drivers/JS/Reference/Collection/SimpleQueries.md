@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Simple queries
 
 These functions implement the
@@ -13,10 +13,10 @@ Performs a query to fetch all documents in the collection. Returns a
 
 **Arguments**
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
-  For information on the possible options see
-  [the HTTP API for returning all documents](../../../..//HTTP/SimpleQuery/index.html#return-all-documents).
+  For information on the possible options see the
+  [HTTP API for returning all documents](../../../..//HTTP/SimpleQuery/index.html#return-all-documents).
 
 ## collection.any
 
@@ -31,15 +31,17 @@ Fetches a document from the collection at random.
 Performs a query to fetch the first documents in the collection. Returns an
 array of the matching documents.
 
-**Note**: This method is not available when using the driver with ArangoDB 3.0
-and higher as the corresponding API method has been removed.
+{% hint 'warning' %}
+This method is not available when targeting ArangoDB 3.0 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 **Arguments**
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
-  For information on the possible options see
-  [the HTTP API for returning the first document of a collection](https://docs.arangodb.com/2.8/HttpSimpleQuery/#first-document-of-a-collection).
+  For information on the possible options see the
+  [HTTP API for returning the first document of a collection](https://docs.arangodb.com/2.8/HttpSimpleQuery/#first-document-of-a-collection).
 
   If _opts_ is a number it is treated as _opts.count_.
 
@@ -50,15 +52,17 @@ and higher as the corresponding API method has been removed.
 Performs a query to fetch the last documents in the collection. Returns an array
 of the matching documents.
 
-**Note**: This method is not available when using the driver with ArangoDB 3.0
-and higher as the corresponding API method has been removed.
+{% hint 'warning' %}
+This method is not available when targeting ArangoDB 3.0 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 **Arguments**
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
-  For information on the possible options see
-  [the HTTP API for returning the last document of a collection](https://docs.arangodb.com/2.8/HttpSimpleQuery/#last-document-of-a-collection).
+  For information on the possible options see the
+  [HTTP API for returning the last document of a collection](https://docs.arangodb.com/2.8/HttpSimpleQuery/#last-document-of-a-collection).
 
   If _opts_ is a number it is treated as _opts.count_.
 
@@ -71,14 +75,14 @@ _example_. Returns a [new _Cursor_ instance](../Cursor.md) for the query results
 
 **Arguments**
 
-* **example**: _Object_
+- **example**: _Object_
 
   An object representing an example for documents to be matched against.
 
-* **opts**: _Object_ (optional)
+- **opts**: _Object_ (optional)
 
-  For information on the possible options see
-  [the HTTP API for fetching documents by example](../../../..//HTTP/SimpleQuery/index.html#find-documents-matching-an-example).
+  For information on the possible options see the
+  [HTTP API for fetching documents by example](../../../..//HTTP/SimpleQuery/index.html#find-documents-matching-an-example).
 
 ## collection.firstExample
 
@@ -88,7 +92,7 @@ Fetches the first document in the collection matching the given _example_.
 
 **Arguments**
 
-* **example**: _Object_
+- **example**: _Object_
 
   An object representing an example for documents to be matched against.
 
@@ -100,14 +104,14 @@ Removes all documents in the collection matching the given _example_.
 
 **Arguments**
 
-* **example**: _Object_
+- **example**: _Object_
 
   An object representing an example for documents to be matched against.
 
-* **opts**: _Object_ (optional)
+- **opts**: _Object_ (optional)
 
-  For information on the possible options see
-  [the HTTP API for removing documents by example](../../../..//HTTP/SimpleQuery/index.html#remove-documents-by-example).
+  For information on the possible options see the
+  [HTTP API for removing documents by example](../../../..//HTTP/SimpleQuery/index.html#remove-documents-by-example).
 
 ## collection.replaceByExample
 
@@ -118,18 +122,18 @@ given _newValue_.
 
 **Arguments**
 
-* **example**: _Object_
+- **example**: _Object_
 
   An object representing an example for documents to be matched against.
 
-* **newValue**: _Object_
+- **newValue**: _Object_
 
   The new value to replace matching documents with.
 
-* **opts**: _Object_ (optional)
+- **opts**: _Object_ (optional)
 
-  For information on the possible options see
-  [the HTTP API for replacing documents by example](../../../..//HTTP/SimpleQuery/index.html#replace-documents-by-example).
+  For information on the possible options see the
+  [HTTP API for replacing documents by example](../../../..//HTTP/SimpleQuery/index.html#replace-documents-by-example).
 
 ## collection.updateByExample
 
@@ -140,18 +144,18 @@ with the given _newValue_.
 
 **Arguments**
 
-* **example**: _Object_
+- **example**: _Object_
 
   An object representing an example for documents to be matched against.
 
-* **newValue**: _Object_
+- **newValue**: _Object_
 
   The new value to update matching documents with.
 
-* **opts**: _Object_ (optional)
+- **opts**: _Object_ (optional)
 
-  For information on the possible options see
-  [the HTTP API for updating documents by example](../../../..//HTTP/SimpleQuery/index.html#update-documents-by-example).
+  For information on the possible options see the
+  [HTTP API for updating documents by example](../../../..//HTTP/SimpleQuery/index.html#update-documents-by-example).
 
 ## collection.lookupByKeys
 
@@ -162,7 +166,7 @@ array of the matching documents.
 
 **Arguments**
 
-* **keys**: _Array_
+- **keys**: _Array_
 
   An array of document keys to look up.
 
@@ -174,14 +178,14 @@ Deletes the documents with the given _keys_ from the collection.
 
 **Arguments**
 
-* **keys**: _Array_
+- **keys**: _Array_
 
   An array of document keys to delete.
 
-* **opts**: _Object_ (optional)
+- **opts**: _Object_ (optional)
 
-  For information on the possible options see
-  [the HTTP API for removing documents by keys](../../../..//HTTP/SimpleQuery/index.html#remove-documents-by-their-keys).
+  For information on the possible options see the
+  [HTTP API for removing documents by keys](../../../..//HTTP/SimpleQuery/index.html#remove-documents-by-their-keys).
 
 ## collection.fulltext
 
@@ -191,15 +195,15 @@ Performs a fulltext query in the given _fieldName_ on the collection.
 
 **Arguments**
 
-* **fieldName**: _String_
+- **fieldName**: _String_
 
   Name of the field to search on documents in the collection.
 
-* **query**: _String_
+- **query**: _String_
 
   Fulltext query string to search for.
 
-* **opts**: _Object_ (optional)
+- **opts**: _Object_ (optional)
 
-  For information on the possible options see
-  [the HTTP API for fulltext queries](../../../..//HTTP/Indexes/Fulltext.html).
+  For information on the possible options see the
+  [HTTP API for fulltext queries](../../../..//HTTP/Indexes/Fulltext.html).

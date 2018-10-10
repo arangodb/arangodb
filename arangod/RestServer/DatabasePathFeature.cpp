@@ -39,7 +39,7 @@ namespace arangodb {
 DatabasePathFeature::DatabasePathFeature(
     application_features::ApplicationServer& server
 )
-    : ApplicationFeature(server, "DatabasePath"),
+  : ApplicationFeature(server, DatabasePathFeature::name()),
       _requiredDirectoryState("any") {
   setOptional(false);
   startsAfter("GreetingsPhase");

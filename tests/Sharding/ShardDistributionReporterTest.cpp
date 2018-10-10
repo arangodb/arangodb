@@ -265,8 +265,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       // Mocking the ClusterComm for count calls
       fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
@@ -301,20 +300,20 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 response.answer_code = rest::ResponseCode::OK;
                 response.status = CL_COMM_RECEIVED;
 
-                // '/_api/collection/' + shard.shard + '/count'
+                // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
                 if (destination == "server:" + dbserver1) {
                   // off-sync follows s2,s3
-                  if (path == "/_api/collection/" + s2 + "/count") {
+                  if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb1s2Count, [](SimpleHttpResult*) {});
                   } else {
-                    REQUIRE(path == "/_api/collection/" + s3 + "/count");
+                    REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb1s3Count, [](SimpleHttpResult*) {});
                   }
                 } else if (destination == "server:" + dbserver2) {
                   // Leads s2
-                  REQUIRE(path == "/_api/collection/" + s2 + "/count");
+                  REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count");
                   response.result = std::shared_ptr<SimpleHttpResult>(
                       &httpdb2s2Count, [](SimpleHttpResult*) {});
                   leaderS2Response = response;
@@ -324,11 +323,11 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 } else if (destination == "server:" + dbserver3) {
                   // Leads s3
                   // off-sync follows s2
-                  if (path == "/_api/collection/" + s2 + "/count") {
+                  if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb3s2Count, [](SimpleHttpResult*) {});
                   } else {
-                    REQUIRE(path == "/_api/collection/" + s3 + "/count");
+                    REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb3s3Count, [](SimpleHttpResult*) {});
                     leaderS3Response = response;
@@ -346,8 +345,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
       fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                        CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                         OperationID const operationID, ShardID const& shardID,
                         ClusterCommTimeout timeout) {
             REQUIRE(coordTransactionID == cordTrxId);
@@ -892,8 +890,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       // Mocking the ClusterComm for count calls
       fakeit::When(Method(commMock, asyncRequest))
         .AlwaysDo(
-            [&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+            [&](CoordTransactionID const coordTransactionID,
               std::string const& destination, rest::RequestType reqtype,
               std::string const& path,
               std::shared_ptr<std::string const> body,
@@ -901,7 +898,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               std::shared_ptr<ClusterCommCallback> callback,
               ClusterCommTimeout timeout, bool singleRequest,
               ClusterCommTimeout initTimeout) -> OperationID {
-            REQUIRE(path == "/_api/collection/" + s1 + "/count");
+            REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
             OperationID opId = TRI_NewTickServer();
 
@@ -930,8 +927,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             });
 
       fakeit::When(Method(commMock, wait))
-        .AlwaysDo([&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+        .AlwaysDo([&](CoordTransactionID const coordTransactionID,
               OperationID const operationID, ShardID const& shardID,
               ClusterCommTimeout timeout) {
             if (operationID != 0) {
@@ -997,8 +993,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       // Mocking the ClusterComm for count calls
       fakeit::When(Method(commMock, asyncRequest))
         .AlwaysDo(
-            [&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+            [&](CoordTransactionID const coordTransactionID,
               std::string const& destination, rest::RequestType reqtype,
               std::string const& path,
               std::shared_ptr<std::string const> body,
@@ -1006,7 +1001,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               std::shared_ptr<ClusterCommCallback> callback,
               ClusterCommTimeout timeout, bool singleRequest,
               ClusterCommTimeout initTimeout) -> OperationID {
-            REQUIRE(path == "/_api/collection/" + s1 + "/count");
+            REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
             OperationID opId = TRI_NewTickServer();
 
@@ -1035,8 +1030,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             });
 
       fakeit::When(Method(commMock, wait))
-        .AlwaysDo([&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+        .AlwaysDo([&](CoordTransactionID const coordTransactionID,
               OperationID const operationID, ShardID const& shardID,
               ClusterCommTimeout timeout) {
             if (operationID != 0) {
@@ -1113,8 +1107,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1122,7 +1115,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1144,8 +1137,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1157,8 +1149,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1221,8 +1212,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1230,7 +1220,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1261,8 +1251,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1277,8 +1266,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1339,8 +1327,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1348,7 +1335,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1380,8 +1367,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1396,8 +1382,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1445,8 +1430,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1454,7 +1438,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1476,8 +1460,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1489,8 +1472,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1553,8 +1535,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1562,7 +1543,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1593,8 +1574,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1609,8 +1589,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1671,8 +1650,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1680,7 +1658,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1712,8 +1690,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1728,8 +1705,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1836,8 +1812,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
           // Mocking the ClusterComm for count calls
           fakeit::When(Method(commMock, asyncRequest))
             .AlwaysDo(
-                [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
+                [&](CoordTransactionID const coordTransactionID,
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
@@ -1845,7 +1820,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                   std::shared_ptr<ClusterCommCallback> callback,
                   ClusterCommTimeout timeout, bool singleRequest,
                   ClusterCommTimeout initTimeout) -> OperationID {
-                REQUIRE(path == "/_api/collection/" + s1 + "/count");
+                REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
                 OperationID opId = TRI_NewTickServer();
 
@@ -1874,8 +1849,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 });
 
           fakeit::When(Method(commMock, wait))
-            .AlwaysDo([&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
+            .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                   OperationID const operationID, ShardID const& shardID,
                   ClusterCommTimeout timeout) {
                 if (operationID != 0) {

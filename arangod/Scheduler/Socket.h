@@ -30,6 +30,8 @@
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 
+#include "GeneralServer/GeneralServer.h"
+
 namespace arangodb {
 namespace rest {
 class Scheduler;
@@ -41,17 +43,16 @@ typedef std::function<void(const asio_ns::error_code& ec,
 
 class Socket {
  public:
-  Socket(rest::Scheduler* scheduler, bool encrypted)
-      : _strand(scheduler->newStrand()),
-        _encrypted(encrypted),
-        _scheduler(scheduler) {
-    TRI_ASSERT(_scheduler != nullptr);
-  }
+  Socket(rest::GeneralServer::IoContext &context, bool encrypted)
+      : _context(context),
+        _encrypted(encrypted) {
+      _context._clients++;
+    }
 
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
 
-  virtual ~Socket() {}
+  virtual ~Socket() { _context._clients--; }
 
   bool isEncrypted() const { return _encrypted; }
 
@@ -84,11 +85,11 @@ class Socket {
     }
   }
 
-  void post(std::function<void()> handler) {
-    _scheduler->post(*_strand, handler);
+  void post(std::function<void()> && handler) {
+    _context.post(std::move(handler));
   }
 
-  bool runningInThisThread() { return _strand->running_in_this_thread(); }
+  bool runningInThisThread() { return _context.runningInThisThread(); }
 
  public:
   virtual std::string peerAddress() const = 0;
@@ -111,13 +112,12 @@ class Socket {
   virtual void shutdownSend(asio_ns::error_code& ec) = 0;
 
  protected:
-  // strand to ensure the connection's handlers are not called concurrently.
-  std::unique_ptr<asio_ns::io_context::strand> _strand;
+  rest::GeneralServer::IoContext &_context;
 
  private:
   bool const _encrypted;
   bool _handshakeDone = false;
-  rest::Scheduler* _scheduler;
+
 };
 }
 

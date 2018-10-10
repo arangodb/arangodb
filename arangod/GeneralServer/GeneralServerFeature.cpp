@@ -100,6 +100,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+static uint64_t const _maxIoThreads = 64;
+
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
@@ -109,12 +111,20 @@ GeneralServerFeature::GeneralServerFeature(
 )
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
-      _proxyCheck(true) {
+      _proxyCheck(true),
+      _numIoThreads(0) {
   setOptional(true);
   startsAfter("AQLPhase");
 
   startsAfter("Endpoint");
   startsAfter("Upgrade");
+  startsAfter("SslServer");
+
+  _numIoThreads = (std::max)(static_cast<uint64_t>(1),
+    static_cast<uint64_t>(TRI_numberProcessors() / 4));
+  if (_numIoThreads > _maxIoThreads) {
+    _numIoThreads = _maxIoThreads;
+  }
 
   // TODO The following features are too high
   // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
@@ -132,6 +142,11 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("server.default-api-compatibility", "");
   options->addOldOption("no-server", "server.rest-server");
+
+  options->addOption(
+      "--server.io-threads",
+      "Number of threads used to handle IO",
+      new UInt64Parameter(&_numIoThreads));
 
   options->addSection("http", "HttpServer features");
 
@@ -192,6 +207,17 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                          return basics::StringUtils::trim(value).empty();
                        }),
         _accessControlAllowOrigins.end());
+  }
+
+  // we need at least one io thread and context
+  if (_numIoThreads == 0) {
+    LOG_TOPIC(WARN, Logger::FIXME)
+      << "Need at least one io-context thread.";
+    _numIoThreads = 1;
+  } else if (_numIoThreads > _maxIoThreads) {
+    LOG_TOPIC(WARN, Logger::FIXME)
+      << "IO-contexts are limited to " << _maxIoThreads;
+      _numIoThreads = _maxIoThreads;
   }
 }
 
@@ -261,7 +287,7 @@ void GeneralServerFeature::buildServers() {
     ssl->SSL->verifySslOptions();
   }
 
-  GeneralServer* server = new GeneralServer();
+  GeneralServer* server = new GeneralServer(_numIoThreads);
 
   server->setEndpointList(&endpointList);
   _servers.push_back(server);
@@ -285,9 +311,9 @@ void GeneralServerFeature::defineHandlers() {
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
   if (_combinedRegistries == nullptr) {
     _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
   } else {

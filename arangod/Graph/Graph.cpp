@@ -47,7 +47,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using UserTransaction = transaction::Methods;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 #ifndef USE_ENTERPRISE
@@ -167,7 +166,7 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
   }
 }
 
-std::unordered_set<std::string> const& Graph::vertexCollections() const {
+std::set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
 

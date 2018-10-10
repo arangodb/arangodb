@@ -363,6 +363,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
     'define': 'TOP_DIR=' + TOP_DIR,
     'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
+    'javascript.copy-installation': false,
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
     'cluster.create-waits-for-sync-replication': false,
     'temp.path': tmpDir
@@ -436,12 +437,12 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print(res);
     let instanceInfo = {
       rootDir: rootDir,
       pid: res.pid,
       exitStatus: res
     };
+    print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
@@ -691,6 +692,7 @@ function checkArangoAlive (arangod, options) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
       serverCrashed = true;
+      print("checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
     }
   }
 
@@ -804,10 +806,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
-      print(arangod.url + '/_admin/shutdown');
+      print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
       if (options.extremeVerbosity) {
-        print('Shutdown response: ' + JSON.stringify(reply));
+        print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
       }
     }
   } else {
@@ -922,6 +924,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
         if (arangod.exitStatus.hasOwnProperty('signal')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
+          print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashed = true;
         }
       } else {
@@ -1309,10 +1312,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      let rc = { endpoint: options.server,
-               rootDir: options.serverRoot,
-               url: options.server.replace('tcp', 'http'),
-               arangods: []
+      let rc = { 
+                 endpoint: options.server,
+                 rootDir: options.serverRoot,
+                 url: options.server.replace('tcp', 'http'),
+                 arangods: []
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
@@ -1410,13 +1414,9 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
-// exports.startInstanceCluster = startInstanceCluster;
 exports.startArango = startArango;
-// exports.startInstanceAgency = startInstanceAgency;
-// exports.startInstanceSingleServer = startInstanceSingleServer;
 exports.startInstance = startInstance;
 exports.setupBinaries = setupBinaries;
-
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashed;
 

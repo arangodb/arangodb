@@ -29,8 +29,8 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
-#include "Aql/Query.h"
 #include "Basics/SmallVector.h"
 #include "Transaction/Methods.h"
 
@@ -127,8 +127,8 @@ struct TestDate {
 };
 
 SCENARIO("Testing IS_DATESTRING", "[AQL][DATE]") {
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -144,7 +144,7 @@ SCENARIO("Testing IS_DATESTRING", "[AQL][DATE]") {
         SmallVector<AqlValue> params{arena};
         testee.buildParams(params);
         AqlValue res =
-            Functions::IsDatestring(&query, &trx, params);
+            Functions::IsDatestring(&expressionContext, &trx, params);
         testee.validateResult(res);
 
         // Free input parameters
@@ -192,8 +192,8 @@ struct TestDate {
 };
 
 SCENARIO("Testing DATE_COMPARE", "[AQL][DATE]") {
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -209,7 +209,7 @@ SCENARIO("Testing DATE_COMPARE", "[AQL][DATE]") {
         SmallVector<AqlValue> params{arena};
         testee.buildParams(params);
         AqlValue res =
-            Functions::DateCompare(&query, &trx, params);
+            Functions::DateCompare(&expressionContext, &trx, params);
         testee.validateResult(res);
         // Free input parameters
         for (auto& it : params) {
@@ -224,8 +224,8 @@ SCENARIO("Testing DATE_COMPARE", "[AQL][DATE]") {
 
 namespace date_diff {
 SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -270,7 +270,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           switchBuilder.add(VPackValue(true));
           params.emplace_back(switchBuilder.slice());
           AqlValue res =
-              Functions::DateDiff(&query, &trx, params);
+              Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
           double out = res.toDouble(&trx);
           REQUIRE(out >= expected - eps);
@@ -280,7 +280,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           switchBuilder.add(VPackValue(false));
           params.emplace_back(switchBuilder.slice());
           AqlValue res =
-              Functions::DateDiff(&query, &trx, params);
+              Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
           REQUIRE(res.toDouble(&trx) == std::round(expected));
         }
@@ -293,7 +293,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           switchBuilder.add(VPackValue(true));
           params.emplace_back(switchBuilder.slice());
           AqlValue res =
-              Functions::DateDiff(&query, &trx, params);
+              Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
           double out = res.toDouble(&trx);
           REQUIRE(out >= -(expected + eps));
@@ -303,7 +303,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           switchBuilder.add(VPackValue(false));
           params.emplace_back(switchBuilder.slice());
           AqlValue res =
-              Functions::DateDiff(&query, &trx, params);
+              Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
           REQUIRE(res.toDouble(&trx) == -std::round(expected));
         }
@@ -423,8 +423,8 @@ struct TestDate {
 
 
 SCENARIO("Testing DATE_SUBTRACT", "[AQL][DATE]") {
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -440,7 +440,7 @@ SCENARIO("Testing DATE_SUBTRACT", "[AQL][DATE]") {
         SmallVector<AqlValue> params{arena};
         testee.buildParams(params);
         AqlValue res =
-            Functions::DateSubtract(&query, &trx, params);
+            Functions::DateSubtract(&expressionContext, &trx, params);
         testee.validateResult(res);
         res.destroy();
         // Free input parameters

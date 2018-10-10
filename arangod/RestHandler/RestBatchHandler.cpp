@@ -68,11 +68,11 @@ RestStatus RestBatchHandler::executeVst() {
   return RestStatus::DONE;
 }
 
-void RestBatchHandler::processSubHandlerResult(std::shared_ptr<RestHandler> const& handler) {
+void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   HttpResponse* partResponse =
-      dynamic_cast<HttpResponse*>(handler->response());
+      dynamic_cast<HttpResponse*>(handler.response());
 
   if (partResponse == nullptr) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -144,7 +144,7 @@ bool RestBatchHandler::executeNextHandler() {
     // error
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid multipart message received");
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
+    LOG_TOPIC(WARN, arangodb::Logger::REPLICATION) << "received a corrupted multipart message";
     return false;
   }
 
@@ -180,7 +180,7 @@ bool RestBatchHandler::executeNextHandler() {
   }
 
   // set up request object for the part
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "part header is: " << std::string(headerStart, headerLength);
 
   std::unique_ptr<HttpRequest> request(new HttpRequest(
       _request->connectionInfo(), headerStart, headerLength, false));
@@ -194,7 +194,7 @@ bool RestBatchHandler::executeNextHandler() {
   request->setDatabaseName(_request->databaseName());
 
   if (bodyLength > 0) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
+    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "part body is '" << std::string(bodyStart, bodyLength)
                << "'";
     request->setBody(bodyStart, bodyLength);
   }
@@ -230,12 +230,12 @@ bool RestBatchHandler::executeNextHandler() {
       // ignore any errors here, will be handled later by inspecting the response
       try {
         ExecContextScope scope(nullptr);// workaround because of assertions
-        handler->runHandler([this, self, handler](RestHandler*) {
-          processSubHandlerResult(handler);
+        handler->runHandler([this, self](RestHandler *handler) {
+          processSubHandlerResult(*handler);
 
         });
       } catch (...) {
-        processSubHandlerResult(handler);
+        processSubHandlerResult(*handler.get());
       }
     }
   );
@@ -279,7 +279,7 @@ RestStatus RestBatchHandler::executeHttp() {
     return RestStatus::DONE;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "boundary of multipart-message is '" << _boundary << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "boundary of multipart-message is '" << _boundary << "'";
 
   _errors = 0;
 
@@ -536,7 +536,7 @@ bool RestBatchHandler::extractPart(SearchHelper& helper) {
         if (value == StaticStrings::BatchContentType) {
           hasTypeHeader = true;
         } else {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected content-type '" << value
+          LOG_TOPIC(WARN, arangodb::Logger::REPLICATION) << "unexpected content-type '" << value
                     << "' for multipart-message. expected: '"
                     << StaticStrings::BatchContentType << "'";
         }

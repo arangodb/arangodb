@@ -158,10 +158,9 @@ bool GeneralClientConnection::connect() {
 void GeneralClientConnection::disconnect() {
   if (isConnected()) {
     disconnectSocket();
+    _numConnectRetries = 0;
+    _isConnected = false;
   }
-
-  _isConnected = false;
-  _numConnectRetries = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

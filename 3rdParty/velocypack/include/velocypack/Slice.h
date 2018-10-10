@@ -39,28 +39,9 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
+#include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
-
-#ifndef VELOCYPACK_XXHASH
-#ifndef VELOCYPACK_FASTHASH
-#define VELOCYPACK_XXHASH
-#endif
-#endif
-
-#ifdef VELOCYPACK_XXHASH
-// forward for XXH64 function declared elsewhere
-extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
-
-#define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
-#endif
-
-#ifdef VELOCYPACK_FASTHASH
-// forward for fasthash64 function declared elsewhere
-uint64_t fasthash64(void const*, size_t, uint64_t);
-
-#define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
-#endif
 
 namespace arangodb {
 namespace velocypack {
@@ -182,6 +163,13 @@ class Slice {
       VELOCYPACK_ASSERT(h != 0);
       return h;
     }
+    return VELOCYPACK_HASH(start(), size, seed);
+  }
+
+  // hashes the binary representation of a value, not using precalculated hash values
+  // this is mainly here for testing purposes
+  inline uint64_t hashSlow(uint64_t seed = defaultSeed) const {
+    size_t const size = checkOverflow(byteSize());
     return VELOCYPACK_HASH(start(), size, seed);
   }
 
@@ -447,7 +435,8 @@ class Slice {
 
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
-  Slice get(std::vector<std::string> const& attributes, 
+  template<typename T>
+  Slice get(std::vector<T> const& attributes, 
             bool resolveExternals = false) const {
     size_t const n = attributes.size();
     if (n == 0) {
@@ -476,46 +465,45 @@ class Slice {
     return last;
   }
   
-  // look for the specified attribute path inside an Object
+  // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
-  Slice get(std::vector<char const*> const& attributes) const {
-    size_t const n = attributes.size();
-    if (n == 0) {
-      throw Exception(Exception::InvalidAttributePath);
-    }
+  Slice get(StringRef const& attribute) const;
 
-    // use ourselves as the starting point
-    Slice last = Slice(start());
-    for (size_t i = 0; i < attributes.size(); ++i) {
-      // fetch subattribute
-      last = last.get(attributes[i]);
-
-      // abort as early as possible
-      if (last.isNone() || (i + 1 < n && !last.isObject())) {
-        return Slice();
-      }
-    }
-
-    return last;
+  Slice get(std::string const& attribute) const {
+    return get(StringRef(attribute.data(), attribute.size()));
   }
 
-  // look for the specified attribute inside an Object
-  // returns a Slice(ValueType::None) if not found
-  Slice get(std::string const& attribute) const;
-  
-  // look for the specified attribute inside an Object
-  // returns a Slice(ValueType::None) if not found
   Slice get(char const* attribute) const {
-    return get(std::string(attribute));
+    return get(StringRef(attribute));
   }
 
-  Slice operator[](std::string const& attribute) const {
+  Slice get(char const* attribute, size_t length) const {
+    return get(StringRef(attribute, length));
+  }
+  
+  Slice operator[](StringRef const& attribute) const {
     return get(attribute);
   }
 
+  Slice operator[](std::string const& attribute) const {
+    return get(attribute.data(), attribute.size());
+  }
+  
   // whether or not an Object has a specific key
-  bool hasKey(std::string const& attribute) const {
+  bool hasKey(StringRef const& attribute) const {
     return !get(attribute).isNone();
+  }
+
+  bool hasKey(std::string const& attribute) const {
+    return hasKey(StringRef(attribute));
+  }
+  
+  bool hasKey(char const* attribute) const {
+    return hasKey(StringRef(attribute));
+  }
+  
+  bool hasKey(char const* attribute, size_t length) const {
+    return hasKey(StringRef(attribute, length));
   }
 
   // whether or not an Object has a specific sub-key
@@ -705,6 +693,25 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
+  
+  // return a copy of the value for a String object
+  StringRef stringRef() const {
+    uint8_t h = head();
+    if (h >= 0x40 && h <= 0xbe) {
+      // short UTF-8 String
+      ValueLength length = h - 0x40;
+      return StringRef(reinterpret_cast<char const*>(_start + 1),
+                       static_cast<size_t>(length));
+    }
+
+    if (h == 0xbf) {
+      ValueLength length = readIntegerFixed<ValueLength, 8>(_start + 1);
+      return StringRef(reinterpret_cast<char const*>(_start + 1 + 8),
+                       checkOverflow(length));
+    }
+
+    throw Exception(Exception::InvalidValueType, "Expecting type String");
+  }
 
   // return the value for a Binary object
   uint8_t const* getBinary(ValueLength& length) const {
@@ -879,15 +886,37 @@ class Slice {
 
   Slice makeKey() const;
 
-  int compareString(char const* value, size_t length) const;
-  int compareStringUnchecked(char const* value, size_t length) const noexcept;
+  int compareString(StringRef const& value) const;
   
-  inline int compareString(std::string const& attribute) const {
-    return compareString(attribute.data(), attribute.size());
+  inline int compareString(std::string const& value) const {
+    return compareString(StringRef(value.data(), value.size()));
+  }
+  
+  int compareString(char const* value, size_t length) const {
+    return compareString(StringRef(value, length));
+  }
+  
+  int compareStringUnchecked(StringRef const& value) const noexcept;
+  
+  int compareStringUnchecked(std::string const& value) const noexcept {
+    return compareStringUnchecked(StringRef(value.data(), value.size()));
   }
 
-  bool isEqualString(std::string const& attribute) const;
-  bool isEqualStringUnchecked(std::string const& attribute) const noexcept;
+  int compareStringUnchecked(char const* value, size_t length) const noexcept {
+    return compareStringUnchecked(StringRef(value, length));
+  }
+  
+  bool isEqualString(StringRef const& attribute) const;
+
+  bool isEqualString(std::string const& attribute) const {
+    return isEqualString(StringRef(attribute.data(), attribute.size()));
+  }
+  
+  bool isEqualStringUnchecked(StringRef const& attribute) const noexcept;
+
+  bool isEqualStringUnchecked(std::string const& attribute) const noexcept {
+    return isEqualStringUnchecked(StringRef(attribute.data(), attribute.size()));
+  }
 
   // check if two Slices are equal on the binary level
   bool equals(Slice const& other) const {
@@ -944,7 +973,7 @@ class Slice {
   // translates an integer key into a string, without checks
   Slice translateUnchecked() const;
 
-  Slice getFromCompactObject(std::string const& attribute) const;
+  Slice getFromCompactObject(StringRef const& attribute) const;
 
   // extract the nth member from an Array
   Slice getNth(ValueLength index) const;
@@ -968,12 +997,12 @@ class Slice {
   }
 
   // perform a linear search for the specified attribute inside an Object
-  Slice searchObjectKeyLinear(std::string const& attribute, ValueLength ieBase,
+  Slice searchObjectKeyLinear(StringRef const& attribute, ValueLength ieBase,
                               ValueLength offsetSize, ValueLength n) const;
 
   // perform a binary search for the specified attribute inside an Object
   template<ValueLength offsetSize>
-  Slice searchObjectKeyBinary(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
+  Slice searchObjectKeyBinary(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
 
 // assert that the slice is of a specific type
 // can be used for debugging and removed in production

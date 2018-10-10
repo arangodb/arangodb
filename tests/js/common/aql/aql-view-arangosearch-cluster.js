@@ -30,20 +30,16 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
+function IResearchAqlTestSuite(args) {
   var c;
   var v;
 
-  // provided arguments
-  var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
-  };
   console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
@@ -96,6 +92,14 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       v.drop();
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
+    },
+    
+    testViewInFunctionCall : function () {
+      try {
+        db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+      }
     },
 
     testAttributeEqualityFilter : function () {
@@ -444,6 +448,22 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       });
     },
 
+    testViewInInnerLoopOptimized : function() {
+      var expected = [];
+      expected.push({ a: "foo", b: "bar", c: 0 });
+      expected.push({ a: "foo", b: "baz", c: 0 });
+
+      var result = db._query("LET outer = (FOR out1 IN UnitTestsCollection FILTER out1.a == 'foo' && out1.c == 0 RETURN out1) FOR a IN outer FOR d IN UnitTestsView SEARCH d.a == a.a && d.c == a.c && d.b == a.b OPTIONS {waitForSync: true} SORT d.b ASC RETURN d").toArray();
+
+    assertEqual(result.length, expected.length);
+      var i = 0;
+      result.forEach(function(res) {
+        var doc = expected[i++];
+        assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
+        assertEqual(doc.c, res.c);
+      });
+    },
   };
 }
 
@@ -464,7 +484,7 @@ jsunity.run(function IResearchAqlTestSuite_s1_r2() {
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
 });
 
 return jsunity.done();

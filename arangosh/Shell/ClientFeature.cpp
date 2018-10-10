@@ -64,7 +64,9 @@ ClientFeature::ClientFeature(
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false) {
+      _haveServerPassword(false),
+      _codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("GreetingsPhase");
@@ -123,19 +125,21 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "maximum packet size (in bytes) for client/server communication",
       new UInt64Parameter(&_maxPacketSize));
 
-  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
+  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options->addSection("ssl", "Configure SSL communication");
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 "
-                     "(negotiated), 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSv1.2)",
+                     availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
+#if _WIN32
+  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                           new UInt16Parameter(&_codePage));
+#endif
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_sslProtocol == 1) {
+  if (_sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
   }
@@ -304,6 +308,23 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
   return {http};
 }
 
+void ClientFeature::start() {
+#if _WIN32
+  _originalCodePage = GetConsoleOutputCP();
+  if (IsValidCodePage(_codePage)) {
+    SetConsoleOutputCP(_codePage);
+  }
+#endif
+}
+
+void ClientFeature::stop() {
+#if _WIN32
+  if (IsValidCodePage(_originalCodePage)) {
+    SetConsoleOutputCP(_originalCodePage);
+  }
+#endif
+}
+
 int ClientFeature::runMain(
     int argc, char* argv[],
     std::function<int(int argc, char* argv[])> const& mainFunc) {
@@ -321,5 +342,5 @@ int ClientFeature::runMain(
     return EXIT_FAILURE;
   }
 }
-
+  
 } // arangodb

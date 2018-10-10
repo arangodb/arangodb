@@ -75,6 +75,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Utf8Helper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Validator.cpp
@@ -218,6 +219,7 @@ add_library(${LIB_ARANGO} STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
+  Futures/Future.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -246,7 +248,6 @@ add_library(${LIB_ARANGO} STATIC
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/Communicator.cpp
-  SimpleHttpClient/ConnectionManager.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp

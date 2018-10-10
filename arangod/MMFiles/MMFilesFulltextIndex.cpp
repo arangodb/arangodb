@@ -45,11 +45,9 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
                                         VPackSlice value, int level) const {
   if (value.isString()) {
     // extract the string value for the indexed attribute
-    std::string text = value.copyString();
-
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+        words, value.stringRef(), _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
@@ -109,7 +107,8 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "destroying fulltext index";
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+        << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
@@ -185,13 +184,13 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;
@@ -247,7 +246,7 @@ void MMFilesFulltextIndex::unload() {
 }
 
 IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, 
+    transaction::Methods* trx, ManagedDocumentResult*,
     aql::AstNode const* condNode, aql::Variable const* var,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);

@@ -17,23 +17,26 @@ class HttpCommTask final : public GeneralCommTask {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
+  HttpCommTask(GeneralServer &server, GeneralServer::IoContext &context, std::unique_ptr<Socket> socket,
                ConnectionInfo&&, double timeout);
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }
-
+  
+  // whether or not this task can mix sync and async I/O
+  bool canUseMixedIO() const override;
+  
  private:
   bool processRead(double startTime) override;
   void compactify() override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
-  
+
   void addResponse(GeneralResponse& response,
                    RequestStatistics* stat) override;
-  
+
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType,
                          uint64_t messageId, velocypack::Buffer<uint8_t>&&) override;
@@ -50,8 +53,8 @@ class HttpCommTask final : public GeneralCommTask {
   std::string authenticationRealm() const;
   ResponseCode authenticateRequest(HttpRequest*);
   ResponseCode handleAuthHeader(HttpRequest* request) const;
-  
-  
+
+
  private:
   size_t _readPosition;       // current read position
   size_t _startPosition;      // start position of current request

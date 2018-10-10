@@ -34,6 +34,7 @@ namespace arangodb {
 class CacheManagerFeature final
     : public application_features::ApplicationFeature {
  public:
+  // note that the cache is optional and that MANAGER can be a nullptr!
   static cache::Manager* MANAGER;
 
   explicit CacheManagerFeature(application_features::ApplicationServer& server);

@@ -213,8 +213,10 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
 }
 
 std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
     TRI_ASSERT(_inflight == 0);
+    traceSkipSomeEnd(_inflight, ExecutionState::DONE);
     return {ExecutionState::DONE, _inflight};
   }
 
@@ -225,6 +227,7 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
       auto upstreamRes = getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
+        traceSkipSomeEnd(0, ExecutionState::WAITING);
         return {ExecutionState::WAITING, 0};
       }
       _upstreamState = upstreamRes.first;
@@ -232,6 +235,7 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
         _done = true;
         size_t skipped = _inflight;
         _inflight = 0;
+        traceSkipSomeEnd(skipped, ExecutionState::DONE);
         return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
@@ -263,5 +267,7 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
   _engine->_stats.scannedFull += static_cast<int64_t>(_inflight);
   size_t skipped = _inflight;
   _inflight = 0;
-  return {getHasMoreState(), skipped};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }

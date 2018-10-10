@@ -740,6 +740,13 @@ void RocksDBIndexFactory::prepareIndexes(
 
       continue;
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    else {
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "created index '" << idx->id() << "' from definition '"
+          << v.toJson() << "'";
+    }
+#endif
 
     indexes.emplace_back(std::move(idx));
   }

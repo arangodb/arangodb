@@ -4,6 +4,44 @@ Highlights
 Version 3.4
 -----------
 
+**All Editions**
+
+- [**ArangoSearch**](Views/ArangoSearch/README.md):
+  Search and similarity ranking engine integrated natively into ArangoDB and
+  AQL. ArangoSearch combines boolean retrieval capabilities with generalized
+  ranking algorithms (BM25, TFDIF). Support of e.g. relevance-based searching,
+  phrase and prefix-matching, complex boolean searches and query time relevance
+  tuning. Search can be combined with all supported data models in a single
+  query. Many specialized language analyzers are already included for e.g.
+  English, German, French, Chinese, Spanish and many other language.
+
+- [**GeoJSON Support**](../AQL/Functions/Geo.html) and
+  [**S2 Geo Index**](Indexing/Geo.md): ArangoDB supports now all geo primitives.
+  MultiPoint, MultiLineStrings, MultiPolygons or intersections can be now
+  defined and queries for. New Google S2 geo index is optimized for RocksDB and
+  enables efficient querying. Geo query results are automatically visualized
+  with an OpenStreetMap integration within the Query Editor (ArangoDB WebUI)
+
+- [**Query Profiler**](../AQL/ExecutionAndPerformance/QueryProfiler.html):
+  Enables the analysis of queries and adds additional information for the user
+  to identify optimization potentials more easily. The profiler can be accessed
+  via Arangosh with `db._profileQuery(...)` or via the *Profile* button in the
+  Query Editor of the Web UI.
+
+- [**Streaming Cursors**](../AQL/Invocation/WithArangosh.html#setting-options):
+  Cursors requested with the stream option on make queries calculate results
+  on the fly and make them available for the client in a streaming fashion,
+  as soon as possible.
+
+- **RocksDB as Default Storage Engine**: With ArangoDB 3.4 the default
+  [storage engine](Architecture/StorageEngines.md) for fresh installations will
+  switch from MMFiles to RocksDB. Many optimizations have been made to RocksDB
+  since the first release in 3.2. For 3.4 we optimized the binary storage
+  format for improved insertion, implemented "optional caching", reduced the
+  replication catch-up time and much more.
+
+Also see [What's New in 3.4](ReleaseNotes/NewFeatures34.md).
+
 Version 3.3
 -----------
 

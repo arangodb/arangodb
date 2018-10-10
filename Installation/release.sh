@@ -129,7 +129,7 @@ if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     exit 1
 fi
 
-VERSION_RE='^([0-9]+.[0-9]+.[0-9]+)(-((alpha|beta|milestone|preview|rc).)?([0-9]+))?$'
+VERSION_RE='^([0-9]+.[0-9]+.[0-9]+)(-((alpha|beta|milestone|preview|rc).)?([0-9]+|devel|nightly))?$'
 
 if echo "${VERSION}" | egrep -q -- $VERSION_RE; then
     echo "${VERSION} matches $VERSION_RE"
@@ -169,8 +169,15 @@ fi
 if fgrep -q "v$VERSION" CHANGELOG;  then
     echo "version $VERSION defined in CHANGELOG"
 else
-    echo "$0: version $VERSION not defined in CHANGELOG"
-    exit 1
+    case "$VERSION" in
+        *-devel|*-nightly)
+          ;;
+
+        *)
+          echo "$0: version $VERSION not defined in CHANGELOG"
+          exit 1
+          ;;
+    esac
 fi
 
 if test -z "${DOWNLOAD_SYNCER_USER}"; then
