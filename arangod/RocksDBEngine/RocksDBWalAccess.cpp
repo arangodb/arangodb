@@ -799,7 +799,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
       break;
     }
     // we need to set this here again, to avoid re-scanning WriteBatches
-    lastScannedTick = lastWrittenTick;
+    lastScannedTick = lastWrittenTick; // do not remove, tailing take forever
 
     iterator->Next();
   }
