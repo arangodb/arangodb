@@ -2703,9 +2703,8 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::Quer
   try {
     auto query = queryRegistry->open(&_vocbase, id);
     if (query == nullptr) {
-      // Query exists, but is in use.
-      // So in Locking phase
-      return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "Read lock not yet acquired!");
+      // Query does not exist. So we assume it got cancelled.
+      return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "read transaction was cancelled");
     }
     TRI_DEFER(queryRegistry->close(&_vocbase, id));
 
@@ -2714,6 +2713,8 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::Quer
     uint64_t num = col->numberDocuments(query->trx(), transaction::CountType::Normal);
     return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
-    return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "read transaction was cancelled");
+    // Query exists, but is in use.
+    // So in Locking phase
+    return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "Read lock not yet acquired!");
   }
 }
