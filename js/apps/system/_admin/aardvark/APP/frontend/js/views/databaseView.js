@@ -82,6 +82,7 @@
           self.currentDB = db;
 
           self.collection.fetch({
+            cache: false,
             success: function () {
               // sorting
               self.collection.sort();
