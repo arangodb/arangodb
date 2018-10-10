@@ -1450,12 +1450,12 @@ for route in swagger['paths'].keys():
         # Place invisible markers, so that hints can be removed again
         if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
             thisVerb['description'] += '\n<!-- Hints Start -->'
-            tmp = re.sub("{% hint '([^']+?)' %}(?:\r\n|\r|\n)?",
-                         lambda match: "<br/>\n**{}:**  ".format(match.group(1).title()),
+            tmp = re.sub("{% hint '([^']+?)' %}",
+                         lambda match: "\n\n**{}:**  ".format(match.group(1).title()),
                          thisVerb['x-hints'])
             tmp = re.sub('{%[^%]*?%}', '', tmp)
             thisVerb['description'] += tmp
-            thisVerb['description'] += '<br/>\n<!-- Hints End -->'
+            thisVerb['description'] += '\n<!-- Hints End -->'
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
