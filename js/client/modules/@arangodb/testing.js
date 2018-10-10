@@ -84,7 +84,13 @@ let optionsDocumentation = [
   '   - `writeXmlReport`:  Write junit xml report files',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
+  '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
   '   - `rr`: if set to true arangod instances are run with rr',
+  '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
+  '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
+  '                        or a coma separated list for multiple exceptions; ',
+  '                        filtering by asterisk is possible',
+  '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
   '',
@@ -142,6 +148,8 @@ const optionsDefaults = {
   'protocol': 'tcp',
   'replication': false,
   'rr': false,
+  'exceptionFilter': null,
+  'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
   'skipLogAnalysis': true,
@@ -162,7 +170,8 @@ const optionsDefaults = {
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
   'testFailureText': 'testfailures.txt',
-  'testCase': undefined
+  'testCase': undefined,
+  'disableMonitor': false
 };
 
 const _ = require('lodash');
