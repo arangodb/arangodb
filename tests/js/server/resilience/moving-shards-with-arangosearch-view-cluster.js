@@ -471,7 +471,6 @@ function MovingShardsWithViewSuite (options) {
 
         for(const shard of Object.keys(links)) {
           if (typeof links[shard] !== "object" || links[shard] === {}) {
-            console.error({shardInfo, links});
             throw new Error(`On DBServer ${serverId}, link to shard ${shard} `
               + `is unexpectedly either not an object or an empty object.`);
           }
