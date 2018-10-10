@@ -804,6 +804,48 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
   }
 
+  SECTION( "Removed follower in Plan must be dropped" ) {
+    plan = originalPlan;
+    std::string const dbname("_system");
+    std::string const colname("bar");
+    auto cid = collectionMap(plan).at(dbname + "/" + colname);
+    Node::Children& shards = plan({"Collections",dbname,cid,"shards"}).children();
+    auto firstShard = shards.begin();
+    VPackBuilder b = firstShard->second->toBuilder();
+    std::string const shname = firstShard->first;
+    std::string const leaderName = b.slice()[0].copyString();
+    std::string const followerName = b.slice()[1].copyString();
+    firstShard->second->handle<POP>(
+      arangodb::velocypack::Slice::emptyObjectSlice());
+
+    for (auto const& node : localNodes) {
+      std::vector<ActionDescription> actions;
+      
+      arangodb::maintenance::diffPlanLocal (
+        plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
+        errors, feature, actions);
+
+      if (node.first == followerName) {
+        // Must see an action dropping the shard
+        REQUIRE(actions.size() == 1);
+        REQUIRE(actions.front().name() == "DropCollection");
+        REQUIRE(actions.front().get(DATABASE) == dbname);
+        REQUIRE(actions.front().get(COLLECTION) == shname);
+      } else if (node.first == leaderName) {
+        // Must see an UpdateCollection action to drop the follower
+        REQUIRE(actions.size() == 1);
+        REQUIRE(actions.front().name() == "UpdateCollection");
+        REQUIRE(actions.front().get(DATABASE) == dbname);
+        REQUIRE(actions.front().get(SHARD) == shname);
+        REQUIRE(actions.front().get(FOLLOWERS_TO_DROP) == followerName);
+      } else {
+        // No actions required
+        REQUIRE(actions.size() == 0);
+      }
+    }
+
+  }
+
 }
 
 TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {

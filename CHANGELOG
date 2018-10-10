@@ -1,5 +1,7 @@
 devel
 -----
+* dynamically manage libcurl's number of open connections to increase performance
+  by reducing the number of socket close and then reopen cycles
 
 * disable in-memory cache for edge and traversal data on agency nodes, as it
   is not needed there
@@ -18,9 +20,17 @@ devel
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* recover short server id from agency after a restart of a cluster node
+
+  this fixes problems with short server ids being set to 0 after a node restart,
+  which then prevented cursor result load-forwarding between multiple coordinators
+  to work properly
+
+  this should fix arangojs#573
+
 * include forward-ported diagnostic options for debugging LDAP connections
 
-* fix internal issue #3065: fix variable replacements by the AQL query 
+* fix internal issue #3065: fix variable replacements by the AQL query
   optimizer in arangosearch view search conditions
 
   The consequence of the missing replacements was that some queries using view
@@ -56,10 +66,10 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * upgraded arangodb starter version to 0.13.3
 
-* fixed issue #6611: Properly display JSON properties of user defined foxx services 
-  configuration within the web UI 
+* fixed issue #6611: Properly display JSON properties of user defined foxx services
+  configuration within the web UI
 
-* improved shards display in web UI: included arrows to better visualize that 
+* improved shards display in web UI: included arrows to better visualize that
   collection name sections can be expanded and collapsed
 
 * added nesting support for `aql` template strings
@@ -68,7 +78,7 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * added `aql.join` function
 
-* fixed issue #6583: Agency node segfaults if sent an authenticated HTTP 
+* fixed issue #6583: Agency node segfaults if sent an authenticated HTTP
   request is sent to its port
 
 * fixed issue #6601: Context cancelled (never ending query)
@@ -84,27 +94,27 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * added startup parameter `--cluster.advertised-endpoints`
 
-* AQL query optimizer now makes better choices regarding indexes to use in a 
+* AQL query optimizer now makes better choices regarding indexes to use in a
   query when there are multiple competing indexes and some of them are prefixes
   of others
-  
+
   In this case, the optimizer could have preferred indexes that covered less
   attributes, but it should rather pick the indexes that covered more attributes.
-  
+
   For example, if there was an index on ["a"] and another index on ["a", "b"], then
   previously the optimizer may have picked the index on just ["a"] instead the
   index on ["a", "b"] for queries that used all index attributes but did range
   queries on them (e.g. `FILTER doc.a == @val1 && doc.b >= @val2`).
 
-* Added compression for the AQL intermediate results transfer in the cluster, 
+* Added compression for the AQL intermediate results transfer in the cluster,
   leading to less data being transferred between coordinator and database servers
   in many cases
 
 * forward-ported a bugfix from RocksDB (https://github.com/facebook/rocksdb/pull/4386)
-  that fixes range deletions (used internally in ArangoDB when dropping or truncating 
+  that fixes range deletions (used internally in ArangoDB when dropping or truncating
   collections)
 
-  The non-working range deletes could have triggered errors such as 
+  The non-working range deletes could have triggered errors such as
   `deletion check in index drop failed - not all documents in the index have been deleted.`
   when dropping or truncating collections
 
@@ -132,9 +142,9 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * fixed some TLS errors that occurred when combining HTTPS/TLS transport with the
   VelocyStream protocol (VST)
-  
+
   That combination could have led to spurious errors such as "TLS padding error"
-  or "Tag mismatch" and connections being closed 
+  or "Tag mismatch" and connections being closed
 
 * make synchronous replication detect more error cases when followers cannot
   apply the changes from the leader
@@ -143,7 +153,7 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * fixed issue #6495: Document not found when removing records
 
-* fixed undefined behavior is cluster plan-loading procedure that may have 
+* fixed undefined behavior in cluster plan-loading procedure that may have
   unintentionally modified a shared structure
 
 * reduce overhead of function initialization in AQL COLLECT aggregate functions,
@@ -725,18 +735,18 @@ v3.3.15 (XXXX-XX-XX)
 
 * added startup option `--query.optimizer-max-plans value`
 
-  This option allows limiting the number of query execution plans created by the 
+  This option allows limiting the number of query execution plans created by the
   AQL optimizer for any incoming queries. The default value is `128`.
 
-  By adjusting this value it can be controlled how many different query execution 
-  plans the AQL query optimizer will generate at most for any given AQL query. 
-  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  By adjusting this value it can be controlled how many different query execution
+  plans the AQL query optimizer will generate at most for any given AQL query.
+  Normally the AQL query optimizer will generate a single execution plan per AQL query,
   but there are some cases in which it creates multiple competing plans. More plans
   can lead to better optimized queries, however, plan creation has its costs. The
-  more plans are created and shipped through the optimization pipeline, the more time 
+  more plans are created and shipped through the optimization pipeline, the more time
   will be spent in the optimizer.
 
-  Lowering this option's value will make the optimizer stop creating additional plans 
+  Lowering this option's value will make the optimizer stop creating additional plans
   when it has already created enough plans.
 
   Note that this setting controls the default maximum number of plans to create. The

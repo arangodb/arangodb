@@ -216,7 +216,7 @@ void Supervision::upgradeZero(Builder& builder) {
           if (fails.length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails)) {
               builder.add(VPackValue(fail.copyString()));
-              { VPackObjectBuilder ooo(&builder); }
+              { VPackArrayBuilder ooo(&builder); }
             }
           }
         }}} // trx
