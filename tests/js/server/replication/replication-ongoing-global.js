@@ -1152,21 +1152,6 @@ function ReplicationOtherDBSuite() {
     db._flushCache();
     db._create(cn);
 
-    const count = 100000;
-    let docs = []; 
-    for(let i = 0; i < count; i++) { 
-      if (docs.length > 10000) {
-        db.test.save(docs);
-        docs = []; 
-      }
-      docs.push({ value:i }); 
-    } 
-    db.test.save(docs);
-
-    // try to perform another operation afterwards
-    const cn2 = cn + "Test";
-    db._create(cn2);
-
     // Section - Follower
     connectToSlave();
 
@@ -1192,6 +1177,29 @@ function ReplicationOtherDBSuite() {
 
     replication.setupReplicationGlobal(config);
 
+    connectToMaster();
+
+    let coll = db._collection(cn);
+    const count = 100000;
+    let docs = []; 
+    for(let i = 0; i < count; i++) { 
+      if (docs.length > 10000) {
+        coll.save(docs);
+        docs = []; 
+      }
+      docs.push({ value:i }); 
+    } 
+    coll.save(docs);
+
+    // try to perform another operation afterwards
+    const cn2 = cn + "Test";
+    db._create(cn2);
+
+    let lastLogTick = replication.logger.state().state.lastLogTick;
+
+    // Section - Follower
+    connectToSlave();
+
     let printed = false;
     while (true) {
       let slaveState = replication.globalApplier.state();
@@ -1204,9 +1212,10 @@ function ReplicationOtherDBSuite() {
         console.log("slave is not running");
         break;
       }
-      if (state.ticksBehind == 0) {
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+          compareTicks(slaveState.state.lastProcessedContinuousTick, lastLogTick) >= 0) {
         console.log("slave has caught up. state.lastLogTick:", 
-                    state.lastLogTick, "slaveState.lastAppliedContinuousTick:", 
+                    slaveState.state.lastLogTick, "slaveState.lastAppliedContinuousTick:", 
                     slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", 
                     slaveState.state.lastProcessedContinuousTick);
         break;

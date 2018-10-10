@@ -74,12 +74,6 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   filter.tickStart = _request->parsedValue<uint64_t>("from", filter.tickStart);
   filter.tickLastScanned = _request->parsedValue<uint64_t>("lastScanned", filter.tickLastScanned);
   
-  if (filter.tickStart < filter.tickLastScanned) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid from/lastScanned values");
-    return false;
-  }
-  
   // determine end tick for dump
   filter.tickEnd = _request->parsedValue("to", filter.tickEnd);
   if (filter.tickStart > filter.tickEnd || filter.tickEnd == 0) {

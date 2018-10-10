@@ -109,7 +109,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         _primaryCF(RocksDBColumnFamily::primary()->GetID()),
         _maxResponseSize(maxResponseSize),
         _startSequence(0),
-        _currentSequence(0) {}
+        _currentSequence(0),
+        _lastWrittenSequence(0) {}
 
   bool Continue() override {
     if (_responseSize > _maxResponseSize) {
@@ -651,6 +652,8 @@ public:
   
   size_t responseSize() const { return _responseSize; }
   
+  uint64_t lastWrittenSequence() const { return _lastWrittenSequence; }
+  
  private:
 
   void writeCommitMarker(TRI_voc_tick_t dbid) {
@@ -674,6 +677,7 @@ public:
     if (_currentSequence > _filter.tickStart) {
       _callback(vocbase, _builder.slice());
       _responseSize += _builder.size();
+      _lastWrittenSequence = _currentSequence;
     }
     _builder.clear();
   }
@@ -708,6 +712,7 @@ public:
 
   rocksdb::SequenceNumber _startSequence;
   rocksdb::SequenceNumber _currentSequence;
+  rocksdb::SequenceNumber _lastWrittenSequence;
   bool _startOfBatch = false;
 
   // Various state machine flags
@@ -792,14 +797,15 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
       break;  // s is considered in the end
     }
     
-    lastWrittenTick = dumper.endBatch();  // end of the batch
-    TRI_ASSERT(lastWrittenTick >= lastScannedTick);
+    uint64_t batchEndSeq = dumper.endBatch();  // end tick of the batch
+    lastWrittenTick = dumper.lastWrittenSequence(); // 0 if no marker was written
+    TRI_ASSERT(batchEndSeq >= lastScannedTick);
 
     if (dumper.responseSize() >= chunkSize) { // break if response gets big
       break;
     }
     // we need to set this here again, to avoid re-scanning WriteBatches
-    lastScannedTick = lastWrittenTick; // do not remove, tailing take forever
+    lastScannedTick = batchEndSeq; // do not remove, tailing take forever
 
     iterator->Next();
   }
