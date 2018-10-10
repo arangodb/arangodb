@@ -382,7 +382,7 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
       '-accepteula',
       '-64',
       '-e',
-      '1'
+      options.exceptionCount
     ];
     let filters = options.exceptionFilter.split(',');
     for (let exceptionFilter in filters) {
@@ -402,6 +402,9 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
     ];
   }
   try {
+    if (options.extremeVerbosity) {
+      print("Stariting procdump: " + JSON.stringify(procdumpArgs));
+    }
     instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
   } catch (x) {
     print('failed to start procdump - is it installed?');
