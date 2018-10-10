@@ -87,7 +87,7 @@ struct empty_term_iterator final : irs::term_iterator {
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const override { return nullptr; }
-  virtual const iresearch::field_meta& meta() const override { 
+  virtual const iresearch::field_meta& meta() const override {
     return irs::field_meta::EMPTY;
   }
 
@@ -102,13 +102,13 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
   virtual uint64_t docs_count() const override { return 0; }
 
   // less significant term
-  virtual const iresearch::bytes_ref& (min)() const override { 
-    return iresearch::bytes_ref::NIL; 
+  virtual const iresearch::bytes_ref& (min)() const override {
+    return iresearch::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const iresearch::bytes_ref& (max)() const override { 
-    return iresearch::bytes_ref::NIL; 
+  virtual const iresearch::bytes_ref& (max)() const override {
+    return iresearch::bytes_ref::NIL;
   }
 }; // empty_term_reader
 

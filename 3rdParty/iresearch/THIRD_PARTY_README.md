@@ -29,7 +29,7 @@ number of components produced by third parties
 
 ## Third Party Software used by IResearch search engine
 
-1.  Title: OpenFST 
+1.  Title: OpenFST
     - Copyright: Cyril Allauzen, Michael Riley 
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: Part of the source code tree
@@ -41,7 +41,7 @@ number of components produced by third parties
     - Copyright: Beman Dawes, David Abrahams, 1998-2005, Rene Rivera 2004-2005
     - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
     - How it's used: Statically or dynamically linked into the library
-4.  Title: Lz4 
+4.  Title: Lz4
     - Copyright: Yann Collet
     - License: [BSD 2-clauses](https://opensource.org/licenses/bsd-license.php)
     - How it's used: Statically or dynamically linked into the library
@@ -69,6 +69,10 @@ number of components produced by third parties
     - Copyright: Hideyuki Tanaka
     - License: [BSD 3-clause](https://github.com/tanakh/cmdline/blob/master/LICENSE)
     - How it's used: command line parser
+11. Title: simdcomp
+    - Copyright: Daniel Lemire
+    - License: [BSD 3-clause](https://github.com/lemire/simdcomp/LICENSE)
+    - How it's used: compression library
 
 ## Third Party Open Source Software licenses
 
@@ -734,3 +738,32 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+### simdcomp
+Copyright (c) 2014--, The authors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+* Neither the name of the {organization} nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

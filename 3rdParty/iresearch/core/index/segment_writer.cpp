@@ -52,12 +52,20 @@ doc_id_t segment_writer::begin(
   assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof());
   valid_ = true;
   norm_fields_.clear(); // clear norm fields
-  docs_mask_.reserve(
-    docs_mask_.size() + 1 + reserve_rollback_extra
-  ); // reserve space for potential rollback
+
+  if (docs_mask_.capacity() <= docs_mask_.size() + 1 + reserve_rollback_extra) {
+    docs_mask_.reserve(
+      math::roundup_power2(docs_mask_.size() + 1 + reserve_rollback_extra) // reserve in blocks of power-of-2
+    ); // reserve space for potential rollback
+  }
+
+  if (docs_context_.size() >= docs_context_.capacity()) {
+    docs_context_.reserve(math::roundup_power2(docs_context_.size() + 1)); // reserve in blocks of power-of-2
+  }
+
   docs_context_.emplace_back(ctx);
 
-  return docs_cached() + type_limits<type_t::doc_id_t>::min() - 1; // -1 for 0-based offset
+  return doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
 }
 
 segment_writer::ptr segment_writer::make(directory& dir) {
@@ -68,15 +76,21 @@ segment_writer::ptr segment_writer::make(directory& dir) {
 size_t segment_writer::memory() const NOEXCEPT {
   return sizeof(segment_writer)
     + (sizeof(update_contexts::value_type) * docs_context_.size())
-    + (sizeof(document_mask::value_type) * docs_mask_.size())
+    + (sizeof(bitvector) + docs_mask_.count() * sizeof(bitvector::word_t))
     + fields_.memory()
     ;
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
-  return type_limits<type_t::doc_id_t>::valid(doc_id)
-    && (doc_id - type_limits<type_t::doc_id_t>::min()) < docs_cached()
-    && docs_mask_.insert(doc_id).second;
+  if (!type_limits<type_t::doc_id_t>::valid(doc_id)
+      || (doc_id - type_limits<type_t::doc_id_t>::min()) >= docs_cached()
+      || docs_mask_.test(doc_id - type_limits<type_t::doc_id_t>::min())) {
+    return false;
+  }
+
+  docs_mask_.set(doc_id - type_limits<type_t::doc_id_t>::min());
+
+  return true;
 }
 
 segment_writer::segment_writer(directory& dir) NOEXCEPT
@@ -188,16 +202,33 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     fields_.flush(*field_writer_, state);
   }
 
+  size_t docs_mask_count = 0;
+
   // write non-empty document mask
-  if (!docs_mask_.empty()) {
+  if (docs_mask_.any()) {
+    document_mask docs_mask;
     auto writer = meta.codec->get_document_mask_writer();
 
-    writer->write(dir_, meta, docs_mask_);
+    docs_mask.reserve(docs_mask_.size());
+
+    for (size_t doc_id = 0, doc_id_end = docs_mask_.size();
+         doc_id < doc_id_end;
+         ++doc_id) {
+      if (docs_mask_.test(doc_id)) {
+        assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
+        docs_mask.emplace(
+          doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
+        );
+      }
+    }
+
+    writer->write(dir_, meta, docs_mask);
+    docs_mask_count = docs_mask.size();
   }
 
-  assert(docs_cached() >= docs_mask_.size());
+  assert(docs_cached() >= docs_mask_count);
   meta.docs_count = docs_cached();
-  meta.live_docs_count = meta.docs_count - docs_mask_.size();
+  meta.live_docs_count = meta.docs_count - docs_mask_count;
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {

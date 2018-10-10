@@ -276,12 +276,10 @@ class bounded_object_pool {
       });
     }
 
+    operator bool() const NOEXCEPT { return nullptr != slot_; }
     element_type& operator*() const NOEXCEPT { return *slot_->value.ptr; }
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return slot_->value.ptr.get(); }
-    operator bool() const NOEXCEPT {
-      return static_cast<bool>(slot_);
-    }
 
    private:
     static void reset_impl(node_type*& slot) NOEXCEPT {
@@ -381,9 +379,9 @@ class bounded_object_pool {
     }
   }
 
-  // MSVC 2017.3 through 2017.7 incorectly increment counter if this function is inlined during optimization
+  // MSVC 2017.3 through 2017.8 incorectly increment counter if this function is inlined during optimization
   // MSVC 2017.2 and below TODO test for both debug and release
-  MSVC2017_34567_OPTIMIZED_WORKAROUND(__declspec(noinline))
+  MSVC2017_345678_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void unlock(node_type& slot) const NOEXCEPT {
     free_list_.push(slot);
     cond_.notify_all();
@@ -818,7 +816,7 @@ class unbounded_object_pool_volatile
     typename base_t::node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->free_objects_.pop()) {
+    while ((head = this->free_objects_.pop())) {
       head->value = typename T::ptr{}; // empty instance
       this->free_slots_.push(*head);
     }

@@ -883,7 +883,7 @@ inline bool read_block_rl32(
   base = in.read_vint();
   avg = in.read_vint();
   const uint32_t bits = in.read_vint();
-  const uint32_t value = in.read_vlong();
+  const uint32_t value = in.read_vint();
 
   return bitpack::ALL_EQUAL == bits
     && 0 == value; // delta
