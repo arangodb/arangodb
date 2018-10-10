@@ -2134,7 +2134,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
   const std::string checksum = checksumSlice.copyString();
 
-  auto referenceChecksum = computeCollectionChecksum(readLockId, col.get());
+  ResultT<std::string> referenceChecksum = computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
     generateError(referenceChecksum);
     return;
