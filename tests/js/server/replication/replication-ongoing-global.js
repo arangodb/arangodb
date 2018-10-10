@@ -1144,6 +1144,88 @@ function ReplicationOtherDBSuite() {
     assertTrue(replication.globalApplier.state().state.running);
   };
 
+  suite.testSplitUpLargeTransactions = function() {
+    // Section - Master
+    connectToMaster();
+
+    // Create the collection
+    db._flushCache();
+    db._create(cn);
+
+    const count = 100000;
+    let docs = []; 
+    for(let i = 0; i < count; i++) { 
+      if (docs.length > 10000) {
+        db.test.save(docs);
+        docs = []; 
+      }
+      docs.push({ value:i }); 
+    } 
+    db.test.save(docs);
+
+    // try to perform another operation afterwards
+    const cn2 = cn + "Test";
+    db._create(cn2);
+
+    // Section - Follower
+    connectToSlave();
+
+    // Setup Replication
+    replication.globalApplier.stop();
+    replication.globalApplier.forget();
+
+    while (replication.globalApplier.state().state.running) {
+      internal.wait(0.1, false);
+    }
+
+    let config = {
+      endpoint: masterEndpoint,
+      username: "root",
+      password: "",
+      verbose: true,
+      includeSystem: false,
+      restrictType: "",
+      restrictCollections: [],
+      keepBarrier: false,
+      chunkSize: 16384 // small chunksize should split up trxs
+    };
+
+    replication.setupReplicationGlobal(config);
+
+    let printed = false;
+    while (true) {
+      let slaveState = replication.globalApplier.state();
+      if (slaveState.state.lastError.errorNum > 0) {
+        console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
+        break;
+      }
+  
+      if (!slaveState.state.running) {
+        console.log("slave is not running");
+        break;
+      }
+      if (state.ticksBehind == 0) {
+        console.log("slave has caught up. state.lastLogTick:", 
+                    state.lastLogTick, "slaveState.lastAppliedContinuousTick:", 
+                    slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", 
+                    slaveState.state.lastProcessedContinuousTick);
+        break;
+      }
+        
+      if (!printed) {
+        console.log("waiting for slave to catch up");
+        printed = true;
+      }
+      internal.wait(0.5, false);
+    }
+
+    // Now we should have the same amount of documents
+    assertEqual(count, collectionCount(cn));
+    assertNotNull(db._collection(cn2));
+    assertTrue(replication.globalApplier.state().state.running);
+  };
+
+
   return suite;
 }
 

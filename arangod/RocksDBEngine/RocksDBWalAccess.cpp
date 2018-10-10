@@ -798,6 +798,8 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
     if (dumper.responseSize() >= chunkSize) { // break if response gets big
       break;
     }
+    // we need to set this here again, to avoid re-scanning WriteBatches
+    lastScannedTick = lastWrittenTick;
 
     iterator->Next();
   }
