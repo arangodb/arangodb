@@ -422,7 +422,7 @@ function MovingShardsWithViewSuite (options) {
 /// which keys are shards and which values are sets of DBServers.
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getViewServersPerShard(database, collection) {
+  function getViewServersPerShard() {
     const request = require("@arangodb/request");
     const endpointToURL = require("@arangodb/cluster").endpointToURL;
 
@@ -499,7 +499,7 @@ function MovingShardsWithViewSuite (options) {
       // leaders in plan
       const leadersPerShard = shardLeaders("_system", c_v.name());
       // actual servers that have the corresponding view index
-      const serversPerShard = getViewServersPerShard("_system", c_v.name());
+      const serversPerShard = getViewServersPerShard();
       for(const [shard, leader] of Object.entries(leadersPerShard)) {
         assertTrue(serversPerShard[shard].has(leader),
           `Expected shard ${shard} to be available on ${leader}, but it's not. `
@@ -671,13 +671,21 @@ function MovingShardsWithViewSuite (options) {
       // object of arrays, keys are shards
       const cinfo = collectionShardInfo("_system", collection.name());
       // object of sets, keys are shards
-      const ccinfo = getViewServersPerShard("_system", collection.name());
+      const ccinfo = getViewServersPerShard();
       // check that for every shard in the plan, all dbservers that are in its
       // plan are also visible via the dbserver's view api.
       return _.every(
         Object.keys(cinfo).map(shard => {
           const planServers = cinfo[shard]; // array
           const currentServers = ccinfo[shard]; // Set
+
+          // Check that for the given `shard`, every DBServer in the Plan has
+          // the shard available via the view api. Also check that the number of
+          // DBServers having this shard available via the view api is the same
+          // as the number of DBServers in the Plan.
+          // With the implicit understanding that the list of DBServers in the
+          // Plan does not hold duplicates (and currentServers being a Set),
+          // this implies they are equal up to order.
           return planServers.length === currentServers.size
             && _.every(planServers, server => currentServers.has(server));
         })
