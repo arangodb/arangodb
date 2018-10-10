@@ -671,7 +671,7 @@ public:
   /// print maker in builder and clear it
   void printMarker(TRI_vocbase_t* vocbase) {
     TRI_ASSERT(!_builder.isEmpty());
-    if (_currentSequence >= _filter.tickStart) {
+    if (_currentSequence > _filter.tickStart) {
       _callback(vocbase, _builder.slice());
       _responseSize += _builder.size();
     }
@@ -682,9 +682,6 @@ public:
   // observing a specific log entry and a sequence of immediately
   // following PUT / DELETE / Log entries
   void resetTransientState() {
-    if (_state == TRANSACTION) {
-      writeCommitMarker(_trxDbId);
-    }
     // reset all states
     _state = INVALID;
     _currentTrxId = 0;
@@ -737,30 +734,29 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
 
   MyWALDumper dumper(filter, func, maxTrxChunkSize);
-  const uint64_t safeBeginTick = dumper.safeBeginTick();
-  TRI_ASSERT(safeBeginTick <= filter.tickStart);
-  TRI_ASSERT(safeBeginTick <= filter.tickEnd);
+  const uint64_t since = dumper.safeBeginTick();
+  TRI_ASSERT(since <= filter.tickStart);
+  TRI_ASSERT(since <= filter.tickEnd);
   
-  uint64_t firstTick = UINT64_MAX;             // first tick actually read
-  uint64_t lastScannedTick = safeBeginTick;    // last (begin) tick of batch we looked at
-  uint64_t lastWrittenTick = 0;                // lastTick at the end of a write batch
+  uint64_t firstTick = UINT64_MAX;  // first tick to actually print (exclusive)
+  uint64_t lastScannedTick = since; // last (begin) tick of batch we looked at
+  uint64_t lastWrittenTick = 0;     // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  rocksdb::Status s = db->GetUpdatesSince(safeBeginTick, &iterator, ro);
+  rocksdb::Status s = db->GetUpdatesSince(since, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
     return WalAccessResult(r.errorNumber(), filter.tickStart == latestTick,
                            0, 0, latestTick);
   }
 
-
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL tailing call. Scan start: " << safeBeginTick
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL tailing call. Scan since: " << since
     << ", tick start: " << filter.tickStart
     << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
@@ -783,7 +779,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
     //LOG_TOPIC(INFO, Logger::ENGINES) << "found batch-seq: " << batch.sequence;
     lastScannedTick = batch.sequence;  // start of the batch
-    if (batch.sequence <= safeBeginTick) {
+    if (batch.sequence < since) {
       iterator->Next();  // skip
       continue;
     }

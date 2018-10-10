@@ -1685,6 +1685,7 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
 
 /// load the number of docs from storage, use careful
 void RocksDBCollection::loadInitialNumberDocuments() {
+  TRI_ASSERT(_numberDocuments == 0);
   auto* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   auto counterValue = engine->settingsManager()->loadCounter(_objectId);
   _numberDocuments = counterValue.added() - counterValue.removed();

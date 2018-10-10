@@ -7,10 +7,10 @@
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{from,number,optional}
-Lower bound tick value for results.
+Exclusive lower bound tick value for results.
 
 @RESTQUERYPARAM{to,number,optional}
-Upper bound tick value for results.
+Inclusive upper bound tick value for results.
 
 @RESTQUERYPARAM{global,bool,optional}
 Whether operations for all databases should be included. When set to *false*
