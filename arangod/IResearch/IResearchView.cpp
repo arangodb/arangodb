@@ -520,6 +520,7 @@ IResearchView::DataStore& IResearchView::DataStore::operator=(
   if (this != &other) {
     _directory = std::move(other._directory);
     _reader = std::move(other._reader);
+    _readerImpl = std::move(other._readerImpl);
     _writer = std::move(other._writer);
   }
 
@@ -531,6 +532,7 @@ void IResearchView::DataStore::sync() {
   _segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
   _writer->commit();
   _reader = _reader.reopen(); // update reader
+  _readerImpl = static_cast<irs::index_reader::ptr>(_reader);
   _segmentCount = _reader.size(); // add commited segments
 }
 
@@ -670,9 +672,9 @@ IResearchView::IResearchView(
    FlushTransaction(toString(*this)),
    _asyncFeature(nullptr),
    _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
-   _asyncTerminate(false),
    _meta(std::make_shared<AsyncMeta>()),
    _storePersisted(getPersistedPath(dbPathFeature, vocbase, id())),
+   _asyncTerminate(false),
    _inRecovery(false) {
   // set up in-recovery insertion hooks
   auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
@@ -845,7 +847,7 @@ IResearchView::IResearchView(
     }
 
     ViewStateHelper::commitWrite(
-      *state, viewRef, arangodb::transaction::Status::COMMITTED != state->status()
+      *state, viewRef, arangodb::transaction::Status::COMMITTED != status
     );
   };
 }
@@ -1282,7 +1284,12 @@ arangodb::Result IResearchView::commit() {
       return {};
     }
 
-    if (!std::atomic_compare_exchange_strong(&reader, &_storePersisted._reader, nullptr)) {
+    auto readerImpl = static_cast<irs::index_reader::ptr>(reader);
+
+    if (!std::atomic_compare_exchange_strong(&readerImpl, &_storePersisted._readerImpl, {})) {
+       // update reader
+       _storePersisted._reader = reader;
+
        // invalidate query cache if there were some data changes
        arangodb::aql::QueryCache::instance()->invalidate(
          &vocbase(), name()
@@ -1628,6 +1635,7 @@ void IResearchView::open() {
           );
 
           if (_storePersisted._reader) {
+            _storePersisted._readerImpl = static_cast<irs::index_reader::ptr>(_storePersisted._reader);
             registerFlushCallback();
             updateProperties(_meta);
 
