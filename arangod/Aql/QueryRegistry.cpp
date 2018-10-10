@@ -228,7 +228,7 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
   destroy(vocbase->name(), id, errorCode);
 }
 
-ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t*, QueryId id) {
+ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << "is in use.";
   
   READ_LOCKER(readLocker, _lock);
