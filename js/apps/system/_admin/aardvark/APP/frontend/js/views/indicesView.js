@@ -9,13 +9,37 @@
     el: '#content',
 
     initialize: function (options) {
+      var self = this;
       this.collectionName = options.collectionName;
       this.model = this.collection;
+
+      // rerender
+      self.interval = window.setInterval(function () {
+        if (window.location.hash.indexOf('cIndices/' + self.collectionName) !== -1 && window.VISIBLE) {
+          if ($('#collectionEditIndexTable').is(':visible') && !$('#indexDeleteModal').is(':visible')) {
+            self.rerender();
+          }
+        }
+      }, self.refreshRate);
     },
+
+    interval: null,
+    refreshRate: 3000,
 
     template: templateEngine.createTemplate('indicesView.ejs'),
 
     events: {
+    },
+
+    remove: function () {
+      if (this.interval) {
+        window.clearInterval(this.interval);
+      }
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
     },
 
     render: function () {
@@ -47,6 +71,24 @@
       });
     },
 
+    rerender: function () {
+      var self = this;
+
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/engine'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          self.getIndex(true);
+        },
+        error: function () {
+          arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
+        }
+      });
+    },
+
     changeViewToReadOnly: function () {
       $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
       // this method disables all write-based functions
@@ -61,12 +103,12 @@
       );
     },
 
-    getIndex: function () {
+    getIndex: function (rerender) {
       var callback = function (error, data, id) {
         if (error) {
           window.arangoHelper.arangoError('Index', data.errorMessage);
         } else {
-          this.renderIndex(data, id);
+          this.renderIndex(data, id, rerender);
         }
       }.bind(this);
 
@@ -152,6 +194,8 @@
           } else {
             arangoHelper.arangoError('Document error', 'Could not create index.');
           }
+        } else {
+          arangoHelper.arangoNotification('Index', 'Creation in progress. This may take a while.');
         }
         // toggle back
         self.toggleNewIndexView();
@@ -272,7 +316,7 @@
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
     },
-    renderIndex: function (data, id) {
+    renderIndex: function (data, id, rerender) {
       this.index = data;
 
       // get pending jobs
@@ -324,6 +368,10 @@
       if (this.index) {
         var fieldString = '';
         var actionString = '';
+
+        if (rerender) {
+          $('#collectionEditIndexTable tbody').empty();
+        }
 
         _.each(this.index.indexes, function (v) {
           if (v.type === 'primary' || v.type === 'edge') {
