@@ -101,8 +101,9 @@ Result DatabaseTailingSyncer::saveApplierState() {
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionFinalize(
-    std::string const& collectionName) {
+Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
+    std::string const& collectionName, bool hard, TRI_voc_tick_t& until) {
+
   setAborted(false);
   // fetch master state just once
   Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
@@ -116,9 +117,18 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
   _ignoreRenameCreateDrop = true;
 
   TRI_voc_tick_t fromTick = _initialTick;
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
-      << fromTick;
+  if (hard) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
+        << fromTick;
+  } else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "starting syncCollectionCatchup:" << collectionName << ", fromTick "
+        << fromTick;
+  }
+
+  auto clock = std::chrono::steady_clock;
+  auto startTime = clock.now();
 
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
@@ -138,11 +148,13 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
                                           0));
 
     if (replutils::hasFailed(response.get())) {
+      until = fromTick;
       return replutils::buildHttpError(response.get(), url, _state.connection);
     }
 
     if (response->getHttpReturnCode() == 204) {
       // HTTP 204 No content: this means we are done
+      until = fromTick;
       return Result();
     }
 
@@ -157,6 +169,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
     header = response->getHeaderField(
         StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
+      until = fromTick;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
                         _state.master.endpoint + ": required header " +
@@ -173,6 +186,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
       fromIncluded = StringUtils::boolean(header);
     }
     if (!fromIncluded && fromTick > 0) {  // && _requireFromPresent
+      until = fromTick;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") +
@@ -189,6 +203,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
     Result r =
         applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
     if (r.fail()) {
+      until = fromTick;
       return r;
     }
 
@@ -202,8 +217,27 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
                                            << "this indicates we're at the end";
     }
 
+    // If this is non-hard, we employ some heuristics to stop early:
+    if (!hard) {
+      if (clock.now() - startTime > std::chrono::hours(1)) {
+        checkMore = false;
+      } else {
+        TRI_voc_tick_t lastTick = 0;
+        header = response->getHeaderField(
+            StaticStrings::ReplicationHeaderLastIncluded, found);
+        if (found) {
+          lastTick = StringUtils::uint64(header);
+          if (lastTick > lastIncludedTick &&   // just to make sure!
+              lastTick - lastIncludedTick < 1000) {
+            checkMore = false;
+          }
+        }
+      }
+    }
+
     if (!checkMore) {
       // done!
+      until = fromTick;
       return Result();
     }
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
