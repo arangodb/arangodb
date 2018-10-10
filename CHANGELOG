@@ -38,6 +38,21 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 
   "missing variable #3 (a) for node #7 (EnumerateViewNode) while planning registers"
 
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
+* Restricted usage of views in AQL, they will throw an error now
+  (e.g. "FOR v, e, p IN 1 OUTBOUND @start edgeCollection, view")
+  instead of failing the server.
+
+* Allow VIEWs within the AQL "WITH" statement in cluster environment.
+  This will now prepare the query for all collections linked within a view.
+  (e.g. "WITH view FOR v, e, p IN OUTBOUND 'collectionInView/123' edgeCollection"
+  will now be executed properly and not fail with unregistered collection any more)
+
+* Properly check permissions for all collections linked to a view when
+  instantiating an AQL query in cluster environment
+
 * support installation of ArangoDB on Windows into directories with multibyte
   character filenames on Windows platforms that used a non-UTF8-codepage
 

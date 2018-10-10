@@ -44,7 +44,6 @@ class StringRef; // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class LogicalDataSource {
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief singleton marker identifying the logical data-source category
   ///        each category is identity-compared for equivalence
@@ -53,13 +52,14 @@ class LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   class Category final {
    public:
-    Category() {}
+    Category() = default;
     Category(Category const&) = delete;
-    Category(Category&&) noexcept = delete;
+    Category(Category&&) = delete;
     Category& operator=(Category const&) = delete;
-    Category& operator=(Category&&) noexcept = delete;
+    Category& operator=(Category&&) = delete;
     bool operator==(Category const& other) const noexcept { return this == &other; }
     bool operator!=(Category const& other) const noexcept { return this != &other; }
+    operator Category const*() const noexcept { return this; }
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -72,6 +72,7 @@ class LogicalDataSource {
     Type(Type&& other) noexcept = default;
     bool operator==(Type const& other) const noexcept { return this == &other; }
     bool operator!=(Type const& other) const noexcept { return this != &other; }
+    operator Type const*() const noexcept { return this; }
     static Type const& emplace(arangodb::velocypack::StringRef const& name);
     std::string const& name() const noexcept { return _name; }
 
