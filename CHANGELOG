@@ -1,6 +1,9 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #6808: newly created databases within the Web UI did not
+  appear when used Internet Explorer 11 as a browser.
+
 * improved logging in case of replication errors
 
 * recover short server id from agency after a restart of a cluster node
