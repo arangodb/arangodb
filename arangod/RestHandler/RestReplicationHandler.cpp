@@ -2258,7 +2258,23 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  Result res = createBlockingTransaction(id, *col, ttl);
+  // This is an optional parameter, it may not be set (backwards compatible)
+  // If it is not set it will default to a hard-lock, otherwise we do a
+  // potentially faster soft-lock synchronisation with a smaller hard-lock phase.
+
+  VPackSlice const lockTypeSlice = body.get("doHardLock");
+  bool doHardLock = VelocyPackHelper::getBooleanValue(lockTypeSlice, true);
+  AccessMode::Type lockType = AccessMode::Type::READ;
+  if (doHardLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
+    // With doHardLock we trigger RocksDB to stop writes on this shard.
+    // With a softLock we only stop the WAL from beeing collected,
+    // but still allow writes.
+    // This has potential to never ever finish, so we need a short
+    // hard lock for the final sync.
+    lockType = AccessMode::Type::EXCLUSIVE;
+  }
+
+  Result res = createBlockingTransaction(id, *col, ttl, lockType);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2591,7 +2607,8 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col,
-                                                         double ttl) const {
+                                                         double ttl,
+                                                         AccessMode::Type access) const {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -2617,11 +2634,6 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   }
 
   {
-    // we need to lock in EXCLUSIVE mode here, because simply locking
-    // in READ mode will not stop other writers in RocksDB. In order
-    // to stop other writers, we need to fetch the EXCLUSIVE lock
-    AccessMode::Type access = EngineSelectorFeature::ENGINE->typeName() == "rocksdb"
-      ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ;
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
     query->setTransactionContext(ctx);
