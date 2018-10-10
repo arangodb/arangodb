@@ -55,7 +55,7 @@ function runSetup () {
 
   // this should trigger the background sync thread at least once,
   // though this is not guaranteed under high load
-  c.recalculateCounts();
+  c.recalculateCount();
 
   internal.debugSegfault('crashing server');
 }
