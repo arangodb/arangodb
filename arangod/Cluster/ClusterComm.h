@@ -403,21 +403,21 @@ struct ClusterCommRequest {
     }
     return *headerFields;
   }
-  
+
   void setHeaders(
       std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
   }
- 
-  /// @brief "safe" accessor for body 
+
+  /// @brief "safe" accessor for body
   std::string const& getBody() const {
     if (body == nullptr) {
       return noBody;
     }
     return *body;
   }
-  
-  /// @brief "safe" accessor for body 
+
+  /// @brief "safe" accessor for body
   std::shared_ptr<std::string const> getBodyShared() const {
     if (body == nullptr) {
       return sharedNoBody;
@@ -581,7 +581,7 @@ class ClusterComm {
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
-  /// of ClusterCommRequest structs in the following way: 
+  /// of ClusterCommRequest structs in the following way:
   /// Each request is done with asyncRequest.
   /// After each request is successfully send out we drop all requests.
   /// Hence it is guaranteed that all requests are send, but
@@ -592,7 +592,7 @@ class ClusterComm {
   /// instead.
   ////////////////////////////////////////////////////////////////////////////////
   void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
- 
+
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
   }
@@ -604,6 +604,13 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   void disable();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief push all libcurl callback work to Scheduler threads.  It is a
+  ///  public static function that any object can use.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void scheduleMe(std::function<void()> task);
 
  protected:  // protected members are for unit test purposes
 

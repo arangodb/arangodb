@@ -424,6 +424,7 @@ OperationID ClusterComm::asyncRequest(
 
   Callbacks callbacks;
   bool doLogConnectionErrors = logConnectionErrors();
+  callbacks._scheduleMe = scheduleMe;
 
   if (callback) {
     callbacks._onError = [callback, result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
@@ -556,6 +557,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       wasSignaled = true;
       cv.signal();
   });
+  callbacks._scheduleMe = scheduleMe;
 
   communicator::Options opt;
   opt.requestTimeout = timeout;
@@ -1236,6 +1238,10 @@ std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<s
 void ClusterComm::disable() {
    _communicator->disable();
    _communicator->abortRequests();
+}
+
+void ClusterComm::scheduleMe(std::function<void()> task) {
+  arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
