@@ -307,6 +307,9 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     );
   }
 
+  // open up a read transaction and add all linked collections to verify that
+  // the current user has access
+
   arangodb::velocypack::Builder links;
   std::vector<std::string> collections;
   for (auto& entry: _collections) {
