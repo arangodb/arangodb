@@ -418,7 +418,7 @@ def next_step(fp, line, r):
     elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
     elif r.RESTALLBODYPARAM.match(line):      return restallbodyparam, (fp, line)
     elif r.RESTDESCRIPTION.match(line):       return restdescription, (fp, line)
-    elif r.HINTS.match(line):                  return hints, (fp, line)
+    elif r.HINTS.match(line):                 return hints, (fp, line)
     elif r.RESTHEADER.match(line):            return restheader, (fp, line)
     elif r.RESTHEADERPARAM.match(line):       return restheaderparam, (fp, line)
     elif r.RESTHEADERPARAMETERS.match(line):  return restheaderparameters, (fp, line)

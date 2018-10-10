@@ -2,6 +2,13 @@
 @startDocuBlock put_api_simple_range
 @brief returns all documents of a collection within a range
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTHEADER{PUT /_api/simple/range, Simple range query}
 
 @RESTBODYPARAM{collection,string,required,string}
@@ -43,13 +50,6 @@ is to use an AQL query as follows:
       FILTER doc.value >= @left && doc.value < @right 
       LIMIT @skip, @limit 
       RETURN doc`
-
-@HINTS
-{% hint 'warning' %}
-This route should no longer be used.
-All endpoints for Simple Queries are deprecated from version 3.4 on.
-They are superseded by AQL queries.
-{% endhint %}
 
 @RESTRETURNCODES
 

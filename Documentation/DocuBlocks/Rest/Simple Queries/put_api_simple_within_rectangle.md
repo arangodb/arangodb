@@ -2,6 +2,13 @@
 @startDocuBlock put_api_simple_within_rectangle
 @brief returns all documents of a collection within a rectangle
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}
 
 @RESTBODYPARAM{collection,string,required,string}
@@ -40,13 +47,6 @@ coordinates for the document.  If you have more than one geo-spatial index,
 you can use the *geo* field to select a particular index.
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
-
-@HINTS
-{% hint 'warning' %}
-This route should no longer be used.
-All endpoints for Simple Queries are deprecated from version 3.4 on.
-They are superseded by AQL queries.
-{% endhint %}
 
 @RESTRETURNCODES
 

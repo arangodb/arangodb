@@ -2,6 +2,13 @@
 @startDocuBlock put_api_simple_remove_by_example
 @brief removes all documents of a collection that match an example
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTHEADER{PUT /_api/simple/remove-by-example, Remove documents by example}
 
 @RESTBODYPARAM{collection,string,required,string}
@@ -33,13 +40,6 @@ Note: the *limit* attribute is not supported on sharded collections.
 Using it will result in an error.
 
 Returns the number of documents that were deleted.
-
-@HINTS
-{% hint 'warning' %}
-This route should no longer be used.
-All endpoints for Simple Queries are deprecated from version 3.4 on.
-They are superseded by AQL queries.
-{% endhint %}
 
 @RESTRETURNCODES
 

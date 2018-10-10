@@ -2,6 +2,13 @@
 @startDocuBlock put_api_simple_fulltext
 @brief returns documents of a collection as a result of a fulltext query
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTHEADER{PUT /_api/simple/fulltext, Fulltext index query}
 
 @RESTBODYPARAM{collection,string,required,string}
@@ -42,13 +49,6 @@ as follows:
 
     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
       RETURN doc
-
-@HINTS
-{% hint 'warning' %}
-This route should no longer be used.
-All endpoints for Simple Queries are deprecated from version 3.4 on.
-They are superseded by AQL queries.
-{% endhint %}
 
 @RESTRETURNCODES
 

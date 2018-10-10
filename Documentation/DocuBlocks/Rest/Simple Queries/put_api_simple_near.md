@@ -2,6 +2,13 @@
 @startDocuBlock put_api_simple_near
 @brief returns all documents of a collection near a given location
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
 
 @RESTBODYPARAM{collection,string,required,string}
@@ -49,13 +56,6 @@ to issue an [AQL query](../../AQL/Functions/Geo.html) using the *NEAR* function 
 
     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
       RETURN doc`
-
-@HINTS
-{% hint 'warning' %}
-This route should no longer be used.
-All endpoints for Simple Queries are deprecated from version 3.4 on.
-They are superseded by AQL queries.
-{% endhint %}
 
 @RESTRETURNCODES
 

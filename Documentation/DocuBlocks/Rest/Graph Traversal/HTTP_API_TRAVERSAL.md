@@ -2,19 +2,19 @@
 @startDocuBlock HTTP_API_TRAVERSAL
 @brief execute a server-side traversal
 
-@RESTHEADER{POST /_api/traversal,executes a traversal}
-
-@RESTDESCRIPTION
-Starts a traversal starting from a given vertex and following.
-edges contained in a given edgeCollection. The request must
-contain the following attributes.
-
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 It is considered as deprecated from version 3.4 on.
 It is superseded by AQL graph traversal.
 {% endhint %}
+
+@RESTHEADER{POST /_api/traversal,executes a traversal}
+
+@RESTDESCRIPTION
+Starts a traversal starting from a given vertex and following.
+edges contained in a given edgeCollection. The request must
+contain the following attributes.
 
 @RESTBODYPARAM{startVertex,string,required,string}
 id of the startVertex, e.g. *"users/foo"*.

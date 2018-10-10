@@ -2,6 +2,12 @@
 @startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+It is considered as deprecated from version 3.4 on.
+{% endhint %}
+
 @RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
 
 @RESTQUERYPARAMETERS
@@ -109,12 +115,6 @@ The response will also contain the following HTTP headers:
   to sleep for a while before calling the logger again.
 
 **Note**: this method is not supported on a coordinator in a cluster.
-
-@HINTS
-{% hint 'warning' %}
-This route should no longer be used.
-It is considered as deprecated from version 3.4 on.
-{% endhint %}
 
 @RESTRETURNCODES
 
