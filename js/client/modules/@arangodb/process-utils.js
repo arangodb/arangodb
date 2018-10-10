@@ -385,9 +385,9 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
       options.exceptionCount
     ];
     let filters = options.exceptionFilter.split(',');
-    for (let exceptionFilter in filters) {
+    for (let which in filters) {
       procdumpArgs.push('-f');
-      procdumpArgs.push(exceptionFilter);
+      procdumpArgs.push(filters[which]);
     }
     procdumpArgs.push('-ma');
     procdumpArgs.push(pid);
@@ -403,7 +403,7 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
   }
   try {
     if (options.extremeVerbosity) {
-      print("Stariting procdump: " + JSON.stringify(procdumpArgs));
+      print("Starting procdump: " + JSON.stringify(procdumpArgs));
     }
     instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
   } catch (x) {
