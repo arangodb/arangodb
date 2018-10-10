@@ -224,7 +224,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       } else {
         TRI_voc_tick_t lastTick = 0;
         header = response->getHeaderField(
-            StaticStrings::ReplicationHeaderLastIncluded, found);
+            StaticStrings::ReplicationHeaderLastTick, found);
         if (found) {
           lastTick = StringUtils::uint64(header);
           if (lastTick > lastIncludedTick &&   // just to make sure!
