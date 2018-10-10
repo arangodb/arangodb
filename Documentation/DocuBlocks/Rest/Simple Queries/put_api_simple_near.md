@@ -50,7 +50,7 @@ to issue an [AQL query](../../AQL/Functions/Geo.html) using the *NEAR* function 
     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
       RETURN doc`
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.

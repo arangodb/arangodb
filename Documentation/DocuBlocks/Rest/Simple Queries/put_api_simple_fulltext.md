@@ -43,7 +43,7 @@ as follows:
     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
       RETURN doc
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.

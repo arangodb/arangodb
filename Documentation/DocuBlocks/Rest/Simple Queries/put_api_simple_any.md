@@ -8,7 +8,7 @@
 Returns a random document from a collection. The call expects a JSON object
 as body with the following attributes:
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.

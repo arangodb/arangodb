@@ -17,7 +17,7 @@ endpoint.
 only. Calling this action in any other database will make the server return
 an error.
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 It is considered as deprecated from version 3.4 on.

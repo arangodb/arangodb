@@ -51,7 +51,7 @@ Using it will result in an error.
 
 Returns the number of documents that were updated.
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.

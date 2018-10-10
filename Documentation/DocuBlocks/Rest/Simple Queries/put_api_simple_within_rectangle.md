@@ -41,7 +41,7 @@ you can use the *geo* field to select a particular index.
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.

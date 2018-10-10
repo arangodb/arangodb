@@ -110,7 +110,7 @@ The response will also contain the following HTTP headers:
 
 **Note**: this method is not supported on a coordinator in a cluster.
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 It is considered as deprecated from version 3.4 on.
