@@ -181,6 +181,7 @@ function checkMonitorAlive (binary, arangod, options, res) {
         if (arangod.monitor.exit !== 0) {
           // ok, procdump exited with a failure,
           // this means it wrote an exception dump.
+          print("checkMonitorAlive: marking crashy");
           arangod.monitor.monitorExited = true;
           arangod.monitor.pid = null;
           pu.serverCrashed = true;
