@@ -909,7 +909,7 @@ def hints(cargo, r=Regexen()):
 
     ret = generic_handler_desc(cargo, r, "hints", None, operation, 'x-hints')
 
-    if r.TRIPLENEWLINEATSTART.match(operation['x-hints']:
+    if r.TRIPLENEWLINEATSTART.match(operation['x-hints']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
         exit(1)
