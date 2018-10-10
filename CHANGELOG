@@ -19,6 +19,12 @@ v3.3.18 (XXXX-XX-XX)
 * fixed internal issue #1983: the Web UI was showing a deletion confirmation
   multiple times.
 
+* handle missing `_frontend` collections gracefully
+
+  the `_frontend` system collection is not required for normal ArangoDB operations,
+  so if it is missing for whatever reason, ensure that normal operations can go
+  on.
+
 
 v3.3.17 (2018-10-04)
 --------------------
