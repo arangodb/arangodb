@@ -37,12 +37,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#databaseDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -97,7 +92,7 @@
 
               if (self.dropdownVisible === true) {
                 $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
-                $('#databaseToggle').toggleClass('activated');
+                $('#databaseToggle').addClass('activated');
                 $('#databaseDropdown2').show();
               }
 
@@ -114,12 +109,24 @@
       return this;
     },
 
+    checkVisibility: function () {
+      if ($('#databaseDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#databaseDropdown');
+    },
+
     toggleSettingsDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#databaseToggle').toggleClass('activated');
-      $('#databaseDropdown2').slideToggle(200);
+      $('#databaseDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     selectedDatabase: function () {
