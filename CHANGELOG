@@ -1,5 +1,9 @@
 devel
 -----
+
+* fix internal issue #6808: newly created databases within the Web UI did not
+  appear when used Internet Explorer 11 as a browser.
+
 * dynamically manage libcurl's number of open connections to increase performance
   by reducing the number of socket close and then reopen cycles
 
