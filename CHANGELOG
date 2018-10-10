@@ -1,6 +1,9 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #2035: the Web UI now updates its indices view to check
+  whether new indices exist or not.
+
 * improved logging in case of replication errors
 
 * recover short server id from agency after a restart of a cluster node
