@@ -251,10 +251,10 @@ arangodb::Result addShardFollower (
           // path and run the full sync protocol. Therefore we error out
           // here. Note that we are in the lockJobId == 0 case, which is
           // the shortcut.
-          LOG_TOPIC(INFO, Logger::MAINTENANCE)
-            << "Short cut synchronization for shard " << shard
-            << " did not work, since we got a document in the meantime.";
-          return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+          std::string msg = "Short cut synchronization for shard " + shard
+            + " did not work, since we got a document in the meantime.";
+          LOG_TOPIC(INFO, Logger::MAINTENANCE) << msg;
+          return arangodb::Result(TRI_ERROR_INTERNAL, msg);
         }
       }
     }
