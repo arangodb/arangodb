@@ -153,7 +153,7 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * fixed issue #6495: Document not found when removing records
 
-* fixed undefined behavior is cluster plan-loading procedure that may have
+* fixed undefined behavior in cluster plan-loading procedure that may have
   unintentionally modified a shared structure
 
 * reduce overhead of function initialization in AQL COLLECT aggregate functions,
