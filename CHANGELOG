@@ -1,9 +1,19 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+* dynamically manage libcurl's number of open connections to increase performance
+  by reducing the number of socket close and then reopen cycles
+
+* recover short server id from agency after a restart of a cluster node
+
+  this fixes problems with short server ids being set to 0 after a node restart,
+  which then prevented cursor result load-forwarding between multiple coordinators
+  to work properly
+
+  this should fix arangojs#573
 
 * include forward-ported diagnostic options for debugging LDAP connections
 
-* fixed internal issue #3065: fix variable replacements by the AQL query 
+* fixed internal issue #3065: fix variable replacements by the AQL query
   optimizer in arangosearch view search conditions
 
   The consequence of the missing replacements was that some queries using view
@@ -136,7 +146,7 @@ v3.4.0-rc.2 (2018-09-30)
 
 * fixed issue #6495: Document not found when removing records
 
-* fixed undefined behavior is cluster plan-loading procedure that may have
+* fixed undefined behavior in cluster plan-loading procedure that may have
   unintentionally modified a shared structure
 
 * reduce overhead of function initialization in AQL COLLECT aggregate functions,
