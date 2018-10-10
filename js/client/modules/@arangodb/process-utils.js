@@ -468,15 +468,17 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     pid: 0,
     exitStatus: {}
   };
+
+  let res = {};
   if (platform.substr(0, 3) === 'win') {
-    let res = executeExternal(cmd, args);
+    res = executeExternal(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     runProcdump(options, instanceInfo, rootDir, res.pid);
     Object.assign(instanceInfo.exitStatus, 
                   statusExternal(res.pid, true));
   } else {
-    let res = executeExternalAndWait(cmd, args);
+    res = executeExternalAndWait(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
