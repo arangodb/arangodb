@@ -380,7 +380,7 @@ class Regexen:
         self.RESTSTRUCT = re.compile('.*@RESTSTRUCT')
         self.RESTALLBODYPARAM = re.compile('.*@RESTALLBODYPARAM')
         self.RESTDESCRIPTION = re.compile('.*@RESTDESCRIPTION')
-        self.HINT = re.compile('.*@HINT')
+        self.HINTS = re.compile('.*@HINTS')
         self.RESTDONE = re.compile('.*@RESTDONE')
         self.RESTHEADER = re.compile('.*@RESTHEADER{')
         self.RESTHEADERPARAM = re.compile('.*@RESTHEADERPARAM{')
@@ -418,7 +418,7 @@ def next_step(fp, line, r):
     elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
     elif r.RESTALLBODYPARAM.match(line):      return restallbodyparam, (fp, line)
     elif r.RESTDESCRIPTION.match(line):       return restdescription, (fp, line)
-    elif r.HINT.match(line):                  return hint, (fp, line)
+    elif r.HINTS.match(line):                  return hints, (fp, line)
     elif r.RESTHEADER.match(line):            return restheader, (fp, line)
     elif r.RESTHEADERPARAM.match(line):       return restheaderparam, (fp, line)
     elif r.RESTHEADERPARAMETERS.match(line):  return restheaderparameters, (fp, line)
@@ -573,7 +573,7 @@ def restheader(cargo, r=Regexen()):
 
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
-        'x-hints': [],
+        'x-hints': '',
         'x-examples': [],
         'tags': [currentTag],
         'summary': summary.strip(),
@@ -901,19 +901,17 @@ def restdescription(cargo, r=Regexen()):
     return ret
 
 ################################################################################
-### @brief hint
+### @brief hints
 ################################################################################
 
-def hint(cargo, r=Regexen()):
+def hints(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    currentHint = len(operation['x-hints'])
-    operation['x-hints'].append('\n\n')
 
-    ret = generic_handler_desc(cargo, r, "hints", None, operation['x-hints'], currentHint)
+    ret = generic_handler_desc(cargo, r, "hints", None, operation, 'x-hints')
 
-    if r.TRIPLENEWLINEATSTART.match(operation['x-hints'][currentHint]):
+    if r.TRIPLENEWLINEATSTART.match(operation['x-hints']:
         (fp, last) = cargo
-        print >> sys.stderr, 'remove newline after @HINT in file %s' % (fp.name)
+        print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
         exit(1)
 
     return ret
@@ -1189,7 +1187,7 @@ automat.add_state(restbodyparam)
 automat.add_state(reststruct)
 automat.add_state(restallbodyparam)
 automat.add_state(restdescription)
-automat.add_state(hint)
+automat.add_state(hints)
 automat.add_state(restheader)
 automat.add_state(restheaderparam)
 automat.add_state(restheaderparameters)
@@ -1447,15 +1445,15 @@ for route in swagger['paths'].keys():
             #print thisVerb['description']
 
         # Simplify hint box code to something that works in Swagger UI
-        # Place invisible markers, so that hints can be removed later on
+        # Append the result to the description field
+        # Place invisible markers, so that hints can be removed again
         if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
             thisVerb['description'] += '\n<!-- Hints Start -->'
-            for nHint in range(0, len(thisVerb['x-hints'])):
-                tmp = re.sub("{% hint '([^']+?)' %}(?:\r\n|\r|\n)?",
-                            lambda match: "<br/>\n**{}:**  ".format(match.group(1).title()),
-                            thisVerb['x-hints'][nHint])
-                tmp = re.sub('{%[^%]*?%}', '', tmp)
-                thisVerb['description'] += tmp
+            tmp = re.sub("{% hint '([^']+?)' %}(?:\r\n|\r|\n)?",
+                         lambda match: "<br/>\n**{}:**  ".format(match.group(1).title()),
+                         thisVerb['x-hints'])
+            tmp = re.sub('{%[^%]*?%}', '', tmp)
+            thisVerb['description'] += tmp
             thisVerb['description'] += '<br/>\n<!-- Hints End -->'
 
         # Append the examples to the description:

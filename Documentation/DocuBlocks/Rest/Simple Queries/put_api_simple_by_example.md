@@ -29,14 +29,13 @@ This will find all documents matching a given example.
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
 
-@HINT
+@HINTS
 {% hint 'warning' %}
 This route should no longer be used.
 All endpoints for Simple Queries are deprecated from version 3.4 on.
 They are superseded by AQL queries.
 {% endhint %}
 
-@HINT
 {% hint 'warning' %}
 Till ArangoDB versions 3.2.13 and 3.3.7 this API is quite expensive.
 A more lightweight alternative is to use the [HTTP Cursor API](../AqlQueryCursor/README.md).
