@@ -927,7 +927,7 @@ TEST(concurrent_linked_list_test, push_pop) {
 
   node_type* node = 0;
   auto rbegin = nodes.rbegin();
-  while (node = list.pop()) {
+  while ((node = list.pop())) {
     ASSERT_EQ(&*rbegin, node);
     list.push(*node);
     node = list.pop();

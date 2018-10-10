@@ -71,6 +71,7 @@ class IRESEARCH_API read_write_mutex final {
   class read_mutex {
    public:
     read_mutex(read_write_mutex& mutex): mutex_(mutex) {}
+    read_mutex& operator=(read_mutex&) = delete; // because of reference
     void lock() { mutex_.lock_read(); }
     bool try_lock() { return mutex_.try_lock_read(); }
     void unlock() { mutex_.unlock(); }
@@ -82,6 +83,7 @@ class IRESEARCH_API read_write_mutex final {
   class write_mutex {
    public:
     write_mutex(read_write_mutex& mutex): mutex_(mutex) {}
+    write_mutex& operator=(write_mutex&) = delete; // because of reference
     void lock() { mutex_.lock_write(); }
     bool owns_write() { return mutex_.owns_write(); }
     bool try_lock() { return mutex_.try_lock_write(); }

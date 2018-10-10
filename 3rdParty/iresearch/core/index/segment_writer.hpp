@@ -27,6 +27,7 @@
 #include "field_data.hpp"
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
+#include "utils/bitvector.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/type_limits.hpp"
@@ -214,7 +215,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   // implicitly NOEXCEPT since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    remove(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+    assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
+    remove(doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1)); // -1 for 0-based offset
     valid_ = false;
   }
 
@@ -329,7 +331,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   update_contexts docs_context_;
-  document_mask docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
+  bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   fields_data fields_;
   std::unordered_map<hashed_string_ref, column> columns_;
   std::unordered_set<field_data*> norm_fields_; // document fields for normalization
