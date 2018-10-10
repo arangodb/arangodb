@@ -51,7 +51,7 @@ LogicalView::LogicalView(
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
-     category(),
+     LogicalView::category(),
      LogicalDataSource::Type::emplace(
        arangodb::basics::VelocyPackHelper::getStringRef(
          definition, StaticStrings::DataSourceType, ""

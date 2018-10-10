@@ -176,7 +176,7 @@ LogicalCollection::LogicalCollection(
     bool isAStub,
     uint64_t planVersion /*= 0*/
 ): LogicalDataSource(
-     category(),
+     LogicalCollection::category(),
      ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
      vocbase,
      arangodb::basics::VelocyPackHelper::extractIdValue(info),
@@ -251,15 +251,15 @@ LogicalCollection::LogicalCollection(
   // together.
   prepareIndexes(info.get("indexes"));
 }
-   
-LogicalCollection::~LogicalCollection() {}
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
   static const Category category;
 
   return category;
 }
-  
+   
+LogicalCollection::~LogicalCollection() {}
+
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
