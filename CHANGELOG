@@ -1,5 +1,9 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
 * dynamically manage libcurl's number of open connections to increase performance
   by reducing the number of socket close and then reopen cycles
 
