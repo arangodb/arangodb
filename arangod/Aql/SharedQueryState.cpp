@@ -69,6 +69,8 @@ bool SharedQueryState::executeContinueCallback() const {
     // We are shutting down
     return false;
   }
-  scheduler->post(_continueCallback, false);
+  // do NOT use scheduler->post(), can have high latency that
+  //  then backs up libcurl callbacks to other objects
+  scheduler->queue(RequestPriority::HIGH, _continueCallback);
   return true;
 }
