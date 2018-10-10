@@ -67,7 +67,7 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   /// Internally, both use `syncCollectionCatchupInternal`.
   Result syncCollectionCatchup(std::string const& collectionName,
                                TRI_voc_tick_t& until) {
-    return syncCollectionCatchupInternal(collectionName, false, dummy);
+    return syncCollectionCatchupInternal(collectionName, false, until);
   }
 
   Result syncCollectionCatchupInternal(std::string const& collectionName,

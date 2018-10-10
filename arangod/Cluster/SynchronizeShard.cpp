@@ -827,7 +827,7 @@ bool SynchronizeShard::first() {
         LOG_TOPIC(WARN, Logger::MAINTENANCE)
           << "synchronizeOneShard: long call to syncCollection for shard"
           << shard << " " << syncRes.errorMessage() <<  " start time: "
-          << timepointToString(startTime) <<  "end time: "
+          << timepointToString(startTime) <<  ", end time: "
           << timepointToString(system_clock::now());
         longSync = true;
       }
