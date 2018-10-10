@@ -2659,9 +2659,6 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 }
 
 ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
-  // We try to get a lease of the query.
-  // If this is sucessful we will have the lock,
-  // otherwise we do not have it.
   // The query is only hold for long during initial locking
   // there it should return false.
   // In all other cases it is released quickly.
@@ -2669,18 +2666,12 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   if (queryRegistry == nullptr) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
-  try {
-    auto query = queryRegistry->open(&_vocbase, id);
-    if (query == nullptr) {
-      return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND, "no hold read lock job found for 'id'");
-    }
-    TRI_DEFER(queryRegistry->close(&_vocbase, id));
-    return true;
-  } catch (...) {
-    // Query exists, but is in use.
-    // So in Locking phase
-    return false;
+  auto res = queryRegistry->isQueryInUse(&_vocbase, id);
+  if (!res.ok()) {
+    // API compatibility
+    res.reset(TRI_ERROR_HTTP_NOT_FOUND, "no hold read lock job found for 'id'");
   }
+  return res;
 }
 
 ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id) const {

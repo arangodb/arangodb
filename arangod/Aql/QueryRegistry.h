@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Aql/types.h"
+#include "Cluster/ResultT.h"
 
 struct TRI_vocbase_t;
 
@@ -78,6 +79,8 @@ public:
   TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode);
 
   void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
+
+  ResultT<bool> isQueryInUse(TRI_vocbase_t* vocbase, QueryId id);
 
   /// @brief expireQueries, this deletes all expired queries from the registry
   void expireQueries();

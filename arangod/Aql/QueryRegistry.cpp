@@ -228,6 +228,24 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
   destroy(vocbase->name(), id, errorCode);
 }
 
+ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t*, QueryId id) {
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << "is in use.";
+  
+  READ_LOCKER(readLocker, _lock);
+
+  auto m = _queries.find(vocbase->name());
+  if (m == _queries.end()) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Found no queries for DB: " << vocbase->name();
+    return {TRI_ERROR_QUERY_NOT_FOUND};
+  }
+  auto q = m->second.find(id);
+  if (q == m->second.end()) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query id " << id << " not found in registry";
+    return {TRI_ERROR_QUERY_NOT_FOUND};
+  }
+  return q->second->_isOpen;
+}
+
 /// @brief expireQueries
 void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
