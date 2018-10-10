@@ -1448,12 +1448,14 @@ for route in swagger['paths'].keys():
 
         # Replace hint box tags with something that works in Swagger UI
         if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
+            thisVerb['description'] += '\n<!-- Hints Start -->'
             for nHint in range(0, len(thisVerb['x-hints'])):
                 tmp = re.sub("{% hint '([^']+?)' %}(?:\r\n|\r|\n)?",
                             lambda match: "\n**{}:**  ".format(match.group(1).title()),
                             thisVerb['x-hints'][nHint])
                 tmp = re.sub('{%[^%]*?%}', '', tmp)
-                thisVerb['x-hints'][nHint] = tmp
+                thisVerb['description'] += tmp
+            thisVerb['description'] += '\n<!-- Hints End -->'
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
