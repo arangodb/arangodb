@@ -127,7 +127,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
         << fromTick;
   }
 
-  auto clock = std::chrono::steady_clock;
+  auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
 
   while (true) {
