@@ -1,6 +1,9 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
 * improved logging in case of replication errors
 
 * recover short server id from agency after a restart of a cluster node
