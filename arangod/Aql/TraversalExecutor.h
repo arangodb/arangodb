@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 
 #include "Aql/ExecutorInfos.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/TraversalStats.h"
 
@@ -76,6 +77,7 @@ class TraversalExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   InputAqlItemRow _input;
+  ExecutionState _rowState;
 
 };
 
