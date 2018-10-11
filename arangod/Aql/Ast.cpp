@@ -1230,8 +1230,6 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
           } catch (...) {
           }
         }
-      } else {
-        LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Using view " + nameRef.toString() + " in WITH, this does not have effect.";
       }
     }// else bindParameter use default for collection bindVar
 
