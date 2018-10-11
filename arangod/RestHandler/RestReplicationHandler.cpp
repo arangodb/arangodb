@@ -2262,8 +2262,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // If it is not set it will default to a hard-lock, otherwise we do a
   // potentially faster soft-lock synchronisation with a smaller hard-lock phase.
 
-  VPackSlice const lockTypeSlice = body.get("doHardLock");
-  bool doHardLock = VelocyPackHelper::getBooleanValue(lockTypeSlice, true);
+  bool doHardLock = VelocyPackHelper::getBooleanValue(body, "doHardLock", true);
   AccessMode::Type lockType = AccessMode::Type::READ;
   if (doHardLock && EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
     // With doHardLock we trigger RocksDB to stop writes on this shard.
