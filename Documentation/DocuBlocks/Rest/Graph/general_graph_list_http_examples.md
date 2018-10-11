@@ -13,7 +13,7 @@ Lists all graphs stored in this database.
 Is returned if the module is available and the graphs could be listed.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}

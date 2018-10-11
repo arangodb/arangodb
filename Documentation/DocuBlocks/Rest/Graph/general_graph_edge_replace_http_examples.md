@@ -54,7 +54,7 @@ the used edge definition.
 Returned if the request was successful but waitForSync is true.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -79,7 +79,7 @@ Will only be present if returnOld is true.
 Returned if the request was successful but waitForSync is false.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -127,7 +127,7 @@ Returned in the following cases:
 * either `_from` or `_to` vertex does not exist.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -143,7 +143,7 @@ A message created for this error.
 Returned if if-match header is given, but the stored documents revision is different.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}

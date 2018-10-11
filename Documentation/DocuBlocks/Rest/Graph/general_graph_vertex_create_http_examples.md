@@ -32,7 +32,7 @@ The body has to be the JSON object to be stored.
 Returned if the vertex could be added and waitForSync is true.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -51,7 +51,7 @@ Will only be present if returnNew is true.
 Returned if the request was successful but waitForSync is false.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -92,7 +92,7 @@ Returned if no graph with this name could be found.
 Or if a graph is found but this collection is not part of the graph.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}

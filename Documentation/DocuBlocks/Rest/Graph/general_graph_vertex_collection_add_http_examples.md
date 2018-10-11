@@ -20,7 +20,7 @@ for the `_graphs` collection, or given in the request.
 The response body contains the graph configuration that has been stored.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -35,7 +35,7 @@ for the `_graphs` collection, or given in the request.
 The response body contains the graph configuration that has been stored.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -84,7 +84,7 @@ A message created for this error.
 Returned if no graph with this name could be found.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}

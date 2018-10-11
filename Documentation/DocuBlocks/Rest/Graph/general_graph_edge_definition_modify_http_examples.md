@@ -30,7 +30,7 @@ One or many vertex collections that can contain target vertices.
 Returned if the request was successful and waitForSync is true.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -43,7 +43,7 @@ The information about the modified graph.
 Returned if the request was successful but waitForSync is false.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -57,7 +57,7 @@ Returned if no edge definition with this name is found in the graph,
 or of the new definition is ill-formed and cannot be used.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -75,7 +75,7 @@ In order to drop a vertex you at least need to have the following privileges:
   1. `Administrate` access on the Database.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -91,7 +91,7 @@ A message created for this error.
 Returned if no graph with this name could be found.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}

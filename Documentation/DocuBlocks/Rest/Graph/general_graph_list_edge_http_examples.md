@@ -18,7 +18,7 @@ The name of the graph.
 Is returned if the edge definitions could be listed.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -32,7 +32,7 @@ Includes collections in edgeDefinitions as well as orphans.
 Returned if no graph with this name could be found.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
