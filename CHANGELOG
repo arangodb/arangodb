@@ -4,6 +4,9 @@ v3.3.18 (XXXX-XX-XX)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
+* fix internal issue #2764: the waitForSync property of a satellite collection
+  could not be changed via the Web UI
+
 * improved logging in case of replication errors
 
 * recover short server id from agency after a restart of a cluster node
