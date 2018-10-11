@@ -1,5 +1,9 @@
 devel
 -----
+
+* fix internal issue #2764: the waitForSync property of a satellite collection
+  could not be changed via the Web UI
+
 * dynamically manage libcurl's number of open connections to increase performance
   by reducing the number of socket close and then reopen cycles
 
