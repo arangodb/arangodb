@@ -77,6 +77,6 @@ function main (argv) {
     return runSetup();
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.writeDone();
+    return jsunity.writeDone().status ? 0 : 1;
   }
 }
