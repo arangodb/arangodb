@@ -1,6 +1,9 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #2035: the Web UI now updates its indices view to check
+  whether new indices exist or not.
+
 * fix internal issue #6808: newly created databases within the Web UI did not
   appear when used Internet Explorer 11 as a browser.
 
