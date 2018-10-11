@@ -1119,7 +1119,14 @@ arangodb::Result IResearchView::dropImpl() {
   arangodb::Result res;
 
   {
-    SCOPED_LOCK(_updateLinksLock);
+    if (!_updateLinksLock.try_lock()) {
+      return arangodb::Result(
+        TRI_ERROR_FAILED, // FIXME use specific error code
+        std::string("failed to remove arangosearch view '") + name()
+      );
+    }
+
+    ADOPT_SCOPED_LOCK_NAMED(_updateLinksLock, lock);
 
     res = IResearchLinkHelper::updateLinks(
       collections, vocbase(), *this, emptyObjectSlice(), stale
