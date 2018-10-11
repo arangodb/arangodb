@@ -111,7 +111,7 @@ Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
-The response code
+The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
 ArangoDB error number for the error that occured.

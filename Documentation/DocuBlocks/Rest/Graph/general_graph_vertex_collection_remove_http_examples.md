@@ -34,7 +34,7 @@ Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
-The response code
+The response code.
 
 @RESTREPLYBODY{graph,object,required,graph_representation}
 The information about the newly created graph
@@ -47,7 +47,7 @@ Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
-The response code
+The response code.
 
 @RESTREPLYBODY{graph,object,required,graph_representation}
 The information about the newly created graph
