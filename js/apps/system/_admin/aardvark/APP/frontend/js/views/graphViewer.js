@@ -1596,7 +1596,9 @@
           if (found === false) {
             if (newNode.id === existingNode.id) {
               if (existingNode.id === origin) {
-                existingNode.label = existingNode.label + ' (expanded)';
+                if (existingNode.label.indexOf(' (expanded)') === -1) {
+                  existingNode.label = existingNode.label + ' (expanded)';
+                }
               }
               found = true;
             } else {

@@ -35,7 +35,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-//
 #include "Logger/Logger.h"
 
 namespace {

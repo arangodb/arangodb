@@ -857,7 +857,7 @@ bool SynchronizeShard::first() {
       if (!syncRes.ok()) {
 
         std::stringstream error;
-        error << "could not initially synchronize shard " << shard
+        error << "could not initially synchronize shard " << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());

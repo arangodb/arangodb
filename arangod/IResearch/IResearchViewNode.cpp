@@ -356,6 +356,7 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+  TRI_ASSERT(LogicalView::category() == _view->category());
 
   // FIXME any other way to validate options before object creation???
   std::string error;
