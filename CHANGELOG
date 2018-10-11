@@ -1,6 +1,8 @@
 devel
 -----
 
+* added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
+
 * fix internal issue #2770: the Query Profiling modal dialog in the Web UI
   was slightly malformed.
 

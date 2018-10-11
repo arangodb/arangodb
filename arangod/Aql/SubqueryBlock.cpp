@@ -60,8 +60,7 @@ ExecutionState SubqueryBlock::initSubquery(size_t position) {
   _subqueryInitialized = true;
 
   if (!ret.second.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(ret.second.errorNumber(),
-                                   ret.second.errorMessage());
+    THROW_ARANGO_EXCEPTION(ret.second);
   }
   return ExecutionState::DONE;
 }
@@ -114,7 +113,6 @@ ExecutionState SubqueryBlock::getSomeConstSubquery(size_t atMost) {
   return ExecutionState::DONE;
 }
 
-
 ExecutionState SubqueryBlock::getSomeNonConstSubquery(size_t atMost) {
   if (_result->size() == 0) {
     // NOTHING to loop
@@ -165,7 +163,7 @@ ExecutionState SubqueryBlock::getSomeNonConstSubquery(size_t atMost) {
 /// @brief getSome
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
-  if (_result.get() == nullptr) {
+  if (_result == nullptr) {
     auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
     if (res.first == ExecutionState::WAITING) {
       // NOTE: _result stays a nullptr! We end up in here again!
@@ -176,7 +174,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
     _result.swap(res.second);
     _upstreamState = res.first;
 
-    if (_result.get() == nullptr) {
+    if (_result == nullptr) {
       TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
       traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, nullptr};
@@ -207,7 +205,6 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
   _subqueryInitialized = false;
   _subqueryCompleted = false;
   _subqueryResults.release();
-
 
   traceGetSomeEnd(_result.get(), getHasMoreState());
 

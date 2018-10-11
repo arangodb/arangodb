@@ -123,6 +123,10 @@ void OptimizerRulesFeature::addRules() {
   // as possible as early as possible)
   registerRule("move-filters-up", moveFiltersUpRule, OptimizerRule::moveFiltersUpRule,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // simplify conditions
+  registerRule("simplify-conditions", simplifyConditionsRule,
+               OptimizerRule::simplifyConditionsRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove redundant calculations
   registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
@@ -173,12 +177,12 @@ void OptimizerRulesFeature::addRules() {
 
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
-               OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeFiltersCoveredByTraversal, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
-  // rule remove all filters using the path variable
+  // rules remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
-               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeTraversalPathVariable, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
   registerHiddenRule("prepare-traversals", prepareTraversalsRule,
@@ -238,6 +242,10 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // fuse multiple adjacent filters into one
+  registerRule("fuse-filters", fuseFiltersRule,
+               OptimizerRule::fuseFiltersRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // finally, push calculations as far down as possible
   registerRule("move-calculations-down", moveCalculationsDownRule,
@@ -265,9 +273,8 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-
     registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
-                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+                 OptimizerRule::substituteSingleDocumentOperations, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
