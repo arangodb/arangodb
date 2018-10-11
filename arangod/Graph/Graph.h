@@ -77,7 +77,7 @@ class EdgeDefinition {
   bool isFromVertexCollectionUsed(std::string const& collectionName) const;
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
-  bool renameCollections(std::string const& oldName, std::string const& newName);
+  bool renameCollection(std::string const& oldName, std::string const& newName);
 
  private:
   std::string _edgeCollection;

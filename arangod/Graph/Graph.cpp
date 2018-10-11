@@ -183,7 +183,7 @@ std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
   return _edgeDefs;
 }
 
-std::map<std::string, EdgeDefinition> & Graph::edgeDefinitions() {
+std::map<std::string, EdgeDefinition>& Graph::edgeDefinitions() {
   return _edgeDefs;
 }
 
@@ -402,7 +402,7 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
          getTo() != other.getTo();
 }
 
-bool EdgeDefinition::renameCollections(
+bool EdgeDefinition::renameCollection(
         std::string const& oldName, std::string const& newName) {
   bool renamed = false;
 
@@ -605,7 +605,7 @@ bool Graph::renameCollections(std::string const& oldName, std::string const& new
   bool renamed = false;
 
   // rename collections found in edgeDefinitions
-  for (auto &it : edgeDefinitions()) {
+  for (auto& it : edgeDefinitions()) {
     if (!renamed) {
       renamed = it.second.renameCollections(oldName, newName);
     } else {
