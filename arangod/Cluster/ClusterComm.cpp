@@ -1348,7 +1348,7 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
   if (!result->serverID.empty()) {
     msg += ": '" + result->serverID + '\'';
   }
-  msg += " at endpoint " + result->endpoint + "', timeout: " + Logger::FIXED(timeout, 2);
+  msg += " at endpoint " + result->endpoint + "', timeout: " + std::to_string(timeout);
   
   if (useErrorLogLevel) {
     LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
