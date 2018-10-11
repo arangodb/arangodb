@@ -243,8 +243,19 @@ arangodb::Result addShardFollower (
       body.add("checksum", VPackValue(std::to_string(docCount)));
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
-      } else {
-        TRI_ASSERT(docCount == 0);
+      } else {  // short cut case
+        if (docCount != 0) {
+          // This can happen if we once were an in-sync follower and a
+          // synchronization request has timed out, but still runs on our
+          // side here. In this case, we can simply continue with the slow
+          // path and run the full sync protocol. Therefore we error out
+          // here. Note that we are in the lockJobId == 0 case, which is
+          // the shortcut.
+          std::string msg = "Short cut synchronization for shard " + shard
+            + " did not work, since we got a document in the meantime.";
+          LOG_TOPIC(INFO, Logger::MAINTENANCE) << msg;
+          return arangodb::Result(TRI_ERROR_INTERNAL, msg);
+        }
       }
     }
 
@@ -790,6 +801,10 @@ bool SynchronizeShard::first() {
         _result.reset(TRI_ERROR_INTERNAL, "server is shutting down");
       }
 
+      // Mark us as follower for this leader such that we begin
+      // accepting replication operations, note that this is also
+      // used for the initial synchronization:
+
       collection->followers()->setTheLeader(leader);
 
       if (leader.empty()) {
@@ -842,7 +857,7 @@ bool SynchronizeShard::first() {
       if (!syncRes.ok()) {
 
         std::stringstream error;
-        error << "could not initially synchronize shard " << shard
+        error << "could not initially synchronize shard " << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());

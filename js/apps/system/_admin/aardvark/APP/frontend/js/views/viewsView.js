@@ -36,6 +36,15 @@
       'click #viewsSortDesc': 'sorting'
     },
 
+    checkVisibility: function () {
+      if ($('#viewsDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#viewsDropdown');
+    },
+
     sorting: function () {
       if ($('#viewsSortDesc').is(':checked')) {
         this.setSortingDesc(true);
@@ -43,12 +52,7 @@
         this.setSortingDesc(false);
       }
 
-      if ($('#viewsDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -62,11 +66,14 @@
     },
 
     toggleSettingsDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#viewsSortDesc').attr('checked', this.sortOptions.desc);
 
       $('#viewsToggle').toggleClass('activated');
-      $('#viewsDropdown2').slideToggle(200);
+      $('#viewsDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     render: function (data) {
@@ -87,7 +94,7 @@
 
       if (self.dropdownVisible === true) {
         $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
-        $('#viewsToggle').toggleClass('activated');
+        $('#viewsToggle').addClass('activated');
         $('#viewsDropdown2').show();
       }
 

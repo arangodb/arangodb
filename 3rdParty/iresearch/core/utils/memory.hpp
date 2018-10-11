@@ -55,6 +55,7 @@ class aligned_storage {
     // as per MSVC documentation:
     // align(#) valid entries are integer powers of two from 1 to 8192 (bytes)
     // e.g. 2, 4, 8, 16, 32, or 64
+    #pragma warning(disable: 4324) // structure was padded due to __declspec(align())
     template<size_t Align> struct align_t {};
     template<> struct ALIGNAS(1)    align_t<1> { };
     template<> struct ALIGNAS(2)    align_t<2> { };
@@ -70,6 +71,7 @@ class aligned_storage {
     template<> struct ALIGNAS(2048) align_t<2048> { };
     template<> struct ALIGNAS(4096) align_t<4096> { };
     template<> struct ALIGNAS(8192) align_t<8192> { };
+    #pragma warning(default: 4324)
   #else
     template<size_t Align> struct ALIGNAS(Align) align_t { };
   #endif

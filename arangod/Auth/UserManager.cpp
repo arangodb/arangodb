@@ -183,11 +183,13 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
     doc = doc.resolveExternals();
   }
   VPackSlice authDataSlice = doc.get("authData");
-  VPackObjectBuilder b(&result, true);
-  result.add("user", doc.get("user"));
-  result.add("active", authDataSlice.get("active"));
-  VPackSlice extra = doc.get("userData");
-  result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
+  {
+    VPackObjectBuilder b(&result, true);
+    result.add("user", doc.get("user"));
+    result.add("active", authDataSlice.get("active"));
+    VPackSlice extra = doc.get("userData");
+    result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
+  }
 }
 
 // private, will acquire _userCacheLock in write-mode and release it.
@@ -381,10 +383,12 @@ VPackBuilder auth::UserManager::allUsers() {
   std::shared_ptr<VPackBuilder> users = QueryAllUsers(_queryRegistry);
 
   VPackBuilder result;
-  VPackArrayBuilder a(&result);
-  if (users && !users->isEmpty()) {
-    for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
-      ConvertLegacyFormat(doc, result);
+  {
+    VPackArrayBuilder a(&result);
+    if (users && !users->isEmpty()) {
+      for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
+        ConvertLegacyFormat(doc, result);
+      }
     }
   }
   return result;
