@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
 * fix internal issue #2764: the waitForSync property of a satellite collection
   could not be changed via the Web UI
 
