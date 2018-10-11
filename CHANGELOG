@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix internal issue #2688: the Web UI's graph viewer created malformed node
+  labels if a node was expanded multiple times.
+
 * fix internal issue #2764: the waitForSync property of a satellite collection
   could not be changed via the Web UI
 
