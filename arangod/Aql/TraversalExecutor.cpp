@@ -27,23 +27,29 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _input{CreateInvalidInputRowHint{}} {}
+    : _infos(infos), _fetcher(fetcher), _input{CreateInvalidInputRowHint{}}, _rowState(ExecutionState::HASMORE) {}
 TraversalExecutor::~TraversalExecutor() = default;
 
 std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAqlItemRow& output) {
   TraversalStats s;
 
-  if (!_input.isInitialized()) {
-    std::tie(_rowState, _input) = _fetcher.fetchRow();
-    if (_rowState == ExecutionState::WAITING) {
-      TRI_ASSERT(!_input.isInitialized());
+  while (true) {
+    if (!_input.isInitialized() && _rowState != ExecutionState::DONE) {
+      std::tie(_rowState, _input) = _fetcher.fetchRow();
+      if (_rowState == ExecutionState::WAITING) {
+        TRI_ASSERT(!_input.isInitialized());
+        return {_rowState, s};
+      }
+    }
+    if (!_input.isInitialized()) {
+      // We tried to fetch, but no upstream
+      TRI_ASSERT(_rowState == ExecutionState::DONE);
       return {_rowState, s};
     }
-  }
-  if (!_input.isInitialized()) {
-    // We tried to fetch, but no upstream
-    TRI_ASSERT(_rowState == ExecutionState::DONE);
-    return {_rowState, s};
+
+    // TODO Remove me! This will directly consume and dump the input.
+    // Needs to be fixed
+    _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
 
 
