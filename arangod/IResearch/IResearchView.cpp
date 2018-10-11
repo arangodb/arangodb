@@ -683,7 +683,7 @@ IResearchView::IResearchView(
     auto view = _asyncSelf; // create copy for lambda
 
     feature->registerPostRecoveryCallback([view]()->arangodb::Result {
-      auto viewMutex = view->mutex();
+      auto& viewMutex = view->mutex();
       SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
       auto* viewPtr = view->get();
 
@@ -757,9 +757,6 @@ IResearchView::IResearchView(
     _asyncFeature->async(
       self(),
       [this, state](size_t& timeoutMsec, bool) mutable ->bool {
-        auto* store = &_storePersisted;
-        char const* name = "persistent store";
-
         if (_asyncTerminate.load()) {
           return false; // termination requested
         }
@@ -787,7 +784,7 @@ IResearchView::IResearchView(
         if (usedMsec < state._consolidationIntervalMsec) {
           timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
 
-          return true; // reschedule (with possibly updated '_commitIntervalMsec')
+          return true; // reschedule (with possibly updated '_consolidationIntervalMsec')
         }
 
         state._last = std::chrono::system_clock::now(); // remember last task start time
@@ -796,19 +793,18 @@ IResearchView::IResearchView(
         auto const runCleanupAfterConsolidation =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
 
-        ReadMutex mutex(_mutex); // 'store' can be asynchronously modified
-        SCOPED_LOCK(mutex);
+        auto& viewMutex = self()->mutex();
+        SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
 
-        if (store->_directory
-            && store->_writer
+        if (_storePersisted
             && consolidateCleanupStore(
-                 *(store->_directory),
-                 *(store->_writer),
-                 store->_segmentCount,
+                 *_storePersisted._directory,
+                 *_storePersisted._writer,
+                 _storePersisted._segmentCount,
                  state._consolidationPolicy,
                  runCleanupAfterConsolidation,
                  *this,
-                 name)
+                 "persistent store")
             && state._cleanupIntervalStep
             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0;
