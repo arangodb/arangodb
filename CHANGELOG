@@ -4,6 +4,9 @@ devel
 * fix internal issue #2035: the Web UI now updates its indices view to check
   whether new indices exist or not.
 
+* fix internal issue #6808: newly created databases within the Web UI did not
+  appear when used Internet Explorer 11 as a browser.
+
 * fix internal issue #2688: the Web UI's graph viewer created malformed node
   labels if a node was expanded multiple times.
 
