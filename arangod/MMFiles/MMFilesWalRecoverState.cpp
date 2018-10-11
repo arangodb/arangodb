@@ -45,6 +45,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -381,6 +382,14 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker,
           state->maxRevisionId = revisionId;
         }
       }
+
+      if (marker->getSize() == MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + payloadSlice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
+        // we do have a LocalDocumentId stored at the end of the marker
+        uint8_t const* ptr = payloadSlice.begin() + payloadSlice.byteSize();
+        LocalDocumentId localDocumentId{encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType))};
+        LocalDocumentId::track(localDocumentId);
+      }
+
       break;
     }
 
