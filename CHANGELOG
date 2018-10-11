@@ -1,6 +1,9 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* fix internal issue #2957: the Web UI was not able to display more than 1000
+  documents, even when it was set to a higher amount.
+
 * fix internal issue #2688: the Web UI's graph viewer created malformed node
   labels if a node was expanded multiple times.
 
