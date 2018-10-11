@@ -43,8 +43,6 @@ If the "If-Match" header is given, then it must contain exactly one Etag. The do
 if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
 you can supply the Etag in an attribute rev in the URL.
 
-
-
 @RESTALLBODYPARAM{edge,object,required}
 The body has to contain a JSON object containing exactly the attributes that should be overwritten, all other attributes remain unchanged.
 
@@ -172,4 +170,3 @@ A message created for this error.
   examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
