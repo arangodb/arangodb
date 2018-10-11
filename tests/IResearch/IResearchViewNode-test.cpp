@@ -1062,8 +1062,8 @@ SECTION("collections") {
   );
 
   // register collections with the query
-  query.collections()->add(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ);
-  query.collections()->add(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ);
+  query.addCollection(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ);
+  query.addCollection(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ);
 
   // prepare query
   query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
