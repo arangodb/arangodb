@@ -1,7 +1,37 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+
+* fix internal issue #2770: the Query Profiling modal dialog in the Web UI
+  was slightly malformed.
+
+* fix internal issue #2035: the Web UI now updates its indices view to check
+  whether new indices exist or not.
+
+* fix internal issue #6808: newly created databases within the Web UI did not
+  appear when used Internet Explorer 11 as a browser.
+
+* fix internal issue #2957: the Web UI was not able to display more than 1000
+  documents, even when it was set to a higher amount.
+
+* fix internal issue #2688: the Web UI's graph viewer created malformed node
+  labels if a node was expanded multiple times.
+
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
+* fix internal issue #2764: the waitForSync property of a satellite collection
+  could not be changed via the Web UI
+
 * dynamically manage libcurl's number of open connections to increase performance
   by reducing the number of socket close and then reopen cycles
+
+* recover short server id from agency after a restart of a cluster node
+
+  this fixes problems with short server ids being set to 0 after a node restart,
+  which then prevented cursor result load-forwarding between multiple coordinators
+  to work properly
+
+  this should fix arangojs#573
 
 * include forward-ported diagnostic options for debugging LDAP connections
 
@@ -15,6 +45,18 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 
 * fixed internal issue #1983: the Web UI was showing a deletion confirmation
   multiple times.
+
+* Restricted usage of views in AQL, they will throw an error now
+  (e.g. "FOR v, e, p IN 1 OUTBOUND @start edgeCollection, view")
+  instead of failing the server.
+
+* Allow VIEWs within the AQL "WITH" statement in cluster environment.
+  This will now prepare the query for all collections linked within a view.
+  (e.g. "WITH view FOR v, e, p IN OUTBOUND 'collectionInView/123' edgeCollection"
+  will now be executed properly and not fail with unregistered collection any more)
+
+* Properly check permissions for all collections linked to a view when
+  instantiating an AQL query in cluster environment
 
 * support installation of ArangoDB on Windows into directories with multibyte
   character filenames on Windows platforms that used a non-UTF8-codepage
@@ -126,7 +168,7 @@ v3.4.0-rc.2 (2018-09-30)
 
 * fixed issue #6495: Document not found when removing records
 
-* fixed undefined behavior is cluster plan-loading procedure that may have
+* fixed undefined behavior in cluster plan-loading procedure that may have
   unintentionally modified a shared structure
 
 * reduce overhead of function initialization in AQL COLLECT aggregate functions,
@@ -681,8 +723,124 @@ v3.4.0-rc.1 (2018-09-06)
 * only load Plan and Current from agency when actually needed
 
 
-v3.3.15 (XXXX-XX-XX)
+v3.3.18 (XXXX-XX-XX)
 --------------------
+
+* improved logging in case of replication errors
+
+* recover short server id from agency after a restart of a cluster node
+
+  this fixes problems with short server ids being set to 0 after a node restart,
+  which then prevented cursor result load-forwarding between multiple coordinators
+  to work properly
+
+  this should fix arangojs#573
+
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
+
+* fixed internal issue #1983: the Web UI was showing a deletion confirmation
+  multiple times.
+
+* handle missing `_frontend` collections gracefully
+
+  the `_frontend` system collection is not required for normal ArangoDB operations,
+  so if it is missing for whatever reason, ensure that normal operations can go
+  on.
+
+
+v3.3.17 (2018-10-04)
+--------------------
+
+* upgraded arangosync version to 0.6.0
+
+* added several advanced options for configuring and debugging LDAP connections.
+  Please note that some of the following options are platform-specific and may not 
+  work on all platforms or with all LDAP servers reliably:
+
+  - `--ldap.serialized`: whether or not calls into the underlying LDAP library 
+    should be serialized.
+    This option can be used to work around thread-unsafe LDAP library functionality.
+  - `--ldap.serialize-timeout`: sets the timeout value that is used when waiting to 
+    enter the LDAP library call serialization lock. This is only meaningful when 
+    `--ldap.serialized` has been set to `true`. 
+  - `--ldap.retries`: number of tries to attempt a connection. Setting this to values 
+    greater than one will make ArangoDB retry to contact the LDAP server in case no 
+    connection can be made initially.
+  - `--ldap.restart`: whether or not the LDAP library should implicitly restart 
+    connections
+  - `--ldap.referrals`: whether or not the LDAP library should implicitly chase 
+    referrals
+  - `--ldap.debug`: turn on internal OpenLDAP library output (warning: will print 
+    to stdout).
+  - `--ldap.timeout`: timeout value (in seconds) for synchronous LDAP API calls 
+    (a value of 0 means default timeout).
+  - `--ldap.network-timeout`: timeout value (in seconds) after which network operations 
+    following the initial connection return in case of no activity (a value of 0 means 
+    default timeout).
+  - `--ldap.async-connect`: whether or not the connection to the LDAP library will 
+    be done asynchronously.
+
+* fixed a shutdown race in ArangoDB's logger, which could have led to some buffered
+  log messages being discarded on shutdown
+
+* display shard synchronization progress for collections outside of the
+  `_system` database
+
+* fixed issue #6611: Properly display JSON properties of user defined foxx services
+  configuration within the web UI
+
+* fixed issue #6583: Agency node segfaults if sent an authenticated HTTP request is sent to its port
+
+* when cleaning out a leader it could happen that it became follower instead of 
+  being removed completely
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fix some TLS errors that occurred when combining HTTPS/TLS transport with the
+  VelocyStream protocol (VST)
+
+  That combination could have led to spurious errors such as "TLS padding error"
+  or "Tag mismatch" and connections being closed 
+
+* agency endpoint updates now go through RAFT
+
+
+v3.3.16 (2018-09-19)
+--------------------
+
+* fix undefined behavior in AQL query result cache
+
+* the query editor within the web ui is now catching http 501 responses
+  properly
+
+* fixed issue #6495 (Document not found when removing records)
+
+* fixed undefined behavior in cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* reduce overhead of function initialization in AQL COLLECT aggregate functions,
+  for functions COUNT/LENGTH, SUM and AVG
+
+  this optimization will only be noticable when the COLLECT produces many groups
+  and the "hash" COLLECT variant is used
+
+* fixed potential out-of-bounds access in admin log REST handler /_admin/log,
+  which could have led to the server returning an HTTP 500 error
+
+* catch more exceptions in replication and handle them appropriately
+
+
+v3.3.15 (2018-09-10)
+--------------------
+
+* fixed an issue in the "sorted" AQL COLLECT variant, that may have led to producing
+  an incorrect number of results
+
+* upgraded arangodb starter version to 0.13.3
 
 * fixed issue #5941 if using breadth-first search in traversals uniqueness checks
   on path (vertices and edges) have not been applied. In SmartGraphs the checks
@@ -708,18 +866,18 @@ v3.3.15 (XXXX-XX-XX)
 
 * added startup option `--query.optimizer-max-plans value`
 
-  This option allows limiting the number of query execution plans created by the
+  This option allows limiting the number of query execution plans created by the 
   AQL optimizer for any incoming queries. The default value is `128`.
 
-  By adjusting this value it can be controlled how many different query execution
-  plans the AQL query optimizer will generate at most for any given AQL query.
-  Normally the AQL query optimizer will generate a single execution plan per AQL query,
+  By adjusting this value it can be controlled how many different query execution 
+  plans the AQL query optimizer will generate at most for any given AQL query. 
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
   but there are some cases in which it creates multiple competing plans. More plans
   can lead to better optimized queries, however, plan creation has its costs. The
-  more plans are created and shipped through the optimization pipeline, the more time
+  more plans are created and shipped through the optimization pipeline, the more time 
   will be spent in the optimizer.
 
-  Lowering this option's value will make the optimizer stop creating additional plans
+  Lowering this option's value will make the optimizer stop creating additional plans 
   when it has already created enough plans.
 
   Note that this setting controls the default maximum number of plans to create. The
@@ -729,8 +887,6 @@ v3.3.15 (XXXX-XX-XX)
   This change also lowers the default maximum number of query plans from 192 to 128.
 
 * bug fix: facilitate faster shutdown of coordinators and db servers
-
-* upgraded arangodb starter version to 0.13.2
 
 * cluster nodes should retry registering in agency until successful
 
@@ -1647,8 +1803,31 @@ v3.3.rc1 (2017-11-17)
 * Foxx now warns about malformed configuration/dependency names and aliases in the manifest.
 
 
+v3.2.17 (XXXX-XX-XX)
+--------------------
+
+* added missing virtual destructor for MMFiles transaction data context object
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fixed undefined behavior in cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* cluster nodes should retry registering in agency until successful
+
+* fixed issue #5354: updated the ui json editor, improved usability
+
+* fixed issue #5648: fixed error message when saving unsupported document
+  types
+
+* fixed issue #5943: misplaced database ui icon and wrong cursor type were used
+
+
 v3.2.16 (2018-07-12)
 --------------------
+
+* upgraded arangodb starter version to 0.12.0
 
 * make edge cache initialization and invalidation more portable by avoiding memset
   on non-POD types
@@ -1665,6 +1844,9 @@ v3.2.16 (2018-07-12)
   the respective operation
 
 * inception was ignoring leader's configuration
+
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
 
 * more patient agency tests to allow for ASAN tests to successfully finish
 
