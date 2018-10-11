@@ -1269,18 +1269,18 @@ arangodb::Result IResearchView::commit() {
       << "starting persisted-sync sync for arangosearch view '" << name() << "'";
 
     _storePersisted._writer->commit(); // finishing flush transaction
-    auto reader = _storePersisted._reader.reopen(); // update reader
-
-    if (!reader) {
-      // nothing more to do
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to update snapshot after commit, reuse the existing snapshot for arangosearch view '" << name() << "'";
-      return {};
-    }
 
     {
-      // FIXME: use CAS instead
       SCOPED_LOCK(_readerLock);
+
+      auto reader = _storePersisted._reader.reopen(); // update reader
+
+      if (!reader) {
+        // nothing more to do
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failed to update snapshot after commit, reuse the existing snapshot for arangosearch view '" << name() << "'";
+        return {};
+      }
 
       if (_storePersisted._reader != reader) {
          // update reader
