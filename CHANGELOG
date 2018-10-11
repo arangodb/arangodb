@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix internal issue #2764: the waitForSync property of a satellite collection
+  could not be changed via the Web UI
+
 * fix internal issue #2957: the Web UI was not able to display more than 1000
   documents, even when it was set to a higher amount.
 
