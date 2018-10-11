@@ -577,6 +577,14 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 
     // already registered
     if (!mapSlice.isNone()) {
+      VPackSlice s = mapSlice.get("TransactionID");
+      if (s.isNumber()) {
+        uint32_t shortId = s.getNumericValue<uint32_t>();
+        setShortId(shortId);
+        LOG_TOPIC(DEBUG, Logger::CLUSTER) << "restored short id " << shortId << " from agency";
+      } else {
+        LOG_TOPIC(WARN, Logger::CLUSTER) << "unable to restore short id from agency";
+      }
       return true;
     }
 
@@ -651,7 +659,7 @@ void ServerState::setShortId(uint32_t id) {
   if (id == 0) {
     return;
   }
-
+      
   _shortId.store(id, std::memory_order_relaxed);
 }
 
