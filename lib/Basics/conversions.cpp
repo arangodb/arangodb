@@ -22,11 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "conversions.h"
-
-//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//YYY #warning FRANK this files should be replaces by StringUtils and Co
-//YYY #endif
-
 #include "Basics/tri-strings.h"
 
 static char const* const HEX = "0123456789ABCDEF";
@@ -52,9 +47,9 @@ int TRI_IntHex(char ch, int errorValue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_DoubleString(char const* str) {
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
   char* endptr;
+  errno = TRI_ERROR_NO_ERROR;
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
   while (isspace(*endptr)) {
@@ -63,9 +58,11 @@ double TRI_DoubleString(char const* str) {
 
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+    TRI_ASSERT(false);
   } else if (errno == ERANGE &&
              (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
+    TRI_ASSERT(false);
   }
 
   return result;
@@ -85,6 +82,7 @@ int32_t TRI_Int32String(char const* str) {
   struct reent buffer;
 #endif
 
+  errno = TRI_ERROR_NO_ERROR;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOL_R)
@@ -142,6 +140,7 @@ uint32_t TRI_UInt32String(char const* str) {
   struct reent buffer;
 #endif
 
+  errno = TRI_ERROR_NO_ERROR;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOUL_R)
