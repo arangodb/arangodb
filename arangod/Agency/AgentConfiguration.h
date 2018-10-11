@@ -85,6 +85,8 @@ struct config_t {
 
 public:
 
+  using upsert_t = enum {UNCHANGED = 0, CHANGED, WRONG}; 
+  
   /// @brief default ctor
   config_t();
 
@@ -145,8 +147,8 @@ public:
    *
    * @return          Success
    */
-  bool upsertPool(
-    VPackSlice const& otherPool, std::string const& otherId);
+   upsert_t upsertPool(
+     VPackSlice const& otherPool, std::string const& otherId);
 
   /// @brief active agency size
   void activate();
