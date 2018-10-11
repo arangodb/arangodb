@@ -15,6 +15,15 @@ The name of the graph.
 @RESTURLPARAM{definition,string,required}
 The name of the edge collection used in the definition.
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{waitForSync,boolean,optional}
+Define if the request should wait until synced to disk.
+
+@RESTQUERYPARAM{dropCollections,boolean,optional}
+Drop the collection as well.
+Collection will only be dropped if it is not used in other graphs.
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the edge collection to be used.
 
