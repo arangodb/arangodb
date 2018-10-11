@@ -1,6 +1,12 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* when returning memory to the OS, use the same memory protection flags as 
+  when initializing the memory
+
+  this prevents "hole punching" and keeps the OS from splitting one memory 
+  mapping into multiple mappings with different memory protection settings
+
 * fix internal issue #2035: the Web UI now updates its indices view to check
   whether new indices exist or not.
 
