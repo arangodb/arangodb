@@ -670,9 +670,9 @@ IResearchView::IResearchView(
    FlushTransaction(toString(*this)),
    _asyncFeature(nullptr),
    _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
-   _asyncTerminate(false),
    _meta(std::make_shared<AsyncMeta>()),
    _storePersisted(getPersistedPath(dbPathFeature, vocbase, id())),
+   _asyncTerminate(false),
    _inRecovery(false) {
   // set up in-recovery insertion hooks
   auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
@@ -683,7 +683,7 @@ IResearchView::IResearchView(
     auto view = _asyncSelf; // create copy for lambda
 
     feature->registerPostRecoveryCallback([view]()->arangodb::Result {
-      auto viewMutex = view->mutex();
+      auto& viewMutex = view->mutex();
       SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
       auto* viewPtr = view->get();
 
@@ -757,9 +757,6 @@ IResearchView::IResearchView(
     _asyncFeature->async(
       self(),
       [this, state](size_t& timeoutMsec, bool) mutable ->bool {
-        auto* store = &_storePersisted;
-        char const* name = "persistent store";
-
         if (_asyncTerminate.load()) {
           return false; // termination requested
         }
@@ -787,7 +784,7 @@ IResearchView::IResearchView(
         if (usedMsec < state._consolidationIntervalMsec) {
           timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
 
-          return true; // reschedule (with possibly updated '_commitIntervalMsec')
+          return true; // reschedule (with possibly updated '_consolidationIntervalMsec')
         }
 
         state._last = std::chrono::system_clock::now(); // remember last task start time
@@ -796,19 +793,18 @@ IResearchView::IResearchView(
         auto const runCleanupAfterConsolidation =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
 
-        ReadMutex mutex(_mutex); // 'store' can be asynchronously modified
-        SCOPED_LOCK(mutex);
+        auto& viewMutex = self()->mutex();
+        SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
 
-        if (store->_directory
-            && store->_writer
+        if (_storePersisted
             && consolidateCleanupStore(
-                 *(store->_directory),
-                 *(store->_writer),
-                 store->_segmentCount,
+                 *_storePersisted._directory,
+                 *_storePersisted._writer,
+                 _storePersisted._segmentCount,
                  state._consolidationPolicy,
                  runCleanupAfterConsolidation,
                  *this,
-                 name)
+                 "persistent store")
             && state._cleanupIntervalStep
             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0;
@@ -845,7 +841,7 @@ IResearchView::IResearchView(
     }
 
     ViewStateHelper::commitWrite(
-      *state, viewRef, arangodb::transaction::Status::COMMITTED != state->status()
+      *state, viewRef, arangodb::transaction::Status::COMMITTED != status
     );
   };
 }
@@ -1273,17 +1269,31 @@ arangodb::Result IResearchView::commit() {
       << "starting persisted-sync sync for arangosearch view '" << name() << "'";
 
     _storePersisted._writer->commit(); // finishing flush transaction
-    const auto reader = _storePersisted._reader.reopen(); // update reader
 
-    if (reader && reader != _storePersisted._reader) {
-       // invalidate query cache if there were some data changes
-       arangodb::aql::QueryCache::instance()->invalidate(
-         &vocbase(), name()
-       );
+    {
+      SCOPED_LOCK(_readerLock);
 
-       _storePersisted._reader = reader;
-       _storePersisted._segmentCount = _storePersisted._reader.size(); // add commited segments
+      auto reader = _storePersisted._reader.reopen(); // update reader
+
+      if (!reader) {
+        // nothing more to do
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failed to update snapshot after commit, reuse the existing snapshot for arangosearch view '" << name() << "'";
+        return {};
+      }
+
+      if (_storePersisted._reader != reader) {
+         // update reader
+         _storePersisted._reader = reader;
+
+         // invalidate query cache if there were some data changes
+         arangodb::aql::QueryCache::instance()->invalidate(
+           &vocbase(), name()
+         );
+      }
     }
+
+    _storePersisted._segmentCount = _storePersisted._reader.size(); // set commited segments
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished persisted-sync sync for arangosearch view '" << name() << "'";

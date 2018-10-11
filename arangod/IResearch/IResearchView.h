@@ -316,8 +316,10 @@ class IResearchView
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
+    irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
     std::atomic<size_t> _segmentCount{}; // FIXME remove total number of segments in the writer
     irs::index_writer::ptr _writer;
+
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
     DataStore& operator=(DataStore&& other) noexcept;
@@ -364,14 +366,15 @@ class IResearchView
 
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   IResearchViewMetaState _metaState; // the per-instance configuration state
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
   PersistedStore _storePersisted;
+  std::mutex _readerLock; // prevents query cache double invalidation
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
+  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::atomic<bool> _inRecovery;
 };
 
