@@ -42,7 +42,7 @@ only if it has a different revision as the given Etag. Otherwise a HTTP 304 is r
 Returned if the edge could be found.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -97,7 +97,7 @@ Returned in the following cases:
 * The edge does not exist.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
@@ -113,7 +113,7 @@ A message created for this error.
 Returned if if-match header is given, but the stored documents revision is different.
 
 @RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false)
+Flag if there was an error (true) or not (false).
 It is true in this response.
 
 @RESTREPLYBODY{code,integer,required,}
