@@ -89,8 +89,20 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
           collections.add(VPackValue(colname));
           VPackObjectBuilder col(&collections);
           collection->toVelocyPack(collections,true,false);
-          collections.add(
-            "theLeader", VPackValue(collection->followers()->getLeader()));
+          auto const& folls = collection->followers();
+          auto const theLeader = folls->getLeader();
+          collections.add("theLeader", VPackValue(theLeader));
+          if (theLeader.empty()) {  // we are the leader ourselves
+            // In this case we report our in-sync followers here in the format
+            // of the agency: [ leader, follower1, follower2, ... ]
+            collections.add(VPackValue("servers"));
+            { VPackArrayBuilder guard(&collections);
+              collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
+              for (auto const& s : *folls->get()) {
+                collections.add(VPackValue(s));
+              }
+            }
+          }
         }
       }
     } catch (std::exception const& e) {

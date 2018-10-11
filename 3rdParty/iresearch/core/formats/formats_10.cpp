@@ -3051,6 +3051,7 @@ bool writer::flush() {
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
   data_out_.reset();
+  columns_.clear(); // ensure next flush (without prepare(...)) will use the section without 'data_out_'
 
   return true;
 }

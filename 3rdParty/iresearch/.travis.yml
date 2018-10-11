@@ -765,6 +765,8 @@ install:
       GTEST_URL="https://github.com/google/googletest.git"
       cd ${DEPS_DIR}
       travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1
+      travis_retry git fetch --tags
+      travis_retrya git checkout tags/release-1.8.0
     fi
     export GTEST_ROOT=${GTEST_DIR}/googletest
 
@@ -805,7 +807,7 @@ script:
         make iresearch-benchmarks
       fi
       # execute tests
-      ulimit -n 1024 # required for MacOS
+      ulimit -n 5120 # required for MacOS (max-open-files = 16 threads * (100000/10000) commits * 8 segments-per-commit * 4 open-files-per-segment)
       ulimit -a
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1

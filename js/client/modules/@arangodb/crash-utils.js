@@ -27,16 +27,20 @@
 
 const fs = require('fs');
 const yaml = require('js-yaml');
-const executeExternalAndWait = require('internal').executeExternalAndWait;
-const statusExternal = require('internal').statusExternal;
-const sleep = require('internal').sleep;
+const internal = require('internal');
+const executeExternalAndWait = internal.executeExternalAndWait;
+const statusExternal = internal.statusExternal;
+const killExternal = internal.killExternal;
+const sleep = internal.sleep;
+const pu = require('@arangodb/process-utils');
 
 let GDB_OUTPUT = '';
+const abortSignal = 6;
 
-const platform = require('internal').platform;
+const platform = internal.platform;
 
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief analyzes a core dump using gdb (Unix)
@@ -80,11 +84,14 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
-  GDB_OUTPUT += fs.read(gdbOutputFile);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+  let thisDump = fs.read(gdbOutputFile);
+  GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
-    print(GDB_OUTPUT);
+    print(thisDump);
   }
-  
+
   command = 'gdb ' + storeArangodPath + ' ';
 
   if (options.coreDirectory === '') {
@@ -124,9 +131,12 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
 
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
-  GDB_OUTPUT += fs.read(lldbOutputFile);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+  let thisDump = fs.read(lldbOutputFile);
+  GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
-    print(GDB_OUTPUT);
+    print(thisDump);
   }
   return 'lldb ' + storeArangodPath + ' -c /cores/core.' + pid;
 }
@@ -137,6 +147,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDumpWindows (instanceInfo) {
+  let cdbOutputFile = fs.getTempFile();
   const coreFN = instanceInfo.rootDir + '\\' + 'core.dmp';
 
   if (!fs.exists(coreFN)) {
@@ -144,7 +155,9 @@ function analyzeCoreDumpWindows (instanceInfo) {
     return;
   }
 
+
   const dbgCmds = [
+    '.logopen ' + cdbOutputFile,
     'kp', // print curren threads backtrace with arguments
     '~*kb', // print all threads stack traces
     'dv', // analyze local variables (if)
@@ -155,24 +168,57 @@ function analyzeCoreDumpWindows (instanceInfo) {
   const args = [
     '-z',
     coreFN,
-    '-list',
+    '-lines',
+    '-logo',
+    cdbOutputFile,
     '-c',
     dbgCmds.join('; ')
   ];
 
   sleep(5);
   print('running cdb ' + JSON.stringify(args));
+  process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
-
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+  // cdb will output to stdout anyways, so we can't turn this off here.
+  GDB_OUTPUT += fs.read(cdbOutputFile);
   return 'cdb ' + args.join(' ');
+}
+
+function checkMonitorAlive (binary, arangod, options, res) {
+  if (arangod.hasOwnProperty('monitor') ) {
+    // Windows: wait for procdump to do its job...
+    if (!arangod.monitor.hasOwnProperty('status')) {
+      let rc = statusExternal(arangod.monitor.pid, false);
+      if (rc.status !== 'RUNNING') {
+        arangod.monitor = rc;
+        if (arangod.monitor.exit !== 0) {
+          // ok, procdump exited with a failure,
+          // this means it wrote an exception dump.
+          print("checkMonitorAlive: marking crashy");
+          arangod.monitor.monitorExited = true;
+          arangod.monitor.pid = null;
+          pu.serverCrashed = true;
+          arangod['exitStatus'] = {};
+          analyzeCrash(binary, arangod, options, "the process monitor commanded error");
+          Object.assign(arangod.exitStatus,
+                        killExternal(arangod.pid, abortSignal));
+          return false;
+        }
+      }
+    }
+    else return arangod.monitor.exitStatus;
+  }
+  return true;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief the bad has happened, tell it the user and try to gather more
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
-function analyzeCrash (binary, arangod, options, checkStr) {
-  if (!options.coreCheck || arangod.exitStatus.hasOwnProperty('gdbHint')) {
+function analyzeCrash (binary, instanceInfo, options, checkStr) {
+  if (!options.coreCheck || instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
     print(RESET);
     return;
   }
@@ -185,15 +231,15 @@ function analyzeCrash (binary, arangod, options, checkStr) {
     var corePattern = fs.readBuffer(cpf);
     var cp = corePattern.asciiSlice(0, corePattern.length);
 
-    if (matchApport.exec(cp) != null) {
+    if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
       return;
     }
 
     if (matchSystemdCoredump.exec(cp) !== null) {
-      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + arangod.pid + '*';
+      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
     } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', arangod.pid);
+      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', instanceInfo.pid);
     } else {
       print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
       return;
@@ -205,7 +251,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
   if (pathParts.length > 0) {
     bareBinary = pathParts[pathParts.length - 1];
   }
-  const storeArangodPath = arangod.rootDir + '/' + bareBinary + '_' + arangod.pid;
+  const storeArangodPath = instanceInfo.rootDir + '/' + bareBinary + '_' + instanceInfo.pid;
 
   print(RED +
         'during: ' + checkStr + ': Core dump written; ' +
@@ -214,26 +260,33 @@ function analyzeCrash (binary, arangod, options, checkStr) {
         storeArangodPath + ' for later analysis.\n' +
         */
         'Process facts :\n' +
-        yaml.safeDump(arangod) +
+        yaml.safeDump(instanceInfo) +
         'marking build as crashy.' + RESET);
 
   sleep(5);
 
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
-    // Windows: wait for procdump to do its job...
-    statusExternal(arangod.monitor, true);
-    hint = analyzeCoreDumpWindows(arangod);
+    if (!instanceInfo.hasOwnProperty('monitor')) {
+      print("your process wasn't monitored by procdump, won't have a coredump!");
+      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
+      return;
+    }
+    if (instanceInfo.monitor.pid !== null) {
+      instanceInfo.monitor = statusExternal(instanceInfo.monitor.pid, true);
+    }
+    hint = analyzeCoreDumpWindows(instanceInfo);
   } else if (platform === 'darwin') {
     // fs.copyFile(binary, storeArangodPath);
-    hint = analyzeCoreDumpMac(arangod, options, binary, arangod.pid);
+    hint = analyzeCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid);
   } else {
     // fs.copyFile(binary, storeArangodPath);
-    hint = analyzeCoreDump(arangod, options, binary, arangod.pid);
+    hint = analyzeCoreDump(instanceInfo, options, binary, instanceInfo.pid);
   }
-  arangod.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
+  instanceInfo.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
 
 }
 
+exports.checkMonitorAlive = checkMonitorAlive;
 exports.analyzeCrash = analyzeCrash;
 Object.defineProperty(exports, 'GDB_OUTPUT', {get: () => GDB_OUTPUT});

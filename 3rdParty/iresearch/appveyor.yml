@@ -177,6 +177,26 @@ install:
   - set GTEST_URL="https://github.com/google/googletest.git"
   - cd %DEPS_DIR%
   - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1
+  - cd %GTEST_DIR%
+  - appveyor-retry git fetch --tags
+  - appveyor-retry git checkout tags/release-1.8.0
+  - cd googletest
+  - mkdir build && cd build
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DINSTALL_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" ..
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
+#  - cmake --install .
+  - mkdir %GTEST_DIR%\googletest\lib
+  - dir .. || true
+  - dir ..\googletest || true
+  - dir ..\include || true
+  - dir || true
+  - dir x64 || true
+  - dir x64\%CONFIGURATION% || true
+  - dir %CONFIGURATION% || true
+  - dir lib || true
+#  - move /Y lib\%CONFIGURATION%\* ..\lib || true
+#  - move /Y x64\%CONFIGURATION%\* ..\lib || true
+  - move /Y %CONFIGURATION%\* %GTEST_DIR%\googletest\lib || true
   - set GTEST_ROOT=%GTEST_DIR%\googletest
 
   ############################################################################

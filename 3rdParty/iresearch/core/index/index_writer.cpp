@@ -782,7 +782,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   if (!ctx.dirty_) {
     assert(freelist_node);
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
-    segment = std::move(active_segment_context()); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
+    segment = active_segment_context(); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
     pending_segment_contexts_freelist_.push(*freelist_node); // add segment_context to free-list
   }
 }
@@ -1170,10 +1170,10 @@ bool index_writer::consolidate(
 
   std::set<const segment_meta*> candidates;
 
-  // hold reference to the last committed state
-  // to prevent files to be deleted by a cleaner
-  // during upcoming consolidation
-  const auto committed_state = committed_state_;
+  // hold a reference to the last committed state to prevent files from being
+  // deleted by a cleaner during the upcoming consolidation
+  // use atomic_load(...) since finish() may modify the pointer
+  auto committed_state = committed_state_helper::atomic_load(&committed_state_);
   assert(committed_state);
   auto committed_meta = committed_state->first;
   assert(committed_meta);
@@ -1239,7 +1239,7 @@ bool index_writer::consolidate(
     if (found != candidates.size()) {
       // not all candidates are valid
       IR_FRMT_WARN(
-        "Failed to start consolidation for index generation '" IR_SIZE_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+        "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
         committed_meta->generation(),
         found,
         candidates.size()
@@ -1608,7 +1608,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       assert(modifications_begin <= modifications_end);
       assert(modifications_end <= modifications.segment_->modification_queries_.size());
       modification_contexts_ref modification_queries(
-        &(modifications.segment_->modification_queries_[modifications_begin]),
+        modifications.segment_->modification_queries_.data() + modifications_begin,
         modifications_end - modifications_begin
       );
 
@@ -1717,7 +1717,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         assert(modifications_begin <= modifications_end);
         assert(modifications_end <= modifications.segment_->modification_queries_.size());
         modification_contexts_ref modification_queries(
-          &(modifications.segment_->modification_queries_[modifications_begin]),
+          modifications.segment_->modification_queries_.data() + modifications_begin,
           modifications_end - modifications_begin
         );
 
@@ -1837,11 +1837,11 @@ index_writer::pending_context_t index_writer::flush_all() {
         }
 
         modification_contexts_ref segment_modification_contexts(
-          &(pending_segment_context.segment_->modification_queries_[0]),
+          pending_segment_context.segment_->modification_queries_.data(),
           pending_segment_context.segment_->modification_queries_.size()
         );
         update_contexts_ref flush_update_contexts(
-          &(pending_segment_context.segment_->flushed_update_contexts_[flushed_docs_start]),
+          pending_segment_context.segment_->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count
         );
 
@@ -1893,7 +1893,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           assert(modifications_begin <= modifications_end);
           assert(modifications_end <= modifications.segment_->modification_queries_.size());
           modification_contexts_ref modification_queries(
-            &(modifications.segment_->modification_queries_[modifications_begin]),
+            modifications.segment_->modification_queries_.data() + modifications_begin,
             modifications_end - modifications_begin
           );
 
@@ -2040,7 +2040,9 @@ void index_writer::finish() {
   // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
 
-  committed_state_ = std::move(pending_state_.commit);
+  committed_state_helper::atomic_store(
+    &committed_state_, std::move(pending_state_.commit)
+  );
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
   pending_state_.reset(); // flush is complete, release reference to flush_context
 }

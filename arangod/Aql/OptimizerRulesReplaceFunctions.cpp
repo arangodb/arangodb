@@ -402,7 +402,9 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
 
   if (coll->type != NODE_TYPE_COLLECTION) {
    aql::addCollectionToQuery(ast->query(), cname, false);
-   coll = ast->createNodeCollection(coll->getStringValue(), coll->getStringLength(),
+    auto const& resolver = ast->query()->resolver();
+   coll = ast->createNodeCollection(resolver,
+                                    coll->getStringValue(), coll->getStringLength(),
                                     AccessMode::Type::READ);
   }
 
