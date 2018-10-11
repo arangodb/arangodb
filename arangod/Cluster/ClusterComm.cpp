@@ -230,8 +230,7 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm()
-    : _backgroundThread(nullptr),
-      _logConnectionErrors(false),
+    : _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -243,17 +242,13 @@ ClusterComm::ClusterComm()
     _jwtAuthorization = "bearer " + token;
   }
 
-  _communicator = std::make_shared<communicator::Communicator>();
 }
 
 /// @brief Unit test constructor
 ClusterComm::ClusterComm(bool ignored)
-    : _backgroundThread(nullptr),
-      _logConnectionErrors(false),
+    : _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
-
-  //_communicator = std::make_shared<communicator::Communicator>();
 
 } // ClusterComm::ClusterComm(bool)
 
@@ -262,10 +257,9 @@ ClusterComm::ClusterComm(bool ignored)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm() {
-  if (_backgroundThread != nullptr) {
-    _backgroundThread->beginShutdown();
-    delete _backgroundThread;
-    _backgroundThread = nullptr;
+  for (ClusterCommThread * thread: _backgroundThreads) {
+    thread->beginShutdown();
+    delete thread;
   }
 
   cleanupAllQueues();
@@ -332,13 +326,29 @@ void ClusterComm::cleanup() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::startBackgroundThread() {
-  _backgroundThread = new ClusterCommThread();
+  _roundRobin = 0;
 
-  if (!_backgroundThread->start()) {
-    LOG_TOPIC(FATAL, Logger::CLUSTER)
-      << "ClusterComm background thread does not work";
-    FATAL_ERROR_EXIT();
-  }
+  for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
+    ClusterCommThread * thread = new ClusterCommThread();
+
+    if (thread->start()) {
+      _backgroundThreads.push_back(thread);
+    } else {
+      LOG_TOPIC(FATAL, Logger::CLUSTER)
+        << "ClusterComm background thread does not work";
+      FATAL_ERROR_EXIT();
+    } // else
+  } // for
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief choose next communicator via round robin
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<communicator::Communicator> ClusterComm::communicator() {
+  unsigned index;
+
+  index = (++_roundRobin) % _backgroundThreads.size();
+  return _backgroundThreads[index]->communicator();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,7 +494,7 @@ OperationID ClusterComm::asyncRequest(
 
   TRI_ASSERT(request != nullptr);
   CONDITION_LOCKER(locker, somethingReceived);
-  auto ticketId = _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
+  auto ticketId = communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
                std::move(request), callbacks, opt);
 
   result->operationID = ticketId;
@@ -564,7 +574,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   TRI_ASSERT(request != nullptr);
   result->status = CL_COMM_SENDING;
   CONDITION_LOCKER(isen, cv);
-  _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
+  communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
                std::move(request), callbacks, opt);
 
   while (!wasSignaled) {
@@ -1236,8 +1246,10 @@ std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<s
 }
 
 void ClusterComm::disable() {
-   _communicator->disable();
-   _communicator->abortRequests();
+  for (ClusterCommThread * thread: _backgroundThreads) {
+    thread->communicator()->disable();
+    thread->communicator()->abortRequests();
+  }
 }
 
 void ClusterComm::scheduleMe(std::function<void()> task) {
@@ -1254,13 +1266,14 @@ void ClusterCommThread::abortRequestsToFailedServers() {
   if (failedServers.size() > 0) {
     auto ticketIds = _cc->activeServerTickets(failedServers);
     for (auto const& ticketId: ticketIds) {
-      _cc->communicator()->abortRequest(ticketId);
+      _communicator->abortRequest(ticketId);
     }
   }
 }
 
 void ClusterCommThread::run() {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
+  _communicator = std::make_shared<communicator::Communicator>();
 
   auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
@@ -1269,8 +1282,8 @@ void ClusterCommThread::run() {
         abortRequestsToFailedServers();
         lastAbortCheck = std::chrono::steady_clock::now();
       }
-      _cc->communicator()->work_once();
-      _cc->communicator()->wait();
+      _communicator->work_once();
+      _communicator->wait();
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
@@ -1280,9 +1293,9 @@ void ClusterCommThread::run() {
           << "caught unknown exception in ClusterCommThread";
     }
   }
-  _cc->communicator()->abortRequests();
+  _communicator->abortRequests();
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
-  while (_cc->communicator()->work_once() > 0) {
+  while (_communicator->work_once() > 0) {
     std::this_thread::sleep_for(std::chrono::microseconds(10));
   }
 

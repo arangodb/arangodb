@@ -24,6 +24,9 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_COMM_H
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
+#include <atomic>
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
@@ -593,10 +596,6 @@ class ClusterComm {
   ////////////////////////////////////////////////////////////////////////////////
   void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
 
-  std::shared_ptr<communicator::Communicator> communicator() {
-    return _communicator;
-  }
-
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -727,7 +726,10 @@ class ClusterComm {
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommThread* _backgroundThread;
+  std::atomic_uint _roundRobin;
+  std::vector<ClusterCommThread*> _backgroundThreads;
+
+  std::shared_ptr<communicator::Communicator> communicator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not connection errors should be logged as errors
@@ -735,7 +737,6 @@ class ClusterComm {
 
   bool _logConnectionErrors;
 
-  std::shared_ptr<communicator::Communicator> _communicator;
   bool _authenticationEnabled;
   std::string _jwtAuthorization;
 
@@ -758,11 +759,16 @@ class ClusterCommThread : public Thread {
   void beginShutdown() override;
   bool isSystem() override final { return true; }
 
+  std::shared_ptr<communicator::Communicator> communicator() {
+    return _communicator;
+  }
+
  private:
   void abortRequestsToFailedServers();
 
  protected:
   void run() override final;
+  std::shared_ptr<communicator::Communicator> _communicator;
 
  private:
   ClusterComm* _cc;
