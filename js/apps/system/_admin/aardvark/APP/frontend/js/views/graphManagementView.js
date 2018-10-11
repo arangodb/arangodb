@@ -184,12 +184,24 @@
       $('#' + clicked).click();
     },
 
+    checkVisibility: function () {
+      if ($('#graphManagementDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#graphManagementDropdown');
+    },
+
     toggleGraphDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#graphManagementToggle').toggleClass('activated');
-      $('#graphManagementDropdown2').slideToggle(200);
+      $('#graphManagementDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     sorting: function () {
@@ -199,12 +211,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#graphManagementDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
