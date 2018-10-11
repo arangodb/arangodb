@@ -144,6 +144,6 @@ function main (argv) {
       return jsunity.writeDone().status ? 0 : 1;
     }
   } else {
-    return jsunity.writeDone();
+    return jsunity.writeDone().status ? 0 : 1;
   }
 }
