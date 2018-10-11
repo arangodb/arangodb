@@ -414,8 +414,10 @@ void HeartbeatThread::runDBServer() {
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT)
-              << "Heartbeat: Could not read from agency!";
+          if (!application_features::ApplicationServer::isStopping()) {
+            LOG_TOPIC(WARN, Logger::HEARTBEAT)
+                << "Heartbeat: Could not read from agency!";
+          }
         } else {
 
           VPackSlice agentPool = result.slice()[0].get(".agency");
@@ -586,10 +588,12 @@ void HeartbeatThread::runSingleServer() {
             "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency! status code: "
-            << result._statusCode << ", incriminating body: "
-            << result.bodyRef() << ", timeout: " << timeout;
+        if (!application_features::ApplicationServer::isStopping()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "Heartbeat: Could not read from agency! status code: "
+              << result._statusCode << ", incriminating body: "
+              << result.bodyRef() << ", timeout: " << timeout;
+        }
 
         if (!applier->isActive()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
@@ -835,10 +839,12 @@ void HeartbeatThread::runCoordinator() {
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
 
       if (!result.successful()) {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency! status code: "
-            << result._statusCode << ", incriminating body: "
-            << result.bodyRef() << ", timeout: " << timeout;
+        if (!application_features::ApplicationServer::isStopping()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "Heartbeat: Could not read from agency! status code: "
+              << result._statusCode << ", incriminating body: "
+              << result.bodyRef() << ", timeout: " << timeout;
+        }
       } else {
 
         VPackSlice agentPool = result.slice()[0].get(".agency");
