@@ -4,6 +4,9 @@ devel
 * fix internal issue #2688: the Web UI's graph viewer created malformed node
   labels if a node was expanded multiple times.
 
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
 * fix internal issue #2764: the waitForSync property of a satellite collection
   could not be changed via the Web UI
 
@@ -15,9 +18,6 @@ devel
 
 * disable in-memory cache for edge and traversal data on agency nodes, as it
   is not needed there
-
-* fixed internal issue #1983: the Web UI was showing a deletion confirmation
-  multiple times.
 
 * removed bundled Valgrind headers, removed JavaScript variable `valgrind`
   from the `internal` module
