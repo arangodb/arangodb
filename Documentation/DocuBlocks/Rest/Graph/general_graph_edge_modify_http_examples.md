@@ -25,7 +25,7 @@ Define if the request should wait until synced to disk.
 @RESTQUERYPARAM{keepNull,boolean,optional}
 Define if values set to null should be stored.
 By default (true) the given documents attribute(s) will be set to null.
-If this parameter is false the attribute(s) will instead be delete from the
+If this parameter is false the attribute(s) will instead be deleted from the
 document.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
