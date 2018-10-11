@@ -59,13 +59,47 @@ function MovingShardsWithViewSuite (options) {
   var useData = options.useData;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns "{shardXY: [serverAB, ...], ...}" object of the given
+/// collection from the plan
+////////////////////////////////////////////////////////////////////////////////
+
+  function collectionShardInfo(database, collection) {
+    if (typeof collection !== "string") {
+      throw new Error(`argument is not a string: ${collection}`);
+    }
+    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    return cinfo.shards;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns "{shardXY: serverAB, ...}", with the leader of each shard
+/// from the plan
+////////////////////////////////////////////////////////////////////////////////
+
+  function shardLeaders(database, collection) {
+    const shardInfo = collectionShardInfo(database, collection);
+
+    return Object.keys(shardInfo).reduce(function(result, shard) {
+      const servers = shardInfo[shard];
+      assertTrue(servers.length > 0);
+      result[shard] = servers[0];
+      return result;
+    }, {});
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
-    var shard = Object.keys(cinfo.shards)[0];
-    return cinfo.shards[shard];
+    const shardInfo = collectionShardInfo(database, collection);
+
+    const servers = _.flatten(Object.values(shardInfo)).reduce(
+      (servers, server) => servers.add(server),
+      new Set()
+    );
+
+    return [...servers];
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,10 +107,10 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionShardServers(database, collection, sort = true, unique = false) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var shards = collectionShardInfo(database, collection);
     var sColServers = [];
-    for(var shard in cinfo.shards) {
-      sColServers.push(...cinfo.shards[shard]);
+    for (const [shard, servers] of Object.entries(shards)) {
+      sColServers.push(...servers);
     }
 
     if (unique) sColServers = Array.from(new Set(sColServers));
@@ -91,10 +125,12 @@ function MovingShardsWithViewSuite (options) {
     console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     for (var i = 0; i < c.length; ++i) {
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-        database, c[i].name());
-      var shards = Object.keys(cinfo.shards);
-      var replFactor = cinfo.shards[shards[0]].length;
+      var shardInfo = collectionShardInfo(database, c[i].name());
+      var shards = Object.keys(shardInfo);
+      var replFactor =
+          global.ArangoClusterInfo.getCollectionInfo(database, c[i].name())
+              .replicationFactor;
+      assertTrue(typeof replFactor === "number");
       var count = 0;
       while (++count <= 180) {
         var ccinfo = shards.map(
@@ -381,6 +417,95 @@ function MovingShardsWithViewSuite (options) {
   }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get DBServers per shard via the view api. Returns an object which
+/// which keys are shards and which values are sets of DBServers.
+////////////////////////////////////////////////////////////////////////////////
+
+  function getViewServersPerShard() {
+    const request = require("@arangodb/request");
+    const endpointToURL = require("@arangodb/cluster").endpointToURL;
+
+    global.ArangoClusterInfo.flush();
+
+    let serversPerShard = {};
+
+    const GETAndParseOrThrow = url => {
+      let res;
+      try {
+        const envelope = { method: "GET", url };
+        res = request(envelope);
+      } catch (err) {
+        console.error(`Exception for GET ${url}:`, err.stack);
+        throw err;
+      }
+      const body = res.body;
+      if (typeof body !== "string") {
+        console.error("Error after GET /_api/view; body is not a string");
+        throw new Error("body is not a string");
+      }
+
+      const parsedBody = JSON.parse(body);
+
+      if (parsedBody.hasOwnProperty("error") && parsedBody.error) {
+        throw new Error(`GET ${url} returned error: ${parsedBody.errorMessage}`);
+      }
+
+      return parsedBody;
+    };
+
+    getDBServers().forEach(serverId => {
+      const dbServerEndpoint =
+          global.ArangoClusterInfo.getServerEndpoint(serverId);
+      const url = endpointToURL(dbServerEndpoint);
+
+      const views = GETAndParseOrThrow(url + '/_api/view').result;
+      views.forEach(v => {
+        const links =
+          GETAndParseOrThrow(url + '/_api/view/' + v.name + '/properties')
+            .links;
+
+        if (links === undefined) {
+          return;
+        }
+
+        for(const shard of Object.keys(links)) {
+          if (typeof links[shard] !== "object" || links[shard] === {}) {
+            throw new Error(`On DBServer ${serverId}, link to shard ${shard} `
+              + `is unexpectedly either not an object or an empty object.`);
+          }
+
+          if (!serversPerShard.hasOwnProperty(shard)) {
+            serversPerShard[shard] = new Set();
+          }
+
+          serversPerShard[shard].add(serverId);
+        }
+      });
+    });
+
+    return serversPerShard;
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Assert that for each view, the leader has the view available (via the
+/// view api)
+////////////////////////////////////////////////////////////////////////////////
+
+  function assertAllLeadersHaveTheirViews() {
+    c.forEach( c_v => {
+      // leaders in plan
+      const leadersPerShard = shardLeaders("_system", c_v.name());
+      // actual servers that have the corresponding view index
+      const serversPerShard = getViewServersPerShard();
+      for(const [shard, leader] of Object.entries(leadersPerShard)) {
+        assertTrue(serversPerShard[shard].has(leader),
+          `Expected shard ${shard} to be available on ${leader}, but it's not. `
+          + `${{leadersPerShard, serversPerShard}}`);
+      }
+    });
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
@@ -414,6 +539,7 @@ function MovingShardsWithViewSuite (options) {
                 }
               }
             });
+          assertAllLeadersHaveTheirViews();
           v.push(view);
           if (withData) {
             for (let i = 0; i < 1000; ++i) {
@@ -444,120 +570,145 @@ function MovingShardsWithViewSuite (options) {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Calls callback() in a loop until callback() returns true. Then,
+/// waitUntilWithTimeout() returns true. If callback() doesn't return true
+/// until `timeout` seconds pass, waitUntilWithTimeout() returns false. Waits
+/// `interval` seconds between two calls of callback().
+/// An error message may be passed which is printed on timeout.
+////////////////////////////////////////////////////////////////////////////////
+  function waitUntilWithTimeout(callback, timeout = 120, interval = 1.0, message = null) {
+    const start = Date.now();
+    const duration = () => (Date.now() - start) / 1000;
+
+    while (true) {
+      if (callback() === true) {
+        return true;
+      }
+
+      if (duration() > timeout) {
+        if (message !== null) {
+          console.error(message);
+        }
+        return false;
+      }
+
+      wait(interval);
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if all Supervision jobs are finished
+////////////////////////////////////////////////////////////////////////////////
+
+  function supervisionDone() {
+    const state = supervisionState();
+
+    const isDone = !state.error &&
+      Object.keys(state.ToDo).length === 0 &&
+      Object.keys(state.Pending).length === 0;
+
+    if (state.error) {
+      console.warn(
+          'Waiting for supervision jobs to finish:',
+          'Currently no agency communication possible.');
+    } else if (!isDone) {
+      console.info(
+          'Waiting for supervision jobs to finish:', 'ToDo jobs:',
+          Object.keys(state.ToDo).length,
+          'Pending jobs:', Object.keys(state.Pending).length);
+    }
+
+    return isDone;
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for Supervision to finish jobs
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSupervision() {
-    var count = 300;
-    while (--count > 0) {
-      var state = supervisionState();
-      if (!state.error &&
-          Object.keys(state.ToDo).length === 0 &&
-          Object.keys(state.Pending).length === 0) {
-        return true;
-      }
-      if (state.error) {
-        console.warn("Waiting for supervision jobs to finish:",
-                     "Currently no agency communication possible.");
-      } else {
-        console.info("Waiting for supervision jobs to finish:",
-                     "ToDo jobs:", Object.keys(state.ToDo).length,
-                     "Pending jobs:", Object.keys(state.Pending).length);
-      }
-      wait(1.0);
-    }
-    return false;
+    return waitUntilWithTimeout(supervisionDone, 300);
   }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the collection is in sync with the plan
+////////////////////////////////////////////////////////////////////////////////
+
+  function planEqualCurrent(collection) {
+    global.ArangoClusterInfo.flush();
+    const shardDist = internal.getCollectionShardDistribution(collection._id);
+    const Plan = shardDist[collection.name()].Plan;
+    const Current = shardDist[collection.name()].Current;
+
+    return _.isObject(Plan) && _.isEqual(Plan, Current);
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for the collection to come in sync with the plan
+////////////////////////////////////////////////////////////////////////////////
 
   function waitForPlanEqualCurrent(collection) {
-    const iterations = 120;
-    const waitTime = 1.0;
-    const maxTime = iterations * waitTime;
+    return waitUntilWithTimeout(
+      () => planEqualCurrent(collection),
+      120, 1.0,
+      `Collection "${collection}" failed to get plan in sync after 120 sec`
+    );
+  }
 
-    for (let i = 0; i < iterations; i++) {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Waits for views to be available on all dbservers they should be
+/// created on, including followers. This also asserts the view is not available
+/// on servers it should not be.
+////////////////////////////////////////////////////////////////////////////////
+
+  function waitForViewsToGetInSync() {
+
+    const viewInSync = collection => {
+      // object of arrays, keys are shards
+      const cinfo = collectionShardInfo("_system", collection.name());
+      // object of sets, keys are shards
+      const ccinfo = getViewServersPerShard();
+      // check that for every shard in the plan, all dbservers that are in its
+      // plan are also visible via the dbserver's view api.
+      return _.every(
+        Object.keys(cinfo).map(shard => {
+          const planServers = cinfo[shard]; // array
+          const currentServers = ccinfo[shard]; // Set
+
+          // Check that for the given `shard`, every DBServer in the Plan has
+          // the shard available via the view api. Also check that the number of
+          // DBServers having this shard available via the view api is the same
+          // as the number of DBServers in the Plan.
+          // With the implicit understanding that the list of DBServers in the
+          // Plan does not hold duplicates (and currentServers being a Set),
+          // this implies they are equal up to order.
+          return planServers.length === currentServers.size
+            && _.every(planServers, server => currentServers.has(server));
+        })
+      );
+    };
+
+    return waitUntilWithTimeout(() => {
       global.ArangoClusterInfo.flush();
-      const shardDist = internal.getCollectionShardDistribution(collection._id);
-      const Plan = shardDist[collection.name()].Plan;
-      const Current = shardDist[collection.name()].Current;
-
-      if (_.isObject(Plan) && _.isEqual(Plan, Current)) {
-        return true;
-      }
-
-      wait(waitTime);
-    }
-
-    console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime} sec`);
-    return false;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get DBServers for a shard view of collection
-////////////////////////////////////////////////////////////////////////////////
-
-  function getShardedViewServers(database, collection, sort = true, unique = false) {
-    var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var sViewServers = [];
-
-    global.ArangoClusterInfo.flush();
-
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-        database, collection.name());
-    for(var shard in cinfo.shards) {
-      getDBServers().forEach(serverId => {
-        var dbServerEndpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-        var url = endpointToURL(dbServerEndpoint);
-
-        var res;
-        try {
-          var envelope =
-              { method: "GET", url: url + "/_api/view" };
-          res = request(envelope);
-        } catch (err) {
-          console.error(
-            "Exception for GET /_api/view:", err.stack);
-          return {};
-        }
-        var body = res.body;
-        if (typeof body === "string") {
-          var views = JSON.parse(body).result;
-        }
-        views.forEach(v => {
-          var res;
-          try {
-            var envelope =
-                { method: "GET", url: url + "/_api/view/" + v.name + "/properties" };
-            res = request(envelope);
-          } catch (err) {
-            console.error(
-              "Exception for GET /_api/view/" + v.name + "/properties:", err.stack);
-            return {};
-          }
-          var body = res.body;
-          if (typeof body === "string") {
-            var links = JSON.parse(body).links;
-            if (links !== undefined
-                && links.hasOwnProperty(shard)
-                && links.shard !== {}) {
-              sViewServers.push(serverId);
-            }
-          }
-        });
-      });
-    }
-
-    if (unique) sViewServers = Array.from(new Set(sViewServers));
-    return sort ? sViewServers.sort() : sViewServers;
-  }
-
-  function waitAndAssertViewEqualCollectionServers() {
-    assertTrue(waitForSupervision());
-    c.forEach( c_v => {
-      assertTrue(waitForPlanEqualCurrent(c_v));
-      assertEqual(getShardedViewServers("_system", c_v),
-        findCollectionShardServers("_system", c_v.name()));
+      return _.every(c, viewInSync);
     });
+  }
+
+  /*
+   * Notes:
+   * - Immediately after view creation, the leader-DBServers must have the view
+   *   available. So don't wait for anything before that is tested.
+   * - The followers may get the view later.
+   * - The maintenance creates the arangosearch indexes. This is identical with
+   *   the view/link being created.
+   */
+  function waitAndAssertViewEqualCollectionServers() {
+    assertAllLeadersHaveTheirViews();
+    assertTrue(waitForSupervision());
+    assertTrue(waitForViewsToGetInSync());
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -593,7 +744,7 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      dbservers = getDBServers();
+      assertTrue(waitForSynchronousReplication("_system"));
       waitAndAssertViewEqualCollectionServers();
     },
 
@@ -836,6 +987,7 @@ function MovingShardsWithViewSuite (options) {
         arango.Supervision.State;
       assertTrue(state.Timestamp !== first.Timestamp);
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
       waitAndAssertViewEqualCollectionServers();
     },
 
