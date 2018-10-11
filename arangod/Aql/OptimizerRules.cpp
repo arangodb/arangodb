@@ -65,6 +65,33 @@
 #include <tuple>
 
 namespace {
+         
+bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
+                                arangodb::aql::CalculationNode const* node, 
+                                std::unordered_set<arangodb::aql::Variable const*>& vars) {
+  using EN = arangodb::aql::ExecutionNode;
+
+  vars.clear();
+  arangodb::aql::Ast::getReferencedVariables(node->expression()->node(), vars);
+  for (auto const& it : vars) {
+    auto setter = plan->getVarSetBy(it->id);
+    if (setter == nullptr) {
+      continue;
+    }
+    if (setter->getType() == EN::INDEX ||
+        setter->getType() == EN::ENUMERATE_COLLECTION ||
+#ifdef USE_IRESEARCH
+        setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
+#endif
+        setter->getType() == EN::SUBQUERY ||
+        setter->getType() == EN::TRAVERSAL ||
+        setter->getType() == EN::SHORTEST_PATH) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 std::string getSingleShardId(
     arangodb::aql::ExecutionPlan const* plan,
@@ -1489,6 +1516,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
 
   bool modified = false;
   std::unordered_set<Variable const*> neededVars;
+  std::unordered_set<Variable const*> vars;
 
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -1518,6 +1546,33 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         // shared variable, cannot move up any more
         // done with optimizing this calculation node
         break;
+      }
+      
+      if (current->getType() == EN::LIMIT) { 
+        if (!arangodb::ServerState::instance()->isCoordinator()) {
+          // do not move calculations beyond a LIMIT on a single server,
+          // as this would mean carrying out potentially unnecessary calculations
+          break;
+        }
+
+        // coordinator case
+        // now check if the calculation uses data from any collection. if so,
+        // we expect that it is cheaper to execute the calculation close to the origin
+        // of data (e.g. IndexNode, EnumerateCollectionNode) on a DB server than on
+        // a coordinator. though executing the calculation will have the same costs
+        // on DB server and coordinator, the assumption is that we can reduce the 
+        // amount of data we need to transfer between the two if we can execute the
+        // calculation on the DB server and only transfer the calculation result to
+        // the coordinator instead of the full documents 
+
+        if (!::accessesCollectionVariable(plan.get(), nn, vars)) {
+          // not accessing any collection data
+          break;
+        }
+        // accessing collection data.
+        // allow the calculation to be moved beyond the LIMIT,
+        // in the hope that this reduces the amount of data we have
+        // to transfer between the DB server and the coordinator
       }
 
       // first, unlink the calculation from the plan
@@ -1593,35 +1648,20 @@ void arangodb::aql::moveCalculationsDownRule(
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
         // we found something interesting that justifies moving our node down
-        if (currentType == EN::LIMIT &&
+        if (currentType == EN::LIMIT && 
             arangodb::ServerState::instance()->isCoordinator()) {
           // in a cluster, we do not want to move the calculations as far down
           // as possible, because this will mean we may need to transfer a lot
           // more data between DB servers and the coordinator
 
-          // assume first that we want to move the node past the limit
+          // assume first that we want to move the node past the LIMIT
 
           // however, if our calculation uses any data from a
-          // collection/index/view, it probably makes sense to move it anyway,
+          // collection/index/view, it probably makes sense to not move it,
           // because the result set may be huge
-          vars.clear();
-          Ast::getReferencedVariables(nn->expression()->node(), vars);
-          for (auto const& it : vars) {
-            auto setter = plan->getVarSetBy(it->id);
-            if (setter == nullptr) {
-              continue;
-            }
-            if (setter->getType() == EN::INDEX ||
-                setter->getType() == EN::ENUMERATE_COLLECTION ||
-#ifdef USE_IRESEARCH
-                setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
-#endif
-                setter->getType() == EN::SUBQUERY ||
-                setter->getType() == EN::TRAVERSAL ||
-                setter->getType() == EN::SHORTEST_PATH) {
-              done = true;
-              break;
-            }
+          if (::accessesCollectionVariable(plan.get(), nn, vars)) {
+            done = true;
+            break;
           }
         } 
         
@@ -4417,31 +4457,45 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
       continue;
     }
 
+    bool allowOnlyFilterAndCalculation = false;
+
     std::unordered_set<Variable const*> varsSetHere;
     auto parents = n->getParents();
     TRI_ASSERT(!parents.empty());
-
+        
     while (true) {
       TRI_ASSERT(!parents.empty());
       bool stopSearching = false;
       auto inspectNode = parents[0];
       TRI_ASSERT(inspectNode != nullptr);
 
-      switch (inspectNode->getType()) {
+      auto type = inspectNode->getType(); 
+      if (allowOnlyFilterAndCalculation &&
+          type != EN::FILTER && 
+          type != EN::CALCULATION) {
+        stopSearching = true;
+        break;
+      }
+
+      switch (type) {
         case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
-        case EN::UPSERT: {
+        case EN::UPSERT: 
+        case EN::SORT: {
           for (auto& v : inspectNode->getVariablesSetHere()) {
             varsSetHere.emplace(v);
           }
           parents = inspectNode->getParents();
+          if (type == EN::SORT) {
+            allowOnlyFilterAndCalculation = true;
+          }
           continue;
         }
-
+        
         case EN::COLLECT:
         case EN::RETURN:
         case EN::NORESULTS:
@@ -4450,7 +4504,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::GATHER:
         case EN::REMOTE:
         case EN::LIMIT:
-        case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:

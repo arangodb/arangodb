@@ -436,7 +436,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
       
-        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
