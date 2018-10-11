@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix internal issue #2770: the Query Profiling modal dialog in the Web UI
+  was slightly malformed.
+
 * fix internal issue #2035: the Web UI now updates its indices view to check
   whether new indices exist or not.
 
