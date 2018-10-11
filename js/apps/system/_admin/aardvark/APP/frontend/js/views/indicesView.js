@@ -24,7 +24,7 @@
     },
 
     interval: null,
-    refreshRate: 3000,
+    refreshRate: 10000,
 
     template: templateEngine.createTemplate('indicesView.ejs'),
 
@@ -45,48 +45,43 @@
     render: function () {
       var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/engine'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          $(self.el).html(self.template.render({
-            model: self.model,
-            supported: data.supports.indexes
-          }));
+      var continueFunction = function (data) {
+        $(self.el).html(self.template.render({
+          model: self.model,
+          supported: data.supports.indexes
+        }));
 
-          self.breadcrumb();
-          window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
+        self.breadcrumb();
+        window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
 
-          self.getIndex();
+        self.getIndex();
 
-          // check permissions and adjust views
-          arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
-        },
-        error: function () {
-          arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
-        }
-      });
+        // check permissions and adjust views
+        arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
+      };
+
+      if (!this.engineData) {
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/engine'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.engineData = data;
+            continueFunction(data);
+          },
+          error: function () {
+            arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
+          }
+        });
+      } else {
+        continueFunction(this.engineData);
+      }
     },
 
     rerender: function () {
-      var self = this;
-
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/engine'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          self.getIndex(true);
-        },
-        error: function () {
-          arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
-        }
-      });
+      this.getIndex(true);
     },
 
     changeViewToReadOnly: function () {
