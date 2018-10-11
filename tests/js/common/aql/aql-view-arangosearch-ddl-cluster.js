@@ -739,6 +739,29 @@ function IResearchFeatureDDLTestSuite () {
       });
     },
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test create & drop of a view with a link.
+    /// Regression test for arangodb/backlog#486.
+    ////////////////////////////////////////////////////////////////////////////
+    testCreateAndDropViewWithLink: function () {
+      const colName = 'TestCollection';
+      const viewName = 'TestView';
+
+      db._drop(colName);
+      db._dropView(viewName);
+
+      const col = db._create(colName);
+      for (let i = 0; i < 10; i++) {
+        col.insert({ i });
+      }
+      {
+        const view = db._createView(viewName, 'arangosearch', {});
+        view.properties({ links: { [colName]: { includeAllFields: true } } });
+        db._dropView(viewName);
+      } // forget variable `view`, it's invalid now
+      assertEqual(db[viewName], undefined);
+    },
+
   };
 }
 
