@@ -1,6 +1,9 @@
 v3.3.18 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #2957: the Web UI was not able to display more than 1000
+  documents, even when it was set to a higher amount.
+
 * improved logging in case of replication errors
 
 * recover short server id from agency after a restart of a cluster node
