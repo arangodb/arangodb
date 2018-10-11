@@ -176,14 +176,18 @@
         if (!$(element).hasClass('nav-header')) {
           if ($(element).find('input').attr('checked')) {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-circle-o');
               $(element).find('i').addClass('fa-dot-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-square-o');
               $(element).find('i').addClass('fa-check-square-o');
             }
           } else {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-dot-circle-o');
               $(element).find('i').addClass('fa-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-check-square-o');
               $(element).find('i').addClass('fa-square-o');
             }
           }

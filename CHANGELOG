@@ -4,6 +4,18 @@ v3.3.18 (XXXX-XX-XX)
 * fix internal issue #6808: newly created databases within the Web UI did not
   appear when used Internet Explorer 11 as a browser.
 
+* fix internal issue #2688: the Web UI's graph viewer created malformed node
+  labels if a node was expanded multiple times.
+
+* fix internal issue #2957: the Web UI was not able to display more than 1000
+  documents, even when it was set to a higher amount.
+
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
+* fix internal issue #2764: the waitForSync property of a satellite collection
+  could not be changed via the Web UI
+
 * improved logging in case of replication errors
 
 * recover short server id from agency after a restart of a cluster node
@@ -1123,6 +1135,329 @@ v3.3.milestone1 (2017-10-11)
 
       WARNING {memory} maximum number of memory mappings per process is 65530, which seems too low. it is recommended to set it to at least 512000
       WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
+
+
+v3.2.17 (XXXX-XX-XX)
+--------------------
+
+* added missing virtual destructor for MMFiles transaction data context object
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fixed undefined behavior in cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* cluster nodes should retry registering in agency until successful
+
+* fixed issue #5354: updated the ui json editor, improved usability
+
+* fixed issue #5648: fixed error message when saving unsupported document
+  types
+
+* fixed issue #5943: misplaced database ui icon and wrong cursor type were used
+
+
+v3.2.16 (2018-07-12)
+--------------------
+
+* upgraded arangodb starter version to 0.12.0
+
+* make edge cache initialization and invalidation more portable by avoiding memset
+  on non-POD types
+
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+* fixed issue #5400: Unexpected AQL Result
+
+* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
+* issue one HTTP call less per cluster AQL query
+
+* self heal during a Foxx service install, upgrade or replace no longer breaks
+  the respective operation
+
+* inception was ignoring leader's configuration
+
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
+
+* more patient agency tests to allow for ASAN tests to successfully finish
+
+* fixed for agent coming back to agency with changed endpoint and
+  total data loss
+
+* fixed agency restart from compaction without data
+
+
+v3.2.15 (2018-05-13)
+--------------------
+
+* upgraded arangodb starter version to 0.11.2
+
+* make /_api/index and /_api/database REST handlers use the scheduler's internal
+  queue, so they do not run in an I/O handling thread
+
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
+
+
+v3.2.14 (2018-04-20)
+--------------------
+
+* field "$schema" in Foxx manifest.json files no longer produce warnings
+
+* added `@arangodb/locals` module to expose the Foxx service context as an
+  alternative to using `module.context` directly.
+
+* the internal implementation of REST API `/_api/simple/by-example` now uses
+  C++ instead of JavaScript
+
+* supervision can be switched to maintenance mode f.e. for rolling upgrades
+
+
+v3.2.13 (2018-04-13)
+--------------------
+
+* improve startup resilience in case there are datafile errors (MMFiles)
+
+  also allow repairing broken VERSION files automatically on startup by
+  specifying the option `--database.ignore-datafile-errors true`
+
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
+* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
+
+* fixed the behavior of clusterinfo when waiting for current to catch
+  up with plan in create collection.
+
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
+
+* fixed interal issue #2215 FailedLeader timeout bug
+
+
+v3.2.12 (2018-02-27)
+--------------------
+
+* remove long disfunctional admin/long_echo handler
+
+* fixed Foxx API:
+
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
+
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
+* fix internal issue #1848
+
+  AQL optimizer was trying to resolve attribute accesses
+  to attributes of constant object values at query compile time, but only did so far
+  the very first attribute in each object
+
+  this fixes https://stackoverflow.com/questions/48648737/beginner-bug-in-for-loops-from-objects
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
+* fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
+         returned 200 before.
+
+* fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
+         instead of replacing them.
+
+* fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
+         to a javascript file.
+
+* fixed issue #4395: If your foxx app includes an `APP` folder it got accidently removed by selfhealing
+         this is not the case anymore.
+
+* fix internal issue 1770: collection creation using distributeShardsLike yields
+  errors and did not distribute shards correctly in the following cases:
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
+     (shards * replication is not divisible by DBServers).
+  2. If there was failover / move shard case on the leading collection
+     and creating the follower collection afterwards.
+
+* fix timeout issues in replication client expiration
+
++ fix some inconsistencies in replication for RocksDB engine that could have led
+  to some operations not being shipped from master to slave servers
+
+* fix issue #4272: VERSION file keeps disappearing
+
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* fix issue #4393: broken handling of unix domain sockets in
+  JS_Download
+
+* fix internal bug #1726: supervision failed to remove multiple
+  removed servers from health UI
+  
+* fixed internal issue #1969 - command apt-get purge/remove arangodb3e was failing
+
+* fixed a bug where supervision tried to deal with shards of virtual collections
+
+
+v3.2.11 (2018-01-17)
+--------------------
+
+* Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
+  Former the index estimates were modified if the transaction commited or not.
+  Now they will only be modified if the transaction commited successfully.
+
+* Truncate in RocksDB will now do intermediate commits every 10.000 documents
+  if truncate fails or the server crashes during this operation all deletes
+  that have been commited so far are persisted.
+
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
+* UI: fixed a query editor caching and parsing issue for arrays and objects
+
+* Fixed internal issue #1684: Web UI: saving arrays/objects as bind parameters faulty
+
+* Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
+  within the documents overview of a collection.
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
+* UI: optimized login view for very small screen sizes
+
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
+
+* UI: optimized error messages for invalid query bind parameter
+
+* fixed missing transaction events in RocksDB asynchronous replication
+
+* fixed issue #4255: AQL SORT consuming too much memory
+
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js'
+  at 98,7: ArangoError 4: Expecting type String
+
+* fixed issue #3818: Foxx configuration keys cannot contain spaces (will not save)
+
+* UI: displayed wrong "waitForSync" property for a collection when
+  using RocksDB as storage engine
+
+* prevent binding to the same combination of IP and port on Windows
+
+* fixed incorrect persistence of RAFT vote and term
+
+
+v3.2.10 (2017-12-22)
+--------------------
+
+* replication: more robust initial sync
+
+* fixed a bug in the RocksDB engine that would prevent recalculated
+  collection counts to be actually stored
+
+* fixed issue #4095: Inconsistent query execution plan
+
+* fixed issue #4056: Executing empty query causes crash
+
+* fixed issue #4045: Out of memory in `arangorestore` when no access
+  rights to dump files
+
+* fixed issue #3031: New Graph: Edge definitions with edges in
+  fromCollections and toCollections
+
+* fixed issue #2668: UI: when following wrong link from edge to vertex in
+  nonexisting collection misleading error is printed
+
+* UI: improved the behavior during collection creation in a cluster environment
+
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  any is known to scale bad on huge collections with rocksdb.
+
+* fixed snapshots becoming potentially invalid after intermediate commits in
+  the RocksDB engine
+
+* backport agency inquire API changes
+
+* fixed issue #3822: Field validation error in ArangoDB UI - Minor
+
+* UI: fixed disappearing of the navigation label in some cases
+
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
+* fixed issue #3640: limit in subquery
+
+* UI: edge collections were wrongly added to from and to vertices select
+  box during graph creation
+
+* fixed issue #3741: fix terminal color output in Windows
+
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+
+* fix equality comparison for MMFiles documents in AQL functions UNIQUE
+  and UNION_DISTINCT
+
+
+v3.2.9 (2017-12-04)
+-------------------
+
+* under certain conditions, replication could stop. Now fixed by adding an
+  equality check for requireFromPresent tick value
+
+* fixed locking for replication context info in RocksDB engine
+  this fixes undefined behavior when parallel requests are made to the
+  same replication context
+
+* UI: added not found views for documents and collections
+
+* fixed issue #3858: Foxx queues stuck in 'progress' status
+
+* allow compilation of ArangoDB source code with g++ 7
+
+* fixed issue #3224: Issue in the Foxx microservices examples
+
+* fixed a deadlock in user privilege/permission change routine
+
+* fixed a deadlock on server shutdown
+
+* fixed some collection locking issues in MMFiles engine
+
+* properly report commit errors in AQL write queries to the caller for the
+  RocksDB engine
+
+* UI: optimized error messages for invalid graph definitions. Also fixed a
+  graph renderer cleanrenderer cleanup error.
+
+* UI: document/edge editor now remembering their modes (e.g. code or tree)
+
+* UI: added a delay within the graph viewer while changing the colors of the
+  graph. Necessary due different browser behaviour.
+
+* fix removal of failed cluster nodes via web interface
+
+* back port of ClusterComm::wait fix in devel
+  among other things this fixes too eager dropping of other followers in case
+  one of the followers does not respond in time
+
+* transact interface in agency should not be inquired as of now
+
+* inquiry tests and blocking of inquiry on AgencyGeneralTransaction
+
+
+v3.2.8 (2017-11-18)
+-------------------
+
+* fixed a race condition occuring when upgrading via linux package manager
+
+* fixed authentication issue during replication
 
 
 v3.2.7 (2017-11-13)
