@@ -46,6 +46,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -2260,40 +2261,143 @@ void arangodb::aql::simplifyConditionsRule(
   auto visitor = [p](AstNode* node) {
 again:
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      auto accessed = node->getMember(0);
+      auto const* accessed = node->getMemberUnchecked(0);
 
-      if (accessed->type != NODE_TYPE_REFERENCE) {
-        return node;
+      if (accessed->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(accessed->getData());
+        TRI_ASSERT(v != nullptr);
+
+        auto setter = p->getVarSetBy(v->id);
+        
+        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+          return node;
+        }
+
+        accessed = ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
+        if (accessed == nullptr) {
+          return node;
+        }
       }
 
-      Variable const* v = static_cast<Variable const*>(accessed->getData());
-      TRI_ASSERT(v != nullptr);
+      TRI_ASSERT(accessed != nullptr);
 
-      auto setter = p->getVarSetBy(v->id);
-      
-      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-        return node;
-      }
-
-      AstNode const* referenced = ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
-      if (referenced == nullptr) {
-        return node;
-      }
-
-      if (referenced->type == NODE_TYPE_OBJECT) {
-        StringRef attributeName(node->getStringValue(), node->getStringLength());
-
-        size_t const n = referenced->numMembers();
+      if (accessed->type == NODE_TYPE_OBJECT) {
+        StringRef const attributeName(node->getStringValue(), node->getStringLength());
+        bool isDynamic = false;
+        size_t const n = accessed->numMembers();
         for (size_t i = 0; i < n; ++i) {
-          auto member = referenced->getMember(i);
+          auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
               StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
             // found the attribute!
             node = member->getMember(0);
+            // now try optimizing the simplified condition
+            // time for a goto...!
             goto again;
+          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+            // dynamic attribute name
+            isDynamic = true;
+          }
+        }
+
+        // attribute not found 
+        if (!isDynamic) {
+          return Ast::createNodeValueNull(); 
+        }
+      }
+    } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+      auto const* accessed = node->getMember(0);
+
+      if (accessed->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(accessed->getData());
+        TRI_ASSERT(v != nullptr);
+
+        auto setter = p->getVarSetBy(v->id);
+        
+        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+          return node;
+        }
+
+        accessed = ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
+        if (accessed == nullptr) {
+          return node;
+        }
+      }
+      
+      auto indexValue = node->getMember(1);
+
+      if (!indexValue->isConstant() || !(indexValue->isStringValue() || indexValue->isNumericValue())) {
+        // cant handle this type of index statically
+        return node;
+      }
+      
+      if (accessed->type == NODE_TYPE_OBJECT) {
+        StringRef attributeName;
+        std::string indexString;
+
+        if (indexValue->isStringValue()) {
+          // string index, e.g. ['123']
+          attributeName = StringRef(indexValue->getStringValue(), indexValue->getStringLength());
+        } else {
+          // numeric index, e.g. [123]
+          TRI_ASSERT(indexValue->isNumericValue());
+          // convert the numeric index into a string
+          indexString = std::to_string(indexValue->getIntValue());
+          attributeName = StringRef(indexString);
+        }
+
+        bool isDynamic = false;
+        size_t const n = accessed->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = accessed->getMemberUnchecked(i);
+
+          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+              StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            // found the attribute!
+            node = member->getMember(0);
+            // now try optimizing the simplified condition
+            // time for a goto...!
+            goto again;
+          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+            // dynamic attribute name
+            isDynamic = true;
           }
         } 
+
+        // attribute not found
+        if (!isDynamic) {
+          return Ast::createNodeValueNull(); 
+        }
+      } else if (accessed->type == NODE_TYPE_ARRAY) {
+        int64_t position;
+        if (indexValue->isStringValue()) {
+          // string index, e.g. ['123'] -> convert to a numeric index
+          bool valid;
+          position = NumberUtils::atoi<int64_t>(indexValue->getStringValue(), indexValue->getStringValue() + indexValue->getStringLength(), valid);
+          if (!valid) {
+            // invalid index
+            return Ast::createNodeValueNull(); 
+          }
+        } else {
+          // numeric index, e.g. [123]
+          TRI_ASSERT(indexValue->isNumericValue());
+          position = indexValue->getIntValue();
+        }
+        int64_t const n = accessed->numMembers();
+        if (position < 0) {
+          // a negative position is allowed
+          position = n + position;
+        }
+        if (position >= 0 && position < n) {
+          node = accessed->getMember(static_cast<size_t>(position));
+          // now try optimizing the simplified condition
+          // time for a goto...!
+          goto again;
+        }
+        
+        // index out of bounds    
+        return Ast::createNodeValueNull(); 
       }
     }
 
