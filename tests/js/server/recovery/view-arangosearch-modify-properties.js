@@ -109,6 +109,6 @@ function main (argv) {
     return 0;
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.done().status ? 0 : 1;
+    return jsunity.writeDone().status ? 0 : 1;
   }
 }

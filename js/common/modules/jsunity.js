@@ -209,6 +209,17 @@ function Done (suiteName) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief done with all tests
+// //////////////////////////////////////////////////////////////////////////////
+
+function WriteDone (suiteName) {
+  var ret = Done(suiteName);
+  let outPath = fs.join(require("internal").options()['temp.path'], 'testresult.json');
+  fs.write(outPath, JSON.stringify(ret));
+  return ret;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a JSUnity test file
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -238,4 +249,5 @@ exports.setTestFilter = setTestFilter;
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;
+exports.writeDone = WriteDone;
 exports.runTest = RunTest;
