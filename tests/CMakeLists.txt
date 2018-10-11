@@ -94,6 +94,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
+  Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp

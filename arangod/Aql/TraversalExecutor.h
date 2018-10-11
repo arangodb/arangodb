@@ -23,31 +23,35 @@
 #ifndef ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 #define ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 
+#include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/TraversalStats.h"
+
 namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
 class TraversalExecutorInfos : public ExecutorInfos {
+  public:
+  TraversalExecutorInfos(std::unordered_set<RegisterId> inputRegisters,
+                         std::unordered_set<RegisterId> outputRegisters,
+                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                         std::unordered_set<RegisterId> registersToClear) :
+    ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters, registersToClear) {}
+ 
   TraversalExecutorInfos() = delete;
 
-  TraversalExecutorInfos(FilterExecutorInfos &&) = default;
-  TraversalExecutorInfos(FilterExecutorInfos const&) = delete;
+  TraversalExecutorInfos(TraversalExecutorInfos &&) = default;
+  TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
   ~TraversalExecutorInfos() = default;
-
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-
- private:
-
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
-}
+};
 
 /**
- * @brief Implementation of Filter Node
+ * @brief Implementation of Traversal Node
  */
 class TraversalExecutor {
   public:
@@ -60,6 +64,7 @@ class TraversalExecutor {
     TraversalExecutor(TraversalExecutor const&) = default;
     TraversalExecutor(Fetcher& fetcher, Infos&);
     ~TraversalExecutor();
+
   /**
    * @brief produce the next Row of Aql Values.
    *
@@ -70,6 +75,7 @@ class TraversalExecutor {
  private:
   Infos& _infos;
   Fetcher& _fetcher;
+  InputAqlItemRow _input;
 
 };
 
