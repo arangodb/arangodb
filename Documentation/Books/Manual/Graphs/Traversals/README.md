@@ -15,6 +15,8 @@ here which gives you complete programmatic access to the data.
 For any of the following examples, we'll be using the example collections *v* and *e*,
 populated with continents, countries and capitals data listed below (see [Example Data](ExampleData.md)).
 
+To learn more about graphs in ArangoDB take Free [ArangoDB Graph course](https://www.arangodb.com/arangodb-graph-course).
+
 Starting from Scratch
 ---------------------
 
