@@ -74,7 +74,7 @@ the corresponding edge documents would have look like this:
 ```
 
 This will ensure that outgoing edge documents will be placed on the same DBServer as the vertex.
-Without the correct placement of the edges, the pregel graph processing system will not work correctly, because
+Without the correct placement of the edges, the Pregel graph processing system will not work correctly, because
 edges will not load correctly.
 
 Arangosh API
@@ -82,7 +82,7 @@ Arangosh API
 
 ### Starting an Algorithm Execution
 
-The pregel API is accessible through the `@arangodb/pregel` package.
+The Pregel API is accessible through the `@arangodb/pregel` package.
 To start an execution you need to specify the **algorithm** name and the vertex and edge collections.
 Alternatively you can specify a named graph. Additionally you can specify custom parameters which
 vary for each algorithm.
@@ -94,8 +94,8 @@ var pregel = require("@arangodb/pregel");
 var params = {};
 var execution = pregel.start("<algorithm>", "<yourgraph>", params);
 ```
-Params needs to be an object, the valid keys are mentioned below in the section [Algorithms]()
-
+`params` needs to be an object, the valid keys are mentioned below in the section
+[Available Algorithms](#available-algorithms)
 
 Alternatively you might want to specify the vertex and edge collections directly. The call-syntax of the `start``
 method changes in this case. The second argument must be an object with the keys `vertexCollections`and `edgeCollections`.
@@ -106,7 +106,6 @@ var params = {};
 var execution = pregel.start("<algorithm>", {vertexCollections:["vertices"], edgeCollections:["edges"]}, {});
 ```
 The last argument is still the parameter object. See below for a list of algorithms and parameters.
-
 
 ### Status of an Algorithm Execution
 
@@ -166,7 +165,7 @@ pregel.cancel(execution);
 AQL integration
 ---------------
 
-ArangoDB supports retrieving temporary pregel results through the ArangoDB query language (AQL). 
+ArangoDB supports retrieving temporary Pregel results through the ArangoDB query language (AQL). 
 When our graph processing subsystem finishes executing an algorithm, the result can either be written back into the 
 database or kept in memory. In both cases the result can be queried via AQL. If the data was not written to the database
 store it is only held temporarily, until the user calls the `cancel` methodFor example a user might want to query
@@ -263,7 +262,6 @@ When you specify the result field name, the hub score will be stored in `<result
 `<result field>_auth`.
 The algorithm can be executed like this:
 
-
 ```javascript
 var pregel = require("@arangodb/pregel");
 var handle = pregel.start("hits", "yourgraph", {threshold:0.00001, resultField: "score"});
@@ -321,10 +319,9 @@ This can be considered a scalable equivalent to vertex betweeness, which can be 
 The algorithm is from the paper *Centralities in Large Networks: Algorithms and Observations (U Kang et.al. 2011)*
 
 ```javascript
-  const pregel = require("@arangodb/pregel");
-  const handle = pregel.start("linerank", "yourgraph", {"resultField": "rank"});
+const pregel = require("@arangodb/pregel");
+const handle = pregel.start("linerank", "yourgraph", {"resultField": "rank"});
 ```
-
 
 ### Community Detection
 
@@ -345,12 +342,11 @@ The default bound is 500 iterations, which is likely too large for your applicat
 Should work best on undirected graphs, results on directed graphs might vary depending on the density of your graph.
 
 ```javascript
-  const pregel = require("@arangodb/pregel");
-  const handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
+const pregel = require("@arangodb/pregel");
+const handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
 ```
 
 #### Speaker-Listener Label Propagation
-
 
 The [Speaker-listener Label Propagation](https://arxiv.org/pdf/1109.5720.pdf) (SLPA) can be used to implement community detection.
 It works similar to the label propagation algorithm,
