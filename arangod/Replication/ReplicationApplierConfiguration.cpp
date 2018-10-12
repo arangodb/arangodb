@@ -52,6 +52,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _idleMaxWaitTime(5 * 500 * 1000),
       _initialSyncMaxWaitTime(300 * 1000 * 1000),
       _autoResyncRetries(2),
+      _maxPacketSize(512 * 1024 * 1024),
       _sslProtocol(0),
       _skipCreateDrop(false),
       _autoStart(false),
@@ -82,6 +83,7 @@ void ReplicationApplierConfiguration::reset() {
   _idleMaxWaitTime = 5 * 500 * 1000;
   _initialSyncMaxWaitTime = 300 * 1000 * 1000;
   _autoResyncRetries = 2;
+  _maxPacketSize = 512 * 1024 * 1024;
   _sslProtocol = 0;
   _skipCreateDrop = false;
   _autoStart = false; 
@@ -133,6 +135,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("adaptivePolling", VPackValue(_adaptivePolling));
   builder.add("autoResync", VPackValue(_autoResync));
   builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
+  builder.add("maxPacketSize", VPackValue(_maxPacketSize));
   builder.add("includeSystem", VPackValue(_includeSystem));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
@@ -345,6 +348,11 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   value = slice.get("autoResyncRetries");
   if (value.isNumber()) {
     configuration._autoResyncRetries = value.getNumber<uint64_t>();
+  }
+  
+  value = slice.get("maxPacketSize");
+  if (value.isNumber()) {
+    configuration._maxPacketSize = value.getNumber<uint64_t>();
   }
 
   // read the endpoint

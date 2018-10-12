@@ -1,31 +1,5 @@
-
-@startDocuBlock general_graph_list_http_examples
-@brief Lists all graphs known to the graph module.
-
-@RESTHEADER{GET /_api/gharial, List all graphs}
-
-@RESTDESCRIPTION
-Lists all graphs stored in this database.
-
-@RESTRETURNCODES
-
-@RESTRETURNCODE{200}
-Is returned if the module is available and the graphs could be listed.
-
-@RESTREPLYBODY{error,boolean,required,}
-Flag if there was an error (true) or not (false).
-It is false in this response.
-
-@RESTREPLYBODY{code,integer,required,}
-The response code.
-
-@RESTREPLYBODY{graphs,array,required,graph_list}
-
-@RESTSTRUCT{graph,graph_list,object,optional,graph_representation}
-The information about the newly created graph
-
 @RESTSTRUCT{name,graph_representation,string,required,}
-The name of the graph
+The name of the graph.
 
 @RESTSTRUCT{edgeDefinitions,graph_representation,array,required,graph_edge_definition}
 An array of definitions for the relations of the graph.
@@ -57,21 +31,37 @@ Flag if the graph is a SmartGraph (Enterprise only) or not.
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
 The name of the sharding attribute in smart graph case (Enterprise Only)
 
-@EXAMPLES
+@RESTSTRUCT{_id,vertex_representation,string,required,}
+The _id value of the stored data.
 
-@EXAMPLE_ARANGOSH_RUN{HttpGharialList}
-  var examples = require("@arangodb/graph-examples/example-graph.js");
-~ examples.dropGraph("social");
-  examples.loadGraph("social");
-  examples.loadGraph("routeplanner");
-  var url = "/_api/gharial";
-  var response = logCurlRequest('GET', url);
+@RESTSTRUCT{_key,vertex_representation,string,required,}
+The _key value of the stored data.
 
-  assert(response.code === 200);
+@RESTSTRUCT{_rev,vertex_representation,string,required,}
+The _rev value of the stored data.
 
-  logJsonResponse(response);
-~ examples.dropGraph("social");
-~ examples.dropGraph("routeplanner");
-@END_EXAMPLE_ARANGOSH_RUN
-@endDocuBlock
+@RESTSTRUCT{_id,edge_representation,string,required,}
+The _id value of the stored data.
 
+@RESTSTRUCT{_key,edge_representation,string,required,}
+The _key value of the stored data.
+
+@RESTSTRUCT{_rev,edge_representation,string,required,}
+The _rev value of the stored data.
+
+@RESTSTRUCT{_from,edge_representation,string,required,}
+The _from value of the stored data.
+
+@RESTSTRUCT{_to,edge_representation,string,required,}
+The _to value of the stored data.
+
+@RESTSTRUCT{collection,graph_edge_definition,string,required,}
+Name of the edge collection, where the edge are stored in.
+
+@RESTSTRUCT{from,graph_edge_definition,array,required,string}
+List of vertex collection names.
+Edges in collection can only be inserted if their _from is in any of the collections here.
+
+@RESTSTRUCT{to,graph_edge_definition,array,required,string}
+List of vertex collection names.
+Edges in collection can only be inserted if their _to is in any of the collections here.

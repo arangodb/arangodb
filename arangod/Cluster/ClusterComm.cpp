@@ -426,22 +426,14 @@ OperationID ClusterComm::asyncRequest(
   bool doLogConnectionErrors = logConnectionErrors();
 
   if (callback) {
-    callbacks._onError = [callback, result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [callback, result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
         responses.erase(result->operationID);
       }
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        if (doLogConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        }
+        logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
       /*bool ret =*/ ((*callback.get())(result.get()));
       // TRI_ASSERT(ret == true);
@@ -457,19 +449,11 @@ OperationID ClusterComm::asyncRequest(
       //TRI_ASSERT(ret == true);
     };
   } else {
-    callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        if (doLogConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        }
+        logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
       somethingReceived.broadcast();
     };
@@ -543,15 +527,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       CONDITION_LOCKER(isen, cv);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        if (doLogConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        }
+        logConnectionError(doLogConnectionErrors, result.get(), 0.0, __LINE__);
       }
       wasSignaled = true;
       cv.signal();
@@ -1281,4 +1257,19 @@ void ClusterCommThread::run() {
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
+}
+        
+/// @brief logs a connection error (backend unavailable)
+void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result, double timeout, int /*line*/) {
+  std::string msg = "cannot create connection to server";
+  if (!result->serverID.empty()) {
+    msg += ": '" + result->serverID + '\'';
+  }
+  msg += " at endpoint " + result->endpoint + "', timeout: " + std::to_string(timeout);
+  
+  if (useErrorLogLevel) {
+    LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
+  } else {
+    LOG_TOPIC(INFO, Logger::CLUSTER) << msg;
+  }
 }
