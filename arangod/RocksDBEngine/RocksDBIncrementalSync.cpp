@@ -189,29 +189,20 @@ Result syncChunkRocksDB(
     // time how long the request takes
     double t = TRI_microtime();
 
-    response.reset(syncer._state.connection.client->retryRequest(rest::RequestType::PUT, url, nullptr, 0,
-                   replutils::createHeaders()));
+    syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::PUT, url, nullptr, 0,
+                                          replutils::createHeaders()));
+    });
 
     stats.waitedForKeys += TRI_microtime() - t;
     ++stats.numKeysRequests;
-  }
-
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                  std::string("could not connect to master at ") +
-                      syncer._state.master.endpoint + ": " +
-                      syncer._state.connection.client->getErrorMessage());
+    
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, syncer._state.connection);
+    }
   }
 
   TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": HTTP " +
-                      basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                      ": " + response->getHttpReturnMessage());
-  }
 
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
@@ -369,32 +360,21 @@ Result syncChunkRocksDB(
 
       double t = TRI_microtime();
 
-      response.reset(syncer._state.connection.client->retryRequest(
-            rest::RequestType::PUT, url, keyJsonString.data(),
-            keyJsonString.size(), replutils::createHeaders()));
+      syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        response.reset(client->retryRequest(rest::RequestType::PUT, url, keyJsonString.data(),
+                                            keyJsonString.size(), replutils::createHeaders()));
+      });
 
       stats.waitedForDocs += TRI_microtime() - t;
       stats.numDocsRequested += toFetch.size();
       ++stats.numDocsRequests;
-    }
-
-    if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                    std::string("could not connect to master at ") +
-                        syncer._state.master.endpoint + ": " +
-                        syncer._state.connection.client->getErrorMessage());
+      
+      if (replutils::hasFailed(response.get())) {
+        return replutils::buildHttpError(response.get(), url, syncer._state.connection);
+      }
     }
 
     TRI_ASSERT(response != nullptr);
-
-    if (response->wasHttpError()) {
-      return Result(
-          TRI_ERROR_REPLICATION_MASTER_ERROR,
-          std::string("got invalid response from master at ") +
-              syncer._state.master.endpoint + ": HTTP " +
-              basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-              response->getHttpReturnMessage());
-    }
 
     transaction::BuilderLeaser docsBuilder(trx);
     docsBuilder->clear();
@@ -556,27 +536,19 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto const headers = replutils::createHeaders();
     
     double t = TRI_microtime();
-    response.reset(syncer._state.connection.client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
+    
+    syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
+    });
 
     stats.waitedForInitial += TRI_microtime() - t;
-  }
-
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                  std::string("could not connect to master at ") +
-                      syncer._state.master.endpoint + ": " +
-                      syncer._state.connection.client->getErrorMessage());
+    
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, syncer._state.connection);
+    }
   }
 
   TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": HTTP " +
-                      basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                      ": " + response->getHttpReturnMessage());
-  }
 
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Slice.h>
 
@@ -88,10 +88,17 @@ class InitialSyncer : public Syncer {
   }
 
   std::string progress() const { return _progress.message; }
+  
+ protected:
+  
+  /// @brief start a recurring task to extend the batch
+  void startRecurringBatchExtension();
 
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
+  /// recurring task to keep the batch alive
+  std::unique_ptr<asio_ns::steady_timer> _batchPingTimer;
 };
 }  // namespace arangodb
 

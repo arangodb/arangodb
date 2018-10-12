@@ -28,7 +28,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "VocBase/ticks.h"
 
@@ -53,8 +52,6 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  /// @brief the http client we're using
-  std::unique_ptr<httpclient::SimpleHttpClient> client;
 
   Connection(Syncer* syncer,
              ReplicationApplierConfiguration const& applierConfig);
@@ -68,14 +65,33 @@ struct Connection {
   /// @brief identifier for local server
   std::string const& localServerId() const;
 
+  /// @brief Thread-safe aborted status
   void setAborted(bool value);
 
+  /// @brief Thread-safe check aborted
   bool isAborted() const;
+  
+  /// @brief get an exclusive connection 
+  template<typename F>
+  void lease(F&& func) & {
+    std::lock_guard<std::mutex> guard(_mutex);
+    std::forward<F>(func)(_client.get());
+  }
+  
+  template<typename F>
+  void lease(F&& func) const& {
+    std::lock_guard<std::mutex> guard(_mutex);
+    std::forward<F>(func)(_client.get());
+  }
 
  private:
-  std::string _endpointString;
+  std::string const _endpointString;
   std::string const _localServerId;
-  mutable Mutex _mutex;
+  
+  /// lock to protect client connection
+  mutable std::mutex _mutex;
+  /// @brief the http client we're using
+  std::unique_ptr<httpclient::SimpleHttpClient> _client;
 };
 
 struct ProgressInfo {
@@ -96,7 +112,7 @@ struct ProgressInfo {
   void set(std::string const& msg);
 
  private:
-  Mutex _mutex;
+  std::mutex _mutex;
   Setter _setter;
 };
 

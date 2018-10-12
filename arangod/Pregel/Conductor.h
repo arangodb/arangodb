@@ -91,7 +91,7 @@ class Conductor {
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
   double _endTimeSecs = 0;
-  std::unique_ptr<asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::steady_timer> _steady_timer;
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);
