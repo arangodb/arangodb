@@ -363,6 +363,10 @@ void Scheduler::drain() {
     found = popFifo(FIFO1);
 
     if (!found) {
+      found = popFifo(FIFO8);
+    }
+
+    if (!found) {
       found = popFifo(FIFO2);
     }
   }
