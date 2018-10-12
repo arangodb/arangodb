@@ -414,7 +414,6 @@ function dumpTestSuite () {
 
       assertEqual(props.consolidationIntervalMsec, 0);
       assertEqual(props.cleanupIntervalStep, 456);
-      assertEqual(props.consolidationPolicy.segmentThreshold, 456);
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
