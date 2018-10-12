@@ -191,23 +191,6 @@ function optimizerEdgeIndexTestSuite () {
 // / @brief test index usage
 // //////////////////////////////////////////////////////////////////////////////
 
-    testFindFromTo: function () {
-      var queries = [
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from100" && i._to == "UnitTestsCollection/nono" RETURN i._key', 100 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from200" && i._to == "UnitTestsCollection/nono" RETURN i._key', 200 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1000" && i._to == "UnitTestsCollection/nono" RETURN i._key', 1000 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1100" && i._to == "UnitTestsCollection/nono" RETURN i._key', 1100 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1900" && i._to == "UnitTestsCollection/nono" RETURN i._key', 1900 ]
-      ];
-
-      queries.forEach(function (query) {
-        var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1], results.json.length, query[0]);
-        assertEqual(0, results.stats.scannedFull);
-        assertEqual(query[1], results.stats.scannedIndex);
-      });
-    },
-
     testLookupOnFromSortOnToAttribute: function () {
       let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT to = doc._to RETURN to";
       let results = AQL_EXECUTE(query);
