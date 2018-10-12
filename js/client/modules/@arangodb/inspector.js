@@ -630,7 +630,7 @@ function getServerData(arango) {
             report[server].config = agencyConfig;
             report[server].state = agencyState;
           }
-
+          
         } catch (e) {
           print(e);
         }
