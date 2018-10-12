@@ -91,12 +91,15 @@ function IResearchLinkSuite () {
       //var links = view.properties().links;
       //assertEqual(links['testCollection'], undefined);
       //view.drop();
-      var view;
       try {
-        view = db._createView("someView", "arangosearch", meta);
-        fail();
+        var view = db._createView("someView", "arangosearch", meta);
+        // below executed on single-server
+        var links = view.properties().links;
+        assertEqual(links['testCollection'], undefined);
+        view.drop();
       } catch(e) {
-         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e.errorNum);
+        // below executed on cluster
+        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e.errorNum);
       }
 
       assertNull(db._view("someView"));
