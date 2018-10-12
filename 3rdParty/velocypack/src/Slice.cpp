@@ -939,7 +939,7 @@ int Slice::compareString(StringRef const& value) const {
   ValueLength keyLength;
   char const* k = getString(keyLength);
   size_t const compareLength =
-      (std::min)(static_cast<size_t>(keyLength), length);
+      (std::min)(checkOverflow(keyLength), length);
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
