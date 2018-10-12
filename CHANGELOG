@@ -1,4 +1,4 @@
-v3.3.18 (XXXX-XX-XX)
+v3.3.18 (2018-10-12)
 --------------------
 
 * when returning memory to the OS, use the same memory protection flags as 
