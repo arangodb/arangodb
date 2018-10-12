@@ -108,7 +108,8 @@ function getLoggerState(endpoint) {
     }
   });
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200);
   assertTrue(res.hasOwnProperty('json'));
   return arangosh.checkRequestResult(res.json);
 }
@@ -312,7 +313,7 @@ function ActiveFailoverSuite() {
       assertTrue(currentLead !== oldLead);
       print("Failover to new leader : ", currentLead);
 
-      internal.wait(2.5); // settle down, heartbeat interval is 1s
+      internal.wait(5); // settle down, heartbeat interval is 1s
       assertEqual(checkData(currentLead), 10000);
       print("New leader has correct data");
 
@@ -406,7 +407,7 @@ function ActiveFailoverSuite() {
       currentLead = checkForFailover(currentLead);
       assertTrue(currentLead === nextLead, "Did not fail to best in-sync follower");
 
-      internal.wait(2.5); // settle down, heartbeat interval is 1s
+      internal.wait(5); // settle down, heartbeat interval is 1s
       let cc = checkData(currentLead);
       // we expect to find documents within an acceptable range
       assertTrue(10000 <= cc && cc <= upper + 500, "Leader has too little or too many documents");
