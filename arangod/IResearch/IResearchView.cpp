@@ -1116,9 +1116,22 @@ arangodb::Result IResearchView::dropImpl() {
   }
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto res = IResearchLinkHelper::updateLinks(
-    collections, vocbase(), *this, emptyObjectSlice(), stale
-  );
+  arangodb::Result res;
+
+  {
+    if (!_updateLinksLock.try_lock()) {
+      return arangodb::Result(
+        TRI_ERROR_FAILED, // FIXME use specific error code
+        std::string("failed to remove arangosearch view '") + name()
+      );
+    }
+
+    ADOPT_SCOPED_LOCK_NAMED(_updateLinksLock, lock);
+
+    res = IResearchLinkHelper::updateLinks(
+      collections, vocbase(), *this, emptyObjectSlice(), stale
+    );
+  }
 
   if (!res.ok()) {
     return arangodb::Result(
@@ -1922,6 +1935,8 @@ arangodb::Result IResearchView::updateProperties(
   if (partialUpdate) {
     mtx.unlock(); // release lock
 
+    SCOPED_LOCK(_updateLinksLock);
+
     return IResearchLinkHelper::updateLinks(
       collections, vocbase(), *this, links
     );
@@ -1930,6 +1945,8 @@ arangodb::Result IResearchView::updateProperties(
   auto stale = _metaState._collections;
 
   mtx.unlock(); // release lock
+
+  SCOPED_LOCK(_updateLinksLock);
 
   return IResearchLinkHelper::updateLinks(
     collections, vocbase(), *this, links, stale
