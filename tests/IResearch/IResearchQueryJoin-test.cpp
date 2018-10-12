@@ -30,6 +30,10 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Aql/Ast.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -58,9 +62,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -85,24 +86,24 @@ struct CustomScorer : public irs::sort {
       : i(i) {
     }
 
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
+    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
+      score_cast(dst) += score_cast(src);
     }
 
     virtual irs::flags const& features() const override {
       return irs::flags::empty_instance();
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return lhs < rhs;
+    virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
+      return score_cast(lhs) < score_cast(rhs);
     }
 
     virtual irs::sort::collector::ptr prepare_collector() const override {
       return nullptr;
     }
 
-    virtual void prepare_score(score_t& score) const override {
-      score = 0.f;
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = 0.f;
     }
 
     virtual irs::sort::scorer::ptr prepare_scorer(
@@ -448,7 +449,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // using search keyword for collection is prohibited
@@ -482,9 +483,9 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
-  arangodb::LogicalCollection* logicalCollection3{};
+  arangodb::LogicalCollection* logicalCollection1;
+  arangodb::LogicalCollection* logicalCollection2;
+  arangodb::LogicalCollection* logicalCollection3;
 
   // add collection_1
   {
@@ -598,7 +599,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // deterministic filter condition in a loop

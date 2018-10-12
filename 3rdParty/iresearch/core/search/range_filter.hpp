@@ -67,7 +67,7 @@ class term_selector;
 class IRESEARCH_API by_range : public filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   by_range() NOEXCEPT;
 

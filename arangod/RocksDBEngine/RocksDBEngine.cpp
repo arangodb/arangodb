@@ -75,6 +75,7 @@
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/LogicalView.h"
 
@@ -94,7 +95,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_IRESEARCH
 #include "IResearch/IResearchView.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -1901,15 +1904,26 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#ifdef USE_IRESEARCH
-      if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
-        LOG_TOPIC(DEBUG, Logger::VIEWS)
-            << "arangosearch view '" << v->name()
-            << "' contains " << v->count() << " documents";
-      }
+
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+      struct DummyTransaction : transaction::Methods {
+        explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
+          : transaction::Methods(ctx) {
+        }
+      };
+
+      transaction::StandaloneContext context(view->vocbase());
+      std::shared_ptr<transaction::Context> dummy;  // intentionally empty
+      DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
+      auto& viewImpl = dynamic_cast<iresearch::IResearchView&>(*view);
+      auto reader = viewImpl.snapshot(trx, iresearch::IResearchView::Snapshot::FindOrCreate);
+      TRI_ASSERT(reader);
+
+      LOG_TOPIC(DEBUG, Logger::VIEWS)
+          << "arangosearch view '" << view->name()
+          << "' contains " << reader->docs_count() << " documents";
 #endif
-#endif
+
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "error while opening database: "

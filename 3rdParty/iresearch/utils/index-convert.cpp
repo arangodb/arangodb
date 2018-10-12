@@ -80,7 +80,9 @@ int convert(
   }
 
   auto reader = irs::directory_reader::open(*in_dir);
-  auto writer = irs::index_writer::make(*out_dir, codec, irs::OM_CREATE_APPEND);
+  auto writer =
+    irs::index_writer::make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
+
   writer->import(*reader);
   writer->commit();
 
@@ -143,3 +145,7 @@ int convert(int argc, char* argv[]) {
 
   return convert(cmdconv);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
