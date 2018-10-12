@@ -1978,9 +1978,24 @@ void IResearchView::registerFlushCallback() {
   }
 
   flush->registerCallback(this, [this]() noexcept {
+    // ensure view does not get deallocated before call back finishes
+    self()->mutex().lock();
+
     return IResearchView::FlushTransactionPtr(
       this,
-      [](arangodb::FlushTransaction*){} // empty deleter
+      [](arangodb::FlushTransaction* trx) noexcept {
+        if (!trx) {
+          return;
+        }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto& view = dynamic_cast<IResearchView&>(*trx);
+#else
+        auto& view = static_cast<IResearchView&>(*trx);
+#endif
+
+        view.self()->mutex().unlock();
+      }
     );
   });
 
