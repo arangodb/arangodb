@@ -50,14 +50,12 @@ class RocksDBWalAccess final : public WalAccess {
 
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
-  WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                   WalAccess::Filter const& filter,
+  WalAccessResult openTransactions(WalAccess::Filter const& filter,
                                    TransactionCallback const&) const override;
 
   /// Tails the wall, this will already sanitize the
-  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+  WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
                        TRI_voc_tick_t barrierId,
-                       WalAccess::Filter const& filter,
                        MarkerCallback const&) const override;
 };
 }

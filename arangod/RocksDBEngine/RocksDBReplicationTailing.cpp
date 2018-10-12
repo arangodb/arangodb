@@ -529,9 +529,6 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   // observing a specific log entry and a sequence of immediately
   // following PUT / DELETE / Log entries
   void resetTransientState() {
-    if (_state == TRANSACTION) {
-      writeCommitMarker();
-    }
     // reset all states
     _state = INVALID;
     _currentTrxId = 0;
