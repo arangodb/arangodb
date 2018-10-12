@@ -30,6 +30,7 @@
 
 var jsunity = require('jsunity');
 var db = require('@arangodb').db;
+var internal = require('internal');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -55,6 +56,7 @@ function optimizerEdgeIndexTestSuite () {
           e.save('UnitTestsCollection/nono', 'UnitTestsCollection/to' + i, { value: i + '-' + j });
         }
       }
+      internal.waitForEstimatorSync();
     },
 
     tearDown: function () {
