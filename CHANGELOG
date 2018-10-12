@@ -1,6 +1,12 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* removed undocumented `db.<view>.toArray()` function from ArangoShell
+
+* prevent creation of collections and views with the same in cluster setups
+
+* fixed issue #6770: document update: ignoreRevs parameter ignored 
+
 * added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
 
 * improve inter-server communication performance:
@@ -39,6 +45,11 @@ v3.4.0-rc.3 (XXXX-XX-XX)
   to work properly
 
   this should fix arangojs#573
+
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
 
 * include forward-ported diagnostic options for debugging LDAP connections
 
@@ -81,6 +92,12 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 * added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
 
 * fixed agents busy looping gossip
+
+* handle missing `_frontend` collections gracefully
+
+  the `_frontend` system collection is not required for normal ArangoDB operations,
+  so if it is missing for whatever reason, ensure that normal operations can go
+  on.
 
 
 v3.4.0-rc.2 (2018-09-30)
