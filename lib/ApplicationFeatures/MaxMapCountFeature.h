@@ -48,7 +48,7 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
   static bool isNearMaxMappings();
 
  private:
-  static bool isNearMaxMappingsInternal(double& suggestedCacheTime) noexcept;
+  static bool isNearMaxMappingsInternal() noexcept;
 };
 
 }
