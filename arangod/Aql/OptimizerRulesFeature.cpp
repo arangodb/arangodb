@@ -24,6 +24,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -374,40 +375,58 @@ std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
     }
     if (name[0] == '-') {
       // disable rule
-      if (name == "-all") {
-        // disable all rules
-        for (auto const& it : _rules) {
-          if (it.second.canBeDisabled) {
-            disabled.emplace(it.first);
-          }
-        }
-      } else {
-        // disable a specific rule
-        auto it = _ruleLookup.find(name.c_str() + 1);
-
-        if (it != _ruleLookup.end()) {
-          if ((*it).second.second) {
-            // can be disabled
-            disabled.emplace((*it).second.first);
-          }
-        }
-      }
-    } else if (name[0] == '+') {
+      disableRule(name, disabled);
+    } else {
       // enable rule
-      if (name == "+all") {
-        // enable all rules
-        disabled.clear();
-      } else {
-        auto it = _ruleLookup.find(name.c_str() + 1);
-
-        if (it != _ruleLookup.end()) {
-          disabled.erase((*it).second.first);
-        }
-      }
+      enableRule(name, disabled);
     }
   }
 
   return disabled;
+}
+
+void OptimizerRulesFeature::disableRule(std::string const& name, std::unordered_set<int>& disabled) {
+  TRI_ASSERT(name[0] == '-');
+  char const* p = name.data() + 1;
+  size_t size = name.size() - 1;
+
+  if (StringRef(p, size) == "all") {
+    // disable all rules
+    for (auto const& it : _rules) {
+      if (it.second.canBeDisabled) {
+        disabled.emplace(it.first);
+      }
+    }
+  } else {
+    // disable a specific rule
+    auto it = _ruleLookup.find(p);
+
+    if (it != _ruleLookup.end() && (*it).second.second) {
+      // can be disabled
+      disabled.emplace((*it).second.first);
+    }
+  }
+}
+
+void OptimizerRulesFeature::enableRule(std::string const& name, std::unordered_set<int>& disabled) {
+  char const* p = name.data();
+  size_t size = name.size();
+
+  if (name[0] == '+') {
+    ++p;
+    --size;
+  }
+
+  if (StringRef(p, size) == "all") {
+    // enable all rules
+    disabled.clear();
+  } else {
+    auto it = _ruleLookup.find(p);
+
+    if (it != _ruleLookup.end()) {
+      disabled.erase((*it).second.first);
+    }
+  }
 }
 
 } // aql
