@@ -130,7 +130,7 @@ function Run (testsuite) {
   scope.tearDownAll = tearDownAll;
 
   for (var key in definition) {
-    if ((testFilter !== "undefined") && (key !== testFilter)) {
+    if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
       // print(`test "${key}" doesn't match "${testFilter}", skipping`);
       continue;
     }

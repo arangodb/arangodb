@@ -27,6 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -1110,11 +1111,13 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
-    if (!result.successful()) {
-      THROW_AGENCY_EXCEPTION(result);
+    if (result.successful()) {
+      result = comm.increment("Current/Version");
     }
-    result = comm.increment("Current/Version");
-    if (!result.successful()) {
+    if (!result.successful() && 
+        result.errorCode() != TRI_ERROR_SHUTTING_DOWN && 
+        !application_features::ApplicationServer::isStopping()) {
+      // gracefully ignore any shutdown errors here
       THROW_AGENCY_EXCEPTION(result);
     }
   }

@@ -7,10 +7,18 @@
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{from,number,optional}
-Lower bound tick value for results.
+Exclusive lower bound tick value for results. On successive calls
+to this API you should set this to the value returned
+with the *x-arango-replication-lastincluded* header (Unless that header
+contains 0).
 
 @RESTQUERYPARAM{to,number,optional}
-Upper bound tick value for results.
+Inclusive upper bound tick value for results.
+
+@RESTQUERYPARAM{lastScanned,number,optional}
+Should be set to the value of the *x-arango-replication-lastscanned* header
+or alternatively 0 on first try. This allows the rocksdb engine to break up
+large transactions over multiple responses. 
 
 @RESTQUERYPARAM{global,bool,optional}
 Whether operations for all databases should be included. When set to *false*
@@ -107,6 +115,8 @@ The response will also contain the following HTTP headers:
 - *x-arango-replication-lastscanned*: the last tick the server scanned while
   computing the operation log. This might include operations the server did not
   returned to you due to various reasons (i.e. the value was filtered or skipped).
+  You may use this value in the *lastScanned* header to allow the rocksdb engine
+  to break up requests over multiple responses.
 
 - *x-arango-replication-lasttick*: the last tick value the server has
   logged in its write ahead log (not necessarily included in the result). By comparing the the last

@@ -2,14 +2,14 @@
 @startDocuBlock general_graph_list_edge_http_examples
 @brief Lists all edge definitions
 
-@RESTHEADER{GET /_api/gharial/{graph-name}/edge, List edge definitions}
+@RESTHEADER{GET /_api/gharial/{graph}/edge, List edge definitions}
 
 @RESTDESCRIPTION
 Lists all edge collections within this graph.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name,string,required}
+@RESTURLPARAM{graph,string,required}
 The name of the graph.
 
 @RESTRETURNCODES
@@ -17,8 +17,32 @@ The name of the graph.
 @RESTRETURNCODE{200}
 Is returned if the edge definitions could be listed.
 
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is false in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{collections,array,required,string}
+The list of all vertex collections within this graph.
+Includes collections in edgeDefinitions as well as orphans.
+
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
 
 @EXAMPLES
 

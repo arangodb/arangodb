@@ -84,6 +84,16 @@ class WalAccess {
  public:
   struct Filter {
     Filter() {}
+    
+    /// tick last scanned by the last iteration
+    /// is used to find batches in rocksdb
+    uint64_t tickLastScanned = 0;
+    
+    /// first tick to use
+    uint64_t tickStart = 0;
+    
+    /// last tick to include
+    uint64_t tickEnd = UINT64_MAX;
 
     /// In case collection is == 0,
     bool includeSystem = false;
@@ -121,13 +131,11 @@ class WalAccess {
 
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
-  virtual WalAccessResult openTransactions(
-      uint64_t tickStart, uint64_t tickEnd, Filter const& filter,
+  virtual WalAccessResult openTransactions(Filter const& filter,
       TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+  virtual WalAccessResult tail(Filter const& filter,
                                size_t chunkSize, TRI_voc_tid_t barrierId,
-                               Filter const& filter,
                                MarkerCallback const&) const = 0;
 };
 
@@ -165,7 +173,7 @@ struct WalAccessContext {
 
  public:
   /// @brief arbitrary collection filter (inclusive)
-  WalAccess::Filter _filter;
+  const WalAccess::Filter _filter;
   /// @brief callback for marker output
   WalAccess::MarkerCallback _callback;
 

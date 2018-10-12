@@ -140,7 +140,7 @@ bool FailedServer::start() {
       << "Pending job for failed DB Server " << _server;
 
     auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
-    auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
+    //auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
 
     size_t sub = 0;
 

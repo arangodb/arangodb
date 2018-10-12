@@ -117,7 +117,9 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
 
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
-  TRI_DEFER(sendRemoveBarrier());
+  TRI_DEFER(if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
+  });
 
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request

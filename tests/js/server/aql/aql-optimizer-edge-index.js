@@ -204,7 +204,6 @@ function optimizerEdgeIndexTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
-        assertEqual(query[1], results.stats.scannedIndex);
       });
     },
 
