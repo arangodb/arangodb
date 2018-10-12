@@ -1,32 +1,6 @@
 devel
 -----
 
-* added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
-
-* fix internal issue #2770: the Query Profiling modal dialog in the Web UI
-  was slightly malformed.
-
-* fix internal issue #2035: the Web UI now updates its indices view to check
-  whether new indices exist or not.
-
-* fix internal issue #6808: newly created databases within the Web UI did not
-  appear when used Internet Explorer 11 as a browser.
-
-* fix internal issue #2688: the Web UI's graph viewer created malformed node
-  labels if a node was expanded multiple times.
-
-* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
-  if it should not.
-
-* fix internal issue #2764: the waitForSync property of a satellite collection
-  could not be changed via the Web UI
-
-* fix internal issue #2957: the Web UI was not able to display more than 1000
-  documents, even when it was set to a higher amount.
-
-* dynamically manage libcurl's number of open connections to increase performance
-  by reducing the number of socket close and then reopen cycles
-
 * disable in-memory cache for edge and traversal data on agency nodes, as it
   is not needed there
 
@@ -40,6 +14,43 @@ devel
 
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+
+* upgraded arangodb starter version to 0.13.5
+
+* removed undocumented `db.<view>.toArray()` function from ArangoShell
+
+* prevent creation of collections and views with the same in cluster setups
+
+* fixed issue #6770: document update: ignoreRevs parameter ignored 
+
+* added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
+
+* improve inter-server communication performance:
+  - move all response processing off Communicator's socket management thread
+  - create multiple Communicator objects with ClusterComm, route via round robin
+  - adjust Scheduler threads to always be active, and have designated priorities.
+
+* fix internal issue #2770: the Query Profiling modal dialog in the Web UI
+  was slightly malformed.
+
+* fix internal issue #2035: the Web UI now updates its indices view to check
+  whether new indices exist or not.
+
+* fix internal issue #6808: newly created databases within the Web UI did not
+  appear when used Internet Explorer 11 as a browser.
+
+* fix internal issue #2957: the Web UI was not able to display more than 1000
+  documents, even when it was set to a higher amount.
+
+* fix internal issue #2688: the Web UI's graph viewer created malformed node
+  labels if a node was expanded multiple times.
+
+* fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
+  if it should not.
+
+* fix internal issue #2764: the waitForSync property of a satellite collection
+  could not be changed via the Web UI
+
 * dynamically manage libcurl's number of open connections to increase performance
   by reducing the number of socket close and then reopen cycles
 
@@ -50,6 +61,11 @@ v3.4.0-rc.3 (XXXX-XX-XX)
   to work properly
 
   this should fix arangojs#573
+
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
 
 * include forward-ported diagnostic options for debugging LDAP connections
 
@@ -90,6 +106,14 @@ v3.4.0-rc.3 (XXXX-XX-XX)
   due to changes of the protection settings
 
 * added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
+
+* fixed agents busy looping gossip
+
+* handle missing `_frontend` collections gracefully
+
+  the `_frontend` system collection is not required for normal ArangoDB operations,
+  so if it is missing for whatever reason, ensure that normal operations can go
+  on.
 
 
 v3.4.0-rc.2 (2018-09-30)
