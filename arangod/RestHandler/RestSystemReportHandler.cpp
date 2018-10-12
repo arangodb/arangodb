@@ -30,6 +30,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "Utils/ExecContext.h"
 
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
@@ -50,23 +51,46 @@ RestSystemReportHandler::RestSystemReportHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-std::string executeOSCmd(std::string const& cmd, std::string const& optional) {
+std::string executeOSCmd(std::string const& cmd) {
   static std::string const tmpFile("/tmp/arango-inspect.tmp");
   static std::string const pipe(" | tee ");
   static std::string const terminate(" > /dev/null");
-  std::system ((cmd + optional + pipe + tmpFile + terminate).c_str());  
+  std::system ((cmd + pipe + tmpFile + terminate).c_str());  
   std::ifstream tmpStream(tmpFile.c_str());
   return std::string(
     std::istreambuf_iterator<char>(tmpStream), std::istreambuf_iterator<char>());
 }
 
+bool RestSystemReportHandler::isAdminUser() const {
+  if (!ExecContext::isAuthEnabled()) {
+    return true;
+  } else if (ExecContext::CURRENT != nullptr) {
+    return ExecContext::CURRENT->isAdminUser();
+  }
+  return false;
+}
+
 RestStatus RestSystemReportHandler::execute() {
+
+  if (!isAdminUser()) {
+    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
   
-  std::unordered_map<std::string> cmds{
-    {"date", "date -u \"+%Y-%m-%d %H:%M:%S %Z\""}, {"dmesg", "dmesg"},
-    {"df", "df -h"}, {"memory", "cat /proc/meminfo"}, {"uptime", "uptime"},
-    {"uname", "uname -a"}, {"top", std::string("top -b -n 1 -H -p ") + Thread::currentProcessId()}};
+  if (_request->requestType() != RequestType::GET) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
   
+  static std::unordered_map<std::string, std::string> const cmds {
+    {"date", "date -u \"+%Y-%m-%d %H:%M:%S %Z\""},
+    {"dmesg", "dmesg"},
+    {"df", "df -h"},
+    {"memory", "cat /proc/meminfo"},
+    {"uptime", "uptime"},
+    {"uname", "uname -a"},
+    {"top", std::string("top -b -n 1 -H -p ") +
+        std::to_string(Thread::currentProcessId())}};
   
   VPackBuilder result;
   { VPackObjectBuilder o(&result);
