@@ -190,8 +190,8 @@ Connection::Connection(Syncer* syncer,
   if (endpoint != nullptr) {
     connection.reset(httpclient::GeneralClientConnection::factory(
         endpoint, applierConfig._requestTimeout, applierConfig._connectTimeout,
-        (size_t)applierConfig._maxConnectRetries,
-        (uint32_t)applierConfig._sslProtocol));
+        static_cast<size_t>(applierConfig._maxConnectRetries),
+        static_cast<uint32_t>(applierConfig._sslProtocol)));
   }
 
   if (connection != nullptr) {
@@ -217,9 +217,9 @@ Connection::Connection(Syncer* syncer,
     } else {
       params.setJwt(applierConfig._jwt);
     }
+    params.setMaxPacketSize(applierConfig._maxPacketSize);
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
     client.reset(new httpclient::SimpleHttpClient(connection, params));
-//    client->checkForGlobalAbort(true);
   }
 }
 

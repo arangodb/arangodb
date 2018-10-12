@@ -51,6 +51,7 @@ class ReplicationApplierConfiguration {
   uint64_t _idleMaxWaitTime;
   uint64_t _initialSyncMaxWaitTime;
   uint64_t _autoResyncRetries;
+  uint64_t _maxPacketSize;
   uint32_t _sslProtocol;
   bool _skipCreateDrop; /// shards/indexes/views are created by schmutz++
   bool _autoStart; /// start applier after server start
