@@ -1,9 +1,9 @@
-shell> curl --dump - http://localhost:8529/_api/collection/10216/properties
+shell> curl --dump - http://localhost:8529/_api/collection/10217/properties
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-location: <span class="hljs-regexp">/_api/</span>collection/<span class="hljs-number">10216</span>/properties
+location: <span class="hljs-regexp">/_api/</span>collection/<span class="hljs-number">10217</span>/properties
 
 { 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
@@ -18,10 +18,10 @@ location: <span class="hljs-regexp">/_api/</span>collection/<span class="hljs-nu
   }, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h304EBC580D41/10216"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hBB84C201834/10217"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10216"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10217"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span> 
