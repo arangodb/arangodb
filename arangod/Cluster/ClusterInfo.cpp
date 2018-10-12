@@ -2257,7 +2257,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
   }
 
-  auto const view = res.slice()[0].get(
+  auto const view = res.slice()[0].get<std::string>(
     { AgencyCommManager::path(), "Plan", "Views", databaseName, viewID }
   );
 
