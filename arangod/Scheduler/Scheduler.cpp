@@ -56,7 +56,7 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
 class SchedulerManagerThread final : public Thread {
  public:
-  SchedulerManagerThread(std::shared_ptr<Scheduler> scheduler, asio_ns::io_context* service)
+  SchedulerManagerThread(std::shared_ptr<Scheduler> const& scheduler, asio_ns::io_context* service)
       : Thread("SchedulerManager", true),
         _scheduler(scheduler),
         _service(service) {}
@@ -89,7 +89,7 @@ class SchedulerManagerThread final : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(std::shared_ptr<Scheduler> scheduler, asio_ns::io_context* service)
+  SchedulerThread(std::shared_ptr<Scheduler> const& scheduler, asio_ns::io_context* service)
       : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
