@@ -965,7 +965,7 @@
             collection: new window.GraphCollection(),
             collectionCollection: this.arangoCollectionsStore
           }
-      );
+        );
       this.graphManagementView.render();
     },
 
@@ -982,7 +982,7 @@
               collection: new window.GraphCollection(),
               collectionCollection: this.arangoCollectionsStore
             }
-        );
+          );
         this.graphManagementView.render(name, true);
       } else {
         this.graphManagementView.loadGraphViewer(name);
