@@ -1559,16 +1559,18 @@ int IResearchView::insert(
     return nullptr;
   }
 
-  if (isNew) {
-    auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
+  if (!isNew) {
+    return view; // nothing more to do
+  }
 
-    if (!res.ok()) {
-      TRI_set_errno(res.errorNumber());
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure during commit of created view while constructing arangosearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+  auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
 
-      return nullptr;
-    }
+  if (!res.ok()) {
+    TRI_set_errno(res.errorNumber());
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure during commit of created view while constructing arangosearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+
+    return nullptr;
   }
 
   // create links on a best-effor basis
