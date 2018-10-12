@@ -24,8 +24,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -44,21 +42,6 @@ namespace {
 static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking(); 
 static uint64_t maxMappings = UINT64_MAX; 
 static std::string mapsFilename;
-
-static StringBuffer fileBuffer(8192, false);
-
-// cache for the current number of mappings for this process
-// (read from /proc/<pid>/maps
-static Mutex mutex;
-static double lastStamp = 0.0;
-static bool lastValue = false;
-static bool checkInFlight = false;
-
-static constexpr double cacheLifetime = 7.5; 
-
-static double lastLogStamp = 0.0;
-static constexpr double logFrequency = 10.0;
-
 }
 
 MaxMapCountFeature::MaxMapCountFeature(
@@ -70,20 +53,12 @@ MaxMapCountFeature::MaxMapCountFeature(
 
   maxMappings = UINT64_MAX;
   mapsFilename.clear();
-  lastStamp = 0.0;
-  lastValue = false;
-  checkInFlight = false;
-  lastLogStamp = 0.0;
 }
 
 MaxMapCountFeature::~MaxMapCountFeature() {
   // reset values
   maxMappings = UINT64_MAX;
   mapsFilename.clear();
-  lastStamp = 0.0;
-  lastValue = false;
-  checkInFlight = false;
-  lastLogStamp = 0.0;
 }
   
 void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -157,66 +132,24 @@ bool MaxMapCountFeature::isNearMaxMappings() {
     return false;
   }
 
-  double const now = TRI_microtime();
-
-  {
-    // we do not want any cache stampede
-    MUTEX_LOCKER(locker, mutex);
-    if (lastStamp >= now || checkInFlight) {
-      // serve value from cache
-      return lastValue;
-    }
-
-    checkInFlight = true;
-  }
-
-  // check current maps count without holding the mutex
-  double cacheTime;
-  bool const value = isNearMaxMappingsInternal(cacheTime);
- 
-  { 
-    // update cache
-    MUTEX_LOCKER(locker, mutex);
-    lastValue = value;
-    lastStamp = now + cacheTime;
-    checkInFlight = false;
-  }
-
-  return value;
+  return isNearMaxMappingsInternal();
 }
 
-bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) noexcept {
+bool MaxMapCountFeature::isNearMaxMappingsInternal() noexcept {
   try {
-    // recycle the same buffer for reading the maps file
+    StringBuffer fileBuffer(8192, false);
     basics::FileUtils::slurp(mapsFilename, fileBuffer);
     
     size_t const nmaps = std::count(fileBuffer.begin(), fileBuffer.end(), '\n');
     if (nmaps + 1024 < maxMappings) {
-      if (nmaps > maxMappings * 0.90) {
-        // more than 90% of the max mappings are in use. don't cache for too long
-        suggestedCacheTime = 0.001;
-      } else if (nmaps >= maxMappings / 2.0) {
-        // we're above half of the max mappings. reduce cache time a bit
-        suggestedCacheTime = cacheLifetime / 2.0;
-      } else {
-        suggestedCacheTime = cacheLifetime;
-      }
       return false;
     }
-    // we're near the maximum number of mappings. don't cache for too long
-    suggestedCacheTime = 0.001;
 
-    double now = TRI_microtime();
-    if (lastLogStamp + logFrequency < now) {
-      // do not log too often to avoid log spamming
-      lastLogStamp = now;
-      LOG_TOPIC(ERR, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
-                                     << ". it may be sensible to increase the maximum number of mappings per process";
-    }
+    LOG_TOPIC(ERR, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
+                                   << ". it may be sensible to increase the maximum number of mappings per process";
     return true;
   } catch (...) {
-    // something went wrong. don't cache for too long
-    suggestedCacheTime = 0.001;
     return false;
+    // something went wrong
   } 
 }
