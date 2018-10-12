@@ -387,7 +387,10 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker,
         // we do have a LocalDocumentId stored at the end of the marker
         uint8_t const* ptr = payloadSlice.begin() + payloadSlice.byteSize();
         LocalDocumentId localDocumentId{encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType))};
-        LocalDocumentId::track(localDocumentId);
+        if (!state->maxLocalDocumentId.isSet() ||
+            localDocumentId > state->maxLocalDocumentId) {
+          state->maxLocalDocumentId = localDocumentId;
+        }
       }
 
       break;

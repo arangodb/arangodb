@@ -28,6 +28,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "IResearchMMFilesLink.h"
+#include "IResearchCommon.h"
 #include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
@@ -67,7 +68,7 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
       collection.load();
     }
     if (!collection.getPhysical()->hasAllPersistentLocalIds()) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "mmfiles collection uses pre-3.4 format and cannot be linked to an "
           << "arangosearch view; try recreating collection and moving the "
           << "contents to the new collection";

@@ -29,16 +29,14 @@
 
 var arangodb = require('@arangodb');
 var db = arangodb.db;
+var errors = arangodb.errors;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-
-  if (internal.debugCanUseFailAt()) {
-    internal.debugSetFailAt("MMFilesCompatibility33");
-  }
+  internal.debugSetFailAt("MMFilesCompatibility33");
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
@@ -74,24 +72,17 @@ function recoverySuite () {
 
       var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
 
-      let expectFailure = internal.debugCanUseFailAt();
       try {
         view.properties(meta);
-        assertFalse(expectFailure);
+        fail();
       } catch (e) {
-        internal.print(JSON.stringify(e))
-        if (e.errorNum !== arangodb.ERROR_ARANGO_INDEX_CREATION_FAILED){
-          //throw e;
+        if (e.errorNum !== errors.ERROR_ARANGO_INDEX_CREATION_FAILED.code) {
+          throw e;
         }
       }
 
       var links = view.properties().links;
-      if (expectFailure) {
-        assertEqual(links['UnitTestsRecoveryDummy'], undefined);
-      } else {
-        assertNotEqual(links['UnitTestsRecoveryDummy'], undefined);
-        assertTrue(links['UnitTestsRecoveryDummy'].includeAllFields);
-      }
+      assertEqual(links['UnitTestsRecoveryDummy'], undefined);
 
       view.drop();
       assertNull(db._view('UnitTestsRecoveryView'));

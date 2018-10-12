@@ -162,7 +162,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
-          --database.auto-upgrade true
+          --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
     $ARANGOD \
@@ -232,7 +232,7 @@ start() {
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
-          --database.auto-upgrade true
+          --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
     $CMD \
