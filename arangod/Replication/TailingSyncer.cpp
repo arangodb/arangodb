@@ -789,6 +789,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   }
 
   VPackSlice properties = data.get("properties");
+
   if (properties.isObject()) {
     bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 

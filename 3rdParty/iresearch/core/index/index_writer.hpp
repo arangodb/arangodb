@@ -171,7 +171,10 @@ class IRESEARCH_API index_writer:
     }
 
     documents_context(documents_context&& other) NOEXCEPT
-      : segment_(std::move(other.segment_)), writer_(other.writer_) {
+      : segment_(std::move(other.segment_)),
+        segment_use_count_(std::move(other.segment_use_count_)),
+        writer_(other.writer_) {
+      other.segment_use_count_ = 0;
     }
 
     ~documents_context();
@@ -341,6 +344,7 @@ class IRESEARCH_API index_writer:
 
    private:
     active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
+    long segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
