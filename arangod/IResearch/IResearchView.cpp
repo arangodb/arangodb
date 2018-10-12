@@ -2129,7 +2129,7 @@ arangodb::Result IResearchView::updateProperties(
             continue; // not a resolvable collection (invalid jSON)
           }
 
-          auto collection= vocbase().lookupCollection(itr.key().copyString());
+          auto collection=  vocbase().lookupCollection(itr.key().copyString());
 
           if (collection
               && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
