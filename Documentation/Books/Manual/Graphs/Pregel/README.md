@@ -97,7 +97,7 @@ var execution = pregel.start("<algorithm>", "<yourgraph>", params);
 `params` needs to be an object, the valid keys are mentioned below in the section
 [Available Algorithms](#available-algorithms)
 
-Alternatively you might want to specify the vertex and edge collections directly. The call-syntax of the `start``
+Alternatively you might want to specify the vertex and edge collections directly. The call-syntax of the `start`
 method changes in this case. The second argument must be an object with the keys `vertexCollections`and `edgeCollections`.
 
 ```javascript
