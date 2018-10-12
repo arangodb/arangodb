@@ -103,8 +103,8 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
       auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
 
       // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
-      MSVC2015_ONLY(while(!reset && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
-      MSVC2017_ONLY(while(!reset && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2015_ONLY(while(!reset && result0 == std::cv_status::no_timeout) result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2017_ONLY(while(!reset && result0 == std::cv_status::no_timeout) result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
 
       lock.unlock();
       auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
