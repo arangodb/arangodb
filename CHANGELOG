@@ -1,6 +1,8 @@
 v3.3.18 (2018-10-12)
 --------------------
 
+* fixed issue #6770: document update: ignoreRevs parameter ignored 
+
 * when returning memory to the OS, use the same memory protection flags as 
   when initializing the memory
 
@@ -53,7 +55,6 @@ v3.3.18 (2018-10-12)
   the `_frontend` system collection is not required for normal ArangoDB operations,
   so if it is missing for whatever reason, ensure that normal operations can go
   on.
-
 
 
 v3.3.17 (2018-10-04)
