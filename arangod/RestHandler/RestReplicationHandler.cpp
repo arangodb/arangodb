@@ -2265,7 +2265,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == false);
+  TRI_ASSERT(isLockHeld(id).get() == true);
 
   VPackBuilder b;
   {
@@ -2647,7 +2647,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   TRI_DEFER(queryRegistry->close(&_vocbase, id));
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == true);
+  TRI_ASSERT(isLockHeld(id).get() == false);
 
   TRI_IF_FAILURE("RestReplicationHandler::destroyBeforeLock") {
     // This will flag the query as destroyed while getting the
@@ -2664,14 +2664,18 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   // In all other cases it is released quickly.
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   if (queryRegistry == nullptr) {
-    return {TRI_ERROR_SHUTTING_DOWN};
+    return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
   }
   auto res = queryRegistry->isQueryInUse(&_vocbase, id);
   if (!res.ok()) {
-    // API compatibility
-    res.reset(TRI_ERROR_HTTP_NOT_FOUND, "no hold read lock job found for 'id'");
+    // API compatibility otherwise just return res...
+    return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND, "no hold read lock job found for 'id'");
+  } else {
+    // We need to invert the result, because:
+    //   if the query is there, but is in use => we are in the process of getting the lock => lock is not held
+    //   if the query is there, but is not in use => we are after the process of getting the lock => lock is held
+    return ResultT<bool>::success(!res.get());
   }
-  return res;
 }
 
 ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id) const {
@@ -2681,7 +2685,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
   if (res.ok()) {
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     if (queryRegistry == nullptr) {
-      return {TRI_ERROR_SHUTTING_DOWN};
+      return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
     }
     try {
       // Code does not matter, read only access, so we can roll back.
@@ -2697,7 +2701,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
 ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::QueryId id, LogicalCollection* col) const {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   if (queryRegistry == nullptr) {
-    return {TRI_ERROR_SHUTTING_DOWN};
+    return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }
 
   try {
