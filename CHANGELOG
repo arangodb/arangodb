@@ -1,6 +1,8 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* upgraded arangodb starter version to 0.13.5
+
 * removed undocumented `db.<view>.toArray()` function from ArangoShell
 
 * prevent creation of collections and views with the same in cluster setups
