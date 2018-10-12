@@ -236,14 +236,14 @@ ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Found no queries for DB: " << vocbase->name();
-    return {TRI_ERROR_QUERY_NOT_FOUND};
+    return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query id " << id << " not found in registry";
-    return {TRI_ERROR_QUERY_NOT_FOUND};
+    return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
   }
-  return q->second->_isOpen;
+  return ResultT<bool>::success(q->second->_isOpen);
 }
 
 /// @brief expireQueries
