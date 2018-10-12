@@ -3,6 +3,11 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 
 * added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
 
+* improve inter-server communication performance:
+  - move all response processing off Communicator's socket management thread
+  - create multiple Communicator objects with ClusterComm, route via round robin
+  - adjust Scheduler threads to always be active, and have designated priorities.
+
 * fix internal issue #2770: the Query Profiling modal dialog in the Web UI
   was slightly malformed.
 
@@ -74,6 +79,8 @@ v3.4.0-rc.3 (XXXX-XX-XX)
   due to changes of the protection settings
 
 * added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
+
+* fixed agents busy looping gossip
 
 
 v3.4.0-rc.2 (2018-09-30)

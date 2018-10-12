@@ -159,32 +159,33 @@ void TailingSyncer::abortOngoingTransactions() noexcept {
 /// @brief whether or not a marker should be skipped
 bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
                                VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+  
   bool tooOld = false;
-  std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
-
-  if (!tick.empty()) {
-    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(
-                  tick.data(), tick.data() + tick.size()) < firstRegularTick);
-
+  VPackSlice tickSlice = slice.get("tick");
+  
+  if (tickSlice.isString() && tickSlice.getStringLength() > 0) {
+    VPackValueLength len = 0;
+    char const* str = tickSlice.getStringUnchecked(len);
+    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(str, str + len) < firstRegularTick);
+    
     if (tooOld) {
       int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
       // handle marker type
       TRI_replication_operation_e type =
-          static_cast<TRI_replication_operation_e>(typeValue);
-
+      static_cast<TRI_replication_operation_e>(typeValue);
+      
       if (type == REPLICATION_MARKER_DOCUMENT ||
           type == REPLICATION_MARKER_REMOVE ||
           type == REPLICATION_TRANSACTION_START ||
           type == REPLICATION_TRANSACTION_ABORT ||
           type == REPLICATION_TRANSACTION_COMMIT) {
         // read "tid" entry from marker
-        std::string const id =
-            VelocyPackHelper::getStringValue(slice, "tid", "");
-
-        if (!id.empty()) {
-          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(
-              id.data(), id.data() + id.size());
-
+        VPackSlice tidSlice = slice.get("tid");
+        if (tidSlice.isString() && tidSlice.getStringLength() > 0) {
+          str = tidSlice.getStringUnchecked(len);
+          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(str, str + len);
+          
           if (tid > 0 &&
               _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
             // must still use this marker as it belongs to a transaction we need
@@ -1074,7 +1075,9 @@ Result TailingSyncer::runInternal() {
 
   setAborted(false);
 
-  TRI_DEFER(sendRemoveBarrier());
+  TRI_DEFER(if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
+  });
   uint64_t shortTermFailsInRow = 0;
 
 retry:
@@ -1371,10 +1374,8 @@ Result TailingSyncer::runContinuousSync() {
   // get the applier into a sensible start state by fetching the list of
   // open transactions from the master
   TRI_voc_tick_t fetchTick = safeResumeTick;
-  if (safeResumeTick > 0 && safeResumeTick == fromTick) {
-    // special case in which from and to are equal
-    fetchTick = safeResumeTick;
-  } else {
+  TRI_voc_tick_t lastScannedTick = safeResumeTick; // hint where server MAY scan from
+  if (safeResumeTick <= 0 || safeResumeTick != fromTick) {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
     Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
@@ -1416,7 +1417,8 @@ Result TailingSyncer::runContinuousSync() {
     
     Result res = processMasterLog(
         sharedStatus, 
-        fetchTick, 
+        fetchTick,
+        lastScannedTick,
         fromTick, 
         _state.applier._ignoreErrors, 
         worked,
@@ -1628,21 +1630,30 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
 }
 
 /// @brief fetch data for the continuous synchronization
+/// @param fetchTick tick from which we want results
+/// @param lastScannedTick tick which the server MAY start scanning from
+/// @param firstRegularTick if we got openTransactions server will return the
+///                         only operations belonging to these for ticks < firstRegularTick
 void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                                    TRI_voc_tick_t fetchTick,
+                                   TRI_voc_tick_t lastScannedTick,
                                    TRI_voc_tick_t firstRegularTick) {
+  
   try {
     std::string const url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&barrier=" + StringUtils::itoa(_state.barrier.id) +
         "&from=" + StringUtils::itoa(fetchTick) +
-        "&firstRegular=" + StringUtils::itoa(firstRegularTick) +
+        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
+        (firstRegularTick > fetchTick
+          ? "&firstRegular=" + StringUtils::itoa(firstRegularTick) : "") +
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false");
 
     // send request
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
+        ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
         ", first regular tick " + StringUtils::itoa(firstRegularTick) +
         ", barrier: " + StringUtils::itoa(_state.barrier.id) +
         ", open transactions: " + std::to_string(_ongoingTransactions.size()) +
@@ -1686,7 +1697,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
 
 /// @brief apply continuous synchronization data from a batch
 Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                                       TRI_voc_tick_t& fetchTick,
+                                       TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
                                        TRI_voc_tick_t firstRegularTick,
                                        uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) 
@@ -1699,7 +1710,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   TRI_ASSERT(mustFetchBatch || _workInParallel);
 
   if (mustFetchBatch) {
-    fetchMasterLog(sharedStatus, fetchTick, firstRegularTick);
+    fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
   }
   
   // make sure that on the next invocation we will fetch a new batch
@@ -1735,7 +1746,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   // was the specified from value included the result?
   bool const fromIncluded = getBoolHeader(response, StaticStrings::ReplicationHeaderFromPresent);
-  TRI_voc_tick_t const lastScannedTick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastScanned);
+  lastScannedTick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastScanned);
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderLastIncluded)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1808,8 +1819,9 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // (that would be duplicate work)
     mustFetchBatch = false;
     auto self = shared_from_this();
-    sharedStatus->request([this, self, sharedStatus, fetchTick, firstRegularTick]() {
-      fetchMasterLog(sharedStatus, fetchTick, firstRegularTick);
+    sharedStatus->request([this, self, sharedStatus, fetchTick,
+                           lastScannedTick, firstRegularTick]() {
+      fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
   }
 

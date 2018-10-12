@@ -578,7 +578,7 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  UnicodeString uprog(program.c_str(), (uint16_t) program.length());
+  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
   FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
