@@ -374,10 +374,8 @@ std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
       continue;
     }
     if (name[0] == '-') {
-      // disable rule
       disableRule(name, disabled);
     } else {
-      // enable rule
       enableRule(name, disabled);
     }
   }
