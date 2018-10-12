@@ -202,7 +202,7 @@ function optimizerEdgeIndexTestSuite () {
 
       queries.forEach(function (query) {
         var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1], results.json.length, query[0], "Query: " + query + " - " + JSON.stringify(results));
+        assertEqual(query[1], results.json.length, "Query: " + query + " - " + JSON.stringify(results));
         assertEqual(0, results.stats.scannedFull, "Query: " + query + " - " + JSON.stringify(results));
         assertEqual(query[1], results.stats.scannedIndex, "Query: " + query + " - " + JSON.stringify(results));
       });
