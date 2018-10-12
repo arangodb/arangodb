@@ -14,19 +14,9 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11429"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11429"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwSOC--F"</span>, 
-      <span class="hljs-string">"a"</span> : { 
-        <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span>, 
-        <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span> 
-      }, 
-      <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
-    }, 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11419"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11419"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwSOC--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11420"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11420"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdM2S---_"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
@@ -34,18 +24,28 @@ x-content-type-options: nosniff
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11423"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11423"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwSOC--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11430"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11430"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdM2SC--B"</span>, 
+      <span class="hljs-string">"a"</span> : { 
+        <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span> 
+      }, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11424"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11424"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdM2S---B"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11426"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11426"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwSOC--D"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11427"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11427"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdM2SC--_"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     } 
   ], 
@@ -60,7 +60,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001685619354248047</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00016641616821289062</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

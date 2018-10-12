@@ -23,7 +23,7 @@ arangosh&gt; db.geo2.near(<span class="hljs-number">0</span>, <span class="hljs-
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28064"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo2/28064"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwcyK--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdNBqq--J"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"location"</span> : { 
       <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
@@ -33,7 +33,7 @@ arangosh&gt; db.geo2.near(<span class="hljs-number">0</span>, <span class="hljs-
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28175"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo2/28175"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwcya--L"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdNBq6--J"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/0"</span>, 
     <span class="hljs-string">"location"</span> : { 
       <span class="hljs-string">"latitude"</span> : <span class="hljs-number">10</span>, 
@@ -43,7 +43,7 @@ arangosh&gt; db.geo2.near(<span class="hljs-number">0</span>, <span class="hljs-
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27953"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo2/27953"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XiAwcx2--F"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XkdNBqa--N"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"location"</span> : { 
       <span class="hljs-string">"latitude"</span> : <span class="hljs-number">-10</span>, 
