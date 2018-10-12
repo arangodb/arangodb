@@ -86,15 +86,10 @@ function IResearchLinkSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithBadLinks : function () {
       var meta = { links: { 'nonExistentCollection': {}, 'testCollection' : { includeAllFields: true } } };
-      var view;
-      try {
-        view = db._createView("someView", "arangosearch", meta);
-        fail();
-      } catch(e) {
-         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e.errorNum);
-      }
-
-      assertNull(db._view("someView"));
+      var view = db._createView("someView", "arangosearch", meta);
+      var links = view.properties().links;
+      assertEqual(links['testCollection'], undefined);
+      view.drop();
     },
 
     ////////////////////////////////////////////////////////////////////////////

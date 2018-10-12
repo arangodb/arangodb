@@ -322,7 +322,7 @@ SECTION("test_defaults") {
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   }
 
-  // new view definition with links (not supported for link creation)
+  // new view definition with links
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"links\": { \"testCollection\": {} } }");

@@ -132,7 +132,7 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView
+class IResearchView final
   : public arangodb::LogicalViewStorageEngine,
     public arangodb::FlushTransaction {
  public:
@@ -290,6 +290,7 @@ class IResearchView
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions

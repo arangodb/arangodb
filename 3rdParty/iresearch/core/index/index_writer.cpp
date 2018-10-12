@@ -544,6 +544,7 @@ index_writer::documents_context::document::~document() {
 }
 
 index_writer::documents_context::~documents_context() {
+  assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
   writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
 }
 
@@ -631,6 +632,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
 
   while (!segment_.ctx()) { // no segment (lazy initialized)
     segment_ = writer_.get_segment_context(*ctx);
+    segment_use_count_ = segment_.ctx().use_count();
 
     // must unlock/relock flush_context before retrying to get a new segment so
     // as to avoid a deadlock due to a read-write-read situation for

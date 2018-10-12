@@ -170,7 +170,6 @@ bool IResearchViewCoordinator::emplace(
     }
   }
 
-
   if (!view->_meta.init(properties, error)) {
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(WARN, iresearch::TOPIC)
@@ -224,11 +223,11 @@ bool IResearchViewCoordinator::emplace(
     }
 
     // create links - "on a best-effort basis"
-    if (info.hasKey("links")) {
+    if (hasLinks) {
 
       std::unordered_set<TRI_voc_cid_t> collections;
       auto result = IResearchLinkHelper::updateLinks(
-        collections, vocbase, *view.get(), info.get("links")
+        collections, vocbase, *view.get(), info.get(StaticStrings::LinksField)
       );
 
       if (result.fail()) {
