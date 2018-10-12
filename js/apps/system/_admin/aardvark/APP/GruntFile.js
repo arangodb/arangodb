@@ -194,7 +194,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js', 'frontend/build/libs.js'],
+            src: ['frontend/build/app.js', 'frontend/build/libs.min.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -275,7 +275,7 @@
         },
         libs: {
           files: {
-            'frontend/build/libs.js': [
+            'frontend/build/libs.min.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>'
             ]
@@ -352,11 +352,6 @@
             'frontend/build/app.min.js': 'frontend/build/app.js'
           }
         },
-        libs1: {
-          files: {
-            'frontend/build/libs.min.js': 'frontend/build/libs.js'
-          }
-        },
         libs2: {
           files: {
             'frontend/src/ace.min.js': 'frontend/src/ace.js'
@@ -366,7 +361,7 @@
 
       concurrent: {
         uglifyFast: ['uglify:default1'],
-        uglifyAll: ['uglify:default1', 'uglify:libs1', 'uglify:libs2']
+        uglifyAll: ['uglify:default1', 'uglify:libs2']
       },
 
       watch: {
