@@ -1859,10 +1859,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   for (auto& it : _collections) {
     it->close(); // required to release indexes
   }
-
-  _dataSourceById.clear(); // clear map before deallocating TRI_vocbase_t members
-  _dataSourceByName.clear(); // clear map before deallocating TRI_vocbase_t members
-  _dataSourceByUuid.clear(); // clear map before deallocating TRI_vocbase_t members
 }
 
 std::string TRI_vocbase_t::path() const {
