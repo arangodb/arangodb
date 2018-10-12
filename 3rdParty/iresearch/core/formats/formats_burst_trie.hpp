@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_FORMAT_BURST_TRIE_H
 #define IRESEARCH_FORMAT_BURST_TRIE_H
 
+#include <list>
+
 #include "formats.hpp"
 #include "formats_10_attributes.hpp"
 #include "index/field_meta.hpp"
@@ -52,9 +54,6 @@
 #endif
 
 #include "utils/noncopyable.hpp"
-
-#include <list>
-#include <type_traits>
 
 NS_ROOT
 NS_BEGIN(burst_trie)

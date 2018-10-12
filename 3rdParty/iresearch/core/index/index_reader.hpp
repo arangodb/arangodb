@@ -44,8 +44,8 @@ NS_ROOT
 struct sub_reader;
 
 struct IRESEARCH_API index_reader {
-  DECLARE_SPTR(index_reader);
-  DECLARE_FACTORY(index_reader);
+  DECLARE_SHARED_PTR(const index_reader);
+  DEFINE_FACTORY_INLINE(index_reader);
 
   typedef std::function<bool(const field_meta&, data_input&)> document_visitor_f;
   typedef forward_iterator_impl<sub_reader> reader_iterator_impl;
@@ -55,9 +55,6 @@ struct IRESEARCH_API index_reader {
 
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;
-
-  // number of live documents for the specified field
-  virtual uint64_t docs_count(const string_ref& field) const = 0;
 
   // total number of documents including deleted
   virtual uint64_t docs_count() const = 0;
@@ -77,21 +74,13 @@ struct IRESEARCH_API index_reader {
 * ------------------------------------------------------------------*/
 
 struct IRESEARCH_API sub_reader : index_reader {
-  typedef iresearch::iterator<doc_id_t> docs_iterator_t;
-
-  DECLARE_SPTR(sub_reader);
-  DECLARE_FACTORY(sub_reader);
+  DECLARE_SHARED_PTR(const sub_reader);
+  DEFINE_FACTORY_INLINE(sub_reader);
 
   using index_reader::docs_count;
 
-  // returns number of live documents by the specified field
-  virtual uint64_t docs_count(const string_ref& field) const override {
-    const term_reader* rdr = this->field(field);
-    return nullptr == rdr ? 0 : rdr->docs_count();
-  }
-
   // returns iterator over the live documents in current segment
-  virtual docs_iterator_t::ptr docs_iterator() const = 0;
+  virtual doc_iterator::ptr docs_iterator() const = 0;
 
   virtual field_iterator::ptr fields() const = 0;
 
@@ -125,13 +114,10 @@ NS_ROOT
 
 class IRESEARCH_API composite_reader: public index_reader {
  public:
-  DECLARE_SPTR(composite_reader);
+  DECLARE_SHARED_PTR(const composite_reader);
 
   // return the i'th sub_reader
   virtual const sub_reader& operator[](size_t i) const = 0;
-
-  // return the base doc_id for the i'th sub_reader
-  virtual doc_id_t base(size_t i) const = 0;
 };
 
 NS_END

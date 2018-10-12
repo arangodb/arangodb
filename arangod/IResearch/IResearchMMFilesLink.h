@@ -34,7 +34,7 @@ NS_BEGIN(iresearch)
 class IResearchMMFilesLink final
   : public arangodb::Index, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchMMFilesLink();
 

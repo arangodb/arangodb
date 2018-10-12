@@ -33,6 +33,7 @@
 #include "index/file_names.hpp"
 #include "index/index_meta.hpp"
 
+#include "utils/directory_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
 #include "utils/bit_utils.hpp"
@@ -405,7 +406,7 @@ struct cookie : irs::seek_term_iterator::seek_cookie {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief declaration/implementation of DECLARE_FACTORY_DEFAULT()
+  /// @brief declaration/implementation of DECLARE_FACTORY()
   //////////////////////////////////////////////////////////////////////////////
   static seek_term_iterator::seek_cookie::ptr make(const version10::term_meta& meta, uint64_t term_freq) {
     return memory::make_unique<cookie>(meta, term_freq);
@@ -476,7 +477,7 @@ class term_iterator : public iresearch::seek_term_iterator {
       : state(rhs.state), 
         weight(std::move(rhs.weight)),
         block(rhs.block) {
-      rhs.block = 0;
+      rhs.block = nullptr;
     }
 
     arc(stateid_t state, const byte_weight& weight, block_iterator* block)
@@ -909,6 +910,7 @@ bool term_iterator::next() {
 #ifdef IRESEARCH_DEBUG
       const SeekResult res = seek_equal(bytes_ref(term_));
       assert(SeekResult::FOUND == res);
+      UNUSED(res);
 #else
       seek_equal(bytes_ref(term_));
 #endif
@@ -1449,7 +1451,9 @@ field_writer::field_writer(
     bool volatile_state,
     uint32_t min_block_size,
     uint32_t max_block_size)
-  : pw(std::move(pw)),
+  : suffix(memory_allocator::global()),
+    stats(memory_allocator::global()),
+    pw(std::move(pw)),
     fst_buf_(memory::make_unique<detail::fst_buffer>()),
     prefixes(DEFAULT_SIZE, 0),
     term_count(0),
@@ -1463,7 +1467,9 @@ field_writer::field_writer(
   min_term.first = false;
 }
 
-void field_writer::prepare( const iresearch::flush_state& state ) {
+void field_writer::prepare(const iresearch::flush_state& state) {
+  assert(state.dir);
+
   // reset writer state
   last_term.clear();
   max_term.clear();
@@ -1484,6 +1490,11 @@ void field_writer::prepare( const iresearch::flush_state& state ) {
 
   // prepare postings writer
   pw->prepare(*terms_out, state);
+
+  // reset allocator from a directory
+  auto& allocator = directory_utils::get_allocator(*state.dir);
+  suffix.reset(allocator);
+  stats.reset(allocator);
 }
 
 void field_writer::write(

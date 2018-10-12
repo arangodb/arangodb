@@ -30,6 +30,11 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -51,10 +56,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/AqlFunctionFeature.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
