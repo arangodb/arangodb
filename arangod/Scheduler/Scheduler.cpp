@@ -46,7 +46,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-constexpr double MIN_SECONDS = 30.0;
+constexpr double MIN_SECONDS = 60.0;
 }
 
 // -----------------------------------------------------------------------------
@@ -734,13 +734,13 @@ bool Scheduler::threadShouldStop(double now) {
     return false;
   }
 
-#if 0  /// testing
+  // I reactivated the following at the last hour before 3.4.RC3 without
+  // being able to consult with Matthew. If this breaks things, we find
+  // out in due course. 12.10.2018 Max.
+
   // decrement nrRunning by one already in here while holding the lock
   decRunning();
   return true;
-#else
-  return false;
-#endif
 }
 
 void Scheduler::startNewThread() {
