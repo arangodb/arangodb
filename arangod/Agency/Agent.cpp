@@ -1775,12 +1775,12 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
     
   std::string err;
-  config_t::upsert_t u = config_t::UNCHANGED;
+  config_t::upsert_t upsert = config_t::UNCHANGED;
     
   /// Pool incomplete or the other guy is in my pool: I'll gossip.
   if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
 
-    config_t::upsert_t upsert = _config.upsertPool(pslice, id);
+    upsert = _config.upsertPool(pslice, id);
     if (u == config_t::WRONG) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
       FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
