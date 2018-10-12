@@ -302,7 +302,7 @@ arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
   WRITE_LOCKER(guard, _rwLock);
   auto it = _counters.find(objectId);
   if (it != _counters.end()) {
-    LOG_TOPIC(WARN, Logger::ROCKSDB) << "resetting counter value to " << value;
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "resetting counter value to " << value;
     it->second._sequenceNum = std::max(seq, it->second._sequenceNum);
     it->second._added = value;
     it->second._removed = 0;

@@ -137,7 +137,7 @@ class RocksDBReplicationContext {
   bool use(double ttl, bool exclusive);
   /// remove use flag
   void release();
-  /// extend kifetime without using the context
+  /// extend lifetime without using the context
   void extendLifetime(double ttl);
   
   // buggy clients may not send the serverId
