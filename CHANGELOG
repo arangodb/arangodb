@@ -78,6 +78,8 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 
 * added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
 
+* fixed agents busy looping gossip
+
 
 v3.4.0-rc.2 (2018-09-30)
 ------------------------
