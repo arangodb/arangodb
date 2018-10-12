@@ -1,6 +1,8 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
+
 * improve inter-server communication performance:
   - move all response processing off Communicator's socket management thread
   - create multiple Communicator objects with ClusterComm, route via round robin
