@@ -1,6 +1,7 @@
 (function() {
   "use strict";
 
+  const sass = require('node-sass');
   var vName = Date.now();
   module.exports = function(grunt) {
 
@@ -122,6 +123,7 @@
       sass: {
         dev: {
           options: {
+            implementation: sass,
             style: 'nested'
           },
           files: {
@@ -130,7 +132,8 @@
         },
         dist: {
           options: {
-            style: 'compressed'
+            implementation: sass,
+            // style: 'compressed'
           },
           files: {
             'frontend/build/style.css': '<%= project.standalone.css %>'
@@ -408,6 +411,7 @@
       }
     });
 
+    grunt.loadNpmTasks("grunt-babel");
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
