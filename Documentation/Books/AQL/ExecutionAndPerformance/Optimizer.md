@@ -428,6 +428,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `replace-function-with-index`: will appear when a deprecated index function such as
    `FULLTEXT`, `NEAR`, `WITHIN` or `WITHIN_RECTANGLE` is replaced with a regular
    subquery.
+* `fuse-filters`: will appear if the optimizer merges adjacent FILTER nodes together into
+   a single FILTER node
+* `simplify-conditions`: will appear if the optimizer replaces parts in a CalculationNode's
+   expression with simpler expressions 
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.

@@ -40,49 +40,51 @@ function RequireCanceledTestSuite() {
 
   return {
     setUp() {
-        arango.POST_RAW("/_admin/execute",
-          "require('module').globalPaths.unshift(require('path').resolve('./" + pathForTesting('common/test-data/modules') + "'));", {
-            'x-arango-v8-context': 0
-          });
-      },
+      // When running with windows paths, we need to escape them:
+      let path = pathForTesting('common/test-data/modules').replace(/\\/g, '\\\\');
+      arango.POST_RAW("/_admin/execute",
+                      "require('module').globalPaths.unshift(require('path').resolve('./" + path + "'));", {
+                        'x-arango-v8-context': 0
+                      });
+    },
 
-      tearDown() {
-        arango.POST_RAW("/_admin/execute",
-          "require('module').globalPaths.splice(0,1);", {
-            'x-arango-v8-context': 0
-          });
-      },
+    tearDown() {
+      arango.POST_RAW("/_admin/execute",
+                      "require('module').globalPaths.splice(0,1);", {
+                        'x-arango-v8-context': 0
+                      });
+    },
 
-      testRequireJson() {
-        var internal = require("internal");
-        var a = arango.POST_RAW("/_admin/execute",
-          'return Object.keys(require("a"));', {
-            'x-arango-async': "store",
-            'x-arango-v8-context': 0
-          });
+    testRequireJson() {
+      var internal = require("internal");
+      var a = arango.POST_RAW("/_admin/execute",
+                              'return Object.keys(require("a"));', {
+                                'x-arango-async': "store",
+                                'x-arango-v8-context': 0
+                              });
 
-        internal.sleep(3);
+      internal.sleep(3);
 
-        var id = a.headers['x-arango-async-id'];
-        arango.PUT_RAW("/_api/job/" + id + "/cancel", '');
+      var id = a.headers['x-arango-async-id'];
+      arango.PUT_RAW("/_api/job/" + id + "/cancel", '');
 
-        var c = arango.POST_RAW("/_admin/execute?returnAsJSON=true",
-          'return Object.keys(require("a"));', {
-            'x-arango-async': "false",
-            'x-arango-v8-context': 0
-          });
+      var c = arango.POST_RAW("/_admin/execute?returnAsJSON=true",
+                              'return Object.keys(require("a"));', {
+                                'x-arango-async': "false",
+                                'x-arango-v8-context': 0
+                              });
 
-        var d;
+      var d;
 
-        try {
-          d = VPACK_TO_V8(c.body);
-        } catch (err) {
-          require("internal").print(c.body);
-          throw err;
-        }
-
-        assertEqual(2, d.length);
+      try {
+        d = VPACK_TO_V8(c.body);
+      } catch (err) {
+        require("internal").print(c.body);
+        throw err;
       }
+
+      assertEqual(2, d.length);
+    }
   };
 }
 

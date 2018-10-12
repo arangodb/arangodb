@@ -1077,6 +1077,8 @@ class FilterNode : public ExecutionNode {
     vars.emplace(_inVariable);
   }
 
+  Variable const* inVariable() const { return _inVariable; }
+
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
