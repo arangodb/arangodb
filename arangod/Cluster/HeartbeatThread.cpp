@@ -79,13 +79,12 @@ namespace arangodb {
 class HeartbeatBackgroundJobThread : public Thread {
 
 public:
-  HeartbeatBackgroundJobThread(HeartbeatThread *heartbeatThread) :
-    Thread("Maintenance"),
-    _heartbeatThread(heartbeatThread),
-    _stop(false),
-    _sleeping(false),
-    _backgroundJobsLaunched(0)
-  {}
+  explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread) 
+      : Thread("Maintenance"),
+        _heartbeatThread(heartbeatThread),
+        _stop(false),
+        _sleeping(false),
+        _backgroundJobsLaunched(0) {}
 
   ~HeartbeatBackgroundJobThread() { shutdown(); }
 
@@ -270,7 +269,8 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isAgent(role)) {
     runSimpleServer();
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
+    LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
   }
 
@@ -414,8 +414,10 @@ void HeartbeatThread::runDBServer() {
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT)
-              << "Heartbeat: Could not read from agency!";
+          if (!application_features::ApplicationServer::isStopping()) {
+            LOG_TOPIC(WARN, Logger::HEARTBEAT)
+                << "Heartbeat: Could not read from agency!";
+          }
         } else {
 
           VPackSlice agentPool = result.slice()[0].get(".agency");
@@ -586,10 +588,12 @@ void HeartbeatThread::runSingleServer() {
             "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency! status code: "
-            << result._statusCode << ", incriminating body: "
-            << result.bodyRef() << ", timeout: " << timeout;
+        if (!application_features::ApplicationServer::isStopping()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "Heartbeat: Could not read from agency! status code: "
+              << result._statusCode << ", incriminating body: "
+              << result.bodyRef() << ", timeout: " << timeout;
+        }
 
         if (!applier->isActive()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
@@ -602,14 +606,14 @@ void HeartbeatThread::runSingleServer() {
       VPackSlice agentPool = response.get(".agency");
       updateAgentPool(agentPool);
 
-      VPackSlice shutdownSlice = response.get({AgencyCommManager::path(), "Shutdown"});
+      VPackSlice shutdownSlice = response.get<std::string>({AgencyCommManager::path(), "Shutdown"});
       if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
         ApplicationServer::server->beginShutdown();
         break;
       }
 
       // performing failover checks
-      VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      VPackSlice async = response.get<std::string>({AgencyCommManager::path(), "Plan", "AsyncReplication"});
       if (!async.isObject()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read async-replication metadata from agency!";
@@ -835,10 +839,12 @@ void HeartbeatThread::runCoordinator() {
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
 
       if (!result.successful()) {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency! status code: "
-            << result._statusCode << ", incriminating body: "
-            << result.bodyRef() << ", timeout: " << timeout;
+        if (!application_features::ApplicationServer::isStopping()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "Heartbeat: Could not read from agency! status code: "
+              << result._statusCode << ", incriminating body: "
+              << result.bodyRef() << ", timeout: " << timeout;
+        }
       } else {
 
         VPackSlice agentPool = result.slice()[0].get(".agency");
@@ -958,9 +964,7 @@ void HeartbeatThread::runCoordinator() {
         if (failedServersSlice.isObject()) {
           std::vector<ServerID> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
-            if (server.value.isArray() && server.value.length() == 0) {
-              failedServers.push_back(server.key.copyString());
-            }
+            failedServers.push_back(server.key.copyString());
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
 
@@ -1149,8 +1153,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         int res = databaseFeature->createDatabase(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
-                   << "' failed: " << TRI_errno_string(res);
+          LOG_TOPIC(ERR, arangodb::Logger::HEARTBEAT)
+              << "creating local database '" << name
+              << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce.store(true, std::memory_order_release);
         }

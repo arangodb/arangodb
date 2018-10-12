@@ -1500,8 +1500,8 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   static std::atomic<TRI_voc_tid_t> lastId(0);
-
   ++beginTransactionCount;
+  _hints = hints;
 
   auto res = useCollections(_nestingLevel);
 

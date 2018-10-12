@@ -3767,6 +3767,32 @@
                 "x-filename": "/var/lib/jenkins/workspace/RELEASE__BuildFrontend/Documentation/DocuBlocks/Rest/Cluster/get_cluster_health.md"
             }
         }, 
+        "/_admin/cluster/maintenance": {
+            "put": {
+                "description": "\n\nThis API allows you to temporarily enable the supervision maintenance mode. Be aware that no \nautomatic failovers of any kind will take place while the maintenance mode is enabled.\nThe _cluster_ supervision reactivates itself automatically _60 minutes_ after disabling it.\n\nTo enable the maintenance mode the request body must contain the string `\"on\"`. To disable it, send the string\n`\"off\"` (Please note it _must_ be lowercase as well as include the quotes).\n\n", 
+                "parameters": [], 
+                "responses": {
+                    "200": {
+                        "description": "\n"
+                    }, 
+                    "400": {
+                        "description": "\n"
+                    }, 
+                    "501": {
+                        "description": "\n"
+                    }, 
+                    "504": {
+                        "description": "\n\n"
+                    }
+                }, 
+                "summary": "Enable or disable the supervision maintenance mode", 
+                "tags": [
+                    "Cluster"
+                ], 
+                "x-examples": [], 
+                "x-filename": "/var/lib/jenkins/workspace/RELEASE__BuildFrontend/Documentation/DocuBlocks/Rest/Cluster/put_cluster_maintenance.md"
+            }
+        }, 
         "/_admin/clusterStatistics": {
             "get": {
                 "description": "\n\nQueries the statistics of the given DBserver\n\n", 

@@ -44,11 +44,11 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-SocketTask::SocketTask(Scheduler* scheduler,
+SocketTask::SocketTask(GeneralServer &server, GeneralServer::IoContext &context,
                        std::unique_ptr<arangodb::Socket> socket,
                        arangodb::ConnectionInfo&& connectionInfo,
                        double keepAliveTimeout, bool skipInit = false)
-    : Task(scheduler, "SocketTask"),
+    : IoTask(server, context, "SocketTask"),
       _peer(std::move(socket)),
       _connectionInfo(std::move(connectionInfo)),
       _connectionStatistics(nullptr),
@@ -56,7 +56,7 @@ SocketTask::SocketTask(Scheduler* scheduler,
       _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
-      _keepAliveTimer(scheduler->newDeadlineTimer(_keepAliveTimeout)),
+      _keepAliveTimer(context.newDeadlineTimer(_keepAliveTimeout)),
       _useKeepAliveTimer(keepAliveTimeout > 0.0),
       _keepAliveTimerActive(false),
       _closeRequested(false),
@@ -436,8 +436,6 @@ void SocketTask::asyncReadSome() {
   _peer->asyncRead(
       asio_ns::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
       [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
-        JobGuard guard(_scheduler);
-        guard.work();
 
         if (_abandoned.load(std::memory_order_acquire)) {
           return;
@@ -535,9 +533,6 @@ void SocketTask::asyncWriteSome() {
   _peer->asyncWrite(
       asio_ns::buffer(_writeBuffer._buffer->begin() + written, total - written),
       [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
-        JobGuard guard(_scheduler);
-        guard.work();
-
         if (_abandoned.load(std::memory_order_acquire)) {
           return;
         } 

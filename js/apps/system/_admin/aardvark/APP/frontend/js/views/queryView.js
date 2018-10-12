@@ -2002,7 +2002,7 @@
               if (position === data.result.length) {
                 if (markers.length > 0) {
                   try {
-                    var show = new L.featureGroup(markers);
+                    var show = new L.FeatureGroup(markers);
                     self.maps[counter].fitBounds(show.getBounds());
                   } catch (ignore) {
                   }
@@ -2396,7 +2396,7 @@
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
             '<span class="profileHeader">Profiling information</span>' +
-            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="pure-g pure-table pure-table-body" style="width: auto;"></div>' +
             '<div class="prof-progress"></div>' +
             '<div class="prof-progress-label"></div>' +
             '<div class="clear"></div>'

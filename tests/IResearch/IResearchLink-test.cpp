@@ -624,7 +624,6 @@ SECTION("test_write") {
 
   flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
   CHECK((view->commit().ok()));
-  CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
@@ -642,7 +641,6 @@ SECTION("test_write") {
 
   flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
   CHECK((view->commit().ok()));
-  CHECK((true == view->sync()));
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
@@ -660,10 +658,9 @@ SECTION("test_write") {
 
   flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
   CHECK((view->commit().ok()));
-  CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
   logicalCollection->dropIndex(link->id());
-  CHECK((true == view->sync()));
+  CHECK((view->commit().ok()));
   CHECK((0 == reader.reopen().live_docs_count()));
 }
 

@@ -252,7 +252,7 @@ void dropCollectionFromAllViews(
 
       if (!view) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->id() << "': not an iresearch view";
+            << "error finding view: '" << view->id() << "': not an arangosearch view";
         return;
       }
 
@@ -289,7 +289,7 @@ void dropCollectionFromView(
       // don't remove the link if it's there
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "found link '" << indexId
-          << "' of type iresearch in collection '" << collectionId
+          << "' of type arangosearch in collection '" << collectionId
           << "' in database '" << dbId << "': skipping drop marker";
       return;
     }
@@ -368,8 +368,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         doc,
         Index::OperationMode::internal
       );
-      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // inserted: " << doc.toJson();
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+          << "recovery helper inserted: "
+          << doc.toJson(trx.transactionContext()->getVPackOptions());
     }
 
     trx.commit();
@@ -419,7 +420,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
 
   trx.commit();
 }
-  
+
 void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
                                                    const rocksdb::Slice& end_key,
                                                    const rocksdb::Slice& begin_key) {
@@ -455,14 +456,14 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
     case RocksDBLogType::CollectionTruncate: {
       uint64_t objectId = RocksDBLogValue::objectId(blob);
       auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
-      
+
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
           link->afterTruncate();
         }
       }
-      
+
       break;
     }
     default: break; // shut up the compiler

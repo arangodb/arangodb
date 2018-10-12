@@ -34,15 +34,15 @@
 NS_LOCAL
 
 struct unique_base {
-  DECLARE_PTR(unique_base);
-  DECLARE_FACTORY(unique_base);
+  DECLARE_UNIQUE_PTR(unique_base);
+  DEFINE_FACTORY_INLINE(unique_base);
 };
 
 struct unique : unique_base { };
 
 struct shared_base {
-  DECLARE_SPTR(shared_base);
-  DECLARE_FACTORY(shared_base);
+  DECLARE_SHARED_PTR(shared_base);
+  DEFINE_FACTORY_INLINE(shared_base);
 };
 
 struct shared : shared_base { };
@@ -83,6 +83,18 @@ TEST(memory_test, make) {
     ASSERT_TRUE(bool(std::is_same<decltype(ptr), std::shared_ptr<shared_base>>::value));
     ASSERT_NE(nullptr, dynamic_cast<shared_base*>(ptr.get()));
   }
+}
+
+TEST(memory_test, allocate_unique_array_no_construct) {
+  std::allocator<char> alloc;
+  ASSERT_EQ(nullptr, irs::memory::allocate_unique<char[]>(alloc, 0, irs::memory::allocate_only));
+  ASSERT_NE(nullptr, irs::memory::allocate_unique<char[]>(alloc, 256, irs::memory::allocate_only));
+}
+
+TEST(memory_test, allocate_unique_array) {
+  std::allocator<char> alloc;
+  ASSERT_EQ(nullptr, irs::memory::allocate_unique<char[]>(alloc, 0));
+  ASSERT_NE(nullptr, irs::memory::allocate_unique<char[]>(alloc, 256));
 }
 
 TEST(memory_pool_test, init) {
@@ -271,8 +283,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -309,8 +322,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>{}, alloc_t{pool}
+      std::less<size_t>{}, alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -348,8 +362,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -440,8 +455,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
     
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -485,8 +501,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -518,8 +535,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -552,8 +570,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-       std::less<size_t>(), alloc_t{pool}
+       std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -631,8 +650,9 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
-    
-    std::list<test_data, alloc_t> data(alloc_t{pool});
+
+    alloc_t alloc(pool);
+    std::list<test_data, alloc_t> data(alloc);
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
@@ -664,7 +684,8 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
-    std::list<test_data, alloc_t> data(alloc_t{pool});
+    alloc_t alloc(pool);
+    std::list<test_data, alloc_t> data(alloc);
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
@@ -697,7 +718,8 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
-    std::list<test_data, alloc_t> data(alloc_t{pool});
+    alloc_t alloc(pool);
+    std::list<test_data, alloc_t> data(alloc);
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
@@ -783,9 +805,10 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
-    
+
+    alloc_t alloc(pool);
     std::set<test_data, std::less<test_data>, alloc_t> data(
-      std::less<test_data>(), alloc_t{pool}
+      std::less<test_data>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -822,8 +845,9 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::set<test_data, std::less<test_data>, alloc_t> data(
-      std::less<test_data>(), alloc_t{pool}
+      std::less<test_data>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -861,8 +885,9 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::set<test_data, std::less<test_data>, alloc_t> data(
-      std::less<test_data>{}, alloc_t{pool}
+      std::less<test_data>{}, alloc
     );
 
     for (size_t i = 0; i < size; ++i) {

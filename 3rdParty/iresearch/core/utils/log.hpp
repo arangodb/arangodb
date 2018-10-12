@@ -30,18 +30,21 @@
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
   #define IR_FILEPATH_SPECIFIER  "%ws"
+  #define IR_UINT32_T_SPECIFIER  "%u"
   #define IR_UINT64_T_SPECIFIER  "%I64u"
   #define IR_SIZE_T_SPECIFIER    "%Iu"
   #define IR_SSIZE_T_SPECIFIER   "%Id"
   #define IR_PTRDIFF_T_SPECIFIER "%Id"
 #elif defined(__APPLE__)
   #define IR_FILEPATH_SPECIFIER  "%s"
+  #define IR_UINT32_T_SPECIFIER  "%u"
   #define IR_UINT64_T_SPECIFIER  "%llu"
   #define IR_SIZE_T_SPECIFIER    "%zu"
   #define IR_SSIZE_T_SPECIFIER   "%zd"
   #define IR_PTRDIFF_T_SPECIFIER "%zd"
 #elif defined(__GNUC__)
   #define IR_FILEPATH_SPECIFIER  "%s"
+  #define IR_UINT32_T_SPECIFIER  "%u"
   #define IR_UINT64_T_SPECIFIER  "%lu"
   #define IR_SIZE_T_SPECIFIER    "%zu"
   #define IR_SSIZE_T_SPECIFIER   "%zd"

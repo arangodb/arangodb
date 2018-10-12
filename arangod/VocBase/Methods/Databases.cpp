@@ -86,12 +86,12 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "rest database handler: no agency communication";
       return Result(commRes.errorCode(), commRes.errorMessage());
     }
 
-    VPackSlice value = commRes.slice()[0].get(
+    VPackSlice value = commRes.slice()[0].get<std::string>(
         {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey("name")) {
       VPackValueLength l = 0;

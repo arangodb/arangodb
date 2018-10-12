@@ -100,7 +100,7 @@ void ServerState::findHost(std::string const& fallback) {
       return;
     }
   } catch (...) { }
-  
+
 #ifdef __APPLE__
   static_assert(sizeof(uuid_t) == 16, "");
   uuid_t localUuid;
@@ -371,7 +371,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role, std::string c
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
     << roleToString(role) << " and our id is "
     << id;
-  
+
   _myEndpoint = myEndpoint;
   _advertisedEndpoint = advEndpoint;
   TRI_ASSERT(!_myEndpoint.empty());
@@ -406,7 +406,8 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 void mkdir (std::string const& path) {
   if (!TRI_IsDirectory(path.c_str())) {
     if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't create file directory " << path << " (UUID)";
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+          << "Couldn't create file directory " << path << " (UUID)";
       FATAL_ERROR_EXIT();
     }
   }
@@ -459,14 +460,14 @@ std::string ServerState::getPersistedId() {
       }
     }
     catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't read UUID file '"
-                                                << uuidFilename << "' - "
-                                                << ex.what();
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+        << "Couldn't read UUID file '" << uuidFilename << "' - " << ex.what();
       FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << uuidFilename << "'";
+  LOG_TOPIC(FATAL, Logger::STARTUP)
+      << "Couldn't open UUID file '" << uuidFilename << "'";
   FATAL_ERROR_EXIT();
 }
 
@@ -541,6 +542,14 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 
     // already registered
     if (!mapSlice.isNone()) {
+      VPackSlice s = mapSlice.get("TransactionID");
+      if (s.isNumber()) {
+        uint32_t shortId = s.getNumericValue<uint32_t>();
+        setShortId(shortId);
+        LOG_TOPIC(DEBUG, Logger::CLUSTER) << "restored short id " << shortId << " from agency";
+      } else {
+        LOG_TOPIC(WARN, Logger::CLUSTER) << "unable to restore short id from agency";
+      }
       return true;
     }
 

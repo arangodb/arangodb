@@ -143,6 +143,7 @@ class Logger {
   static LogTopic DUMP;
   static LogTopic ENGINES;
   static LogTopic FIXME;
+  static LogTopic FLUSH;
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
@@ -235,7 +236,9 @@ class Logger {
   static void setUseMicrotime(bool);
   static bool getUseMicrotime() {return _useMicrotime;};
   static void setKeepLogrotate(bool);
-  
+  static void setLogRequestParameters(bool);
+  static bool logRequestParameters() { return _logRequestParameters; }
+
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
@@ -278,6 +281,7 @@ class Logger {
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;
+  static bool _logRequestParameters;
   static char _role; // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;

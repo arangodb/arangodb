@@ -38,6 +38,9 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     tearDownAll : function () {
+      db._dropView("TestView");
+      db._dropView("TestView1");
+      db._dropView("TestView2");
       db._drop("TestCollection");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
@@ -696,6 +699,67 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(2, result[1].z);
+    },
+
+    testLinkSharingBetweenViews: function() {
+      db._dropView("TestView1");
+      db._dropView("TestView2");
+      db._drop("TestCollection0");
+
+      var col0 = db._create("TestCollection0");
+      var view1 = db._createView("TestView1", "arangosearch", {});
+      var view2 = db._createView("TestView2", "arangosearch", {});
+
+      col0.save({ a: "foo", c: "bar", z: 0 });
+      col0.save({ a: "foz", d: "baz", z: 1 });
+      col0.save({ b: "bar", c: "foo", z: 2 });
+      col0.save({ b: "baz", d: "foz", z: 3 });
+
+      var meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" } } };
+      var meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" } } };
+
+      view1.properties(meta1, true); // partial update
+      var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      assertEqual(2, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(1, result[1].z);
+
+      view2.properties(meta2, true); // partial update
+
+      result = db._query("FOR doc IN TestView2 SEARCH EXISTS(doc.b) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      assertEqual(2, result.length);
+      assertEqual(2, result[0].z);
+      assertEqual(3, result[1].z);
+
+      result = (db._query("RETURN APPEND(FOR doc IN TestView1 SEARCH doc.z < 2 OPTIONS { waitForSync: true } SORT doc.z RETURN doc, FOR doc IN TestView2 SEARCH doc.z > 1 OPTIONS { waitForSync: true } SORT doc.z RETURN doc)").toArray())[0];
+
+      assertEqual(4, result.length);
+      result.forEach(function(r, i) {
+        assertEqual(i, r.z);
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test create & drop of a view with a link.
+    /// Regression test for arangodb/backlog#486.
+    ////////////////////////////////////////////////////////////////////////////
+    testCreateAndDropViewWithLink: function () {
+      const colName = 'TestCollection';
+      const viewName = 'TestView';
+
+      db._drop(colName);
+      db._dropView(viewName);
+
+      const col = db._create(colName);
+      for (let i = 0; i < 10; i++) {
+        col.insert({ i });
+      }
+      {
+        const view = db._createView(viewName, 'arangosearch', {});
+        view.properties({ links: { [colName]: { includeAllFields: true } } });
+        db._dropView(viewName);
+      } // forget variable `view`, it's invalid now
+      assertEqual(db[viewName], undefined);
     },
 
   };

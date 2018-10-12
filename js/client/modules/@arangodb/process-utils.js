@@ -374,6 +374,45 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
   return args;
 }
 
+
+function runProcdump (options, instanceInfo, rootDir, pid) {
+  let procdumpArgs = [ ];
+  if (options.exceptionFilter != null) {
+    procdumpArgs = [
+      '-accepteula',
+      '-64',
+      '-e',
+      options.exceptionCount
+    ];
+    let filters = options.exceptionFilter.split(',');
+    for (let which in filters) {
+      procdumpArgs.push('-f');
+      procdumpArgs.push(filters[which]);
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(fs.join(rootDir, 'core.dmp'));
+  } else {
+    procdumpArgs = [
+      '-accepteula',
+      '-e',
+      '-ma',
+      pid,
+      fs.join(rootDir, 'core.dmp')
+    ];
+  }
+  try {
+    if (options.extremeVerbosity) {
+      print("Starting procdump: " + JSON.stringify(procdumpArgs));
+    }
+    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+  } catch (x) {
+    print('failed to start procdump - is it installed?');
+    // throw x;
+  }
+
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -424,43 +463,61 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     };
   }
 
-  const res = executeExternalAndWait(cmd, args);
+  let instanceInfo = {
+    rootDir: rootDir,
+    pid: 0,
+    exitStatus: {}
+  };
+
+  let res = {};
+  if (platform.substr(0, 3) === 'win') {
+    res = executeExternal(cmd, args);
+    instanceInfo.pid = res.pid;
+    instanceInfo.exitStatus = res;
+    runProcdump(options, instanceInfo, rootDir, res.pid);
+    Object.assign(instanceInfo.exitStatus, 
+                  statusExternal(res.pid, true));
+  } else {
+    res = executeExternalAndWait(cmd, args);
+    instanceInfo.pid = res.pid;
+    instanceInfo.exitStatus = res;
+  }
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
 
   if (coreCheck &&
-      res.hasOwnProperty('signal') &&
-      ((res.signal === 11) ||
-       (res.signal === 6) ||
+      instanceInfo.exitStatus.hasOwnProperty('signal') &&
+      ((instanceInfo.exitStatus.signal === 11) ||
+       (instanceInfo.exitStatus.signal === 6) ||
        // Windows sometimes has random numbers in signal...
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print(res);
     let instanceInfo = {
       rootDir: rootDir,
       pid: res.pid,
       exitStatus: res
     };
+    print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
-                            'execution of ' + cmd + ' - ' + res.signal);
+                            'execution of ' + cmd + ' - ' + instanceInfo.exitStatus.signal);
     if (options.coreCheck) {
       print(instanceInfo.exitStatus.gdbHint);
     }
     serverCrashed = true;
   }
 
-  if (res.status === 'TERMINATED') {
-    const color = (res.exit === 0 ? GREEN : RED);
+  if (instanceInfo.exitStatus.status === 'TERMINATED') {
+    const color = (instanceInfo.exitStatus.exit === 0 ? GREEN : RED);
 
-    print(color + 'Finished: ' + res.status +
-      ' exit code: ' + res.exit +
+    print(color + 'Finished: ' + instanceInfo.exitStatus.status +
+      ' exit code: ' + instanceInfo.exitStatus.exit +
       ' Time elapsed: ' + deltaTime + RESET);
 
-    if (res.exit === 0) {
+    if (instanceInfo.exitStatus.exit === 0) {
       return {
         status: true,
         message: '',
@@ -469,38 +526,38 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     } else {
       return {
         status: false,
-        message: 'exit code was ' + res.exit,
+        message: 'exit code was ' + instanceInfo.exitStatus.exit,
         duration: deltaTime
       };
     }
-  } else if (res.status === 'ABORTED') {
-    if (typeof (res.errorMessage) !== 'undefined') {
-      errorMessage += res.errorMessage;
+  } else if (instanceInfo.exitStatus.status === 'ABORTED') {
+    if (typeof (instanceInfo.exitStatus.errorMessage) !== 'undefined') {
+      errorMessage += instanceInfo.exitStatus.errorMessage;
     }
 
-    print('Finished: ' + res.status +
-      ' Signal: ' + res.signal +
+    print('Finished: ' + instanceInfo.exitStatus.status +
+      ' Signal: ' + instanceInfo.exitStatus.signal +
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
       status: false,
-      message: 'irregular termination: ' + res.status +
-        ' exit signal: ' + res.signal + errorMessage,
+      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
+        ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
       duration: deltaTime
     };
   } else {
-    if (typeof (res.errorMessage) !== 'undefined') {
-      errorMessage += res.errorMessage;
+    if (typeof (instanceInfo.exitStatus.errorMessage) !== 'undefined') {
+      errorMessage += instanceInfo.exitStatus.errorMessage;
     }
 
-    print('Finished: ' + res.status +
-      ' exit code: ' + res.signal +
+    print('Finished: ' + instanceInfo.exitStatus.status +
+      ' exit code: ' + instanceInfo.exitStatus.signal +
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
       status: false,
-      message: 'irregular termination: ' + res.status +
-        ' exit code: ' + res.exit + errorMessage,
+      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
+        ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
       duration: deltaTime
     };
   }
@@ -675,11 +732,13 @@ function analyzeServerCrash (arangod, options, checkStr) {
 // //////////////////////////////////////////////////////////////////////////////
 function checkArangoAlive (arangod, options) {
   const res = statusExternal(arangod.pid, false);
-  const ret = res.status === 'RUNNING';
+  const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, res);
 
   if (!ret) {
     print('ArangoD with PID ' + arangod.pid + ' gone:');
-    arangod.exitStatus = res;
+    if (!arangod.hasOwnProperty('exitStatus')) {
+      arangod.exitStatus = res;
+    }
     print(arangod);
 
     if (res.hasOwnProperty('signal') &&
@@ -692,6 +751,7 @@ function checkArangoAlive (arangod, options) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
       serverCrashed = true;
+      print("checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
     }
   }
 
@@ -805,10 +865,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
-      print(arangod.url + '/_admin/shutdown');
+      print(Date() + ' ' + arangod.url + '/_admin/shutdown');
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
       if (options.extremeVerbosity) {
-        print('Shutdown response: ' + JSON.stringify(reply));
+        print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
       }
     }
   } else {
@@ -893,6 +953,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         arangod.exitStatus = statusExternal(arangod.pid, false);
+        crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus);
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         let localTimeout = timeout;
@@ -921,8 +982,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role !== 'agent') {
           nonAgenciesCount --;
         }
-        if (arangod.exitStatus.hasOwnProperty('signal')) {
+        if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
+          print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashed = true;
         }
       } else {
@@ -1201,21 +1263,8 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
   instanceInfo.role = role;
 
-  if (platform.substr(0, 3) === 'win') {
-    const procdumpArgs = [
-      '-accepteula',
-      '-e',
-      '-ma',
-      instanceInfo.pid,
-      fs.join(rootDir, 'core.dmp')
-    ];
-
-    try {
-      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
-    } catch (x) {
-      print('failed to start procdump - is it installed?');
-      // throw x;
-    }
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
+    runProcdump(options, instanceInfo, rootDir, instanceInfo.pid);
   }
   return instanceInfo;
 }
@@ -1435,4 +1484,4 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
 Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
-Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashed});
+Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashed, set: () => serverCrashed});

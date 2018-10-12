@@ -122,6 +122,7 @@ class GeneralServerFeature final
       std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>
       _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
+  uint64_t _numIoThreads;
 };
 
 }

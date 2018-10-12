@@ -243,8 +243,19 @@ arangodb::Result addShardFollower (
       body.add("checksum", VPackValue(std::to_string(docCount)));
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
-      } else {
-        TRI_ASSERT(docCount == 0);
+      } else {  // short cut case
+        if (docCount != 0) {
+          // This can happen if we once were an in-sync follower and a
+          // synchronization request has timed out, but still runs on our
+          // side here. In this case, we can simply continue with the slow
+          // path and run the full sync protocol. Therefore we error out
+          // here. Note that we are in the lockJobId == 0 case, which is
+          // the shortcut.
+          std::string msg = "Short cut synchronization for shard " + shard
+            + " did not work, since we got a document in the meantime.";
+          LOG_TOPIC(INFO, Logger::MAINTENANCE) << msg;
+          return arangodb::Result(TRI_ERROR_INTERNAL, msg);
+        }
       }
     }
 
@@ -679,8 +690,21 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci =
-      clusterInfo->getCollection(database, planId);
+    std::shared_ptr<LogicalCollection> ci;
+    try {   // ci->getCollection can throw
+      ci = clusterInfo->getCollection(database, planId);
+    } catch(...) {
+      auto const endTime = system_clock::now();
+      std::stringstream msg;
+      msg << "exception in getCollection, " << database << "/"
+          << shard << ", " << database
+          << "/" << planId << ", started " << startTimeStr << ", ended "
+          << timepointToString(endTime);
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: "
+          << msg.str();
+      _result.reset(TRI_ERROR_FAILED, msg.str());
+      return false;
+    }
     TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
@@ -777,6 +801,10 @@ bool SynchronizeShard::first() {
         _result.reset(TRI_ERROR_INTERNAL, "server is shutting down");
       }
 
+      // Mark us as follower for this leader such that we begin
+      // accepting replication operations, note that this is also
+      // used for the initial synchronization:
+
       collection->followers()->setTheLeader(leader);
 
       if (leader.empty()) {
@@ -829,7 +857,7 @@ bool SynchronizeShard::first() {
       if (!syncRes.ok()) {
 
         std::stringstream error;
-        error << "could not initially synchronize shard " << shard
+        error << "could not initially synchronize shard " << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -870,7 +898,8 @@ bool SynchronizeShard::first() {
           Result result = startReadLockOnLeader(
             ep, database, collection->name(), clientId, lockJobId);
           if (result.ok()) {
-            LOG_TOPIC(DEBUG, Logger::FIXME) << "lockJobId: " <<  lockJobId;
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                << "lockJobId: " <<  lockJobId;
           } else {
             LOG_TOPIC(ERR, Logger::MAINTENANCE)
               << "synchronizeOneShard: error in startReadLockOnLeader:"
@@ -965,15 +994,12 @@ bool SynchronizeShard::first() {
 
 
 void SynchronizeShard::setState(ActionState state) {
-  
+
   if ((COMPLETE==state || FAILED==state) && _state != state) {
     TRI_ASSERT(_description.has("shard"));
     _feature.incShardVersion(_description.get("shard"));
   }
-  
+
   ActionBase::setState(state);
-  
+
 }
-
-
-

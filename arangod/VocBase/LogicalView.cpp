@@ -51,7 +51,7 @@ LogicalView::LogicalView(
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
-     category(),
+     LogicalView::category(),
      LogicalDataSource::Type::emplace(
        arangodb::basics::VelocyPackHelper::getStringRef(
          definition, StaticStrings::DataSourceType, ""
@@ -131,6 +131,10 @@ LogicalView::LogicalView(
 
     return nullptr;
   }
+
+  LOG_TOPIC(DEBUG, Logger::VIEWS)
+    << "created '" << viewType.toString() << "' view '" << view->name() << "' ("
+    << view->guid() << ")";
 
   return view;
 }
@@ -336,8 +340,12 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   auto res = updateProperties(slice, partialUpdate);
 
   if (!res.ok()) {
+    LOG_TOPIC(ERR, Logger::VIEWS) << "failed to update view with properties '"
+                                  << slice.toJson() << "'";
     return res;
   }
+  LOG_TOPIC(DEBUG, Logger::VIEWS) << "updated view with properties '"
+                                  << slice.toJson() << "'";
 
   // after this call the properties are stored
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -354,7 +362,7 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   } catch (...) {
     return { TRI_ERROR_INTERNAL };
   }
-  
+
   arangodb::aql::PlanCache::instance()->invalidate(&vocbase());
   arangodb::aql::QueryCache::instance()->invalidate(&vocbase());
 

@@ -1444,14 +1444,14 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       continue;
     }
 
-    if (!_config.applier._restrictType.empty()) {
+    if (_config.applier._restrictType != ReplicationApplierConfiguration::RestrictType::None) {
       auto const it = _config.applier._restrictCollections.find(masterName);
       bool found = (it != _config.applier._restrictCollections.end());
 
-      if (_config.applier._restrictType == "include" && !found) {
+      if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include && !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType == "exclude" && found) {
+      } else if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Exclude && found) {
         // collection should be excluded
         continue;
       }

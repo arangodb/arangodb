@@ -304,7 +304,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slic
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    ast->query()->collections()->add(
+    ast->query()->addCollection(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
         AccessMode::fromString(
@@ -955,11 +955,6 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
   std::string const viewName = expression->getString();
     
-  if (!_ast->query()->collections()->get(viewName)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "no view for EnumerateView");
-  }
-
 #ifdef USE_IRESEARCH
   auto& vocbase = _ast->query()->vocbase();
 

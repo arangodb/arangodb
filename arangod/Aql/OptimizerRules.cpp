@@ -57,6 +57,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 #include <boost/optional.hpp>
 #include <tuple>
 
@@ -141,7 +145,6 @@ class CollectionVariableTracker final
                                    arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
   using VariableSet = std::unordered_set<arangodb::aql::Variable const*>;
-  arangodb::aql::ExecutionPlan* _plan;
   bool _stop;
   std::unordered_map<arangodb::aql::Variable const*, DependencySet>
       _dependencies;
@@ -180,8 +183,7 @@ class CollectionVariableTracker final
   }
 
  public:
-  explicit CollectionVariableTracker(arangodb::aql::ExecutionPlan* plan)
-      : _plan{plan}, _stop{false} {}
+  explicit CollectionVariableTracker() : _stop{false} {}
 
   bool isSafeForOptimization() const { return !_stop; }
 
@@ -726,18 +728,17 @@ namespace aql {
 // TODO cleanup this f-ing aql::Collection(s) mess
 Collection* addCollectionToQuery(Query* query, std::string const& cname,
                                  bool assert) {
-  aql::Collections* colls = query->collections();
-  aql::Collection* coll = colls->get(cname);
 
-  if (coll == nullptr && !cname.empty()) {  // TODO: cleanup this mess
-    coll = colls->add(cname, AccessMode::Type::READ);
+  aql::Collection* coll = nullptr;
+
+  if (!cname.empty()) {
+    coll = query->addCollection(cname, AccessMode::Type::READ);
 
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
       auto cptr = query->trx()->vocbase().lookupCollection(cname);
 
       coll->setCollection(cptr.get());
-      // FIXME: does this need to happen in the coordinator?
       query->trx()->addCollectionAtRuntime(cname);
     }
   }
@@ -1961,9 +1962,10 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
 class arangodb::aql::RedundantCalculationsReplacer final
     : public WalkerWorker<ExecutionNode> {
  public:
-  explicit RedundantCalculationsReplacer(
+  explicit RedundantCalculationsReplacer(Ast* ast,
       std::unordered_map<VariableId, Variable const*> const& replacements)
-      : _replacements(replacements) {}
+      : _ast(ast), 
+        _replacements(replacements) {}
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
@@ -2000,12 +2002,51 @@ class arangodb::aql::RedundantCalculationsReplacer final
     }
   }
 
+#ifdef USE_IRESEARCH
+  void replaceInView(ExecutionNode* en) {
+    auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
+    if (view->filterConditionIsEmpty()) {
+      // nothing to do
+      return;
+    }
+    AstNode const& search = view->filterCondition();
+    std::unordered_set<Variable const*> variables;
+    Ast::getReferencedVariables(&search, variables);
+
+    // check if the search condition uses any of the variables that we want to
+    // replace
+    AstNode* cloned = nullptr;
+    for (auto const& it : variables) {
+      if (_replacements.find(it->id) != _replacements.end()) {
+        if (cloned == nullptr) {
+          // only clone the original search condition once
+          cloned = _ast->clone(&search);
+        }
+        // calculation uses a to-be-replaced variable
+        _ast->replaceVariables(cloned, _replacements);
+      }
+    }
+
+    if (cloned != nullptr) {
+      // exchange the filter condition
+      view->filterCondition(cloned);
+    }
+  }
+#endif
+
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::ENUMERATE_LIST: {
         replaceInVariable<EnumerateListNode>(en);
         break;
       }
+
+#ifdef USE_IRESEARCH
+      case EN::ENUMERATE_IRESEARCH_VIEW: {
+        replaceInView(en);
+        break;
+      }
+#endif
 
       case EN::RETURN: {
         replaceInVariable<ReturnNode>(en);
@@ -2153,6 +2194,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
   }
 
  private:
+  Ast* _ast;
   std::unordered_map<VariableId, Variable const*> const& _replacements;
 };
 
@@ -2281,7 +2323,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
 
   if (!replacements.empty()) {
     // finally replace the variables
-    RedundantCalculationsReplacer finder(replacements);
+    RedundantCalculationsReplacer finder(plan->getAst(), replacements);
     plan->root()->walk(finder);
   }
 
@@ -2371,7 +2413,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
           replacements.emplace(outvars[0]->id, static_cast<Variable const*>(
                                                    rootNode->getData()));
 
-          RedundantCalculationsReplacer finder(replacements);
+          RedundantCalculationsReplacer finder(plan->getAst(), replacements);
           plan->root()->walk(finder);
           toUnlink.emplace(n);
           continue;
@@ -4509,7 +4551,7 @@ void arangodb::aql::restrictToSingleShardRule(
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
 
-  CollectionVariableTracker tracker(plan.get());
+  CollectionVariableTracker tracker;
   plan->root()->walk(tracker);
   if (!tracker.isSafeForOptimization()) {
     // encountered errors while working on optimization, do not continue
@@ -4626,7 +4668,7 @@ void arangodb::aql::restrictToSingleShardRule(
                  currentType == ExecutionNode::DISTRIBUTE ||
                  currentType == ExecutionNode::SINGLETON) {
         // we reached a new snippet or the end of the plan - we can abort
-        // searching now additionally, we cannot yet handle UPSERT well
+        // searching now. additionally, we cannot yet handle UPSERT well
         break;
       }
 
@@ -5979,7 +6021,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.emplace(listNode->outVariable()->id,
                                returnNode->inVariable());
-          RedundantCalculationsReplacer finder(replacements);
+          RedundantCalculationsReplacer finder(plan->getAst(), replacements);
           plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();

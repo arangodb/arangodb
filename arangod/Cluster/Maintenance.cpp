@@ -205,18 +205,54 @@ void handlePlanShard(
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
 
+    // Check if there is some in-sync-follower which is no longer in the Plan:
+    std::string followersToDropString;
+    if (leading && shouldBeLeading) {
+      VPackSlice shards = cprops.get("shards");
+      if (shards.isObject()) {
+        VPackSlice planServers = shards.get(shname);
+        if (planServers.isArray()) {
+          VPackSlice inSyncFollowers = lcol.get("servers");
+          if (inSyncFollowers.isArray()) {
+            // Now we have two server lists, we are looking for a server
+            // which does not occur in the plan, but is in the followers
+            // at an index > 0:
+            std::unordered_set<std::string> followersToDrop;
+            for (auto const& q : VPackArrayIterator(inSyncFollowers)) {
+              followersToDrop.insert(q.copyString());
+            }
+            for (auto const& p : VPackArrayIterator(planServers)) {
+              if (p.isString()) {
+                followersToDrop.erase(p.copyString());
+              }
+            }
+            // Everything remaining in followersToDrop is something we
+            // need to act on
+            for (auto const& r : followersToDrop) {
+              if (!followersToDropString.empty()) {
+                followersToDropString.push_back(',');
+              }
+              followersToDropString += r;
+            }
+          }
+        }
+      }
+    }
+
     // If comparison has brought any updates
     if (properties->slice() != VPackSlice::emptyObjectSlice()
-        || leading != shouldBeLeading) {
+        || leading != shouldBeLeading || !followersToDropString.empty()) {
 
       if (errors.shards.find(fullShardLabel) ==
           errors.shards.end()) {
         actions.emplace_back(
           ActionDescription(
-            {{NAME, UPDATE_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname},
-            {SHARD, shname}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-            {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()}},
-            properties));
+            std::map<std::string,std::string> {
+              {NAME, UPDATE_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname},
+              {SHARD, shname}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+              {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
+              {FOLLOWERS_TO_DROP, followersToDropString}},
+              properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for local shard " << dbname
@@ -688,14 +724,10 @@ static VPackBuilder assembleLocalCollectionInfo(
         // planServers may be `none` in the case that the shard is not contained
         // in Plan, but in local.
         if (planServers.isArray()) {
-          auto current = *(collection->followers()->get());
-          // This method is only called when we are the leader for that shard,
-          // hence we are not contained in `current`, i.e. followers.
-          for (auto const& server : VPackArrayIterator(planServers)) {
-            if (std::find(current.begin(), current.end(), server.copyString())
-                != current.end()) {
-              ret.add(server);
-            }
+          std::shared_ptr<std::vector<std::string> const> current
+            = collection->followers()->get();
+          for (auto const& server : *current) {
+            ret.add(VPackValue(server));
           }
         }
       }

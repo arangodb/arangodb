@@ -36,15 +36,13 @@ var ERRORS = require("@arangodb").errors;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
+function IResearchAqlTestSuite(args) {
   var c;
   var v;
+  var cg;
+  var vg;
+  var meta;
 
-  // provided arguments
-  var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
-  };
   console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
@@ -57,7 +55,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = {
+      meta = {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
@@ -69,6 +67,26 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         }
       };
       v.properties(meta);
+
+      db._drop("UnitTestsGraphCollection");
+      cg = db._create("UnitTestsGraphCollection", args);
+
+      vg = db._createView("UnitTestsGraphView", "arangosearch", {});
+      meta = {
+        links: { 
+          "UnitTestsGraphCollection": { 
+            includeAllFields: true,
+            storeValues: "id",
+            fields: {
+              text: { analyzers: [ "text_en" ] }
+            }
+          }
+        }
+      };
+      vg.properties(meta);
+
+      db._drop("UnitTestsGraph");
+      var g = db._createEdgeCollection("UnitTestsGraph", args);
 
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
@@ -89,14 +107,28 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       c.save({ name: "null", anotherNullField: null });
       c.save({ name: "bool", anotherBoolField: true });
       c.save({ _key: "foo", xyz: 1 });
+
+      cg.save({ _key: "begin", vName: "vBegin" });
+      cg.save({ _key: "intermediate", vName: "vIntermediate" });
+      cg.save({ _key: "end", vName: "vEnd" });
+
+      g.save({ _from: "UnitTestsGraphCollection/begin", _to: "UnitTestsGraphCollection/intermediate" });
+      g.save({ _from: "UnitTestsGraphCollection/intermediate", _to: "UnitTestsGraphCollection/end" });
     },
 
     tearDown : function () {
-      var meta = { links : { "UnitTestsCollection": null } };
+      meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
+
+      meta = { links : { "UnitTestsGraphCollection": null } };
+      vg.properties(meta);
+      vg.drop();
+
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
+      db._drop("UnitTestsGraph");
+      db._drop("UnitTestsGraphCollection");
     },
     
     testViewInFunctionCall : function () {
@@ -453,6 +485,36 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       });
     },
 
+    testWithKeywordForViewInGraph : function() {
+      var results = [];
+
+      results[0] = db._query(
+        "WITH UnitTestsGraphCollection " + 
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results[1] = db._query(
+        "WITH UnitTestsGraphView " +
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results[2] = db._query(
+        "WITH UnitTestsGraphCollection, UnitTestsGraphView " +
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results.forEach(function(res) {
+        assertTrue(res.length, 1);
+        assertEqual(res[0].vName, "vEnd");
+      });
+    },
+
   };
 }
 
@@ -473,7 +535,7 @@ jsunity.run(function IResearchAqlTestSuite_s1_r2() {
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 });
 });
 
 return jsunity.done();

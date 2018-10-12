@@ -216,7 +216,7 @@ void Supervision::upgradeZero(Builder& builder) {
           if (fails.length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails)) {
               builder.add(VPackValue(fail.copyString()));
-              { VPackObjectBuilder ooo(&builder); }
+              { VPackArrayBuilder ooo(&builder); }
             }
           }
         }}} // trx
@@ -944,6 +944,11 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
                       builder->add("timeCreated", VPackValue(
                         timepointToString(std::chrono::system_clock::now())));
                     }
+                  }
+                  // increase current version
+                  builder->add(VPackValue("/arango/Current/Version"));
+                  {VPackObjectBuilder op(builder.get());
+                    builder->add("op", VPackValue("increment"));
                   }
                 }
                 {VPackObjectBuilder precon(builder.get());
