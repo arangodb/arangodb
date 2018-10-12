@@ -614,14 +614,14 @@ void HeartbeatThread::runSingleServer() {
       VPackSlice agentPool = response.get(".agency");
       updateAgentPool(agentPool);
 
-      VPackSlice shutdownSlice = response.get({AgencyCommManager::path(), "Shutdown"});
+      VPackSlice shutdownSlice = response.get<std::string>({AgencyCommManager::path(), "Shutdown"});
       if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
         ApplicationServer::server->beginShutdown();
         break;
       }
 
       // performing failover checks
-      VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      VPackSlice async = response.get<std::string>({AgencyCommManager::path(), "Plan", "AsyncReplication"});
       if (!async.isObject()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read async-replication metadata from agency!";
