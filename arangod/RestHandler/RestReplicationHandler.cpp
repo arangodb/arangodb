@@ -2265,7 +2265,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == true);
+  TRI_ASSERT(isLockHeld(id).get() == false);
 
   VPackBuilder b;
   {
@@ -2647,7 +2647,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   TRI_DEFER(queryRegistry->close(&_vocbase, id));
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == false);
+  TRI_ASSERT(isLockHeld(id).get() == true);
 
   TRI_IF_FAILURE("RestReplicationHandler::destroyBeforeLock") {
     // This will flag the query as destroyed while getting the
