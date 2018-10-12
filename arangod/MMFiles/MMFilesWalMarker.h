@@ -131,7 +131,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
     TRI_IF_FAILURE("MMFilesCompatibility33") {
       return false;
     }
-    
+
     // size is header size + vpack size + LocalDocumentId size -> LocalDocumentId contained!
     // size is not header size + vpack size + LocalDocumentId size -> no LocalDocumentId contained!
     return (size() == MMFilesDatafileHelper::VPackOffset(type()) +
@@ -140,6 +140,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
   }
 
   LocalDocumentId getLocalDocumentId() const override {
+    TRI_ASSERT(hasLocalDocumentId());
     uint8_t const* ptr = reinterpret_cast<uint8_t const*>(mem()) +
                          MMFilesDatafileHelper::VPackOffset(type()) +
                          arangodb::velocypack::Slice(vpack()).byteSize();
@@ -199,7 +200,7 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
       return;
     }
     if (_localDocumentId.isSet()) {
-      // also store localDocumentId
+      // also store localDocumentId - this is new as of 3.4
       encoding::storeNumber<LocalDocumentId::BaseType>(reinterpret_cast<uint8_t*>(mem) + vpackOffset + vpackLength, _localDocumentId.id(), sizeof(LocalDocumentId::BaseType));
     }
   }
