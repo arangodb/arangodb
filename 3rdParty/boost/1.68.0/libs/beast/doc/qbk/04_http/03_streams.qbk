@@ -1,0 +1,111 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Message Stream Operations]
+
+Beast provides synchronous and asynchronous algorithms to parse and
+serialize HTTP/1 wire format messages on streams. These functions form
+the message-oriented stream interface:
+
+[table Message Stream Operations
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__http__read.overload3 [*read]]
+][
+    Read a __message__ from a __SyncReadStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_read.overload2 [*async_read]]
+][
+    Read a __message__ from an __AsyncReadStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__write.overload1 [*write]]
+][
+    Write a __message__ to a __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_write [*async_write]]
+][
+    Write a __message__ to an __AsyncWriteStream__.
+]]
+]
+
+All synchronous stream operations come in two varieties. One which throws
+an exception upon error, and another which accepts as the last parameter an
+argument of type [link beast.ref.boost__beast__error_code `error_code&`]. If an error
+occurs this argument will be set to contain the error code.
+
+
+
+[heading Reading]
+
+Because a serialized header is not length-prefixed, algorithms which
+parse messages from a stream may read past the end of a message for
+efficiency. To hold this surplus data, all stream read operations use
+a passed-in __DynamicBuffer__ which must be persisted between calls
+until the end of stream is reached or the stream object is destroyed.
+Each read operation may consume bytes remaining in the buffer, and
+leave behind new bytes. In this example we declare the buffer and a
+message variable, then read a complete HTTP request synchronously:
+
+[http_snippet_4]
+
+This example uses __flat_buffer__. Beast's __basic_parser__ is
+optimized for structured HTTP data located in a single contiguous
+(['flat]) memory buffer. When not using a flat buffer the implementation
+may perform an additional memory allocations to restructure the input
+into a single buffer for parsing.
+
+[tip
+    Other Implementations of __DynamicBuffer__ may avoid parser
+    memory allocation by always returning buffer sequences of
+    length one.
+]
+
+Messages may also be read asynchronously. When performing asynchronous
+stream read operations the stream, buffer, and message variables must
+remain valid until the operation has completed. Beast asynchronous
+initiation functions use Asio's completion handler model. This call
+reads a message asynchronously and reports the error code upon
+completion. The handler is called with the error, set to any that
+occurs, and the number of bytes parsed. This number may be used to
+measure the relative amount of work performed, or it may be ignored
+as this example shows.
+
+[http_snippet_5]
+
+If a read stream algorithm cannot complete its operation without exceeding
+the maximum specified size of the dynamic buffer provided, the error
+[link beast.ref.boost__beast__http__error `buffer_overflow`]
+is returned. This is one technique which may be used to impose a limit on
+the maximum size of an HTTP message header for protection from buffer
+overflow attacks. The following code will print the error message:
+
+[http_snippet_6]
+
+
+
+[heading Writing]
+
+A set of free functions allow serialization of an entire HTTP message to
+a stream. This example constructs and sends an HTTP response:
+
+[http_snippet_7]
+
+The asynchronous version could be used instead:
+
+[http_snippet_8]
+
+The completion handler is called with the number of bytes written to the
+stream, which includes protocol specific data such as the delimiters in
+the header and line endings. The number may be used to measure the amount
+of data transferred, or it may be ignored as in the example.
+
+[endsect]

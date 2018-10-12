@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>known quirks and issues</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Known Quirks and Issues</h3>
+</div>
+<h3>Capturing view proxies with <i>auto</i></h3>
+<p>By design <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span> must not return temporary objects. They return reference to an argument they take by (const) reference, cast to reference of unspecified type that is not copyable. Because of this, the return value of a <span class="RenoLink"><a href="view_proxy.html">view proxy</a></span> can not be captured by <i>auto</i>:</p>
+<pre>auto tr=<span class="RenoLink"><a href="transposed.html">transposed</a></span>(m); //Error: the return type of <span class="RenoLink"><a href="transposed.html">transposed</a></span> can not be copied.</pre>
+<p>The correct use of <i>auto</i> with <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span> is:</p>
+<pre>auto &amp; tr=<span class="RenoLink"><a href="transposed.html">transposed</a></span>(m);</pre>
+<h4>Note:</h4>
+<p>many <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span> are not read-only, that is, changes made on the <span class="RenoLink"><a href="view_proxy.html">view proxy</a></span> operate on the original object. This is another reason why they can not be captured by <i>auto</i> by value.</p>
+<h3>Binding QVM overloads from an unrelated namespace</h3>
+<p>The operator overloads in namespace <i>boost::qvm</i> are designed to work with user-defined types. Typically it is sufficient to make these operators available in the namespace where the operator is used, by <i>using namespace boost::qvm</i>. A problem arises if the scope that uses the operator is not controlled by the user. For example:</p>
+<pre>namespace ns1
+{
+    struct float2 { float x, y; };
+}
+
+namespace ns2
+{
+    using namespace boost::qvm;
+
+    void f()
+    {
+        ns1::float2 a, b;
+        a==b; //OK
+        ns1::float2 arr1[2], arr2[2];
+        std::equal(arr1,arr1+2,arr2); //Error: <span class="RenoLink"><a href="operator_eq_vec_vec_.html">operator==</a></span> is inaccessible from namespace std
+    }
+}</pre>
+<p>In the <i>std::equal</i> expression above, even though <i>boost::qvm::<span class="RenoLink"><a href="operator_eq_vec_vec_.html">operator==</a></span></i> is made visible in namespace <i>ns2</i> by <i>using namespace boost::qvm</i>, the call originates from namespace <i>std</i>. In this case the compiler can't bind <i>boost::qvm::<span class="RenoLink"><a href="operator_eq_vec_vec_.html">operator==</a></span></i> because only namespace <i>ns1</i> is visible through ADL, and it does not contain a suitable declaration. The solution is to declare <i>operator==</i> in namespace <i>ns1</i>, which can be done like this:</p>
+<pre>namespace ns1 { using boost::qvm::<span class="RenoLink"><a href="operator_eq_vec_vec_.html">operator==</a></span>; }</pre>
+<h3>Link errors when calling math functions with <i>int</i> arguments</h3>
+<p>Boost QVM does not call standard math functions (e.g. <i>sin</i>, <i>cos</i>, etc.) directly. Instead, it calls function templates declared in <i><span class="RenoLink"><a href="boost_qvm_math_hpp.html">boost/qvm/math.hpp</a></span></i> in namespace <i>boost::qvm</i>. This allows the user to specialize these templates for user-defined <span class="RenoLink"><a href="scalar.html">scalar</a></span> types.</p>
+<p>Boost QVM itself defines specializations of the math function templates only for <i>float</i> and <i>double</i>, but it does not provide generic definitions. This is done to protect the user from unintentionally writing code that binds standard math functions that take <i>double</i> when passing arguments of lesser types, which would be suboptimal.</p>
+<p>Because of this, a call to e.g. <i><span class="RenoLink"><a href="rot_mat.html">rot_mat</a></span>(axis,1)</i> will compile successfully but fail to link, since it calls e.g. <i>boost::qvm::sin&lt;int&gt;</i>, which is undefined. Because rotations by integer number of radians are rarely needed, in QVM there is no protection against such errors. In such cases the solution is to use <i><span class="RenoLink"><a href="rot_mat.html">rot_mat</a></span>(axis,1.0f)</i> instead.</p>
+<h3>MSVC 2013 parsing bug</h3>
+<p>Due to a MSVC 2013 bug, expressions of the form <i>(v,<span class="RenoLink"><a href="accessing_vector_elements.html">A&lt;I&gt;</a></span>)</i> used to access vector elements as well as <i>(m,<span class="RenoLink"><a href="accessing_matrix_elements.html">A&lt;R,C&gt;</a></span>)</i> used to access matrix elements do not parse correctly. A workaround is to add parentheses, for example <i>(v,<span class="RenoLink"><a href="accessing_vector_elements.html">A&lt;I&gt;</a></span>())</i>. It is unknown if other versions of MSVC have the same issue.</p>
+<p>The corresponding non-template syntax used to access specific elements, e.g. <i>(m,<span class="RenoLink"><a href="accessing_matrix_elements.html">A31</a></span>)</i> or <i>(v,<span class="RenoLink"><a href="accessing_vector_elements.html">Y</a></span>)</i> is not affected by this issue.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Body</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../concepts.html" title="Concepts">
+<link rel="prev" href="../concepts.html" title="Concepts">
+<link rel="next" href="BodyReader.html" title="BodyReader">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../concepts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BodyReader.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.concepts.Body"></a><a class="link" href="Body.html" title="Body">Body</a>
+</h3></div></div></div>
+<p>
+        A <span class="bold"><strong>Body</strong></span> type is supplied as a template argument
+        to the <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a> class. It controls both
+        the type of the data member of the resulting message object, and the algorithms
+        used during parsing and serialization.
+      </p>
+<h5>
+<a name="beast.concepts.Body.h0"></a>
+        <span class="phrase"><a name="beast.concepts.Body.associated_types"></a></span><a class="link" href="Body.html#beast.concepts.Body.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__is_body.html" title="http::is_body"><code class="computeroutput"><span class="identifier">is_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="BodyWriter.html" title="BodyWriter"><span class="bold"><strong>BodyWriter</strong></span></a>
+          </li>
+</ul></div>
+<h5>
+<a name="beast.concepts.Body.h1"></a>
+        <span class="phrase"><a name="beast.concepts.Body.requirements"></a></span><a class="link" href="Body.html#beast.concepts.Body.requirements">Requirements</a>
+      </h5>
+<p>
+        In this table:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">B</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Body</strong></span>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">m</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">b</span><span class="special">,</span><span class="identifier">B</span><span class="special">,</span><span class="identifier">F</span><span class="special">&gt;</span></code>
+            where <code class="computeroutput"><span class="identifier">b</span></code> is a <code class="computeroutput"><span class="keyword">bool</span></code> value and <code class="computeroutput"><span class="identifier">F</span></code>
+            is a type meeting the requirements of <a class="link" href="Fields.html" title="Fields"><span class="bold"><strong>Fields</strong></span></a>.
+          </li>
+</ul></div>
+<div class="table">
+<a name="beast.concepts.Body.valid_expressions"></a><p class="title"><b>Table&#160;1.28.&#160;Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">B</span><span class="special">::</span><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The return type of the <code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">body</span></code>
+                  member function. If this is not movable or not copyable, the containing
+                  message will be not movable or not copyable.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">B</span><span class="special">::</span><span class="identifier">reader</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  If present, indicates that the body can be parsed. The type must
+                  meet the requirements of <a class="link" href="BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a>. The implementation constructs
+                  an object of this type to obtain buffers into which parsed body
+                  octets are placed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">B</span><span class="special">::</span><span class="identifier">writer</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  If present, indicates that the body is serializable. The type must
+                  meet the requirements of <a class="link" href="BodyWriter.html" title="BodyWriter"><span class="bold"><strong>BodyWriter</strong></span></a>. The implementation constructs
+                  an object of this type to obtain buffers representing the message
+                  body for serialization.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+<pre class="programlisting"><span class="identifier">B</span><span class="special">::</span><span class="identifier">size</span><span class="special">(</span>
+  <span class="identifier">B</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">body</span><span class="special">)</span>
+</pre>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  This static member function is optional. It returns the payload
+                  size of <code class="computeroutput"><span class="identifier">body</span></code> in
+                  bytes not including any chunked transfer encoding. The return value
+                  may be zero, to indicate that the message is known to have no payload.
+                  The function shall not exit via an exception.
+                </p>
+                <p>
+                  When this function is present:
+                </p>
+                <p>
+                  * The function shall not fail
+                </p>
+                <p>
+                  * A call to <a class="link" href="../ref/boost__beast__http__message/payload_size.html" title="http::message::payload_size"><code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">payload_size</span></code></a> will return
+                  the same value as <code class="computeroutput"><span class="identifier">size</span></code>.
+                </p>
+                <p>
+                  * A call to <a class="link" href="../ref/boost__beast__http__message/prepare_payload.html" title="http::message::prepare_payload"><code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">prepare_payload</span></code></a> will remove
+                  "chunked" from the Transfer-Encoding field if it appears
+                  as the last encoding, and will set the Content-Length field to
+                  the returned value.
+                </p>
+                <p>
+                  Otherwise, when the function is omitted:
+                </p>
+                <p>
+                  * A call to <a class="link" href="../ref/boost__beast__http__message/payload_size.html" title="http::message::payload_size"><code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">payload_size</span></code></a> will return
+                  <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span></code>.
+                </p>
+                <p>
+                  * A call to <a class="link" href="../ref/boost__beast__http__message/prepare_payload.html" title="http::message::prepare_payload"><code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">prepare_payload</span></code></a> will erase
+                  the Content-Length field, and add "chunked" as the last
+                  encoding in the Transfer-Encoding field if it is not already present.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="beast.concepts.Body.h2"></a>
+        <span class="phrase"><a name="beast.concepts.Body.exemplar"></a></span><a class="link" href="Body.html#beast.concepts.Body.exemplar">Exemplar</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">Body</span>
+<span class="special">{</span>
+    <span class="comment">// The type of message::body when used</span>
+    <span class="keyword">struct</span> <span class="identifier">value_type</span><span class="special">;</span>
+
+    <span class="comment">/// The algorithm used during parsing</span>
+    <span class="keyword">class</span> <span class="identifier">reader</span><span class="special">;</span>
+
+    <span class="comment">/// The algorithm used during serialization</span>
+    <span class="keyword">class</span> <span class="identifier">writer</span><span class="special">;</span>
+
+    <span class="comment">/// Returns the body's payload size</span>
+    <span class="keyword">static</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+    <span class="identifier">size</span><span class="special">(</span><span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">body</span><span class="special">);</span>
+<span class="special">};</span>
+
+<span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_body</span><span class="special">&lt;</span><span class="identifier">Body</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span>
+</pre>
+<h5>
+<a name="beast.concepts.Body.h3"></a>
+        <span class="phrase"><a name="beast.concepts.Body.models"></a></span><a class="link" href="Body.html#beast.concepts.Body.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__basic_dynamic_body.html" title="http::basic_dynamic_body"><code class="computeroutput"><span class="identifier">basic_dynamic_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__basic_file_body.html" title="http::basic_file_body"><code class="computeroutput"><span class="identifier">basic_file_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__basic_string_body.html" title="http::basic_string_body"><code class="computeroutput"><span class="identifier">basic_string_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__buffer_body.html" title="http::buffer_body"><code class="computeroutput"><span class="identifier">buffer_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__empty_body.html" title="http::empty_body"><code class="computeroutput"><span class="identifier">empty_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__span_body.html" title="http::span_body"><code class="computeroutput"><span class="identifier">span_body</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__vector_body.html" title="http::vector_body"><code class="computeroutput"><span class="identifier">vector_body</span></code></a>
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../concepts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BodyReader.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

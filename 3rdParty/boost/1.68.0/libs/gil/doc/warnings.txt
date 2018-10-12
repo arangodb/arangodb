@@ -1,0 +1,6 @@
+/home/ubuntu/boost/libs/gil/include/boost/gil/gil_config.hpp:40: warning: preprocessing issue while doing constant expression evaluation: syntax error
+/home/ubuntu/boost/libs/gil/include/boost/gil/gil_config.hpp:40: warning: preprocessing issue while doing constant expression evaluation: syntax error
+/home/ubuntu/boost/libs/gil/include/boost/gil/version.hpp:13: warning: documentation for unknown define BOOST_GIL_API_VERSION found.
+
+/home/ubuntu/boost/libs/gil/include/boost/gil/gil_concept.hpp:141: warning: Found unknown command `\codeauto'
+/home/ubuntu/boost/libs/gil/include/boost/gil/gil_concept.hpp:145: warning: unexpected command endcode

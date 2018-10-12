@@ -1,0 +1,164 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Send Child Process Output</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../more_examples.html" title="More Examples">
+<link rel="prev" href="http_relay.html" title="HTTP Relay">
+<link rel="next" href="../using_websocket.html" title="Using WebSocket">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_relay.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../more_examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../using_websocket.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.more_examples.send_child_process_output"></a><a class="link" href="send_child_process_output.html" title="Send Child Process Output">Send Child
+      Process Output</a>
+</h3></div></div></div>
+<p>
+        Sometimes it is necessary to send a message whose body is not conveniently
+        described by a single container. For example, when implementing an HTTP relay
+        function a robust implementation needs to present body buffers individually
+        as they become available from the downstream host. These buffers should be
+        fixed in size, otherwise creating the unnecessary and inefficient burden
+        of reading the complete message body before forwarding it to the upstream
+        host.
+      </p>
+<p>
+        To enable these use-cases, the body type <a class="link" href="../ref/boost__beast__http__buffer_body.html" title="http::buffer_body"><code class="computeroutput"><span class="identifier">buffer_body</span></code></a> is provided. This body
+        uses a caller-provided pointer and size instead of an owned container. To
+        use this body, instantiate an instance of the serializer and fill in the
+        pointer and size fields before calling a stream write function.
+      </p>
+<p>
+        This example reads from a child process and sends the output back in an HTTP
+        response. The output of the process is sent as it becomes available:
+      </p>
+<pre class="programlisting"><span class="comment">/** Send the output of a child process as an HTTP response.
+
+    The output of the child process comes from a @b SyncReadStream. Data
+    will be sent continuously as it is produced, without the requirement
+    that the entire process output is buffered before being sent. The
+    response will use the chunked transfer encoding.
+
+    @param input A stream to read the child process output from.
+
+    @param output A stream to write the HTTP response to.
+
+    @param ec Set to the error, if any occurred.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">SyncReadStream</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">SyncWriteStream</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">send_cgi_response</span><span class="special">(</span>
+    <span class="identifier">SyncReadStream</span><span class="special">&amp;</span> <span class="identifier">input</span><span class="special">,</span>
+    <span class="identifier">SyncWriteStream</span><span class="special">&amp;</span> <span class="identifier">output</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_sync_read_stream</span><span class="special">&lt;</span><span class="identifier">SyncReadStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"SyncReadStream requirements not met"</span><span class="special">);</span>
+
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_sync_write_stream</span><span class="special">&lt;</span><span class="identifier">SyncWriteStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"SyncWriteStream requirements not met"</span><span class="special">);</span>
+
+    <span class="comment">// Set up the response. We use the buffer_body type,</span>
+    <span class="comment">// allowing serialization to use manually provided buffers.</span>
+    <span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">buffer_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">;</span>
+
+    <span class="identifier">res</span><span class="special">.</span><span class="identifier">result</span><span class="special">(</span><span class="identifier">status</span><span class="special">::</span><span class="identifier">ok</span><span class="special">);</span>
+    <span class="identifier">res</span><span class="special">.</span><span class="identifier">version</span><span class="special">(</span><span class="number">11</span><span class="special">);</span>
+    <span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">server</span><span class="special">,</span> <span class="string">"Beast"</span><span class="special">);</span>
+    <span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">transfer_encoding</span><span class="special">,</span> <span class="string">"chunked"</span><span class="special">);</span>
+
+    <span class="comment">// No data yet, but we set more = true to indicate</span>
+    <span class="comment">// that it might be coming later. Otherwise the</span>
+    <span class="comment">// serializer::is_done would return true right after</span>
+    <span class="comment">// sending the header.</span>
+    <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">data</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">;</span>
+    <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">more</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+
+    <span class="comment">// Create the serializer.</span>
+    <span class="identifier">response_serializer</span><span class="special">&lt;</span><span class="identifier">buffer_body</span><span class="special">,</span> <span class="identifier">fields</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">res</span><span class="special">};</span>
+
+    <span class="comment">// Send the header immediately.</span>
+    <span class="identifier">write_header</span><span class="special">(</span><span class="identifier">output</span><span class="special">,</span> <span class="identifier">sr</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="keyword">return</span><span class="special">;</span>
+
+    <span class="comment">// Alternate between reading from the child process</span>
+    <span class="comment">// and sending all the process output until there</span>
+    <span class="comment">// is no more output.</span>
+    <span class="keyword">do</span>
+    <span class="special">{</span>
+        <span class="comment">// Read a buffer from the child process</span>
+        <span class="keyword">char</span> <span class="identifier">buffer</span><span class="special">[</span><span class="number">2048</span><span class="special">];</span>
+        <span class="keyword">auto</span> <span class="identifier">bytes_transferred</span> <span class="special">=</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">read_some</span><span class="special">(</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">,</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">)),</span> <span class="identifier">ec</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span> <span class="special">==</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">eof</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+
+            <span class="comment">// `nullptr` indicates there is no buffer</span>
+            <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">data</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">;</span>
+
+            <span class="comment">// `false` means no more data is coming</span>
+            <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">more</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">;</span>
+        <span class="special">}</span>
+        <span class="keyword">else</span>
+        <span class="special">{</span>
+            <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+                <span class="keyword">return</span><span class="special">;</span>
+
+            <span class="comment">// Point to our buffer with the bytes that</span>
+            <span class="comment">// we received, and indicate that there may</span>
+            <span class="comment">// be some more data coming</span>
+            <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">data</span> <span class="special">=</span> <span class="identifier">buffer</span><span class="special">;</span>
+            <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">size</span> <span class="special">=</span> <span class="identifier">bytes_transferred</span><span class="special">;</span>
+            <span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">().</span><span class="identifier">more</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="comment">// Write everything in the body buffer</span>
+        <span class="identifier">write</span><span class="special">(</span><span class="identifier">output</span><span class="special">,</span> <span class="identifier">sr</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+
+        <span class="comment">// This error is returned by body_buffer during</span>
+        <span class="comment">// serialization when it is done sending the data</span>
+        <span class="comment">// provided and needs another buffer.</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span> <span class="special">==</span> <span class="identifier">error</span><span class="special">::</span><span class="identifier">need_buffer</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+            <span class="keyword">continue</span><span class="special">;</span>
+        <span class="special">}</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+            <span class="keyword">return</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">());</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_relay.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../more_examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../using_websocket.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

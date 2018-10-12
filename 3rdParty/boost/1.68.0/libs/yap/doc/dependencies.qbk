@@ -1,0 +1,7 @@
+[section Dependencies]
+
+_yap_ depends on Boost.Hana directly.  It also has an optional dependency on
+Boost.TypeIndex.  Boost.TypeIndex is used for type printing, and is only
+required if the optional _print_header_ is included.
+
+[endsect]

@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>view proxy</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>View Proxies</h3>
+</div>
+<p>Boost QVM defines various function templates which take a reference to a quaternion/vector/matrix object and return it by reference as a different unspecified static type with quaternion/vector/matrix semantics for which the <i><span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span>/<span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>/<span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> template is specialized.</p>
+<p>For example, given a vector <i>v</i>, the expression <i><span class="RenoLink"><a href="col_mat.html">col_mat</a></span>(v)</i> returns a <span class="RenoLink">view proxy</span> that makes <i>v</i> "look and feel" like a matrix-column. More complex views are created by simple composition, for example <i><span class="RenoLink"><a href="transposed.html">transposed</a></span>(<span class="RenoLink"><a href="col_mat.html">col_mat</a></span>(v))</i> is equivalent to <i><span class="RenoLink"><a href="row_mat.html">row_mat</a></span>(v)</i>.</p>
+<p>Below is a list of all <span class="RenoLink">view proxies</span> supported by Boost QVM:</p>
+<div class="RenoPageList"><a href="accessing_matrix_elements.html">Accessing Matrix Elements</a><br/>
+<a href="accessing_quaternion_elements.html">Accessing Quaternion Elements</a><br/>
+<a href="accessing_vector_elements.html">Accessing Vector Elements</a><br/>
+<a href="accessing_vector_elements_and_swizzling_reference.html">Accessing Vector Elements by Swizzling</a><br/>
+<a href="col.html">col</a><br/>
+<a href="col_mat.html">col_mat</a><br/>
+<a href="del_col.html">del_col</a><br/>
+<a href="del_row.html">del_row</a><br/>
+<a href="del_row_col.html">del_row_col</a><br/>
+<a href="diag.html">diag</a><br/>
+<a href="diag_mat.html">diag_mat</a><br/>
+<a href="mref.html">mref</a><br/>
+<a href="qref.html">qref</a><br/>
+<a href="rotx_mat_scalar_.html">rotx_mat(scalar)</a><br/>
+<a href="rotx_quat_scalar_.html">rotx_quat(scalar)</a><br/>
+<a href="roty_mat_scalar_.html">roty_mat(scalar)</a><br/>
+<a href="roty_quat_scalar_.html">roty_quat(scalar)</a><br/>
+<a href="rotz_mat_scalar_.html">rotz_mat(scalar)</a><br/>
+<a href="rotz_quat_scalar_.html">rotz_quat(scalar)</a><br/>
+<a href="row.html">row</a><br/>
+<a href="row_mat.html">row_mat</a><br/>
+<a href="scalar_cast_mat_.html">scalar_cast(mat)</a><br/>
+<a href="scalar_cast_quat_.html">scalar_cast(quat)</a><br/>
+<a href="scalar_cast_vec_.html">scalar_cast(vec)</a><br/>
+<a href="swap_cols.html">swap_cols</a><br/>
+<a href="swap_rows.html">swap_rows</a><br/>
+<a href="translation.html">translation</a><br/>
+<a href="translation_mat.html">translation_mat</a><br/>
+<a href="transposed.html">transposed</a><br/>
+<a href="vref.html">vref</a></div>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="accessing_vector_elements_and_swizzling_reference.html">Accessing Vector Elements by Swizzling</a>&nbsp;| <a href="index.html">Boost QVM</a>&nbsp;| <a href="boost_qvm_map_hpp.html">boost/qvm/map.hpp</a>&nbsp;| <a href="boost_qvm_map_mat_mat_hpp.html">boost/qvm/map_mat_mat.hpp</a>&nbsp;| <a href="boost_qvm_map_mat_vec_hpp.html">boost/qvm/map_mat_vec.hpp</a>&nbsp;| <a href="boost_qvm_map_vec_mat_hpp.html">boost/qvm/map_vec_mat.hpp</a>&nbsp;| <a href="boost_qvm_swizzle_hpp.html">boost/qvm/swizzle.hpp</a>&nbsp;| <a href="col.html">col</a>&nbsp;| <a href="col_mat.html">col_mat</a>&nbsp;| <a href="del_col.html">del_col</a>&nbsp;| <a href="del_row.html">del_row</a>&nbsp;| <a href="del_row_col.html">del_row_col</a>&nbsp;| <a href="diag.html">diag</a>&nbsp;| <a href="diag_mat.html">diag_mat</a>&nbsp;| <a href="known_quirks_and_issues.html">Known Quirks and Issues</a>&nbsp;| <a href="mref.html">mref</a>&nbsp;| <a href="neg_col.html">neg_col</a>&nbsp;| <a href="neg_row.html">neg_row</a>&nbsp;| <a href="qref.html">qref</a>&nbsp;| <a href="rot_mat.html">rot_mat</a>&nbsp;| <a href="rot_quat.html">rot_quat</a>&nbsp;| <a href="rotx_mat_scalar_.html">rotx_mat(scalar)</a>&nbsp;| <a href="rotx_quat_scalar_.html">rotx_quat(scalar)</a>&nbsp;| <a href="roty_mat_scalar_.html">roty_mat(scalar)</a>&nbsp;| <a href="roty_quat_scalar_.html">roty_quat(scalar)</a>&nbsp;| <a href="rotz_mat_scalar_.html">rotz_mat(scalar)</a>&nbsp;| <a href="rotz_quat_scalar_.html">rotz_quat(scalar)</a>&nbsp;| <a href="row.html">row</a>&nbsp;| <a href="row_mat.html">row_mat</a>&nbsp;| <a href="scalar_cast_mat_.html">scalar_cast(mat)</a>&nbsp;| <a href="scalar_cast_quat_.html">scalar_cast(quat)</a>&nbsp;| <a href="scalar_cast_vec_.html">scalar_cast(vec)</a>&nbsp;| <a href="swap_cols.html">swap_cols</a>&nbsp;| <a href="swap_rows.html">swap_rows</a>&nbsp;| <a href="translation.html">translation</a>&nbsp;| <a href="translation_mat.html">translation_mat</a>&nbsp;| <a href="transposed.html">transposed</a>&nbsp;| <a href="vref.html">vref</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

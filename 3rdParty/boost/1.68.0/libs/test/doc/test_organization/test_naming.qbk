@@ -1,0 +1,32 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:test_naming Tests naming]
+The __UTF__ is flexible on how naming the test units (test cases/suites) and
+it is possible to use a wide variety of characters. However there are scenarios
+where the name of a test unit may collide with other and remote functionalities 
+of the __UTF__. For instance:
+
+* a character may collide with specific command line filters for selecting a 
+  subset of the test tree. Among those characters: `'@'`, `'+'` or `'/'` 
+  (see [link boost_test.runtime_config.test_unit_filtering this section] for 
+  more details)
+* a name containing a character that is reserved for the shell/terminal, such as
+  '!', '\*' ..., may prevent the test name to be passed on the command line *as is*.
+
+To prevent any conflicting declaration, the __UTF__ *sanitizes* the name given to
+a test unit (case or suite), prior to adding the test to the test tree. Any 
+conflicting character is replaced by an underscore `'_'`. 
+
+[note [*Spaces] are not considered as /special chars/ and are preserved, except for the 
+ leading and trailing spaces which are removed.]
+
+[note The sanitization of the test unit names has been introduced in [link ref_CHANGE_LOG_3_7 Boost 1.67]. 
+ ]
+
+[endsect] [/ test test_naming]

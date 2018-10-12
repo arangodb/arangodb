@@ -1,0 +1,141 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>websocket::stream::control_callback (1 of 2 overloads)</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../control_callback.html" title="websocket::stream::control_callback">
+<link rel="prev" href="../control_callback.html" title="websocket::stream::control_callback">
+<link rel="next" href="overload2.html" title="websocket::stream::control_callback (2 of 2 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../control_callback.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../control_callback.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1"></a><a class="link" href="overload1.html" title="websocket::stream::control_callback (1 of 2 overloads)">websocket::stream::control_callback
+          (1 of 2 overloads)</a>
+</h6></div></div></div>
+<p>
+            Set a callback to be invoked on each incoming control frame.
+          </p>
+<h7><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.h0"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.synopsis"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.control_callback.overload1.synopsis">Synopsis</a>
+          </h7><pre class="programlisting"><span class="keyword">void</span>
+<span class="identifier">control_callback</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">frame_type</span><span class="special">,</span> <span class="identifier">string_view</span><span class="special">)&gt;</span> <span class="identifier">cb</span><span class="special">);</span>
+</pre>
+<h7><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.h1"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.description"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.control_callback.overload1.description">Description</a>
+          </h7><p>
+            Sets the callback to be invoked whenever a ping, pong, or close control
+            frame is received during a call to one of the following functions:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                <a class="link" href="../read.html" title="websocket::stream::read"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">read</span></code></a>
+              </li>
+<li class="listitem">
+                <a class="link" href="../read_some.html" title="websocket::stream::read_some"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">read_some</span></code></a>
+              </li>
+<li class="listitem">
+                <a class="link" href="../async_read.html" title="websocket::stream::async_read"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">async_read</span></code></a>
+              </li>
+<li class="listitem">
+                <a class="link" href="../async_read_some.html" title="websocket::stream::async_read_some"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">async_read_some</span></code></a>
+              </li>
+</ul></div>
+<p>
+            Unlike completion handlers, the callback will be invoked for each control
+            frame during a call to any synchronous or asynchronous read function.
+            The operation is passive, with no associated error code, and triggered
+            by reads.
+          </p>
+<p>
+            For close frames, the close reason code may be obtained by calling the
+            function <a class="link" href="../reason.html" title="websocket::stream::reason"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">reason</span></code></a>.
+          </p>
+<h7><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.h2"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.parameters"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.control_callback.overload1.parameters">Parameters</a>
+          </h7><div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Description
+                    </p>
+                  </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">cb</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      The function object to call, which must be invocable with this
+                      equivalent signature:
+                    </p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">void</span>
+<span class="identifier">callback</span><span class="special">(</span>
+    <span class="identifier">frame_type</span> <span class="identifier">kind</span><span class="special">,</span>       <span class="comment">// The type of frame</span>
+    <span class="identifier">string_view</span> <span class="identifier">payload</span>    <span class="comment">// The payload in the frame</span>
+<span class="special">);</span>
+</pre>
+                    <p>
+                      The implementation type-erases the callback which may require
+                      a dynamic allocation. To prevent the possiblity of a dynamic
+                      allocation, use <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span></code>
+                      to wrap the callback. If the read operation which receives
+                      the control frame is an asynchronous operation, the callback
+                      will be invoked using the same method as that used to invoke
+                      the final handler.
+                    </p>
+                  </td>
+</tr></tbody>
+</table></div>
+<h7><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.h3"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.control_callback.overload1.remarks"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.control_callback.overload1.remarks">Remarks</a>
+          </h7><p>
+            Incoming ping and close frames are automatically handled. Pings are responded
+            to with pongs, and a close frame is responded to with a close frame leading
+            to the closure of the stream. It is not necessary to manually send pings,
+            pongs, or close frames from inside the control callback. Attempting to
+            manually send a close frame from inside the control callback after receiving
+            a close frame will result in undefined behavior.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../control_callback.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../control_callback.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,81 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Buffer-Oriented Serializing]
+[block'''<?dbhtml stop-chunking?>''']
+
+An instance of __serializer__ can be invoked directly, without using
+the provided stream operations. This could be useful for implementing
+algorithms on objects whose interface does not conform to __Stream__.
+For example, a
+[@https://github.com/libuv/libuv *libuv* socket].
+The serializer interface is interactive; the caller invokes it repeatedly
+to produce buffers until all of the serialized octets have been generated.
+Then the serializer is destroyed.
+
+To obtain the serialized next buffer sequence, call
+[link beast.ref.boost__beast__http__serializer.next `serializer::next`].
+Then, call 
+[link beast.ref.boost__beast__http__serializer.consume `serializer::consume`]
+to indicate the number of bytes consumed. This updates the next
+set of buffers to be returned, if any.
+`serializer::next` takes an error code parameter and invokes a visitor
+argument with the error code and buffer of unspecified type. In C++14
+this is easily expressed with a generic lambda. The function
+[link beast.ref.boost__beast__http__serializer.is_done `serializer::is_done`]
+will return `true` when all the buffers have been produced. This C++14
+example prints the buffers to standard output:
+
+[http_snippet_14]
+
+Generic lambda expressions are only available in C++14 or later. A functor
+with a templated function call operator is necessary to use C++11 as shown:
+
+[http_snippet_15]
+
+[heading Split Serialization]
+
+In some cases, such as the handling of the
+[@https://tools.ietf.org/html/rfc7231#section-5.1.1 Expect: 100-continue]
+field, it may be desired to first serialize the header, perform some other
+action, and then continue with serialization of the body. This is
+accomplished by calling
+[link beast.ref.boost__beast__http__serializer.split `serializer::split`]
+with a boolean indicating that when buffers are produced, the last buffer
+containing serialized header octets will not contain any octets corresponding
+to the body. The function
+[link beast.ref.boost__beast__http__serializer.is_header_done `serializer::is_header_done`]
+informs the caller whether the header been serialized fully. In this
+C++14 example we print the header first, followed by the body:
+
+[http_snippet_16]
+
+
+
+[section Write To std::ostream]
+
+The standard library provides the type `std::ostream` for performing high
+level write operations on character streams. The variable `std::cout` is
+based on this output stream. This example uses the buffer oriented interface
+of __serializer__ to write an HTTP message to a `std::ostream`:
+
+[example_http_write_ostream]
+
+[tip
+    Serializing to a `std::ostream` could be implemented using an alternate
+    strategy: adapt the `std::ostream` interface to a __SyncWriteStream__,
+    enabling use with the library's existing stream algorithms. This is
+    left as an exercise for the reader.
+]
+
+[endsect]
+
+
+
+[endsect]

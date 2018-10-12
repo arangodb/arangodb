@@ -1,0 +1,416 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Contexts</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_tools_support_for_logging.html" title="Tools supports for logging">
+<link rel="prev" href="checkpoints.html" title="Checkpoints for accurate failure location">
+<link rel="next" href="log_floating_points.html" title="Logging floating point type numbers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="checkpoints.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_tools_support_for_logging.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="log_floating_points.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.test_output.test_tools_support_for_logging.contexts"></a><a class="link" href="contexts.html" title="Contexts">Contexts</a>
+</h4></div></div></div>
+<p>
+          Contexts are a facility provided by the <span class="emphasis"><em>Unit Test Framework</em></span>
+          in order to be able to trace the location of assertions better. To grasp
+          the idea, consider the following example:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">Processor</span><span class="special">&amp;</span> <span class="identifier">processor</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">limit</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">limit</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">i</span><span class="special">;</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">));</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+          In case of failure, in order to see in the logs at which point of the loops
+          the failure occurred, we need some extra information in the assertion:
+        </p>
+<pre class="programlisting"><span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+</pre>
+<p>
+          replaced by
+        </p>
+<pre class="programlisting"><span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">),</span> <span class="string">"With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">);</span>
+</pre>
+<p>
+          We see in this trivial example that a context, which is the variable <code class="computeroutput"><span class="identifier">i</span></code> in this case, should be acknowledged
+          by the assertion <code class="computeroutput"><span class="identifier">BOOST_CHECK</span></code>
+          in a particular way. In the approach above, this is done by adding a message
+          to the assertion itself.
+        </p>
+<p>
+          What if the context is more complex than that? In case the complexity of
+          the context increases, the fact that the assertion and the context is tightly
+          coupled as in the approach above is difficult to maintain:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">Processor</span><span class="special">&amp;</span> <span class="identifier">processor</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">limit</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">level</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">limit</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">),</span>
+                       <span class="string">"With optimization level "</span> <span class="special">&lt;&lt;</span> <span class="identifier">level</span> <span class="special">&lt;&lt;</span> <span class="string">", With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">);</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">i</span><span class="special">;</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">),</span>
+                         <span class="string">"With optimization level "</span> <span class="special">&lt;&lt;</span> <span class="identifier">level</span> <span class="special">&lt;&lt;</span>
+                         <span class="string">", With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">", With parameter j = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span><span class="special">);</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">Processor</span> <span class="identifier">processor</span><span class="special">;</span>
+
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">level</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">level</span> <span class="special">&lt;</span> <span class="number">3</span><span class="special">;</span> <span class="special">++</span><span class="identifier">level</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">processor</span><span class="special">.</span><span class="identifier">optimization_level</span><span class="special">(</span><span class="identifier">level</span><span class="special">);</span>
+    <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">processor</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">level</span><span class="special">);</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Note the length of the messages, the repetition, and the fact, that we
+          pass argument <code class="computeroutput"><span class="identifier">level</span></code> to
+          function <code class="computeroutput"><span class="identifier">test_operations</span></code>
+          only for the sake of generating an error message in case of a failure.
+        </p>
+<p>
+          Therefore, <span class="bold"><strong>loose</strong></span> coupling between the
+          context of an assertion and the assertion point is a property that is desirable.
+        </p>
+<a name="ref_BOOST_TEST_INFO"></a><h4>
+<a name="boost_test.test_output.test_tools_support_for_logging.contexts.h0"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.contexts.assertion_bound_context"></a></span><a class="link" href="contexts.html#boost_test.test_output.test_tools_support_for_logging.contexts.assertion_bound_context">Assertion-bound
+          context</a>
+        </h4>
+<p>
+          Macro <code class="computeroutput"><span class="identifier">BOOST_TEST_INFO</span></code> can
+          be used to define an error message to be bound to the first following assertion.
+          If (and only if) the assertion fails, the bound message will be displayed
+          along:
+        </p>
+<h6>
+<a name="boost_test.test_output.test_tools_support_for_logging.contexts.h1"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.contexts.example_descr"></a></span><a class="link" href="contexts.html#boost_test.test_output.test_tools_support_for_logging.contexts.example_descr">Example:
+          Assertion-bound context</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example80</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">void</span> <span class="identifier">test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"Alpha"</span><span class="special">);</span>
+  <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"Beta"</span><span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+
+  <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"Gamma"</span><span class="special">);</span>
+  <span class="keyword">char</span> <span class="identifier">a</span> <span class="special">=</span> <span class="char">'a'</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"Delt"</span> <span class="special">&lt;&lt;</span> <span class="identifier">a</span><span class="special">);</span>
+  <span class="identifier">test</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">14</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_case1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">Gamma</span>
+    <span class="identifier">Delta</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failures</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"example80"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          Observe the following things. The information composed inside <code class="computeroutput"><span class="identifier">BOOST_TEST_INFO</span></code> is bound only to the
+          first assertion following the declaration. Thus bound information is only
+          displayed if the assertion fails; otherwise the message is discarded. The
+          <code class="computeroutput"><span class="identifier">BOOST_TEST_INFO</span></code> declaration
+          does not have to immediately precede the assertion, it is allowed to intertwine
+          them with other instructions, they can even be declared in different scopes.
+          Therefore it is also possible to bind more than one information to a given
+          assertion.
+        </p>
+<p>
+          With <code class="computeroutput"><span class="identifier">BOOST_TEST_INFO</span></code>, we
+          can improve our initial example as follows:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">Processor</span><span class="special">&amp;</span> <span class="identifier">processor</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">limit</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">level</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">limit</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With optimization level "</span> <span class="special">&lt;&lt;</span> <span class="identifier">level</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">i</span><span class="special">;</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With optimization level "</span> <span class="special">&lt;&lt;</span> <span class="identifier">level</span><span class="special">);</span>
+      <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">);</span>
+      <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter j = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span><span class="special">);</span>
+      <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">));</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">Processor</span> <span class="identifier">processor</span><span class="special">;</span>
+
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">level</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">level</span> <span class="special">&lt;</span> <span class="number">3</span><span class="special">;</span> <span class="special">++</span><span class="identifier">level</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">processor</span><span class="special">.</span><span class="identifier">optimization_level</span><span class="special">(</span><span class="identifier">level</span><span class="special">);</span>
+    <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">processor</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">level</span><span class="special">);</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<a name="ref_BOOST_TEST_CONTEXT"></a><h4>
+<a name="boost_test.test_output.test_tools_support_for_logging.contexts.h2"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.contexts.scope_bound_context"></a></span><a class="link" href="contexts.html#boost_test.test_output.test_tools_support_for_logging.contexts.scope_bound_context">Scope-bound
+          context</a>
+        </h4>
+<p>
+          Macro <code class="computeroutput"><span class="identifier">BOOST_TEST_CONTEXT</span></code>
+          defines a diagnostic message and a scope. The message is bound to every
+          assertion in the scope, and is displayed along with every failed assertion.
+        </p>
+<h6>
+<a name="boost_test.test_output.test_tools_support_for_logging.contexts.h3"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.contexts.example_descr0"></a></span><a class="link" href="contexts.html#boost_test.test_output.test_tools_support_for_logging.contexts.example_descr0">Example:
+          Scope-bound context</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example81</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">void</span> <span class="identifier">test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">2</span> <span class="special">!=</span> <span class="number">2</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST_CONTEXT</span><span class="special">(</span><span class="string">"Alpha"</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">1</span> <span class="special">!=</span> <span class="number">1</span><span class="special">);</span>
+    <span class="identifier">test</span><span class="special">();</span>
+
+    <span class="identifier">BOOST_TEST_CONTEXT</span><span class="special">(</span><span class="string">"Be"</span> <span class="special">&lt;&lt;</span> <span class="string">"ta"</span><span class="special">)</span>
+      <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">3</span> <span class="special">!=</span> <span class="number">3</span><span class="special">);</span>
+
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">4</span> <span class="special">==</span> <span class="number">4</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">5</span> <span class="special">!=</span> <span class="number">5</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">20</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_case1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="number">1</span> <span class="special">!=</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1</span> <span class="special">==</span> <span class="number">1</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">Alpha</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">14</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_case1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="number">2</span> <span class="special">!=</span> <span class="number">2</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">2</span> <span class="special">==</span> <span class="number">2</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">Alpha</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">24</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_case1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="number">3</span> <span class="special">!=</span> <span class="number">3</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">3</span> <span class="special">==</span> <span class="number">3</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">Alpha</span>
+    <span class="identifier">Beta</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">29</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_case1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="number">5</span> <span class="special">!=</span> <span class="number">5</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">5</span> <span class="special">==</span> <span class="number">5</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">4</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"example81"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          Observe the following things. After the <code class="computeroutput"><span class="identifier">BOOST_TEST_CONTEXT</span></code>
+          macro we have a pair of braces: they define the scope in which the diagnostic
+          message is in effect. If there is no braces, the scope applies only to
+          the following statement. <code class="computeroutput"><span class="identifier">BOOST_TEST_CONTEXT</span></code>
+          declarations can nest.
+        </p>
+<p>
+          With <code class="computeroutput"><span class="identifier">BOOST_TEST_CONTEXT</span></code>,
+          we can further improve our initial example, by putting variable <code class="computeroutput"><span class="identifier">level</span></code> into a scope-level context and
+          not pass it as function parameter:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">Processor</span><span class="special">&amp;</span> <span class="identifier">processor</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">limit</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">limit</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">i</span><span class="special">;</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">);</span>
+      <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter j = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span><span class="special">);</span>
+      <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">));</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">Processor</span> <span class="identifier">processor</span><span class="special">;</span>
+
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">level</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">level</span> <span class="special">&lt;</span> <span class="number">3</span><span class="special">;</span> <span class="special">++</span><span class="identifier">level</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_CONTEXT</span><span class="special">(</span><span class="string">"With optimization level "</span> <span class="special">&lt;&lt;</span> <span class="identifier">level</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">processor</span><span class="special">.</span><span class="identifier">optimization_level</span><span class="special">(</span><span class="identifier">level</span><span class="special">);</span>
+      <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">processor</span><span class="special">,</span> <span class="number">2</span><span class="special">);</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+          If we observe that variable <code class="computeroutput"><span class="identifier">i</span></code>
+          also applies in a certain scope, we can improve our example further still.
+        </p>
+<h6>
+<a name="boost_test.test_output.test_tools_support_for_logging.contexts.h4"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.contexts.example_descr1"></a></span><a class="link" href="contexts.html#boost_test.test_output.test_tools_support_for_logging.contexts.example_descr1">Example:
+          Using contexts</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example82</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">Processor</span>
+<span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">level</span><span class="special">;</span>
+  <span class="keyword">void</span> <span class="identifier">optimization_level</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">l</span><span class="special">)</span> <span class="special">{</span> <span class="identifier">level</span> <span class="special">=</span> <span class="identifier">l</span><span class="special">;</span> <span class="special">}</span>
+  <span class="keyword">bool</span> <span class="identifier">op1</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">level</span> <span class="special">&lt;</span> <span class="number">2</span><span class="special">;</span> <span class="special">}</span>
+  <span class="keyword">bool</span> <span class="identifier">op2</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">level</span> <span class="special">&lt;</span> <span class="number">1</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">Processor</span><span class="special">&amp;</span> <span class="identifier">processor</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">limit</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">limit</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_CONTEXT</span><span class="special">(</span><span class="string">"With parameter i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+      <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">i</span><span class="special">;</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">BOOST_TEST_INFO</span><span class="special">(</span><span class="string">"With parameter j = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span><span class="special">);</span>
+        <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">));</span>
+      <span class="special">}</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">Processor</span> <span class="identifier">processor</span><span class="special">;</span>
+
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">level</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">level</span> <span class="special">&lt;</span> <span class="number">3</span><span class="special">;</span> <span class="special">++</span><span class="identifier">level</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_CONTEXT</span><span class="special">(</span><span class="string">"With optimization level "</span> <span class="special">&lt;&lt;</span> <span class="identifier">level</span><span class="special">)</span> <span class="special">{</span>
+      <span class="identifier">processor</span><span class="special">.</span><span class="identifier">optimization_level</span><span class="special">(</span><span class="identifier">level</span><span class="special">);</span>
+      <span class="identifier">test_operations</span><span class="special">(</span><span class="identifier">processor</span><span class="special">,</span> <span class="number">2</span><span class="special">);</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">27</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">With</span> <span class="identifier">optimization</span> <span class="identifier">level</span> <span class="number">1</span>
+    <span class="identifier">With</span> <span class="identifier">parameter</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">1</span>
+    <span class="identifier">With</span> <span class="identifier">parameter</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">24</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">With</span> <span class="identifier">optimization</span> <span class="identifier">level</span> <span class="number">2</span>
+    <span class="identifier">With</span> <span class="identifier">parameter</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">24</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">processor</span><span class="special">.</span><span class="identifier">op1</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">With</span> <span class="identifier">optimization</span> <span class="identifier">level</span> <span class="number">2</span>
+    <span class="identifier">With</span> <span class="identifier">parameter</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">1</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">27</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">processor</span><span class="special">.</span><span class="identifier">op2</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">With</span> <span class="identifier">optimization</span> <span class="identifier">level</span> <span class="number">2</span>
+    <span class="identifier">With</span> <span class="identifier">parameter</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">1</span>
+    <span class="identifier">With</span> <span class="identifier">parameter</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span>
+
+<span class="special">***</span> <span class="number">4</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"example82"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="checkpoints.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_tools_support_for_logging.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="log_floating_points.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

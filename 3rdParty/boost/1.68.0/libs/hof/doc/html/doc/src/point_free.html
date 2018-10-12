@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Point-free style programming &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Overview" href="overview.html" />
+    <link rel="prev" title="More examples" href="more_examples.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="more_examples.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="intro.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="overview.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <!-- Copyright 2018 Paul Fultz II
+     Distributed under the Boost Software License, Version 1.0.
+     (http://www.boost.org/LICENSE_1_0.txt)
+--><div class="section" id="point-free-style-programming">
+<h1>Point-free style programming<a class="headerlink" href="#point-free-style-programming" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/Tacit_programming">Point-free style</a> programing(or tacit programming) is a style where the arguments to the function are not explicity defined. Rather, the function is defined as the composition of other functions where function adaptors manipulate the function arguments. The advantage of using point-free style in C++ is the template machinery involved with function arguments can be avoided.</p>
+<div class="section" id="variadic-print">
+<h2>Variadic print<a class="headerlink" href="#variadic-print" title="Permalink to this headline">¶</a></h2>
+<p>For example, if we want to write a variadic print function that prints each argument, like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">print</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>We would write something like the following, which would recursively iterate over the arguments using varidiac templates:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="c1">// Base case</span>
+<span class="kt">void</span> <span class="nf">print</span><span class="p">()</span>
+<span class="p">{}</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="n">class</span><span class="p">...</span> <span class="n">Ts</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">print</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ts</span><span class="o">&amp;</span><span class="p">...</span> <span class="n">xs</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">;</span>
+    <span class="n">print</span><span class="p">(</span><span class="n">xs</span><span class="p">...);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Instead with point-free style, we can write this using the <code class="docutils literal"><span class="pre">proj</span></code> adaptor, which calls a function on each arguments. Of course, <code class="docutils literal"><span class="pre">std::cout</span></code> is not a function, but we can make it one by using <code class="docutils literal"><span class="pre">BOOST_HOF_LIFT</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">simple_print</span><span class="p">)</span> <span class="o">=</span> <span class="n">BOOST_HOF_LIFT</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ref</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">_</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This uses the <a class="reference internal" href="../../include/boost/hof/placeholders.html"><span class="doc">placeholders</span></a> to create a function that prints to <code class="docutils literal"><span class="pre">std::cout</span></code>. Then we can pass <code class="docutils literal"><span class="pre">simple_print</span></code> to the <code class="docutils literal"><span class="pre">proj</span></code> adaptor:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">simple_print</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>As the <code class="docutils literal"><span class="pre">proj</span></code> adaptor calls the function for each argument passed in, <code class="docutils literal"><span class="pre">b(f)(x,</span> <span class="pre">y)</span></code> is the equivalent of calling <code class="docutils literal"><span class="pre">f(x)</span></code> and then <code class="docutils literal"><span class="pre">f(y)</span></code>. In this case, it will call <code class="docutils literal"><span class="pre">simple_print(x)</span></code> and then <code class="docutils literal"><span class="pre">simple_print(y)</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">print</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Which prints out:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">HelloWorld</span>
+</pre></div>
+</div>
+<p>Of course, this puts all the output together, but we can further extend this to print a new line for each item by composing it:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">print_lines</span><span class="p">)</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">flow</span><span class="p">(</span><span class="n">simple_print</span><span class="p">,</span> <span class="n">_</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="kt">char</span><span class="p">,</span> <span class="sc">&#39;\n&#39;</span><span class="o">&gt;</span><span class="p">{}));</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="../../include/boost/hof/flow.html"><span class="doc">flow</span></a> adaptor does function composition but the functions are called from left-to-right. That is <code class="docutils literal"><span class="pre">flow(f,</span> <span class="pre">g)(x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">g(f(x))</span></code>. So in this case, it will call <code class="docutils literal"><span class="pre">simple_print</span></code> on the argument which returns <code class="docutils literal"><span class="pre">std::cout</span></code> and then pass that to the next function which calls the stream with the newline character. In the above, we write <code class="docutils literal"><span class="pre">std::integral_constant&lt;char,</span> <span class="pre">'\n'&gt;{}</span></code> instead of just <code class="docutils literal"><span class="pre">'\n'</span></code> because the function is statically defined, so all values must be defined statically.</p>
+<p>So now calling <code class="docutils literal"><span class="pre">print_lines</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">print_lines</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>It will print out:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">Hello</span>
+<span class="n">World</span>
+</pre></div>
+</div>
+<p>With each argument on its own line.</p>
+</div>
+<div class="section" id="variadic-sum">
+<h2>Variadic sum<a class="headerlink" href="#variadic-sum" title="Permalink to this headline">¶</a></h2>
+<p>Another example, say we would like to write a varidiac version of <code class="docutils literal"><span class="pre">max</span></code>. We could implement it like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="c1">// Base case</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="o">&gt;</span>
+<span class="n">T</span> <span class="n">max</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="n">class</span><span class="p">...</span> <span class="n">Ts</span><span class="o">&gt;</span>
+<span class="n">T</span> <span class="n">max</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">,</span> <span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">y</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ts</span><span class="o">&amp;</span><span class="p">...</span> <span class="n">xs</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">xs</span><span class="p">...));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>With point-free style programming, we can recognize this is a <a class="reference external" href="https://en.wikipedia.org/wiki/Fold_%28higher-order_function%29">fold</a>, and write it using the <a class="reference internal" href="../../include/boost/hof/fold.html"><span class="doc">fold</span></a> adaptor, which will do a fold over the variadic parameters:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">max</span><span class="p">)</span> <span class="o">=</span> <span class="n">fold</span><span class="p">(</span><span class="n">BOOST_HOF_LIFT</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">));</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../../include/boost/hof/lift.html"><span class="doc">BOOST_HOF_LIFT</span></a> is used to grab the entire overload set of <code class="docutils literal"><span class="pre">std::max</span></code> function, which is needed since <code class="docutils literal"><span class="pre">std::max</span></code> is templated and we want the variadic <code class="docutils literal"><span class="pre">std::max</span></code> function to handle any types as well. So now it can be called like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">n</span> <span class="o">=</span> <span class="n">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span> <span class="c1">// Returns 4</span>
+<span class="k">auto</span> <span class="n">m</span> <span class="o">=</span> <span class="n">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">);</span> <span class="c1">// Returns 0.5</span>
+</pre></div>
+</div>
+<p>By using <a class="reference internal" href="../../include/boost/hof/fold.html"><span class="doc">fold</span></a>, <code class="docutils literal"><span class="pre">max(1,</span> <span class="pre">2,</span> <span class="pre">4,</span> <span class="pre">3)</span></code> will call <code class="docutils literal"><span class="pre">std::max</span></code> like <code class="docutils literal"><span class="pre">std::max(std::max(std::max(1,</span> <span class="pre">2),</span> <span class="pre">4),</span> <span class="pre">3)</span></code> and <code class="docutils literal"><span class="pre">max(0.1,</span> <span class="pre">0.2,</span> <span class="pre">0.5,</span> <span class="pre">0.4)</span></code> will be called like <code class="docutils literal"><span class="pre">std::max(std::max(std::max(0.1,</span> <span class="pre">0.2),</span> <span class="pre">0.5),</span> <span class="pre">0.4)</span></code>.</p>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

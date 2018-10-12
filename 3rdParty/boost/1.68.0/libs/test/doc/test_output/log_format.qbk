@@ -1,0 +1,234 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:log_formats Log formats]
+
+The __UTF__ supports several log formats:
+
+* [link boost_test.test_output.log_formats.log_human_readable_format HRF]: human readable format
+* [link boost_test.test_output.log_formats.log_xml_format XML]: an machine interpretable log format
+* [link boost_test.test_output.log_formats.log_junit_format JUNIT]: a standardized log format
+  understandable by automated tools such as Continuous Builds
+
+[h4 Design]
+
+The following functionalities are supported by the logging framework:
+
+* each logger manages its own log level. The rationale is that some log format are meant for
+  automated processing, and by design need to carry all the information that will later be digested
+  by a visualization tool.
+* several log format may be active at the same time. The rationale is that the user might want to
+  see a non-exhaustive log in his terminal using a human friendly format, while having a detailed
+  full log in a file with a format dedicated to automated processing.
+* each logger /indicates/ its default output stream.  some logger may prefer to output to one of the standard
+  stream while other may prefer output to a file.
+
+[note The logger indicates the default output stream in case the default should be used. ]
+
+[h4 Defaults]
+By default the active log level threshold is set to
+
+* [link boost_test.test_output.log_formats.test_log_output "non fatal error messages"] and the test log output
+   is generated in [link boost_test.test_output.log_formats.log_human_readable_format human readable format].
+* [link boost_test.test_output.log_formats.test_log_output "general information"] for
+  [link boost_test.test_output.log_formats.log_junit_format JUNIT] log format
+
+The active log level threshold and the output format can be configured
+at runtime during a test module invocation and at compile time from within a test module using the
+[link boost_test.test_output.logging_api test log public interfaces]. The behavior is logger specific though.
+
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[section Test log output]
+
+The test log is produced during the test execution. All entries in the test log are assigned a particular log
+level. Only the entries with level that exceeds the ['active log level threshold] actually
+appear in the test log output. Log levels are arranged by the 'importance' of the log entries. Here is
+the list of all levels in order of increasing 'importance':
+
+[#test_log_output_table]
+[table:id_messages Messages
+    [
+      [Notifications]
+      [Meaning]
+    ]
+    [
+      [Success]
+      [This category includes messages that provide information on successfully passed assertions]
+    ]
+    [
+      [Test tree traversal]
+      [This category includes messages that are produced by the __UTF__ core and indicate which test suites/cases are currently being executed or skipped]
+    ]
+    [
+      [General information]
+      [This category includes general information messages produced in most cases by a test module author using the
+       macro __BOOST_TEST_MESSAGE__]
+    ]
+    [
+      [Warning]
+      [This category includes messages produced by failed `WARNING` level assertions]
+    ]
+    [
+      [Non fatal error]
+      [This category includes messages produced by failed `CHECK` level assertions]
+    ]
+
+    [
+      [Uncaught C++ exceptions]
+      [This category includes messages that are produced by the __UTF__ and provide detailed information on the C++
+       exceptions uncaught by the test case body.
+      ]
+    ]
+    [
+      [Non-fatal system error]
+      [This category includes messages that are produced by the __UTF__ itself and provides information about caught
+       non-fatal system error. For example it includes messages produced in the case of test case timeout or if
+       floating  point values calculation errors are caught.
+      ]
+   ]
+   [
+      [Fatal system error]
+      [This category includes messages produced by failed require level assertions and by the __UTF__ itself in case of
+       abnormal test case termination.]
+   ]
+]
+
+[note
+    The active log level works namely as threshold, not as selector. For the given active log level threshold, all
+    test log entries with ['importance] higher than threshold are enabled and all test log entries with
+    ['importance] below threshold are disabled.
+]
+
+In addition to the levels described above the test log defines two special log levels. The current log level can
+be set to:
+
+* All messages[br]
+  If active log level threshold is set to this value, all test log entries appear in the output. In practice
+  this is equivalent to setting the active log level threshold to ['success information messages]
+* Nothing[br]
+  If the active log level threshold is set to this value, none of test log entries appear in the output. This log level
+  is used to execute a ['silent] test that doesn't produce any test log and only generates a result code indicating
+  whether test failed or passed.
+
+[endsect] [/ test log output]
+
+
+
+[section:log_human_readable_format HRF: Human readable log format]
+
+The human readable log format is designed to closely match an errors description produced by the Microsoft family
+of C++ compilers. This format allows jumping to the error location, if test module output is redirected into IDE
+output window. The rest of the log messages are designed to produce the most human friendly description of the
+events occurring in test module. This is a default format generated by test modules.
+
+Here the list of events along with corresponding message and the condition that has to be satisfied for it to appear
+in the output.
+
+[table
+  [
+    [Event]
+    [Condition]
+    [Output]
+  ]
+
+  [ [On testing start]
+    [threshold != log_nothing]
+    [`Running <total number of test cases> test case(s) ...`] ]
+
+  [ [On testing start]
+    [threshold != log_nothing, show_build_info is set]
+    [
+[pre Platform: $BOOST_PLATFORM
+Compiler: $BOOST_COMPILER
+STL     : $BOOST_STDLIB
+Boost   : $BOOST_VERSION]] ]
+
+  [ [On abnormal testing termination]
+    [threshold <= log_messages]
+    [`Test is aborted`] ]
+
+  [ [On test unit start]
+    [threshold <= log_test_units]
+    [`Entering test <test unit type> <test unit name>`] ]
+
+  [ [On test unit end]
+    [threshold <= log_test_units; testing time is reported only if elapsed time is more than 1 us.]
+    [`Leaving test <test unit type> <test unit name>; testing time <value>`] ]
+
+  [ [On skipped test unit]
+    [threshold <= log_test_units]
+    [`Test <test unit type> <test unit name> is skipped`] ]
+
+  [ [On uncaught C++ exception]
+    [threshold <= log_cpp_exception_errors. Checkpoint message is reported only if provided]
+    [`unknown location(0): fatal error in <test case name>: <explanation> <last checkpoint location>: last checkpoint: <checkpoint message>`] ]
+
+  [ [On resumable system error]
+    [threshold <= log_system_errors. Checkpoint message is reported only if provided]
+    [`unknown location(0): fatal error in <test case name>: <explanation> <last checkpoint location>: last checkpoint: <checkpoint message>`] ]
+
+  [ [On fatal system error]
+    [threshold <= log_fatal_errors. Checkpoint message is reported only if provided]
+    [`unknown location(0): fatal error in <test case name>: <explanation> <last checkpoint location>: last checkpoint: <checkpoint message>`] ]
+
+  [ [On passed test assertion]
+    [threshold <= log_successful_tests]
+    [`<assertion location>: info: check<assertion expression> passed`] ]
+
+  [ [On failed WARNING level test assertion]
+    [threshold <= log_warnings]
+    [`<assertion location>: warning in <test case name>: condition <assertion description> is not satisfied`]]
+
+  [ [On failed CHECK level test assertion]
+    [threshold <= log_all_errors]
+    [`<assertion location>: error in <test case name>: check <assertion description> failed`] ]
+
+  [ [On failed REQUIRE level test assertion]
+    [threshold <= log_fatal_errors]
+    [`<assertion location>: fatal error in <test case name>: critical check <assertion description> failed`]]
+
+  [ [On test log message]
+    [threshold <= log_messages]
+    [`<Message content>`]]
+]
+
+The level of details concerning the error message depends on the [link boost_test.testing_tools testing tool] producing the log entry.
+
+[endsect] [/ human readable report]
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[section:log_xml_format XML log format]
+
+This log format is designed for automated test results processing. The test log output XML schema depends on the
+active log level threshold.
+
+[endsect] [/section:log_xml_format ]
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[section:log_junit_format JUNIT log format]
+
+The [@http://junit.org/ JUNIT format] is log format supported by a wide range of Continuous Build/Integration tools.
+
+This format defaults its log level to [link test_log_output_table `General information`] and its default stream to a file named after
+[link boost_test.tests_organization.test_suite.master_test_suite master test suite].
+The logger will attempt to not overwrite any existing output file, which is also usually understood by Continuous Build tools.
+
+This format is in fact both a log and a report format: most of the Continuous Build tools will summarize
+the content of a JUNIT file and show an overview of the failing/succeeding tests of a module (report format)
+while letting the user inspect the detailed logs (log format).
+
+[caution The minimal log-level for the JUnit logger is [link test_log_output_table `non fatal error`]. 
+ Any set-up to higher log level will default to that minimal log-level.]
+
+[note Until Boost 1.64, the log level was previously defaulting to `success` and was causing a heavy load
+ on the logging part in some circumstances.]
+
+[endsect] [/section:log_junit_format ]
+
+
+[endsect]

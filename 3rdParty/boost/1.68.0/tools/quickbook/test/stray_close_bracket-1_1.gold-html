@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Stray close bracket 1.1
+    </h3>
+    <p>
+      X]Y
+    </p>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+[/
+    Copyright 2013-2018 Daniel James
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[chapter Building PDFs
+[id boost_doc_tools.pdfs]
+[source-mode teletype]
+]
+
+To build pdf you will need an FO processor, we recommend using
+[@http://www.renderx.com/download/personal.html
+XEP Personal edition]. You will also need a Java virtual machine to run the FO
+processor on.
+
+You will then need to edit your [^user-config.jam] file to point to the
+location of the FO processor, for example:
+
+    using fop :
+       # path to invocation batch file:
+       C:/Progra~1/RenderX/xep/xep.bat
+       :
+       # path to Java installation, this is ignored if you're using XEP:
+       C:/PROGRA~1/Java/j2re1.4.2_12
+       ;
+
+You should now be able to build pdf docs via:
+
+    bjam pdf

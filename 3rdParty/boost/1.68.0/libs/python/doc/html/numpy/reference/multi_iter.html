@@ -1,0 +1,211 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>multi_iter - Boost.Python NumPy extension 1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '1.0',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.Python NumPy extension 1.0 documentation" href="../index.html" />
+    <link rel="up" title="Boost.Python NumPy extension Reference" href="index.html" />
+    <link rel="prev" title="binary_ufunc" href="binary_ufunc.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img 
+          alt="C++ Boost" src="../_static/bpl.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html">(NumPy)</a></h1>
+<!--          <h2 align="center">CallPolicies Concept</h2>-->
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="binary_ufunc" href="binary_ufunc.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Boost.Python NumPy extension Reference" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      
+    </div>
+      
+  <div class="section" id="multi-iter">
+<h1><a class="toc-backref" href="#id1">multi_iter</a></h1>
+<div class="contents topic" id="table-of-contents">
+<p class="topic-title first">Table of Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#multi-iter" id="id1">multi_iter</a><ul>
+<li><a class="reference internal" href="#synopsis" id="id2">synopsis</a></li>
+<li><a class="reference internal" href="#constructors" id="id3">constructors</a></li>
+<li><a class="reference internal" href="#accessors" id="id4">accessors</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>A <code class="docutils literal"><span class="pre">multi_iter</span></code> is a Python object, intended to be used as an iterator  It should generally only be used in loops.</p>
+<blockquote>
+<div><code class="docutils literal"><span class="pre">&lt;boost/python/numpy/ufunc.hpp&gt;</span></code> contains the class definitions for <code class="docutils literal"><span class="pre">multi_iter</span></code></div></blockquote>
+<div class="section" id="synopsis">
+<h2><a class="toc-backref" href="#id2">synopsis</a></h2>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">boost</span>
+<span class="p">{</span>
+<span class="k">namespace</span> <span class="n">python</span>
+<span class="p">{</span>
+<span class="k">namespace</span> <span class="n">numpy</span>
+<span class="p">{</span>
+
+<span class="k">class</span> <span class="nc">multi_iter</span> <span class="o">:</span> <span class="k">public</span> <span class="n">object</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="kt">void</span> <span class="n">next</span><span class="p">();</span>
+  <span class="kt">bool</span> <span class="nf">not_done</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+  <span class="kt">char</span> <span class="o">*</span> <span class="nf">get_data</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="k">const</span> <span class="nf">get_nd</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+  <span class="n">Py_intptr_t</span> <span class="k">const</span> <span class="o">*</span> <span class="nf">get_shape</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+  <span class="n">Py_intptr_t</span> <span class="k">const</span> <span class="nf">shape</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+
+
+<span class="n">multi_iter</span> <span class="nf">make_multi_iter</span><span class="p">(</span><span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a1</span><span class="p">);</span>
+<span class="n">multi_iter</span> <span class="nf">make_multi_iter</span><span class="p">(</span><span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a1</span><span class="p">,</span> <span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a2</span><span class="p">);</span>
+<span class="n">multi_iter</span> <span class="nf">make_multi_iter</span><span class="p">(</span><span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a1</span><span class="p">,</span> <span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a2</span><span class="p">,</span> <span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a3</span><span class="p">);</span>
+
+<span class="p">}</span>
+<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="constructors">
+<h2><a class="toc-backref" href="#id3">constructors</a></h2>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">multi_iter</span> <span class="nf">make_multi_iter</span><span class="p">(</span><span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a1</span><span class="p">);</span>
+<span class="n">multi_iter</span> <span class="nf">make_multi_iter</span><span class="p">(</span><span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a1</span><span class="p">,</span> <span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a2</span><span class="p">);</span>
+<span class="n">multi_iter</span> <span class="nf">make_multi_iter</span><span class="p">(</span><span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a1</span><span class="p">,</span> <span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a2</span><span class="p">,</span> <span class="n">object</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="n">a3</span><span class="p">);</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A Python iterator object broadcasting over one, two or three sequences as supplied</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="accessors">
+<h2><a class="toc-backref" href="#id4">accessors</a></h2>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next</span><span class="p">();</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Effects:</th><td class="field-body">Increments the iterator</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="nf">not_done</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">boolean value indicating whether the iterator is at its end</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">char</span> <span class="o">*</span> <span class="nf">get_data</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a pointer to the element of the nth broadcasted array.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="k">const</span> <span class="nf">get_nd</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the number of dimensions of the broadcasted array expression</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">Py_intptr_t</span> <span class="k">const</span> <span class="o">*</span> <span class="nf">get_shape</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the shape of the broadcasted array expression as an array of integers.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">Py_intptr_t</span> <span class="k">const</span> <span class="nf">shape</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the shape of the broadcasted array expression in the nth dimension.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="binary_ufunc" href="binary_ufunc.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Boost.Python NumPy extension Reference" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      
+    </div>
+    </div>
+  </body>
+</html>

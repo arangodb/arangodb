@@ -1,0 +1,20 @@
+#  Boost.Function Library example Jamfile
+#
+#  Copyright (c) 2008 James E. King III
+#
+#  Distributed under the Boost Software License, Version 1.0. (See accompany-
+#  ing file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import os ;
+import testing ;
+
+project
+    :   requirements
+    ;
+
+test-suite "function-examples"
+   :    [ run bind1st.cpp ]
+        [ run int_div.cpp ]
+        [ run sum_avg.cpp ]
+   ;
+

@@ -1,0 +1,42 @@
+#  Copyright Steven Ross 2009.
+#
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+#  See http://www.boost.org/libs/sort for library home page.
+
+local properties = ;
+if --tune in [ modules.peek : ARGV ]
+{
+    properties = <location>. <variant>release ;
+}
+
+project spreadsort : source-location example : requirements <include>../.. <include>../../.. $(properties) ;
+
+exe spreadsort : sample.cpp ;
+exe alreadysorted : alreadysorted.cpp ;
+exe mostlysorted : mostlysorted.cpp ;
+exe rightshift : rightshiftsample.cpp ;
+exe reverseintsort : reverseintsample.cpp ;
+exe int64 : int64.cpp ;
+exe floatsort : floatsample.cpp ;
+exe shiftfloatsort : shiftfloatsample.cpp ;
+exe floatfunctorsort : floatfunctorsample.cpp ;
+exe double : double.cpp ;
+exe stringsort : stringsample.cpp ;
+exe wstringsort : wstringsample.cpp ;
+exe reversestringsort : reversestringsample.cpp ;
+exe charstringsort : charstringsample.cpp ;
+exe stringfunctorsort : stringfunctorsample.cpp ;
+exe reversestringfunctorsort : reversestringfunctorsample.cpp ;
+exe keyplusdata : keyplusdatasample.cpp ;
+exe randomgen : randomgen.cpp ;
+exe boostrandomgen : boostrandomgen.cpp ;
+exe alrbreaker : alrbreaker.cpp ;
+exe binaryalrbreaker : binaryalrbreaker.cpp ;
+exe caseinsensitive : caseinsensitive.cpp ;
+exe generalizedstruct : generalizedstruct.cpp ;
+
+# benchmarks need to be built with linkflags="-lboost_system -lboost_thread"
+#exe parallelint : parallelint.cpp boost_system ;
+#exe parallelstring : parallelstring.cpp ;

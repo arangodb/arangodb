@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      C++ test
+    </h3>
+    <div class="legalnotice">
+      <p>
+        <code><span class="keyword">def</span> <span class="identifier">foo</span><span
+        class="special">(</span><span class="identifier">x</span><span class="special">):</span>
+        <span class="keyword">print</span> <span class="string">&quot;Hello&quot;</span></code>
+      </p>
+    </div>
+    <p>
+<pre class="programlisting">This shouldn't be highlighted.</pre>
+    </p>
+    <p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></pre>
+    </p>
+    <p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></pre>
+    </p>
+    <p>
+<pre class="programlisting"><span class="keyword">def</span> <span class="identifier">foo</span><span class="special">():</span></pre>
+    </p>
+    <p>
+<pre class="programlisting"><span class="keyword">def</span> <span class="identifier">foo</span><span class="special">(</span><span class="identifier">x</span><span class="special">):</span></pre>
+    </p>
+    <p>
+<pre class="programlisting">This shouldn't be highlighted</pre>
+    </p>
+    <p>
+<pre class="programlisting">This shouldn't be highlighted.</pre>
+    </p>
+  </body>
+</html>

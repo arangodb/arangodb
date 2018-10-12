@@ -1,0 +1,70 @@
+[#first_of]
+[section first_of]
+
+[h1 Synopsis]
+
+  template <class... Ps>
+  struct first_of;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]       [Type]]
+  [[`Ps`]       [[link parser parser]s]]
+]
+
+[h1 Description]
+
+`first_of` applies the `Ps...` parsers in sequence. It accepts an input when all
+parsers accept it. The result of parsing is the result of the first parser.
+
+On compilers, which are not C++11-compliant, the maximum number of parsers
+`first_of` accepts can be specified with the
+`BOOST_METAPARSE_LIMIT_SEQUENCE_SIZE` macro. Its default value is `5`.
+
+[h1 Header]
+
+  #include <boost/metaparse/first_of.hpp>
+
+[h1 Expression semantics]
+
+For any `p1`, ... `pn` parsers
+
+  first_of<p1, ..., pn>
+
+is equivalent to
+
+  nth_of_c<0, p1, ..., pn>
+
+[h1 Example]
+
+  #include <boost/metaparse/first_of.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  using int_with_semicolon = first_of<int_, lit_c<';'>>;
+  
+  static_assert(
+    is_error<
+      int_with_semicolon::apply<BOOST_METAPARSE_STRING("13"), start>
+    >::type::value,
+    "int without semicolon is rejected"
+  );
+  
+  static_assert(
+    get_result<
+      int_with_semicolon::apply<BOOST_METAPARSE_STRING("13;"), start>
+    >::type::value,
+    "the result is the result of the first parser"
+  );
+
+[endsect]
+

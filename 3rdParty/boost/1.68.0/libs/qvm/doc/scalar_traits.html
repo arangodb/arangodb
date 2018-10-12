@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>scalar_traits</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>scalar_traits</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_scalar_traits_hpp.html">boost/qvm/scalar_traits.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;class Scalar&gt;
+        struct <span class="RenoLink">scalar_traits</span>
+        {
+            <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            static Scalar value( int v )
+            {
+                return Scalar(v);
+            }
+        };</span>
+    }
+}</pre>
+</div><p>This template can be specialized for user-defined scalar types to define the appropriate conversion from int; this is primarily used whenever Boost QVM needs to deduce a zero or one value.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_scalar_traits_hpp.html">boost/qvm/scalar_traits.hpp</a>&nbsp;| <a href="inverse_mat_.html">inverse(mat)</a>&nbsp;| <a href="is_scalar.html">is_scalar</a>&nbsp;| <a href="normalize_quat_.html">normalize(quat)</a>&nbsp;| <a href="normalize_vec_.html">normalize(vec)</a>&nbsp;| <a href="scalar_requirements.html">Scalar Requirements</a>&nbsp;| <a href="zero_mat.html">zero_mat</a>&nbsp;| <a href="zero_quat.html">zero_quat</a>&nbsp;| <a href="zero_vec.html">zero_vec</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

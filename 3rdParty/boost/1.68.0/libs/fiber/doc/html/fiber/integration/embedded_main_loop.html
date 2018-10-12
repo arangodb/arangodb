@@ -1,0 +1,77 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Embedded Main Loop</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../integration.html" title="Sharing a Thread with Another Main Loop">
+<link rel="prev" href="event_driven_program.html" title="Event-Driven Program">
+<link rel="next" href="deeper_dive_into___boost_asio__.html" title="Deeper Dive into Boost.Asio">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="event_driven_program.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../integration.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="deeper_dive_into___boost_asio__.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="fiber.integration.embedded_main_loop"></a><a name="embedded_main_loop"></a><a class="link" href="embedded_main_loop.html" title="Embedded Main Loop">Embedded
+      Main Loop</a>
+</h3></div></div></div>
+<p>
+        More challenging is when the application&#8217;s main loop is embedded in some other
+        library or framework. Such an application will typically, after performing
+        all necessary setup, pass control to some form of <code class="computeroutput"><span class="identifier">run</span><span class="special">()</span></code> function from which control does not return
+        until application shutdown.
+      </p>
+<p>
+        A <a href="http://www.boost.org/doc/libs/release/libs/asio/index.html" target="_top">Boost.Asio</a>
+        program might call <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service/run.html" target="_top"><code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code></a>
+        in this way.
+      </p>
+<p>
+        In general, the trick is to arrange to pass control to <a class="link" href="../fiber_mgmt/this_fiber.html#this_fiber_yield"><code class="computeroutput">this_fiber::yield()</code></a> frequently.
+        You could use an <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/high_resolution_timer.html" target="_top">Asio
+        timer</a> for that purpose. You could instantiate the timer, arranging
+        to call a handler function when the timer expires. The handler function could
+        call <code class="computeroutput"><span class="identifier">yield</span><span class="special">()</span></code>,
+        then reset the timer and arrange to wake up again on its next expiration.
+      </p>
+<p>
+        Since, in this thought experiment, we always pass control to the fiber manager
+        via <code class="computeroutput"><span class="identifier">yield</span><span class="special">()</span></code>,
+        the calling fiber is never blocked. Therefore there is always at least one
+        ready fiber. Therefore the fiber manager never calls <a class="link" href="../scheduling.html#algorithm_suspend_until"><code class="computeroutput">algorithm::suspend_until()</code></a>.
+      </p>
+<p>
+        Using <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service/post.html" target="_top"><code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">post</span><span class="special">()</span></code></a>
+        instead of setting a timer for some nonzero interval would be unfriendly
+        to other threads. When all I/O is pending and all fibers are blocked, the
+        io_service and the fiber manager would simply spin the CPU, passing control
+        back and forth to each other. Using a timer allows tuning the responsiveness
+        of this thread relative to others.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="event_driven_program.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../integration.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="deeper_dive_into___boost_asio__.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

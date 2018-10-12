@@ -1,0 +1,92 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>is_sync_stream</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__is_sync_read_stream.html" title="is_sync_read_stream">
+<link rel="next" href="boost__beast__is_sync_write_stream.html" title="is_sync_write_stream">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__is_sync_read_stream.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__is_sync_write_stream.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__is_sync_stream"></a><a class="link" href="boost__beast__is_sync_stream.html" title="is_sync_stream">is_sync_stream</a>
+</h4></div></div></div>
+<p>
+        Determine if <code class="computeroutput"><span class="identifier">T</span></code> meets the
+        requirements of <span class="bold"><strong>SyncStream</strong></span>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__is_sync_stream.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__is_sync_stream.synopsis"></a></span><a class="link" href="boost__beast__is_sync_stream.html#beast.ref.boost__beast__is_sync_stream.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/type_traits.hpp" target="_top">boost/beast/core/type_traits.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">is_sync_stream</span> <span class="special">:</span>
+    <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">integral_constant</span><span class="special">&lt;</span> <span class="keyword">bool</span><span class="special">,...&gt;</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__is_sync_stream.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__is_sync_stream.description"></a></span><a class="link" href="boost__beast__is_sync_stream.html#beast.ref.boost__beast__is_sync_stream.description">Description</a>
+      </h5>
+<p>
+        Metafunctions are used to perform compile time checking of template types.
+        This type will be <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">true_type</span></code> if <code class="computeroutput"><span class="identifier">T</span></code>
+        meets the requirements, else the type will be <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">false_type</span></code>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__is_sync_stream.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__is_sync_stream.example"></a></span><a class="link" href="boost__beast__is_sync_stream.html#beast.ref.boost__beast__is_sync_stream.example">Example</a>
+      </h5>
+<p>
+        Use with <code class="computeroutput"><span class="keyword">static_assert</span></code>:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">SyncStream</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">SyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_sync_stream</span><span class="special">&lt;</span><span class="identifier">SyncStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"SyncStream requirements not met"</span><span class="special">);</span>
+<span class="special">...</span>
+</pre>
+<p>
+        Use with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span></code> (SFINAE):
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">SyncStream</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">is_sync_stream</span><span class="special">&lt;</span><span class="identifier">SyncStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="identifier">f</span><span class="special">(</span><span class="identifier">SyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">);</span>
+</pre>
+<p>
+        Convenience header <code class="literal">&lt;<a href="../../../../../../boost/beast/core.hpp" target="_top">boost/beast/core.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__is_sync_read_stream.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__is_sync_write_stream.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

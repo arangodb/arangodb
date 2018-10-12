@@ -1,0 +1,62 @@
+[/
+Copyright 2018 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:exchange exchange]
+
+[simplesect Authors]
+
+* Glen Fernandes
+
+[endsimplesect]
+
+[section Overview]
+
+The header <boost/core/exchange.hpp> provides the function template
+`boost::exchange` which is an implementation of the `std::exchange`
+function introduced in C++14.
+
+[endsect]
+
+[section Examples]
+
+The following example shows `boost::exchange` used to simplify the
+implementation of a move constructor.
+
+```
+Node(Node&& other)
+  : head_(boost::exchange(other.head_, nullptr))
+  , tail_(boost::exchange(other.tail_, nullptr)) { }
+```
+
+[endsect]
+
+[section Reference]
+
+```
+namespace boost {
+  template<class T, class U = T>
+  constexpr T exchange(T& t, U&& u);
+}
+```
+[section Functions]
+
+[*`template<class T, class U = T> constexpr T exchange(T& t, U&& u);`]
+
+Equivalent to:
+
+```
+T v = std::move(t);
+t = std::forward<U>(u);
+return v;
+```
+
+[endsect]
+
+[endsect]
+
+[endsect]

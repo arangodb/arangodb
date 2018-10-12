@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>boost/qvm/swizzle.hpp</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>boost/qvm/swizzle.hpp</h3>
+</div>
+<p>This header provides generic <span class="RenoLink"><a href="Swizzling.html">Swizzling</a></span> support for vector objects.</p>
+<h3>Synopsis:</h3>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink">boost/qvm/swizzle.hpp</span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        //2D <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span>, only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;V&gt;::value
+        template &lt;class V&gt; -unspecified-2D-vector-type- XX( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- XY( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- XZ( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- XW( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- X0( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- X1( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- YX( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- YY( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- YZ( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- YW( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- Y0( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- Y1( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- ZX( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- ZY( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- ZZ( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- ZW( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- Z0( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- Z1( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- WX( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- WY( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- WZ( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- WW( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- W0( V &amp; v );
+        template &lt;class V&gt; -unspecified-2D-vector-type- W1( V &amp; v );
+        ...
+        //2D <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span>, only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_scalar.html">is_scalar</a></span>&lt;S&gt;::value
+        template &lt;class S&gt; -unspecified-2D-vector-type- X0( S &amp; s );
+        template &lt;class S&gt; -unspecified-2D-vector-type- X1( S &amp; s );
+        template &lt;class S&gt; -unspecified-2D-vector-type- XX( S &amp; s );
+        ...
+        -unspecified-2D-vector-type- _00();
+        -unspecified-2D-vector-type- _01();
+        -unspecified-2D-vector-type- _10();
+        -unspecified-2D-vector-type- _11();
+        
+        //3D <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span>, only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;V&gt;::value
+        template &lt;class V&gt; -unspecified-3D-vector-type- XXX( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-3D-vector-type- XXW( V &amp; v );
+        template &lt;class V&gt; -unspecified-3D-vector-type- XX0( V &amp; v );
+        template &lt;class V&gt; -unspecified-3D-vector-type- XX1( V &amp; v );
+        template &lt;class V&gt; -unspecified-3D-vector-type- XYX( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-3D-vector-type- XY1( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-3D-vector-type- WW1( V &amp; v );
+        ...
+        //3D <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span>, only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_scalar.html">is_scalar</a></span>&lt;S&gt;::value
+        template &lt;class S&gt; -unspecified-3D-vector-type- X00( S &amp; s );
+        template &lt;class S&gt; -unspecified-3D-vector-type- X01( S &amp; s );
+        ...
+        template &lt;class S&gt; -unspecified-3D-vector-type- XXX( S &amp; s );
+        template &lt;class S&gt; -unspecified-3D-vector-type- XX0( S &amp; s );
+        ...
+        -unspecified-3D-vector-type- _000();
+        -unspecified-3D-vector-type- _001();
+        -unspecified-3D-vector-type- _010();
+        ...
+        -unspecified-3D-vector-type- _111();
+        
+        //4D <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span>, only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;V&gt;::value
+        template &lt;class V&gt; -unspecified-4D-vector-type- XXXX( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-4D-vector-type- XXXW( V &amp; v );
+        template &lt;class V&gt; -unspecified-4D-vector-type- XXX0( V &amp; v );
+        template &lt;class V&gt; -unspecified-4D-vector-type- XXX1( V &amp; v );
+        template &lt;class V&gt; -unspecified-4D-vector-type- XXYX( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-4D-vector-type- XXY1( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-4D-vector-type- WWW1( V &amp; v );
+        ...
+        //4D <span class="RenoLink"><a href="view_proxy.html">view proxies</a></span>, only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_scalar.html">is_scalar</a></span>&lt;S&gt;::value
+        template &lt;class S&gt; -unspecified-4D-vector-type- X000( S &amp; s );
+        template &lt;class S&gt; -unspecified-4D-vector-type- X001( S &amp; s );
+        ...
+        template &lt;class S&gt; -unspecified-4D-vector-type- XXXX( S &amp; s );
+        template &lt;class S&gt; -unspecified-4D-vector-type- XX00( S &amp; s );
+        ...
+        -unspecified-4D-vector-type- _0000();
+        -unspecified-4D-vector-type- _0001();
+        -unspecified-4D-vector-type- _0010();
+        ...
+        -unspecified-4D-vector-type- _1111();</span>
+    }
+}</pre>
+</div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="accessing_vector_elements_and_swizzling_reference.html">Accessing Vector Elements by Swizzling</a>&nbsp;| <a href="boost_qvm_swizzle2_hpp.html">boost/qvm/swizzle2.hpp</a>&nbsp;| <a href="boost_qvm_swizzle3_hpp.html">boost/qvm/swizzle3.hpp</a>&nbsp;| <a href="boost_qvm_swizzle4_hpp.html">boost/qvm/swizzle4.hpp</a>&nbsp;| <a href="code_generator.html">Code Generator</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>boost/qvm/inline.hpp</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>boost/qvm/inline.hpp</h3>
+</div>
+<p>This header defines various macros used throughout Boost QVM to specify the desired inlining strategy for different functions depending on their semantics.</p>
+<h3>Synopsis:</h3>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink">boost/qvm/inline.hpp</span>&gt;</p>
+<div class="RenoIncludeDIV"><pre><span class="RenoIncludeSPAN">#ifndef <span class="RenoLink"><a href="BOOST_QVM_FORCE_INLINE.html">BOOST_QVM_FORCE_INLINE</a></span>
+#define <span class="RenoLink"><a href="BOOST_QVM_FORCE_INLINE.html">BOOST_QVM_FORCE_INLINE</a></span> /*platform-specific*/
+#endif</span>
+
+<span class="RenoIncludeSPAN">#ifndef <span class="RenoLink"><a href="BOOST_QVM_INLINE.html">BOOST_QVM_INLINE</a></span>
+#define <span class="RenoLink"><a href="BOOST_QVM_INLINE.html">BOOST_QVM_INLINE</a></span> inline
+#endif</span>
+
+<span class="RenoIncludeSPAN">#ifndef <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span>
+#define <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> <span class="RenoLink"><a href="BOOST_QVM_FORCE_INLINE.html">BOOST_QVM_FORCE_INLINE</a></span>
+#endif</span>
+
+<span class="RenoIncludeSPAN">#ifndef <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+#define <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span> <span class="RenoLink"><a href="BOOST_QVM_FORCE_INLINE.html">BOOST_QVM_FORCE_INLINE</a></span>
+#endif</span>
+
+<span class="RenoIncludeSPAN">#ifndef <span class="RenoLink"><a href="BOOST_QVM_INLINE_OPERATIONS.html">BOOST_QVM_INLINE_OPERATIONS</a></span>
+#define <span class="RenoLink"><a href="BOOST_QVM_INLINE_OPERATIONS.html">BOOST_QVM_INLINE_OPERATIONS</a></span> <span class="RenoLink"><a href="BOOST_QVM_INLINE.html">BOOST_QVM_INLINE</a></span>
+#endif</span>
+
+<span class="RenoIncludeSPAN">#ifndef <span class="RenoLink"><a href="BOOST_QVM_INLINE_RECURSION.html">BOOST_QVM_INLINE_RECURSION</a></span>
+#define <span class="RenoLink"><a href="BOOST_QVM_INLINE_RECURSION.html">BOOST_QVM_INLINE_RECURSION</a></span> <span class="RenoLink"><a href="BOOST_QVM_INLINE_OPERATIONS.html">BOOST_QVM_INLINE_OPERATIONS</a></span>
+#endif</span></pre>
+</div></div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="BOOST_QVM_FORCE_INLINE.html">BOOST_QVM_FORCE_INLINE</a>&nbsp;| <a href="BOOST_QVM_INLINE.html">BOOST_QVM_INLINE</a>&nbsp;| <a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a>&nbsp;| <a href="BOOST_QVM_INLINE_OPERATIONS.html">BOOST_QVM_INLINE_OPERATIONS</a>&nbsp;| <a href="BOOST_QVM_INLINE_RECURSION.html">BOOST_QVM_INLINE_RECURSION</a>&nbsp;| <a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a>&nbsp;| <a href="boost_qvm_math_hpp.html">boost/qvm/math.hpp</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

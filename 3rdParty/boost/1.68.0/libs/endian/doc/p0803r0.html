@@ -1,0 +1,134 @@
+<html>
+
+<head>
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+body
+{
+  font-family: arial, sans-serif;
+  max-width: 6.75in;
+  margin: 0px auto;
+  font-size: 85%;
+}
+ ins  {background-color: #CCFFCC; text-decoration: none;}
+ del  {background-color: #FFCACA; text-decoration: none;}
+ pre  {background-color: #D7EEFF; font-size: 95%; font-family: "courier new", courier, serif;}
+ code {font-family: "courier new", courier, serif;}
+ table {font-size: 90%;}
+</style>
+<title>Endian RFC</title>
+</head>
+
+<body>
+<table>
+<tr>
+  <td align="left">Doc. no.:</td>
+  <td align="left">P0803R0</td>
+</tr>
+<tr>
+  <td align="left">Date:</td>
+  <td align="left">
+  <!--webbot bot="Timestamp" S-Type="EDITED" S-Format="%Y-%m-%d" startspan -->2017-10-15<!--webbot bot="Timestamp" endspan i-checksum="12057" --></td>
+</tr>
+<tr>
+  <td align="left">Reply to:</td>
+  <td align="left">Beman Dawes &lt;bdawes at acm dot org&gt;
+</tr>
+<tr>
+  <td align="left">Audience:</td>
+  <td align="left">Library Evolution</td>
+</tr>
+</table>
+
+
+
+<h1 align="center">Endian Library Request for Comments (R0)</h1>
+
+
+<h2>Abstract</h2>
+<p>The Boost Endian library manipulates the
+<a href="https://en.wikipedia.org/wiki/Endianness">endianness</a> of integers 
+and user-defined types. It provides three approaches to dealing with endianness: 
+conversion functions, buffer classes, and  arithmetic classes. Each approach 
+has use cases where it is preferred over the other approaches. The purpose of 
+this RFC is to determine interest in adding all or any of these components to 
+the C++ standard library or a library TS.</p>
+<h2>Introduction</h2>
+<p>The Boost Endian documentation (<a href="https://www.boost.org/libs/endian/doc/index.html">www.boost.org/libs/endian/doc</a>) 
+provides an <a href="https://www.boost.org/libs/endian/doc/index.html">overview</a> 
+and detailed technical specifications for the
+<a href="https://www.boost.org/libs/endian/doc/conversion.html">conversion 
+functions</a>, <a href="https://www.boost.org/libs/endian/doc/arithmetic.html">
+arithmetic types</a>, and
+<a href="https://www.boost.org/libs/endian/doc/buffers.html">buffer types</a>.
+</p>
+<p>A separate discussion covers
+<a href="https://www.boost.org/libs/endian/doc/choosing_approach.html">choosing 
+between the three approaches</a> provided by the library.</p>
+<p>For those not interested in plowing through the entire documentation, the
+<a href="https://www.boost.org/libs/endian/doc/index.html#FAQ">Overall FAQ</a>,
+<a href="https://www.boost.org/libs/endian/doc/conversion.html#FAQ">Conversion 
+FAQ</a>, <a href="https://www.boost.org/libs/endian/doc/arithmetic.html#FAQ">
+Arithmetic FAQ</a>, and
+<a href="https://www.boost.org/libs/endian/doc/buffers.html#FAQ">Buffers FAQ</a> 
+answer a lot of question likely to arise during standardization.</p>
+<h2>Motivation for standardization</h2>
+<ul>
+  <li>Lack of any one de facto standard endianness capability in either C or 
+  C++. While most platforms provides some way to handle endianness in C, the 
+  mechanism varies from platform to platform.</li>
+  <li>Commonly used endian handling functions are extremely error prone. While 
+  the Boost Endian conversion functions have the same problems, the buffer and 
+  arithmetic classes do not.</li>
+  <li>Surprisingly difficult to write and test yourself in a portable yet 
+  efficient (i.e. using intrinsics) way. </li>
+  <li>Explicit requests for standardization from Boost Endian users.</li>
+  <li>The Boost library is existing practice with years of both implementation 
+  and end-user experience.</li>
+  <li>The committee has already failed once to standardize endian conversion 
+  functions; perhaps now is time to do it right.</li>
+</ul>
+<h2>Impact on the standard library</h2>
+<p>All three proposed approaches to endianness would be a pure additions to the 
+standard library and would break no existing user code (modulo the usual 
+namespace caveats).</p>
+<h2>Proposed wording</h2>
+<p>The Boost Endian reference documentation for
+<a href="https://www.boost.org/libs/endian/doc/conversion.html#Reference">
+Conversion</a>,
+<a href="https://www.boost.org/libs/endian/doc/arithmetic.html#endian">
+Arithmetic</a>, and
+<a href="https://www.boost.org/libs/endian/doc/buffers.html#endian">Buffer</a> 
+approaches follows the standard library&#39;s <i>Method of description</i> 
+[description], so provides a fairly close approximation of what proposed wording 
+would look like. Actual proposed wording will be provided in a proposal document 
+for any portions of the library of interest to the committee. Names will need 
+the usual bikeshedding.</p>
+<h2>Questions for the Library Evolution Group</h2>
+<ul>
+  <li>How would you likely vote on a fully-worded and reviewed proposal to add a 
+  standardized version of the Boost Endian conversion functions to the standard 
+  library or a library TS?<br>
+&nbsp;</li>
+  <li>How would you likely vote on a fully-worded and reviewed proposal to add a 
+  standardized version of the Boost Endian buffer classes to the standard 
+  library or a library TS?<br>
+&nbsp;</li>
+  <li>How would you likely vote on a fully-worded and reviewed proposal to add a 
+  standardized version of the Boost Endian arithmetic classes to the standard 
+  library or a library TS?</li>
+</ul>
+<h2>Acknowledgements</h2>
+<p>The original design for the arithmetic classes was developed by Darin Adler 
+based on work by Mark Borgerding. The Boost documentation acknowledges
+<a href="https://www.boost.org/libs/endian/doc/index.html#Acknowledgements">45+ 
+other people</a>.</p>
+<hr>
+<p>&nbsp;</p>
+
+
+</body>
+
+</html>

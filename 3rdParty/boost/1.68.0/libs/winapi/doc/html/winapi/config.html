@@ -1,0 +1,258 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Configuration</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.WinAPI">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.WinAPI">
+<link rel="prev" href="../index.html" title="Chapter&#160;1.&#160;Boost.WinAPI">
+<link rel="next" href="usage.html" title="Using Boost.WinAPI">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="usage.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="winapi.config"></a><a class="link" href="config.html" title="Configuration">Configuration</a>
+</h2></div></div></div>
+<p>
+      Boost.WinAPI recognizes the following configuration macros:
+    </p>
+<div class="table">
+<a name="winapi.config.configuration_macros"></a><p class="title"><b>Table&#160;1.1.&#160;Configuration macros</b></p>
+<div class="table-contents"><table class="table" summary="Configuration macros">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Macro name
+              </p>
+            </th>
+<th>
+              <p>
+                Effect
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_VERSION</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                If defined, designates the target Windows API version. The version
+                should be given as hexadecimal integer, same as the <code class="computeroutput"><span class="identifier">_WIN32_WINNT</span></code> macro values. Some
+                of the versions are given <a href="https://msdn.microsoft.com/en-us/library/aa383745(v=vs.100).aspx#macros_for_conditional_declarations" target="_top">here</a>.
+                If the macro is not defined, the version is deduced from <code class="computeroutput"><span class="identifier">_WIN32_WINNT</span></code> and <code class="computeroutput"><span class="identifier">WINVER</span></code> macros, if they are defined,
+                or the default version is chosen. The default version is currently
+                Windows Vista/Server 2008 on compilers that support this version
+                of SDK and Windows XP on others. The default may change in future
+                releases.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_USE_NTDDI_VERSION</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                If defined, designates the target Windows API version down to a particular
+                Service Pack. This macro offers a more fine grained way to define
+                the target Windows version than <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_VERSION</span></code>.
+                The version should be given as hexadecimal integer, same as the
+                <code class="computeroutput"><span class="identifier">NTDDI_VERSION</span></code> macro
+                values. Some of the versions are given <a href="https://msdn.microsoft.com/en-us/library/aa383745(v=vs.100).aspx#macros_for_conditional_declarations" target="_top">here</a>.
+                If the macro is not defined, the version is deduced from <code class="computeroutput"><span class="identifier">NTDDI_VERSION</span></code> and <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_VERSION</span></code> macros,
+                in the latter case defaulting to the latest revision of the indicated
+                Windows version. If <code class="computeroutput"><span class="identifier">BOOST_USE_NTDDI_VERSION</span></code>
+                is defined, <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_VERSION</span></code>
+                is also expected to be defined to a corresponding value.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_FAMILY</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                If defined, designates the Windows API family to use. The family
+                can be set to one of the values of the <code class="computeroutput"><span class="identifier">WINAPI_FAMILY</span></code>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_USE_WINDOWS_H</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                This macro is part of Boost.Config. If defined, Boost.WinAPI will
+                include <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">windows</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span></code> and any other headers from Windows
+                SDK as needed. Otherwise Boost.WinAPI will provide its own declarations
+                of the SDK components as needed without including SDK headers.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_NO_ANSI_APIS</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                This macro is defined by Boost.Config on platforms that do not support
+                narrow-character versions of some APIs. Boost.WinAPI will not declare
+                narrow-character APIs when this macro is defined.
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      User's code can include <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">winapi</span><span class="special">/</span><span class="identifier">config</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code> to define a number of macros that can be
+      useful. Including this header is recommended in any code that involves Windows
+      API usage.
+    </p>
+<div class="table">
+<a name="winapi.config.defined_configuration_macros"></a><p class="title"><b>Table&#160;1.2.&#160;Defined configuration macros</b></p>
+<div class="table-contents"><table class="table" summary="Defined configuration macros">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Macro name
+              </p>
+            </th>
+<th>
+              <p>
+                Effect
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_VERSION</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_USE_NTDDI_VERSION</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                If not defined by user, these macros are defined by the header to
+                the target Windows API version.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_NT4</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WIN2K</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WINXP</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WS03</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WIN6</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_VISTA</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WS08</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_LONGHORN</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WIN7</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WIN8</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WINBLUE</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WINTHRESHOLD</span></code>,<br>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_VERSION_WIN10</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                These macros expand to the constants designating the particular Windows
+                versions and can be used together with <code class="computeroutput"><span class="identifier">BOOST_USE_WINAPI_VERSION</span></code>
+                in preprocessor version checks.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_IS_MINGW</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                Defined if Windows SDK is provided by <a href="http://mingw.org/" target="_top">MinGW</a>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_IS_MINGW_W64</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                Defined if Windows SDK is provided by <a href="http://mingw-w64.org" target="_top">MinGW-w64</a>.
+                Note that is does not mean that the code is compiled for 64-bit Windows.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">BOOST_WINAPI_IS_CYGWIN</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                Defined if Windows SDK is provided by MinGW variant from <a href="https://cygwin.com/" target="_top">Cygwin</a>.
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2018 Andrey Semashev<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="usage.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

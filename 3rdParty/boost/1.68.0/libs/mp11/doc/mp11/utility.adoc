@@ -1,0 +1,233 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#utility]
+# Utility Components, <boost/mp11/utility.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## mp_identity<T>
+
+    template<class T> struct mp_identity
+    {
+        using type = T;
+    };
+
+`mp_identity` is a simple _transformation type trait_ (as per the C++ standard)
+that just returns the same type. It's useful both as such, and as a type wrapper
+for passing types as values to functions.
+
+.Using mp_identity as a type trait
+```
+template<class T> using addp_if_not_ref =
+    typename mp_if<std::is_reference<T>, mp_identity<T>, std::add_pointer<T>>::type;
+```
+
+.Using mp_identity to protect qualifiers and references
+```
+template<class T> void print1()
+{
+    std::cout << typeid(T).name() << std::endl;
+}
+
+template<class T> void print2()
+{
+    std::cout << typeid(mp_identity<T>).name() << std::endl;
+}
+
+int main()
+{
+    print1<int const&>(); // 'int'
+    print2<int const&>(); // 'mp_identity<int const &>'
+}
+```
+
+## mp_identity_t<T>
+
+    template<class T> using mp_identity_t = typename mp_identity<T>::type;
+
+## mp_inherit<T...>
+
+    template<class... T> struct mp_inherit: T... {};
+
+## mp_if_c<C, T, E...>
+
+    template<bool C, class T, class... E> using mp_if_c = /*...*/;
+
+`mp_if_c<true, T, E...>` is an alias for `T`. `mp_if_c<false, T, E>` is an alias for `E`. Otherwise, the result is a substitution failure.
+
+.Using mp_if_c to select between two alternatives
+```
+using R1 = mp_if_c<true, int, void>;  // int
+
+using R2 = mp_if_c<false, int, void>; // void
+```
+
+.Using mp_if_c to fail substitution when a condition is not met
+```
+template<class I> using void_if_5 = mp_if_c<I::value == 5, void>;
+```
+This example returns `void` when `I::value` is 5, and generates a substitution failure
+otherwise. It's the same as `std::enable_if_t<I::value == 5>` in {cpp}14, or
+`typename std::enable_if<I::value == 5>::type` in {cpp}11.
+
+## mp_if<C, T, E...>
+
+    template<class C, class T, class... E> using mp_if =
+        mp_if_c<static_cast<bool>(C::value), T, E...>;
+
+Like `mp_if_c`, but the first argument is a type.
+
+.Using mp_if to select between two alternatives
+```
+using R1 = mp_if<mp_true, int, void>;  // int
+
+using R2 = mp_if<mp_false, int, void>; // void
+```
+
+.Using mp_if to fail substitution when a condition is not met
+```
+template<class T> using void_if_const = mp_if<std::is_const<T>, void>;
+
+template<class... T> using void_if_all_const =
+    mp_if<mp_all<std::is_const<T>...>, void>;
+
+template<class T> using if_non_const = mp_if<mp_not<std::is_const<T>>, T>;
+```
+
+## mp_eval_if_c<C, T, F, U...>
+
+    template<bool C, class T, template<class...> class F, class... U> using mp_eval_if_c =
+        /*...*/;
+
+`mp_eval_if_c<C, T, F, U...>` is an alias for `T` when `C` is `true`, for `F<U...>` otherwise. Its purpose
+is to avoid evaluating `F<U...>` when the condition is `true` as it may not be valid in this case.
+
+.Using mp_eval_if_c to select the first pack element, or void
+```
+template<class... T> using first_or_void =
+    mp_eval_if_c<sizeof...(T) == 0, void, mp_apply, mp_first, mp_list<T...>>;
+```
+
+## mp_eval_if<C, T, F, U...>
+
+    template<class C, class T, template<class...> class F, class... U> using mp_eval_if =
+        mp_eval_if_c<static_cast<bool>(C::value), T, F, U...>;
+
+Like `mp_eval_if_c`, but the first argument is a type.
+
+.Using mp_eval_if to select the first list element, or void
+```
+template<class L> using first_or_void = mp_eval_if<mp_empty<L>, void, mp_first, L>;
+```
+
+## mp_eval_if_q<C, T, Q, U...>
+
+    template<class C, class T, class Q, class... U> using mp_eval_if_q =
+        mp_eval_if<C, T, Q::template fn, U...>;
+
+Like `mp_eval_if`, but takes a quoted metafunction.
+
+## mp_cond<C, T, R...>
+
+    template<class C, class T, class... R> using mp_cond = /*...*/;
+
+`mp_cond<C, T, R...>` is an alias for `T` when `static_cast<bool>(C::value)` is `true`.
+When `static_cast<bool>(C::value)` is `false`, it's an alias for `mp_cond<R...>`.
+
+(If `static_cast<bool>(C::value)` is a substitution failure, the result is too a substitution
+failure.)
+
+.Using mp_cond
+```
+template<int N> using unsigned_ = mp_cond<
+    mp_bool<N ==  8>, uint8_t,
+    mp_bool<N == 16>, uint16_t,
+    mp_bool<N == 32>, uint32_t,
+    mp_bool<N == 64>, uint64_t,
+    mp_true, unsigned // default case
+>;
+```
+
+## mp_valid<F, T...>
+
+    template<template<class...> class F, class... T> using mp_valid = /*...*/;
+
+`mp_valid<F, T...>` is an alias for `mp_true` when `F<T...>` is a valid expression, for `mp_false` otherwise.
+
+.Using mp_valid to write a metafunction that checks for the existence of a nested type
+```
+template<class T> using get_nested_type = typename T::type;
+
+template<class T> struct has_nested_type: mp_valid<get_nested_type, T> {};
+```
+
+## mp_defer<F, T...>
+
+    template<template<class...> class F, class... T> using mp_defer = /*...*/;
+
+When `mp_valid<F, T...>` is `mp_true`, `mp_defer<F, T...>` is a struct with a nested type `type` which is an alias for `F<T...>`. Otherwise,
+`mp_defer<F, T...>` is an empty struct.
+
+## mp_quote<F>
+
+    template<template<class...> class F> struct mp_quote
+    {
+        template<class... T> using fn = F<T...>;
+    };
+
+`mp_quote<F>` transforms the template `F` into a type with a nested template `fn` such that `fn<T...>` returns `F<T...>`.
+
+.Using mp_quote to make a list of metafunctions
+```
+using LQ = mp_list<mp_quote<std::is_const>, mp_quote<std::is_volatile>>;
+```
+
+## mp_quote_trait<F>
+
+    template<template<class...> class F> struct mp_quote_trait
+    {
+        template<class... T> using fn = typename F<T...>::type;
+    };
+
+`mp_quote_trait<F>` transforms the C++03-style trait `F` into a quoted metafunction.
+
+.Using mp_quote_trait with std::add_pointer
+```
+using L1 = mp_list<int, void, float>;
+using R1 = mp_transform_q<mp_quote_trait<std::add_pointer>, L1>;
+  // mp_list<int*, void*, float*>
+```
+
+## mp_invoke<Q, T...>
+
+    template<class Q, class... T> using mp_invoke = typename Q::template fn<T...>;
+
+`mp_invoke<Q, T...>` evaluates the nested template `fn` of a quoted metafunction. `mp_invoke<mp_quote<F>, T...>` returns `F<T...>`.
+
+.Using mp_invoke to invoke a list of metafunctions, technique 1
+```
+using LQ = mp_list<mp_quote<std::is_const>, mp_quote<std::is_volatile>>;
+
+template<class T> using is_const_and_volatile =
+    mp_all<mp_product<mp_invoke, LQ, mp_list<T>>>;
+```
+
+.Using mp_invoke to invoke a list of metafunctions, technique 2
+```
+template<class T> using is_const_and_volatile =
+    mp_all<mp_transform_q<mp_bind_back<mp_invoke, T>, LQ>>;
+```
+
+.Using mp_invoke to invoke a list of metafunctions, technique 3
+```
+template<class T> using is_const_and_volatile =
+    mp_all<mp_transform<mp_invoke, LQ, mp_fill<LQ, T>>>;
+```

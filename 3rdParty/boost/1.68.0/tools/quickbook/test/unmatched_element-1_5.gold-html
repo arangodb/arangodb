@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Unmatched elements
+    </h3>
+    <p>
+      <span class="bold"><strong>[non-element</strong></span>]
+    </p>
+    <p>
+      [non-element]
+    </p>
+  </body>
+</html>

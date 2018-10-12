@@ -1,0 +1,37 @@
+[/
+ / Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:synchronous_socket_operations Requirements on synchronous socket operations]
+
+In this section, ['synchronous socket operations] are those member functions
+specified as two overloads, with and without an argument of type `error_code&`:
+
+  ``[*['R f]]``(``['[*A1]]`` a1, ``['[*A2]]`` a2, ..., ``['[*AN]]`` aN);
+  ``[*['R f]]``(``['[*A1]]`` a1, ``['[*A2]]`` a2, ..., ``['[*AN]]`` aN, error_code& ec);
+
+For an object `s`, the conditions under which its synchronous socket operations
+may block the calling thread (C++Std [defns.block]) are determined as follows.
+
+If:
+
+[mdash] `s.non_blocking() == true`,
+
+[mdash] the synchronous socket operation is specified in terms of a __POSIX__
+function other than `__poll__`,
+
+[mdash] that __POSIX__ function lists `EWOULDBLOCK` or `EAGAIN`
+in its failure conditions, and
+
+[mdash] the effects of the operation cannot be established immediately
+
+then the synchronous socket operation shall not block the calling thread.
+[inline_note And the effects of the operation are not established.]
+
+Otherwise, the synchronous socket operation shall block the calling thread
+until the effects are established.
+
+[endsect]

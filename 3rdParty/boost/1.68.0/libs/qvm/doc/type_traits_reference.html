@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>type traits</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Type Traits</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_quat_traits_hpp.html">boost/qvm/quat_traits.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_mat_traits_hpp.html">boost/qvm/mat_traits.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_vec_traits_hpp.html">boost/qvm/vec_traits.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/></p>
+<pre>namespace
+boost
+    {
+    namespace
+    qvm
+        {
+<span class="RenoIncludeSPAN">        //*** Type traits ***
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class T&gt;
+        struct <span class="RenoLink"><a href="is_quat.html">is_quat</a></span>
+        {
+            static bool const value=/*unspecified*/;
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class Q&gt;
+        struct <span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span>
+        {
+            /*main template members unspecified*/
+        };
+        
+        /*
+        User-defined (possibly partial) specializations:
+        
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span>&lt;Q&gt;
+        {
+        <span class="RenoIncludeSPAN">    typedef /*user-defined*/ <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span>;</span>        
+        
+        <span class="RenoIncludeSPAN">    template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span>( Quaternion const &amp; q );</span>        
+        <span class="RenoIncludeSPAN">    template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>( Quaternion &amp; q );</span>        
+        };
+        */</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class QuatType,class ScalarType&gt;
+        struct <span class="RenoLink"><a href="quat_traits_defaults.html">quat_traits_defaults</a></span>
+        {
+            typedef QuatType quat_type;
+            typedef ScalarType <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span>;
+        
+            template &lt;int I&gt;
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span>( quat_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span>&lt;quat_type&gt;::template <span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>&lt;I&gt;(const_cast&lt;quat_type &amp;&gt;(x));
+            }
+        };</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class T&gt;
+        struct <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>
+        {
+            static bool const value=/*unspecified*/;
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class V&gt;
+        struct <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>
+        {
+            /*main template members unspecified*/
+        };
+        
+        /*
+        User-defined (possibly partial) specializations:
+        
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;V&gt;
+        {
+        <span class="RenoIncludeSPAN">    static int const <span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span> = /*user-defined*/;</span>        
+        <span class="RenoIncludeSPAN">    typedef /*user-defined*/ <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span>;</span>        
+        
+        <span class="RenoIncludeSPAN">    template &lt;int I&gt; static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="vec_traits_V_read_element.html">read_element</a></span>( Vector const &amp; v );</span>        
+        <span class="RenoIncludeSPAN">    template &lt;int I&gt; static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element.html">write_element</a></span>( Vector &amp; v );</span>        
+        
+        <span class="RenoIncludeSPAN">    static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="vec_traits_V_read_element_idx.html">read_element_idx</a></span>( int i, Vector const &amp; v );</span>        
+        <span class="RenoIncludeSPAN">    static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element_idx.html">write_element_idx</a></span>( int i, Vector &amp; v );</span>        
+        };
+        */</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class VecType,class ScalarType,int Dim&gt;
+        struct <span class="RenoLink"><a href="vec_traits_defaults.html">vec_traits_defaults</a></span>
+        {
+            typedef VecType vec_type;
+            typedef ScalarType <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span>;
+            static int const <span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span>=Dim;
+        
+            template &lt;int I&gt;
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="vec_traits_V_write_element.html">write_element</a></span>( vec_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;vec_type&gt;::template <span class="RenoLink"><a href="vec_traits_V_write_element.html">write_element</a></span>&lt;I&gt;(const_cast&lt;vec_type &amp;&gt;(x));
+            }
+        
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="vec_traits_V_read_element_idx.html">read_element_idx</a></span>( int i, vec_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;vec_type&gt;::<span class="RenoLink"><a href="vec_traits_V_write_element_idx.html">write_element_idx</a></span>(i,const_cast&lt;vec_type &amp;&gt;(x));
+            }
+        
+            protected:
+        
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span>
+            <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element_idx.html">write_element_idx</a></span>( int i, vec_type &amp; m )
+            {
+                /* unspecified */
+            }
+        };</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class T&gt;
+        struct <span class="RenoLink"><a href="is_mat.html">is_mat</a></span>
+        {
+            static bool const value=/*unspecified*/;
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class M&gt;
+        struct <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>
+        {
+            /*main template members unspecified*/
+        };
+        
+        /*
+        User-defined (possibly partial) specializations:
+        
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;M&gt;
+        {
+        <span class="RenoIncludeSPAN">    static int const <span class="RenoLink"><a href="mat_traits_Matrix_rows.html">rows</a></span> = /*user-defined*/;</span>        
+        <span class="RenoIncludeSPAN">    static int const <span class="RenoLink"><a href="mat_traits_Matrix_cols.html">cols</a></span> = /*user-defined*/;</span>        
+        <span class="RenoIncludeSPAN">    typedef /*user-defined*/ <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span>;</span>        
+        
+        <span class="RenoIncludeSPAN">    template &lt;int R,int C&gt; static inline <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="mat_traits_M_read_element.html">read_element</a></span>( Matrix const &amp; m );</span>        
+        <span class="RenoIncludeSPAN">    template &lt;int R,int C&gt; static inline <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span>( Matrix &amp; m );</span>        
+        
+        <span class="RenoIncludeSPAN">    static inline <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="mat_traits_M_read_element_idx.html">read_element_idx</a></span>( int r, int c, Matrix const &amp; m );</span>        
+        <span class="RenoIncludeSPAN">    static inline <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span>( int r, int c, Matrix &amp; m );</span>        
+        };
+        */</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class MatType,class ScalarType,int Rows,int Cols&gt;
+        struct <span class="RenoLink"><a href="mat_traits_defaults.html">mat_traits_defaults</a></span>
+        {
+            typedef MatType mat_type;
+            typedef ScalarType <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span>;
+            static int const <span class="RenoLink"><a href="mat_traits_Matrix_rows.html">rows</a></span>=Rows;
+            static int const <span class="RenoLink"><a href="mat_traits_Matrix_cols.html">cols</a></span>=Cols;
+        
+            template &lt;int Row,int Col&gt;
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span>( mat_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;mat_type&gt;::template <span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span>&lt;Row,Col&gt;(const_cast&lt;mat_type &amp;&gt;(x));
+            }
+        
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="mat_traits_M_read_element_idx.html">read_element_idx</a></span>( int r, int c, mat_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;mat_type&gt;::<span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span>(r,c,const_cast&lt;mat_type &amp;&gt;(x));
+            }
+        
+            protected:
+        
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span>
+            <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span>( int r, int c, mat_type &amp; m )
+            {
+                /* unspecified */
+            }
+        };</span></span></span>
+        }
+    }</pre>
+</div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a>&nbsp;| <a href="Synopsis.html">Synopsis</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

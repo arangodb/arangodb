@@ -1,0 +1,210 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Getting started &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Building" href="building.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="building.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="intro.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="examples.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <!-- Copyright 2018 Paul Fultz II
+     Distributed under the Boost Software License, Version 1.0.
+     (http://www.boost.org/LICENSE_1_0.txt)
+--><div class="section" id="getting-started">
+<h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="higher-order-functions">
+<h2>Higher-order functions<a class="headerlink" href="#higher-order-functions" title="Permalink to this headline">¶</a></h2>
+<p>A core part of this library is higher-order functions. A higher-order function is a function that either takes a function as its argument or returns a function. To be able to define higher-order functions, we must be able to refer functions as first-class objects. One example of a higher-order function is <code class="docutils literal"><span class="pre">std::accumulate</span></code>. It takes a custom binary operator as a parameter.</p>
+<p>One way to refer to a function is to use a function pointer(or a member function pointer). So if we had our own custom <code class="docutils literal"><span class="pre">sum</span></code> function, we could pass it directly to <code class="docutils literal"><span class="pre">std::accumulate</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="c1">// Pass sum to accumulate</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sum</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>However, a function pointer can only refer to one function in an overload set of functions, and it requires explicit casting to select that overload.</p>
+<p>For example, if we had a templated <code class="docutils literal"><span class="pre">sum</span></code> function that we want to pass to <code class="docutils literal"><span class="pre">std::accumulate</span></code>, we would need an explicit cast:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="k">class</span> <span class="nc">U</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="n">sum</span><span class="p">(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">U</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">auto</span> <span class="n">sum_int</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">))</span><span class="o">&amp;</span><span class="n">sum</span><span class="p">;</span>
+<span class="c1">// Call integer overload</span>
+<span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">sum_int</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+<span class="c1">// Or pass to an algorithm</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sum_int</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="function-objects">
+<h2>Function Objects<a class="headerlink" href="#function-objects" title="Permalink to this headline">¶</a></h2>
+<p>A function object allows the ability to encapsulate an entire overload set into one object. This can be done by defining a class that overrides the call operator like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="c1">// A sum function object</span>
+<span class="k">struct</span> <span class="n">sum_f</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="k">class</span> <span class="nc">U</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">U</span> <span class="n">y</span><span class="p">)</span> <span class="k">const</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>There are few things to note about this. First, the call operator member function is always declared <code class="docutils literal"><span class="pre">const</span></code>, which is generally required to be used with Boost.HigherOrderFunctions.(Note: The <a class="reference internal" href="../../include/boost/hof/mutable.html"><span class="doc">mutable</span></a> adaptor can be used to make a mutable function object have a <code class="docutils literal"><span class="pre">const</span></code> call operator, but this should generally be avoided). Secondly, the <code class="docutils literal"><span class="pre">sum_f</span></code> class must be constructed first before it can be called:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">sum</span> <span class="o">=</span> <span class="n">sum_f</span><span class="p">();</span>
+<span class="c1">// Call sum function</span>
+<span class="k">auto</span> <span class="n">three</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+<span class="c1">// Or pass to an algorithm</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sum</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Because the function is templated, it can be called on any type that has the plus <code class="docutils literal"><span class="pre">+</span></code> operator, not just integers. Futhermore, the <code class="docutils literal"><span class="pre">sum</span></code> variable can be used to refer to the entire overload set.</p>
+</div>
+<div class="section" id="lifting-functions">
+<h2>Lifting functions<a class="headerlink" href="#lifting-functions" title="Permalink to this headline">¶</a></h2>
+<p>Another alternative to defining a function object, is to lift the templated function using <a class="reference internal" href="../../include/boost/hof/lift.html"><span class="doc">BOOST_HOF_LIFT</span></a>. This will turn the entire overload set into one object like a function object:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="k">class</span> <span class="nc">U</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="n">sum</span><span class="p">(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">U</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Pass sum to an algorithm</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">};</span>
+<span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">BOOST_HOF_LIFT</span><span class="p">(</span><span class="n">sum</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>However, due to limitations in C++14 this will not preserve <code class="docutils literal"><span class="pre">constexpr</span></code>. In those cases, its better to use a function object.</p>
+</div>
+<div class="section" id="declaring-functions">
+<h2>Declaring functions<a class="headerlink" href="#declaring-functions" title="Permalink to this headline">¶</a></h2>
+<p>Now, this is useful for local functions. However, many times we want to write functions and make them available for others to use. Boost.HigherOrderFunctions provides <a class="reference internal" href="../../include/boost/hof/function.html"><span class="doc">BOOST_HOF_STATIC_FUNCTION</span></a> to declare the function object at the global or namespace scope:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">sum</span><span class="p">)</span> <span class="o">=</span> <span class="n">sum_f</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="../../include/boost/hof/function.html"><span class="doc">BOOST_HOF_STATIC_FUNCTION</span></a> declares a global variable following the best practices as outlined in <a class="reference external" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4381.html">N4381</a>. This includes using <code class="docutils literal"><span class="pre">const</span></code> to avoid global state, compile-time initialization of the function object to avoid the <a class="reference external" href="https://isocpp.org/wiki/faq/ctors#static-init-order">static initialization order fiasco</a>, and an external address of the function object that is the same across translation units to avoid possible One-Definition-Rule(ODR) violations. In C++17, this can be achieved using an <code class="docutils literal"><span class="pre">inline</span></code> variable:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="kr">inline</span> <span class="k">const</span> <span class="k">constexpr</span> <span class="k">auto</span> <span class="n">sum</span> <span class="o">=</span> <span class="n">sum_f</span><span class="p">{};</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="../../include/boost/hof/function.html"><span class="doc">BOOST_HOF_STATIC_FUNCTION</span></a> macro provides a portable way to do this that supports pre-C++17 compilers and MSVC.</p>
+</div>
+<div class="section" id="adaptors">
+<h2>Adaptors<a class="headerlink" href="#adaptors" title="Permalink to this headline">¶</a></h2>
+<p>Now we have defined the function as a function object, we can add new &#8220;enhancements&#8221; to the function. One enhancement is to write &#8220;extension&#8221; methods. The proposal <a class="reference external" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4165.pdf">N4165</a> for Unified Call Syntax(UFCS) would have allowed a function call of <code class="docutils literal"><span class="pre">x.f(y)</span></code> to become <code class="docutils literal"><span class="pre">f(x,</span> <span class="pre">y)</span></code>. Without UFCS in C++, we can instead use pipable function which would transform <code class="docutils literal"><span class="pre">x</span> <span class="pre">|</span> <span class="pre">f(y)</span></code> into <code class="docutils literal"><span class="pre">f(x,</span> <span class="pre">y)</span></code>. To make <code class="docutils literal"><span class="pre">sum_f</span></code> function pipable using the <a class="reference internal" href="../../include/boost/hof/pipable.html"><span class="doc">pipable</span></a> adaptor, we can simply write:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">sum</span><span class="p">)</span> <span class="o">=</span> <span class="n">pipable</span><span class="p">(</span><span class="n">sum_f</span><span class="p">());</span>
+</pre></div>
+</div>
+<p>Then the parameters can be piped into it, like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">three</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">|</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Pipable function can be chained mutliple times just like the <code class="docutils literal"><span class="pre">.</span></code> operator:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">four</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">|</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span> <span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Alternatively, instead of using the <code class="docutils literal"><span class="pre">|</span></code> operator, pipable functions can be chained together using the <a class="reference internal" href="../../include/boost/hof/flow.html"><span class="doc">flow</span></a> adaptor:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">four</span> <span class="o">=</span> <span class="n">flow</span><span class="p">(</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))(</span><span class="mi">1</span><span class="p">);</span> 
+</pre></div>
+</div>
+<p>Another enhancement that can be done to functions is defining named infix operators using the <a class="reference internal" href="../../include/boost/hof/infix.html"><span class="doc">infix</span></a> adaptor:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_FUNCTION</span><span class="p">(</span><span class="n">sum</span><span class="p">)</span> <span class="o">=</span> <span class="n">infix</span><span class="p">(</span><span class="n">sum_f</span><span class="p">());</span>
+</pre></div>
+</div>
+<p>And it could be called like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">three</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;</span><span class="n">sum</span><span class="o">&gt;</span> <span class="mi">2</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>In addition, adaptors are provided that support simple functional operations such as <a class="reference external" href="https://en.wikipedia.org/wiki/Partial_application">partial application</a> and <a class="reference external" href="https://en.wikipedia.org/wiki/Function_composition">function composition</a>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">add_1</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">sum</span><span class="p">)(</span><span class="mi">1</span><span class="p">);</span>
+<span class="k">auto</span> <span class="n">add_2</span> <span class="o">=</span> <span class="n">compose</span><span class="p">(</span><span class="n">add_1</span><span class="p">,</span> <span class="n">add_1</span><span class="p">);</span>
+<span class="k">auto</span> <span class="n">three</span> <span class="o">=</span> <span class="n">add_2</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="lambdas">
+<h2>Lambdas<a class="headerlink" href="#lambdas" title="Permalink to this headline">¶</a></h2>
+<p>Writing function objects can be a little verbose. C++ provides lambdas which have a much terser syntax for defining functions. Of course, lambdas can work with all the adaptors in the library, however, if we want to declare a function using lambdas, <a class="reference internal" href="../../include/boost/hof/function.html"><span class="doc">BOOST_HOF_STATIC_FUNCTION</span></a> won&#8217;t work. Instead, <a class="reference internal" href="../../include/boost/hof/lambda.html#boost-hof-static-lambda-function"><span class="std std-ref">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span></a> can be used to the declare the lambda as a function instead, this will initialize the function at compile-time and avoid possible ODR violations:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">sum</span><span class="p">)</span> <span class="o">=</span> <span class="p">[](</span><span class="k">auto</span> <span class="n">x</span><span class="p">,</span> <span class="k">auto</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Additionally, adaptors can be used, so the pipable version of <code class="docutils literal"><span class="pre">sum</span></code> can be written like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="c1">// Pipable sum</span>
+<span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">sum</span><span class="p">)</span> <span class="o">=</span> <span class="n">pipable</span><span class="p">([](</span><span class="k">auto</span> <span class="n">x</span><span class="p">,</span> <span class="k">auto</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>is_vec</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>is_vec</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_vec_traits_hpp.html">boost/qvm/vec_traits.hpp</a></span>&gt;</p>
+<pre>namespace
+boost
+{
+    namespace
+    <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;class T&gt;
+        struct <span class="RenoLink">is_vec</span>
+        {
+            static bool const value=/*unspecified*/;
+        };</span>
+    }
+}</pre>
+</div><p>This type template defines a compile-time boolean constant value which can be used to determine whether a type <i>T</i> is a vector type. For vector types, the <i><span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span></i> template can be used to access their elements generically, or to obtain their dimension and scalar type.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="accessing_vector_elements.html">Accessing Vector Elements</a>&nbsp;| <a href="assign_vec_vec_.html">assign(vec,vec)</a>&nbsp;| <a href="boost_qvm_swizzle_hpp.html">boost/qvm/swizzle.hpp</a>&nbsp;| <a href="boost_qvm_vec_traits_hpp.html">boost/qvm/vec_traits.hpp</a>&nbsp;| <a href="cmp_vec_vec_.html">cmp(vec,vec)</a>&nbsp;| <a href="col_mat.html">col_mat</a>&nbsp;| <a href="convert_to_vec_.html">convert_to(vec)</a>&nbsp;| <a href="cross.html">cross</a>&nbsp;| <a href="deduce_vec.html">deduce_vec</a>&nbsp;| <a href="deduce_vec2.html">deduce_vec2</a>&nbsp;| <a href="diag_mat.html">diag_mat</a>&nbsp;| <a href="dot_vec_vec_.html">dot(vec,vec)</a>&nbsp;| <a href="mag_vec_.html">mag(vec)</a>&nbsp;| <a href="mag_sqr_vec_.html">mag_sqr(vec)</a>&nbsp;| <a href="normalize_vec_.html">normalize(vec)</a>&nbsp;| <a href="normalized_vec_.html">normalized(vec)</a>&nbsp;| <a href="operator_not_eq_vec_vec_.html">operator!=(vec,vec)</a>&nbsp;| <a href="operator_times_mat_vec_.html">operator*(mat,vec)</a>&nbsp;| <a href="operator_times_quat_vec_.html">operator*(quat,vec)</a>&nbsp;| <a href="operator_times_scalar_vec_.html">operator*(scalar,vec)</a>&nbsp;| <a href="operator_times_vec_mat_.html">operator*(vec,mat)</a>&nbsp;| <a href="operator_times_vec_scalar_.html">operator*(vec,scalar)</a>&nbsp;| <a href="operator_mul_eq_vec_scalar_.html">operator*=(vec,scalar)</a>&nbsp;| <a href="operator_plus_vec_vec_.html">operator+(vec,vec)</a>&nbsp;| <a href="operator_add_vec_vec_.html">operator+=(vec,vec)</a>&nbsp;| <a href="operator_minus_vec_.html">operator-(vec)</a>&nbsp;| <a href="operator_minus_vec_vec_.html">operator-(vec,vec)</a>&nbsp;| <a href="operator_sub_eq_vec_vec_.html">operator-=(vec,vec)</a>&nbsp;| <a href="operator_over_vec_scalar_.html">operator/(vec,scalar)</a>&nbsp;| <a href="operator_div_eq_vec_scalar_.html">operator/=(vec,scalar)</a>&nbsp;| <a href="operator_eq_vec_vec_.html">operator==(vec,vec)</a>&nbsp;| <a href="rot_mat.html">rot_mat</a>&nbsp;| <a href="rot_quat.html">rot_quat</a>&nbsp;| <a href="rotate_mat.html">rotate(mat)</a>&nbsp;| <a href="rotate_quat_vec_scalar_.html">rotate(quat,vec,scalar)</a>&nbsp;| <a href="row_mat.html">row_mat</a>&nbsp;| <a href="SFINAE_enable_if.html">SFINAE/enable_if</a>&nbsp;| <a href="scalar.html">scalar</a>&nbsp;| <a href="scalar_cast_vec_.html">scalar_cast(vec)</a>&nbsp;| <a href="set_rot_mat.html">set_rot(mat)</a>&nbsp;| <a href="set_rot_quat_vec_scalar_.html">set_rot(quat,vec,scalar)</a>&nbsp;| <a href="set_zero_vec_.html">set_zero(vec)</a>&nbsp;| <a href="transform_point.html">transform_point</a>&nbsp;| <a href="transform_vector.html">transform_vector</a>&nbsp;| <a href="translation_mat.html">translation_mat</a>&nbsp;| <a href="vec_traits.html">vec_traits</a>&nbsp;| <a href="vref.html">vref</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

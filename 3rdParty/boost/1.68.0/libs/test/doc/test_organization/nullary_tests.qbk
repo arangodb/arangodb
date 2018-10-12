@@ -1,0 +1,69 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:test_organization_nullary Test cases without parameters]
+
+The most common scenario is that you want to write test case without any parameters. The __UTF__ provides you with both 
+automatic and manual registration APIs to declare such test case.
+
+[#ref_BOOST_AUTO_TEST_CASE][h4 Automated registration]
+
+To declare a test case without parameters, which is registered in place of implementation, employ the
+macro __BOOST_AUTO_TEST_CASE__.
+ 
+``
+  __BOOST_AUTO_TEST_CASE__(test_case_name);
+``
+
+This API is designed to closely mimic nullary free function declaration syntax. 
+In comparison with free function all you need to do is to skip result type and brackets and wrap test 
+case name into BOOST_AUTO_TEST_CASE:
+
+[bt_example example06..Nullary function based test case with automated registration..run]
+
+With this macro you don't need to implement any other registration steps. The macro creates and
+registers the test case with the name `free_test_function` automatically.
+
+[#ref_BOOST_TEST_CASE][h4 Manual registration]
+
+The __UTF__ allows to manually create test case without parameters based on nullary free functions, nullary
+function objects (including those created with `boost::bind` and nullary `boost::function`
+instances). To do this, employ the macro __BOOST_TEST_CASE__:
+
+``
+  BOOST_TEST_CASE(test_function);
+``
+
+__BOOST_TEST_CASE__ creates an instance of the class [classref boost::unit_test::test_case] and returns a pointer to the
+constructed instance. The test case name is deduced from the macro argument test_function. If you prefer to
+assign a different test case name, you have to use the underlying [headerref boost/test/tree/test_unit.hpp `make_test_case`] interface instead. To
+register a new test case, employ the method [memberref boost::unit_test::test_suite::add `test_suite::add`]. 
+Both test case creation and registration are performed in the 
+[link boost_test.adv_scenarios.test_module_init_overview test module initialization function].
+
+Here is the simplest example of manually registered test case. A single test case is created and registered inside
+the test module initialization routine. Note that the free function name is passed by address to the macro __BOOST_TEST_CASE__`.
+
+[#ref_bt_example01]
+[bt_example example01..Nullary free function manually registered..run]
+
+A test case can be implemented as a method of a class. In this case a pointer to the class instance has to be
+bound to the test method to create a test case. You can use the same instance of the class for multiple test
+cases. The __UTF__ doesn't take an ownership of the class instance and you are required to manage the class
+instance lifetime yourself.
+
+[warning
+ The class instance can't be defined in the initialization function scope, since it becomes invalid as
+ soon as the test execution exits it. It needs to be either defined statically/globally or managed using a
+ shared pointer.
+]
+
+[bt_example example03..Nullary method of a class bound to shared class instance and manually registered..run-fail]
+
+[endsect]
+
+[/EOF]

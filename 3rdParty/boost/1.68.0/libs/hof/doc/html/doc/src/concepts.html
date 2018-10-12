@@ -1,0 +1,528 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Concepts &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Reference" href="reference.html" />
+    <link rel="prev" title="Definitions" href="definitions.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="definitions.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="overview.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="reference.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <div class="section" id="concepts">
+<h1>Concepts<a class="headerlink" href="#concepts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="constfunctionobject">
+<h2>ConstFunctionObject<a class="headerlink" href="#constfunctionobject" title="Permalink to this headline">¶</a></h2>
+<p>Is an object with a <code class="docutils literal"><span class="pre">const</span></code> call operator:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">concept</span> <span class="n">ConstFunctionObject</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Ts</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">Ts</span><span class="o">&amp;&amp;</span><span class="p">...)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="requirements">
+<h3>Requirements:<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<p>The type <code class="docutils literal"><span class="pre">F</span></code> satisfies <code class="docutils literal"><span class="pre">ConstFunctionObject</span></code> if</p>
+<ul class="simple">
+<li>The type <code class="docutils literal"><span class="pre">F</span></code> satisfies <code class="docutils literal"><span class="pre">std::is_object</span></code>, and</li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">args...</span></code>, suitable argument list, which may be empty</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f(args...)</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="nullaryfunctionobject">
+<h2>NullaryFunctionObject<a class="headerlink" href="#nullaryfunctionobject" title="Permalink to this headline">¶</a></h2>
+<p>Is an object with a <code class="docutils literal"><span class="pre">const</span></code> call operator that accepts no parameters:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">concept</span> <span class="n">NullaryFunctionObject</span>
+<span class="p">{</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()()</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="id1">
+<h3>Requirements:<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ConstFunctionObject</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f()</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="unaryfunctionobject">
+<h2>UnaryFunctionObject<a class="headerlink" href="#unaryfunctionobject" title="Permalink to this headline">¶</a></h2>
+<p>Is an object with a <code class="docutils literal"><span class="pre">const</span></code> call operator that accepts one parameter:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">concept</span> <span class="n">UnaryFunctionObject</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">T</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="id2">
+<h3>Requirements:<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ConstFunctionObject</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">arg</span></code>, a single argument</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f(arg)</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="binaryfunctionobject">
+<h2>BinaryFunctionObject<a class="headerlink" href="#binaryfunctionobject" title="Permalink to this headline">¶</a></h2>
+<p>Is an object with a <code class="docutils literal"><span class="pre">const</span></code> call operator that accepts two parameter:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">concept</span> <span class="n">UnaryFunctionObject</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="k">class</span> <span class="nc">U</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">T</span><span class="o">&amp;&amp;</span><span class="p">,</span> <span class="n">U</span><span class="o">&amp;&amp;</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="id3">
+<h3>Requirements:<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ConstFunctionObject</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">arg1</span></code>, a single argument</li>
+<li><code class="docutils literal"><span class="pre">arg2</span></code>, a single argument</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="58%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f(arg1,</span> <span class="pre">arg2)</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="mutablefunctionobject">
+<h2>MutableFunctionObject<a class="headerlink" href="#mutablefunctionobject" title="Permalink to this headline">¶</a></h2>
+<p>Is an object with a <code class="docutils literal"><span class="pre">mutable</span></code> call operator:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">concept</span> <span class="n">MutableFunctionObject</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Ts</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">Ts</span><span class="o">&amp;&amp;</span><span class="p">...);</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="section" id="id4">
+<h3>Requirements:<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>The type <code class="docutils literal"><span class="pre">F</span></code> satisfies <code class="docutils literal"><span class="pre">MutableFunctionObject</span></code> if</p>
+<ul class="simple">
+<li>The type <code class="docutils literal"><span class="pre">F</span></code> satisfies <code class="docutils literal"><span class="pre">std::is_object</span></code>, and</li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">args...</span></code>, suitable argument list, which may be empty</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f(args...)</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="evaluatablefunctionobject">
+<h2>EvaluatableFunctionObject<a class="headerlink" href="#evaluatablefunctionobject" title="Permalink to this headline">¶</a></h2>
+<p>Is an object that is either a <code class="docutils literal"><span class="pre">NullaryFunctionObject</span></code>, or it is an <code class="docutils literal"><span class="pre">UnaryFuntionObject</span></code> that accepts the <code class="docutils literal"><span class="pre">identity</span></code> function as a parameter.</p>
+<div class="section" id="id5">
+<h3>Requirements:<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">NullaryFunctionObject</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f()</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+<p>Or:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">UnaryFuntionObject</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">identity</span></code>, which is the identity function</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="40%" />
+<col width="60%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f(identity)</span></code></td>
+<td>performs a function call</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="invocable">
+<h2>Invocable<a class="headerlink" href="#invocable" title="Permalink to this headline">¶</a></h2>
+<p>Is an object for which the <code class="docutils literal"><span class="pre">INVOKE</span></code> operation can be applied.</p>
+<div class="section" id="id6">
+<h3>Requirements:<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>The type <code class="docutils literal"><span class="pre">T</span></code> satisfies <code class="docutils literal"><span class="pre">Invocable</span></code> if</p>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">T</span></code></li>
+<li><code class="docutils literal"><span class="pre">Args...</span></code>, suitable list of argument types</li>
+</ul>
+<p>The following expressions must be valid:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="58%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">std::declval&lt;Args&gt;()...)</span></code></td>
+<td>the expression is well-formed in unevaluated context</td>
+</tr>
+</tbody>
+</table>
+<p>where <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is defined as follows:</p>
+<ul class="simple">
+<li>if <code class="docutils literal"><span class="pre">f</span></code> is a pointer to member function of class <code class="docutils literal"><span class="pre">U</span></code>:<ul>
+<li>If <code class="docutils literal"><span class="pre">std::is_base_of&lt;U,</span> <span class="pre">std::decay_t&lt;decltype(x)&gt;&gt;()</span></code> is true, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">(x.*f)(xs...)</span></code></li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">std::decay_t&lt;decltype(x)&gt;</span></code> is a specialization of <code class="docutils literal"><span class="pre">std::reference_wrapper</span></code>, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">(x.get().*f)(xs...)</span></code></li>
+<li>otherwise, if x does not satisfy the previous items, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">((*x).*f)(xs...)</span></code>.</li>
+</ul>
+</li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">f</span></code> is a pointer to data member of class <code class="docutils literal"><span class="pre">U</span></code>:<ul>
+<li>If <code class="docutils literal"><span class="pre">std::is_base_of&lt;U,</span> <span class="pre">std::decay_t&lt;decltype(x)&gt;&gt;()</span></code> is true, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">x.*f</span></code></li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">std::decay_t&lt;decltype(x)&gt;</span></code> is a specialization of <code class="docutils literal"><span class="pre">std::reference_wrapper</span></code>, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">x.get().*f</span></code></li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">x</span></code> does not satisfy the previous items, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">(*x).*f</span></code></li>
+</ul>
+</li>
+<li>otherwise, <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">f(x,</span> <span class="pre">xs...)</span></code></li>
+</ul>
+</div>
+</div>
+<div class="section" id="constinvocable">
+<h2>ConstInvocable<a class="headerlink" href="#constinvocable" title="Permalink to this headline">¶</a></h2>
+<p>Is an object for which the <code class="docutils literal"><span class="pre">INVOKE</span></code> operation can be applied.</p>
+<div class="section" id="id7">
+<h3>Requirements:<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>The type <code class="docutils literal"><span class="pre">T</span></code> satisfies <code class="docutils literal"><span class="pre">ConstInvocable</span></code> if</p>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">T</span></code></li>
+<li><code class="docutils literal"><span class="pre">Args...</span></code>, suitable list of argument types</li>
+</ul>
+<p>The following expressions must be valid:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="58%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">std::declval&lt;Args&gt;()...)</span></code></td>
+<td>the expression is well-formed in unevaluated context</td>
+</tr>
+</tbody>
+</table>
+<p>where <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is defined as follows:</p>
+<ul class="simple">
+<li>if <code class="docutils literal"><span class="pre">f</span></code> is a pointer to member function of class <code class="docutils literal"><span class="pre">U</span></code>:<ul>
+<li>If <code class="docutils literal"><span class="pre">std::is_base_of&lt;U,</span> <span class="pre">std::decay_t&lt;decltype(x)&gt;&gt;()</span></code> is true, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">(x.*f)(xs...)</span></code></li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">std::decay_t&lt;decltype(x)&gt;</span></code> is a specialization of <code class="docutils literal"><span class="pre">std::reference_wrapper</span></code>, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">(x.get().*f)(xs...)</span></code></li>
+<li>otherwise, if x does not satisfy the previous items, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">((*x).*f)(xs...)</span></code>.</li>
+</ul>
+</li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">f</span></code> is a pointer to data member of class <code class="docutils literal"><span class="pre">U</span></code>:<ul>
+<li>If <code class="docutils literal"><span class="pre">std::is_base_of&lt;U,</span> <span class="pre">std::decay_t&lt;decltype(x)&gt;&gt;()</span></code> is true, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">x.*f</span></code></li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">std::decay_t&lt;decltype(x)&gt;</span></code> is a specialization of <code class="docutils literal"><span class="pre">std::reference_wrapper</span></code>, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">x.get().*f</span></code></li>
+<li>otherwise, if <code class="docutils literal"><span class="pre">x</span></code> does not satisfy the previous items, then <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x)</span></code> is equivalent to <code class="docutils literal"><span class="pre">(*x).*f</span></code></li>
+</ul>
+</li>
+<li>otherwise, <code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">x,</span> <span class="pre">xs...)</span></code> is equivalent to <code class="docutils literal"><span class="pre">f(x,</span> <span class="pre">xs...)</span></code></li>
+</ul>
+</div>
+</div>
+<div class="section" id="unaryinvocable">
+<h2>UnaryInvocable<a class="headerlink" href="#unaryinvocable" title="Permalink to this headline">¶</a></h2>
+<p>Is an object for which the <code class="docutils literal"><span class="pre">INVOKE</span></code> operation can be applied with one parameter.</p>
+<div class="section" id="id8">
+<h3>Requirements:<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ConstInvocable</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">arg</span></code>, a single argument</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="58%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">arg)</span></code></td>
+<td>the expression is well-formed in unevaluated context</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="binaryinvocable">
+<h2>BinaryInvocable<a class="headerlink" href="#binaryinvocable" title="Permalink to this headline">¶</a></h2>
+<p>Is an object for which the <code class="docutils literal"><span class="pre">INVOKE</span></code> operation can be applied with two parameters.</p>
+<div class="section" id="id9">
+<h3>Requirements:<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ConstInvocable</span></code></li>
+</ul>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, an object of type <code class="docutils literal"><span class="pre">const</span> <span class="pre">F</span></code></li>
+<li><code class="docutils literal"><span class="pre">arg1</span></code>, a single argument</li>
+<li><code class="docutils literal"><span class="pre">arg2</span></code>, a single argument</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="58%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">INVOKE(f,</span> <span class="pre">arg1,</span> <span class="pre">arg2)</span></code></td>
+<td>the expression is well-formed in unevaluated context</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="metafunction">
+<h2>Metafunction<a class="headerlink" href="#metafunction" title="Permalink to this headline">¶</a></h2>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, a type or a template</li>
+<li><code class="docutils literal"><span class="pre">args...</span></code>, any suitable type, which may be empty</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="63%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f::type</span></code></td>
+<td>The type is the result of the metafunction</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">f&lt;args...&gt;::type</span></code></td>
+<td>The type is the result of the metafunction</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="metafunctionclass">
+<h2>MetafunctionClass<a class="headerlink" href="#metafunctionclass" title="Permalink to this headline">¶</a></h2>
+<p>Given</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, a type or a template</li>
+<li><code class="docutils literal"><span class="pre">args...</span></code>, any suitable type, which may be empty</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="40%" />
+<col width="60%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Expression</th>
+<th class="head">Requirements</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">f::apply::type</span></code></td>
+<td>The type is the result of the metafunction</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">f::apply&lt;args...&gt;::type</span></code></td>
+<td>The type is the result of the metafunction</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

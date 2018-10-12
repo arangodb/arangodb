@@ -1,0 +1,710 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#algorithm]
+# Algorithms, <boost/mp11/algorithm.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## mp_transform<F, L...>
+
+    template<template<class...> class F, class... L> using mp_transform = /*...*/;
+
+`mp_transform<F, L1<T1...>, L2<T2...>, ..., Ln<Tn...>>` applies `F` to each successive tuple of elements and returns `L1<F<T1, T2, ..., Tn>...>`.
+
+.Using mp_transform to produce a list of pointers from a list of pointees
+```
+template<class T> using add_pointer_t =
+    typename std::add_pointer<T>::type;  // std::add_pointer_t in C++14
+
+using L1 = std::tuple<void, int, float>;
+using R1 = mp_transform<add_pointer_t, L1>; // std::tuple<void*, int*, float*>
+```
+
+.Using mp_transform to compare the contents of two lists of types
+```
+using L1 = std::tuple<void, int, float>;
+using L2 = mp_list<void, int, float>;
+
+using R1 = mp_all<mp_transform<std::is_same, L1, L2>>; // mp_true
+```
+
+.Using mp_transform to compare the contents of two lists of integral constants
+```
+template<class T1, class T2> using eq = mp_bool<T1::value == T2::value>;
+
+using L1 = std::tuple<mp_int<1>, mp_int<2>, mp_int<3>>;
+using L2 = mp_list<mp_size_t<1>, mp_size_t<2>, mp_size_t<3>>;
+
+using R1 = mp_all<mp_transform<eq, L1, L2>>; // mp_true
+```
+
+.mp_transform on one list
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*mp_transform<F, L1>*|F<A~1~>|F<A~2~>|...|F<A~n~>
+|===
+
+.mp_transform on two lists
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*L2*|B~1~|B~2~|...|B~n~
+5+|
+|*mp_transform<F, L1, L2>*|F<A~1~,B~1~>|F<A~2~,B~2~>|...|F<A~n~,B~n~>
+|===
+
+## mp_transform_q<Q, L...>
+
+    template<class Q, class... L> using mp_transform_q =
+        mp_transform<Q::template fn, L...>;
+
+As `mp_transform`, but takes a quoted metafunction.
+
+.Using mp_transform_q to count the occurrences of `void` in a list
+```
+using L1 = std::tuple<void, int, float, void, int>;
+
+using R1 = mp_apply<mp_plus,
+    mp_transform_q<mp_bind_front<std::is_same, void>, L1>>; // mp_int\<2>
+```
+
+[cols="<.^4m,4*^.^1m",width=85%]
+.mp_transform_q on two lists
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*L2*|B~1~|B~2~|...|B~n~
+5+|
+|*mp_transform_q<Q, L1, L2>*|Q::fn<A~1~,B~1~>|Q::fn<A~2~,B~2~>|...|Q::fn<A~n~,B~n~>
+|===
+
+## mp_transform_if<P, F, L...>
+
+    template<template<class...> class P, template<class...> class F, class... L>
+        using mp_transform_if = /*...*/;
+
+`mp_transform_if<P, F, L1, L2, ..., Ln>` replaces the elements of the list `L1` for which `mp_to_bool<P<T1, T2, ..., Tn>>` is `mp_true` with
+`F<T1, T2, ..., Tn>`, and returns the result, where `Ti` are the corresponding elements of `Li`.
+
+.Using mp_transform_if to replace the occurrences of 'void' in a list with the corresponding elements of a second list
+```
+using L1 = std::tuple<void, int, float, void, int>;
+using L2 = std::tuple<char[1], char[2], char[3], char[4], char[5]>;
+
+template<class T1, class T2> using first_is_void = std::is_same<T1, void>;
+template<class T1, class T2> using second = T2;
+
+using R1 = mp_transform_if<first_is_void, second, L1, L2>;
+  // std::tuple<char[1], int, float, char[4], int>
+```
+
+.mp_transform_if
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*P<A~i~>*|mp_false|mp_true|...|mp_false
+5+|
+|*L2*|B~1~|B~2~|...|B~n~
+5+|
+|*mp_transform_if<P, F, L1, L2>*|A~1~|F<A~2~,B~2~>|...|A~n~
+|===
+
+## mp_transform_if_q<Qp, Qf, L...>
+
+    template<class Qp, class Qf, class... L> using mp_transform_if_q =
+        mp_transform_if<Qp::template fn, Qf::template fn, L...>;
+
+As `mp_transform_if`, but takes quoted metafunctions.
+
+.Using mp_transform_if_q to replace the occurrences of 'void' in a list with the corresponding elements of a second list
+```
+using L1 = std::tuple<void, int, float, void, int>;
+using L2 = std::tuple<char[1], char[2], char[3], char[4], char[5]>;
+
+using R1 = mp_transform_if_q<mp_bind<std::is_same, _1, void>, _2, L1, L2>;
+  // std::tuple<char[1], int, float, char[4], int>
+```
+
+.mp_transform_if_q
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*Qp::fn<A~i~>*|mp_false|mp_true|...|mp_false
+5+|
+|*L2*|B~1~|B~2~|...|B~n~
+5+|
+|*mp_transform_if_q<Qp, _2, L1, L2>*|A~1~|B~2~|...|A~n~
+|===
+
+## mp_fill<L, V>
+
+    template<class L, class V> using mp_fill = /*...*/;
+
+`mp_fill<L<T...>, V>` returns `L<V, V, ..., V>`, with the result having the same size as the input.
+
+.Using mp_fill with std::tuple
+```
+using L1 = std::tuple<void, int, float>;
+using R1 = mp_fill<L1, double>; // std::tuple<double, double, double>
+```
+
+.Using mp_fill with std::pair
+```
+using L1 = std::pair<int, float>;
+using R1 = mp_fill<L1, void>; // std::pair<void, void>
+```
+
+.mp_fill
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*mp_fill<L1, V>*|V|V|...|V
+|===
+
+## mp_count<L, V>
+
+    template<class L, class V> using mp_count = /*...*/;
+
+`mp_count<L, V>` returns `mp_size_t<N>`, where `N` is the number of elements of `L` same as `V`.
+
+## mp_count_if<L, P>
+
+    template<class L, template<class...> class P> using mp_count_if = /*...*/;
+
+`mp_count_if<L, P>` returns `mp_size_t<N>`, where `N` is the number of elements `T` of `L` for which `mp_to_bool<P<T>>` is `mp_true`.
+
+## mp_count_if_q<L, Q>
+
+    template<class L, class Q> using mp_count_if_q = mp_count_if<L, Q::template fn>;
+
+As `mp_count_if`, but takes a quoted metafunction.
+
+## mp_contains<L, V>
+
+    template<class L, class V> using mp_contains = mp_to_bool<mp_count<L, V>>;
+
+`mp_contains<L, V>` is `mp_true` when `L` contains an element `V`, `mp_false` otherwise.
+
+## mp_repeat_c<L, N>
+
+    template<class L, std::size_t N> using mp_repeat_c = /*...*/;
+
+`mp_repeat_c<L, N>` returns a list of the same form as `L` that consists of `N` concatenated copies of `L`.
+
+.Using mp_repeat_c
+```
+using L1 = tuple<int>;
+using R1 = mp_repeat_c<L1, 3>; // tuple<int, int, int>
+
+using L2 = pair<int, float>;
+using R2 = mp_repeat_c<L2, 1>; // pair<int, float>
+
+using L3 = mp_list<int, float>;
+using R3 = mp_repeat_c<L3, 2>; // mp_list<int, float, int, float>
+
+using L4 = mp_list<int, float, double>;
+using R4 = mp_repeat_c<L4, 0>; // mp_list<>
+```
+
+## mp_repeat<L, N>
+
+    template<class L, class N> using mp_repeat = /*...*/;
+
+Same as `mp_repeat_c` but with a type argument `N`. The number of copies is `N::value` and must be nonnegative.
+
+## mp_product<F, L...>
+
+    template<template<class...> class F, class... L> using mp_product = /*...*/;
+
+`mp_product<F, L1<T1...>, L2<T2...>, ..., Ln<Tn...>>` evaluates `F<U1, U2, ..., Un>` for values `Ui` taken from
+the Cartesian product of the lists, as if the elements `Ui` are formed by `n` nested loops, each traversing `Li`.
+It returns a list of the form `L1<V...>` containing the results of the application of `F`.
+
+.mp_product on two lists
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*L2*|B~1~|B~2~|...|B~m~
+5+|
+|*mp_product<F, L1, L2>*|F<A~1~,B~1~>|F<A~1~,B~2~>|...|F<A~1~,B~m~>
+||F<A~2~,B~1~>|F<A~2~,B~2~>|...|F<A~2~,B~m~>
+|
+4+|...
+||F<A~n~,B~1~>|F<A~n~,B~2~>|...|F<A~n~,B~m~>
+|===
+
+## mp_product_q<Q, L...>
+
+    template<class Q, class... L> using mp_product_q = mp_product<Q::template fn, L...>;
+
+As `mp_product`, but takes a quoted metafunction.
+
+## mp_drop_c<L, N>
+
+    template<class L, std::size_t N> using mp_drop_c = /*...*/;
+
+`mp_drop_c<L, N>` removes the first `N` elements of `L` and returns the result.
+
+.mp_drop_c
+[cols="<.^4m,6*^.^1m",width=85%]
+|===
+|*L1*|A~1~|...|A~m~|A~m+1~|...|A~n~
+7+|
+|*mp_drop_c<L1, M>*|A~m+1~|...|A~n~ 3+|
+|===
+
+## mp_drop<L, N>
+
+    template<class L, class N> using mp_drop = /*...*/;
+
+Same as `mp_drop_c`, but with a type argument `N`. `N::value` must be a nonnegative number.
+
+## mp_from_sequence<S>
+
+    template<class S> using mp_from_sequence = /*...*/
+
+`mp_from_sequence` transforms an integer sequence produced by `make_integer_sequence` into an `mp_list`
+of the corresponding `std::integral_constant` types. Given
+
+    template<class T, T... I> struct S;
+
+`mp_from_sequence<S<T, I...>>` is an alias for `mp_list<std::integral_constant<T, I>...>`.
+
+## mp_iota_c<N>
+
+    template<std::size_t N> using mp_iota_c = /*...*/;
+
+`mp_iota_c<N>` is an alias for `mp_list<mp_size_t<0>, mp_size_t<1>, ..., mp_size_t<N-1>>`.
+
+## mp_iota<N>
+
+    template<class N> using mp_iota = /*...*/;
+
+Same as `mp_iota_c`, but with a type argument `N`. `N::value` must be a nonnegative number. Returns
+`mp_list<std::integral_constant<T, 0>, std::integral_constant<T, 1>, ..., std::integral_constant<T, N::value-1>>`
+where `T` is the type of `N::value`.
+
+.mp_iota
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*mp_iota<mp_int<4>>*|mp_int<0>|mp_int<1>|mp_int<2>|mp_int<3>
+|===
+
+## mp_at_c<L, I>
+
+    template<class L, std::size_t I> using mp_at_c = /*...*/;
+
+`mp_at_c<L, I>` returns the `I`-th element of `L`, zero-based.
+
+## mp_at<L, I>
+
+    template<class L, class I> using mp_at = /*...*/;
+
+Same as `mp_at_c`, but with a type argument `I`. `I::value` must be a nonnegative number.
+
+## mp_take_c<L, N>
+
+    template<class L, std::size_t N> using mp_take_c = /*...*/;
+
+`mp_take_c<L, N>` returns a list of the same form as `L` containing the first `N` elements of `L`.
+
+.mp_take_c
+[cols="<.^4m,6*^.^1m",width=85%]
+|===
+|*L1*|A~1~|...|A~m~|A~m+1~|...|A~n~
+7+|
+|*mp_take_c<L1, M>*|A~1~|...|A~m~ 3+|
+|===
+
+## mp_take<L, N>
+
+    template<class L, class N> using mp_take = /*...*/;
+
+Same as `mp_take_c`, but with a type argument `N`. `N::value` must be a nonnegative number.
+
+## mp_insert_c<L, I, T...>
+
+    template<class L, std::size_t I, class... T> using mp_insert_c =
+        mp_append<mp_take_c<L, I>, mp_push_front<mp_drop_c<L, I>, T...>>;
+
+Inserts the elements `T...` into the list `L` at position `I` (a zero-based index).
+
+.mp_insert_c with two elements
+[cols="<.^4m,8*^.^1m",width=85%]
+|===
+|*L1*|A~1~|...|A~m~|A~m+1~|...|A~n~ 2+|
+9+|
+|*mp_insert_c<L1, M, B~1~, B~2~>*|A~1~|...|A~m~|B~1~|B~2~|A~m+1~|...|A~n~
+|===
+
+## mp_insert<L, I, T...>
+
+    template<class L, class I, class... T> using mp_insert =
+        mp_append<mp_take<L, I>, mp_push_front<mp_drop<L, I>, T...>>;
+
+Same as `mp_insert_c`, but with a type argument `I`.
+
+## mp_erase_c<L, I, J>
+
+    template<class L, std::size_t I, std::size_t J> using mp_erase_c =
+        mp_append<mp_take_c<L, I>, mp_drop_c<L, J>>;
+
+Removes from the list `L` the elements with indices from `I` (inclusive) to `J` (exclusive).
+
+.mp_erase_c
+[cols="<.^4m,9*^.^1m",width=85%]
+|===
+|*L1*|A~0~|...|A~i-1~|A~i~|...|A~j-1~|A~j~|...|A~n-1~
+10+|
+|*mp_erase_c<L1, I, J>*|A~0~|...|A~i-1~|A~j~|...|A~n-1~ 3+|
+|===
+
+## mp_erase<L, I, J>
+
+    template<class L, class I, class J> using mp_erase =
+        mp_append<mp_take<L, I>, mp_drop<L, J>>;
+
+Same as `mp_erase_c`, but with a type arguments `I` and `J`.
+
+## mp_replace<L, V, W>
+
+    template<class L, class V, class W> using mp_replace = /*...*/;
+
+Replaces all `V` elements of `L` with `W` and returns the result.
+
+.mp_replace
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|V|...|A~n~
+5+|
+|*mp_replace<L1, V, W>*|A~1~|W|...|A~n~
+|===
+
+## mp_replace_if<L, P, W>
+
+    template<class L, template<class...> class P, class W> using mp_replace_if = /*...*/;
+
+Replaces all `T` elements of `L` for which `mp_to_bool<P<T>>` is `mp_true` with `W` and returns the result.
+
+.mp_replace_if
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*P<A~i~>*|mp_false|mp_true|...|mp_false
+5+|
+|*mp_replace_if<L1, P, W>*|A~1~|W|...|A~n~
+|===
+
+## mp_replace_if_q<L, Q, W>
+
+    template<class L, class Q, class W> using mp_replace_if_q =
+        mp_replace_if<L, Q::template fn, W>;
+
+As `mp_replace_if`, but takes a quoted metafunction.
+
+## mp_replace_at_c<L, I, W>
+
+    template<class L, std::size_t I, class W> using mp_replace_at_c = /*...*/;
+
+Replaces the element of `L` at zero-based index `I` with `W` and returns the result.
+
+## mp_replace_at<L, I, W>
+
+    template<class L, class I, class W> using mp_replace_at = /*...*/;
+
+Same as `mp_replace_at_c`, but with a type argument `I`. `I::value` must be a nonnegative number.
+
+## mp_copy_if<L, P>
+
+    template<class L, template<class...> class P> using mp_copy_if = /*...*/;
+
+Copies the elements `T` of `L` for which `mp_to_bool<P<T>>` is `mp_true` to a new list of the same form and returns it.
+
+## mp_copy_if_q<L, Q>
+
+    template<class L, class Q> using mp_copy_if_q = mp_copy_if<L, Q::template fn>;
+
+As `mp_copy_if`, but takes a quoted metafunction.
+
+## mp_remove<L, V>
+
+    template<class L, class V> using mp_remove = /*...*/;
+
+Removes all `V` elements of `L` and returns the result.
+
+## mp_remove_if<L, P>
+
+    template<class L, template<class...> class P> using mp_remove_if = /*...*/;
+
+Removes all elements `T` of `L` for which `mp_to_bool<P<T>>` is `mp_true` and returns the result.
+
+## mp_remove_if_q<L, Q>
+
+    template<class L, class Q> using mp_remove_if_q = mp_remove_if<L, Q::template fn>;
+
+As `mp_remove_if`, but takes a quoted metafunction.
+
+## mp_partition<L, P>
+
+    template<class L, template<class...> class P> using mp_partition = /*...*/;
+
+`mp_partition<L<T...>, P>` partitions `L` into two lists `L<U1...>` and `L<U2...>` such that `mp_to_bool<P<T>>` is `mp_true`
+for the elements of `L<U1...>` and `mp_false` for the elements of `L<U2...>`. Returns `L<L<U1...>, L<U2...>>`.
+
+## mp_partition_q<L, Q>
+
+    template<class L, class Q> using mp_partition_q = mp_partition<L, Q::template fn>;
+
+As `mp_partition`, but takes a quoted metafunction.
+
+## mp_sort<L, P>
+
+    template<class L, template<class...> class P> using mp_sort = /*...*/;
+
+`mp_sort<L, P>` sorts the list `L` according to the strict weak ordering `mp_to_bool<P<T, U>>`.
+
+.Using mp_sort to sort a list of std::ratio values
+----
+#include <ratio>
+
+using L1 = mp_list<std::ratio<1,2>, std::ratio<1,4>>;
+using R1 = mp_sort<L1, std::ratio_less>; // mp_list<ratio<1,4>, ratio<1,2>>
+----
+
+## mp_sort_q<L, Q>
+
+    template<class L, class Q> using mp_sort_q = mp_sort<L, Q::template fn>;
+
+As `mp_sort`, but takes a quoted metafunction.
+
+## mp_nth_element_c<L, I, P>
+
+    template<class L, std::size_t I, template<class...> class P> using mp_nth_element_c =
+        /*...*/;
+
+Returns the element at position `I` in `mp_sort<L, P>`.
+
+## mp_nth_element<L, I, P>
+
+    template<class L, class I, template<class...> class P> using mp_nth_element = /*...*/;
+
+Like `mp_nth_element_c`, but with a type argument `I`. `I::value` must be a nonnegative number.
+
+## mp_nth_element_q<L, I, Q>
+
+    template<class L, class I, class Q> using mp_nth_element_q =
+        mp_nth_element<L, I, Q::template fn>;
+
+Like `mp_nth_element`, but takes a quoted metafunction.
+
+## mp_min_element<L, P>
+
+    template<class L, template<class...> class P> using mp_min_element = /*...*/;
+
+`mp_min_element<L, P>` returns the minimal element of the list `L` according to the ordering `mp_to_bool<P<T, U>>`.
+
+It's equivalent to `mp_fold<mp_rest<L>, mp_first<L>, F>`, where `F<T, U>` returns `mp_if<P<T, U>, T, U>`.
+
+## mp_min_element_q<L, Q>
+
+    template<class L, class Q> using mp_min_element_q = mp_min_element<L, Q::template fn>;
+
+As `mp_min_element`, but takes a quoted metafunction.
+
+## mp_max_element<L, P>
+
+    template<class L, template<class...> class P> using mp_max_element = /*...*/;
+
+`mp_max_element<L, P>` returns the maximal element of the list `L` according to the ordering `mp_to_bool<P<T, U>>`.
+
+It's equivalent to `mp_fold<mp_rest<L>, mp_first<L>, F>`, where `F<T, U>` returns `mp_if<P<U, T>, T, U>`.
+
+## mp_max_element_q<L, Q>
+
+    template<class L, class Q> using mp_max_element_q = mp_max_element<L, Q::template fn>;
+
+As `mp_max_element`, but takes a quoted metafunction.
+
+## mp_find<L, V>
+
+    template<class L, class V> using mp_find = /*...*/;
+
+`mp_find<L, V>` returns the index at which the type `V` is located in the list `L`. It's an alias for `mp_size_t<I>`,
+where `I` is the zero-based index of the first occurrence of `V` in `L`. If `L` does not contain `V`, `mp_find<L, V>`
+is `mp_size<L>`.
+
+## mp_find_if<L, P>
+
+    template<class L, template<class...> class P> using mp_find_if = /*...*/;
+
+`mp_find_f<L, P>` is an alias for `mp_size_t<I>`, where `I` is the zero-based index of the first element `T` in `L` for which
+`mp_to_bool<P<T>>` is `mp_true`. If there is no such element, `mp_find_if<L, P>` is `mp_size<L>`.
+
+## mp_find_if_q<L, Q>
+
+    template<class L, class Q> using mp_find_if_q = mp_find_if<L, Q::template fn>;
+
+As `mp_find_if`, but takes a quoted metafunction.
+
+## mp_reverse<L>
+
+    template<class L> using mp_reverse = /*...*/;
+
+`mp_reverse<L<T1, T2, ..., Tn>>` is `L<Tn, ..., T2, T1>`.
+
+.mp_reverse
+[cols="<.^4m,4*^.^1m",width=85%]
+|===
+|*L1*|A~1~|A~2~|...|A~n~
+5+|
+|*mp_reverse<L1>*|A~n~|A~n-1~|...|A~1~
+|===
+
+## mp_fold<L, V, F>
+
+    template<class L, class V, template<class...> class F> using mp_fold = /*...*/;
+
+`mp_fold<L<T1, T2, ..., Tn>, V, F>` is `F< F< F< F<V, T1>, T2>, ...>, Tn>`, or `V`, if `L` is empty.
+
+.Using mp_fold to add the contents of a list of std::ratio values
+----
+#include <ratio>
+
+using L1 = mp_list<std::ratio<1,8>, std::ratio<1,4>, std::ratio<1,2>>;
+using R1 = mp_fold<L1, std::ratio<0,1>, std::ratio_add>; // std::ratio<7,8>
+----
+
+## mp_fold_q<L, V, Q>
+
+    template<class L, class V, class Q> using mp_fold_q =
+        mp_fold<L, V, Q::template fn>;
+
+As `mp_fold`, but takes a quoted metafunction.
+
+## mp_reverse_fold<L, V, F>
+
+    template<class L, class V, template<class...> class F> using mp_reverse_fold =
+        /*...*/;
+
+`mp_reverse_fold<L<T1, T2, ..., Tn>, V, F>` is `F<T1, F<T2, F<..., F<Tn, V>>>>`, or `V`, if `L` is empty.
+
+## mp_reverse_fold_q<L, V, Q>
+
+    template<class L, class V, class Q> using mp_reverse_fold_q =
+        mp_reverse_fold<L, V, Q::template fn>;
+
+As `mp_reverse_fold`, but takes a quoted metafunction.
+
+## mp_unique<L>
+
+    template<class L> using mp_unique = /*...*/;
+
+`mp_unique<L>` returns a list of the same form as `L` with the duplicate elements removed.
+
+## mp_all_of<L, P>
+
+    template<class L, template<class...> class P> using mp_all_of =
+        mp_bool< mp_count_if<L, P>::value == mp_size<L>::value >;
+
+`mp_all_of<L, P>` is `mp_true` when `P` holds for all elements of `L`, `mp_false` otherwise. When `L` is empty, the result is `mp_true`.
+
+## mp_all_of_q<L, Q>
+
+    template<class L, class Q> using mp_all_of_q = mp_all_of<L, Q::template fn>;
+
+As `mp_all_of`, but takes a quoted metafunction.
+
+## mp_none_of<L, P>
+
+    template<class L, template<class...> class P> using mp_none_of =
+        mp_bool< mp_count_if<L, P>::value == 0 >;
+
+`mp_none_of<L, P>` is `mp_true` when `P` holds for no element of `L`, `mp_false` otherwise. When `L` is empty, the result is `mp_true`.
+
+## mp_none_of_q<L, Q>
+
+    template<class L, class Q> using mp_none_of_q = mp_none_of<L, Q::template fn>;
+
+As `mp_none_of`, but takes a quoted metafunction.
+
+## mp_any_of<L, P>
+
+    template<class L, template<class...> class P> using mp_any_of =
+        mp_bool< mp_count_if<L, P>::value != 0 >;
+
+`mp_any_of<L, P>` is `mp_true` when `P` holds for at least one element of `L`, `mp_false` otherwise. When `L` is empty, the result is `mp_false`.
+
+## mp_any_of_q<L, Q>
+
+    template<class L, class Q> using mp_any_of_q = mp_any_of<L, Q::template fn>;
+
+As `mp_any_of`, but takes a quoted metafunction.
+
+## mp_for_each<L>(f)
+
+    template<class L, class F> constexpr F mp_for_each(F&& f);
+
+`mp_for_each<L>(f)` calls `f` with `T()` for each element `T` of the list `L`, in order.
+
+Returns `std::forward<F>(f)`.
+
+.Using mp_for_each and a C++14 lambda to print a tuple
+```
+template<class... T> void print( std::tuple<T...> const & tp )
+{
+    std::size_t const N = sizeof...(T);
+
+    mp_for_each<mp_iota_c<N>>( [&]( auto I ){
+
+        // I is mp_size_t<0>, mp_size_t<1>, ..., mp_size_t<N-1>
+
+        std::cout << std::get<I>(tp) << std::endl;
+
+    });
+}
+```
+
+## mp_with_index<N>(i, f)
+
+    template<std::size_t N, class F>
+      constexpr auto mp_with_index( std::size_t i, F && f )
+        -> decltype(std::declval<F>()(std::declval<mp_size_t<0>>()));
+
+`mp_with_index<N>(i, f)` calls `f` with `mp_size_t<i>()` and returns the result. `i` must be less than `N`.
+Only `constexpr` on C++14 and higher.
+
+    template<class N, class F>
+      constexpr auto mp_with_index( std::size_t i, F && f )
+        -> decltype(std::declval<F>()(std::declval<mp_size_t<0>>()));
+
+Returns `mp_with_index<N::value>(i, f)`.
+
+.Using mp_with_index and a C++14 lambda to print the active element of a variant
+```
+template<class... T> void print( std::variant<T...> const& v )
+{
+    mp_with_index<sizeof...(T)>( v.index(), [&]( auto I ) {
+
+        // I is mp_size_t<v.index()> here
+
+        std::cout << std::get<I>( v ) << std::endl;
+
+    });
+}
+```

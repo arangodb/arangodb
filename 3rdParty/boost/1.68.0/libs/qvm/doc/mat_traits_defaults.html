@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>mat_traits_defaults</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>mat_traits_defaults</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_mat_traits_defaults_hpp.html">boost/qvm/mat_traits_defaults.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;class MatType,class ScalarType,int Rows,int Cols&gt;
+        struct <span class="RenoLink">mat_traits_defaults</span>
+        {
+            typedef MatType mat_type;
+            typedef ScalarType <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span>;
+            static int const <span class="RenoLink"><a href="mat_traits_Matrix_rows.html">rows</a></span>=Rows;
+            static int const <span class="RenoLink"><a href="mat_traits_Matrix_cols.html">cols</a></span>=Cols;
+        
+            template &lt;int Row,int Col&gt;
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span>( mat_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;mat_type&gt;::template <span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span>&lt;Row,Col&gt;(const_cast&lt;mat_type &amp;&gt;(x));
+            }
+        
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="mat_traits_M_read_element_idx.html">read_element_idx</a></span>( int r, int c, mat_type const &amp; x )
+            {
+                return <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;mat_type&gt;::<span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span>(r,c,const_cast&lt;mat_type &amp;&gt;(x));
+            }
+        
+            protected:
+        
+            static <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span>
+            <span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span>( int r, int c, mat_type &amp; m )
+            {
+                /* unspecified */
+            }
+        };</span>
+    }
+}</pre>
+</div><p>The <i><span class="RenoLink">mat_traits_defaults</span></i> template is designed to be used as a public base for user-defined specializations of the <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> template, to easily define the required members. If it is used, the only member that must be defined by the user in a <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> specialization is <i><span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span></i>; the <i><span class="RenoLink">mat_traits_defaults</span></i> base will define <i><span class="RenoLink"><a href="mat_traits_M_read_element.html">read_element</a></span></i>, as well as <i><span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span></i>, <i><span class="RenoLink"><a href="mat_traits_Matrix_rows.html">rows</a></span></i> and <i><span class="RenoLink"><a href="mat_traits_Matrix_cols.html">cols</a></span></i> automatically.</p>
+<p>Optionally, the user may also define <i><span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span></i>, in which case the <i><span class="RenoLink">mat_traits_defaults</span></i> base will provide a suitable <i><span class="RenoLink"><a href="mat_traits_M_read_element_idx.html">read_element_idx</a></span></i> definition automatically. In addition, <i><span class="RenoLink">mat_traits_defaults</span></i> defines a <b>protected</b> implementation of <i><span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span></i> which may be made publicly available by the deriving <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> specialization in case the matrix type for which it is being specialized can not be indexed efficiently. This <i><span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span></i> function is less efficient (using meta-programming), implemented in terms of the required user-defined <i><span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span></i>.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_mat_traits_defaults_hpp.html">boost/qvm/mat_traits_defaults.hpp</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

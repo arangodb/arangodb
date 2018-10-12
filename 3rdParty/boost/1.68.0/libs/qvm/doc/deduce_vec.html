@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>deduce_vec</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>deduce_vec</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_vec_hpp.html">boost/qvm/deduce_vec.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;
+            class V,
+            int Dim=<span class="RenoLink"><a href="vec_traits_Vector_dim.html">vec_traits&lt;Vector&gt;::dim</a></span>&gt;
+        struct <span class="RenoLink">deduce_vec</span>
+        {
+            typedef /*unspecified*/ type;
+        };</span>
+    }
+}</pre>
+</div><h4>Assumption:</h4>
+<p><i><span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;V&gt;::value</i> is <i>true</i>.</p>
+<h4>Requirements:</h4>
+<div><ul><li><i><span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;<span class="RenoLink">deduce_vec</span>&lt;V&gt;::type&gt;::value</i> must be <i>true</i></li>
+<li><i><span class="RenoLink">deduce_vec</span>&lt;V&gt;::type</i> must be copyable</li>
+<li><i><span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;<span class="RenoLink">deduce_vec</span>&lt;V&gt;::type&gt;::<span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span>==Dim</i></li>
+</ul></div>
+<p>This template is used by Boost QVM whenever it needs to deduce a copyable vector type of certain dimension from a single user-supplied function parameter of vector type. The returned type must have accessible copy constructor. Note that <i>V</i> may be non-copyable.</p>
+<p>The main template definition returns an unspecified copyable vector type of size <i>Dim</i>, except if <i><span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;V&gt;::<span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span>==Dim</i>, in which case it returns <i>V</i>, which is suitable only if <i>V</i> is a copyable type. Boost QVM also defines (partial) specializations for the non-copyable vector types it produces. Users can define other (partial) specializations for their own types.</p>
+<p>A typical use of the <i><span class="RenoLink">deduce_vec</span></i> template is for specifying the preferred vector type to be returned by the generic function template overloads in Boost QVM depending on the type of their arguments.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_deduce_vec_hpp.html">boost/qvm/deduce_vec.hpp</a>&nbsp;| <a href="boost_qvm_vec_traits_array_hpp.html">boost/qvm/vec_traits_array.hpp</a>&nbsp;| <a href="normalized_vec_.html">normalized(vec)</a>&nbsp;| <a href="operator_times_scalar_vec_.html">operator*(scalar,vec)</a>&nbsp;| <a href="operator_times_vec_scalar_.html">operator*(vec,scalar)</a>&nbsp;| <a href="operator_minus_vec_.html">operator-(vec)</a>&nbsp;| <a href="operator_over_vec_scalar_.html">operator/(vec,scalar)</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

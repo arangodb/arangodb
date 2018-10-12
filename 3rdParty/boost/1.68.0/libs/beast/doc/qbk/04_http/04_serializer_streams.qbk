@@ -1,0 +1,112 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Serializer Stream Operations]
+
+Non-trivial algorithms need to do more than send entire messages
+at once, such as:
+
+* Send the header first, and the body later.
+
+* Send a message incrementally: bounded work in each I/O cycle.
+
+* Use a series of caller-provided buffers to represent the body.
+
+These tasks may be performed by using the serializer stream interfaces.
+To use these interfaces, first construct an appropriate serializer
+from the message to be sent:
+
+[table Serializer
+[[Name][Description]]
+[[
+    __serializer__
+][
+    ```
+    /// Provides buffer oriented HTTP message serialization functionality.
+    template<
+        bool isRequest,
+        class Body,
+        class Fields = fields
+    >
+    class serializer;
+    ```
+]]
+[[
+    [link beast.ref.boost__beast__http__request_serializer `request_serializer`]
+][
+    ```
+    /// A serializer for HTTP/1 requests
+    template<
+        class Body,
+        class Fields = fields
+    >
+    using request_serializer = serializer<true, Body, Fields>;
+    ```
+]]
+[[
+    [link beast.ref.boost__beast__http__response_serializer `response_serializer`]
+][
+    ```
+    /// A serializer for HTTP/1 responses
+    template<
+        class Body,
+        class Fields = fields
+    >
+    using response_serializer = serializer<false, Body, Fields>;
+    ```
+]]
+]
+
+The choices for template types must match the message passed on construction.
+This code creates an HTTP response and the corresponding serializer:
+
+[http_snippet_10]
+
+The stream operations which work on serializers are:
+
+[table Serializer Stream Operations
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__http__write.overload1 [*write]]
+][
+    Send everything in a __serializer__ to a __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_write.overload1 [*async_write]]
+][
+    Send everything in a __serializer__ asynchronously to an __AsyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__write_header.overload1 [*write_header]]
+][
+    Send only the header from a __serializer__ to a __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_write_header [*async_write_header]]
+][
+    Send only the header from a __serializer__ asynchronously to an __AsyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__write_some.overload1 [*write_some]]
+][
+    Send part of a __serializer__ to a __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_write_some [*async_write_some]]
+][
+    Send part of a __serializer__ asynchronously to an __AsyncWriteStream__.
+]]
+]
+
+Here is an example of using a serializer to send a message on a stream
+synchronously. This performs the same operation as calling `write(stream, m)`:
+
+[http_snippet_12]
+
+[endsect]

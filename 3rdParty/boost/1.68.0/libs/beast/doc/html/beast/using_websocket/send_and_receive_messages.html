@@ -1,0 +1,242 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Send and Receive Messages</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_websocket.html" title="Using WebSocket">
+<link rel="prev" href="handshaking_servers.html" title="Handshaking (Servers)">
+<link rel="next" href="control_frames.html" title="Control Frames">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="handshaking_servers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_websocket.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="control_frames.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_websocket.send_and_receive_messages"></a><a class="link" href="send_and_receive_messages.html" title="Send and Receive Messages">Send
+      and Receive Messages</a>
+</h3></div></div></div>
+<p>
+        Interfaces for transacting messages are structured into layers. The highest
+        layer provides ease of use, while lower layers provide additional control
+        and flexibility. The layers are arranged thusly:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Level
+                </p>
+              </th>
+<th>
+                <p>
+                  Read/Write What
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong>2</strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  message
+                </p>
+              </td>
+<td>
+                <p>
+                  At the top layer, these functions allow for an entire message to
+                  be sent or received. They are designed for ease of use: <a class="link" href="../ref/boost__beast__websocket__stream/read/overload2.html" title="websocket::stream::read (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">read</span></code></a>, <a class="link" href="../ref/boost__beast__websocket__stream/write/overload2.html" title="websocket::stream::write (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">write</span></code></a>, <a class="link" href="../ref/boost__beast__websocket__stream/async_read.html" title="websocket::stream::async_read"><code class="computeroutput"><span class="identifier">async_read</span></code></a>, and <a class="link" href="../ref/boost__beast__websocket__stream/async_write.html" title="websocket::stream::async_write"><code class="computeroutput"><span class="identifier">async_write</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong>1</strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>partial</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  These read functions enable partial message data to be received
+                  into a <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="bold"><strong>DynamicBuffer</strong></span></a>.
+                  They can be configured to perform bounded work: <a class="link" href="../ref/boost__beast__websocket__stream/read_some/overload2.html" title="websocket::stream::read_some (2 of 4 overloads)"><code class="computeroutput"><span class="identifier">read_some</span></code></a>, and <a class="link" href="../ref/boost__beast__websocket__stream/async_read_some/overload1.html" title="websocket::stream::async_read_some (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">async_read_some</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong>0</strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>partial</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  At the lowest level these read and write functions enable partial
+                  message data to be transacted using a constant or mutable buffer
+                  sequence: <a class="link" href="../ref/boost__beast__websocket__stream/read_some/overload4.html" title="websocket::stream::read_some (4 of 4 overloads)"><code class="computeroutput"><span class="identifier">read_some</span></code></a>, <a class="link" href="../ref/boost__beast__websocket__stream/write_some/overload2.html" title="websocket::stream::write_some (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">write_some</span></code></a>, <a class="link" href="../ref/boost__beast__websocket__stream/async_read_some/overload2.html" title="websocket::stream::async_read_some (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">async_read_some</span></code></a>, and
+                  <a class="link" href="../ref/boost__beast__websocket__stream/async_write_some.html" title="websocket::stream::async_write_some"><code class="computeroutput"><span class="identifier">async_write_some</span></code></a>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        After the WebSocket handshake is accomplished, callers may send and receive
+        messages using the message oriented interface. This interface requires that
+        all of the buffers representing the message are known ahead of time:
+      </p>
+<pre class="programlisting"><span class="comment">// This DynamicBuffer will hold the received message</span>
+<span class="identifier">multi_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+
+<span class="comment">// Read a complete message into the buffer's input area</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">read</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+
+<span class="comment">// Set text mode if the received message was also text,</span>
+<span class="comment">// otherwise binary mode will be set.</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">text</span><span class="special">(</span><span class="identifier">ws</span><span class="special">.</span><span class="identifier">got_text</span><span class="special">());</span>
+
+<span class="comment">// Echo the received message back to the peer. If the received</span>
+<span class="comment">// message was in text mode, the echoed message will also be</span>
+<span class="comment">// in text mode, otherwise it will be in binary mode.</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">());</span>
+
+<span class="comment">// Discard all of the bytes stored in the dynamic buffer,</span>
+<span class="comment">// otherwise the next call to read will append to the existing</span>
+<span class="comment">// data instead of building a fresh message.</span>
+<span class="identifier">buffer</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">size</span><span class="special">());</span>
+</pre>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <a class="link" href="../ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code></a> is not thread-safe. Calls
+          to stream member functions must all be made from the same implicit or explicit
+          strand.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="beast.using_websocket.send_and_receive_messages.h0"></a>
+        <span class="phrase"><a name="beast.using_websocket.send_and_receive_messages.frames"></a></span><a class="link" href="send_and_receive_messages.html#beast.using_websocket.send_and_receive_messages.frames">Frames</a>
+      </h5>
+<p>
+        Some use-cases make it impractical or impossible to buffer the entire message
+        ahead of time:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Streaming multimedia to an endpoint.
+          </li>
+<li class="listitem">
+            Sending a message that does not fit in memory at once.
+          </li>
+<li class="listitem">
+            Providing incremental results as they become available.
+          </li>
+</ul></div>
+<p>
+        For these cases, the partial data oriented interface may be used. This example
+        reads and echoes a complete message using this interface:
+      </p>
+<pre class="programlisting"><span class="comment">// This DynamicBuffer will hold the received message</span>
+<span class="identifier">multi_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+
+<span class="comment">// Read the next message in pieces</span>
+<span class="keyword">do</span>
+<span class="special">{</span>
+    <span class="comment">// Append up to 512 bytes of the message into the buffer</span>
+    <span class="identifier">ws</span><span class="special">.</span><span class="identifier">read_some</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">,</span> <span class="number">512</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">while</span><span class="special">(!</span> <span class="identifier">ws</span><span class="special">.</span><span class="identifier">is_message_done</span><span class="special">());</span>
+
+<span class="comment">// At this point we have a complete message in the buffer, now echo it</span>
+
+<span class="comment">// The echoed message will be sent in binary mode if the received</span>
+<span class="comment">// message was in binary mode, otherwise we will send in text mode.</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">binary</span><span class="special">(</span><span class="identifier">ws</span><span class="special">.</span><span class="identifier">got_binary</span><span class="special">());</span>
+
+<span class="comment">// This buffer adapter allows us to iterate through buffer in pieces</span>
+<span class="identifier">buffers_suffix</span><span class="special">&lt;</span><span class="identifier">multi_buffer</span><span class="special">::</span><span class="identifier">const_buffers_type</span><span class="special">&gt;</span> <span class="identifier">cb</span><span class="special">{</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">()};</span>
+
+<span class="comment">// Echo the received message in pieces.</span>
+<span class="comment">// This will cause the message to be broken up into multiple frames.</span>
+<span class="keyword">for</span><span class="special">(;;)</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer_size</span><span class="special">;</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">buffer_size</span><span class="special">(</span><span class="identifier">cb</span><span class="special">)</span> <span class="special">&gt;</span> <span class="number">512</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// There are more than 512 bytes left to send, just</span>
+        <span class="comment">// send the next 512 bytes. The value `false` informs</span>
+        <span class="comment">// the stream that the message is not complete.</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">buffers_prefix</span><span class="special">(</span><span class="number">512</span><span class="special">,</span> <span class="identifier">cb</span><span class="special">));</span>
+
+        <span class="comment">// This efficiently discards data from the adapter by</span>
+        <span class="comment">// simply ignoring it, but does not actually affect the</span>
+        <span class="comment">// underlying dynamic buffer.</span>
+        <span class="identifier">cb</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="number">512</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="keyword">else</span>
+    <span class="special">{</span>
+        <span class="comment">// Only 512 bytes or less remain, so write the whole</span>
+        <span class="comment">// thing and inform the stream that this piece represents</span>
+        <span class="comment">// the end of the message by passing `true`.</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">cb</span><span class="special">);</span>
+        <span class="keyword">break</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="comment">// Discard all of the bytes stored in the dynamic buffer,</span>
+<span class="comment">// otherwise the next call to read will append to the existing</span>
+<span class="comment">// data instead of building a fresh message.</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="handshaking_servers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_websocket.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="control_frames.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

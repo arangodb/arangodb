@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Command Line Macro
+    </h3>
+    <p>
+      <span class="bold"><strong>bold</strong></span>
+    </p>
+    <p>
+      empty is defined
+    </p>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+#==============================================================================
+#   Copyright (c) 2002 2004 2006 Joel de Guzman
+#   Copyright (c) 2004 Eric Niebler
+#   http://spirit.sourceforge.net/
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+
+project quickbook/doc ;
+
+using boostbook ;
+using quickbook ;
+
+# Targets for building individual parts for combined documentation.
+xml quickbook : quickbook.qbk ;
+xml boost-doc-tools : boost-doc-tools/boost-doc-tools.qbk ;
+
+# Target for building the full documentation guide from quickbook.
+xml doc-guide : doc-guide.qbk ;
+
+path-constant images : ../../../doc/src ;
+
+boostbook standalone
+    :
+        doc-guide
+    :
+        <format>html:<xsl:param>boost.root=../../../..
+        <format>html:<xsl:param>img.src.path=../../../../doc/html/
+        <format>xhtml:<xsl:param>boost.root=../../../..
+        <format>xhtml:<xsl:param>img.src.path=../../../../doc/html/
+
+        #<xsl:param>callout.graphics.path=../../images/callouts//
+        <format>pdf:<xsl:param>img.src.path=$(images)/
+        <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/doc/html
+    ;
+
+boostbook fully-standalone
+    :
+        doc-guide/<quickbook-define>__standalone__
+    :
+        <dependency>css
+        <dependency>images
+        <xsl:param>boost.root=http://www.boost.org/doc/libs/develop
+        <xsl:param>html.stylesheet=boostbook.css
+        <xsl:param>img.src.path=images/
+        <xsl:param>boost.graphics.root=images/
+        <xsl:param>boost.mobile=1
+        # Use an invalid nav.layout value so it displays the header
+        # image, but with no navigation.
+        <xsl:param>nav.layout=hackhackhack
+    ;
+explicit fully-standalone ;
+
+install css : [ glob $(BOOST_ROOT)/doc/src/*.css ]
+    : <location>html ;
+install images : [ glob $(BOOST_ROOT)/doc/src/images/*.png ]
+    : <location>html/images ;
+explicit css ;
+explicit images ;

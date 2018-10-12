@@ -1,0 +1,20 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#mpl]
+# MPL Support, <boost/mp11/mpl.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+The header `<boost/mp11/mpl.hpp>`, when included, defines the
+necessary support infrastructure for `mp_list` and `std::tuple`
+to be valid link:../../../../libs/mpl[MPL] sequences.
+
+NOTE: `mpl.hpp` is not included by `<boost/mp11.hpp>`.
