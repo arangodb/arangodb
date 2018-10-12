@@ -1781,7 +1781,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
 
     upsert = _config.upsertPool(pslice, id);
-    if (u == config_t::WRONG) {
+    if (upsert == config_t::WRONG) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
       FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
     }
