@@ -4,22 +4,24 @@ function help() {
   echo "USAGE: $0 [options]"
   echo ""
   echo "OPTIONS:"
-  echo "  -a/--nagents            # agents            (odd integer      default: 1))"
-  echo "  -c/--ncoordinators      # coordinators      (odd integer      default: 1))"
-  echo "  -d/--ndbservers         # db servers        (odd integer      default: 2))"
-  echo "  -t/--transport          Protocol            (ssl|tcp          default: tcp)"
-  echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
-  echo "     --log-level-agency   Log level (agency)  (string           default: )"
-  echo "     --log-level-cluster  Log level (cluster) (string           default: )"
-  echo "  -l/--log-level          Log level           (string           default: )"
-  echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
-  echo "  -x/--xterm              XTerm command       (default: xterm)"
-  echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
-  echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
-  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: true)"
-  echo "  -q/--source-dir         ArangoDB source dir (default: .)"
-  echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
-  echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
+  echo "  -a/--nagents            # agents             (odd integer      default: 1))"
+  echo "  -c/--ncoordinators      # coordinators       (odd integer      default: 1))"
+  echo "  -d/--ndbservers         # db servers         (odd integer      default: 2))"
+  echo "  -t/--transport          Protocol             (ssl|tcp          default: tcp)"
+  echo "  -j/--jwt-secret         JWT-Secret           (string           default: )"
+  echo "     --log-level-agency   Log level (agency)   (string           default: )"
+  echo "     --log-level-cluster  Log level (cluster)  (string           default: )"
+  echo "  -l/--log-level          Log level            (string           default: )"
+  echo "  -i/--interactive        Interactive mode     (C|D|R            default: '')"
+  echo "  -x/--xterm              XTerm command        (default: xterm)"
+  echo "  -o/--xterm-options      XTerm options        (default: --geometry=80x43)"
+  echo "  -b/--offset-ports       Offset ports         (default: 0, i.e. A:4001, C:8530, D:8629)"
+  echo "  -r/--rocksdb-engine     Use RocksDB engine   (default: true)"
+  echo "  -q/--source-dir         ArangoDB source dir  (default: .)"
+  echo "  -B/--bin-dir            ArangoDB binary dir  (default: ./build)"
+  echo "  -O/--ongoing-ports      Ongoing ports        (default: false)"
+  echo "     --cluster-init       Use cluster-init dir (default: false)"
+  echo "     --auto-upgrade       Use for upgrade      (default: false)"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -117,6 +119,13 @@ while [[ -n "$1" ]]; do
       ;;
     -O|--ongoing-ports)
       ONGOING_PORTS=${2}
+      shift
+      ;;
+    --cluster-init)
+      shift
+      ;;
+    --auto-upgrade)
+      AUTOUPGRADE=${2}
       shift
       ;;
     *)
