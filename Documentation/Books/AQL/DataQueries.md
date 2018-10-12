@@ -14,8 +14,6 @@ RETURN "Hello ArangoDB!"
 The query result is always an array of elements, even if a single element was
 returned and contains a single element in that case: `["Hello ArangoDB!"]`
 
-Dig deeper into query optimization by going through the [ArangoDB Performance course](https://www.arangodb.com/arangodb-performance-course/).
-
 The function `DOCUMENT()` can be called to retrieve a single document via
 its document handle, for instance:
 
