@@ -15,6 +15,16 @@ devel
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* fix internal issue #486: immediate deletion (right after creation) of
+  a view with a link to one collection and indexed data reports failure
+  but removes the link
+
+* fix internal issue #480: link to a collection is not added to a view
+  if it was already added to other view
+
+* fix internal issues #407, #445: limit ArangoSearch memory consumption
+  so that it won't cause OOM while indexing large collections
+
 * upgraded arangodb starter version to 0.13.5
 
 * removed undocumented `db.<view>.toArray()` function from ArangoShell
