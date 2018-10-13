@@ -1,4 +1,4 @@
-v3.4.0-rc.3 (XXXX-XX-XX)
+v3.4.0-rc.3 (2018-10-13)
 ------------------------
 
 * fix internal issue #486: immediate deletion (right after creation) of
