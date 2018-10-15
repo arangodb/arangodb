@@ -64,6 +64,9 @@ static std::string const fifteenMinuteQuery("FOR s in _statistics FILTER s.time 
 static std::string const filteredFifteenMinuteQuery("FOR s in _statistics FILTER s.time >= @start FILTER s.clusterId == @clusterId SORT s.time RETURN s");
 
 double extractNumber(VPackSlice slice, char const* attribute) {
+  if (!slice.isObject()) {
+    return 0.0;
+  }
   slice = slice.get(attribute);
   if (!slice.isNumber()) {
     return 0.0;
@@ -409,7 +412,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       clientAvgQueueTime += extractNumber(client, "avgQueueTime");
       clientAvgIoTime += extractNumber(client, "avgIoTime");
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during statistics processing: " << ex.what();
+      LOG_TOPIC(WARN, Logger::STATISTICS) << "caught exception during statistics processing: " << ex.what();
     }
   }
 
