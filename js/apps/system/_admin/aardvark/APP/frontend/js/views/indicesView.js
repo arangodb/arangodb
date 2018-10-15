@@ -385,9 +385,9 @@
           var position = v.id.indexOf('/');
           var indexId = v.id.substr(position + 1, v.id.length);
           var selectivity = (
-          v.hasOwnProperty('selectivityEstimate')
-            ? (v.selectivityEstimate * 100).toFixed(2) + '%'
-            : 'n/a'
+            v.hasOwnProperty('selectivityEstimate')
+              ? (v.selectivityEstimate * 100).toFixed(2) + '%'
+              : 'n/a'
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var deduplicate = (v.hasOwnProperty('deduplicate') ? v.deduplicate : 'n/a');
