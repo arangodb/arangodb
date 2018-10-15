@@ -50,6 +50,12 @@
 #include "Basics/directories.h"
 #include "Basics/Common.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+#include "dbghelp.h"
+#endif
+#endif
+
 using namespace arangodb::basics;
 
 // .............................................................................
