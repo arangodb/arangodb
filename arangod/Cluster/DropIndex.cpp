@@ -98,9 +98,11 @@ bool DropIndex::first() {
 
   } catch (std::exception const& e) {
     std::stringstream error;
+
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+
     return false;
   }
 

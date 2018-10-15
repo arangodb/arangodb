@@ -645,7 +645,7 @@ struct AstNode {
   /// @brief set the string value of a node
   inline void setStringValue(char const* v, size_t length) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  // note: v may contain the NUL byte and is not necessarily
+    // note: v may contain the NUL byte and is not necessarily
     // null-terminated itself (if from VPack)
     value.type = VALUE_TYPE_STRING;
     value.value._string = v;

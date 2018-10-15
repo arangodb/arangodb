@@ -24,6 +24,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -123,6 +124,10 @@ void OptimizerRulesFeature::addRules() {
   // as possible as early as possible)
   registerRule("move-filters-up", moveFiltersUpRule, OptimizerRule::moveFiltersUpRule,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // simplify conditions
+  registerRule("simplify-conditions", simplifyConditionsRule,
+               OptimizerRule::simplifyConditionsRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // remove redundant calculations
   registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
@@ -173,12 +178,12 @@ void OptimizerRulesFeature::addRules() {
 
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
-               OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeFiltersCoveredByTraversal, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
-  // rule remove all filters using the path variable
+  // rules remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
-               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+               OptimizerRule::removeTraversalPathVariable, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
   registerHiddenRule("prepare-traversals", prepareTraversalsRule,
@@ -238,6 +243,10 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // fuse multiple adjacent filters into one
+  registerRule("fuse-filters", fuseFiltersRule,
+               OptimizerRule::fuseFiltersRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // finally, push calculations as far down as possible
   registerRule("move-calculations-down", moveCalculationsDownRule,
@@ -265,9 +274,8 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-
     registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
-                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+                 OptimizerRule::substituteSingleDocumentOperations, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
@@ -373,41 +381,57 @@ std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
       continue;
     }
     if (name[0] == '-') {
-      // disable rule
-      if (name == "-all") {
-        // disable all rules
-        for (auto const& it : _rules) {
-          if (it.second.canBeDisabled) {
-            disabled.emplace(it.first);
-          }
-        }
-      } else {
-        // disable a specific rule
-        auto it = _ruleLookup.find(name.c_str() + 1);
-
-        if (it != _ruleLookup.end()) {
-          if ((*it).second.second) {
-            // can be disabled
-            disabled.emplace((*it).second.first);
-          }
-        }
-      }
-    } else if (name[0] == '+') {
-      // enable rule
-      if (name == "+all") {
-        // enable all rules
-        disabled.clear();
-      } else {
-        auto it = _ruleLookup.find(name.c_str() + 1);
-
-        if (it != _ruleLookup.end()) {
-          disabled.erase((*it).second.first);
-        }
-      }
+      disableRule(name, disabled);
+    } else {
+      enableRule(name, disabled);
     }
   }
 
   return disabled;
+}
+
+void OptimizerRulesFeature::disableRule(std::string const& name, std::unordered_set<int>& disabled) {
+  TRI_ASSERT(name[0] == '-');
+  char const* p = name.data() + 1;
+  size_t size = name.size() - 1;
+
+  if (StringRef(p, size) == "all") {
+    // disable all rules
+    for (auto const& it : _rules) {
+      if (it.second.canBeDisabled) {
+        disabled.emplace(it.first);
+      }
+    }
+  } else {
+    // disable a specific rule
+    auto it = _ruleLookup.find(p);
+
+    if (it != _ruleLookup.end() && (*it).second.second) {
+      // can be disabled
+      disabled.emplace((*it).second.first);
+    }
+  }
+}
+
+void OptimizerRulesFeature::enableRule(std::string const& name, std::unordered_set<int>& disabled) {
+  char const* p = name.data();
+  size_t size = name.size();
+
+  if (name[0] == '+') {
+    ++p;
+    --size;
+  }
+
+  if (StringRef(p, size) == "all") {
+    // enable all rules
+    disabled.clear();
+  } else {
+    auto it = _ruleLookup.find(p);
+
+    if (it != _ruleLookup.end()) {
+      disabled.erase((*it).second.first);
+    }
+  }
 }
 
 } // aql

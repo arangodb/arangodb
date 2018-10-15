@@ -382,9 +382,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
 }
 
 Syncer::~Syncer() {
-  try {
-    sendRemoveBarrier();
-  } catch (...) {
+  if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
   }
 }
 
@@ -409,32 +408,6 @@ TRI_voc_tick_t Syncer::stealBarrier() {
   _state.barrier.id = 0;
   _state.barrier.updateTime = 0;
   return id;
-}
-
-/// @brief send a "remove barrier" command
-Result Syncer::sendRemoveBarrier() {
-  if (_state.isChildSyncer || _state.barrier.id == 0) {
-    return Result();
-  }
-
-  try {
-    std::string const url = replutils::ReplicationUrl + "/barrier/" +
-                            basics::StringUtils::itoa(_state.barrier.id);
-
-    // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _state.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                               url, nullptr, 0));
-
-    if (replutils::hasFailed(response.get())) {
-      return replutils::buildHttpError(response.get(), url, _state.connection);
-    }
-    _state.barrier.id = 0;
-    _state.barrier.updateTime = 0;
-    return Result();
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
-  }
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }

@@ -190,8 +190,8 @@ Connection::Connection(Syncer* syncer,
   if (endpoint != nullptr) {
     connection.reset(httpclient::GeneralClientConnection::factory(
         endpoint, applierConfig._requestTimeout, applierConfig._connectTimeout,
-        (size_t)applierConfig._maxConnectRetries,
-        (uint32_t)applierConfig._sslProtocol));
+        static_cast<size_t>(applierConfig._maxConnectRetries),
+        static_cast<uint32_t>(applierConfig._sslProtocol)));
   }
 
   if (connection != nullptr) {
@@ -217,9 +217,9 @@ Connection::Connection(Syncer* syncer,
     } else {
       params.setJwt(applierConfig._jwt);
     }
+    params.setMaxPacketSize(applierConfig._maxPacketSize);
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
     client.reset(new httpclient::SimpleHttpClient(connection, params));
-//    client->checkForGlobalAbort(true);
   }
 }
 
@@ -334,6 +334,32 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
 
   return Result();
 }
+  
+/// @brief send a "remove barrier" command
+Result BarrierInfo::remove(Connection& connection) noexcept {
+  using basics::StringUtils::itoa;
+  if (id == 0) {
+    return Result();
+  }
+  
+  try {
+    std::string const url = replutils::ReplicationUrl + "/barrier/" + itoa(id);
+    
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response(
+        connection.client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+    
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, connection);
+    }
+    id = 0;
+    updateTime = 0;
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  return Result();
+}
+  
   
 constexpr double BatchInfo::DefaultTimeout;
 

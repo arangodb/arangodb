@@ -111,10 +111,12 @@ struct BarrierInfo {
 
   /// @brief send a "create barrier" command
   Result create(Connection&, TRI_voc_tick_t);
-
+  
   /// @brief send an "extend barrier" command
-  // TODO worker-safety
   Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
+  
+  /// @brief send remove barrier command
+  Result remove(Connection&) noexcept;
 };
 
 struct BatchInfo {
@@ -131,9 +133,7 @@ struct BatchInfo {
   Result start(Connection& connection, ProgressInfo& progress);
 
   /// @brief send an "extend batch" command
-  // TODO worker-safety
-  Result extend(Connection& connection,
-                ProgressInfo& progress);  // TODO worker safety
+  Result extend(Connection& connection, ProgressInfo& progress);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety

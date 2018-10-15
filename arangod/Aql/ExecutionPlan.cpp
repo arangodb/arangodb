@@ -953,9 +953,9 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   }
 
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
-  std::string const viewName = expression->getString();
     
 #ifdef USE_IRESEARCH
+  std::string const viewName = expression->getString();
   auto& vocbase = _ast->query()->vocbase();
 
   std::shared_ptr<LogicalView> view;

@@ -133,12 +133,14 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
     explicit IteratorImpl(SubReadersType::const_iterator const& itr) noexcept
       : _itr(itr) {
     }
+
     virtual void operator++() noexcept override { ++_itr; }
     virtual reference operator*() noexcept override { return *(_itr->first); }
 
     virtual const_reference operator*() const noexcept override {
       return *(_itr->first);
     }
+
     virtual bool operator==(
         const reader_iterator_impl& other
     ) noexcept override {
@@ -431,7 +433,6 @@ arangodb::Result persistProperties(
 bool consolidateCleanupStore(
     irs::directory& directory,
     irs::index_writer& writer,
-    std::atomic<size_t>& segmentCount,
     arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& policy,
     bool runCleanupAfterConsolidation,
     arangodb::iresearch::IResearchView const& view,
@@ -444,28 +445,28 @@ bool consolidateCleanupStore(
   // ...........................................................................
 
   // skip if interval not reached or no valid policy to execute
-  if (policy.policy() && policy.segmentThreshold() < segmentCount.load()) {
+  if (policy.policy()) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "registering consolidation policy '" << policy.type() << "for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
+      << "registering consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
     try {
       writer.consolidate(policy.policy());
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
+        << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.what();
+        << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registration of consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "'";
+        << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "'";
       IR_LOG_EXCEPTION();
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished registering consolidation policy '" << policy.type() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
+      << "finished registering consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
   }
 
   if (!runCleanupAfterConsolidation) {
@@ -528,10 +529,8 @@ IResearchView::DataStore& IResearchView::DataStore::operator=(
 
 void IResearchView::DataStore::sync() {
   TRI_ASSERT(_writer && _reader);
-  _segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
   _writer->commit();
   _reader = _reader.reopen(); // update reader
-  _segmentCount = _reader.size(); // add commited segments
 }
 
 IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
@@ -800,7 +799,6 @@ IResearchView::IResearchView(
             && consolidateCleanupStore(
                  *_storePersisted._directory,
                  *_storePersisted._writer,
-                 _storePersisted._segmentCount,
                  state._consolidationPolicy,
                  runCleanupAfterConsolidation,
                  *this,
@@ -1116,9 +1114,22 @@ arangodb::Result IResearchView::dropImpl() {
   }
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto res = IResearchLinkHelper::updateLinks(
-    collections, vocbase(), *this, emptyObjectSlice(), stale
-  );
+  arangodb::Result res;
+
+  {
+    if (!_updateLinksLock.try_lock()) {
+      return arangodb::Result(
+        TRI_ERROR_FAILED, // FIXME use specific error code
+        std::string("failed to remove arangosearch view '") + name()
+      );
+    }
+
+    ADOPT_SCOPED_LOCK_NAMED(_updateLinksLock, lock);
+
+    res = IResearchLinkHelper::updateLinks(
+      collections, vocbase(), *this, emptyObjectSlice(), stale
+    );
+  }
 
   if (!res.ok()) {
     return arangodb::Result(
@@ -1292,8 +1303,6 @@ arangodb::Result IResearchView::commit() {
          );
       }
     }
-
-    _storePersisted._segmentCount = _storePersisted._reader.size(); // set commited segments
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished persisted-sync sync for arangosearch view '" << name() << "'";
@@ -1508,7 +1517,6 @@ int IResearchView::insert(
     arangodb::DatabasePathFeature
   >("DatabasePath");
 
-
   if (!feature) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure to find feature 'DatabasePath' while constructing arangosearch View in database '" << vocbase.id() << "'";
@@ -1532,6 +1540,31 @@ int IResearchView::insert(
     return nullptr;
   }
 
+  auto links = properties.hasKey(StaticStrings::LinksField)
+             ? properties.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice();
+
+  // check link auth as per https://github.com/arangodb/backlog/issues/459
+  if (arangodb::ExecContext::CURRENT) {
+    // check new links
+    for (arangodb::velocypack::ObjectIterator itr(links); itr.valid(); ++itr) {
+      if (!itr.key().isString()) {
+        continue; // not a resolvable collection (invalid jSON)
+      }
+
+      auto collection = vocbase.lookupCollection(itr.key().copyString());
+
+      if (collection
+          && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+        TRI_set_errno(TRI_ERROR_FORBIDDEN);
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "insufficient rights to create view with link to collection' " << collection->name() << "'";
+
+        return nullptr;
+      }
+    }
+  }
+
   if (preCommit && !preCommit(view)) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
       << "Failure during pre-commit while constructing arangosearch View in database '" << vocbase.id() << "'";
@@ -1539,16 +1572,43 @@ int IResearchView::insert(
     return nullptr;
   }
 
-  if (isNew) {
-    auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
+  if (!isNew) {
+    return view; // nothing more to do
+  }
+
+  auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
+
+  if (!res.ok()) {
+    TRI_set_errno(res.errorNumber());
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure during commit of created view while constructing arangosearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+
+    return nullptr;
+  }
+
+  // create links on a best-effor basis
+  // link creation failure does not cause view creation failure
+  try {
+    std::unordered_set<TRI_voc_cid_t> collections;
+    auto res =
+      IResearchLinkHelper::updateLinks(collections, vocbase, *view, links);
 
     if (!res.ok()) {
-      TRI_set_errno(res.errorNumber());
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure during commit of created view while constructing arangosearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
-
-      return nullptr;
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to create links while creating arangosearch view '" << view->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
     }
+  } catch (arangodb::basics::Exception const& e) {
+    IR_LOG_EXCEPTION();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.code() << " " << e.what();
+  } catch (std::exception const& e) {
+    IR_LOG_EXCEPTION();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.what();
+  } catch (...) {
+    IR_LOG_EXCEPTION();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating links while creating arangosearch view '" << view->name() << "'";
   }
 
   return view;
@@ -1880,19 +1940,21 @@ arangodb::Result IResearchView::updateProperties(
         }
       }
 
+      auto links = slice.hasKey(StaticStrings::LinksField)
+                 ? slice.get(StaticStrings::LinksField)
+                 : arangodb::velocypack::Slice::emptyObjectSlice();
+
       // check new links
-      if (slice.hasKey(StaticStrings::LinksField)) {
-        for (arangodb::velocypack::ObjectIterator itr(slice.get(StaticStrings::LinksField)); itr.valid(); ++itr) {
-          if (!itr.key().isString()) {
-            continue; // not a resolvable collection (invalid jSON)
-          }
+      for (arangodb::velocypack::ObjectIterator itr(links); itr.valid(); ++itr) {
+        if (!itr.key().isString()) {
+          continue; // not a resolvable collection (invalid jSON)
+        }
 
-          auto collection= vocbase().lookupCollection(itr.key().copyString());
+        auto collection = vocbase().lookupCollection(itr.key().copyString());
 
-          if (collection
-              && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
-            return arangodb::Result(TRI_ERROR_FORBIDDEN);
-          }
+        if (collection
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+          return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
       }
     }
@@ -1922,6 +1984,8 @@ arangodb::Result IResearchView::updateProperties(
   if (partialUpdate) {
     mtx.unlock(); // release lock
 
+    SCOPED_LOCK(_updateLinksLock);
+
     return IResearchLinkHelper::updateLinks(
       collections, vocbase(), *this, links
     );
@@ -1930,6 +1994,8 @@ arangodb::Result IResearchView::updateProperties(
   auto stale = _metaState._collections;
 
   mtx.unlock(); // release lock
+
+  SCOPED_LOCK(_updateLinksLock);
 
   return IResearchLinkHelper::updateLinks(
     collections, vocbase(), *this, links, stale

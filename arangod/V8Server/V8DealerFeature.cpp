@@ -26,7 +26,6 @@
 #include <thread>
 
 #include "Actions/actions.h"
-#include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
@@ -891,9 +890,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       bool const contextLimitNotExceeded = (_contexts.size() + _nrInflightContexts < _nrMaxContexts);
 
       if (contextLimitNotExceeded &&
-          _dynamicContextCreationBlockers == 0 &&
-          !MaxMapCountFeature::isNearMaxMappings()) {
-
+          _dynamicContextCreationBlockers == 0) {
         ++_nrInflightContexts;
 
         TRI_ASSERT(guard.isLocked());

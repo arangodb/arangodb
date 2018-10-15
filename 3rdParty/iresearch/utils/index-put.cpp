@@ -512,7 +512,7 @@ int put(
 
     SCOPED_TIMER("Merge time");
     std::cout << "Merging segments:" << std::endl;
-    writer->consolidate(irs::index_utils::consolidate_all());
+    writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()));
     writer->commit();
     irs::directory_utils::remove_all_unreferenced(*dir);
   }
