@@ -1032,8 +1032,7 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url)
-      .success(function (result, dummy, request) {
+      $.ajax(url).success(function (result, dummy, request) {
         if (callback) {
           callback(result);
           return;

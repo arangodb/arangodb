@@ -1216,8 +1216,8 @@
       this.openNodesDate = new Date();
     },
 
-      // click nodes context menu
-      /*
+    // click nodes context menu
+    /*
       createNodesContextMenu: function () {
         var self = this;
         var e = self.nodesContextEventState;
