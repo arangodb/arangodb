@@ -130,17 +130,6 @@ struct consolidation {
   double_t score{ -1. }; // how good this permutation is
 };
 
-//void print_segment(const segment_stat& stat) {
-//#ifdef IRESEARCH_DEBUG
-//  IR_FRMT_TRACE(
-//    "Name='%s', docs_count='" IR_SIZE_T_SPECIFIER "', live_docs_count='" IR_SIZE_T_SPECIFIER "', size='" IR_SIZE_T_SPECIFIER "'",
-//    stat.meta->name.c_str(), stat.meta->docs_count, stat.meta->live_docs_count, stat.size
-//  );
-//#else
-//  UNUSED(stat);
-//#endif
-//}
-
 /// @returns score of the consolidation bucket
 double_t consolidation_score(
     const consolidation_candidate& consolidation,

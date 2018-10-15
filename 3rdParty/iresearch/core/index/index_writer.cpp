@@ -36,6 +36,7 @@
 #include "index_writer.hpp"
 
 #include <list>
+#include <sstream>
 
 NS_LOCAL
 
@@ -363,6 +364,32 @@ void map_removals(
   }
 }
 
+std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
+  std::stringstream ss;
+  size_t total_size = 0;
+  size_t total_docs_count = 0;
+  size_t total_live_docs_count = 0;
+
+  for (const auto* meta : consolidation) {
+    ss << "Name='" << meta->name
+       << "', docs_count=" << meta->docs_count
+       << ", live_docs_count=" << meta->live_docs_count
+       << ", size=" << meta->size
+       << std::endl;
+
+    total_docs_count += meta->docs_count;
+    total_live_docs_count += meta->live_docs_count;
+    total_size += meta->size;
+  }
+
+  ss << "Total: segments=" << consolidation.size()
+     << ", docs_count=" << total_docs_count
+     << ", live_docs_count=" << total_live_docs_count
+     << " size=" << total_size << "";
+
+  return ss.str();
+}
+
 NS_END // NS_LOCAL
 
 NS_ROOT
@@ -635,7 +662,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     if ((!writer_.segment_limits_.segment_docs_max
          || writer_.segment_limits_.segment_docs_max > segment.writer_->docs_cached()) // too many docs
         && (!writer_.segment_limits_.segment_memory_max
-            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory()) // too much memory
+            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory_active()) // too much memory
         && !doc_limits::eof(segment.writer_->docs_cached())) { // segment full
       return ctx;
     } else if (!segment.flush()) { // force a flush of a full segment
@@ -1152,6 +1179,7 @@ bool index_writer::consolidate(
   }
 
   std::set<const segment_meta*> candidates;
+  const auto run_id = reinterpret_cast<size_t>(&candidates);
 
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
@@ -1231,6 +1259,12 @@ bool index_writer::consolidate(
     }
   }
 
+  IR_FRMT_TRACE(
+    "Starting consolidation id='" IR_SIZE_T_SPECIFIER "':\n%s",
+    run_id,
+    ::to_string(candidates).c_str()
+  );
+
   // do lock-free merge
 
   index_meta::index_segment_t consolidation_segment;
@@ -1280,6 +1314,10 @@ bool index_writer::consolidate(
         std::move(merger) // merge context
       );
 
+      IR_FRMT_TRACE(
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: pending",
+        run_id
+      );
     } else if (committed_meta == current_committed_meta) {
       // before new transaction was started:
       // no commits happened in since consolidation was started
@@ -1301,11 +1339,22 @@ bool index_writer::consolidate(
       );
 
       // filter out merged segments for the next commit
-      const auto& consolidation_ctx = ctx->pending_segments_.back().consolidation_ctx;
+      const auto& pending_segment = ctx->pending_segments_.back();
+      const auto& consolidation_ctx = pending_segment.consolidation_ctx;
+      const auto& consolidation_meta = pending_segment.segment.meta;
 
       for (const auto* segment : consolidation_ctx.candidates) {
         ctx->segment_mask_.emplace(segment->name);
       }
+
+      IR_FRMT_TRACE(
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: Name='%s', docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        run_id,
+        consolidation_meta.name.c_str(),
+        consolidation_meta.docs_count,
+        consolidation_meta.live_docs_count,
+        consolidation_meta.size
+      );
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
@@ -1322,7 +1371,8 @@ bool index_writer::consolidate(
         // at least one candidate is missing
         // can't finish consolidation
         IR_FRMT_WARN(
-          "Failed to finish merge for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+          "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+          run_id,
           consolidation_segment.meta.name.c_str(),
           res.second,
           candidates.size()
@@ -1356,11 +1406,22 @@ bool index_writer::consolidate(
       );
 
       // filter out merged segments for the next commit
-      const auto& consolidation_ctx = ctx->pending_segments_.back().consolidation_ctx;
+      const auto& pending_segment = ctx->pending_segments_.back();
+      const auto& consolidation_ctx = pending_segment.consolidation_ctx;
+      const auto& consolidation_meta = pending_segment.segment.meta;
 
       for (const auto* segment : consolidation_ctx.candidates) {
         ctx->segment_mask_.emplace(segment->name);
       }
+
+      IR_FRMT_TRACE(
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        run_id,
+        consolidation_meta.name.c_str(),
+        consolidation_meta.docs_count,
+        consolidation_meta.live_docs_count,
+        consolidation_meta.size
+      );
     }
   }
 

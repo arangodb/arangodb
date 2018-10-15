@@ -72,17 +72,7 @@
 #include "locale_utils.hpp"
 
 NS_BEGIN(std)
-/*FIXME TODO remove, use locale_utils::codecvt(...) instead
-// MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
-// due to a missing export, as per their comment:
-//   This is an active bug in our database (VSO#143857), which we'll investigate
-//   for a future release, but we're currently working on higher priority things
-// define the missing variables for at least the static-CRT implementations
-#if defined(_MSC_VER) && _MSC_VER > 1800 && !defined(_DLL)
-  std::locale::id std::codecvt<char16_t, char, _Mbstatet>::id;
-  std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
-#endif
-*/
+
 // GCC < v5 does not explicitly define
 // std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
 // this causes linking issues in optimized code
@@ -3611,21 +3601,7 @@ const std::locale& get_locale(
   auto* locale_info_ptr = locale_info.get();
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
-/* FIXME TODO remove
-  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
-  // due to a missing export, as per their comment:
-  //   This is an active bug in our database (VSO#143857), which we'll investigate
-  //   for a future release, but we're currently working on higher priority things
-  // do not add char16_t/char32_t 'codecvt' instances in the aforementioned case
-  #if !defined(_MSC_VER) || _MSC_VER <= 1800
-    locale = std::locale(
-      locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
-    );
-    locale = std::locale(
-      locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
-    );
-  #endif
-*/
+
   locale = std::locale(
     locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
   );

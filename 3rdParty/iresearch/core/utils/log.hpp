@@ -86,7 +86,8 @@ NS_END
 
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
@@ -96,7 +97,8 @@ NS_END
   #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, ##__VA_ARGS__)

@@ -417,7 +417,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       ASSERT_TRUE(candidates.empty());
     }
   }
-
   // left-skewed distribution
   {
     const size_t sizes[] = {
@@ -438,7 +437,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.max_segments = 10;           // max number of segments per tier to merge at once
     options.max_segments_bytes = 250000; // max size of the merge
     options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = irs::integer_traits<size_t>::const_max;
+    options.lookahead = 0;//irs::integer_traits<size_t>::const_max;
 
     auto policy = irs::index_utils::consolidation_policy(options);
 

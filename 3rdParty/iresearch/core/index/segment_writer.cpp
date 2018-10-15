@@ -74,10 +74,23 @@ segment_writer::ptr segment_writer::make(directory& dir) {
   return memory::maker<segment_writer>::make(dir);
 }
 
-size_t segment_writer::memory() const NOEXCEPT {
+size_t segment_writer::memory_active() const NOEXCEPT {
+  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
+      ? sizeof(bitvector::word_t) : 0;
+
   return (docs_context_.size() * sizeof(update_contexts::value_type))
-    + (docs_mask_.size() * sizeof(bitvector::word_t))
-    + fields_.memory();
+    + (docs_mask_.size() / 8 + docs_mask_extra) // FIXME too rough
+    + fields_.memory_active();
+}
+
+size_t segment_writer::memory_reserved() const NOEXCEPT {
+  const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
+      ? sizeof(bitvector::word_t) : 0;
+
+  return sizeof(segment_writer)
+    + (sizeof(update_contexts::value_type) * docs_context_.size())
+    + (sizeof(bitvector) + docs_mask_.size() / 8 + docs_mask_extra)
+    + fields_.memory_reserved();
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {

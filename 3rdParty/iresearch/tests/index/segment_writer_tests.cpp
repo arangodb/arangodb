@@ -69,7 +69,7 @@ TEST_F(segment_writer_tests, memory) {
 
   irs::memory_directory dir;
   auto writer = irs::segment_writer::make(dir);
-  ASSERT_EQ(0, writer->memory());
+  ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
     irs::segment_writer::update_context ctx;
@@ -80,11 +80,11 @@ TEST_F(segment_writer_tests, memory) {
     writer->commit();
   }
 
-  ASSERT_LT(0, writer->memory());
+  ASSERT_LT(0, writer->memory_active());
 
   writer->reset();
 
-  ASSERT_EQ(0, writer->memory());
+  ASSERT_EQ(0, writer->memory_active());
 }
 
 TEST_F(segment_writer_tests, index_field) {

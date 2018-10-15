@@ -204,8 +204,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     }
   }
 
-  // @return aproximate amount of memory used by this writer
-  size_t memory() const NOEXCEPT;
+  // @return approximate amount of memory actively in-use by this instance
+  size_t memory_active() const NOEXCEPT;
+
+  // @return approximate amount of memory reserved by this instance
+  size_t memory_reserved() const NOEXCEPT;
 
   // @param doc_id the document id as returned by begin(...)
   // @return success

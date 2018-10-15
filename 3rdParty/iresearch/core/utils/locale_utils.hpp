@@ -78,21 +78,6 @@ IRESEARCH_API std::locale locale(
 );
 
 /**
- * FIXME TODO remove since this does not work for MSVC
- * @param encoding the output encoding of the converter
- * @param forceUnicodeSystem force the internal system encoding to be unicode
- * @return the converter capable of outputing in the specified target encoding
- **/
-template<typename Internal>
-const std::codecvt<Internal, char, std::mbstate_t>& converter(
-    const irs::string_ref& encoding, bool forceUnicodeSystem = true
-) {
-  return std::use_facet<std::codecvt<Internal, char, std::mbstate_t>>(
-    locale(irs::string_ref::NIL, encoding, forceUnicodeSystem)
-  );
-}
-
-/**
  * @brief extract the locale country from a locale
  * @param locale the locale from which to extract the country
  **/
