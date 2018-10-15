@@ -27,6 +27,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <mutex>
 
 #include "Basics/Result.h"
 #include "VocBase/ticks.h"
