@@ -137,15 +137,10 @@
     handleError: function (status, text, dbname) {
       if (status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
-        return;
-      }
-      if (status === 400) {
+      } else if (status === 400) {
         arangoHelper.arangoError('DB', 'Invalid Parameters');
-        return;
-      }
-      if (status === 403) {
+      } else if (status === 403) {
         arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
-        return;
       }
     },
 
