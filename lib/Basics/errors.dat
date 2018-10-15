@@ -296,6 +296,7 @@ ERROR_TRANSACTION_NESTED,1651,"nested transactions detected","Will be raised whe
 ERROR_TRANSACTION_UNREGISTERED_COLLECTION,1652,"unregistered collection used in transaction","Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start."
 ERROR_TRANSACTION_DISALLOWED_OPERATION,1653,"disallowed operation inside transaction","Will be raised when a disallowed operation is carried out in a transaction."
 ERROR_TRANSACTION_ABORTED,1654,"transaction aborted","Will be raised when a transaction was aborted."
+ERROR_TRANSACTION_MULTIPLE_EXCLUSIVE_COLLECTIONS,1655,"only one exclusive collection","Will be raised when a transaction is started with more than one exclusive collection."
 
 ################################################################################
 ## User management errors

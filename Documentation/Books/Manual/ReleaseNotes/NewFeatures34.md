@@ -179,6 +179,7 @@ db._executeTransaction({
 Note that using exclusive access for RocksDB collections will serialize write operations
 to RocksDB collections, so it should be used with extreme care.
 
+There can only be one exclusively locked collection per transaction or AQL query, resp.
 
 ### RocksDB library upgrade
 
