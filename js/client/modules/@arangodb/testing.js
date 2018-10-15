@@ -193,8 +193,8 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 // / @brief test functions for all
 // //////////////////////////////////////////////////////////////////////////////
 
-let failedRuns = [
-];
+let failedRuns = {
+};
 let allTests = [
 ];
 
@@ -368,9 +368,12 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
 
     let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '';
+    let crashedText = '\n';
     if (res.crashed === true) {
-      crashedText = ' [' + failedRuns.join(',') + '] BUT! - We had at least one unclean shutdown or crash during the testrun.';
+      for (let failed in failedRuns) {
+        crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
+      }
+      crashedText += "\nMarking crashy!";
       crashText = RED + crashedText + RESET;
     }
     print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
@@ -428,8 +431,6 @@ function printUsage () {
     }
   }
 }
-
-
 
 let allTestPaths = {};
 
@@ -639,7 +640,8 @@ function iterateTests(cases, options, jsonReply) {
       cleanup = false;
     }
     if (pu.serverCrashed) {
-      failedRuns.push(currentTest);
+      failedRuns[currentTest] = pu.serverFailMessages;
+      pu.serverFailMessages = "";
     }
   }
 
