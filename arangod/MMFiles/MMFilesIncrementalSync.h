@@ -258,27 +258,17 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
              "' from " + url;
   syncer.setProgress(progress);
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      syncer._state.connection.client->retryRequest(rest::RequestType::GET, url,
-                                                    nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  });
 
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                  std::string("could not connect to master at ") +
-                      syncer._state.master.endpoint + ": " +
-                      syncer._state.connection.client->getErrorMessage());
+  if (replutils::hasFailed(response.get())) {
+    return buildHttpError(response.get(), url, syncer._state.connection);
   }
 
   TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": HTTP " +
-                      basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                      ": " + response->getHttpReturnMessage());
-  }
-
+  
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
 
@@ -486,29 +476,18 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       progress = "fetching keys chunk " + std::to_string(currentChunkId) +
                  " for collection '" + coll->name() + "' from " + url;
       syncer.setProgress(progress);
-
-      std::unique_ptr<httpclient::SimpleHttpResult> response(
-          syncer._state.connection.client->retryRequest(rest::RequestType::PUT,
-                                                        url, nullptr, 0));
-
-      if (response == nullptr || !response->isComplete()) {
-        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                      std::string("could not connect to master at ") +
-                          syncer._state.master.endpoint + ": " +
-                          syncer._state.connection.client->getErrorMessage());
+      
+      std::unique_ptr<httpclient::SimpleHttpResult> response;
+      syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        response.reset(client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
+      });
+      
+      if (replutils::hasFailed(response.get())) {
+        return buildHttpError(response.get(), url, syncer._state.connection);
       }
 
       TRI_ASSERT(response != nullptr);
-
-      if (response->wasHttpError()) {
-        return Result(
-            TRI_ERROR_REPLICATION_MASTER_ERROR,
-            std::string("got invalid response from master at ") +
-                syncer._state.master.endpoint + ": HTTP " +
-                basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                ": " + response->getHttpReturnMessage());
-      }
-
+      
       VPackBuilder builder;
       Result r = replutils::parseResponse(builder, response.get());
 
@@ -679,30 +658,18 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                      coll->name() + "' from " + url;
 
           syncer.setProgress(progress);
-
-          std::unique_ptr<httpclient::SimpleHttpResult> response(
-              syncer._state.connection.client->retryRequest(
-                  rest::RequestType::PUT, url, keyJsonString.c_str(),
-                  keyJsonString.size()));
-
-          if (response == nullptr || !response->isComplete()) {
-            return Result(
-                TRI_ERROR_REPLICATION_NO_RESPONSE,
-                std::string("could not connect to master at ") +
-                    syncer._state.master.endpoint + ": " +
-                    syncer._state.connection.client->getErrorMessage());
+          
+          std::unique_ptr<httpclient::SimpleHttpResult> response;
+          syncer._state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+            response.reset(client->retryRequest(rest::RequestType::PUT, url, keyJsonString.c_str(),
+                                                keyJsonString.size()));
+          });
+          
+          if (replutils::hasFailed(response.get())) {
+            return buildHttpError(response.get(), url, syncer._state.connection);
           }
-
+          
           TRI_ASSERT(response != nullptr);
-
-          if (response->wasHttpError()) {
-            return Result(
-                TRI_ERROR_REPLICATION_MASTER_ERROR,
-                std::string("got invalid response from master at ") +
-                    syncer._state.master.endpoint + ": HTTP " +
-                    basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                    ": " + response->getHttpReturnMessage());
-          }
 
           VPackBuilder builder;
           Result r = replutils::parseResponse(builder, response.get());
