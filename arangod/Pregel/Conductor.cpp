@@ -421,10 +421,10 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
-    boost::posix_time::seconds(2)));
-  _boost_timer->async_wait([this](const asio::error_code& error) {
-    _boost_timer.reset();
+  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  _steady_timer->expires_after(std::chrono::seconds(2));
+  _steady_timer->async_wait([this](const asio::error_code& error) {
+    _steady_timer.reset();
 
     if (error == asio::error::operation_aborted ||
         _state != ExecutionState::RECOVERING) {

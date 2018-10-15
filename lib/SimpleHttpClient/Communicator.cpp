@@ -285,7 +285,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
       newRequest._destination, newRequest._callbacks, newRequest._ticketId,
       newRequest._options, std::move(newRequest._request));
 
-  auto handleInProgress = std::make_unique<CurlHandle>(rip);
+  auto handleInProgress = std::make_shared<CurlHandle>(rip);
 
   auto request = (HttpRequest*)handleInProgress->_rip->_request.get();
 
@@ -430,8 +430,8 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_multi_add_handle(_curl, handle);
 }
 
+/// new code using lambda and Scheduler
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
-  double connectTime = 0.0;
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
@@ -440,10 +440,21 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     return;
   }
 
+  // unclear if this would be safe on another thread.  Leaving here.
   if (rip->_options._curlRcFn) {
     (*rip->_options._curlRcFn)(rc);
   }
 
+  auto inProgress = _handlesInProgress.find(rip->_ticketId);
+  auto curlHandle = (*inProgress).second->getSharedPtr();
+  {
+    MUTEX_LOCKER(guard, _handlesLock);
+    _handlesInProgress.erase(rip->_ticketId);
+  }
+
+  rip->_callbacks._scheduleMe([curlHandle, this, handle, rc, rip]
+  {// lamda rewrite starts
+  double connectTime = 0.0;
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
       << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
@@ -459,7 +470,6 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
   }
 
-  MUTEX_LOCKER(guard, _handlesLock);
   switch (rc) {
     case CURLE_OK: {
       long httpStatusCode = 200;
@@ -513,7 +523,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       break;
   }
 
-  _handlesInProgress.erase(rip->_ticketId);
+  }); //lambda rewrite ends
 }
 
 void Communicator::transformResult(CURL* handle,

@@ -63,24 +63,24 @@ struct BoostScorer : public irs::sort {
 
     Prepared() = default;
 
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
+    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
+      score_cast(dst) += score_cast(src);
     }
 
     virtual irs::flags const& features() const override {
       return irs::flags::empty_instance();
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return lhs < rhs;
+    virtual bool less(irs::byte_type const* lhs, irs::byte_type const* rhs) const override {
+      return score_cast(lhs) < score_cast(rhs);
     }
 
     virtual irs::sort::collector::ptr prepare_collector() const override {
       return nullptr;
     }
 
-    virtual void prepare_score(score_t& score) const override {
-      score = 0.f;
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = 0.f;
     }
 
     virtual irs::sort::scorer::ptr prepare_scorer(
@@ -261,7 +261,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 
 uint64_t getCurrentPlanVersion() {
   auto const result = arangodb::AgencyComm().getValues("Plan");
-  auto const planVersionSlice = result.slice()[0].get(
+  auto const planVersionSlice = result.slice()[0].get<std::string>(
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();

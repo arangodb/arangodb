@@ -33,7 +33,7 @@ class term_selector;
 class IRESEARCH_API by_prefix final : public by_term {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   by_prefix() NOEXCEPT;
 

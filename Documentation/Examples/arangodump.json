@@ -206,6 +206,14 @@
     "section" : "log",
     "type" : "string"
   },
+  "log.request-parameters" : {
+    "default" : true,
+    "description" : "include full URLs and HTTP request parameters in trace logs",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.role" : {
     "default" : false,
     "description" : "log server role",

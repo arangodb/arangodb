@@ -46,7 +46,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-constexpr double MIN_SECONDS = 30.0;
+constexpr double MIN_SECONDS = 60.0;
 }
 
 // -----------------------------------------------------------------------------
@@ -316,7 +316,7 @@ bool Scheduler::queue(RequestPriority prio,
     // This does not care if there is anything in fifo2 or
     // fifo8 because these queue have lower priority.
     case RequestPriority::HIGH:
-      if (0 < _fifoSize[FIFO1] || !canPostDirectly()) {
+      if (0 < _fifoSize[FIFO1] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO1, callback, false);
       } else {
         post(callback, false);
@@ -329,7 +329,7 @@ bool Scheduler::queue(RequestPriority prio,
     // it.
     case RequestPriority::LOW:
       if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO8] ||
-          0 < _fifoSize[FIFO2] || !canPostDirectly()) {
+          0 < _fifoSize[FIFO2] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO2, callback, false);
       } else {
         post(callback, false);
@@ -351,23 +351,23 @@ bool Scheduler::queue(RequestPriority prio,
 }
 
 void Scheduler::drain() {
-  while (canPostDirectly()) {
-    bool found = popFifo(FIFO1);
+  bool found = true;
+
+  while (found && canPostDirectly(RequestPriority::HIGH)) {
+    found = popFifo(FIFO1);
+  }
+
+  found = true;
+
+  while (found && canPostDirectly(RequestPriority::LOW)) {
+    found = popFifo(FIFO1);
 
     if (!found) {
       found = popFifo(FIFO8);
-
-      if (!found) {
-        found = popFifo(FIFO2);
-      } else if (canPostDirectly()) {
-        // There is still enough space in the scheduler queue. Queue
-        // one more.
-        popFifo(FIFO2);
-      }
     }
 
     if (!found) {
-      break;
+      found = popFifo(FIFO2);
     }
   }
 }
@@ -418,12 +418,23 @@ std::string Scheduler::infoStatus() {
          " (<=" + std::to_string(_maxFifoSize[FIFO8]) + ")";
 }
 
-bool Scheduler::canPostDirectly() const noexcept {
+bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
   auto counters = getCounters();
   auto nrWorking = numWorking(counters);
   auto nrQueued = numQueued(counters);
 
-  return nrWorking + nrQueued <= _maxQueueSize;
+  switch (prio) {
+    case RequestPriority::HIGH:
+//      return nrWorking + nrQueued <= _maxQueuedHighPrio;
+      return nrWorking + nrQueued < _maxThreads;
+
+    case RequestPriority::LOW:
+    case RequestPriority::V8:
+//      return nrWorking + nrQueued <= _maxQueuedLowPrio;
+      return nrWorking + nrQueued < _maxThreads - _minThreads;
+  }
+
+  return false;
 }
 
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback,
@@ -521,7 +532,7 @@ bool Scheduler::start() {
   TRI_ASSERT(0 < _maxQueueSize);
   TRI_ASSERT(0 < _maxQueuedV8);
 
-  for (uint64_t i = 0; i < _minThreads; ++i) {
+  for (uint64_t i = 0; i < _maxThreads; ++i) {
     {
       MUTEX_LOCKER(locker, _threadCreateLock);
       incRunning();
@@ -723,9 +734,16 @@ bool Scheduler::threadShouldStop(double now) {
     return false;
   }
 
+  // I reactivated the following at the last hour before 3.4.RC3 without
+  // being able to consult with Matthew. If this breaks things, we find
+  // out in due course. 12.10.2018 Max.
+#if 0
   // decrement nrRunning by one already in here while holding the lock
   decRunning();
   return true;
+#else
+  return false;
+#endif
 }
 
 void Scheduler::startNewThread() {

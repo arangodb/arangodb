@@ -131,7 +131,7 @@
   },
   "javascript.copy-directory" : {
     "default" : "",
-    "description" : "target directory to copy files from 'javascript.startup-directory' into (only used when `--javascript.copy-installation` is enabled)",
+    "description" : "target directory to copy files from 'javascript.startup-directory' into(only used when `--javascript.copy-installation` is enabled)",
     "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "javascript",
@@ -339,6 +339,14 @@
     "hidden" : true,
     "section" : "log",
     "type" : "string"
+  },
+  "log.request-parameters" : {
+    "default" : true,
+    "description" : "include full URLs and HTTP request parameters in trace logs",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
   },
   "log.role" : {
     "default" : false,

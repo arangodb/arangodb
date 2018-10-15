@@ -582,9 +582,9 @@ void Worker<V, E, M>::_continueAsync() {
   int64_t milli =
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
-      boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this](const asio::error_code& error) {
+  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  _steady_timer->expires_after(std::chrono::milliseconds(milli));
+  _steady_timer->async_wait([this](const asio::error_code& error) {
     if (error != asio::error::operation_aborted) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);
@@ -599,7 +599,7 @@ void Worker<V, E, M>::_continueAsync() {
       _conductorAggregators->aggregateValues(*_workerAggregators.get());
       _workerAggregators->resetValues();
       _startProcessing();
-      _boost_timer.reset();
+      _steady_timer.reset();
     }
   });
 }
