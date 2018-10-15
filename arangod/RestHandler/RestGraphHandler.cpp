@@ -284,15 +284,7 @@ void RestGraphHandler::vertexActionRead(
       UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
-  if (!isValidRevision) {
-    revision =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
-  }
-  if (revision == 0 || revision == UINT64_MAX) {
-    revision = _request->parsedValue("rev", revision);
-  }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
@@ -568,15 +560,7 @@ void RestGraphHandler::edgeActionRead(
       UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
-  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
-  if (!isValidRevision) {
-    revision =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
-  }
-  if (revision == 0 || revision == UINT64_MAX) {
-    revision = _request->parsedValue("rev", revision);
-  }
-  auto maybeRev = boost::make_optional(revision != 0, revision);
+  auto maybeRev = handleRevision();
 
   GraphOperations gops{graph, _vocbase};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
