@@ -193,6 +193,8 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 // / @brief test functions for all
 // //////////////////////////////////////////////////////////////////////////////
 
+let failedRuns = [
+];
 let allTests = [
 ];
 
@@ -368,7 +370,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
     let crashText = '';
     let crashedText = '';
     if (res.crashed === true) {
-      crashedText = ' BUT! - We had at least one unclean shutdown or crash during the testrun.';
+      crashedText = ' [' + failedRuns.join(',') + '] BUT! - We had at least one unclean shutdown or crash during the testrun.';
       crashText = RED + crashedText + RESET;
     }
     print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
@@ -587,10 +589,10 @@ function iterateTests(cases, options, jsonReply) {
 
   let results = {};
   let cleanup = true;
-    
+
   // real ugly hack. there are some suites which are just placeholders
   // for other suites
-  caselist = (function() { 
+  caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
       let w = testFuncs[caselist[n]];
@@ -635,6 +637,9 @@ function iterateTests(cases, options, jsonReply) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
+    }
+    if (pu.serverCrashed) {
+      failedRuns.push(currentTest);
     }
   }
 
