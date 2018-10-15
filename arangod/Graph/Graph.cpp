@@ -183,6 +183,10 @@ std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
   return _edgeDefs;
 }
 
+std::map<std::string, EdgeDefinition>& Graph::edgeDefinitions() {
+  return _edgeDefs;
+}
+
 uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
@@ -398,13 +402,55 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
          getTo() != other.getTo();
 }
 
+bool EdgeDefinition::renameCollection(
+        std::string const& oldName, std::string const& newName) {
+  bool renamed = false;
+
+  // from
+  if (isFromVertexCollectionUsed(oldName)) {
+    _from.erase(oldName);
+    _from.insert(newName);
+    renamed = true;
+  }
+
+  // to
+  if (isToVertexCollectionUsed(oldName)) {
+    _to.erase(oldName);
+    _to.insert(newName);
+    renamed = true;
+  }
+
+  // edge collection
+  if (getName() == oldName) {
+    setName(newName);
+    renamed = true;
+  }
+
+  return renamed;
+}
+
+bool EdgeDefinition::isFromVertexCollectionUsed(
+        std::string const& collectionName) const {
+  if (getFrom().find(collectionName) != getFrom().end()) {
+    return true;
+  }
+  return false;
+}
+
+bool EdgeDefinition::isToVertexCollectionUsed(
+        std::string const& collectionName) const {
+  if (getTo().find(collectionName) != getTo().end()) {
+    return true;
+  }
+  return false;
+}
+
 bool EdgeDefinition::isVertexCollectionUsed(
     std::string const& collectionName) const {
   if (getFrom().find(collectionName) != getFrom().end() ||
       getTo().find(collectionName) != getTo().end()) {
     return true;
   }
-
   return false;
 }
 
@@ -548,6 +594,33 @@ bool Graph::hasVertexCollection(std::string const& collectionName) const {
 
 bool Graph::hasOrphanCollection(std::string const& collectionName) const {
   return orphanCollections().find(collectionName) != orphanCollections().end();
+}
+
+bool Graph::renameCollections(std::string const& oldName, std::string const& newName) {
+  // rename not allowed in a smart collection
+  if (isSmart()) {
+    return false;
+  }
+
+  bool renamed = false;
+
+  // rename collections found in edgeDefinitions
+  for (auto& it : edgeDefinitions()) {
+    if (!renamed) {
+      renamed = it.second.renameCollection(oldName, newName);
+    } else {
+      it.second.renameCollection(oldName, newName);
+    }
+  }
+
+  // orphans
+  if (hasOrphanCollection(oldName)) {
+    _orphanColls.erase(oldName);
+    _orphanColls.insert(newName);
+    renamed = true;
+  }
+
+  return renamed;
 }
 
 void Graph::graphForClient(VPackBuilder& builder) const {
