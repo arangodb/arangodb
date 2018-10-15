@@ -54,24 +54,27 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeCounterValue(
-    std::unordered_map<uint64_t, rocksdb::SequenceNumber>& syncedSeqNums,
-    rocksdb::Transaction* rtrx, VPackBuilder& b,
-    std::pair<uint64_t, arangodb::RocksDBSettingsManager::CMValue> const&
-        pair) {
+std::pair<arangodb::Result, rocksdb::SequenceNumber>
+  writeCounterValue(std::unordered_map<uint64_t, rocksdb::SequenceNumber> const& syncedSeqNums,
+                    rocksdb::Transaction* rtrx, VPackBuilder& b,
+                    std::pair<uint64_t, arangodb::RocksDBSettingsManager::CMValue> const& pair,
+                    rocksdb::SequenceNumber baseSeq) {
   using arangodb::Logger;
   using arangodb::Result;
   using arangodb::RocksDBColumnFamily;
   using arangodb::RocksDBKey;
   using arangodb::rocksutils::convertStatus;
 
+  rocksdb::SequenceNumber returnSeq = baseSeq;
+
   // Skip values which we did not change
   auto const& it = syncedSeqNums.find(pair.first);
-
   if (it != syncedSeqNums.end() && it->second == pair.second._sequenceNum) {
-    return Result();
+    // implication: no-one update the collection since the last sync,
+    // we do not need to keep the log entries for this counter
+    return std::make_pair(Result(), returnSeq);
   }
-
+  
   b.clear();
   pair.second.serialize(b);
 
@@ -81,14 +84,11 @@ arangodb::Result writeCounterValue(
   rocksdb::Status s =
       rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
   if (!s.ok()) {
-    rtrx->Rollback();
-    auto rStatus = convertStatus(s);
-    LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing counters failed: " << rStatus.errorMessage();
-    return rStatus;
+    return std::make_pair(convertStatus(s), returnSeq);
   }
 
-  return Result();
+  returnSeq = std::min(returnSeq, pair.second._sequenceNum);
+  return std::make_pair(Result(), returnSeq);
 }
 }  // namespace
 
@@ -124,11 +124,7 @@ arangodb::Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
       rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
 
   if (!s.ok()) {
-    auto rStatus = arangodb::rocksutils::convertStatus(s);
-    LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing settings failed: " << rStatus.errorMessage();
-    rtrx->Rollback();
-    return rStatus;
+    return arangodb::rocksutils::convertStatus(s);
   }
 
   return Result();
@@ -455,17 +451,22 @@ Result RocksDBSettingsManager::sync(bool force) {
   _builder.clear();
 
   for (std::pair<uint64_t, CMValue> const& pair : copy) {
-    Result res = writeCounterValue(_syncedSeqNums, rtrx.get(), _builder, pair);
+    Result res;
+    rocksdb::SequenceNumber returnSeq;
+    
+    std::tie(res, returnSeq) = writeCounterValue(_syncedSeqNums, rtrx.get(),
+                                                 _builder, pair, seqNumber);
     if (res.fail()) {
       return res;
     }
+    seqNumber = std::min(seqNumber, returnSeq);
 
-    auto writeResult =
+    std::tie(res, returnSeq) =
         writeIndexEstimatorsAndKeyGenerator(rtrx.get(), pair, seqNumber);
-    if (writeResult.first.fail()) {
-      return writeResult.first;
+    if (res.fail()) {
+      return res;
     }
-    seqNumber = std::min(seqNumber, writeResult.second);
+    seqNumber = std::min(seqNumber, returnSeq);
   }
 
   Result res = writeSettings(rtrx.get(), _builder, seqNumber);
