@@ -426,12 +426,12 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
   switch (prio) {
     case RequestPriority::HIGH:
 //      return nrWorking + nrQueued <= _maxQueuedHighPrio;
-      return nrWorking + nrQueued <= _maxThreads;
+      return nrWorking + nrQueued < _maxThreads;
 
     case RequestPriority::LOW:
     case RequestPriority::V8:
 //      return nrWorking + nrQueued <= _maxQueuedLowPrio;
-      return nrWorking + nrQueued <= _maxThreads - _minThreads;
+      return nrWorking + nrQueued < _maxThreads - _minThreads;
   }
 
   return false;
@@ -737,10 +737,13 @@ bool Scheduler::threadShouldStop(double now) {
   // I reactivated the following at the last hour before 3.4.RC3 without
   // being able to consult with Matthew. If this breaks things, we find
   // out in due course. 12.10.2018 Max.
-
+#if 0
   // decrement nrRunning by one already in here while holding the lock
   decRunning();
   return true;
+#else
+  return false;
+#endif
 }
 
 void Scheduler::startNewThread() {
