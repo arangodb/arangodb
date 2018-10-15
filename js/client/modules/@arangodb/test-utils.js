@@ -155,6 +155,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let results = {};
   let continueTesting = true;
+  let serverDead = false;
   let count = 0;
   let forceTerminate = false;
   let graphCount = 0;
@@ -169,9 +170,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       count += 1;
 
       let collectionsBefore = [];
-      db._collections().forEach(collection => {
-        collectionsBefore.push(collection._name);
-      });
+      if (!serverDead) {
+        db._collections().forEach(collection => {
+          collectionsBefore.push(collection._name);
+        });
+      }
       while (first || options.loopEternal) {
         if (!continueTesting) {
           print('oops! Skipping, ' + te + ' server is gone.');
@@ -249,6 +252,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             graphCount = graphs.count();
           }
         } else {
+          serverDead = true;
           continueTesting = false;
           results[te] = {
             status: false,

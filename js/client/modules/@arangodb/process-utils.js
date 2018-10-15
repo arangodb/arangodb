@@ -63,7 +63,8 @@ if (platform.substr(0, 3) === 'win') {
   executableExt = '.exe';
 }
 
-let serverCrashed = false;
+let serverCrashedLocal = false;
+let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
 
 let BIN_DIR;
@@ -225,7 +226,6 @@ function readImportantLogLines (logPath) {
           if (warn || info) {
             continue;
           }
-
           fnLines.push(line);
         }
       }
@@ -507,7 +507,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     if (options.coreCheck) {
       print(instanceInfo.exitStatus.gdbHint);
     }
-    serverCrashed = true;
+    serverCrashedLocal = true;
   }
 
   if (instanceInfo.exitStatus.status === 'TERMINATED') {
@@ -750,7 +750,8 @@ function checkArangoAlive (arangod, options) {
        ) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
-      serverCrashed = true;
+      serverCrashedLocal = true;
+      print("checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
     }
   }
 
@@ -891,7 +892,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   try {
     // send a maintenance request to any of the coordinators, so that
     // no failed server/failed follower jobs will be started on shutdown
-    let coords = instanceInfo.arangods.filter(arangod => arangod.role === 'coordinator');
+    let coords = instanceInfo.arangods.filter(arangod =>
+                                              arangod.role === 'coordinator' &&
+                                              !arangod.hasOwnProperty('exitStatus'));
     if (coords.length > 0) {
       let requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'PUT';
@@ -962,7 +965,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if ((internal.time() - shutdownTime) > localTimeout) {
           print('forcefully terminating ' + yaml.safeDump(arangod) +
                 ' after ' + timeout + 's grace period; marking crashy.');
-          serverCrashed = true;
+          serverCrashedLocal = true;
           arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod,
                              options,
@@ -983,7 +986,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
         if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
-          serverCrashed = true;
+          print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
+          serverCrashedLocal = true;
         }
       } else {
         if (arangod.role !== 'agent') {
@@ -1458,15 +1462,12 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
-// exports.startInstanceCluster = startInstanceCluster;
 exports.startArango = startArango;
-// exports.startInstanceAgency = startInstanceAgency;
-// exports.startInstanceSingleServer = startInstanceSingleServer;
 exports.startInstance = startInstance;
 exports.setupBinaries = setupBinaries;
-
 exports.executableExt = executableExt;
-exports.serverCrashed = serverCrashed;
+exports.serverCrashed = serverCrashedLocal;
+exports.serverFailMessages = serverFailMessagesLocal;
 
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
@@ -1485,4 +1486,5 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
 Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
-Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashed, set: () => serverCrashed});
+Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
+Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});

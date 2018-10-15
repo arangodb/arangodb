@@ -218,7 +218,22 @@ function checkMonitorAlive (binary, arangod, options, res) {
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeCrash (binary, instanceInfo, options, checkStr) {
-  if (!options.coreCheck || instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
+  if (instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
+    print(RESET);
+    return;
+  }
+  let message = 'during: ' + checkStr + ': Core dump written; ' +
+        /*
+        'copying ' + binary + ' to ' +
+        storeArangodPath + ' for later analysis.\n' +
+        */
+        'Process facts :\n' +
+        yaml.safeDump(instanceInfo) +
+      'marking build as crashy.';
+  pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
+
+  if (!options.coreCheck) {
+    instanceInfo.exitStatus['gdbHint'] = message;
     print(RESET);
     return;
   }
@@ -253,15 +268,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
   }
   const storeArangodPath = instanceInfo.rootDir + '/' + bareBinary + '_' + instanceInfo.pid;
 
-  print(RED +
-        'during: ' + checkStr + ': Core dump written; ' +
-        /*
-        'copying ' + binary + ' to ' +
-        storeArangodPath + ' for later analysis.\n' +
-        */
-        'Process facts :\n' +
-        yaml.safeDump(instanceInfo) +
-        'marking build as crashy.' + RESET);
+  print(RED + message + RESET);
 
   sleep(5);
 

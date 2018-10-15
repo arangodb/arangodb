@@ -193,6 +193,8 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 // / @brief test functions for all
 // //////////////////////////////////////////////////////////////////////////////
 
+let failedRuns = {
+};
 let allTests = [
 ];
 
@@ -233,7 +235,7 @@ function testCaseMessage (test) {
   }
 }
 
-function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
+function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
@@ -249,12 +251,12 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   let SuccessMessages = '';
   try {
     /* jshint forin: false */
-    for (let testrunName in r) {
-      if (skipInternalMember(r, testrunName)) {
+    for (let testrunName in res) {
+      if (skipInternalMember(res, testrunName)) {
         continue;
       }
 
-      let testrun = r[testrunName];
+      let testrun = res[testrunName];
 
       let successCases = {};
       let failedCases = {};
@@ -364,17 +366,20 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
     print(failedMessages);
     /* jshint forin: true */
 
-    let color = (!r.crashed && r.status === true) ? GREEN : RED;
+    let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '';
-    if (r.crashed === true) {
-      crashedText = ' BUT! - We had at least one unclean shutdown or crash during the testrun.';
+    let crashedText = '\n';
+    if (res.crashed === true) {
+      for (let failed in failedRuns) {
+        crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
+      }
+      crashedText += "\nMarking crashy!";
       crashText = RED + crashedText + RESET;
     }
-    print('\n' + color + '* Overall state: ' + ((r.status === true) ? 'Success' : 'Fail') + RESET + crashText);
+    print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
 
     let failText = '';
-    if (r.status !== true) {
+    if (res.status !== true) {
       failText = '   Suites failed: ' + failedSuite + ' Tests Failed: ' + failedTests;
       print(color + failText + RESET);
     }
@@ -384,7 +389,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   } catch (x) {
     print('exception caught while pretty printing result: ');
     print(x.message);
-    print(JSON.stringify(r));
+    print(JSON.stringify(res));
   }
 }
 
@@ -426,8 +431,6 @@ function printUsage () {
     }
   }
 }
-
-
 
 let allTestPaths = {};
 
@@ -587,10 +590,10 @@ function iterateTests(cases, options, jsonReply) {
 
   let results = {};
   let cleanup = true;
-    
+
   // real ugly hack. there are some suites which are just placeholders
   // for other suites
-  caselist = (function() { 
+  caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
       let w = testFuncs[caselist[n]];
@@ -635,6 +638,10 @@ function iterateTests(cases, options, jsonReply) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
+    }
+    if (pu.serverCrashed) {
+      failedRuns[currentTest] = pu.serverFailMessages;
+      pu.serverFailMessages = "";
     }
   }
 
