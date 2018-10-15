@@ -84,6 +84,9 @@ std::pair<arangodb::Result, rocksdb::SequenceNumber>
   rocksdb::Status s =
       rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
   if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES)
+    << "writing counter for collection with objectId '" << pair.first << "' failed: "
+      << s.ToString();
     return std::make_pair(convertStatus(s), returnSeq);
   }
 
@@ -124,6 +127,7 @@ arangodb::Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
       rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
 
   if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
   }
 
@@ -396,6 +400,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     if (res.fail()) {
       return res;
     }
+    seqNumber = std::min(seqNumber, returnSeq);
 
     std::tie(res, returnSeq) =
         writeIndexEstimatorsAndKeyGenerator(rtrx.get(), pair, seqNumber);
