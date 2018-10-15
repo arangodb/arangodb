@@ -34,7 +34,6 @@ TEST(bit_packing_tests, const_check) {
   // check constants
   ASSERT_EQ(32U, packed::BLOCK_SIZE_32);
   ASSERT_EQ(64U, packed::BLOCK_SIZE_64);
-  ASSERT_EQ(1U, packed::VERSION);
 }
 
 TEST(bit_packing_tests, bits_required) {
@@ -43,14 +42,14 @@ TEST(bit_packing_tests, bits_required) {
   ASSERT_EQ(32U, packed::bits_required_32(integer_traits<uint32_t>::const_max));
   ASSERT_EQ(25U, packed::bits_required_32(18874368U));
   ASSERT_EQ(20U, packed::bits_required_32(789547U));
-  ASSERT_EQ(1U, packed::bits_required_32(0U));
+  ASSERT_EQ(0, packed::bits_required_32(0U));
 
   // 64
   ASSERT_EQ(64U, packed::bits_required_64(integer_traits<uint64_t>::const_max));
   ASSERT_EQ(58U, packed::bits_required_64(144115188109676544UL));
   ASSERT_EQ(25U, packed::bits_required_64(18874368UL));
   ASSERT_EQ(20U, packed::bits_required_64(789547UL));
-  ASSERT_EQ(1U, packed::bits_required_64(uint64_t(0)));
+  ASSERT_EQ(0, packed::bits_required_64(uint64_t(0)));
 }
 
 TEST(bit_packing_tests, blocks_required) {
@@ -134,6 +133,8 @@ TEST(bit_packing_tests, pack_unpack_32) {
   {
     const uint32_t max = *std::max_element(src.begin(), src.end());
     const uint32_t bits = packed::bits_required_32(max);
+    const auto expected_bits = packed::bits_required_32(*std::max_element(src.begin(), src.end()));
+    ASSERT_EQ(expected_bits, bits);
 
     std::vector< uint32_t > compress(packed::blocks_required_32(src.size(), bits), 0);
     packed::pack(&src[0], &src[0] + src.size(), &compress[0], bits);
@@ -216,6 +217,8 @@ TEST(bit_packing_tests, pack_unpack_64) {
   {
     auto max = *std::max_element(src.begin(), src.end());
     auto bits = packed::bits_required_64(max);
+    const auto expected_bits = packed::bits_required_64(*std::max_element(src.begin(), src.end()));
+    ASSERT_EQ(expected_bits, bits);
 
     std::vector<uint64_t> packed(packed::blocks_required_64(src.size(), bits), 0);
     packed::pack(&src[0], &src[0] + src.size(), &packed[0], bits);
@@ -296,6 +299,8 @@ TEST(bit_packing_tests, iterator32) {
 
   const uint32_t max = *std::max_element(src.begin(), src.end());
   const uint32_t bits = packed::bits_required_32(max);
+  const auto expected_bits = packed::bits_required_32(*std::max_element(src.begin(), src.end()));
+  ASSERT_EQ(expected_bits, bits);
 
   std::vector<uint32_t> compressed(packed::blocks_required_32(src.size(), bits), 0);
   packed::pack(src.data(), src.data() + src.size(), compressed.data(), bits);

@@ -38,7 +38,7 @@ class IResearchViewCoordinator;
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLinkCoordinator final: public arangodb::Index {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destructor
@@ -64,6 +64,8 @@ class IResearchLinkCoordinator final: public arangodb::Index {
     return !(*this == meta);
   }
 
+  virtual void afterTruncate() override {}
+
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
@@ -75,8 +77,6 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   virtual bool canBeDropped() const override { return true; }
 
   virtual int drop() override { return TRI_ERROR_NO_ERROR; }
-  
-  virtual void afterTruncate() override {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view

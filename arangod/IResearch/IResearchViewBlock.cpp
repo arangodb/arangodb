@@ -163,7 +163,7 @@ void IResearchViewBlockBase::reset() {
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx, viewNode.filterCondition())) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to build filter while querying iResearch view , query '"
+          << "failed to build filter while querying arangosearch view , query '"
           << viewNode.filterCondition().toVelocyPack(true)->toJson() << "'";
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -208,7 +208,7 @@ bool IResearchViewBlockBase::readDocument(
 
   if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
+      << "failed to read document primary key while reading document from arangosearch view, doc_id '" << docId << "'";
 
     return false; // not a valid document reference
   }
@@ -223,7 +223,7 @@ bool IResearchViewBlockBase::readDocument(
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid()
+      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.cid()
       << "', rid '" << docPk.rid() << "'";
 
     return false; // not a valid collection reference
@@ -645,7 +645,7 @@ bool IResearchViewOrderedBlock::next(
 
     if (!score) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
+        << "failed to retrieve document score attribute while iterating arangosearch view, ignoring: reader_id '" << i << "'";
       IR_LOG_STACK_TRACE();
 
       continue; // if here then there is probably a bug in IResearchView while querying
@@ -680,7 +680,7 @@ bool IResearchViewOrderedBlock::next(
   for (size_t i = _skip; i; --i, ++tokenItr) {
     if (tokenItr == tokenEnd) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
+        << "document count less than the document count during the previous iteration on the same query while iterating arangosearch view'";
 
       break; // if here then there is probably a bug in the iResearch library
     }
