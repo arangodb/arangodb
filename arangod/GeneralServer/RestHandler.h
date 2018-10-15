@@ -89,6 +89,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
+  virtual RequestPriority priority() const;
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;

@@ -26,6 +26,8 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+class GeneralRequest;
+
 enum class RequestLane {
   // For requests that do not block or wait for something.
   // This ignores blocks that can occur when delivering
@@ -84,35 +86,7 @@ enum class RequestLane {
   // AGENCY_CALLBACK`
 };
 
-enum class RequestPriority { HIGH, LOW, V8 };
-
-inline RequestPriority PriorityRequestLane(RequestLane lane) {
-  switch (lane) {
-    case RequestLane::CLIENT_FAST:
-      return RequestPriority::HIGH;
-    case RequestLane::CLIENT_AQL:
-      return RequestPriority::LOW;
-    case RequestLane::CLIENT_V8:
-      return RequestPriority::V8;
-    case RequestLane::CLIENT_SLOW:
-      return RequestPriority::LOW;
-    case RequestLane::AGENCY_INTERNAL:
-      return RequestPriority::HIGH;
-    case RequestLane::AGENCY_CLUSTER:
-      return RequestPriority::LOW;
-    case RequestLane::CLUSTER_INTERNAL:
-      return RequestPriority::HIGH;
-    case RequestLane::CLUSTER_V8:
-      return RequestPriority::V8;
-    case RequestLane::CLUSTER_ADMIN:
-      return RequestPriority::LOW;
-    case RequestLane::SERVER_REPLICATION:
-      return RequestPriority::LOW;
-    case RequestLane::TASK_V8:
-      return RequestPriority::V8;
-  }
-  return RequestPriority::LOW;
-}
+enum class RequestPriority { HIGH, MED, LOW, V8 };
 }
 
 #endif

@@ -311,6 +311,46 @@ void RestHandler::runHandlerStateMachine() {
   }
 }
 
+RequestPriority RestHandler::priority() const {
+  RequestLane l = lane();
+  RequestPriority p = RequestPriority::LOW;
+
+  switch (l) {
+    case RequestLane::AGENCY_INTERNAL:
+    case RequestLane::CLIENT_FAST:
+    case RequestLane::CLUSTER_INTERNAL:
+      p = RequestPriority::HIGH;
+      break;
+
+    case RequestLane::CLIENT_AQL:
+    case RequestLane::CLIENT_SLOW:
+    case RequestLane::AGENCY_CLUSTER:
+    case RequestLane::CLUSTER_ADMIN:
+    case RequestLane::SERVER_REPLICATION:
+      p = RequestPriority::LOW;
+      break;
+
+    case RequestLane::CLIENT_V8:
+    case RequestLane::CLUSTER_V8:
+    case RequestLane::TASK_V8:
+      p = RequestPriority::V8;
+      break;
+  }
+
+  if (p == RequestPriority::HIGH || p == RequestPriority::V8) {
+    return p;
+  }
+
+  bool found;
+  _request->header(StaticStrings::XArangoFrontend, found);
+
+  if (!found) {
+    return p;
+  }
+
+  return RequestPriority::MED;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
