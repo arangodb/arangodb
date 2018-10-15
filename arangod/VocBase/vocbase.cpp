@@ -1859,6 +1859,10 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   for (auto& it : _collections) {
     it->close(); // required to release indexes
   }
+
+  _dataSourceById.clear(); // clear map before deallocating TRI_vocbase_t members
+  _dataSourceByName.clear(); // clear map before deallocating TRI_vocbase_t members
+  _dataSourceByUuid.clear(); // clear map before deallocating TRI_vocbase_t members
 }
 
 std::string TRI_vocbase_t::path() const {
@@ -2121,6 +2125,33 @@ std::vector<std::shared_ptr<arangodb::LogicalCollection>> TRI_vocbase_t::collect
       }
 
   return collections;
+}
+
+bool TRI_vocbase_t::visitDataSources(
+    dataSourceVisitor const& visitor,
+    bool lockWrite /*= false*/
+) {
+  TRI_ASSERT(visitor);
+
+  if (lockWrite) {
+    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+
+    for (auto& entry: _dataSourceById) {
+      if (entry.second && !visitor(*(entry.second))) {
+        return false;
+      }
+    }
+  } else {
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+
+    for (auto& entry: _dataSourceById) {
+      if (entry.second && !visitor(*(entry.second))) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 /// @brief extract the _rev attribute from a slice

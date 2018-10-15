@@ -228,7 +228,6 @@ struct IResearchViewSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT); // suppress ERROR recovery failure due to error from callback
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
       if (features.at((*f)->name()).second) {
@@ -242,6 +241,7 @@ struct IResearchViewSetup {
 
     ClusterCommControl::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
 
@@ -1006,7 +1006,31 @@ SECTION("test_drop_cid") {
     }
   }
 }
-  
+
+SECTION("test_drop_database") {
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
+  REQUIRE((nullptr != databaseFeature));
+
+  size_t beforeCount = 0;
+  auto before = StorageEngineMock::before;
+  auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
+  StorageEngineMock::before = [&beforeCount]()->void { ++beforeCount; };
+
+  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+  REQUIRE((nullptr != vocbase));
+
+  beforeCount = 0; // reset before call to StorageEngine::createView(...)
+  auto logicalView = vocbase->createView(viewCreateJson->slice());
+  REQUIRE((false == !logicalView));
+  CHECK((1 + 1 == beforeCount)); // +1 for StorageEngineMock::createView(...), +1 for StorageEngineMock::getViewProperties(...)
+
+  beforeCount = 0; // reset before call to StorageEngine::dropView(...)
+  CHECK((TRI_ERROR_NO_ERROR == databaseFeature->dropDatabase(vocbase->id(), true, true)));
+  CHECK((1 == beforeCount));
+}
+
 SECTION("test_truncate_cid") {
   static std::vector<std::string> const EMPTY;
 

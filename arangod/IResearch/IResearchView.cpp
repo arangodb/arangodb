@@ -1092,6 +1092,7 @@ arangodb::Result IResearchView::drop(
 }
 
 arangodb::Result IResearchView::dropImpl() {
+  std::unordered_set<TRI_voc_cid_t> collections;
   std::unordered_set<TRI_voc_cid_t> stale;
 
   // drop all known links
@@ -1101,41 +1102,42 @@ arangodb::Result IResearchView::dropImpl() {
     stale = _metaState._collections;
   }
 
-  // check link auth as per https://github.com/arangodb/backlog/issues/459
-  if (arangodb::ExecContext::CURRENT) {
-    for (auto& entry: stale) {
-      auto collection = vocbase().lookupCollection(entry);
+  if (!stale.empty()) {
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT) {
+      for (auto& entry: stale) {
+        auto collection = vocbase().lookupCollection(entry);
 
-      if (collection
-          && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
-        return arangodb::Result(TRI_ERROR_FORBIDDEN);
+        if (collection
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+          return arangodb::Result(TRI_ERROR_FORBIDDEN);
+        }
       }
     }
-  }
 
-  std::unordered_set<TRI_voc_cid_t> collections;
-  arangodb::Result res;
+    arangodb::Result res;
 
-  {
-    if (!_updateLinksLock.try_lock()) {
-      return arangodb::Result(
-        TRI_ERROR_FAILED, // FIXME use specific error code
-        std::string("failed to remove arangosearch view '") + name()
+    {
+      if (!_updateLinksLock.try_lock()) {
+        return arangodb::Result(
+          TRI_ERROR_FAILED, // FIXME use specific error code
+          std::string("failed to remove arangosearch view '") + name()
+        );
+      }
+
+      ADOPT_SCOPED_LOCK_NAMED(_updateLinksLock, lock);
+
+      res = IResearchLinkHelper::updateLinks(
+        collections, vocbase(), *this, emptyObjectSlice(), stale
       );
     }
 
-    ADOPT_SCOPED_LOCK_NAMED(_updateLinksLock, lock);
-
-    res = IResearchLinkHelper::updateLinks(
-      collections, vocbase(), *this, emptyObjectSlice(), stale
-    );
-  }
-
-  if (!res.ok()) {
-    return arangodb::Result(
-      res.errorNumber(),
-      std::string("failed to remove links while removing arangosearch view '") + name() + "': " + res.errorMessage()
-    );
+    if (!res.ok()) {
+      return arangodb::Result(
+        res.errorNumber(),
+        std::string("failed to remove links while removing arangosearch view '") + name() + "': " + res.errorMessage()
+      );
+    }
   }
 
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
@@ -1629,6 +1631,7 @@ size_t IResearchView::memory() const {
   size += _metaState.memory();
 
   if (_storePersisted) {
+    // FIXME TODO this is incorrect since '_storePersisted' is on disk and not in memory
     size += directoryMemory(*(_storePersisted._directory), id());
     size += _storePersisted._path.native().size() * sizeof(irs::utf8_path::native_char_t);
   }
