@@ -606,9 +606,9 @@ bool Graph::renameCollections(std::string const& oldName, std::string const& new
   // rename collections found in edgeDefinitions
   for (auto& it : edgeDefinitions()) {
     if (!renamed) {
-      renamed = it.second.renameCollections(oldName, newName);
+      renamed = it.second.renameCollection(oldName, newName);
     } else {
-      it.second.renameCollections(oldName, newName);
+      it.second.renameCollection(oldName, newName);
     }
   }
 
