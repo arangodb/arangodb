@@ -37,6 +37,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
+#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -233,6 +234,15 @@ void auth::UserManager::loadFromDB() {
         _internalVersion.store(tmp);
       }
     }
+  } catch (basics::Exception const& ex) {
+    auto bootstrap = application_features::ApplicationServer::lookupFeature<BootstrapFeature>();
+    if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
+        (bootstrap != nullptr && bootstrap->isReady())) {
+      LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+          << "Exception when loading users from db: " << ex.what();
+    }
+    // suppress log messgage if we get here during the normal course of an
+    // agency callback during bootstrapping and carry on
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
@@ -562,7 +572,7 @@ Result auth::UserManager::accessUser(std::string const& user,
 
 bool auth::UserManager::userExists(std::string const& user) {
   loadFromDB();
-  
+
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   return it != _userCache.end();
