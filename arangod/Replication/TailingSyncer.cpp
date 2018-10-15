@@ -1544,8 +1544,10 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   setProgress(progress);
 
   // send request
-  std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
-      rest::RequestType::GET, url, nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _state.connection);
@@ -1690,8 +1692,10 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     
     std::string body = builder.slice().toJson();
 
-    std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
-        rest::RequestType::PUT, url, body.c_str(), body.size()));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
+    });
 
     if (replutils::hasFailed(response.get())) {
       // failure

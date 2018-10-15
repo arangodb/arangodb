@@ -236,7 +236,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
-  if (_aborted.load(std::memory_order_acquire)) {
+  if (isAborted()) {
     return nullptr;
   }
   
