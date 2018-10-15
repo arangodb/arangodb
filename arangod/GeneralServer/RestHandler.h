@@ -83,13 +83,20 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// @brief forwards the request to the appropriate server
   bool forwardRequest();
 
+  // The priority is derived from the lane.
+  // Header fields might influence the priority.
+  // In order to change the priority of a handler
+  // adjust the lane, do not overwrite the priority
+  // function!
+  RequestPriority priority(RequestLane) const;
+  RequestPriority priority() const {return priority(lane());}
+
  public:
   // rest handler name for debugging and logging
   virtual char const* name() const = 0;
 
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
-  virtual RequestPriority priority() const;
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;

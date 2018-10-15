@@ -311,8 +311,7 @@ void RestHandler::runHandlerStateMachine() {
   }
 }
 
-RequestPriority RestHandler::priority() const {
-  RequestLane l = lane();
+RequestPriority RestHandler::priority(RequestLane l) const {
   RequestPriority p = RequestPriority::LOW;
 
   switch (l) {

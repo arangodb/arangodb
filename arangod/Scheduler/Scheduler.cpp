@@ -453,6 +453,7 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
 //      return nrWorking + nrQueued <= _maxQueuedHighPrio;
       return nrWorking + nrQueued < _maxThreads;
 
+    case RequestPriority::MED:
     case RequestPriority::LOW:
     case RequestPriority::V8:
 //      return nrWorking + nrQueued <= _maxQueuedLowPrio;
