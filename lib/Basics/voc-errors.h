@@ -1239,6 +1239,12 @@ constexpr int TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        
 /// Will be raised when a transaction was aborted.
 constexpr int TRI_ERROR_TRANSACTION_ABORTED                                     = 1654;
 
+/// 1655: ERROR_TRANSACTION_MULTIPLE_EXCLUSIVE_COLLECTIONS
+/// "only one exclusive collection"
+/// Will be raised when a transaction is started with more than one exclusive
+/// collection.
+constexpr int TRI_ERROR_TRANSACTION_MULTIPLE_EXCLUSIVE_COLLECTIONS              = 1655;
+
 /// 1700: ERROR_USER_INVALID_NAME
 /// "invalid user name"
 /// Will be raised when an invalid user name is used.

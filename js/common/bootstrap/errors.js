@@ -232,6 +232,7 @@
     "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1652, "message" : "unregistered collection used in transaction" },
     "ERROR_TRANSACTION_DISALLOWED_OPERATION" : { "code" : 1653, "message" : "disallowed operation inside transaction" },
     "ERROR_TRANSACTION_ABORTED"    : { "code" : 1654, "message" : "transaction aborted" },
+    "ERROR_TRANSACTION_MULTIPLE_EXCLUSIVE_COLLECTIONS" : { "code" : 1655, "message" : "only one exclusive collection" },
     "ERROR_USER_INVALID_NAME"      : { "code" : 1700, "message" : "invalid user name" },
     "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },

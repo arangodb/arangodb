@@ -22,11 +22,15 @@ db._executeTransaction({
 ```
 
 *write* here means write access to the collection, and also includes any read accesses. 
-*exclusive* is a synonym for *write* in the MMFiles engine, because both *exclusive* and
-*write* will acquire collection-level locks in this engine. In the RocksDB engine,
-*exclusive* means exclusive write access to the collection, and *write* means (shared)
-write access to the collection, which can be interleaved with write accesses by other
-concurrent transactions.
+*exclusive* is more or less a synonym for *write* in the MMFiles engine, because both 
+*exclusive* and *write* will acquire collection-level locks in this engine.
+In the RocksDB engine, *exclusive* means exclusive write access to the collection, and 
+*write* means (shared) write access to the collection, which can be interleaved with 
+write accesses by other concurrent transactions.
+
+Note that there can be only one exclusively locked collection per transaction. If more
+than one exclusively locked collection is specified, the transaction will abort directly
+with an error.
 
 MMFiles engine
 --------------
