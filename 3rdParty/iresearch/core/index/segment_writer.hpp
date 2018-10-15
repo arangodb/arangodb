@@ -220,7 +220,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     valid_ = false;
   }
 
-  bool flush(std::string& filename, segment_meta& meta);
+  bool flush(index_meta::index_segment_t& segment);
 
   const std::string& name() const NOEXCEPT { return seg_name_; }
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }

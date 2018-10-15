@@ -32,31 +32,16 @@
 #include "utils/index_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/range.hpp"
 #include "index_writer.hpp"
 
 #include <list>
 
 NS_LOCAL
 
-template<typename T>
-class typed_ref {
- public:
-  typedef T type_t;
-  typed_ref() NOEXCEPT: data_(nullptr), size_(0) {}
-  typed_ref(T* data, size_t size) NOEXCEPT: data_(data), size_(size) {}
-  type_t& operator[](size_t i) { assert(i < size_); return data_[i]; }
-  const type_t& operator[](size_t i) const { assert(i < size_); return data_[i]; }
-  bool empty() const NOEXCEPT { return !data_ || 0 == size_; }
-  size_t size() const NOEXCEPT { return size_; }
-
- private:
-  T* data_;
-  size_t size_;
-};
-
 typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
-typedef typed_ref<irs::index_writer::modification_context> modification_contexts_ref;
-typedef typed_ref<irs::segment_writer::update_context> update_contexts_ref;
+typedef range<irs::index_writer::modification_context> modification_contexts_ref;
+typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
@@ -128,9 +113,7 @@ bool add_document_mask_modified_records(
 
   bool modified = false;
 
-  for (size_t i = 0, count = modifications.size(); i < count; ++i) {
-    auto& modification = modifications[i];
-
+  for (auto& modification : modifications) {
     if (!modification.filter) {
       continue; // skip invalid or uncommitted modification queries
     }
@@ -185,9 +168,7 @@ bool add_document_mask_modified_records(
   assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
-  for (size_t i = 0, count = modifications.size(); i < count; ++i) {
-    auto& modification = modifications[i];
-
+  for (auto& modification : modifications) {
     if (!modification.filter) {
       continue; // skip invalid or uncommitted modification queries
     }
@@ -544,6 +525,7 @@ index_writer::documents_context::document::~document() {
 }
 
 index_writer::documents_context::~documents_context() {
+  // FIXME TODO move emplace into active_segment_context destructor
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
   writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
 }
@@ -828,7 +810,7 @@ bool index_writer::segment_context::flush() {
 
   assert(integer_traits<doc_id_t>::const_max >= writer_->docs_cached());
   flushed_update_contexts_.reserve(flushed_update_contexts_.size() + writer_->docs_cached());
-  flushed_.emplace_back(std::move(writer_meta_));
+  flushed_.emplace_back(std::move(writer_meta_.meta));
 
   // copy over update_contexts
   for (size_t doc_id = doc_limits::min(),
@@ -842,7 +824,7 @@ bool index_writer::segment_context::flush() {
   auto& segment = flushed_.back();
 
   // flush segment_writer
-  if (!writer_->flush(segment.filename, segment.meta)) {
+  if (!writer_->flush(segment)) {
     flushed_.pop_back();
     flushed_update_contexts_.resize(flushed_docs_count);
 
@@ -917,7 +899,7 @@ void index_writer::segment_context::prepare() {
 
   if (!writer_->initialized()) {
     writer_meta_ = meta_generator_();
-    writer_->reset(writer_meta_);
+    writer_->reset(writer_meta_.meta);
   }
 }
 
@@ -961,11 +943,9 @@ void index_writer::segment_context::reset() {
   uncomitted_modification_queries_ = 0;
 
   if (writer_->initialized()) {
-    std::string filename;
-
     writer_->reset(); // try to reduce number of files flushed below
-    writer_->flush(filename, writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
-    writer_meta_ = segment_meta(); // reset to invalid
+    writer_->flush(writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
+    writer_meta_.meta = segment_meta(); // reset to invalid
   }
 
   dir_.clear_refs(); // release refs only after clearing writer state to ensure 'writer_' does not hold any files
@@ -1138,6 +1118,7 @@ index_writer::ptr index_writer::make(
 }
 
 index_writer::~index_writer() {
+  assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
   close();
   flush_context_ = nullptr;
   flush_context_pool_.clear(); // ensue all tracked segment_contexts are released before segment_writer_pool_ is deallocated
@@ -1183,7 +1164,7 @@ bool index_writer::consolidate(
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
-    policy(candidates, dir_, *committed_meta, consolidating_segments_);
+    policy(candidates, *committed_meta, consolidating_segments_);
 
     switch (candidates.size()) {
       case 0:

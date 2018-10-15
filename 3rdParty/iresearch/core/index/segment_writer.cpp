@@ -27,6 +27,7 @@
 #include "index_meta.hpp"
 #include "analysis/token_stream.hpp"
 #include "analysis/token_attributes.hpp"
+#include "utils/index_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
@@ -74,11 +75,9 @@ segment_writer::ptr segment_writer::make(directory& dir) {
 }
 
 size_t segment_writer::memory() const NOEXCEPT {
-  return sizeof(segment_writer)
-    + (sizeof(update_contexts::value_type) * docs_context_.size())
-    + (sizeof(bitvector) + docs_mask_.count() * sizeof(bitvector::word_t))
-    + fields_.memory()
-    ;
+  return (docs_context_.size() * sizeof(update_contexts::value_type))
+    + (docs_mask_.size() * sizeof(bitvector::word_t))
+    + fields_.memory();
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
@@ -158,8 +157,9 @@ void segment_writer::finish() {
   }
 }
 
-bool segment_writer::flush(std::string& filename, segment_meta& meta) {
+bool segment_writer::flush(index_meta::index_segment_t& segment) {
   REGISTER_TIMER_DETAILED();
+  auto& meta = segment.meta;
 
   // flush columnstore and columns indices
   if (col_writer_->flush() && !columns_.empty()) {
@@ -238,12 +238,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   // flush segment metadata
-  {
-    segment_meta_writer::ptr writer = meta.codec->get_segment_meta_writer();
-    writer->write(dir_, meta);
-
-    filename = writer->filename(meta);
-  }
+  index_utils::write_index_segment(dir_, segment);
 
   return true;
 }

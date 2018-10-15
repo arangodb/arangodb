@@ -128,7 +128,9 @@ class IRESEARCH_API fields_data: util::noncopyable {
   /// @return approximate amount of memory size occupied by this instance
   //////////////////////////////////////////////////////////////////////////////
   size_t memory() const NOEXCEPT {
-    return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
+    return byte_writer_.pool_offset()
+      + int_writer_.pool_offset()*sizeof(int_block_pool::value_type)
+      + fields_.size()*sizeof(fields_map::value_type);
   }
 
   size_t size() const { return fields_.size(); }

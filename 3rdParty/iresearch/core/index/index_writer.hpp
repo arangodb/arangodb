@@ -461,7 +461,6 @@ class IRESEARCH_API index_writer:
   ////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
     std::set<const segment_meta*>& candidates,
-    const directory& dir, // FIXME remove
     const index_meta& meta,
     const consolidating_segments_t& consolidating_segments
   )> consolidation_policy_t;
@@ -721,7 +720,7 @@ class IRESEARCH_API index_writer:
     size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
-    segment_meta writer_meta_; // the segment_meta this writer was initialized with
+    index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
     DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator)
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator);

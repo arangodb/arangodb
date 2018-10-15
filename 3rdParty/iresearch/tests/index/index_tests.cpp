@@ -12151,7 +12151,6 @@ TEST_F(memory_index_test, concurrent_consolidation) {
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
             std::set<const irs::segment_meta*>& candidates,
-            const irs::directory&,
             const irs::index_meta& meta,
             const irs::index_writer::consolidating_segments_t&
         ) mutable {
@@ -12280,7 +12279,6 @@ TEST_F(memory_index_test, concurrent_consolidation_dedicated_commit) {
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
             std::set<const irs::segment_meta*>& candidates,
-            const irs::directory&,
             const irs::index_meta& meta,
             const irs::index_writer::consolidating_segments_t&
         ) mutable {
@@ -12422,7 +12420,6 @@ TEST_F(memory_index_test, concurrent_consolidation_two_phase_dedicated_commit) {
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
             std::set<const irs::segment_meta*>& candidates,
-            const irs::directory&,
             const irs::index_meta& meta,
             const irs::index_writer::consolidating_segments_t&
         ) mutable {
@@ -12568,7 +12565,6 @@ TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments, &dir] (
             std::set<const irs::segment_meta*>& candidates,
-            const irs::directory& dir,
             const irs::index_meta& meta,
             const irs::index_writer::consolidating_segments_t&
         ) mutable {
@@ -12634,7 +12630,6 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
 
   auto check_consolidating_segments = [](
       std::set<const irs::segment_meta*>& candidates,
-      const irs::directory& /*dir*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments
   ) {
@@ -12666,7 +12661,6 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
   {
     auto invalid_candidate_policy = [](
         std::set<const irs::segment_meta*>& candidates,
-        const irs::directory& /*dir*/,
         const irs::index_meta& /*meta*/,
         const irs::index_writer::consolidating_segments_t&
     ) {
@@ -12685,7 +12679,6 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
 
     auto invalid_candidate_policy = [&meta](
         std::set<const irs::segment_meta*>& candidates,
-        const irs::directory& /*dir*/,
         const irs::index_meta& /*meta*/,
         const irs::index_writer::consolidating_segments_t&
     ) {
@@ -12720,7 +12713,6 @@ TEST_F(memory_index_test, consolidate_single_segment) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
-      const irs::directory& /*dir*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments
   ) {
@@ -12904,7 +12896,6 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
           std::set<const irs::segment_meta*>& candidates,
-          const irs::directory& /*dir*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments
       ) {
@@ -13066,7 +13057,6 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 
       auto check_consolidating_segments = [](
           std::set<const irs::segment_meta*>& candidates,
-          const irs::directory& /*dir*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments
       ) {
@@ -13226,7 +13216,6 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
           std::set<const irs::segment_meta*>& candidates,
-          const irs::directory& /*dir*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments
       ) {
@@ -13365,7 +13354,6 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
           std::set<const irs::segment_meta*>& candidates,
-          const irs::directory& /*dir*/,
           const irs::index_meta& meta,
           const irs::index_writer::consolidating_segments_t& consolidating_segments
       ) {
@@ -13466,7 +13454,6 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
-      const irs::directory& /*dir*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments
   ) {
@@ -13643,7 +13630,6 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
-      const irs::directory& /*dir*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments
   ) {
@@ -14010,7 +13996,6 @@ TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
   {
     auto check_consolidating_segments = [](
         std::set<const irs::segment_meta*>& candidates,
-        const irs::directory& /*dir*/,
         const irs::index_meta& meta,
         const irs::index_writer::consolidating_segments_t& consolidating_segments
     ) {
@@ -14033,7 +14018,6 @@ TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
   for (size_t i = 0, j = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto merge_adjacent = [&j](
         std::set<const irs::segment_meta*>& candidates,
-        const irs::directory& /*dir*/,
         const irs::index_meta& meta,
         const irs::index_writer::consolidating_segments_t& consolidating_segments
     ) {
@@ -14050,7 +14034,6 @@ TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
   {
     auto check_consolidating_segments = [](
         std::set<const irs::segment_meta*>& candidates,
-        const irs::directory& /*dir*/,
         const irs::index_meta& meta,
         const irs::index_writer::consolidating_segments_t& consolidating_segments
     ) {
@@ -14068,7 +14051,6 @@ TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
   {
     auto check_consolidating_segments = [](
         std::set<const irs::segment_meta*>& candidates,
-        const irs::directory& /*dir*/,
         const irs::index_meta& meta,
         const irs::index_writer::consolidating_segments_t& consolidating_segments
     ) {
@@ -14129,7 +14111,6 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
-      const irs::directory& /*dir*/,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t& consolidating_segments
   ) {
@@ -15520,7 +15501,6 @@ TEST_F(memory_index_test, segment_consolidate) {
 
   auto merge_if_masked = [](
       std::set<const irs::segment_meta*>& candidates,
-      const irs::directory& dir,
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t&
   )->void {

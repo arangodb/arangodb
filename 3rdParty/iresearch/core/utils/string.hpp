@@ -162,7 +162,7 @@ class basic_string_ref {
   // Constructs a string reference object from a ref and a size.
   basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
     : data_(ref.data_), size_(size) {
-    assert(size <= ref.size_);
+    IRS_ASSERT(size <= ref.size_);
   }
 
   // Constructs a string reference object from a C string and a size.
@@ -184,9 +184,8 @@ class basic_string_ref {
     : data_(str.c_str()), size_(size) {
   }
 
-  const char_type& operator[](size_t i) const NOEXCEPT {
-    assert(i < size_);
-    return data_[i];
+  CONSTEXPR const char_type& operator[](size_t i) const NOEXCEPT {
+    return IRS_ASSERT(i < size_), data_[i];
   }
 
   // Returns the pointer to a C string.
