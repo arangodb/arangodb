@@ -149,6 +149,9 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
+  // beware of performing comparison against NIL value,
+  // it may cause undefined behaviour in std::char_traits<Elem>
+  // (e.g. becuase of memcmp function)
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL; // null string
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref EMPTY; // empty string
 

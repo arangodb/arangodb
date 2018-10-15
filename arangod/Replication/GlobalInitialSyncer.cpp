@@ -117,7 +117,9 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
 
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
-  TRI_DEFER(sendRemoveBarrier());
+  TRI_DEFER(if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
+  });
 
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
@@ -192,7 +194,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
-      
+
       DatabaseGuard guard(nameSlice.copyString());
 
       // change database name in place
@@ -317,12 +319,12 @@ Result GlobalInitialSyncer::updateServerInventory(
                          .errorNumber();
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, Logger::FIXME)
+            LOG_TOPIC(ERR, Logger::REPLICATION)
                 << "unable to drop collection " << collection->name() << ": "
                 << TRI_errno_string(res);
           }
         } catch (...) {
-          LOG_TOPIC(ERR, Logger::FIXME)
+          LOG_TOPIC(ERR, Logger::REPLICATION)
               << "unable to drop collection " << collection->name();
         }
       }

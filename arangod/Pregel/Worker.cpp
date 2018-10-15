@@ -757,10 +757,12 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
         120.0,  // timeout
         true);  // single request, no answer expected
+    // Forget about it
+    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 
@@ -781,7 +783,7 @@ void Worker<V, E, M>::_callConductorWithResponse(
     std::unordered_map<std::string, std::string> headers;
 
     std::unique_ptr<ClusterCommResult> result = cc->syncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, message.toJson(), headers,
         120.0);
     if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {

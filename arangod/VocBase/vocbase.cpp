@@ -405,7 +405,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
   auto itr = _dataSourceById.find(view.id());
 
   if (itr == _dataSourceById.end()
-      || itr->second->category() != arangodb::LogicalView::category()) {
+      || itr->second->category() != LogicalView::category()) {
     return true; // no such view
   }
 
@@ -1005,28 +1005,32 @@ void TRI_vocbase_t::inventory(
     if (collection->id() <= maxTick) {
       result.openObject();
 
+      // why are indexes added separately, when they are added by
+      //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
       collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
+        // AND exclude arangosearch indexes
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
-      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString" }, true, false);
+      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString", "indexes" }, true, false);
       result.close();
 
       result.close();
     }
   }
   result.close(); // </collection>
-  
+
   result.add("views", VPackValue(VPackValueType::Array, true));
   if (ServerState::instance()->isCoordinator()) {
     auto views = ClusterInfo::instance()->getViews(name());
     for (auto const& view : views) {
       result.openObject();
-      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
       result.close();
     }
   } else {
@@ -1036,7 +1040,8 @@ void TRI_vocbase_t::inventory(
       }
       LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
       result.openObject();
-      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
+      result.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
       result.close();
     }
   }
@@ -1396,7 +1401,7 @@ arangodb::Result TRI_vocbase_t::renameView(
   auto itr1 = _dataSourceByName.find(oldName);
 
   if (itr1 == _dataSourceByName.end()
-      || arangodb::LogicalView::category() != itr1->second->category()) {
+      || LogicalView::category() != itr1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
@@ -1516,7 +1521,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(
   auto itr1 = _dataSourceByName.find(oldName);
 
   if (itr1 == _dataSourceByName.end()
-      || arangodb::LogicalCollection::category() != itr1->second->category()) {
+      || LogicalCollection::category() != itr1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 

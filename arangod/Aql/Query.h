@@ -165,8 +165,17 @@ class Query {
   /// @brief get the vocbase
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
+  inline Collection* addCollection(std::string const& name, AccessMode::Type accessType) {
+    // Either collection or view
+    return _collections.add(name, accessType);
+  }
+
+  inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
+    return _collections.add(name.toString(), accessType);
+  }
+
   /// @brief collections
-  inline Collections* collections() { return &_collections; }
+  inline Collections const* collections() const { return &_collections; }
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const {
@@ -209,7 +218,7 @@ class Query {
   /// @brief register a warning
   virtual void registerWarning(int, char const* = nullptr);
 
-  void prepare(QueryRegistry*, uint64_t queryHash);
+  void prepare(QueryRegistry*);
 
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
@@ -287,7 +296,10 @@ class Query {
   std::string getStateString() const;
 
   /// @brief note that the query uses the view
-  void addView(std::string const& name) { _views.emplace(name); }
+  void addView(std::string const& name) {
+    // Either collection or view
+    _views.emplace(name);
+  }
 
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
@@ -310,6 +322,9 @@ class Query {
  private:
   /// @brief initializes the query
   void init();
+  
+  /// @brief calculate a hash for the query, once
+  uint64_t hash() const;
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
@@ -320,8 +335,8 @@ class Query {
   /// @brief log a query
   void log();
 
-  /// @brief calculate a hash value for the query and bind parameters
-  uint64_t hash();
+  /// @brief calculate a hash value for the query string and bind parameters
+  uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
@@ -454,6 +469,12 @@ class Query {
   /// only populated when the query has generated its result(s) and before storing
   /// the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
+
+  /// @brief hash for this query. will be calculated only once when needed
+  mutable uint64_t _queryHash = DontCache;
+  
+  /// @brief whether or not the hash was already calculated
+  mutable bool _queryHashCalculated = false;
 };
 
 }

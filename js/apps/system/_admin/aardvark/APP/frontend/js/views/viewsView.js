@@ -6,6 +6,7 @@
 
   window.ViewsView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('viewsView.ejs'),
 
@@ -35,6 +36,15 @@
       'click #viewsSortDesc': 'sorting'
     },
 
+    checkVisibility: function () {
+      if ($('#viewsDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#viewsDropdown');
+    },
+
     sorting: function () {
       if ($('#viewsSortDesc').is(':checked')) {
         this.setSortingDesc(true);
@@ -42,12 +52,7 @@
         this.setSortingDesc(false);
       }
 
-      if ($('#viewsDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -61,11 +66,14 @@
     },
 
     toggleSettingsDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#viewsSortDesc').attr('checked', this.sortOptions.desc);
 
       $('#viewsToggle').toggleClass('activated');
-      $('#viewsDropdown2').slideToggle(200);
+      $('#viewsDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     render: function (data) {
@@ -86,7 +94,7 @@
 
       if (self.dropdownVisible === true) {
         $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
-        $('#viewsToggle').toggleClass('activated');
+        $('#viewsToggle').addClass('activated');
         $('#viewsDropdown2').show();
       }
 
@@ -97,6 +105,13 @@
       var strLength = searchInput.val().length;
       searchInput.focus();
       searchInput[0].setSelectionRange(strLength, strLength);
+
+      arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
+    },
+
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('#createView').parent().parent().addClass('disabled');
     },
 
     setSearchString: function (string) {
@@ -159,8 +174,10 @@
     },
 
     createView: function (e) {
-      e.preventDefault();
-      this.createViewModal();
+      if (!this.readOnly) {
+        e.preventDefault();
+        this.createViewModal();
+      }
     },
 
     createViewModal: function () {

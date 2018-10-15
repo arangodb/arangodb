@@ -166,9 +166,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 
-  /// @brief send a "remove barrier" command
-  Result sendRemoveBarrier();
-
   // TODO worker-safety
   void setAborted(bool value);
 

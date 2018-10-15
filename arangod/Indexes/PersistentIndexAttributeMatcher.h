@@ -40,7 +40,8 @@ class Index;
 /// rocksdb based storage
 namespace PersistentIndexAttributeMatcher {
 
-bool supportsFilterCondition(arangodb::Index const*,
+bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                             arangodb::Index const*,
                              arangodb::aql::AstNode const* node,
                              arangodb::aql::Variable const* reference,
                              size_t itemsInIndex, size_t& estimatedItems,

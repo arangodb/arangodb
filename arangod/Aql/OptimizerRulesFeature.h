@@ -64,6 +64,9 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   void addRules();
   void addStorageEngineRules();
 
+  static void disableRule(std::string const& name, std::unordered_set<int>& disabled);
+  static void enableRule(std::string const& name, std::unordered_set<int>& disabled);
+
   /// @brief the rules database
   static std::map<int, OptimizerRule> _rules;
 

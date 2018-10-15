@@ -119,7 +119,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 }; // IResearchLogTopic
 
 arangodb::aql::AqlValue filter(
-    arangodb::aql::Query*,
+    arangodb::aql::ExpressionContext*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -129,7 +129,7 @@ arangodb::aql::AqlValue filter(
 }
 
 arangodb::aql::AqlValue scorer(
-    arangodb::aql::Query*,
+    arangodb::aql::ExpressionContext*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -139,7 +139,7 @@ arangodb::aql::AqlValue scorer(
 }
 
 typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
-  arangodb::aql::Query*,
+  arangodb::aql::ExpressionContext*,
   arangodb::transaction::Methods* ,
   arangodb::SmallVector<arangodb::aql::AqlValue> const&
 );
@@ -163,11 +163,11 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
-    [](arangodb::aql::Query*,
+    ),
+    [](arangodb::aql::ExpressionContext*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
       auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
@@ -182,10 +182,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "EXISTS",      // name
     ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -193,10 +193,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -204,10 +204,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "PHRASE",      // name
     ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -215,10 +215,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "MIN_MATCH",   // name
     ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -226,10 +226,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "BOOST",       // name
     ".,.",         // positional arguments (filter expression, boost)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -237,10 +237,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "ANALYZER",    // name
     ".,.",         // positional arguments (filter expression, analyzer)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 }
@@ -309,10 +309,10 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
       arangodb::aql::Function::makeFlags(
-        arangodb::aql::Function::Flags::Deterministic, 
+        arangodb::aql::Function::Flags::Deterministic,
         arangodb::aql::Function::Flags::Cacheable,
         arangodb::aql::Function::Flags::CanRunOnDBServer
-      ), 
+      ),
       &scorer // function implementation (use function name as placeholder)
     });
 
@@ -348,14 +348,19 @@ void registerViewFactory() {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
   } else if (arangodb::ServerState::instance()->isDBServer()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
-  } else {
+  } else if (arangodb::ServerState::instance()->isSingleServer()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_FAILED,
+      std::string("Invalid role for arangosearch view creation.")
+    );
   }
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       res.errorNumber(),
-      std::string("failure registering IResearch view factory: ") + res.errorMessage()
+      std::string("failure registering arangosearch view factory: ") + res.errorMessage()
     );
   }
 }
@@ -731,7 +736,7 @@ void IResearchFeature::asyncNotify() const {
 }
 
 void IResearchFeature::beginShutdown() {
-  _running = false;
+  _running.store(false);
   ApplicationFeature::beginShutdown();
 }
 
@@ -740,7 +745,7 @@ void IResearchFeature::collectOptions(
 ) {
   auto section = FEATURE_NAME;
 
-  _running = false;
+  _running.store(false);
   std::transform(section.begin(), section.end(), section.begin(), ::tolower);
   ApplicationFeature::collectOptions(options);
   options->addSection(section, std::string("Configure the ") + FEATURE_NAME + " feature");
@@ -765,7 +770,7 @@ void IResearchFeature::prepare() {
     return;
   }
 
-  _running = false;
+  _running.store(false);
   ApplicationFeature::prepare();
 
   // load all known codecs
@@ -786,8 +791,8 @@ void IResearchFeature::prepare() {
   registerRecoveryHelper();
 
   // start the async task thread pool
-  if (!ServerState::instance()->isCoordinator() && 
-      !ServerState::instance()->isAgent()) {  
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isAgent()) {
     auto poolSize = computeThreadPoolSize(_threads, _threadsLimit);
 
     if (_async->poolSize() != poolSize) {
@@ -817,19 +822,19 @@ void IResearchFeature::start() {
       registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+        << "failure to find feature 'AQLFunctions' while registering arangosearch filters";
     }
 
   }
 
-  _running = true;
+  _running.store(true);
 }
 
 void IResearchFeature::stop() {
   if (!isEnabled()) {
     return;
   }
-  _running = false;
+  _running.store(false);
   ApplicationFeature::stop();
 }
 
@@ -838,14 +843,14 @@ void IResearchFeature::unprepare() {
     return;
   }
 
-  _running = false;
+  _running.store(false);
   ApplicationFeature::unprepare();
 }
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options
 ) {
-  _running = false;
+  _running.store(false);
   ApplicationFeature::validateOptions(options);
 }
 

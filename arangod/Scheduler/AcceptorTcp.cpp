@@ -31,7 +31,7 @@
 using namespace arangodb;
 
 void AcceptorTcp::open() {
-  std::unique_ptr<asio_ns::ip::tcp::resolver> resolver(_scheduler->newResolver());
+  std::unique_ptr<asio_ns::ip::tcp::resolver> resolver(_context.newResolver());
 
   std::string hostname = _endpoint->host();
   int portNumber = _endpoint->port();
@@ -109,13 +109,18 @@ void AcceptorTcp::open() {
 
 void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   TRI_ASSERT(!_peer);
+
+  // select the io context for this socket
+  auto &context = _server.selectIoContext();
+
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketSslTcp(_scheduler,
-                                 SslServerFeature::SSL->createSslContext()));
+
+    auto sslContext = SslServerFeature::SSL->createSslContext();
+    _peer.reset(new SocketSslTcp(context, std::move(sslContext)));
     SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
     _acceptor->async_accept(peer->_socket, peer->_peerEndpoint, handler);
   } else {
-    _peer.reset(new SocketTcp(_scheduler));
+    _peer.reset(new SocketTcp(context));
     SocketTcp* peer = static_cast<SocketTcp*>(_peer.get());
     _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
   }

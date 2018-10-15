@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -82,9 +83,16 @@ arangodb::Result checkHttpResponse(
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: HTTP " +
-                                    itoa(response->getHttpReturnCode()) + ": " +
-                                    response->getHttpReturnMessage()};
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum, "got invalid response from server: HTTP " +
+                      itoa(response->getHttpReturnCode()) + ": " + errorMsg};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -284,7 +292,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
     if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
+              "got invalid response from server: required header is missing"};
     }
 
     // now actually write retrieved data to dump file
@@ -292,9 +300,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     file.write(body.c_str(), body.length());
     if (file.status().fail()) {
       return {TRI_ERROR_CANNOT_WRITE_FILE};
-    } else {
-      jobData.stats.totalWritten += (uint64_t)body.length();
-    }
+    } 
+    jobData.stats.totalWritten += static_cast<uint64_t>(body.length());
 
     if (!checkMore || fromTick == 0) {
       // all done, return successful
@@ -533,7 +540,7 @@ void DumpFeature::collectOptions(
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_options.includeSystemCollections));
-
+  
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_options.outputPath));
 
@@ -636,7 +643,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
   // get the view list
   VPackSlice views = body.get("views");
   if (!views.isArray()) {
@@ -648,7 +655,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (res.fail()) {
     return res;
   }
-  
+
   // Step 2. Store view definition files
   res = storeViews(views);
   if (res.fail()) {
@@ -712,7 +719,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
-  
+
   // wait for all jobs to finish, then check for errors
   _clientTaskQueue.waitForIdle();
   {
@@ -756,19 +763,19 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
   // get the view list
   VPackSlice views = body.get("views");
   if (!views.isArray()) {
     views = VPackSlice::emptyArraySlice();
   }
-  
+
   // Step 1. Store view definition files
   Result res = storeDumpJson(body, dbname);
   if (res.fail()) {
     return res;
   }
-  
+
   // Step 2. Store view definition files
   res = storeViews(views);
   if (res.fail()) {
@@ -863,10 +870,10 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 
   return {TRI_ERROR_NO_ERROR};
 }
-  
+
 Result DumpFeature::storeDumpJson(VPackSlice const& body,
                                   std::string const& dbName) const {
-  
+
   // read the server's max tick value
   std::string const tickString =
   basics::VelocyPackHelper::getStringValue(body, "tick", "");
@@ -875,27 +882,20 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body,
   }
   LOG_TOPIC(INFO, Logger::DUMP)
   << "Last tick provided by server is: " << tickString;
-  
-  // set the local max tick value
-  uint64_t maxTick = basics::StringUtils::uint64(tickString);
-  // check if the user specified a max tick value
-  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
-    maxTick = _options.tickEnd;
-  }
-  
+
   try {
     VPackBuilder meta;
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
     meta.close();
-    
+
     // save last tick in file
     auto file = _directory->writableFile("dump.json", true);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
-    
+
     std::string const metaString = meta.slice().toJson();
     file->write(metaString.c_str(), metaString.size());
     if (file->status().fail()) {
@@ -910,14 +910,14 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body,
   }
   return {};
 }
-  
+
 Result DumpFeature::storeViews(VPackSlice const& views) const {
   for (VPackSlice view : VPackArrayIterator(views)) {
     auto nameSlice = view.get(StaticStrings::DataSourceName);
     if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
       continue; // ignore
     }
-    
+
     try {
       std::string fname = nameSlice.copyString();
       fname.append(".view.json");
@@ -926,7 +926,7 @@ Result DumpFeature::storeViews(VPackSlice const& views) const {
       if (!::fileOk(file.get())) {
         return ::fileError(file.get(), true);
       }
-      
+
       std::string const viewString = view.toJson();
       file->write(viewString.c_str(), viewString.size());
       if (file->status().fail()) {

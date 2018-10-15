@@ -28,12 +28,12 @@
 #include <unordered_set>
 
 #include "index/index_writer.hpp"
+#include "velocypack/Builder.h"
 #include "VocBase/voc-types.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
 
-class Builder; // forward declarations
 struct ObjectBuilder; // forward declarations
 class Slice; // forward declarations
 
@@ -53,49 +53,24 @@ NS_BEGIN(iresearch)
 struct IResearchViewMeta {
   class ConsolidationPolicy {
    public:
+    ConsolidationPolicy() = default;
     ConsolidationPolicy(
-      std::string const& type,
-      size_t segmentThreshold,
-      float threshold
-    );
-    ConsolidationPolicy(ConsolidationPolicy const& other);
-    ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
-    ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
-    ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
-    bool operator==(ConsolidationPolicy const& other) const noexcept;
-    bool operator!=(ConsolidationPolicy const& other) const noexcept;
+      irs::index_writer::consolidation_policy_t&& policy,
+      arangodb::velocypack::Builder&& properties
+    ) noexcept: _policy(std::move(policy)), _properties(std::move(properties)) {
+    }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize ConsolidationPolicy with values from a JSON definition
-    /// @return success or set 'errorField' to the specific field with the error
-    ///         on failure state is undefined
-    ////////////////////////////////////////////////////////////////////////////
-    bool init(
-      arangodb::velocypack::Slice const& slice,
-      std::string& errorField,
-      ConsolidationPolicy const& defaults
-    ) noexcept;
+    irs::index_writer::consolidation_policy_t const& policy() const noexcept {
+      return _policy;
+    }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief fill and return a JSON definition of a ConsolidationPolicy object
-    /// @return success or set TRI_set_errno(...) and return false
-    ////////////////////////////////////////////////////////////////////////////
-    bool json(arangodb::velocypack::Builder& builder) const;
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @return the iresearch policy instance or false if not initialized
-    ////////////////////////////////////////////////////////////////////////////
-    irs::index_writer::consolidation_policy_t const& policy() const noexcept;
-
-    size_t segmentThreshold() const noexcept;
-    float threshold() const noexcept;
-    std::string const& type() const noexcept;
+    arangodb::velocypack::Slice properties() const noexcept {
+      return _properties.slice();
+    }
 
    private:
-    irs::index_writer::consolidation_policy_t _policy;
-    size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
-    float _threshold; // consolidation policy threshold
-    std::string _type; // consolidation policy type
+    irs::index_writer::consolidation_policy_t _policy; // policy instance (false == disable)
+    arangodb::velocypack::Builder _properties; // normalized policy definition
   };
 
   struct Mask {

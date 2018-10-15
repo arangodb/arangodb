@@ -47,7 +47,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using UserTransaction = transaction::Methods;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 #ifndef USE_ENTERPRISE

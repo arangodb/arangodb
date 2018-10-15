@@ -188,7 +188,7 @@ function dumpTestSuite () {
       assertFalse(p.isVolatile);
       assertEqual(32, p.indexBuckets);
 
-      assertEqual(9, c.getIndexes().length); 
+      assertEqual(9, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
@@ -459,6 +459,11 @@ function dumpTestSuite () {
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+
+      assertEqual(props.consolidationIntervalMsec, 0);
+      assertEqual(props.cleanupIntervalStep, 456);
+      assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
+      assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
       var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
       assertEqual(5000, res.length);

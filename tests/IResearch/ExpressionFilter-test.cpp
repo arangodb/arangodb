@@ -185,18 +185,18 @@ struct custom_sort: public irs::sort {
       );
     }
 
-    virtual void prepare_score(irs::doc_id_t& score) const override {
-      score = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
-    virtual void add(irs::doc_id_t& dst, const irs::doc_id_t& src) const override {
+    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
       if (sort_.scorer_add) {
-        sort_.scorer_add(dst, src);
+        sort_.scorer_add(score_cast(dst), score_cast(src));
       }
     }
 
-    virtual bool less(const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(lhs, rhs) : false;
+    virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
+      return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }
 
    private:
@@ -211,10 +211,10 @@ struct custom_sort: public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   custom_sort(): sort(custom_sort::type()) {}
   virtual prepared::ptr prepare() const override {
-    return custom_sort::prepared::make<custom_sort::prepared>(*this);
+    return std::make_unique<custom_sort::prepared>(*this);
   }
 };
 
@@ -287,7 +287,7 @@ struct IResearchExpressionFilterSetup {
         // fake non-deterministic
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -368,12 +368,13 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     );
     REQUIRE(writer);
 
-    for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
-      storedField.str = arangodb::iresearch::getStringRef(doc.get("name"));
-      writer->insert([&storedField](irs::segment_writer::document& doc)->bool {
-        doc.insert(irs::action::store, storedField);
-        return false; // break the loop
-      });
+    for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
+      storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
+
+      auto ctx = writer->documents();
+      auto doc = ctx.insert();
+      CHECK(doc.insert(irs::action::store, storedField));
+      CHECK(doc);
     }
 
     writer->commit();

@@ -96,6 +96,10 @@ class Thread {
   /// @brief flags the thread as stopping
   virtual void beginShutdown();
 
+  bool runningInThisThread() const {
+    return currentThreadNumber() == this->threadNumber();
+  }
+
  protected:
   /// @brief called from the destructor
   void shutdown();

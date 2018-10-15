@@ -73,16 +73,12 @@ class LocalDocumentId {
   void clear() { _id = 0; }
   
   /// @brief create a not-set document id 
-  // clang does not like:
-  // static constexpr LocalDocumentId none() { return LocalDocumentId(0); }
   static LocalDocumentId none() { return LocalDocumentId(0); }
 
   /// @brief create a new document id
   static LocalDocumentId create() { return LocalDocumentId(TRI_HybridLogicalClock()); }
   
   /// @brief create a document id from an existing id
-  // clang does not like:
-  // static constexpr LocalDocumentId create(BaseType id) { return LocalDocumentId(id); }
   static LocalDocumentId create(BaseType id) { return LocalDocumentId(id); }
 
  private:

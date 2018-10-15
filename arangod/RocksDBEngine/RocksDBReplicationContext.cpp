@@ -166,6 +166,13 @@ void RocksDBReplicationContext::internalBind(
 
     _lastTick = state->sequenceNumber();
   }
+  
+  // we are inserting the current tick (WAL sequence number) here.
+  // this is ok because the batch creation is the first operation done
+  // for initial synchronization. the inventory request and collection
+  // dump requests will all happen after the batch creation, so the
+  // current tick value here is good
+  _vocbase->updateReplicationClient(replicationClientId(), _lastTick, _ttl);
 }
 
 /// Bind collection for incremental sync
@@ -696,7 +703,7 @@ bool RocksDBReplicationContext::isDeleted() const {
   return _isDeleted;
 }
 
-void RocksDBReplicationContext::deleted() {
+void RocksDBReplicationContext::setDeleted() {
   MUTEX_LOCKER(locker, _contextLock);
   _isDeleted = true;
 }
@@ -734,9 +741,9 @@ bool RocksDBReplicationContext::use(double ttl, bool exclusive) {
   ttl = std::max(std::max(_ttl, ttl), replutils::BatchInfo::DefaultTimeout);
   _expires = TRI_microtime() + ttl;
 
-  if (_serverId != 0) {
-    _vocbase->updateReplicationClient(_serverId, ttl);
-  }
+  // make sure the WAL files are not deleted
+  _vocbase->updateReplicationClient(replicationClientId(), _lastTick, ttl);
+  
   return true;
 }
 
@@ -749,17 +756,17 @@ void RocksDBReplicationContext::release() {
   if (0 == _users) {
     _exclusive = false;
   }
-  if (_serverId != 0) {
-    double ttl;
-    if (_ttl > 0.0) {
-      // use TTL as configured
-      ttl = _ttl;
-    } else {
-      // none configuration. use default
-      ttl = replutils::BatchInfo::DefaultTimeout;
-    }
-    _vocbase->updateReplicationClient(_serverId, ttl);
-  }
+
+  TRI_ASSERT(_ttl > 0);
+  // make sure the WAL files are not deleted immediately
+  _vocbase->updateReplicationClient(replicationClientId(), _lastTick, ttl);
+}
+
+/// extend without using the context
+void RocksDBReplicationContext::extendLifetime(double ttl) {
+  MUTEX_LOCKER(locker, _contextLock);
+  ttl = std::max(std::max(_ttl, ttl), replutils::BatchInfo::DefaultTimeout);
+  _expires = TRI_microtime() + ttl;
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {

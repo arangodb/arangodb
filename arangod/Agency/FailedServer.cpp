@@ -140,13 +140,11 @@ bool FailedServer::start() {
       << "Pending job for failed DB Server " << _server;
 
     auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
-    auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
 
     size_t sub = 0;
 
     // FIXME: looks OK, but only the non-clone shards are put into the job
     for (auto const& database : databases) {
-      // dead code   auto cdatabase = current.at(database.first)->children();
 
       for (auto const& collptr : database.second->children()) {
         auto const& collection = *(collptr.second);

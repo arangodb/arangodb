@@ -390,12 +390,14 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2000)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
             document["cname"].should eq("UnitTestsReplication")
 
             c = document["data"]
             c.should have_key("version")
             c["type"].should eq(2)
             c["cid"].should eq(cid)
+            c["cid"].should be_kind_of(String)
             c["deleted"].should eq(false)
             c["name"].should eq("UnitTestsReplication")
             c["waitForSync"].should eq(true)
@@ -471,12 +473,14 @@ describe ArangoDB do
               document["tick"].to_i.should >= fromTick.to_i
               document["type"].should eq(2000)
               document["cid"].should eq(cid)
+              document["cid"].should be_kind_of(String)
               document["cname"].should eq("UnitTestsReplication")
 
               c = document["data"]
               c.should have_key("version")
               c["type"].should eq(2)
               c["cid"].should eq(cid)
+              c["cid"].should be_kind_of(String)
               c["deleted"].should eq(false)
               c["name"].should eq("UnitTestsReplication")
               c["waitForSync"].should eq(true)
@@ -494,6 +498,7 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2300)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
             document["data"]["_key"].should eq("test")
             document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
             document["data"]["_rev"].should_not eq("0")
@@ -510,6 +515,7 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2302)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
             document["data"]["_key"].should eq("test")
 
             i = i + 1
@@ -523,6 +529,7 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2001)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
 
             i = i + 1
           end
@@ -654,6 +661,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
@@ -671,6 +679,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(3)
         parameters["cid"].should eq(cid2)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(true)
@@ -728,6 +737,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
@@ -758,6 +768,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid2)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(false)
@@ -1508,12 +1519,14 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2000)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
             document["cname"].should eq("UnitTestsReplication")
 
             c = document["data"]
             c.should have_key("version")
             c["type"].should eq(2)
             c["cid"].should eq(cid)
+            c["cid"].should be_kind_of(String)
             c["deleted"].should eq(false)
             c["name"].should eq("UnitTestsReplication")
             c["waitForSync"].should eq(true)
@@ -1589,12 +1602,14 @@ describe ArangoDB do
               document["tick"].to_i.should >= fromTick.to_i
               document["type"].should eq(2000)
               document["cid"].should eq(cid)
+              document["cid"].should be_kind_of(String)
               document["cname"].should eq("UnitTestsReplication")
 
               c = document["data"]
               c.should have_key("version")
               c["type"].should eq(2)
               c["cid"].should eq(cid)
+              c["cid"].should be_kind_of(String)
               c["deleted"].should eq(false)
               c["name"].should eq("UnitTestsReplication")
               c["waitForSync"].should eq(true)
@@ -1612,6 +1627,7 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2300)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
             document["data"]["_key"].should eq("test")
             document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
             document["data"]["_rev"].should_not eq("0")
@@ -1628,6 +1644,7 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2302)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
             document["data"]["_key"].should eq("test")
 
             i = i + 1
@@ -1641,6 +1658,7 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2001)
             document["cid"].should eq(cid)
+            document["cid"].should be_kind_of(String)
 
             i = i + 1
           end
@@ -1772,6 +1790,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
@@ -1789,6 +1808,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(3)
         parameters["cid"].should eq(cid2)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(true)
@@ -1856,6 +1876,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
@@ -1886,6 +1907,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid2)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(false)

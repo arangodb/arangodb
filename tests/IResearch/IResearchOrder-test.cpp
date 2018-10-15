@@ -31,7 +31,6 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/ExecutionPlan.h"
-#include "IResearch/AttributeScorer.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"

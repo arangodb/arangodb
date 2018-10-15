@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter replication deployment
 
 {% hint 'info' %}

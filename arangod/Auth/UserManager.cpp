@@ -128,7 +128,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+        << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -145,10 +146,10 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     emptyBuilder,
     arangodb::aql::PART_MAIN
   );
-  
+
   query.queryOptions().cache = false;
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
@@ -167,7 +168,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!usersSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
         << "cannot read users from _users collection";
     return std::shared_ptr<VPackBuilder>();
   }
@@ -182,11 +183,13 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
     doc = doc.resolveExternals();
   }
   VPackSlice authDataSlice = doc.get("authData");
-  VPackObjectBuilder b(&result, true);
-  result.add("user", doc.get("user"));
-  result.add("active", authDataSlice.get("active"));
-  VPackSlice extra = doc.get("userData");
-  result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
+  {
+    VPackObjectBuilder b(&result, true);
+    result.add("user", doc.get("user"));
+    result.add("active", authDataSlice.get("active"));
+    VPackSlice extra = doc.get("userData");
+    result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
+  }
 }
 
 // private, will acquire _userCacheLock in write-mode and release it.
@@ -226,7 +229,7 @@ void auth::UserManager::loadFromDB() {
           applyRolesToAllUsers();
 #endif
         }
-        
+
         _internalVersion.store(tmp);
       }
     }
@@ -380,10 +383,12 @@ VPackBuilder auth::UserManager::allUsers() {
   std::shared_ptr<VPackBuilder> users = QueryAllUsers(_queryRegistry);
 
   VPackBuilder result;
-  VPackArrayBuilder a(&result);
-  if (users && !users->isEmpty()) {
-    for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
-      ConvertLegacyFormat(doc, result);
+  {
+    VPackArrayBuilder a(&result);
+    if (users && !users->isEmpty()) {
+      for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
+        ConvertLegacyFormat(doc, result);
+      }
     }
   }
   return result;
@@ -553,6 +558,17 @@ Result auth::UserManager::accessUser(std::string const& user,
     return func(it->second);
   }
   return TRI_ERROR_USER_NOT_FOUND;
+}
+
+bool auth::UserManager::userExists(std::string const& user) {
+  if (user.empty()) {
+    return false;
+  }
+  loadFromDB();
+
+  READ_LOCKER(readGuard, _userCacheLock);
+  UserMap::iterator const& it = _userCache.find(user);
+  return it != _userCache.end();
 }
 
 VPackBuilder auth::UserManager::serializeUser(std::string const& user) {

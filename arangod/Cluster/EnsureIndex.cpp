@@ -28,6 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -66,10 +67,10 @@ EnsureIndex::EnsureIndex(
   }
   TRI_ASSERT(properties().hasKey(ID));
 
-  if (!desc.has(TYPE)) {
+  if (!desc.has(StaticStrings::IndexType)) {
     error << "index type must be specified - discriminatory. ";
   }
-  TRI_ASSERT(desc.has(TYPE));
+  TRI_ASSERT(desc.has(StaticStrings::IndexType));
 
   if (!desc.has(FIELDS)) {
     error << "index fields must be specified - discriminatory. ";

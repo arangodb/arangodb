@@ -27,6 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -1038,7 +1039,7 @@ static void JS_AddressServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("address()");
   }
 
-  std::string const address = ServerState::instance()->getAddress();
+  std::string const address = ServerState::instance()->getEndpoint();
   TRI_V8_RETURN_STD_STRING(address);
   TRI_V8_TRY_CATCH_END
 }
@@ -1110,11 +1111,13 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
-    if (!result.successful()) {
-      THROW_AGENCY_EXCEPTION(result);
+    if (result.successful()) {
+      result = comm.increment("Current/Version");
     }
-    result = comm.increment("Current/Version");
-    if (!result.successful()) {
+    if (!result.successful() && 
+        result.errorCode() != TRI_ERROR_SHUTTING_DOWN && 
+        !application_features::ApplicationServer::isStopping()) {
+      // gracefully ignore any shutdown errors here
       THROW_AGENCY_EXCEPTION(result);
     }
   }
@@ -1299,7 +1302,6 @@ static void PrepareClusterCommRequest(
     arangodb::rest::RequestType& reqType, std::string& destination,
     std::string& path, std::string& body,
     std::unordered_map<std::string, std::string>& headerFields,
-    ClientTransactionID& clientTransactionID,
     CoordTransactionID& coordTransactionID, double& timeout,
     bool& singleRequest, double& initTimeout) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1358,18 +1360,12 @@ static void PrepareClusterCommRequest(
     }
   }
 
-  clientTransactionID = "";
   coordTransactionID = 0;
   timeout = 24 * 3600.0;
   singleRequest = false;
 
   if (args.Length() > 6 && args[6]->IsObject()) {
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
-    TRI_GET_GLOBAL_STRING(ClientTransactionIDKey);
-    if (opt->Has(ClientTransactionIDKey)) {
-      clientTransactionID =
-          TRI_ObjectToString(opt->Get(ClientTransactionIDKey));
-    }
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (opt->Has(CoordTransactionIDKey)) {
       coordTransactionID =
@@ -1387,9 +1383,6 @@ static void PrepareClusterCommRequest(
     if (opt->Has(InitTimeoutKey)) {
       initTimeout = TRI_ObjectToDouble(opt->Get(InitTimeoutKey));
     }
-  }
-  if (clientTransactionID == "") {
-    clientTransactionID = StringUtils::itoa(TRI_NewTickServer());
   }
   if (coordTransactionID == 0) {
     coordTransactionID = TRI_NewTickServer();
@@ -1414,9 +1407,6 @@ static void Return_PrepareClusterCommResultForJS(
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING(isolate, "operation was dropped"));
   } else {
-    TRI_GET_GLOBAL_STRING(ClientTransactionIDKey);
-    r->Set(ClientTransactionIDKey, TRI_V8_STD_STRING(isolate, res.clientTransactionID));
-
     // convert the ids to strings as uint64_t might be too big for JavaScript
     // numbers
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
@@ -1564,7 +1554,6 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "reqType, destination, dbname, path, body, headers, options)");
   }
   // Possible options:
-  //   - clientTransactionID  (string)
   //   - coordTransactionID   (number)
   //   - timeout              (number)
   //   - singleRequest        (boolean) default is false
@@ -1582,19 +1571,17 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path;
   auto body = std::make_shared<std::string>();
   std::unordered_map<std::string, std::string> headerFields;
-  ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
   double initTimeout = -1.0;
   bool singleRequest = false;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
-                            headerFields, clientTransactionID,
+                            headerFields,
                             coordTransactionID, timeout, singleRequest,
                             initTimeout);
 
-  OperationID opId = cc->asyncRequest(
-      clientTransactionID, coordTransactionID, destination, reqType, path, body,
+  OperationID opId = cc->asyncRequest(coordTransactionID, destination, reqType, path, body,
       headerFields, nullptr, timeout, singleRequest, initTimeout);
   ClusterCommResult res = cc->enquire(opId);
   if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -1624,7 +1611,6 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "reqType, destination, dbname, path, body, headers, options)");
   }
   // Possible options:
-  //   - clientTransactionID  (string)
   //   - coordTransactionID   (number)
   //   - timeout              (number)
 
@@ -1649,19 +1635,17 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string body;
   auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
-  ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
   double initTimeout = -1.0;
   bool singleRequest = false;  // of no relevance here
 
   PrepareClusterCommRequest(args, reqType, destination, path, body,
-                            *headerFields, clientTransactionID,
-                            coordTransactionID, timeout, singleRequest,
+                            *headerFields, coordTransactionID, timeout, singleRequest,
                             initTimeout);
 
   std::unique_ptr<ClusterCommResult> res =
-      cc->syncRequest(clientTransactionID, coordTransactionID, destination,
+      cc->syncRequest(coordTransactionID, destination,
                       reqType, path, body, *headerFields, timeout);
 
   if (res.get() == nullptr) {
@@ -1732,7 +1716,6 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found (JS_Wait)");
   }
 
-  ClientTransactionID myclientTransactionID = "";
   CoordTransactionID mycoordTransactionID = 0;
   OperationID myoperationID = 0;
   ShardID myshardID = "";
@@ -1740,11 +1723,6 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args[0]->IsObject()) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
-    TRI_GET_GLOBAL_STRING(ClientTransactionIDKey);
-    if (obj->Has(ClientTransactionIDKey)) {
-      myclientTransactionID =
-          TRI_ObjectToString(obj->Get(ClientTransactionIDKey));
-    }
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (obj->Has(CoordTransactionIDKey)) {
       mycoordTransactionID =
@@ -1770,7 +1748,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
 
   ClusterCommResult const res =
-      cc->wait(myclientTransactionID, mycoordTransactionID, myoperationID,
+      cc->wait(mycoordTransactionID, myoperationID,
                myshardID, mytimeout);
 
   Return_PrepareClusterCommResultForJS(args, res);
@@ -1790,7 +1768,6 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("drop(obj)");
   }
   // Possible options:
-  //   - clientTransactionID  (string)
   //   - coordTransactionID   (number)
   //   - operationID          (number)
   //   - shardID              (string)
@@ -1802,18 +1779,12 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found (JS_Drop)");
   }
 
-  ClientTransactionID myclientTransactionID = "";
   CoordTransactionID mycoordTransactionID = 0;
   OperationID myoperationID = 0;
   ShardID myshardID = "";
 
   if (args[0]->IsObject()) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
-    TRI_GET_GLOBAL_STRING(ClientTransactionIDKey);
-    if (obj->Has(ClientTransactionIDKey)) {
-      myclientTransactionID =
-          TRI_ObjectToString(obj->Get(ClientTransactionIDKey));
-    }
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (obj->Has(CoordTransactionIDKey)) {
       mycoordTransactionID =
@@ -1831,8 +1802,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Drop: calling ClusterComm::drop()";
 
-  cc->drop(myclientTransactionID, mycoordTransactionID, myoperationID,
-           myshardID);
+  cc->drop(mycoordTransactionID, myoperationID, myshardID);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -1844,7 +1814,6 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ONLY_IN_CLUSTER
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getId()");

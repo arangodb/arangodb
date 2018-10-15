@@ -24,9 +24,9 @@
 #ifndef IRESEARCH_EBO_H
 #define IRESEARCH_EBO_H
 
-#include "shared.hpp"
-#include <type_traits>
 #include <functional>
+
+#include "shared.hpp"
 
 NS_ROOT
 
@@ -62,9 +62,11 @@ NS_ROOT
 template<
   size_t I,
   typename T,
+#if defined(__cpp_lib_is_final)
+  bool = std::is_empty<T>::value && !std::is_final<T>::value
+#else
   bool = std::is_empty<T>::value
-//TODO: uncomment when switch to C++14
-//  bool = std::is_empty<T>::value && !std::is_final<T>::value
+#endif
 > class compact : public T {
  public:
   typedef T type;
@@ -79,8 +81,13 @@ template<
   compact& operator=(const compact&) = default;
   compact& operator=(compact&&) NOEXCEPT { return *this; }
 
-  // TODO: uncomment when switch to the C++14 compiler
-  /* CONSTEXPR */ T& get() NOEXCEPT { return *this; }
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  CONSTEXPR T& get() NOEXCEPT { return *this; }
+#else
+  // before c++14 constexpr member function
+  // gets const implicitly
+  T& get() NOEXCEPT { return *this; }
+#endif
   CONSTEXPR const T& get() const NOEXCEPT { return *this; }
 }; // compact
 
@@ -117,8 +124,13 @@ class compact<I, T, false> {
     return *this;
   }
 
-  // TODO: uncomment when switch to the C++14
-  /* CONSTEXPR */ T& get() NOEXCEPT { return val_; }
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  CONSTEXPR T& get() NOEXCEPT { return val_; }
+#else
+  // before c++14 constexpr member function
+  // gets const implicitly
+  T& get() NOEXCEPT { return val_; }
+#endif
   CONSTEXPR const T& get() const NOEXCEPT { return val_; }
 
  private:
@@ -134,9 +146,11 @@ class compact<I, T, false> {
 template<
   size_t I,
   typename T,
+#if defined(__cpp_lib_is_final)
+  bool = std::is_empty<T>::value && !std::is_final<T>::value
+#else
   bool = std::is_empty<T>::value
-//TODO: uncomment when switch to C++14
-//  bool = std::is_empty<T>::value && !std::is_final<T>::value
+#endif
 > class compact_ref : public T {
  public:
   typedef T type;
@@ -150,8 +164,13 @@ template<
 
   compact_ref& operator=(const compact_ref&) = default;
 
-  // TODO: uncomment when switch to the C++14 compiler
-  /* CONSTEXPR */ T& get() NOEXCEPT { return *this; }
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  CONSTEXPR T& get() NOEXCEPT { return *this; }
+#else
+  // before c++14 constexpr member function
+  // gets const implicitly
+  T& get() NOEXCEPT { return *this; }
+#endif
   CONSTEXPR const T& get() const NOEXCEPT { return *this; }
 }; // compact_ref
 
@@ -188,8 +207,13 @@ class compact_ref<I, T, false> {
     return *this;
   }
 
-  // TODO: uncomment when switch to the C++14
-  /* CONSTEXPR */ T& get() NOEXCEPT { return *val_; }
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  CONSTEXPR T& get() NOEXCEPT { return *val_; }
+#else
+  // before c++14 constexpr member function
+  // gets const implicitly
+  T& get() NOEXCEPT { return *val_; }
+#endif
   CONSTEXPR const T& get() const NOEXCEPT { return *val_; }
 
  private:
@@ -233,23 +257,35 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
     return first_compressed_t::get();
   }
 
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  first_type& first() NOEXCEPT {
+    return first_compressed_t::get();
+  }
+#else
   first_type& first() NOEXCEPT {
     // force the c++11 compiler to choose constexpr version of "get"
     return const_cast<first_type&>(
       const_cast<const compact_pair&>(*this).first()
     );
   }
+#endif
 
   const second_type& second() const NOEXCEPT {
     return second_compressed_t::get();
   }
 
+#if IRESEARCH_CXX > IRESEARCH_CXX_11
+  second_type& second() NOEXCEPT {
+    return second_compressed_t::get();
+  }
+#else
   second_type& second() NOEXCEPT {
     // force the c++11 compiler to choose constexpr version of "get"
     return const_cast<second_type&>(
       const_cast<const compact_pair&>(*this).second()
     );
   }
+#endif
 }; // compact_pair
 
 template<typename T0, typename T1>

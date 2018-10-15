@@ -179,7 +179,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
           << "" << _params._retryMessage << " - no retries left";
       break;
     }
-    
+
     if (application_features::ApplicationServer::isStopping()) {
       // abort this client, will also lead to exiting this loop next
       setAborted(true);
@@ -236,7 +236,10 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
-
+  if (_aborted.load(std::memory_order_acquire)) {
+    return nullptr;
+  }
+  
   // ensure that result is empty
   TRI_ASSERT(_result == nullptr);
 
@@ -402,6 +405,13 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
       default:
         break;
+    }
+
+    if ( application_features::ApplicationServer::isStopping()) {
+      setErrorMessage("Command locally aborted");
+      delete _result;
+      _result = nullptr;
+      return nullptr;
     }
 
     remainingTime = endTime - TRI_microtime();

@@ -273,7 +273,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // invalid field

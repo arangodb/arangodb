@@ -24,6 +24,7 @@
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringRef.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
@@ -66,7 +67,7 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
   
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
@@ -83,7 +84,8 @@ class ClusterIndex : public Index {
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

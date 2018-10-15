@@ -1004,7 +1004,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       
       c1.insert({ value: 1 }, { waitForSync: true });
 
-      let query = "FOR doc IN @@view RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       let result1 = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result1.cached);
@@ -1017,17 +1017,12 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
 
     testRenameView : function () {
-      if (require("@arangodb/cluster").isCluster()) {
-        // renaming views not supported in cluster
-        return;
-      }
-      
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
       
       c1.insert({ value: 1 }, { waitForSync: true });
 
-      let query = "FOR doc IN @@view RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       let result1 = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result1.cached);
@@ -1062,7 +1057,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       
       c1.insert({ value: 1 }, { waitForSync: true });
 
-      let query = "FOR doc IN @@view RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       let result1 = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result1.cached);
@@ -1076,7 +1071,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       meta = { links: { "UnitTestsAhuacatlQueryCache1" : null, "UnitTestsAhuacatlQueryCache2" : { includeAllFields: true } } };
       v.properties(meta);
 
-      c2.insert({ value: 1 }, { waitForSync: true });
+      c2.insert({ value: 1 }, { waitForSync: false });
       c2.insert({ value: 2 }, { waitForSync: true });
       
       result1 = AQL_EXECUTE(query, { "@view": v.name() });
@@ -1094,7 +1089,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       
       c1.insert({ value: 1 }, { waitForSync: true });
 
-      let query = "FOR doc IN @@view RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       let result1 = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result1.cached);
@@ -1121,7 +1116,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       
       c1.insert({ value: 1 }, { waitForSync: true });
 
-      let query = "FOR doc IN @@view RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
       let result1 = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result1.cached);
@@ -1139,11 +1134,11 @@ function ahuacatlQueryCacheViewTestSuite () {
       
       result2 = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result2.cached);
-      assertEqual([], result2.json);
+      assertEqual(1, result2.json.length);
 
       result2 = AQL_EXECUTE(query, { "@view": v.name() });
       assertTrue(result2.cached);
-      assertEqual([], result2.json);
+      assertEqual(1, result2.json.length);
     },
     
     testInvalidationAfterAqlInsertNoSync : function () {
@@ -1154,19 +1149,19 @@ function ahuacatlQueryCacheViewTestSuite () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
-      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
         c1.insert({ value: i }, { waitForSync: i === 5 });
       }
 
+
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      result = AQL_EXECUTE(query, { "@view": v.name() });
+      result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
-      result = AQL_EXECUTE(query, { "@view": v.name() });
+      result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
@@ -1179,11 +1174,11 @@ function ahuacatlQueryCacheViewTestSuite () {
 
         // re-run query to repopulate the cache. however, the document is not yet contained
         // in the view as we turned off the flush thread
-        result = AQL_EXECUTE(query, { "@view": v.name() });
+        result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
         assertFalse(result.cached);
         assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-      
-        result = AQL_EXECUTE(query, { "@view": v.name() });
+
+        result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
         assertTrue(result.cached);
         assertEqual([ 1, 2, 3, 4, 5 ], result.json);
       } finally {
@@ -1195,11 +1190,11 @@ function ahuacatlQueryCacheViewTestSuite () {
       // invalidate view query cache
       AQL_EXECUTE("FOR doc in @@view OPTIONS { waitForSync: true } COLLECT WITH COUNT INTO count RETURN count", { "@view": v.name() });
 
-      result = AQL_EXECUTE(query, { "@view": v.name() });
+      result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
       
-      result = AQL_EXECUTE(query, { "@view": v.name() });
+      result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
     },
@@ -1208,7 +1203,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
-      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
@@ -1239,7 +1234,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
-      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
@@ -1270,7 +1265,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
       v.properties(meta);
 
-      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {

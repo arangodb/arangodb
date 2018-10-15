@@ -38,6 +38,9 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     tearDownAll : function () {
+      db._dropView("TestView");
+      db._dropView("TestView1");
+      db._dropView("TestView2");
       db._drop("TestCollection");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
@@ -53,6 +56,20 @@ function IResearchFeatureDDLTestSuite () {
       for (let i = 0; i < 100; ++i) {
         db._createView("TestView", "arangosearch", {});
         assertTrue(null != db._view("TestView"));
+        db._dropView("TestView");
+        assertTrue(null == db._view("TestView"));
+      }
+    },
+
+    testStressAddRemoveViewWithDirectLinks : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      for (let i = 0; i < 100; ++i) {
+        db._createView("TestView", "arangosearch", {links:{"TestCollection0":{}}});
+        var view = db._view("TestView");
+        assertTrue(null != view);
+        assertEqual(Object.keys(view.properties().links).length, 1);
         db._dropView("TestView");
         assertTrue(null == db._view("TestView"));
       }
@@ -161,6 +178,12 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.links.constructor);
       assertEqual(1, Object.keys(properties.links).length);
 
+      // create with links
+      db._dropView("TestView");
+      view = db._createView("TestView", "arangosearch", meta);
+      properties = view.properties();
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
       // consolidate
       db._dropView("TestView");
@@ -171,14 +194,13 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual(300, properties.consolidationPolicy.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
       properties = view.properties();
@@ -186,14 +208,13 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes", properties.consolidationPolicy.type);
-      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       meta = {
         cleanupIntervalStep: 20,
-        consolidationPolicy: { segmentThreshold: 30, threshold: 0.75, type: "count" }
+        consolidationPolicy: { threshold: 0.75, type: "count" }
       };
       view.properties(meta, false); // full update
       properties = view.properties();
@@ -201,9 +222,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("count", properties.consolidationPolicy.type);
-      assertEqual(30, properties.consolidationPolicy.segmentThreshold);
       assertEqual((0.75).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     },
 
@@ -484,7 +504,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -494,9 +514,8 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes", properties.consolidationPolicy.type);
-      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       col0.save({ name: "quarter", text: "quick over" });
@@ -520,7 +539,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -534,9 +553,8 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes", properties.consolidationPolicy.type);
-      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       // 2 non-empty collections
@@ -560,7 +578,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -574,9 +592,8 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes", properties.consolidationPolicy.type);
-      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       // 1 empty collection + 2 non-empty collections
@@ -603,7 +620,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -617,9 +634,8 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes", properties.consolidationPolicy.type);
-      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       view.properties({}, false); // full update (reset to defaults)
@@ -630,10 +646,9 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual(300, properties.consolidationPolicy.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },
@@ -676,6 +691,67 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(2, result[1].z);
+    },
+
+    testLinkSharingBetweenViews: function() {
+      db._dropView("TestView1");
+      db._dropView("TestView2");
+      db._drop("TestCollection0");
+
+      var col0 = db._create("TestCollection0");
+      var view1 = db._createView("TestView1", "arangosearch", {});
+      var view2 = db._createView("TestView2", "arangosearch", {});
+
+      col0.save({ a: "foo", c: "bar", z: 0 });
+      col0.save({ a: "foz", d: "baz", z: 1 });
+      col0.save({ b: "bar", c: "foo", z: 2 });
+      col0.save({ b: "baz", d: "foz", z: 3 });
+
+      var meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" } } };
+      var meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" } } };
+
+      view1.properties(meta1, true); // partial update
+      var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      assertEqual(2, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(1, result[1].z);
+
+      view2.properties(meta2, true); // partial update
+
+      result = db._query("FOR doc IN TestView2 SEARCH EXISTS(doc.b) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      assertEqual(2, result.length);
+      assertEqual(2, result[0].z);
+      assertEqual(3, result[1].z);
+
+      result = (db._query("RETURN APPEND(FOR doc IN TestView1 SEARCH doc.z < 2 OPTIONS { waitForSync: true } SORT doc.z RETURN doc, FOR doc IN TestView2 SEARCH doc.z > 1 OPTIONS { waitForSync: true } SORT doc.z RETURN doc)").toArray())[0];
+
+      assertEqual(4, result.length);
+      result.forEach(function(r, i) {
+        assertEqual(i, r.z);
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test create & drop of a view with a link.
+    /// Regression test for arangodb/backlog#486.
+    ////////////////////////////////////////////////////////////////////////////
+    testCreateAndDropViewWithLink: function () {
+      const colName = 'TestCollection';
+      const viewName = 'TestView';
+
+      db._drop(colName);
+      db._dropView(viewName);
+
+      const col = db._create(colName);
+      for (let i = 0; i < 10; i++) {
+        col.insert({ i });
+      }
+      {
+        const view = db._createView(viewName, 'arangosearch', {});
+        view.properties({ links: { [colName]: { includeAllFields: true } } });
+        db._dropView(viewName);
+      } // forget variable `view`, it's invalid now
+      assertEqual(db[viewName], undefined);
     },
 
   };

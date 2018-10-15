@@ -127,7 +127,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     for (size_t i = 0; i < fields.size(); ++i) {
       if (idx->isAttributeExpanded(i)) {
         ++expansions;
-        if (expansions > 1) {
+        if (expansions > 1 || i > 0) {
           _hasMultipleExpansions = true;
           break;
         }
@@ -186,6 +186,8 @@ void IndexBlock::executeExpressions() {
   AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
   _condition = newCondition;
   TRI_DEFER(FINALIZE_SUBTREE(newCondition));
+          
+  Query* query = _engine->getQuery();
 
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
@@ -193,7 +195,7 @@ void IndexBlock::executeExpressions() {
     auto exp = toReplace->expression.get();
 
     bool mustDestroy;
-    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions],
+    BaseExpressionContext ctx(query, _pos, cur, _inVars[posInExpressions],
                               _inRegs[posInExpressions]);
     AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
@@ -220,6 +222,8 @@ void IndexBlock::executeExpressions() {
 void IndexBlock::initializeOnce() {
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
+      
+  _trx->pinData(_collection->id());
 
   // instantiate expressions:
   auto instantiateExpression = [&](AstNode* a,
@@ -482,6 +486,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
 
     uint64_t returned = static_cast<uint64_t>(_returned);
     _cursor->skip(atMost - returned, returned);
+    _engine->_stats.scannedIndex += returned;
     _returned = static_cast<size_t>(returned);
 
     return true;

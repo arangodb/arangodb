@@ -70,6 +70,10 @@ template class IRESEARCH_API basic_string_ref<byte_type>;
 
 NS_BEGIN(hash_utils)
 
+size_t hash(const std::string& value) {
+  return get_hash(value.c_str(), value.size());
+}
+
 size_t hash(const bstring& value) {
   return get_hash(value.c_str(), value.size());
 }

@@ -218,7 +218,7 @@ static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (console != nullptr) {
     while (true) {
       ShellBase::EofType eof;
-      std::string input = console->prompt("debug> ", "debug", eof);
+      std::string input = console->prompt("debug> ", "debug>", eof);
 
       if (eof == ShellBase::EOF_FORCE_ABORT) {
         break;
@@ -986,6 +986,7 @@ static void JS_QueriesCurrentAql(
       obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"),
                v8::Number::New(isolate, q.runTime));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "state"), TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
       result->Set(i++, obj);
     }
 
@@ -1037,6 +1038,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"),
                v8::Number::New(isolate, q.runTime));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "state"), TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
       result->Set(i++, obj);
     }
 
@@ -1107,33 +1109,41 @@ static void JS_QueryCachePropertiesAql(
   }
 
   auto queryCache = arangodb::aql::QueryCache::instance();
+  VPackBuilder builder;
 
   if (args.Length() == 1) {
     // called with options
-    auto obj = args[0]->ToObject();
+    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
-    std::pair<std::string, size_t> cacheProperties;
-    // fetch current configuration
-    queryCache->properties(cacheProperties);
-
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "mode"))) {
-      cacheProperties.first =
-          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "mode")));
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxResults"))) {
-      cacheProperties.second = static_cast<size_t>(
-          TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING(isolate, "maxResults"))));
-    }
-
-    // set mode and max elements
-    queryCache->setProperties(cacheProperties);
+    queryCache->properties(builder.slice());
   }
 
-  auto properties = queryCache->properties();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, properties.slice()));
+  builder.clear();
+  queryCache->toVelocyPack(builder);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
   // fetch current configuration and return it
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_QueryCacheQueriesAql(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_QUERIES()");
+  }
+  
+  auto& vocbase = GetContextVocBase(isolate);
+
+  VPackBuilder builder;
+  arangodb::aql::QueryCache::instance()->queriesToVelocyPack(&vocbase, builder);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2082,6 +2092,9 @@ void TRI_InitV8VocBridge(
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_PROPERTIES"),
       JS_QueryCachePropertiesAql, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_QUERIES"),
+      JS_QueryCacheQueriesAql, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);

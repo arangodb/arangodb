@@ -63,15 +63,20 @@ UpdateCollection::UpdateCollection(
   }
   TRI_ASSERT(desc.has(DATABASE));
 
-  if (!desc.has(LEADER)) {
+  if (!desc.has(THE_LEADER)) {
     error << "leader must be specified. ";
   }
-  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(desc.has(THE_LEADER));
 
   if (!desc.has(LOCAL_LEADER)) {
     error << "local leader must be specified. ";
   }
   TRI_ASSERT(desc.has(LOCAL_LEADER));
+
+  if (!desc.has(FOLLOWERS_TO_DROP)) {
+    error << "followersToDrop must be specified. ";
+  }
+  TRI_ASSERT(desc.has(FOLLOWERS_TO_DROP));
 
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
@@ -83,7 +88,7 @@ UpdateCollection::UpdateCollection(
 
 void handleLeadership(
   LogicalCollection& collection, std::string const& localLeader,
-  std::string const& plannedLeader) {
+  std::string const& plannedLeader, std::string const& followersToDrop) {
 
   auto& followers = collection.followers();
 
@@ -97,8 +102,14 @@ void handleLeadership(
       // will not notice until it fails to replicate an operation
       // to the old follower. This here is to drop such a follower
       // from the local list of followers. Will be reported
-      // to Current in due course. This is not needed for
-      // correctness but is a performance optimization.
+      // to Current in due course.
+      if (!followersToDrop.empty()) {
+        std::vector<std::string> ftd = arangodb::basics::StringUtils::split(
+            followersToDrop, ',');
+        for (auto const& s : ftd) {
+          followers->remove(s);
+        }
+      }
     }
   } else { // Planned to follow
     if (localLeader.empty()) {
@@ -128,8 +139,9 @@ bool UpdateCollection::first() {
   auto const& database      = _description.get(DATABASE);
   auto const& collection    = _description.get(COLLECTION);
   auto const& shard         = _description.get(SHARD);
-  auto const& plannedLeader = _description.get(LEADER);
+  auto const& plannedLeader = _description.get(THE_LEADER);
   auto const& localLeader   = _description.get(LOCAL_LEADER);
+  auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
 
   try {
@@ -148,7 +160,7 @@ bool UpdateCollection::first() {
         // resignation case is not handled here, since then
         // ourselves does not appear in shards[shard] but only
         // "_" + ourselves.
-        handleLeadership(*coll, localLeader, plannedLeader);
+        handleLeadership(*coll, localLeader, plannedLeader, followersToDrop);
         _result = Collections::updateProperties(coll.get(), props);
 
         if (!_result.ok()) {

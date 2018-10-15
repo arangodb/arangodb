@@ -46,11 +46,11 @@ size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
 size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
-HttpCommTask::HttpCommTask(Scheduler* scheduler, GeneralServer* server,
+HttpCommTask::HttpCommTask(GeneralServer &server, GeneralServer::IoContext &context,
                            std::unique_ptr<Socket> socket,
                            ConnectionInfo&& info, double timeout)
-    : Task(scheduler, "HttpCommTask"),
-      GeneralCommTask(scheduler, server, std::move(socket), std::move(info),
+    : IoTask(server, context, "HttpCommTask"),
+      GeneralCommTask(server, context, std::move(socket), std::move(info),
                       timeout),
       _readPosition(0),
       _startPosition(0),
@@ -68,6 +68,13 @@ HttpCommTask::HttpCommTask(Scheduler* scheduler, GeneralServer* server,
   _protocol = "http";
 
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
+}
+
+// whether or not this task can mix sync and async I/O
+bool HttpCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
 }
 
 /// @brief send error response including response body
@@ -163,10 +170,15 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   if (!buffer._buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
+        << "\"http-request-response\",\"" << (void*)this << "\",\"" 
+        << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\",\""
-        << StringUtils::escapeUnicode(
-               std::string(buffer._buffer->c_str(), buffer._buffer->length()))
+        << (Logger::logRequestParameters()
+             ? StringUtils::escapeUnicode(
+                 std::string(buffer._buffer->c_str(), buffer._buffer->length()))
+	    : "--body--")
         << "\"";
   }
 
@@ -181,7 +193,10 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << HttpRequest::translateMethod(_requestType) << "\",\""
         << HttpRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response.responseCode()) << ","
-        << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+        << _originalBodyLength << "," << responseBodyLength << ",\"" 
+        << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\"," << stat->timingsCsv();
   }
   addWriteBuffer(std::move(buffer));
@@ -195,8 +210,11 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
       << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
-      << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
-      << "\"," << Logger::FIXED(totalTime, 6);
+      << _originalBodyLength << "," << responseBodyLength << ",\"" 
+      << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
+     << "\"," << Logger::FIXED(totalTime, 6);
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
@@ -281,7 +299,7 @@ bool HttpCommTask::processRead(double startTime) {
       }
 
       std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
-          _scheduler, _server, std::move(_peer), std::move(_connectionInfo),
+          _server, _context, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(),
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
@@ -588,12 +606,16 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << _connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_requestType) << "\",\""
-        << HttpRequest::translateVersion(_protocolVersion) << "\",\"" << _fullUrl
+        << HttpRequest::translateVersion(_protocolVersion) << "\",\""
+        << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\"";
 
     std::string const& body = request->body();
 
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)) {
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+        Logger::logRequestParameters()) {
       LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
@@ -761,8 +783,11 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
       ++auth;
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\""
-      << (void*)this << "\",\"" << authStr << "\"";
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\""
+        << (void*)this << "\",\"" << authStr << "\"";
+    }
+
     try {
       // note that these methods may throw in case of an error
       AuthenticationMethod authMethod = AuthenticationMethod::NONE;

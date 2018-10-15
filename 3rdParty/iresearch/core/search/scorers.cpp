@@ -98,11 +98,18 @@ NS_ROOT
     const string_ref& name,
     const irs::text_format::type_id& args_format,
     const string_ref& args
-) {
-  auto* factory =
-    scorer_register::instance().get(entry_key_t(name, args_format));
+) NOEXCEPT {
+  try {
+    auto* factory =
+      scorer_register::instance().get(entry_key_t(name, args_format));
 
-  return factory ? factory(args) : nullptr;
+    return factory ? factory(args) : nullptr;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught exception while getting a scorer instance");
+    IR_LOG_EXCEPTION();
+  }
+
+  return nullptr;
 }
 
 /*static*/ void scorers::init() {

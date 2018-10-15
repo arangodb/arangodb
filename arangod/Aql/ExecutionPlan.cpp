@@ -304,7 +304,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slic
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    ast->query()->collections()->add(
+    ast->query()->addCollection(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
         AccessMode::fromString(
@@ -466,6 +466,9 @@ ExecutionNode* ExecutionPlan::createCalculation(
              conversion == Function::Conversion::Optional)) {
           // collection attribute: no need to check for member simplicity
           args->changeMember(i, _ast->createNodeValueString(member->getStringValue(), member->getStringLength()));
+        } else if (member->type == NODE_TYPE_VIEW) {
+          // using views as function call parameters is not supported
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "views cannot be used as arguments for function calls");
         }
       }
     } else if (node->type == NODE_TYPE_COLLECTION) {
@@ -950,14 +953,9 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   }
 
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
-  std::string const viewName = expression->getString();
     
-  if (!_ast->query()->collections()->get(viewName)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "no view for EnumerateView");
-  }
-
 #ifdef USE_IRESEARCH
+  std::string const viewName = expression->getString();
   auto& vocbase = _ast->query()->vocbase();
 
   std::shared_ptr<LogicalView> view;

@@ -67,6 +67,7 @@ arangodb::Result writeCounterValue(
 
   // Skip values which we did not change
   auto const& it = syncedSeqNums.find(pair.first);
+
   if (it != syncedSeqNums.end() && it->second == pair.second._sequenceNum) {
     return Result();
   }
@@ -164,6 +165,7 @@ writeIndexEstimatorsAndKeyGenerator(
     // or start fresh.
     return std::make_pair(Result(), returnSeq);
   }
+
   TRI_DEFER(vocbase->release());
 
   auto collection = vocbase->lookupCollection(dbColPair.second);
@@ -201,7 +203,7 @@ writeIndexEstimatorsAndKeyGenerator(
 namespace arangodb {
 
 RocksDBSettingsManager::CMValue::CMValue(VPackSlice const& slice)
-    : _sequenceNum(0), _count(0), _revisionId(0) {
+    : _sequenceNum(0), _added(0), _removed(0), _revisionId(0) {
   if (!slice.isArray()) {
     // got a somewhat invalid slice. probably old data from before the key
     // structure changes
@@ -211,23 +213,58 @@ RocksDBSettingsManager::CMValue::CMValue(VPackSlice const& slice)
   velocypack::ArrayIterator array(slice);
   if (array.valid()) {
     this->_sequenceNum = (*array).getUInt();
-    this->_count = (*(++array)).getUInt();
+    // versions pre 3.4 stored only a single "count" value
+    // 3.4 and higher store "added" and "removed" seperately
+    this->_added = (*(++array)).getUInt();
+    if (array.size() > 3) {
+      TRI_ASSERT(array.size() == 4);
+      this->_removed = (*(++array)).getUInt();
+    }
     this->_revisionId = (*(++array)).getUInt();
   }
 }
 
 void RocksDBSettingsManager::CMValue::serialize(VPackBuilder& b) const {
   b.openArray();
-  b.add(VPackValue(this->_sequenceNum));
-  b.add(VPackValue(this->_count));
-  b.add(VPackValue(this->_revisionId));
+  b.add(VPackValue(_sequenceNum));
+  b.add(VPackValue(_added));
+  b.add(VPackValue(_removed));
+  b.add(VPackValue(_revisionId));
   b.close();
 }
 
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
-    : _lastSync(0), _syncing(false), _db(db), _initialReleasedTick(0) {}
+    : _lastSync(0), 
+      _syncing(false), 
+      _db(db), 
+      _initialReleasedTick(0),
+      _maxUpdateSeqNo(1),
+      _lastSyncedSeqNo(0) {}
+
+/// bump up the value of the last rocksdb::SequenceNumber we have seen
+/// and that is pending a sync update
+void RocksDBSettingsManager::setMaxUpdateSequenceNumber(rocksdb::SequenceNumber seqNo) {
+  if (seqNo == 0) {
+    // we don't care about this
+    return;
+  }
+
+  auto current = _maxUpdateSeqNo.load(std::memory_order_acquire);
+
+  if (current >= seqNo) {
+    // current sequence number is already higher than the one we got
+    return;
+  }
+
+  bool res = _maxUpdateSeqNo.compare_exchange_strong(current, seqNo, std::memory_order_release);
+
+  if (!res) {
+    // someone else has updated the max sequence number
+    TRI_ASSERT(current >= seqNo);
+  }
+}
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
@@ -244,11 +281,15 @@ RocksDBSettingsManager::CounterAdjustment RocksDBSettingsManager::loadCounter(
   TRI_ASSERT(objectId != 0);  // TODO fix this
 
   READ_LOCKER(guard, _rwLock);
+
   auto const& it = _counters.find(objectId);
   if (it != _counters.end()) {
-    return CounterAdjustment(it->second._sequenceNum, it->second._count, 0,
+    return CounterAdjustment(it->second._sequenceNum, 
+                             it->second._added, 
+                             it->second._removed,
                              it->second._revisionId);
   }
+
   return CounterAdjustment();  // do not create
 }
 
@@ -258,53 +299,72 @@ RocksDBSettingsManager::CounterAdjustment RocksDBSettingsManager::loadCounter(
 void RocksDBSettingsManager::updateCounter(uint64_t objectId,
                                            CounterAdjustment const& update) {
   bool needsSync = false;
+  auto seqNo = update.sequenceNumber();
   {
     WRITE_LOCKER(guard, _rwLock);
 
     auto it = _counters.find(objectId);
     if (it != _counters.end()) {
-      it->second._count += update.added();
-      it->second._count -= update.removed();
+      it->second._added += update.added();
+      it->second._removed += update.removed();
       // just use the latest trx info
-      if (update.sequenceNumber() > it->second._sequenceNum) {
-        it->second._sequenceNum = update.sequenceNumber();
-        it->second._revisionId = update.revisionId();
+      if (seqNo > it->second._sequenceNum) {
+        it->second._sequenceNum = seqNo;
+        if (update.revisionId() != 0) {
+          it->second._revisionId = update.revisionId();
+        }
       }
     } else {
       // insert new counter
       _counters.emplace(std::make_pair(
           objectId,
-          CMValue(update.sequenceNumber(), update.added() - update.removed(),
+          CMValue(update.sequenceNumber(), update.added(), update.removed(),
                   update.revisionId())));
       needsSync = true;  // only count values from WAL if they are in the DB
     }
   }
+
+  setMaxUpdateSequenceNumber(seqNo);
+
   if (needsSync) {
     sync(true);
   }
 }
 
 arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
+                                                            rocksdb::SequenceNumber seq,
                                                             uint64_t value) {
   arangodb::Result res;
-  WRITE_LOCKER(guard, _rwLock);
-  auto it = _counters.find(objectId);
-  if (it != _counters.end()) {
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-    it->second._sequenceNum = db->GetLatestSequenceNumber();
-    it->second._count = value;
-  } else {
-    // nothing to do as the counter has never been written it can not be set to
-    // a value that would require correction. but we use the return value to
-    // signal that no sync is rquired
-    res.reset(TRI_ERROR_INTERNAL, "counter value not found - no sync required");
+  rocksdb::SequenceNumber seqNo = 0;
+
+  {
+    WRITE_LOCKER(guard, _rwLock);
+    
+    auto it = _counters.find(objectId);
+
+    if (it != _counters.end()) {
+      LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "resetting counter value to " << value;
+      it->second._sequenceNum = std::max(seq, it->second._sequenceNum);
+      it->second._added = value;
+      it->second._removed = 0;
+    } else {
+      // nothing to do as the counter has never been written it can not be set to
+      // a value that would require correction. but we use the return value to
+      // signal that no sync is rquired
+      res.reset(TRI_ERROR_INTERNAL, "counter value not found - no sync required");
+    }
   }
+  
+  setMaxUpdateSequenceNumber(seqNo);
+
   return res;
 }
 
 void RocksDBSettingsManager::removeCounter(uint64_t objectId) {
   WRITE_LOCKER(guard, _rwLock);
-  auto const& it = _counters.find(objectId);
+
+  auto it = _counters.find(objectId);
+
   if (it != _counters.end()) {
     RocksDBKey key;
     key.constructCounterValue(it->first);
@@ -361,7 +421,21 @@ Result RocksDBSettingsManager::sync(bool force) {
   if (!lockForSync(force)) {
     return Result();
   }
-  TRI_DEFER(_syncing = false);
+  
+  // only one thread can enter here at a time
+
+  // make sure we give up our lock when we exit this function
+  auto guard = scopeGuard([this]() { _syncing = false; });
+  
+  auto maxUpdateSeqNo =  _maxUpdateSeqNo.load(std::memory_order_acquire);
+
+  if (!force && maxUpdateSeqNo <= _lastSyncedSeqNo) {
+    // if noone has updated any counters etc. since we were here last,
+    // there is no need to do anything!
+    return Result();
+  }
+
+  // ok, when we are here, we will write out something back to the database
 
   std::unordered_map<uint64_t, CMValue> copy;
   {  // block all updates
@@ -369,16 +443,19 @@ Result RocksDBSettingsManager::sync(bool force) {
     copy = _counters;
   }
 
-  rocksdb::WriteOptions writeOptions;
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto seqNumber = _db->GetLatestSequenceNumber();
+ 
+  rocksdb::WriteOptions writeOptions;
   std::unique_ptr<rocksdb::Transaction> rtrx(
       _db->BeginTransaction(writeOptions));
 
-  VPackBuilder b;
+  // recycle our builder
+  _builder.clear();
+
   for (std::pair<uint64_t, CMValue> const& pair : copy) {
-    Result res = writeCounterValue(_syncedSeqNums, rtrx.get(), b, pair);
+    Result res = writeCounterValue(_syncedSeqNums, rtrx.get(), _builder, pair);
     if (res.fail()) {
       return res;
     }
@@ -391,14 +468,18 @@ Result RocksDBSettingsManager::sync(bool force) {
     seqNumber = std::min(seqNumber, writeResult.second);
   }
 
-  Result res = writeSettings(rtrx.get(), b, seqNumber);
+  Result res = writeSettings(rtrx.get(), _builder, seqNumber);
+
   if (res.fail()) {
     return res;
   }
 
   // we have to commit all counters in one batch
   auto s = rtrx->Commit();
+  
   if (s.ok()) {
+    _lastSyncedSeqNo = maxUpdateSeqNo;
+
     {
       WRITE_LOCKER(guard, _rwLock);
       _lastSync = seqNumber;
@@ -412,7 +493,6 @@ Result RocksDBSettingsManager::sync(bool force) {
 }
 
 void RocksDBSettingsManager::loadSettings() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
 
@@ -428,6 +508,7 @@ void RocksDBSettingsManager::loadSettings() {
         << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
+      WRITE_LOCKER(guard, _rwLock);
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
@@ -466,7 +547,6 @@ void RocksDBSettingsManager::loadSettings() {
 }
 
 void RocksDBSettingsManager::loadIndexEstimates() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEstimateValues();
 
   auto cf = RocksDBColumnFamily::definitions();
@@ -481,16 +561,18 @@ void RocksDBSettingsManager::loadIndexEstimates() {
     uint64_t lastSeqNumber =
         rocksutils::uint64FromPersistent(iter->value().data());
 
-    StringRef estimateSerialisation(iter->value().data() + sizeof(uint64_t),
+    StringRef estimateSerialization(iter->value().data() + sizeof(uint64_t),
                                     iter->value().size() - sizeof(uint64_t));
+    
+    WRITE_LOCKER(guard, _rwLock);
     // If this hits we have two estimates for the same index
     TRI_ASSERT(_estimators.find(objectId) == _estimators.end());
     try {
       if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(
-              estimateSerialisation)) {
+              estimateSerialization)) {
         auto it = _estimators.emplace(
             objectId, std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
-                          lastSeqNumber, estimateSerialisation));
+                          lastSeqNumber, estimateSerialization));
         if (it.second) {
           auto estimator = it.first->second.get();
           LOG_TOPIC(TRACE, Logger::ENGINES)
@@ -508,7 +590,6 @@ void RocksDBSettingsManager::loadIndexEstimates() {
 }
 
 void RocksDBSettingsManager::loadKeyGenerators() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
 
   auto cf = RocksDBColumnFamily::definitions();
@@ -526,6 +607,7 @@ void RocksDBSettingsManager::loadKeyGenerators() {
     if (!s.isNone()) { 
       uint64_t lastValue = properties.get(StaticStrings::LastValue).getUInt();
 
+      WRITE_LOCKER(guard, _rwLock);
       // If this hits we have two generators for the same collection
       TRI_ASSERT(_generators.find(objectId) == _generators.end());
       try {
@@ -543,33 +625,41 @@ RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res;
 
   WRITE_LOCKER(guard, _rwLock);
+
   auto it = _estimators.find(objectId);
+  
   if (it != _estimators.end()) {
     // We swap out the stored estimate in order to move it to the caller
     res.swap(it->second);
     // Drop the now empty estimator
     _estimators.erase(objectId);
   }
+  
   return res;
 }
 
 uint64_t RocksDBSettingsManager::stealKeyGenerator(uint64_t objectId) {
-  WRITE_LOCKER(guard, _rwLock);
   uint64_t res = 0;
-  auto it = _generators.find(objectId);
-  if (it != _generators.end()) {
-    // We swap out the stored estimate in order to move it to the caller
-    res = it->second;
-    // Drop the now empty estimator
-    _generators.erase(objectId);
+
+  {
+    WRITE_LOCKER(guard, _rwLock);
+    
+    auto it = _generators.find(objectId);
+
+    if (it != _generators.end()) {
+      // We swap out the stored generator state in order to move it to the caller
+      res = it->second;
+      // we are now not responsible for the generator anymore
+      _generators.erase(objectId);
+    }
   }
+  
   return res;
 }
 
 void RocksDBSettingsManager::clearIndexEstimators() {
   // We call this to remove all index estimators that have been stored but are
-  // no longer read
-  // by recovery.
+  // no longer read by recovery.
 
   // TODO REMOVE RocksDB Keys of all not stolen values?
   WRITE_LOCKER(guard, _rwLock);
@@ -583,7 +673,6 @@ void RocksDBSettingsManager::clearKeyGenerators() {
 
 /// Parse counter values from rocksdb
 void RocksDBSettingsManager::loadCounterValues() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
 
   auto cf = RocksDBColumnFamily::definitions();
@@ -594,13 +683,17 @@ void RocksDBSettingsManager::loadCounterValues() {
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
-    auto const& it =
-        _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
-    _syncedSeqNums[objectId] = it.first->second._sequenceNum;
-    LOG_TOPIC(TRACE, Logger::ENGINES)
-        << "found count marker for objectId '" << objectId
-        << "' last synced at " << it.first->first << " with count "
-        << it.first->second._count;
+    
+    {
+      WRITE_LOCKER(guard, _rwLock);
+      auto const& it =
+          _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
+      _syncedSeqNums[objectId] = it.first->second._sequenceNum;
+      LOG_TOPIC(TRACE, Logger::ENGINES)
+          << "found count marker for objectId '" << objectId
+          << "' last synced at " << it.first->first << " with added "
+          << it.first->second._added << ", removed " << it.first->second._removed;
+    }
 
     iter->Next();
   }

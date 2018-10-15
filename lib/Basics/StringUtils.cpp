@@ -294,13 +294,13 @@ size_t levenshteinDistance(std::vector<uint32_t>& vect1, std::vector<uint32_t>& 
   uint32_t const* r = vect2.data();
 
   if (lhsSize < std::numeric_limits<uint8_t>::max()) {
-    return static_cast<size_t>(::levenshtein<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint8_t>(l, r, static_cast<uint8_t>(lhsSize), static_cast<uint8_t>(rhsSize)));
   } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
-    return static_cast<size_t>(::levenshtein<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint16_t>(l, r, static_cast<uint16_t>(lhsSize), static_cast<uint16_t>(rhsSize)));
   } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
-    return static_cast<size_t>(::levenshtein<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint32_t>(l, r, static_cast<uint32_t>(lhsSize), static_cast<uint32_t>(rhsSize)));
   }
-  return static_cast<size_t>(::levenshtein<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
+  return static_cast<size_t>(::levenshtein<uint32_t, uint64_t>(l, r, static_cast<uint64_t>(lhsSize), static_cast<uint64_t>(rhsSize)));
 }
 
 } // namespace
@@ -1891,6 +1891,9 @@ std::string ftoa(double i) {
 // .............................................................................
 
 bool boolean(std::string const& str) {
+  if (str.empty()) {
+    return false;
+  }
   std::string lower = trim(str);
   tolowerInPlace(&lower);
 
@@ -1901,21 +1904,23 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-int64_t int64(std::string const& str) {
+#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
+int64_t int64(std::string const& value) {
   try {
-    return std::stoll(str, nullptr, 10);
+    return std::stoll(value, nullptr, 10);
   } catch (...) {
     return 0;
   }
 }
 
-uint64_t uint64(std::string const& str) {
+uint64_t uint64(std::string const& value) {
   try {
-    return std::stoull(str, nullptr, 10);
+    return std::stoull(value, nullptr, 10);
   } catch (...) {
     return 0;
   }
 }
+#endif
 
 uint64_t uint64_trusted(char const* value, size_t length) {
   uint64_t result = 0;
@@ -1965,6 +1970,7 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
+#ifndef TRI_STRING_UTILS_USE_FROM_CHARS
 int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;
@@ -2019,20 +2025,6 @@ uint32_t uint32(std::string const& str) {
 #endif
 }
 
-uint32_t unhexUint32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, str.c_str(), 0, 16);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, str.c_str(), 0, 16);
-#else
-  return (uint32_t)strtoul(str.c_str(), nullptr, 16);
-#endif
-#endif
-}
-
 uint32_t uint32(char const* value, size_t size) {
   char tmp[22];
 
@@ -2058,32 +2050,7 @@ uint32_t uint32(char const* value, size_t size) {
 #endif
 #endif
 }
-
-uint32_t unhexUint32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, value, 0, 16);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, value, 0, 16);
-#else
-  return (uint32_t)strtoul(value, nullptr, 16);
 #endif
-#endif
-}
 
 double doubleDecimal(std::string const& str) {
   return doubleDecimal(str.c_str(), str.size());

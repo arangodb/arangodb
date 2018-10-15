@@ -60,7 +60,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testEmpty : function () {
       var c = db._collection("UnitTestsDumpEmpty");
       var p = c.properties();
@@ -78,7 +78,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection with many documents
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testMany : function () {
       var c = db._collection("UnitTestsDumpMany");
       var p = c.properties();
@@ -108,7 +108,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the edges collection
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testEdges : function () {
       var c = db._collection("UnitTestsDumpEdges");
       var p = c.properties();
@@ -135,7 +135,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the order of documents
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testOrder : function () {
       var c = db._collection("UnitTestsDumpOrder");
       var p = c.properties();
@@ -153,7 +153,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document removal & update
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testRemoved : function () {
       var c = db._collection("UnitTestsDumpRemoved");
       var p = c.properties();
@@ -185,7 +185,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test indexes
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testIndexes : function () {
       var c = db._collection("UnitTestsDumpIndexes");
       var p = c.properties();
@@ -195,7 +195,7 @@ function dumpTestSuite () {
       assertFalse(p.isVolatile);
       assertEqual(32, p.indexBuckets);
 
-      assertEqual(9, c.getIndexes().length); 
+      assertEqual(9, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
@@ -227,12 +227,12 @@ function dumpTestSuite () {
       assertFalse(c.getIndexes()[6].unique);
       assertTrue(c.getIndexes()[6].sparse);
       assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[6].fields);
-      
+
       if (db._engine().name !== "rocksdb") {
         assertFalse(c.getIndexes()[7].unique);
         assertEqual("fulltext", c.getIndexes()[7].type);
         assertEqual([ "a_f" ], c.getIndexes()[7].fields);
-        
+
         assertEqual("geo", c.getIndexes()[8].type);
         assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);
@@ -244,7 +244,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test truncate
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testTruncated : function () {
       var c = db._collection("UnitTestsDumpTruncated");
       var p = c.properties();
@@ -261,7 +261,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test shards
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testShards : function () {
       var c = db._collection("UnitTestsDumpShards");
       var p = c.properties();
@@ -274,7 +274,7 @@ function dumpTestSuite () {
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(1000, c.count());
-  
+
       for (var i = 0; i < 1000; ++i) {
         var doc = c.document(String(7 + (i * 42)));
 
@@ -287,7 +287,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test strings
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testStrings : function () {
       var c = db._collection("UnitTestsDumpStrings");
       var p = c.properties();
@@ -302,18 +302,18 @@ function dumpTestSuite () {
 
       var texts = [
         "big. Really big. He moment. Magrathea! - insisted Arthur, - I do you can sense no further because it doesn't fit properly. In my the denies faith, and the atmosphere beneath You are not cheap He was was his satchel. He throughout Magrathea. - He pushed a tore the ecstatic crowd. Trillian sat down the time, the existence is it? And he said, - What they don't want this airtight hatchway. - it's we you shooting people would represent their Poet Master Grunthos is in his mind.",
-        "Ultimo cadere chi sedete uso chiuso voluto ora. Scotendosi portartela meraviglia ore eguagliare incessante allegrezza per. Pensava maestro pungeva un le tornano ah perduta. Fianco bearmi storia soffio prende udi poteva una. Cammino fascino elisire orecchi pollici mio cui sai sul. Chi egli sino sei dita ben. Audace agonie groppa afa vai ultima dentro scossa sii. Alcuni mia blocco cerchi eterno andare pagine poi. Ed migliore di sommesso oh ai angoscia vorresti.", 
+        "Ultimo cadere chi sedete uso chiuso voluto ora. Scotendosi portartela meraviglia ore eguagliare incessante allegrezza per. Pensava maestro pungeva un le tornano ah perduta. Fianco bearmi storia soffio prende udi poteva una. Cammino fascino elisire orecchi pollici mio cui sai sul. Chi egli sino sei dita ben. Audace agonie groppa afa vai ultima dentro scossa sii. Alcuni mia blocco cerchi eterno andare pagine poi. Ed migliore di sommesso oh ai angoscia vorresti.",
         "Νέο βάθος όλα δομές της χάσει. Μέτωπο εγώ συνάμα τρόπος και ότι όσο εφόδιο κόσμου. Προτίμηση όλη διάφορους του όλο εύθραυστη συγγραφής. Στα άρα ένα μία οποία άλλων νόημα. Ένα αποβαίνει ρεαλισμού μελετητές θεόσταλτο την. Ποντιακών και rites κοριτσάκι παπούτσια παραμύθια πει κυρ.",
         "Mody laty mnie ludu pole rury Białopiotrowiczowi. Domy puer szczypię jemy pragnął zacność czytając ojca lasy Nowa wewnątrz klasztoru. Chce nóg mego wami. Zamku stał nogą imion ludzi ustaw Białopiotrowiczem. Kwiat Niesiołowskiemu nierostrzygniony Staje brał Nauka dachu dumę Zamku Kościuszkowskie zagon. Jakowaś zapytać dwie mój sama polu uszakach obyczaje Mój. Niesiołowski książkowéj zimny mały dotychczasowa Stryj przestraszone Stolnikównie wdał śmiertelnego. Stanisława charty kapeluszach mięty bratem każda brząknął rydwan.",
-        "Мелких против летают хижину тмится. Чудесам возьмет звездна Взжигай. . Податель сельские мучитель сверкает очищаясь пламенем. Увы имя меч Мое сия. Устранюсь воздушных Им от До мысленные потушатся Ко Ея терпеньем.", 
+        "Мелких против летают хижину тмится. Чудесам возьмет звездна Взжигай. . Податель сельские мучитель сверкает очищаясь пламенем. Увы имя меч Мое сия. Устранюсь воздушных Им от До мысленные потушатся Ко Ея терпеньем.",
         "dotyku. Výdech spalin bude položen záplavový detekční kabely 1x UPS Newave Conceptpower DPA 5x 40kVA bude ukončen v samostatné strojovně. Samotné servery mají pouze lokalita Ústí nad zdvojenou podlahou budou zakončené GateWayí HiroLink - Monitoring rozvaděče RTN na jednotlivých záplavových zón na soustrojí resp. technologie jsou označeny SA-MKx.y. Jejich výstupem je zajištěn přestupem dat z jejich provoz. Na dveřích vylepené výstražné tabulky. Kabeláž z okruhů zálohovaných obvodů v R.MON-I. Monitoring EZS, EPS, ... možno zajistit funkčností FireWallů na strukturovanou kabeláží vedenou v měrných jímkách zapuštěných v každém racku budou zakončeny v R.MON-NrNN. Monitoring motorgenerátorů: řídící systém bude zakončena v modulu",
         "ramien mu zrejme vôbec niekto je už presne čo mám tendenciu prispôsobiť dych jej páčil, čo chce. Hmm... Včera sa mi pozdava, len dočkali, ale keďže som na uz boli u jej nezavrela. Hlava jej to ve městě nepotká, hodně mi to tí vedci pri hre, keď je tu pre Designiu. Pokiaľ viete o odbornejšie texty. Prvým z tmavých uličiek, každý to niekedy, zrovnávať krok s obrovským batohom na okraj vane a temné úmysly, tak rozmýšľam, aký som si hromady mailov, čo chcem a neraz sa pokúšal o filmovém klubu v budúcnosti rozhodne uniesť mladú maliarku (Linda Rybová), ktorú so",
         " 復讐者」. 復讐者」. 伯母さん 復讐者」. 復讐者」. 復讐者」. 復讐者」. 第九章 第五章 第六章 第七章 第八章. 復讐者」 伯母さん. 復讐者」 伯母さん. 第十一章 第十九章 第十四章 第十八章 第十三章 第十五章. 復讐者」 . 第十四章 第十一章 第十二章 第十五章 第十七章 手配書. 第十四章 手配書 第十八章 第十七章 第十六章 第十三章. 第十一章 第十三章 第十八章 第十四章 手配書. 復讐者」."
       ];
 
-      texts.forEach(function (t, i) { 
+      texts.forEach(function (t, i) {
         var doc = c.document("text" + i);
-        
+
         assertEqual(t, doc.value);
       });
 
@@ -343,16 +343,21 @@ function dumpTestSuite () {
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
 
-      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
+      assertEqual(props.consolidationIntervalMsec, 0);
+      assertEqual(props.cleanupIntervalStep, 456);
+      assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
+      assertEqual(props.consolidationPolicy.type, "bytes_accum");
+
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(5000, res.length);
 
-      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(2500, res.length);
 
-      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') OPTIONS { waitForSync:true } RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 

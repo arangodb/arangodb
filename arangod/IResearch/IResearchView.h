@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////////////
+﻿//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2017 EMC Corporation
@@ -141,7 +141,7 @@ class IResearchView final
   ///////////////////////////////////////////////////////////////////////////////
   class AsyncSelf: public ResourceMutex {
    public:
-    DECLARE_SPTR(AsyncSelf);
+    DECLARE_SHARED_PTR(AsyncSelf);
     explicit AsyncSelf(IResearchView* value): ResourceMutex(value) {}
     IResearchView* get() const {
       return static_cast<IResearchView*>(ResourceMutex::get());
@@ -277,14 +277,6 @@ class IResearchView final
     Snapshot mode = Snapshot::Find
   ) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for a flush of all index data to its respective stores
-  /// @param maxMsec try not to exceed the specified time, casues partial sync
-  ///                0 == full sync
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  bool sync(size_t maxMsec = 0);
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
@@ -325,8 +317,10 @@ class IResearchView final
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
-    std::atomic<size_t> _segmentCount{}; // total number of segments in the writer
+    irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
+    std::atomic<size_t> _segmentCount{}; // FIXME remove total number of segments in the writer
     irs::index_writer::ptr _writer;
+
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
     DataStore& operator=(DataStore&& other) noexcept;
@@ -334,10 +328,6 @@ class IResearchView final
       return _directory && _writer;
     }
     void sync();
-  };
-
-  struct MemoryStore: public DataStore {
-    MemoryStore(); // initialize _directory and _writer during allocation
   };
 
   struct PersistedStore: public DataStore {
@@ -353,13 +343,6 @@ class IResearchView final
     void operator()(IResearchView* view) const noexcept;
   };
 
-  struct MemoryStoreNode {
-    MemoryStore _store;
-    MemoryStoreNode* _next; // pointer to the next MemoryStore
-    std::mutex _readMutex; // for use with obtaining _reader FIXME TODO find a better way
-    std::mutex _reopenMutex; // for use with _reader.reopen() FIXME TODO find a better way
-  };
-
   typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;
   typedef std::unique_ptr<
     arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>
@@ -371,8 +354,6 @@ class IResearchView final
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion
   );
-
-  MemoryStore& activeMemoryStore() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback for flush feature
@@ -386,17 +367,16 @@ class IResearchView final
 
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   IResearchViewMetaState _metaState; // the per-instance configuration state
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
-  MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
-  MemoryStoreNode* _memoryNode; // points to the current memory store
-  MemoryStoreNode* _toFlush; // points to memory store to be flushed
   PersistedStore _storePersisted;
+  std::mutex _readerLock; // prevents query cache double invalidation
+  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
+  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::atomic<bool> _inRecovery;
 };
 

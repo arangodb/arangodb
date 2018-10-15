@@ -38,7 +38,8 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
+  VstCommTask(GeneralServer &server, GeneralServer::IoContext &context,
+              std::unique_ptr<Socket> socket,
               ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
               bool skipSocketInit = false);
 
@@ -46,6 +47,9 @@ class VstCommTask final : public GeneralCommTask {
     return arangodb::Endpoint::TransportType::VST;
   }
 
+  // whether or not this task can mix sync and async I/O
+  bool canUseMixedIO() const override; 
+  
  protected:
   // read data check if chunk and message are complete
   // if message is complete execute a request

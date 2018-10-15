@@ -47,7 +47,7 @@ namespace rest {
 class GeneralCommTask;
 class SocketTask;
 
-class Scheduler {
+class Scheduler : public std::enable_shared_from_this<Scheduler> {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
@@ -95,9 +95,9 @@ class Scheduler {
     uint64_t _queuedV8;
   };
 
-  void post(std::function<void()> const callback, bool isV8,
-            uint64_t timeout = 0);
-  void post(asio_ns::io_context::strand&, std::function<void()> const callback);
+  void post(std::function<void()> const&, bool isV8,
+                      uint64_t timeout = 0);
+  void post(asio_ns::io_context::strand&, std::function<void()> const&);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
@@ -108,6 +108,45 @@ class Scheduler {
 
   bool isRunning() const { return numRunning(_counters) > 0; }
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
+
+ public:
+  template <typename T>
+  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
+    return new asio_ns::deadline_timer(*_ioContext, timeout);
+  }
+  asio_ns::steady_timer* newSteadyTimer() {
+    return new asio_ns::steady_timer(*_ioContext);
+  }
+  asio_ns::io_context::strand* newStrand() {
+    return new asio_ns::io_context::strand(*_ioContext);
+  }
+  asio_ns::ip::tcp::acceptor* newAcceptor() {
+    return new asio_ns::ip::tcp::acceptor(*_ioContext);
+  }
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
+    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
+  }
+#endif
+  asio_ns::ip::tcp::socket* newSocket() {
+    return new asio_ns::ip::tcp::socket(*_ioContext);
+  }
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::socket* newDomainSocket() {
+    return new asio_ns::local::stream_protocol::socket(*_ioContext);
+  }
+#endif
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
+      asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
+                                                              context);
+  }
+  asio_ns::ip::tcp::resolver* newResolver() {
+    return new asio_ns::ip::tcp::resolver(*_ioContext);
+  }
+  asio_ns::signal_set* newSignalSet() {
+    return new asio_ns::signal_set(*_managerContext);
+  }
 
  private:
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
@@ -208,54 +247,6 @@ class Scheduler {
   // the following methds create tasks in the `io_context`.
   // The `io_context` itself is not exposed because everything
   // should use the method `post` of the Scheduler.
-
- public:
-  template <typename T>
-  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
-    return new asio_ns::deadline_timer(*_ioContext, timeout);
-  }
-
-  asio_ns::steady_timer* newSteadyTimer() {
-    return new asio_ns::steady_timer(*_ioContext);
-  }
-
-  asio_ns::io_context::strand* newStrand() {
-    return new asio_ns::io_context::strand(*_ioContext);
-  }
-
-  asio_ns::ip::tcp::acceptor* newAcceptor() {
-    return new asio_ns::ip::tcp::acceptor(*_ioContext);
-  }
-
-#ifndef _WIN32
-  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
-    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
-  }
-#endif
-
-  asio_ns::ip::tcp::socket* newSocket() {
-    return new asio_ns::ip::tcp::socket(*_ioContext);
-  }
-
-#ifndef _WIN32
-  asio_ns::local::stream_protocol::socket* newDomainSocket() {
-    return new asio_ns::local::stream_protocol::socket(*_ioContext);
-  }
-#endif
-
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
-      asio_ns::ssl::context& context) {
-    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
-                                                              context);
-  }
-
-  asio_ns::ip::tcp::resolver* newResolver() {
-    return new asio_ns::ip::tcp::resolver(*_ioContext);
-  }
-
-  asio_ns::signal_set* newSignalSet() {
-    return new asio_ns::signal_set(*_managerContext);
-  }
 
  private:
   static void initializeSignalHandlers();

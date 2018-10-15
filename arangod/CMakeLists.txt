@@ -53,7 +53,6 @@ if (USE_IRESEARCH)
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
-    IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
     IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
     IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
@@ -234,6 +233,7 @@ SET(ARANGOD_SOURCES
   Aql/Query.cpp
   Aql/QueryCache.cpp
   Aql/QueryCursor.cpp
+  Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
@@ -330,6 +330,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
+  GeneralServer/IoTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/VstCommTask.cpp

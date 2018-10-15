@@ -242,13 +242,6 @@ class RemoteBlock final : public ExecutionBlock {
   bool handleAsyncResult(ClusterCommResult* result) override;
 
  private:
-  /// @brief internal method to send a request
-  /// TODO:Deprecated!
-  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::RequestType type, std::string const& urlPart,
-      std::string const& body) const;
-
-
   /**
    * @brief Handle communication errors in Async case.
    *
@@ -394,6 +387,9 @@ class SortingGatherBlock final : public ExecutionBlock {
   /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
   /// the usual _pos but one pair per dependency
   std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
+  
+  /// @brief whether or not the dependency at index is done
+  std::vector<bool> _gatherBlockPosDone;
 
   /// @brief sort elements for this block
   std::vector<SortRegister> _sortRegisters;
@@ -401,8 +397,6 @@ class SortingGatherBlock final : public ExecutionBlock {
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
 }; // SortingGatherBlock
-
-
 
 class SingleRemoteOperationBlock final : public ExecutionBlock {
   /// @brief constructors/destructors

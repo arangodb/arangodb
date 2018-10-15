@@ -65,8 +65,9 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     if (!application_features::ApplicationServer::isStopping()) {
       // only log errors if we are not already shutting down...
       // in case of shutdown this error is somewhat expected
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) << "Callback getValues to agency was not successful: "
-               << result.errorCode() << " " << result.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "Callback getValues to agency was not successful: "
+          << result.errorCode() << " " << result.errorMessage();
     }
     return;
   }
