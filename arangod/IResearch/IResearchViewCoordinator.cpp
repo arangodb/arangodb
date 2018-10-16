@@ -31,6 +31,8 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
@@ -71,6 +73,47 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
 
   // links are not persisted, their definitions are part of the corresponding collections
   if (!forPersistence) {
+    // open up a read transaction and add all linked collections to verify that
+    // the current user has access
+
+    std::vector<std::string> collections;
+    for (auto& entry: _collections) {
+      collections.emplace_back(entry.second.first);
+    }
+
+    Result result = arangodb::basics::catchToResult([this, &collections]() -> arangodb::Result {
+      static std::vector<std::string> const EMPTY;
+      // use default lock timeout
+      arangodb::transaction::Options options;
+      options.waitForSync = false;
+      options.allowImplicitCollections = false;
+
+      transaction::StandaloneContext ctx{vocbase()};
+      std::shared_ptr<transaction::StandaloneContext> ptr;
+      arangodb::transaction::Methods trx(
+        std::shared_ptr<transaction::StandaloneContext>(ptr, &ctx),
+        collections, // readCollections
+        EMPTY, // writeCollections
+        EMPTY, // exclusiveCollections
+        options
+      );
+      auto res = trx.begin();
+
+      if (!res.ok()) {
+        return res; // nothing more to output
+      }
+
+      trx.commit();
+      return res;
+    });
+    if (result.fail()) {
+      IR_LOG_EXCEPTION();
+      return arangodb::Result(result.errorNumber(),
+                              "caught exception while generating json for "
+                              "arangosearch view '" + name() + "': " +
+                              result.errorMessage());
+    }
+
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
 
@@ -136,13 +179,23 @@ bool IResearchViewCoordinator::emplace(
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  bool hasLinks = properties.hasKey(StaticStrings::LinksField);
-
   auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
 
-  if (hasLinks) {
+  if (!view->_meta.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    LOG_TOPIC(WARN, iresearch::TOPIC)
+        << "failed to initialize arangosearch view from definition, error: " << error;
+
+    return nullptr;
+  }
+
+  auto links = properties.hasKey(StaticStrings::LinksField)
+             ? properties.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice();
+
+  if (links.length()) {
     auto* engine = arangodb::ClusterInfo::instance();
 
     if (!engine) {
@@ -163,20 +216,15 @@ bool IResearchViewCoordinator::emplace(
 
           if (collection
               && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+            TRI_set_errno(TRI_ERROR_FORBIDDEN);
+            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+              << "insufficient rights to create view with link to collection' " << collection->name() << "'";
+
             return nullptr;
           }
         }
       }
     }
-  }
-
-
-  if (!view->_meta.init(properties, error)) {
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    LOG_TOPIC(WARN, iresearch::TOPIC)
-        << "failed to initialize arangosearch view from definition, error: " << error;
-
-    return nullptr;
   }
 
   if (preCommit && !preCommit(view)) {
@@ -186,57 +234,68 @@ bool IResearchViewCoordinator::emplace(
     return nullptr;
   }
 
-  if (isNew) {
-    arangodb::velocypack::Builder builder;
-    auto* ci = ClusterInfo::instance();
+  if (!isNew) {
+    return view; // nothing more to do
+  }
+  arangodb::velocypack::Builder builder;
+  auto* ci = ClusterInfo::instance();
 
-    if (!ci) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure to find ClusterInfo instance while constructing arangosearch view in database '" << vocbase.id() << "'";
+  if (!ci) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure to find ClusterInfo instance while constructing arangosearch view in database '" << vocbase.id() << "'";
 
-      return nullptr;
-    }
+    return nullptr;
+  }
 
-    builder.openObject();
+  builder.openObject();
 
-    auto res = view->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+  auto res = view->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+
+  if (!res.ok()) {
+    TRI_set_errno(res.errorNumber());
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure to generate definitionf created view while constructing arangosearch view in database '" << vocbase.id() << "', error: " << res.errorMessage();
+
+    return nullptr;
+  }
+
+  builder.close();
+
+  auto resNum = ci->createViewCoordinator(
+    vocbase.name(), std::to_string(view->id()), builder.slice(), error
+  );
+
+  if (TRI_ERROR_NO_ERROR != resNum) {
+    TRI_set_errno(resNum);
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure during commit of created view while constructing arangosearch view in database '" << vocbase.id() << "', error: " << error;
+
+    return nullptr;
+  }
+
+  // create links on a best-effor basis
+  // link creation failure does not cause view creation failure
+  try {
+    std::unordered_set<TRI_voc_cid_t> collections;
+    auto res =
+      IResearchLinkHelper::updateLinks(collections, vocbase, *view, links);
 
     if (!res.ok()) {
-      TRI_set_errno(res.errorNumber());
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure to generate definitionf created view while constructing arangosearch view in database '" << vocbase.id() << "', error: " << res.errorMessage();
-
-      return nullptr;
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to create links while creating arangosearch view '" << view->name() <<  "': " << res.errorNumber() << " " <<  res.errorMessage();
     }
-
-    builder.close();
-
-    auto resNum = ci->createViewCoordinator(
-      vocbase.name(), std::to_string(view->id()), builder.slice(), error
-    );
-
-    if (TRI_ERROR_NO_ERROR != resNum) {
-      TRI_set_errno(resNum);
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failure during commit of created view while constructing arangosearch view in database '" << vocbase.id() << "', error: " << error;
-
-      return nullptr;
-    }
-
-    // create links - "on a best-effort basis"
-    if (info.hasKey("links")) {
-
-      std::unordered_set<TRI_voc_cid_t> collections;
-      auto result = IResearchLinkHelper::updateLinks(
-        collections, vocbase, *view.get(), info.get("links")
-      );
-
-      if (result.fail()) {
-        TRI_set_errno(result.errorNumber());
-        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "Failure to construct links on new view in database '" << vocbase.id() << "', error: " << error;
-      }
-    }
+  } catch (arangodb::basics::Exception const& e) {
+    IR_LOG_EXCEPTION();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.code() << " " << e.what();
+  } catch (std::exception const& e) {
+    IR_LOG_EXCEPTION();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating links while creating arangosearch view '" << view->name() << "': " << e.what();
+  } catch (...) {
+    IR_LOG_EXCEPTION();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating links while creating arangosearch view '" << view->name() << "'";
   }
 
   return view;

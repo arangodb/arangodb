@@ -50,6 +50,12 @@
 #include "Basics/directories.h"
 #include "Basics/Common.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+#include "dbghelp.h"
+#endif
+#endif
+
 using namespace arangodb::basics;
 
 // .............................................................................
@@ -141,6 +147,22 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     // ...........................................................................
 
     case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+      DWORD  error;
+      HANDLE hProcess;
+
+      SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+
+      hProcess = GetCurrentProcess();
+
+      if (!SymInitialize(hProcess, NULL, true)) {
+        // SymInitialize failed
+        error = GetLastError();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "SymInitialize returned error :" << error;
+      }
+#endif
+#endif
       newInvalidHandleHandler = InvalidParameterHandler;
       oldInvalidHandleHandler =
           _set_invalid_parameter_handler(newInvalidHandleHandler);

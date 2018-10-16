@@ -808,7 +808,7 @@ ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
   nrRegsHere.resize(depth);
   nrRegsHere.emplace_back(0);
   // create a copy of the last value here
-  // this is requried because back returns a reference and emplace/push_back may
+  // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
   RegisterId registerId = nrRegs.back();
   nrRegs.emplace_back(registerId);

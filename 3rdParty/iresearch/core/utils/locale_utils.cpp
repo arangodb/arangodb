@@ -87,7 +87,7 @@ NS_BEGIN(std)
 // std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
 // this causes linking issues in optimized code
 // Note: clang tries to pretend to be GCC, so it must be explicitly excluded
-#if !defined(__APPLE__) && defined(__GNUC__) && (__GNUC__ < 5)
+#if !defined(__APPLE__) && !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 5)
   /*static*/ template<> locale::id codecvt<char16_t, char, mbstate_t>::id;
   /*static*/ template<> locale::id codecvt<char32_t, char, mbstate_t>::id;
 #endif

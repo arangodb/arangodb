@@ -379,7 +379,7 @@ class transaction_store_tests: public test_base {
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
       dir_writer->commit();
-      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
+      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
       dir_writer->commit();
     }
 
@@ -3397,7 +3397,7 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
 
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
     dir_writer->commit();
-    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     dir_writer->commit();
   }
 
@@ -5243,7 +5243,7 @@ TEST_F(transaction_store_tests, segment_flush) {
     flushed = store.flush();
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
     dir_writer->commit();
-    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     dir_writer->commit();
 
     // validate structure
@@ -5343,7 +5343,7 @@ TEST_F(transaction_store_tests, segment_flush) {
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
       dir_writer->commit();
-      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidate_all()));
+      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
       dir_writer->commit();
     }
 

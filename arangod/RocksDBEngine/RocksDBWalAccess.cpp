@@ -72,8 +72,7 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
 WalAccessResult RocksDBWalAccess::openTransactions(
-    uint64_t tickStart, uint64_t tickEnd, WalAccess::Filter const& filter,
-    TransactionCallback const&) const {
+    WalAccess::Filter const& filter, TransactionCallback const&) const {
   return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0, 0, 0);
 }
 
@@ -81,7 +80,7 @@ WalAccessResult RocksDBWalAccess::openTransactions(
 /// can potentially be batched into the same rocksdb write batch
 /// but transactions can never be interleaved with operations
 /// outside of the transaction
-class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext {
+class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessContext {
 
   // internal WAL parser states
   enum State : char {
@@ -101,15 +100,30 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
   };
 
  public:
-  MyWALParser(WalAccess::Filter const& filter,
-              WalAccess::MarkerCallback const& f)
+  MyWALDumper(WalAccess::Filter const& filter,
+              WalAccess::MarkerCallback const& f,
+              size_t maxResponseSize)
       : WalAccessContext(filter, f),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _documentsCF(RocksDBColumnFamily::documents()->GetID()),
         _primaryCF(RocksDBColumnFamily::primary()->GetID()),
+        _maxResponseSize(maxResponseSize),
         _startSequence(0),
-        _currentSequence(0) {}
+        _currentSequence(0),
+        _lastWrittenSequence(0) {}
 
+  bool Continue() override {
+    if (_responseSize > _maxResponseSize) {
+      // it should only be possible to be in the middle of a huge batch,
+      // if and only if we are in one big transaction. We may not stop
+      // while
+      if (_state == TRANSACTION && _removedDocRid == 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
   void LogData(rocksdb::Slice const& blob) override {
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
@@ -173,9 +187,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
               marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
                                                  VPackValueType::String));
             }
-            _callback(vocbase, _builder.slice());
-            _responseSize += _builder.size();
-            _builder.clear();
+            printMarker(vocbase);
           }
         }
         break;
@@ -196,9 +208,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
             marker->add("db", VPackValue(vocbase->name()));
             marker->add("cuid", VPackValue(coll->guid()));
           }
-          _callback(vocbase, _builder.slice());
-          _responseSize += _builder.size();
-          _builder.clear();
+          printMarker(vocbase);
         }
         break;
       }
@@ -218,7 +228,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           {
             uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
             VPackObjectBuilder marker(&_builder, true);
-
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(rocksutils::convertLogType(type)));
             marker->add("db", VPackValue(vocbase->name()));
@@ -226,9 +235,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
             marker->add("data", stripped.first);
           }
 
-          _callback(vocbase, _builder.slice());
-          _responseSize += _builder.size();
-          _builder.clear();
+          printMarker(vocbase);
         }
 
         break;
@@ -249,7 +256,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           {
             uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
             VPackObjectBuilder marker(&_builder, true);
-
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(rocksutils::convertLogType(type)));
             marker->add("db", VPackValue(vocbase->name()));
@@ -260,9 +266,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
             data->add("id", VPackValue(std::to_string(iid)));
           }
 
-          _callback(vocbase, _builder.slice());
-          _responseSize += _builder.size();
-          _builder.clear();
+          printMarker(vocbase);
         }
         break;
       }
@@ -293,9 +297,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
               marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
                                                  VPackValueType::String));
             }
-            _callback(vocbase, _builder.slice());
-            _responseSize += _builder.size();
-            _builder.clear();
+            
+            printMarker(vocbase);
           }
         }
         // wait for marker data in Put entry
@@ -328,9 +331,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
               marker->add("db", VPackValue(vocbase->name()));
               marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
             }
-            _callback(vocbase, _builder.slice());
-            _responseSize += _builder.size();
-            _builder.clear();
+            printMarker(vocbase);
           }
         }
         break;
@@ -400,8 +401,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
-    tick();
-    //LOG_TOPIC(ERR, Logger::REPLICATION) << "[PUT] cf: " << column_family_id
+    incTick();
+    //LOG_TOPIC(ERR, Logger::ENGINES) << "[PUT] cf: " << column_family_id
     // << ", key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
@@ -424,9 +425,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
               marker->add("db", name);
               marker->add("data", data);
             }
-            _callback(vocbase, _builder.slice());
-            _responseSize += _builder.size();
-            _builder.clear();
+            printMarker(vocbase);
           }
         } else if (_state == DB_DROP) {
           // prepareDropDatabase should always write entry
@@ -438,9 +437,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
             marker->add("type", VPackValue(REPLICATION_DATABASE_DROP));
             marker->add("db", name);
           }
-          _callback(loadVocbase(dbid), _builder.slice());
-          _responseSize += _builder.size();
-          _builder.clear();
+          printMarker(loadVocbase(dbid));
         } // ignore Put in any other case
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         TRI_voc_tick_t dbid = RocksDBKey::databaseId(key);
@@ -456,33 +453,25 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           {
             VPackSlice collectionDef = RocksDBValue::data(value);
             VPackObjectBuilder marker(&_builder, true);
-
             marker->add("tick", VPackValue(std::to_string(_currentSequence)));
             marker->add("db", VPackValue(vocbase->name()));
             marker->add("cuid", VPackValue(col->guid()));
 
             if (_state == COLLECTION_CREATE) {
               auto stripped = rocksutils::stripObjectIds(collectionDef);
-
               marker->add("type", VPackValue(REPLICATION_COLLECTION_CREATE));
               marker->add("data", stripped.first);
             } else if (_state == COLLECTION_RENAME) {
               marker->add("type", VPackValue(REPLICATION_COLLECTION_RENAME));
-
               VPackObjectBuilder data(&_builder, "data", true);
-
               data->add("name", VPackValue(col->name()));
             } else if (_state == COLLECTION_CHANGE) {
               auto stripped = rocksutils::stripObjectIds(collectionDef);
-
               marker->add("type", VPackValue(REPLICATION_COLLECTION_CHANGE));
               marker->add("data", stripped.first);
             }
           }
-
-          _callback(vocbase, _builder.slice());
-          _responseSize += _builder.size();
-          _builder.clear();
+          printMarker(vocbase);
         }
       } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
 
@@ -509,10 +498,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
                 marker->add("type", VPackValue(REPLICATION_VIEW_CHANGE));
               }
             }
-
-            _callback(vocbase, _builder.slice());
-            _responseSize += _builder.size();
-            _builder.clear();
+            printMarker(vocbase);
           }
         }
       }
@@ -548,7 +534,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
       {
         VPackObjectBuilder marker(&_builder, true);
-
         marker->add("tick", VPackValue(std::to_string(_currentSequence)));
         marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         marker->add("db", VPackValue(vocbase->name()));
@@ -557,10 +542,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         marker->add("data", RocksDBValue::data(value));
       }
 
-      _callback(vocbase, _builder.slice());
-      _responseSize += _builder.size();
-      _builder.clear();
-
+      printMarker(vocbase);
       if (_state == SINGLE_PUT) {
         resetTransientState(); // always reset after single op
       }
@@ -571,7 +553,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
   // for Delete / SingleDelete
   void handleDeleteCF(uint32_t cfId, rocksdb::Slice const& key) {
-    tick();
+    incTick();
 
     if (cfId != _primaryCF) {
       return; // ignore all document operations
@@ -589,7 +571,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
     if (!shouldHandleCollection(dbid, cid)) {
       _removedDocRid = 0; // ignore rid too
-
       return; // no reset here
     }
 
@@ -602,7 +583,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
     {
       VPackObjectBuilder marker(&_builder, true);
-
       marker->add("tick", VPackValue(std::to_string(_currentSequence)));
       marker->add("type", VPackValue(REPLICATION_MARKER_REMOVE));
       marker->add("db", VPackValue(vocbase->name()));
@@ -610,15 +590,12 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
       marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
 
       VPackObjectBuilder data(&_builder, "data", true);
-
       data->add(StaticStrings::KeyString, VPackValuePair(docKey.data(), docKey.size(),
                                                          VPackValueType::String));
       data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(_removedDocRid)));
     }
 
-    _callback(vocbase, _builder.slice());
-    _responseSize += _builder.size();
-    _builder.clear();
+    printMarker(vocbase);
     _removedDocRid = 0; // always reset
 
     if (_state == SINGLE_REMOVE) {
@@ -641,8 +618,28 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
   rocksdb::Status DeleteRangeCF(uint32_t /*column_family_id*/,
                                const rocksdb::Slice& /*begin_key*/,
                                const rocksdb::Slice& /*end_key*/) override {
-    // drop and truncate may use this, but we do not look at these
+    incTick();
+    // drop and truncate may use this, but we do not print anything
     return rocksdb::Status(); // make WAL iterator happy
+  }
+  
+  rocksdb::Status MergeCF(uint32_t, const rocksdb::Slice&,
+                          const rocksdb::Slice&) override {
+    incTick();
+    // not used for anything in ArangoDB currently
+    return rocksdb::Status(); // make WAL iterator happy
+  }
+  
+public:
+  
+  /// figures out from which sequence number we need to start scanning
+  /// if we just use tickStart rocksdb will skip over batches we might
+  /// not have completely evaluated
+  uint64_t safeBeginTick() const {
+    if (_filter.tickLastScanned > 0 && _filter.tickLastScanned < _filter.tickStart) {
+      return _filter.tickLastScanned;
+    }
+    return _filter.tickStart;
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
@@ -655,6 +652,18 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     _trxDbId = 0;
     _removedDocRid = 0;
   }
+  
+  uint64_t endBatch() {
+    TRI_ASSERT(_removedDocRid == 0);
+    resetTransientState();
+    return _currentSequence;
+  }
+  
+  size_t responseSize() const { return _responseSize; }
+  
+  uint64_t lastWrittenSequence() const { return _lastWrittenSequence; }
+  
+ private:
 
   void writeCommitMarker(TRI_voc_tick_t dbid) {
     TRI_ASSERT(_state == TRANSACTION);
@@ -666,39 +675,35 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
-      _callback(vocbase, _builder.slice());
-      _responseSize += _builder.size();
-      _builder.clear();
+      printMarker(vocbase);
     }
     _state = INVALID;
+  }
+  
+  /// print maker in builder and clear it
+  void printMarker(TRI_vocbase_t* vocbase) {
+    TRI_ASSERT(!_builder.isEmpty());
+    if (_currentSequence > _filter.tickStart) {
+      _callback(vocbase, _builder.slice());
+      _responseSize += _builder.size();
+      _lastWrittenSequence = _currentSequence;
+    }
+    _builder.clear();
   }
 
   // should reset state flags which are only valid between
   // observing a specific log entry and a sequence of immediately
   // following PUT / DELETE / Log entries
   void resetTransientState() {
-    if (_state == TRANSACTION) {
-      writeCommitMarker(_trxDbId);
-    }
     // reset all states
     _state = INVALID;
     _currentTrxId = 0;
     _trxDbId = 0;
     _removedDocRid = 0;
   }
-
-  uint64_t endBatch() {
-    TRI_ASSERT(_removedDocRid == 0);
-    resetTransientState();
-    return _currentSequence;
-  }
-
-  size_t responseSize() const { return _responseSize; }
-
- private:
-
+  
   // tick function that is called before each new WAL entry
-  void tick() {
+  void incTick() {
     if (_startOfBatch) {
       // we are at the start of a batch. do NOT increase sequence number
       _startOfBatch = false;
@@ -712,9 +717,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
   uint32_t const _definitionsCF;
   uint32_t const _documentsCF;
   uint32_t const _primaryCF;
+  size_t const _maxResponseSize;
 
   rocksdb::SequenceNumber _startSequence;
   rocksdb::SequenceNumber _currentSequence;
+  rocksdb::SequenceNumber _lastWrittenSequence;
   bool _startOfBatch = false;
 
   // Various state machine flags
@@ -726,46 +733,47 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
-WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
-                                       size_t chunkSize,
-                                       TRI_voc_tick_t,
-                                       Filter const& filter,
-                                       MarkerCallback const& func) const {
+WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
+                                       TRI_voc_tick_t, MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
   /*LOG_TOPIC(WARN, Logger::REPLICATION) << "1. Starting tailing: tickStart " <<
   tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
 
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  uint64_t firstTick = UINT64_MAX;      // first tick actually read
-  uint64_t lastTick = tickStart;        // lastTick at start of a write batch
-  uint64_t lastScannedTick = tickStart; // last tick we looked at
-  uint64_t lastWrittenTick = 0;         // lastTick at the end of a write batch
+
+  if (chunkSize < 16384) { // we need to have some sensible minimum
+    chunkSize = 16384;
+  }
+  // pre 3.4 breaking up write batches is not supported
+  size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
+
+  MyWALDumper dumper(filter, func, maxTrxChunkSize);
+  const uint64_t since = dumper.safeBeginTick();
+  TRI_ASSERT(since <= filter.tickStart);
+  TRI_ASSERT(since <= filter.tickEnd);
+  
+  uint64_t firstTick = UINT64_MAX;  // first tick to actually print (exclusive)
+  uint64_t lastScannedTick = since; // last (begin) tick of batch we looked at
+  uint64_t lastWrittenTick = 0;     // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
-  MyWALParser handler(filter, func);
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
-
-  rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  s = db->GetUpdatesSince(tickStart, &iterator, ro);
+  rocksdb::Status s = db->GetUpdatesSince(since, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalAccessResult(r.errorNumber(), tickStart == latestTick,
+    return WalAccessResult(r.errorNumber(), filter.tickStart == latestTick,
                            0, 0, latestTick);
-  }
-
-  if (chunkSize < 16384) {
-    // we need to have some sensible minimum
-    chunkSize = 16384;
   }
 
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "WAL tailing call. tick start: " << tickStart << ", tick end: " << tickEnd << ", chunk size: " << chunkSize;
-  while (iterator->Valid() && lastTick <= tickEnd &&
-         handler.responseSize() < chunkSize) {
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL tailing call. Scan since: " << since
+    << ", tick start: " << filter.tickStart
+    << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
+  while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: "
@@ -778,34 +786,40 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     if (firstTick == UINT64_MAX) {
       firstTick = batch.sequence;
     }
-    if (batch.sequence <= tickEnd) {
-      lastScannedTick = batch.sequence;
-    }
-
-    //LOG_TOPIC(INFO, Logger::REPLICATION) << "found batch-seq: " << batch.sequence;
-    lastTick = batch.sequence;  // start of the batch
-    if (batch.sequence <= tickStart) {
-      iterator->Next();  // skip
-      continue;
-    } else if (batch.sequence > tickEnd) {
+    
+    if (batch.sequence > filter.tickEnd) {
       break;  // cancel out
     }
 
-    handler.startNewBatch(batch.sequence);
-    s = batch.writeBatchPtr->Iterate(&handler);
+    //LOG_TOPIC(INFO, Logger::ENGINES) << "found batch-seq: " << batch.sequence;
+    lastScannedTick = batch.sequence;  // start of the batch
+    if (batch.sequence < since) {
+      iterator->Next();  // skip
+      continue;
+    }
 
+    dumper.startNewBatch(batch.sequence);
+    s = batch.writeBatchPtr->Iterate(&dumper);
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: "
                                       << s.ToString();
       break;  // s is considered in the end
     }
-    lastWrittenTick = handler.endBatch();  // end of the batch
+    
+    uint64_t batchEndSeq = dumper.endBatch();  // end tick of the batch
+    lastWrittenTick = dumper.lastWrittenSequence(); // 0 if no marker was written
+    TRI_ASSERT(batchEndSeq >= lastScannedTick);
 
-    TRI_ASSERT(lastWrittenTick >= lastTick);
+    if (dumper.responseSize() >= chunkSize) { // break if response gets big
+      break;
+    }
+    // we need to set this here again, to avoid re-scanning WriteBatches
+    lastScannedTick = batchEndSeq; // do not remove, tailing take forever
+
     iterator->Next();
   }
 
-  WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart,
+  WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= filter.tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));

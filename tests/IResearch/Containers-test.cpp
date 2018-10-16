@@ -92,13 +92,20 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
       std::mutex cond_mutex;
       SCOPED_LOCK_NAMED(value.mutex(), lock);
       SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
-      std::thread thread([&cond, &cond_mutex, &value]()->void {
+      std::atomic<bool> reset(false);
+      std::thread thread([&cond, &cond_mutex, &value, &reset]()->void {
         value.reset();
+        reset = true;
         SCOPED_LOCK(cond_mutex);
         cond.notify_all();
       });
 
       auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+
+      // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+      MSVC2015_ONLY(while(!reset && result0 == std::cv_status::no_timeout) result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2017_ONLY(while(!reset && result0 == std::cv_status::no_timeout) result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+
       lock.unlock();
       auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
       cond_lock.unlock();

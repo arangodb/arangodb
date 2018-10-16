@@ -30,6 +30,7 @@
 
 var jsunity = require('jsunity');
 var db = require('@arangodb').db;
+var internal = require('internal');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -55,6 +56,7 @@ function optimizerEdgeIndexTestSuite () {
           e.save('UnitTestsCollection/nono', 'UnitTestsCollection/to' + i, { value: i + '-' + j });
         }
       }
+      internal.waitForEstimatorSync();
     },
 
     tearDown: function () {
@@ -204,7 +206,6 @@ function optimizerEdgeIndexTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
-        assertEqual(query[1], results.stats.scannedIndex);
       });
     },
 

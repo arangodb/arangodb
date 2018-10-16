@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////////////
+﻿//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2017 EMC Corporation
@@ -132,7 +132,7 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView
+class IResearchView final
   : public arangodb::LogicalViewStorageEngine,
     public arangodb::FlushTransaction {
  public:
@@ -290,6 +290,7 @@ class IResearchView
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
@@ -317,7 +318,6 @@ class IResearchView
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
     irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
-    std::atomic<size_t> _segmentCount{}; // FIXME remove total number of segments in the writer
     irs::index_writer::ptr _writer;
 
     DataStore() = default;
@@ -371,6 +371,7 @@ class IResearchView
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
   PersistedStore _storePersisted;
   std::mutex _readerLock; // prevents query cache double invalidation
+  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
