@@ -78,15 +78,17 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     collections.emplace_back(entry.second.first);
   }
 
-  static std::vector<std::string> const EMPTY;
-  // use default lock timeout
-  arangodb::transaction::Options options;
-  options.waitForSync = false;
-  options.allowImplicitCollections = false;
+  Result result = arangodb::basics::catchToResult([this, &collections]() -> arangodb::Result {
+    static std::vector<std::string> const EMPTY;
+    // use default lock timeout
+    arangodb::transaction::Options options;
+    options.waitForSync = false;
+    options.allowImplicitCollections = false;
 
-  Result result = arangodb::basics::catchToResult([&]() -> arangodb::Result {
+    transaction::StandaloneContext ctx{vocbase()};
+    std::shared_ptr<transaction::StandaloneContext> ptr;
     arangodb::transaction::Methods trx(
-      transaction::StandaloneContext::Create(vocbase()),
+      std::shared_ptr<transaction::StandaloneContext>(ptr, &ctx),
       collections, // readCollections
       EMPTY, // writeCollections
       EMPTY, // exclusiveCollections
