@@ -390,6 +390,16 @@ struct TRI_vocbase_t {
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
 
+  /// @brief visit all DataSources registered with this vocbase
+  /// @param visitor returns if visitation should continue
+  /// @param lockWrite aquire write lock (if 'visitor' will modify vocbase)
+  /// @return visitation compleated successfully
+  typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
+  bool visitDataSources(
+    dataSourceVisitor const& visitor,
+    bool lockWrite = false
+  );
+
  private:
 
   /// @brief check some invariants on the various lists of collections
