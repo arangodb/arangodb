@@ -792,9 +792,6 @@ IResearchView::IResearchView(
         auto const runCleanupAfterConsolidation =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
 
-        auto& viewMutex = self()->mutex();
-        SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
-
         if (_storePersisted
             && consolidateCleanupStore(
                  *_storePersisted._directory,
