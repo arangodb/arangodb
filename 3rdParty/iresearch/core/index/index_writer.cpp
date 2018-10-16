@@ -272,12 +272,17 @@ const std::string& write_document_mask(
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
+
   if (increment_version) {
     meta.files.erase(mask_writer->filename(meta)); // current filename
     ++meta.version; // segment modified due to new document_mask
   }
+
   const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
+
   mask_writer->write(dir, meta, docs_mask);
+  meta.size = 0; // reset no longer valid size, to be recomputed on index_utils::write_index_segment(...)
+
   return file;
 }
 
@@ -1536,6 +1541,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
   if (freelist_node) {
+    // FIXME TODO these assert(...)s may give false positives since checking 'ctx.pending_segment_contexts_' is not thread-safe
     assert(ctx.pending_segment_contexts_.size() > freelist_node->value);
     assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_);
     assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'

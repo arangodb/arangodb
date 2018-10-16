@@ -942,7 +942,14 @@ bool remove(const file_path_t path) NOEXCEPT {
                : ::DeleteFileW(path)
                ;
 
-      return 0 != res;
+      if (!res) { // 0 == error
+        auto utf8path = boost::locale::conv::utf_to_utf<char>(path);
+        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
+
+        return false;
+      }
+
+      return true;
     }
 
     // workaround for path MAX_PATH
@@ -959,9 +966,26 @@ bool remove(const file_path_t path) NOEXCEPT {
              : ::DeleteFileW(fullpath.c_str())
              ;
 
+    if (!res) { // 0 == error
+      auto utf8path = boost::locale::conv::utf_to_utf<char>(path);
+      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
+
+      return false;
+    }
+
+    return true;
+  }
     return 0 != res;
   #else
-    return 0 == ::remove(path);
+    auto res = ::remove(path);
+
+    if (res) { // non-0 == error
+      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", path, errno);
+
+      return false;
+    }
+
+    return true;
   #endif
 }
 
