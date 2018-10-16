@@ -626,6 +626,10 @@ class Methods {
     std::string name;
   }
   _collectionCache;
+
+  /// @brief whether or not the transaction already contains an exclusively locked collection
+  /// (there must be at least one)
+  bool _hasSeenExclusiveCollection = false;
 };
 
 }

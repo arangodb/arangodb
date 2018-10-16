@@ -3178,12 +3178,21 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     // invalid cid
     throwCollectionNotFound(cname.c_str());
   }
-
+  
   auto addCollection = [this, &cname, type](TRI_voc_cid_t cid)->void {
+    if (type == AccessMode::Type::EXCLUSIVE) {
+      if (_hasSeenExclusiveCollection) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_MULTIPLE_EXCLUSIVE_COLLECTIONS);
+      }
+    }
+
     auto res =
       _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
 
     if (TRI_ERROR_NO_ERROR == res) {
+      if (type == AccessMode::Type::EXCLUSIVE) {
+        _hasSeenExclusiveCollection = true;
+      }
       return;
     }
 
