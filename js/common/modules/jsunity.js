@@ -62,7 +62,7 @@ jsUnity.results.pass = function (index, testName) {
   RESULTS[testName].status = true;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_GREEN + ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
+  print(internal.COLORS.COLOR_GREEN + newtime.toISOString() + ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
     ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s');
 
   STARTTEST = newtime;
@@ -76,7 +76,7 @@ jsUnity.results.fail = function (index, testName, message) {
   RESULTS[testName].message = message;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
+  print(internal.COLORS.COLOR_RED + newtime.toISOString() + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
     ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s: ' +
     internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
