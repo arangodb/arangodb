@@ -697,13 +697,13 @@ IResearchView::IResearchView(
 
       if (viewPtr->_storePersisted) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "starting persisted-sync sync for arangosearch view '" << viewPtr->id() << "'";
+          << "starting persisted-sync sync for arangosearch view '" << viewPtr->name() << "'";
 
         try {
           viewPtr->_storePersisted.sync();
         } catch (arangodb::basics::Exception& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id()
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->name()
             << "': " << e.code() << " " << e.what();
           IR_LOG_EXCEPTION();
 
@@ -713,7 +713,7 @@ IResearchView::IResearchView(
           );
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id()
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->name()
             << "': " << e.what();
           IR_LOG_EXCEPTION();
 
@@ -723,7 +723,7 @@ IResearchView::IResearchView(
           );
         } catch (...) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id() << "'";
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->name() << "'";
           IR_LOG_EXCEPTION();
 
           return arangodb::Result(
@@ -733,7 +733,7 @@ IResearchView::IResearchView(
         }
 
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "finished persisted-sync sync for arangosearch view '" << viewPtr->id() << "'";
+          << "finished persisted-sync sync for arangosearch view '" << viewPtr->name() << "'";
       }
 
       viewPtr->_inRecovery = false;
