@@ -196,9 +196,6 @@ Scheduler::~Scheduler() {
   _managerGuard.reset();
   _managerContext.reset();
 
-  _serviceGuard.reset();
-  _ioContext.reset();
-
   FifoJob* job = nullptr;
 
   for (int i = 0; i < NUMBER_FIFOS; ++i) {
@@ -587,6 +584,12 @@ void Scheduler::shutdown() {
     // for a bit longer
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
+
+  // One has to clean up the ioContext here, because there could a lambda
+  // in its queue, that requires for it finalization some object (for example vocbase)
+  // that would already be destroyed
+  _ioContext.reset();
+  _managerContext.reset();
 }
 
 void Scheduler::startIoService() {
