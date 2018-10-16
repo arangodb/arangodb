@@ -19,8 +19,8 @@ devel
   Using the `force` flag when upgrading or replacing a service falls back to
   installing the service if it does not already exist.
 
-* the query editor within the web ui is now catching http 501 responses
-  propertly.
+* the query editor within the web ui is now catching HTTP 501 responses
+  properly.
 
 * upgraded JEMalloc version to 5.1.0
 
