@@ -24,7 +24,7 @@ set(MAN_NAMES
   man8/foxx-manager.8
   )
 
-set(MAN_FILES)
+set(MAN_FILES "") #empty list
 
 
 foreach (m IN LISTS MAN_NAMES)
