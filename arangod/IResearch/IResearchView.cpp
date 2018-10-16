@@ -1172,6 +1172,7 @@ arangodb::Result IResearchView::dropImpl() {
   // ...........................................................................
   try {
     if (_storePersisted) {
+      _storePersisted._reader.reset(); // reset reader to release file handles
       _storePersisted._writer->close();
       _storePersisted._writer.reset();
       _storePersisted._directory->close();
