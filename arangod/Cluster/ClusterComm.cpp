@@ -257,11 +257,7 @@ ClusterComm::ClusterComm(bool ignored)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm() {
-  for (ClusterCommThread * thread: _backgroundThreads) {
-    thread->beginShutdown();
-    delete thread;
-  }
-
+  stopBackgroundThreads();
   cleanupAllQueues();
 }
 
@@ -345,6 +341,16 @@ void ClusterComm::startBackgroundThread() {
     } // else
   } // for
 }
+
+void ClusterComm::stopBackgroundThreads() {
+  for (ClusterCommThread * thread: _backgroundThreads) {
+    thread->beginShutdown();
+    delete thread;
+  }
+
+  _backgroundThreads.clear();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief choose next communicator via round robin

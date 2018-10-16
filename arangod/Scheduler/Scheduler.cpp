@@ -587,9 +587,6 @@ void Scheduler::shutdown() {
     // for a bit longer
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
-
-  _managerContext.reset();
-  _ioContext.reset();
 }
 
 void Scheduler::startIoService() {

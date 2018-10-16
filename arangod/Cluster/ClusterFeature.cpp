@@ -275,13 +275,6 @@ void ClusterFeature::prepare() {
     }
   }
 
-  if (startClusterComm) {
-    // initialize ClusterComm library, must call initialize only once
-    // THIS IS NOT ALLOWED HERE
-    //  ClusterComm::initialize() does start new threads
-    //ClusterComm::initialize();
-  }
-
   // return if cluster is disabled
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
@@ -480,13 +473,13 @@ void ClusterFeature::stop() {
     }
   }
 
-  ClusterComm::cleanup();
+  ClusterComm::instance()->stopBackgroundThreads();
 }
 
 
 void ClusterFeature::unprepare() {
   if (!_enableCluster) {
-    //ClusterComm::cleanup();
+    ClusterComm::cleanup();
     return;
   }
 
