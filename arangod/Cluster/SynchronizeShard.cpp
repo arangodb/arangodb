@@ -79,6 +79,8 @@ std::string const RESTRICT_TYPE("restrictType");
 std::string const RESTRICT_COLLECTIONS("restrictCollections");
 std::string const SKIP_CREATE_DROP("skipCreateDrop");
 std::string const TTL("ttl");
+std::string const DOHARDLOCK("doHardLock");
+
 using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(
@@ -102,10 +104,10 @@ SynchronizeShard::SynchronizeShard(
   }
   TRI_ASSERT(desc.has(SHARD));
 
-  if (!desc.has(THE_LEADER)) {
-    error << "leader must be stecified";
+  if (!desc.has(THE_LEADER) || desc.get(THE_LEADER).empty()) {
+    error << "leader must be specified and must be non-empty";
   }
-  TRI_ASSERT(desc.has(THE_LEADER));
+  TRI_ASSERT(desc.has(THE_LEADER) && !desc.get(THE_LEADER).empty());
 
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
@@ -124,7 +126,7 @@ public:
 };
 
 
-arangodb::Result getReadLockId (
+static arangodb::Result getReadLockId (
   std::string const& endpoint, std::string const& database,
   std::string const& clientId, double timeout, uint64_t& id) {
 
@@ -165,7 +167,7 @@ arangodb::Result getReadLockId (
 }
 
 
-arangodb::Result collectionCount(
+static arangodb::Result collectionCount(
   std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
 
   std::string collectionName(col->name());
@@ -198,7 +200,7 @@ arangodb::Result collectionCount(
 
 }
 
-arangodb::Result addShardFollower (
+static arangodb::Result addShardFollower (
   std::string const& endpoint, std::string const& database,
   std::string const& shard, uint64_t lockJobId,
   std::string const& clientId, double timeout = 120.0 ) {
@@ -275,50 +277,7 @@ arangodb::Result addShardFollower (
 }
 
 
-arangodb::Result removeShardFollower (
-  std::string const& endpoint, std::string const& database,
-  std::string const& shard, std::string const& clientId, double timeout = 120.0) {
-
-
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
-    "removeShardFollower: tell the leader to take us off the follower list...";
-
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) { // nullptr only happens during controlled shutdown
-    return arangodb::Result(
-      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
-  }
-
-  VPackBuilder body;
-  { VPackObjectBuilder b(&body);
-    body.add(SHARD, VPackValue(shard));
-    body.add(FOLLOWER_ID,
-             VPackValue(arangodb::ServerState::instance()->getId())); }
-
-  // Note that we always use the _system database here because the actual
-  // database might be gone already on the leader and we need to cancel
-  // the read lock under all circumstances.
-  auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::PUT,
-    DB + database + REPL_REM_FOLLOWER, body.toJson(),
-    std::unordered_map<std::string, std::string>(), timeout);
-
-  auto result = comres->result;
-  if (result == nullptr || result->getHttpReturnCode() != 200) {
-    std::string errorMessage(
-      "removeShardFollower: could not remove us from the leader's follower list: ");
-    errorMessage += result->getHttpReturnCode();
-    errorMessage += comres->stringifyErrorMessage();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
-  }
-
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "removeShardFollower: success" ;
-  return arangodb::Result();
-
-}
-
-arangodb::Result cancelReadLockOnLeader (
+static arangodb::Result cancelReadLockOnLeader (
   std::string const& endpoint, std::string const& database,
   uint64_t lockJobId, std::string const& clientId,
   double timeout = 10.0) {
@@ -357,7 +316,7 @@ arangodb::Result cancelReadLockOnLeader (
 }
 
 
-arangodb::Result cancelBarrier(
+static arangodb::Result cancelBarrier(
   std::string const& endpoint, std::string const& database,
   int64_t barrierId, std::string const& clientId,
   double timeout = 120.0) {
@@ -402,7 +361,7 @@ arangodb::Result cancelBarrier(
 arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  uint64_t rlid, double timeout) {
+  uint64_t rlid, bool hard, double timeout) {
 
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
@@ -414,7 +373,9 @@ arangodb::Result SynchronizeShard::getReadLock(
   { VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
-    body.add(TTL, VPackValue(timeout)); }
+    body.add(TTL, VPackValue(timeout));
+    body.add(DOHARDLOCK, VPackValue(hard));
+  }
 
   auto url = DB + database + REPL_HOLD_READ_LOCK;
 
@@ -476,14 +437,14 @@ arangodb::Result SynchronizeShard::getReadLock(
 
 }
 
-bool isStopping() {
+static inline bool isStopping() {
   return application_features::ApplicationServer::isStopping();
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  uint64_t& rlid, double timeout) {
+  uint64_t& rlid, bool hard, double timeout) {
 
   // Read lock id
   rlid = 0;
@@ -496,7 +457,8 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
   }
 
-  result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
+  result = getReadLock(endpoint, database, collection, clientId, rlid, timeout,
+                       hard);
 
   return result;
 
@@ -507,7 +469,7 @@ enum ApplierType {
   APPLIER_GLOBAL
 };
 
-arangodb::Result replicationSynchronize(
+static arangodb::Result replicationSynchronize(
   std::shared_ptr<arangodb::LogicalCollection> const &col, VPackSlice const& config,
   ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
 
@@ -590,7 +552,47 @@ arangodb::Result replicationSynchronize(
 }
 
 
-arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
+static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf,
+                                               TRI_voc_tick_t& tickReached) {
+
+  auto const database = conf.get(DATABASE).copyString();
+  auto const collection = conf.get(COLLECTION).copyString();
+  auto const leaderId = conf.get(LEADER_ID).copyString();
+  auto const fromTick = conf.get("from").getNumber<uint64_t>();
+
+  ReplicationApplierConfiguration configuration =
+    ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+  // will throw if invalid
+  configuration.validate();
+
+  DatabaseGuard guard(database);
+  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
+
+  if (!leaderId.empty()) {
+    syncer.setLeaderId(leaderId);
+  }
+
+  Result r;
+  try {
+    r = syncer.syncCollectionCatchup(collection, tickReached);
+  } catch (arangodb::basics::Exception const& ex) {
+    r = Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    r = Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
+  }
+
+  if (r.fail()) {
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+      << "syncCollectionFinalize failed: " << r.errorMessage();
+  }
+
+  return r;
+}
+
+
+static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
 
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
@@ -696,10 +698,9 @@ bool SynchronizeShard::first() {
     std::vector<std::string> current = cic->servers(shard);
 
     if (current.empty()) {
-      Result(TRI_ERROR_FAILED,
-             "synchronizeOneShard: cancelled, no servers in 'Current'");
-    }
-    if (current.front() == leader) {
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "synchronizeOneShard: cancelled, no servers in 'Current'";
+    } else if (current.front() == leader) {
       if (std::find(current.begin(), current.end(), ourselves) == current.end()) {
         break; // start synchronization work
       }
@@ -720,7 +721,6 @@ bool SynchronizeShard::first() {
       << "/" << shard << ", " << database << "/" << planId;
 
     std::this_thread::sleep_for(duration<double>(0.2));
-
   }
 
   // Once we get here, we know that the leader is ready for sync, so we give it a try:
@@ -778,24 +778,27 @@ bool SynchronizeShard::first() {
       << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
     try {
+      // From here on we perform a number of steps, each of which can
+      // fail. If it fails with an exception, it is caught, but this
+      // should usually not happen. If it fails without an exception,
+      // we log and use return.
+
+      Result res;    // used multiple times for intermediate results
+
       // First once without a read transaction:
 
       if (isStopping()) {
-        _result.reset(TRI_ERROR_INTERNAL, "server is shutting down");
+        std::string errorMessage(
+          "synchronizeOneShard: synchronization failed for shard ");
+        errorMessage += shard + ": shutdown in progress, giving up";
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
       }
 
+      // This is necessary to accept replications from the leader which can
+      // happen as soon as we are in sync.
       collection->followers()->setTheLeader(leader);
-
-      if (leader.empty()) {
-        collection->followers()->clear();
-      }
-
-      // do not reset followers when we resign at this time...we are
-      // still the only source of truth to trust, in particular, in the
-      // planned leader resignation, we will shortly after the call to
-      // this function here report the controlled resignation to the
-      // agency. This report must still contain the correct follower list
-      // or else the supervision is super angry with us.
 
       startTime = system_clock::now();
 
@@ -815,7 +818,7 @@ bool SynchronizeShard::first() {
 
       auto details = std::make_shared<VPackBuilder>();
 
-      Result syncRes = replicationSynchronize(
+      res = replicationSynchronize(
         collection, config.slice(), APPLIER_DATABASE, details);
 
       auto sy = details->slice();
@@ -824,123 +827,183 @@ bool SynchronizeShard::first() {
 
       // Long shard sync initialisation
       if (endTime-startTime > seconds(5)) {
-        LOG_TOPIC(WARN, Logger::MAINTENANCE)
+        LOG_TOPIC(INFO, Logger::MAINTENANCE)
           << "synchronizeOneShard: long call to syncCollection for shard"
-          << shard << " " << syncRes.errorMessage() <<  " start time: "
+          << shard << " " << res.errorMessage() <<  " start time: "
           << timepointToString(startTime) <<  ", end time: "
           << timepointToString(system_clock::now());
         longSync = true;
       }
 
-      //
-      if (!syncRes.ok()) {
+      // If this did not work, then we cannot go on:
+      if (!res.ok()) {
 
         std::stringstream error;
         error << "could not initially synchronize shard " << shard << ": "
-              << syncRes.errorMessage();
+              << res.errorMessage();
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
 
-      } else {
-
-        VPackSlice collections = sy.get(COLLECTIONS);
-
-        if (collections.length() == 0 ||
-            collections[0].get("name").copyString() != shard) {
-
-          if (longSync) {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
-              << "synchronizeOneShard: long sync, before cancelBarrier"
-              << timepointToString(system_clock::now());
-          }
-          cancelBarrier(ep, database, sy.get(BARRIER_ID).getNumber<int64_t>(), clientId);
-          if (longSync) {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
-              << "synchronizeOneShard: long sync, after cancelBarrier"
-              << timepointToString(system_clock::now());
-          }
-
-          std::stringstream error;
-          error << "shard " << shard << " seems to be gone from leader!";
-          LOG_TOPIC(ERR,  Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
-          _result.reset(TRI_ERROR_INTERNAL, error.str());
-          return false;
-
-        } else {
-
-          // Now start a read transaction to stop writes:
-          uint64_t lockJobId = 0;
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-            << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
-            << database << ":" << collection->name();
-          Result result = startReadLockOnLeader(
-            ep, database, collection->name(), clientId, lockJobId);
-          if (result.ok()) {
-            LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
-          } else {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
-              << "synchronizeOneShard: error in startReadLockOnLeader:"
-              << result.errorMessage();
-          }
-
-          cancelBarrier(ep, database, sy.get("barrierId").getNumber<int64_t>(), clientId);
-
-          if (lockJobId != 0) {
-
-            VPackBuilder builder;
-            { VPackObjectBuilder o(&builder);
-              builder.add(ENDPOINT, VPackValue(ep));
-              builder.add(DATABASE, VPackValue(database));
-              builder.add(COLLECTION, VPackValue(shard));
-              builder.add(LEADER_ID, VPackValue(leader));
-              builder.add("from", sy.get(LAST_LOG_TICK));
-              builder.add("requestTimeout", VPackValue(60.0));
-              builder.add("connectTimeout", VPackValue(60.0));
-            }
-
-            Result fres = replicationSynchronizeFinalize (builder.slice());
-
-            if (fres.ok()) {
-              result = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
-
-              if (!result.ok()) {
-                LOG_TOPIC(ERR, Logger::MAINTENANCE)
-                  << "synchronizeOneShard: failed to add follower"
-                  << result.errorMessage();
-              }
-            } else {
-              std::string errorMessage(
-                "synchronizeOneshard: error in syncCollectionFinalize: ") ;
-              errorMessage += fres.errorMessage();
-              result = Result(TRI_ERROR_INTERNAL, errorMessage);
-            }
-
-            // This result is unused, only in logs
-            Result lockResult = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-            if (!lockResult.ok()) {
-              LOG_TOPIC(ERR, Logger::MAINTENANCE)
-                << "synchronizeOneShard: read lock has timed out for shard " << shard;
-            }
-          } else {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
-              << "synchronizeOneShard: lockJobId was false for shard" << shard;
-          }
-
-          if (result.ok()) {
-            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-              << "synchronizeOneShard: synchronization worked for shard " << shard;
-            _result.reset(TRI_ERROR_NO_ERROR);
-          } else {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE)
-              << "synchronizeOneShard: synchronization failed for shard " << shard;
-            std::string errorMessage(
-              "synchronizeOneShard: synchronization failed for shard "
-              + shard + ":" + result.errorMessage());
-            _result = Result(TRI_ERROR_INTERNAL, errorMessage);;
-          }
-        }
       }
+
+      // From here on, we have to call `cancelBarrier` in case of errors
+      // as well as in the success case!
+      int64_t barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
+      TRI_DEFER(cancelBarrier(ep, database, barrierId, clientId));
+
+      VPackSlice collections = sy.get(COLLECTIONS);
+
+      if (collections.length() == 0 ||
+          collections[0].get("name").copyString() != shard) {
+
+        std::stringstream error;
+        error << "shard " << shard << " seems to be gone from leader, this "
+          "can happen if a collection was dropped during synchronization!";
+        LOG_TOPIC(WARN,  Logger::MAINTENANCE) << "SynchronizeOneShard: "
+          << error.str();
+        _result.reset(TRI_ERROR_INTERNAL, error.str());
+        return false;
+
+      }
+
+      // Now ask for a "soft stop" on the leader, in case of mmfiles, this
+      // will be a hard stop, but for rocksdb, this is a no-op:
+      uint64_t lockJobId = 0;
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "synchronizeOneShard: startReadLockOnLeader (soft): " << ep << ":"
+        << database << ":" << collection->name();
+      res = startReadLockOnLeader(
+        ep, database, collection->name(), clientId, lockJobId, false);
+      if (!res.ok()) {
+        std::string errorMessage = 
+          "synchronizeOneShard: error in startReadLockOnLeader (soft):"
+          + res.errorMessage();
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
+      }
+
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
+
+      // From now on, we need to cancel the read lock on the leader regardless
+      // if things go wrong or right!
+
+      // Do a first try of a catch up with the WAL. In case of RocksDB,
+      // this has not yet stopped the writes, so we have to be content
+      // with nearly reaching the end of the WAL, which is a "soft" catchup.
+      VPackBuilder builder;
+      { VPackObjectBuilder o(&builder);
+        builder.add(ENDPOINT, VPackValue(ep));
+        builder.add(DATABASE, VPackValue(database));
+        builder.add(COLLECTION, VPackValue(shard));
+        builder.add(LEADER_ID, VPackValue(leader));
+        builder.add("from", sy.get(LAST_LOG_TICK));
+        builder.add("requestTimeout", VPackValue(60.0));
+        builder.add("connectTimeout", VPackValue(60.0));
+      }
+
+      TRI_voc_tick_t tickReached = 0;
+      res = replicationSynchronizeCatchup(builder.slice(), tickReached);
+
+      if (!res.ok()) {
+        std::string errorMessage(
+          "synchronizeOneshard: error in syncCollectionCatchup: ") ;
+        errorMessage += res.errorMessage();
+        res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+        if (!res.ok()) {
+          errorMessage += ", could not cancel read lock on leader: "
+            + res.errorMessage();
+        }
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
+      }
+
+      // Stop the read lock again:
+      res = cancelReadLockOnLeader(ep, database, lockJobId,
+                                   clientId, 60.0);
+      if (!res.ok()) {
+        std::string errorMessage
+          = "synchronizeOneShard: error when cancelling soft read lock: "
+          + res.errorMessage();
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
+      }
+
+      // Now start a read transaction to stop writes:
+      lockJobId = 0;
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
+        << database << ":" << collection->name();
+      Result result = startReadLockOnLeader(
+        ep, database, collection->name(), clientId, lockJobId, true);
+      if (!result.ok()) {
+        std::string errorMessage = 
+          "synchronizeOneShard: error in startReadLockOnLeader (soft):"
+          + res.errorMessage();
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
+      }
+
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
+
+      builder.clear();
+      { VPackObjectBuilder o(&builder);
+        builder.add(ENDPOINT, VPackValue(ep));
+        builder.add(DATABASE, VPackValue(database));
+        builder.add(COLLECTION, VPackValue(shard));
+        builder.add(LEADER_ID, VPackValue(leader));
+        builder.add("from", VPackValue(tickReached));
+        builder.add("requestTimeout", VPackValue(60.0));
+        builder.add("connectTimeout", VPackValue(60.0));
+      }
+
+      res = replicationSynchronizeFinalize(builder.slice());
+
+      if (!res.ok()) {
+        std::string errorMessage(
+          "synchronizeOneshard: error in syncCollectionFinalize: ") ;
+        errorMessage += res.errorMessage();
+        res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+        if (!res.ok()) {
+          errorMessage += ", could not cancel read lock on leader: "
+            + res.errorMessage();
+        }
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
+      }
+
+      res = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
+
+      if (!result.ok()) {
+        std::string errorMessage(
+          "synchronizeOneshard: error in addShardFollower: ") ;
+        errorMessage += res.errorMessage();
+        res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+        if (!res.ok()) {
+          errorMessage += ", could not cancel read lock on leader: "
+            + res.errorMessage();
+        }
+        LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
+        _result.reset(TRI_ERROR_INTERNAL, errorMessage);
+        return false;
+      }
+
+      // This result is unused, only in logs
+      res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+      if (!res.ok()) {
+        LOG_TOPIC(INFO, Logger::MAINTENANCE)
+          << "synchronizeOneShard: read lock has timed out for shard " << shard;
+      }
+
+      // Report success:
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "synchronizeOneShard: synchronization worked for shard " << shard;
+      _result.reset(TRI_ERROR_NO_ERROR);
+
     } catch (std::exception const& e) {
       auto const endTime = system_clock::now();
       std::stringstream error;
@@ -952,6 +1015,8 @@ bool SynchronizeShard::first() {
       return false;
     }
   } catch (std::exception const& e) {
+    // This catches the case that we could not even find the collection
+    // locally, because the DatabaseGuard constructor threw.
     LOG_TOPIC(WARN, Logger::MAINTENANCE)
       << "action " << _description << " failed with exception " << e.what();
     _result.reset(TRI_ERROR_INTERNAL, e.what());
@@ -966,7 +1031,7 @@ bool SynchronizeShard::first() {
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
 
   notify();
-  return false;;
+  return false;
 
 }
 
