@@ -448,8 +448,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+    // turn on intermediate commits as the number of keys to delete can be huge here
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
     Result res = trx.begin();
 
