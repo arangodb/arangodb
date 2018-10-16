@@ -1,6 +1,10 @@
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
 
+* The single database or single coordinator statistics in a cluster
+  environment within the Web UI sometimes got called way to often. That
+	lead to misaligned graphs, which is now fixed.
+
 * Web UI now checks if server statistics are enabled before it sends its first
   request to the statistics API
 
