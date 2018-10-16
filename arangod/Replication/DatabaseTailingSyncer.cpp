@@ -143,9 +143,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
         "&collection=" + StringUtils::urlEncode(collectionName);
     
     // send request
-    std::unique_ptr<SimpleHttpResult> response(
-        _state.connection.client->request(rest::RequestType::GET, url, nullptr,
-                                          0));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+    });
 
     if (replutils::hasFailed(response.get())) {
       until = fromTick;
@@ -268,7 +269,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
       VPackBuilder inventoryResponse;
 
       auto init = std::make_shared<DatabaseInitialSyncer>(*_vocbase, _state.applier);
-      Result res = init->inventory(inventoryResponse);
+      Result res = init->getInventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();

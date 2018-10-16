@@ -81,7 +81,7 @@ struct RequestInProgress {
   bool _aborted;
 };
 
-struct CurlHandle {
+struct CurlHandle : public std::enable_shared_from_this<CurlHandle> {
   explicit CurlHandle(RequestInProgress* rip) : _handle(nullptr), _rip(rip) {
     _handle = curl_easy_init();
     if (_handle == nullptr) {
@@ -95,6 +95,8 @@ struct CurlHandle {
       curl_easy_cleanup(_handle);
     }
   }
+
+  std::shared_ptr<CurlHandle> getSharedPtr() {return shared_from_this();}
 
   CurlHandle(CurlHandle& other) = delete;
   CurlHandle& operator=(CurlHandle& other) = delete;
@@ -227,7 +229,7 @@ class Communicator {
   std::vector<NewRequest> _newRequests;
 
   Mutex _handlesLock;
-  std::unordered_map<uint64_t, std::unique_ptr<CurlHandle>> _handlesInProgress;
+  std::unordered_map<uint64_t, std::shared_ptr<CurlHandle>> _handlesInProgress;
 
   CURLM* _curl;
   CURLMcode _mc;

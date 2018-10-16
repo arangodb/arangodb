@@ -147,7 +147,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     if (context->isUsed()) {
       // context is in use by someone else. now mark as deleted
-      context->deleted();
+      context->setDeleted();
       return true;
     }
 
@@ -198,6 +198,34 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
 
   return context;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief find an existing context by id and extend lifetime
+/// may be used concurrently on used contextes
+//////////////////////////////////////////////////////////////////////////////
+int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id,
+                                              double ttl) {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  
+  auto it = _contexts.find(id);
+  if (it == _contexts.end()) {
+    // not found
+    return TRI_ERROR_CURSOR_NOT_FOUND;
+  }
+  
+  RocksDBReplicationContext* context = it->second;
+  TRI_ASSERT(context != nullptr);
+  
+  if (context->isDeleted()) {
+    // already deleted
+    return TRI_ERROR_CURSOR_NOT_FOUND;
+  }
+  
+  context->extendLifetime(ttl);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a context for later use
@@ -258,7 +286,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
 
     for (auto& context : _contexts) {
       if (context.second->vocbase() == vocbase) {
-        context.second->deleted();
+        context.second->setDeleted();
       }
     }
   }
@@ -275,7 +303,7 @@ void RocksDBReplicationManager::dropAll() {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto& context : _contexts) {
-      context.second->deleted();
+      context.second->setDeleted();
     }
   }
 
@@ -307,7 +335,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
       if (force || context->expires() < now) {
         // expire contexts
-        context->deleted();
+        context->setDeleted();
       }
 
       if (context->isDeleted()) {

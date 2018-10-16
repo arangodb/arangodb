@@ -39,7 +39,7 @@ class delimited_token_stream: public analyzer, util::noncopyable {
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY_DEFAULT(const string_ref& delimiter);
+  DECLARE_FACTORY(const string_ref& delimiter);
 
   delimited_token_stream(const irs::string_ref& delimiter);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {

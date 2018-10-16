@@ -1009,11 +1009,11 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  LOG_TOPIC(ERR, Logger::CLUSTER) << "Error while loading " << prefixCurrent
-                                  << " httpCode: " << result.httpCode()
-                                  << " errorCode: " << result.errorCode()
-                                  << " errorMessage: " << result.errorMessage()
-                                  << " body: " << result.body();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Error while loading " << prefixCurrent
+                                    << " httpCode: " << result.httpCode()
+                                    << " errorCode: " << result.errorCode()
+                                    << " errorMessage: " << result.errorMessage()
+                                    << " body: " << result.body();
 }
 
 /// @brief ask about a collection
@@ -2257,7 +2257,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
   }
 
-  auto const view = res.slice()[0].get(
+  auto const view = res.slice()[0].get<std::string>(
     { AgencyCommManager::path(), "Plan", "Views", databaseName, viewID }
   );
 

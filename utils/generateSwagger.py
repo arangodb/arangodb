@@ -789,7 +789,7 @@ def restallbodyparam(cargo, r=Regexen()):
 ################################################################################
 
 def reststruct(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method, restBodyParam, restSubBodyParam
+    global swagger, operation, httpPath, method, restBodyParam, restSubBodyParam, fn
     (fp, last) = cargo
 
     try:
@@ -808,7 +808,8 @@ def reststruct(cargo, r=Regexen()):
         swagger['definitions'][className] = {
             'type': 'object',
             'properties' : {},
-            'description': ''
+            'description': '',
+            'x-filename': fn
             }
 
     swagger['definitions'][className]['properties'][name] = {
@@ -1016,6 +1017,8 @@ def restreplybody(cargo, r=Regexen()):
         setRequired(swagger['definitions'][rcBlock], name)
 
     if len(name) > 0:
+        if 'description' not in swagger['definitions'][rcBlock]['properties']:
+            swagger['definitions'][rcBlock]['properties'][name]['description'] = ''
         return generic_handler_desc(cargo, r, "restreplybody", None,
                                     swagger['definitions'][rcBlock]['properties'][name],
                                     'description')

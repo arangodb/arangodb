@@ -60,7 +60,7 @@
               $(this.el).find('img')
                 .after(
                   '<span class="warning-icons"><span class="fa fa-cog" title="Needs configuration"></span></span>'
-              );
+                );
             }
           }
         }.bind(this);
@@ -74,7 +74,7 @@
               $(this.el).find('img')
                 .after(
                   '<span class="warning-icons"><span class="fa fa-cubes" title="Unconfigured dependencies"></span></span>'
-              );
+                );
             }
           }
         }.bind(this);

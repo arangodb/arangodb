@@ -289,7 +289,7 @@ bool config_t::addGossipPeer(std::string const& endpoint) {
   return _gossipPeers.emplace(endpoint).second;
 }
 
-bool config_t::upsertPool(
+config_t::upsert_t config_t::upsertPool(
   VPackSlice const& otherPool, std::string const& otherId) {
   WRITE_LOCKER(lock, _lock);
   for (auto const& entry : VPackObjectIterator(otherPool)) {
@@ -300,17 +300,18 @@ bool config_t::upsertPool(
         << "Adding " << id << "(" << endpoint << ") to agent pool";
       _pool[id] = endpoint;
       ++_version;
+      return CHANGED;
     } else {
       if (_pool.at(id) != endpoint) {   
         if (id != otherId) {          /// discrepancy!
-          return false;
+          return WRONG;
         } else {                      /// we trust the other guy on his own endpoint
           _pool.at(id) = endpoint;
         }
       }
     }
   }
-  return true;
+  return UNCHANGED;
 }
 
 size_t config_t::maxAppendSize() const {

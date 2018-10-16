@@ -236,7 +236,10 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
-
+  if (isAborted()) {
+    return nullptr;
+  }
+  
   // ensure that result is empty
   TRI_ASSERT(_result == nullptr);
 
@@ -406,6 +409,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
     if ( application_features::ApplicationServer::isStopping()) {
       setErrorMessage("Command locally aborted");
+      delete _result;
+      _result = nullptr;
       return nullptr;
     }
 
