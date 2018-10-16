@@ -2138,21 +2138,31 @@ bool TRI_vocbase_t::visitDataSources(
 ) {
   TRI_ASSERT(visitor);
 
-  if (lockWrite) {
-    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-
-    for (auto& entry: _dataSourceById) {
-      if (entry.second && !visitor(*(entry.second))) {
-        return false;
-      }
-    }
-  } else {
+  if (!lockWrite) {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
     for (auto& entry: _dataSourceById) {
       if (entry.second && !visitor(*(entry.second))) {
         return false;
       }
+    }
+
+    return true;
+  }
+
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
+
+  dataSources.reserve(_dataSourceById.size());
+
+  // create a copy of all the datasource in case 'visitor' modifies '_dataSourceById'
+  for (auto& entry: _dataSourceById) {
+    dataSources.emplace_back(entry.second);
+  }
+
+  for (auto& dataSource: dataSources) {
+    if (dataSource && !visitor(*dataSource)) {
+      return false;
     }
   }
 
