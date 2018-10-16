@@ -474,9 +474,6 @@ void ClusterFeature::unprepare() {
     ServerState::instance()->unregister();
   }
 
-  // change into shutdown state
-  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-
   comm.sendServerState(0.0);
 
   // Try only once to unregister because maybe the agencycomm
