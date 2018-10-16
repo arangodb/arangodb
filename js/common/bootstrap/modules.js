@@ -260,6 +260,9 @@
       if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) continue;
       var basePath = path.resolve(paths[i], request);
       var filename;
+       
+      // lazily unzips a potentially existing __package__.zip file for the module      
+      global.MODULE_UNZIP(path.resolve(basePath)); 
 
       if (!trailingSlash) {
         const rc = internalModuleStat(path._makeLong(basePath));
