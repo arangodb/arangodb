@@ -1,3 +1,11 @@
+v3.3.19 (XXXX-XX-XX)
+--------------------
+
+* An aardvark statistics route could not collect and sum up the statistics of
+  all coordinators if one of them was ahead and had more results as the
+	others.
+
+
 v3.3.18 (2018-10-12)
 --------------------
 
