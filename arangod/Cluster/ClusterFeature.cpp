@@ -246,6 +246,8 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  LOG_TOPIC(ERR, Logger::FIXME) << "ClusterFeature::prepare()";
+
   // create callback registery
   _agencyCallbackRegistry.reset(
     new AgencyCallbackRegistry(agencyCallbacksPath()));
@@ -275,7 +277,9 @@ void ClusterFeature::prepare() {
 
   if (startClusterComm) {
     // initialize ClusterComm library, must call initialize only once
-    ClusterComm::initialize();
+    // THIS IS NOT ALLOWED HERE
+    //  ClusterComm::initialize() does start new threads
+    //ClusterComm::initialize();
   }
 
   // return if cluster is disabled
@@ -362,6 +366,12 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
+  LOG_TOPIC(ERR, Logger::FIXME) << "ClusterFeature::start()";
+
+  if (ServerState::instance()->isAgent() || _enableCluster) {
+    ClusterComm::initialize();
+  }
+
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -469,40 +479,19 @@ void ClusterFeature::stop() {
       }
     }
   }
+
+  ClusterComm::cleanup();
 }
 
 
 void ClusterFeature::unprepare() {
-  if (_enableCluster) {
-    if (_heartbeatThread != nullptr) {
-      _heartbeatThread->beginShutdown();
-    }
-
-    // change into shutdown state
-    ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-
-    AgencyComm comm;
-    comm.sendServerState(0.0);
-
-    if (_heartbeatThread != nullptr) {
-      int counter = 0;
-      while (_heartbeatThread->isRunning()) {
-        std::this_thread::sleep_for(std::chrono::microseconds(100000));
-        // emit warning after 5 seconds
-        if (++counter == 10 * 5) {
-          LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
-        }
-      }
-    }
-
-    if (_unregisterOnShutdown) {
-      ServerState::instance()->unregister();
-    }
+  if (!_enableCluster) {
+    //ClusterComm::cleanup();
+    return;
   }
 
-  if (!_enableCluster) {
-    ClusterComm::cleanup();
-    return;
+  if (_heartbeatThread != nullptr) {
+    _heartbeatThread->beginShutdown();
   }
 
   // change into shutdown state
@@ -511,9 +500,28 @@ void ClusterFeature::unprepare() {
   AgencyComm comm;
   comm.sendServerState(0.0);
 
+  if (_heartbeatThread != nullptr) {
+    int counter = 0;
+    while (_heartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
+      }
+    }
+  }
+
+  if (_unregisterOnShutdown) {
+    ServerState::instance()->unregister();
+  }
+
+  // change into shutdown state
+  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
+
+  comm.sendServerState(0.0);
+
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
-
 
   // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -536,7 +544,6 @@ void ClusterFeature::unprepare() {
   }
 
   AgencyCommManager::MANAGER->stop();
-  ClusterComm::cleanup();
 
   ClusterInfo::cleanup();
 }
