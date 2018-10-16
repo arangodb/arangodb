@@ -1,6 +1,8 @@
 devel
 -----
 
+* The order of JSON object keys will now be no longer be sorted in any defined order
+
 * Web UI now checks if server statistics are enabled before it sends its first
   request to the statistics API
 
