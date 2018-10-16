@@ -98,7 +98,10 @@ namespace {
         bool acquire,
         char const* file,
         int line
-    ): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
+    ): _locked(false),
+       _locker(&mutex, type, false, file, line),
+       _owner(owner),
+       _update(noop) {
       if (acquire) {
         lock();
       }
@@ -108,9 +111,7 @@ namespace {
       unlock();
     }
 
-    bool isLocked() {
-      return _locker.isLocked();
-    }
+    bool isLocked() { return _locked; }
 
     void lock() {
       // recursive locking of the same instance is not yet supported (create a new instance instead)
@@ -121,13 +122,17 @@ namespace {
         _owner.store(std::this_thread::get_id());
         _update = owned;
       }
+
+      _locked = true;
     }
 
     void unlock() {
       _update(*this);
+      _locked = false;
     }
 
    private:
+    bool _locked; // track locked state separately for recursive lock aquisition
     arangodb::basics::WriteLocker<T> _locker;
     std::atomic<std::thread::id>& _owner;
     void (*_update)(RecursiveWriteLocker& locker);
