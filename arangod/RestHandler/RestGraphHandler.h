@@ -270,9 +270,11 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     std::string vertexDefinitionName
   );
 
+  boost::optional<TRI_voc_rid_t> handleRevision() const;
+
   private:
    graph::GraphManager _gmngr;
-  };
+};
 }  // namespace arangodb
 
 #endif  // ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
