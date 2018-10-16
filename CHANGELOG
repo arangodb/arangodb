@@ -2,8 +2,8 @@ v3.3.19 (XXXX-XX-XX)
 --------------------
 
 * The single database or single coordinator statistics in a cluster
-  environment within the Web UI sometimes got called way to often. That
-	lead to misaligned graphs, which is now fixed.
+  environment within the Web UI sometimes got called way too often.
+  This caused artifacts in the graphs, which is now fixed.
 
 
 v3.3.18 (2018-10-12)
