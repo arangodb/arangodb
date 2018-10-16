@@ -470,3 +470,12 @@ bool UpgradeTasks::setupAppBundles(
 ) {
   return ::createSystemCollection(&vocbase, "_appbundles");
 }
+
+bool UpgradeTasks::persistLocalDocumentIds(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  LOG_TOPIC(INFO, Logger::ENGINES)
+    << "beginning upgrade task to persist LocalDocumentIds";
+  return true;
+}
