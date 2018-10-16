@@ -69,13 +69,13 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     );
   }
 
-  // open up a read transaction and add all linked collections to verify that
-  // the current user has access
-
   arangodb::velocypack::Builder links;
 
   // links are not persisted, their definitions are part of the corresponding collections
   if (!forPersistence) {
+    // open up a read transaction and add all linked collections to verify that
+    // the current user has access
+
     std::vector<std::string> collections;
     for (auto& entry: _collections) {
       collections.emplace_back(entry.second.first);
