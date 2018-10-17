@@ -640,25 +640,18 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
+    
+    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
+      return Result(TRI_ERROR_DEBUG);
+    }
 
     rocksdb::WriteBatch batch;
     // add the assertion again here, so we are sure we can use RangeDeletes
     TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal());
 
-    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
-                                                   _logicalCollection.id(), _objectId);
-    rocksdb::Status s = batch.PutLogData(log.slice());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
-
-    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
-      return Result(TRI_ERROR_DEBUG);
-    }
-
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+    rocksdb::Status s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -675,6 +668,14 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         }
         idx->afterTruncate(); // clears caches / clears links (if applicable)
       }
+    }
+    
+    // now add the log entry so we can recover the correct count
+    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
+                                                   _logicalCollection.id(), _objectId);
+    s = batch.PutLogData(log.slice());
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
     }
 
     state->addTruncateOperation(_logicalCollection.id());

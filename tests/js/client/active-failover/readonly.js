@@ -94,7 +94,7 @@ function getClusterEndpoints() {
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
-  assertTrue(res.statusCode === 200, JSON.stringify(res));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   assertTrue(res.json.hasOwnProperty('endpoints'));
   assertTrue(res.json.endpoints instanceof Array);
@@ -124,7 +124,8 @@ function getApplierState(endpoint) {
     }
   });
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   return arangosh.checkRequestResult(res.json);
 }

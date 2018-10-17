@@ -142,12 +142,14 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numRemoves;
   bool _usageLocked;
 
+  struct IndexOperations {
+    std::vector<uint64_t> inserts;
+    std::vector<uint64_t> removals;
+  };
+  
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  std::unordered_map<uint64_t,
-                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
-      _trackedIndexOperations;
-
+  std::unordered_map<uint64_t, IndexOperations> _trackedIndexOperations;
 };
 }
 
