@@ -144,7 +144,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
 
   // duplicate all the error handling of the storage engines
   if (_engineType == ClusterEngineType::MMFilesEngine) {  // duplicate the error validation
-
     // validation
     uint32_t tmp = Helper::getNumericValue<uint32_t>(
         slice, "indexBuckets",
@@ -200,7 +199,17 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   merge.close();
-  _info = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  TRI_ASSERT(merge.slice().isObject());
+  TRI_ASSERT(merge.isClosed());
+ 
+  TRI_ASSERT(_info.slice().isObject()); 
+  TRI_ASSERT(_info.isClosed());
+   
+  VPackBuilder tmp = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  _info = std::move(tmp);
+  
+  TRI_ASSERT(_info.slice().isObject()); 
+  TRI_ASSERT(_info.isClosed());
 
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index>& idx : _indexes) {
