@@ -23,6 +23,8 @@
 #ifndef ARANGODB_BASICS_RESULT_T_H
 #define ARANGODB_BASICS_RESULT_T_H
 
+#include <type_traits>
+
 #include <boost/optional.hpp>
 
 #include "Basics/Common.h"
@@ -74,22 +76,44 @@ class ResultT : public arangodb::Result {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
+  ResultT static error(Result const& other) {
+    TRI_ASSERT(other.fail());
+    return ResultT(boost::none, other);
+  }
+
+  ResultT static error(Result&& other) {
+    TRI_ASSERT(other.fail());
+    return ResultT(boost::none, std::move(other));
+  }
+
+  template <typename U = T, typename = typename std::enable_if<
+    !std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
   // These are not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result const& other) : Result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
+  template <typename U = T, typename = typename std::enable_if<
+    !std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result&& other) : Result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
+  template <typename U = T, typename = typename std::enable_if<
+    !std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
   // These are not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
+  template <typename U = T, typename = typename std::enable_if<
+    !std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;
@@ -124,7 +148,11 @@ class ResultT : public arangodb::Result {
 
   T const&& operator*() const&& { return get(); }
 
-  explicit operator bool() const { return ok(); }
+  template <typename U = T, typename = typename std::enable_if<
+                                !std::is_same<U, bool>::value>::type>
+  explicit operator bool() const {
+    return ok();
+  }
 
   T const& get() const { return _val.get(); }
 
@@ -168,6 +196,12 @@ class ResultT : public arangodb::Result {
           std::string const& errorMessage)
       : Result(errorNumber, errorMessage),
         _val(val_) {}
+
+  ResultT(boost::optional<T>&& val_, Result const& result)
+    : Result(result), _val(std::move(val_)) {}
+
+  ResultT(boost::optional<T>&& val_, Result&& result)
+    : Result(std::move(result)), _val(std::move(val_)) {}
 };
 
 }  // namespace arangodb

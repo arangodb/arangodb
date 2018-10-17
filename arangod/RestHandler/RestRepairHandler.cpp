@@ -300,7 +300,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         break;
 
       case JobStatus::finished:
-        return true;
+        return ResultT<bool>::success(true);
         break;
 
       case JobStatus::failed:
@@ -308,14 +308,14 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " failed, aborting";
 
-        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
+        return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
 
       case JobStatus::missing:
         LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " went missing, aborting";
 
-        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
+        return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
     }
 
   } else {
@@ -324,10 +324,10 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return jobStatus;
+    return ResultT<bool>::error(jobStatus);
   }
 
-  return false;
+  return ResultT<bool>::success(false);
 }
 
 Result RestRepairHandler::executeRepairOperations(
@@ -650,7 +650,7 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_HTTP_SERVER_ERROR);
 
-    return Result(TRI_ERROR_INTERNAL);
+    return ResultT<bool>::error(TRI_ERROR_INTERNAL);
   }
 
   clusterInfo->loadPlan();
@@ -671,11 +671,11 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(
           << "replicationFactor is " << collection->replicationFactor()
           << ", but the shard has " << dbServers.size() << " DBServers.";
 
-      return false;
+      return ResultT<bool>::success(false);
     }
   }
 
-  return true;
+  return ResultT<bool>::success(true);
 }
 
 void RestRepairHandler::generateResult(rest::ResponseCode code,
