@@ -759,7 +759,7 @@
           self.history[self.server][figure] = [];
 
           for (i = 0; i < d.times.length; ++i) {
-            self.mergeDygraphHistory(d, i, true);
+            self.mergeDygraphHistory(d, i);
           }
         }
       );
@@ -1067,6 +1067,12 @@
         }
       }, self.interval
       );
+    },
+
+    clearInterval: function () {
+      if (this.timer) {
+        clearInterval(this.timer);
+      }
     },
 
     resize: function () {
