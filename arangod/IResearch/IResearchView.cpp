@@ -914,6 +914,9 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     }
   }
 
+  // open up a read transaction and add all linked collections to verify that
+  // the current user has access
+
   arangodb::velocypack::Builder linksBuilder;
   static std::vector<std::string> const EMPTY;
 
@@ -2034,11 +2037,33 @@ void IResearchView::registerFlushCallback() {
     return;
   }
 
-  flush->registerCallback(this, [this]() noexcept {
-    return IResearchView::FlushTransactionPtr(
-      this,
-      [](arangodb::FlushTransaction*){} // empty deleter
+  auto viewSelf = self();
+
+  flush->registerCallback(this, [viewSelf]() noexcept {
+    static struct NoopFlushTransaction: arangodb::FlushTransaction {
+      NoopFlushTransaction(): FlushTransaction("ArangoSearchNoop") {}
+      virtual arangodb::Result commit() override {
+        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
+    } noopFlushTransaction;
+    SCOPED_LOCK_NAMED(viewSelf->mutex(), lock);
+
+    if (!*viewSelf) {
+      return arangodb::FlushFeature::FlushTransactionPtr(
+        &noopFlushTransaction, [](arangodb::FlushTransaction*)->void {}
+      );
+    }
+
+    auto trx = arangodb::FlushFeature::FlushTransactionPtr(
+      viewSelf->get(),
+      [](arangodb::FlushTransaction* trx)->void {
+        ADOPT_SCOPED_LOCK_NAMED(static_cast<IResearchView*>(trx)->self()->mutex(), lock);
+      }
     );
+
+    lock.release(); // unlocked in distructor above
+
+    return trx;
   });
 
   // noexcept
