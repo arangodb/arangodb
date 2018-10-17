@@ -72,7 +72,7 @@ function hasIResearch (db) {
     if (db._views() === 0) {
       return; // arangosearch views are not supported
     }
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;

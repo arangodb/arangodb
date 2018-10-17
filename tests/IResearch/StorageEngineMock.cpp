@@ -1307,7 +1307,7 @@ void StorageEngineMock::prepareDropDatabase(
     bool useWriteMarker,
     int& status
 ) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
@@ -1401,7 +1401,7 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
 }
 
 void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
