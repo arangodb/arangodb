@@ -32,31 +32,17 @@
 #include "utils/index_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/range.hpp"
 #include "index_writer.hpp"
 
 #include <list>
+#include <sstream>
 
 NS_LOCAL
 
-template<typename T>
-class typed_ref {
- public:
-  typedef T type_t;
-  typed_ref() NOEXCEPT: data_(nullptr), size_(0) {}
-  typed_ref(T* data, size_t size) NOEXCEPT: data_(data), size_(size) {}
-  type_t& operator[](size_t i) { assert(i < size_); return data_[i]; }
-  const type_t& operator[](size_t i) const { assert(i < size_); return data_[i]; }
-  bool empty() const NOEXCEPT { return !data_ || 0 == size_; }
-  size_t size() const NOEXCEPT { return size_; }
-
- private:
-  T* data_;
-  size_t size_;
-};
-
 typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
-typedef typed_ref<irs::index_writer::modification_context> modification_contexts_ref;
-typedef typed_ref<irs::segment_writer::update_context> update_contexts_ref;
+typedef range<irs::index_writer::modification_context> modification_contexts_ref;
+typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
 
@@ -128,9 +114,7 @@ bool add_document_mask_modified_records(
 
   bool modified = false;
 
-  for (size_t i = 0, count = modifications.size(); i < count; ++i) {
-    auto& modification = modifications[i];
-
+  for (auto& modification : modifications) {
     if (!modification.filter) {
       continue; // skip invalid or uncommitted modification queries
     }
@@ -185,9 +169,7 @@ bool add_document_mask_modified_records(
   assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
-  for (size_t i = 0, count = modifications.size(); i < count; ++i) {
-    auto& modification = modifications[i];
-
+  for (auto& modification : modifications) {
     if (!modification.filter) {
       continue; // skip invalid or uncommitted modification queries
     }
@@ -290,12 +272,17 @@ const std::string& write_document_mask(
   assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
+
   if (increment_version) {
     meta.files.erase(mask_writer->filename(meta)); // current filename
     ++meta.version; // segment modified due to new document_mask
   }
+
   const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
+
   mask_writer->write(dir, meta, docs_mask);
+  meta.size = 0; // reset no longer valid size, to be recomputed on index_utils::write_index_segment(...)
+
   return file;
 }
 
@@ -380,6 +367,32 @@ void map_removals(
       }
     }
   }
+}
+
+std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
+  std::stringstream ss;
+  size_t total_size = 0;
+  size_t total_docs_count = 0;
+  size_t total_live_docs_count = 0;
+
+  for (const auto* meta : consolidation) {
+    ss << "Name='" << meta->name
+       << "', docs_count=" << meta->docs_count
+       << ", live_docs_count=" << meta->live_docs_count
+       << ", size=" << meta->size
+       << std::endl;
+
+    total_docs_count += meta->docs_count;
+    total_live_docs_count += meta->live_docs_count;
+    total_size += meta->size;
+  }
+
+  ss << "Total: segments=" << consolidation.size()
+     << ", docs_count=" << total_docs_count
+     << ", live_docs_count=" << total_live_docs_count
+     << " size=" << total_size << "";
+
+  return ss.str();
 }
 
 NS_END // NS_LOCAL
@@ -544,6 +557,7 @@ index_writer::documents_context::document::~document() {
 }
 
 index_writer::documents_context::~documents_context() {
+  // FIXME TODO move emplace into active_segment_context destructor
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
   writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
 }
@@ -653,7 +667,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     if ((!writer_.segment_limits_.segment_docs_max
          || writer_.segment_limits_.segment_docs_max > segment.writer_->docs_cached()) // too many docs
         && (!writer_.segment_limits_.segment_memory_max
-            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory()) // too much memory
+            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory_active()) // too much memory
         && !doc_limits::eof(segment.writer_->docs_cached())) { // segment full
       return ctx;
     } else if (!segment.flush()) { // force a flush of a full segment
@@ -828,7 +842,7 @@ bool index_writer::segment_context::flush() {
 
   assert(integer_traits<doc_id_t>::const_max >= writer_->docs_cached());
   flushed_update_contexts_.reserve(flushed_update_contexts_.size() + writer_->docs_cached());
-  flushed_.emplace_back(std::move(writer_meta_));
+  flushed_.emplace_back(std::move(writer_meta_.meta));
 
   // copy over update_contexts
   for (size_t doc_id = doc_limits::min(),
@@ -842,7 +856,7 @@ bool index_writer::segment_context::flush() {
   auto& segment = flushed_.back();
 
   // flush segment_writer
-  if (!writer_->flush(segment.filename, segment.meta)) {
+  if (!writer_->flush(segment)) {
     flushed_.pop_back();
     flushed_update_contexts_.resize(flushed_docs_count);
 
@@ -917,7 +931,7 @@ void index_writer::segment_context::prepare() {
 
   if (!writer_->initialized()) {
     writer_meta_ = meta_generator_();
-    writer_->reset(writer_meta_);
+    writer_->reset(writer_meta_.meta);
   }
 }
 
@@ -961,11 +975,9 @@ void index_writer::segment_context::reset() {
   uncomitted_modification_queries_ = 0;
 
   if (writer_->initialized()) {
-    std::string filename;
-
     writer_->reset(); // try to reduce number of files flushed below
-    writer_->flush(filename, writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
-    writer_meta_ = segment_meta(); // reset to invalid
+    writer_->flush(writer_meta_); // flush segment even for empty segments since this will clear internal segment_writer state
+    writer_meta_.meta = segment_meta(); // reset to invalid
   }
 
   dir_.clear_refs(); // release refs only after clearing writer state to ensure 'writer_' does not hold any files
@@ -1138,6 +1150,7 @@ index_writer::ptr index_writer::make(
 }
 
 index_writer::~index_writer() {
+  assert(!segments_active_.load()); // failure may indicate a dangling 'document' instance
   close();
   flush_context_ = nullptr;
   flush_context_pool_.clear(); // ensue all tracked segment_contexts are released before segment_writer_pool_ is deallocated
@@ -1161,7 +1174,9 @@ uint64_t index_writer::buffered_docs() const {
 }
 
 bool index_writer::consolidate(
-    const consolidation_policy_t& policy, format::ptr codec /*= nullptr*/
+    const consolidation_policy_t& policy,
+    format::ptr codec /*= nullptr*/,
+    const merge_writer::flush_progress_t& progress /*= {}*/
 ) {
   REGISTER_TIMER_DETAILED();
 
@@ -1171,6 +1186,7 @@ bool index_writer::consolidate(
   }
 
   std::set<const segment_meta*> candidates;
+  const auto run_id = reinterpret_cast<size_t>(&candidates);
 
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
@@ -1183,7 +1199,7 @@ bool index_writer::consolidate(
   // collect a list of consolidation candidates
   {
     SCOPED_LOCK(consolidation_lock_);
-    policy(candidates, dir_, *committed_meta, consolidating_segments_);
+    policy(candidates, *committed_meta, consolidating_segments_);
 
     switch (candidates.size()) {
       case 0:
@@ -1250,6 +1266,12 @@ bool index_writer::consolidate(
     }
   }
 
+  IR_FRMT_TRACE(
+    "Starting consolidation id='" IR_SIZE_T_SPECIFIER "':\n%s",
+    run_id,
+    ::to_string(candidates).c_str()
+  );
+
   // do lock-free merge
 
   index_meta::index_segment_t consolidation_segment;
@@ -1275,7 +1297,7 @@ bool index_writer::consolidate(
   }
 
   // we do not persist segment meta since some removals may come later
-  if (!merger.flush(consolidation_segment, false)) {
+  if (!merger.flush(consolidation_segment, progress)) {
     return false; // nothing to consolidate or consolidation failure
   }
 
@@ -1299,6 +1321,10 @@ bool index_writer::consolidate(
         std::move(merger) // merge context
       );
 
+      IR_FRMT_TRACE(
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: pending",
+        run_id
+      );
     } else if (committed_meta == current_committed_meta) {
       // before new transaction was started:
       // no commits happened in since consolidation was started
@@ -1320,11 +1346,22 @@ bool index_writer::consolidate(
       );
 
       // filter out merged segments for the next commit
-      const auto& consolidation_ctx = ctx->pending_segments_.back().consolidation_ctx;
+      const auto& pending_segment = ctx->pending_segments_.back();
+      const auto& consolidation_ctx = pending_segment.consolidation_ctx;
+      const auto& consolidation_meta = pending_segment.segment.meta;
 
       for (const auto* segment : consolidation_ctx.candidates) {
         ctx->segment_mask_.emplace(segment->name);
       }
+
+      IR_FRMT_TRACE(
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: Name='%s', docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        run_id,
+        consolidation_meta.name.c_str(),
+        consolidation_meta.docs_count,
+        consolidation_meta.live_docs_count,
+        consolidation_meta.size
+      );
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
@@ -1341,7 +1378,8 @@ bool index_writer::consolidate(
         // at least one candidate is missing
         // can't finish consolidation
         IR_FRMT_WARN(
-          "Failed to finish merge for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+          "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
+          run_id,
           consolidation_segment.meta.name.c_str(),
           res.second,
           candidates.size()
@@ -1375,11 +1413,22 @@ bool index_writer::consolidate(
       );
 
       // filter out merged segments for the next commit
-      const auto& consolidation_ctx = ctx->pending_segments_.back().consolidation_ctx;
+      const auto& pending_segment = ctx->pending_segments_.back();
+      const auto& consolidation_ctx = pending_segment.consolidation_ctx;
+      const auto& consolidation_meta = pending_segment.segment.meta;
 
       for (const auto* segment : consolidation_ctx.candidates) {
         ctx->segment_mask_.emplace(segment->name);
       }
+
+      IR_FRMT_TRACE(
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        run_id,
+        consolidation_meta.name.c_str(),
+        consolidation_meta.docs_count,
+        consolidation_meta.live_docs_count,
+        consolidation_meta.size
+      );
     }
   }
 
@@ -1411,6 +1460,8 @@ bool index_writer::import(const index_reader& reader, format::ptr codec /*= null
   if (!merger.flush(segment)) {
     return false; // import failure (no files created, nothing to clean up)
   }
+
+  index_utils::write_index_segment(dir, segment);
 
   auto refs = extract_refs(dir);
 
@@ -1494,6 +1545,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
   if (freelist_node) {
+    // FIXME TODO these assert(...)s may give false positives since checking 'ctx.pending_segment_contexts_' is not thread-safe
     assert(ctx.pending_segment_contexts_.size() > freelist_node->value);
     assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_);
     assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
