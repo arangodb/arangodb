@@ -239,7 +239,7 @@ void V8ShellFeature::copyInstallationFiles() {
     _removeCopyInstallation = true;
   }
   
-  LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files to '" << _copyDirectory << "'";
+  LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory << "' to '" << _copyDirectory << "'";
   int res = TRI_ERROR_NO_ERROR;
 
   if (FileUtils::exists(_copyDirectory)) {
@@ -259,13 +259,16 @@ void V8ShellFeature::copyInstallationFiles() {
   // intentionally do not copy js/node/node_modules...
   // we avoid copying this directory because it contains 5000+ files at the moment,
   // and copying them one by one is darn slow at least on Windows...
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
   std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
-  auto filter = [&nodeModulesPath, this](std::string const& filename) -> bool{
+  std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
     if (filename.size() >= nodeModulesPath.size()) {
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
       TRI_ASSERT(filename.size() == normalized.size());
-      if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) {
+      if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
+          normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
         // filter it out!
         _nodeModulesDirectory = _startupDirectory;
         return true;
