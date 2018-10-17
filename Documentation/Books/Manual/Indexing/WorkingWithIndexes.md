@@ -1,6 +1,9 @@
 Working with Indexes
 ====================
 
+Learn how to use different indexes efficiently by going through the
+[ArangoDB Performance Course](https://www.arangodb.com/arangodb-performance-course/).
+
 Index Identifiers and Handles
 -----------------------------
 
