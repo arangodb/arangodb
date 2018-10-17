@@ -65,7 +65,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   double _maxContextAge;
   std::string _appPath;
   std::string _startupDirectory;
-  std::vector<std::string> _moduleDirectory;
+  std::string _nodeModulesDirectory;
+  std::vector<std::string> _moduleDirectories;
   bool _copyInstallation;
   uint64_t _nrMaxContexts;          // maximum number of contexts to create
   uint64_t _nrMinContexts;          // minimum number of contexts to keep
