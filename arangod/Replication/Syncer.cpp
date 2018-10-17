@@ -329,10 +329,20 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 
 /// @brief notifies that a job was posted
 void Syncer::JobSynchronizer::jobPosted() {
-  CONDITION_LOCKER(guard, _condition);
-
-  TRI_ASSERT(_jobsInFlight == 0);
-  ++_jobsInFlight;
+  while (true) {
+    CONDITION_LOCKER(guard, _condition);
+   
+    // _jobsInFlight should be 0 in almost all cases, however, there
+    // is a small window in which the request has been processed already
+    // (i.e. after waitForResponse() has returned and before jobDone()
+    // has been called and has decreased _jobsInFlight). For this
+    // particular case, we simply wait for _jobsInFlight to become 0 again 
+    if (_jobsInFlight == 0) { 
+      ++_jobsInFlight;
+      break;
+    }
+    guard.wait(10 * 1000);
+  }
 }
 
 /// @brief notifies that a job was done
@@ -341,6 +351,7 @@ void Syncer::JobSynchronizer::jobDone() {
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
+  _condition.signal();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
