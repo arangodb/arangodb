@@ -1,9 +1,10 @@
-v3.3.18 (2018-10-12)
+v3.3.18 (2018-10-17)
 --------------------
 
-* fixed an intermediate commit error (issue #6821)
+* upgraded arangodb starter version to 0.13.6
 
-* upgraded arangodb starter version to 0.13.5
+* turn on intermediate commits in replication applier in order to decrease
+  the size of transactional operations on replication (issue #6821)
 
 * fixed issue #6770: document update: ignoreRevs parameter ignored 
 
