@@ -303,9 +303,9 @@ bool copyDirectoryRecursive(std::string const& source,
   intptr_t handle;
 
   std::string rcs;
-  std::string filter = source + "\\*";
+  std::string flt = source + "\\*";
   
-  UnicodeString f(filter.c_str());
+  UnicodeString f(flt.c_str());
 
   handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
