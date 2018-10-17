@@ -63,6 +63,7 @@ ClusterIndex::ClusterIndex(
       _info(info),
       _clusterSelectivity(/* default */0.1) {
   TRI_ASSERT(_info.slice().isObject());
+  TRI_ASSERT(_info.isClosed());
 }
 
 ClusterIndex::~ClusterIndex() {}
@@ -177,7 +178,12 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   }
 
   merge.close();
-  _info = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  TRI_ASSERT(merge.slice().isObject());
+  TRI_ASSERT(_info.slice().isObject());
+  VPackBuilder tmp = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  _info = std::move(tmp);
+  TRI_ASSERT(_info.slice().isObject());
+  TRI_ASSERT(_info.isClosed());
 }
 
 bool ClusterIndex::hasCoveringIterator() const {
@@ -190,7 +196,6 @@ bool ClusterIndex::hasCoveringIterator() const {
   }
   return false;
 }
-
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
