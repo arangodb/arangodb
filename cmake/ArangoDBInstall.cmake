@@ -45,10 +45,10 @@ set(CMAKE_TEST_DIRECTORY "tests")
 
 include(InstallMacros)
 
-if(UNIX)
 # install ----------------------------------------------------------------------
-install(FILES ${ARANGO_MAN_FILES}
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
+if(UNIX)
+install(DIRECTORY ${ARANGO_MAN_DIR}
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR})
 endif()
 
 install_readme(README README.txt)

@@ -29,7 +29,7 @@ set(MAN_FILES "") #empty list
 
 foreach (m IN LISTS MAN_NAMES)
     set(msrc ${CMAKE_SOURCE_DIR}/Documentation/${m})
-    set(mdst ${CMAKE_SOURCE_DIR}/Documentation/man/${m})
+    set(mdst ${CMAKE_CURRENT_BINARY_DIR}/man/${m})
 
   add_custom_command(
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -41,7 +41,7 @@ foreach (m IN LISTS MAN_NAMES)
     )
   list(APPEND MAN_FILES ${mdst})
 endforeach ()
-set(ARANGO_MAN_FILES ${MAN_FILES} PARENT_SCOPE)
+set(ARANGO_MAN_DIR "${CMAKE_CURRENT_BINARY_DIR}/man" PARENT_SCOPE)
 
 add_custom_command(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
