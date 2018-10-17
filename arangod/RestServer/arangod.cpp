@@ -59,7 +59,6 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/EngineEqualityCheckFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -142,7 +141,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",              "Agency",
         "Cluster",             "Daemon",
-        "Endpoint",            "EngineEqualityCheck", 
+        "Endpoint",
         "FoxxQueues",          "GeneralServer",       
         "Greetings",           "LoggerBufferFeature", 
         "Server",              "SslServer",           
@@ -176,7 +175,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new DatabaseFeature(server));
     server.addFeature(new DatabasePathFeature(server));
     server.addFeature(new EndpointFeature(server));
-    server.addFeature(new EngineEqualityCheckFeature(server));
     server.addFeature(new EngineSelectorFeature(server));
     server.addFeature(new EnvironmentFeature(server));
     server.addFeature(new FileDescriptorsFeature(server));

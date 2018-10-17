@@ -15251,6 +15251,163 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
   }
 }
 
+TEST_F(memory_index_test, consolidate_progress) {
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+  auto policy = irs::index_utils::consolidation_policy(
+    irs::index_utils::consolidate_count()
+  );
+
+  // test default progress (false)
+  {
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    ASSERT_TRUE(insert(
+      *writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit(); // create segment0
+    ASSERT_TRUE(insert(
+      *writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit(); // create segment1
+
+    auto reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(1, reader[0].docs_count());
+    ASSERT_EQ(1, reader[1].docs_count());
+
+    irs::merge_writer::flush_progress_t progress;
+
+    ASSERT_TRUE(writer->consolidate(policy, get_codec(), progress));
+    writer->commit(); // write consolidated segment
+
+    reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(2, reader[0].docs_count());
+  }
+
+  // test always-false progress
+  {
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    ASSERT_TRUE(insert(
+      *writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit(); // create segment0
+    ASSERT_TRUE(insert(
+      *writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit(); // create segment1
+
+    auto reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(1, reader[0].docs_count());
+    ASSERT_EQ(1, reader[1].docs_count());
+
+    irs::merge_writer::flush_progress_t progress = []()->bool { return false; };
+
+    ASSERT_FALSE(writer->consolidate(policy, get_codec(), progress));
+    writer->commit(); // write consolidated segment
+
+    reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(1, reader[0].docs_count());
+    ASSERT_EQ(1, reader[1].docs_count());
+  }
+
+  size_t progress_call_count = 0;
+
+  // test always-true progress
+  {
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    ASSERT_TRUE(insert(
+      *writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit(); // create segment0
+    ASSERT_TRUE(insert(
+      *writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit(); // create segment1
+
+    auto reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(1, reader[0].docs_count());
+    ASSERT_EQ(1, reader[1].docs_count());
+
+    irs::merge_writer::flush_progress_t progress =
+      [&progress_call_count]()->bool { ++progress_call_count; return true; };
+
+    ASSERT_TRUE(writer->consolidate(policy, get_codec(), progress));
+    writer->commit(); // write consolidated segment
+
+    reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(2, reader[0].docs_count());
+  }
+
+  ASSERT_TRUE(progress_call_count); // there should have been at least some calls
+
+  // test limited-true progress
+  for (size_t i = 1; i < progress_call_count; ++i) { // +1 for pre-decrement in 'progress'
+    size_t call_count = i;
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    ASSERT_TRUE(insert(
+      *writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit(); // create segment0
+    ASSERT_TRUE(insert(
+      *writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit(); // create segment1
+
+    auto reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(1, reader[0].docs_count());
+    ASSERT_EQ(1, reader[1].docs_count());
+
+    irs::merge_writer::flush_progress_t progress =
+      [&call_count]()->bool { return --call_count; };
+
+    ASSERT_FALSE(writer->consolidate(policy, get_codec(), progress));
+    writer->commit(); // write consolidated segment
+
+    reader = irs::directory_reader::open(dir, get_codec());
+
+    ASSERT_EQ(2, reader.size());
+    ASSERT_EQ(1, reader[0].docs_count());
+    ASSERT_EQ(1, reader[1].docs_count());
+  }
+}
+
 TEST_F(memory_index_test, segment_consolidate) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),

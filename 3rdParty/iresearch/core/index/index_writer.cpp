@@ -1174,7 +1174,9 @@ uint64_t index_writer::buffered_docs() const {
 }
 
 bool index_writer::consolidate(
-    const consolidation_policy_t& policy, format::ptr codec /*= nullptr*/
+    const consolidation_policy_t& policy,
+    format::ptr codec /*= nullptr*/,
+    const merge_writer::flush_progress_t& progress /*= {}*/
 ) {
   REGISTER_TIMER_DETAILED();
 
@@ -1295,7 +1297,7 @@ bool index_writer::consolidate(
   }
 
   // we do not persist segment meta since some removals may come later
-  if (!merger.flush(consolidation_segment, false)) {
+  if (!merger.flush(consolidation_segment, progress)) {
     return false; // nothing to consolidate or consolidation failure
   }
 
@@ -1458,6 +1460,8 @@ bool index_writer::import(const index_reader& reader, format::ptr codec /*= null
   if (!merger.flush(segment)) {
     return false; // import failure (no files created, nothing to clean up)
   }
+
+  index_utils::write_index_segment(dir, segment);
 
   auto refs = extract_refs(dir);
 

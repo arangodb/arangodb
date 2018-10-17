@@ -101,6 +101,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let env = {};
   let customInstanceInfos = {};
+  let healthCheck = function () {return true;};
+
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
+    healthCheck = startStopHandlers.healthCheck;
+  }
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStart')) {
     customInstanceInfos['preStart'] = startStopHandlers.preStart(options,
@@ -217,7 +222,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           }
         }
 
-        if (pu.arangod.check.instanceAlive(instanceInfo, options)) {
+        if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
+            healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true; 
 
           // Check whether some collections were left behind, and if mark test as failed.

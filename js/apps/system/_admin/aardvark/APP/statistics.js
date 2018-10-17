@@ -163,7 +163,6 @@ function computeStatisticsRaw (result, start, clusterId) {
     for (let key in STAT_SERIES) {
       if (STAT_SERIES.hasOwnProperty(key)) {
         path = STAT_SERIES[key];
-
         result[key].push(stat[path[0]][path[1]]);
       }
     }
@@ -316,6 +315,7 @@ function computeStatisticsShort (start, clusterId) {
   const result = {};
 
   computeStatisticsRaw(result, start, clusterId);
+
   computeStatisticsRaw15M(result, start, clusterId);
 
   return result;
@@ -405,13 +405,12 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get("/coordshort", function(req, res) {
+router.get('/coordshort', function (req, res) {
   var merged = {
     http: {}
   };
 
-  var mergeHistory = function(data) {
-
+  var mergeHistory = function (data) {
     var onetime = ['times'];
     var values = [
       'physicalMemory',
@@ -435,56 +434,58 @@ router.get("/coordshort", function(req, res) {
       'avgRequestTime'
     ];
 
-    var counter = 0, counter2;
+    var counter = 0;
+    var counter2;
 
-    _.each(data, function(stat) {
-      //if (stat.enabled) {
-      //  self.statsEnabled = true;
-     // }
-      //else {
-      //  self.statsEnabled = false;
-      //}
-
+    _.each(data, function (stat) {
       if (typeof stat === 'object') {
         if (counter === 0) {
-          //one time value
-          _.each(onetime, function(value) {
+          // one time value
+          _.each(onetime, function (value) {
             merged[value] = stat[value];
           });
 
-          //values
-          _.each(values, function(value) {
+          // values
+          _.each(values, function (value) {
             merged[value] = stat[value];
           });
 
-          //http requests arrays
-          _.each(http, function(value) {
+          // http requests arrays
+          _.each(http, function (value) {
             merged.http[value] = stat[value];
           });
 
-          //arrays
-          _.each(arrays, function(value) {
+          // arrays
+          _.each(arrays, function (value) {
             merged[value] = stat[value];
           });
-
-        }
-        else {
-          //values
-          _.each(values, function(value) {
+        } else {
+          // values
+          _.each(values, function (value) {
             merged[value] = merged[value] + stat[value];
           });
-          //http requests arrays
-          _.each(http, function(value) {
+          // http requests arrays
+          _.each(http, function (value) {
             counter2 = 0;
-            _.each(stat[value], function(x) {
-              merged.http[value][counter2] = merged.http[value][counter2] + x;
+            _.each(stat[value], function (x) {
+              if (merged.http[value][counter2] === undefined) {
+                // this will hit if a previous coordinater was not able to deliver
+                // proper current statistics, but the current one already has statistics.
+                merged.http[value][counter2] = x;
+              } else {
+                merged.http[value][counter2] = merged.http[value][counter2] + x;
+              }
               counter2++;
             });
           });
-          _.each(arrays, function(value) {
+          _.each(arrays, function (value) {
             counter2 = 0;
-            _.each(stat[value], function(x) {
-              merged[value][counter2] = merged[value][counter2] + x;
+            _.each(stat[value], function (x) {
+              if (merged[value][counter2] === undefined) {
+                merged[value][counter2] = 0;
+              } else {
+                merged[value][counter2] = merged[value][counter2] + x;
+              }
               counter2++;
             });
           });
@@ -495,17 +496,18 @@ router.get("/coordshort", function(req, res) {
   };
 
   var coordinators = global.ArangoClusterInfo.getCoordinators();
+  var coordinatorStats;
   if (Array.isArray(coordinators)) {
-    var coordinatorStats = coordinators.map(coordinator => {
+    coordinatorStats = coordinators.map(coordinator => {
       var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
       if (endpoint.substring(0, 3) === 'ssl') {
         // if protocol ssl is returned, change it to https
         endpoint = 'https' + endpoint.substring(3);
       }
-      if (endpoint !== "") {
-        var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length, '', {headers: {}});
+      if (endpoint !== '') {
+        var response = download(endpoint.replace(/^tcp/, 'http') + '/_db/_system/_admin/aardvark/statistics/short?count=' + coordinators.length, '', {headers: {}});
         if (response.body === undefined) {
-          console.warn("cannot contact coordinator " + coordinator + " on endpoint " + endpoint);
+          console.warn('cannot contact coordinator ' + coordinator + ' on endpoint ' + endpoint);
         } else {
           try {
             return JSON.parse(response.body);
@@ -518,12 +520,21 @@ router.get("/coordshort", function(req, res) {
       return false;
     });
 
-    mergeHistory(coordinatorStats);
+    if (coordinatorStats) {
+      mergeHistory(coordinatorStats);
+    }
   }
-  res.json({"enabled": coordinatorStats.some(stat => stat.enabled), "data": merged});
+  if (coordinatorStats) {
+    res.json({'enabled': coordinatorStats.some(stat => stat.enabled), 'data': merged});
+  } else {
+    res.json({
+      'enabled': false,
+      'data': {}
+    });
+  }
 })
-.summary("Short term history for all coordinators")
-.description("This function is used to get the statistics history.");
+  .summary('Short term history for all coordinators')
+  .description('This function is used to get the statistics history.');
 
 router.get("/short", function (req, res) {
   const start = req.queryParams.start;

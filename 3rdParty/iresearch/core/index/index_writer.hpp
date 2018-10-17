@@ -493,13 +493,17 @@ class IRESEARCH_API index_writer:
   /// @param policy the speicified defragmentation policy
   /// @param codec desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///                 callback returns false then consolidation is aborted
   /// @note for deffered policies during the commit stage each policy will be
   ///       given the exact same index_meta containing all segments in the
   ///       commit, however, the resulting acceptor will only be segments not
   ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
   bool consolidate(
-    const consolidation_policy_t& policy, format::ptr codec = nullptr
+    const consolidation_policy_t& policy,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
   );
 
   //////////////////////////////////////////////////////////////////////////////
