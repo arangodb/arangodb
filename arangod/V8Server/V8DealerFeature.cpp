@@ -375,6 +375,12 @@ void V8DealerFeature::start() {
 }
 
 void V8DealerFeature::copyInstallationFiles() {
+  if (!_enableJS && 
+      (ServerState::instance()->isAgent() || ServerState::instance()->isDBServer())) {
+    // skip expensive file-copying in case we are an agency or db server
+    // these do not need JavaScript support
+    return;
+  }
   // get base path from DatabasePathFeature
   auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>();
   const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");

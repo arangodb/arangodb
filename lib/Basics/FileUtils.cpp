@@ -294,7 +294,7 @@ bool copyDirectoryRecursive(std::string const& source,
   handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
   if (handle == -1) {
-    error = "directory " + source + "not found";
+    error = "directory " + source + " not found";
     return false;
   }
 
@@ -308,7 +308,7 @@ bool copyDirectoryRecursive(std::string const& source,
   DIR* filedir = opendir(source.c_str());
 
   if (filedir == nullptr) {
-    error = "directory " + source + "not found";
+    error = "directory " + source + " not found";
     return false;
   }
 

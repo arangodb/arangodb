@@ -46,6 +46,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/fasthash.h"
 #include "Basics/files.h"
 #include "Basics/process-utils.h"
 #include "Basics/terminal-utils.h"
@@ -85,6 +86,9 @@ static UniformCharacter JSNumGenerator("0123456789");
 static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
+  
+static arangodb::Mutex unzipLocks[8];
+static std::unordered_set<std::string> unzipPaths[8];
 }
 
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
@@ -1686,7 +1690,6 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1801,6 +1804,44 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_ModuleUnzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("MODULE_UNZIP(<path>)");
+  }
+
+  std::string path = TRI_ObjectToString(isolate, args[0]);
+  std::string const zipFile = FileUtils::buildFilename(path, "__package__.zip");
+  
+  int const bucket = static_cast<int>(fasthash64(path.data(), path.size(), 0x5c716dc0de) % (sizeof(unzipLocks) / sizeof(unzipLocks[0])));
+  
+  MUTEX_LOCKER(locker, unzipLocks[bucket]);
+  if (unzipPaths[bucket].find(path) != unzipPaths[bucket].end()) {
+    // already handled
+    return;
+  }
+
+  if (!TRI_ExistsFile(zipFile.c_str())) {
+    // no zip file present, store this so we will not call check for file existence next time
+    unzipPaths[bucket].emplace(std::move(path));
+    TRI_V8_RETURN_FALSE();
+  }
+
+  std::string errMsg;
+  int res = TRI_UnzipFile(zipFile.c_str(), path.c_str(), false, true, nullptr, errMsg);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    unzipPaths[bucket].emplace(std::move(path));
+    TRI_V8_RETURN_TRUE();
+  }
+
+  TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -4742,6 +4783,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "FS_ZIP_FILE"), JS_ZipFile);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "FS_ADLER32"), JS_Adler32);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "MODULE_UNZIP"), JS_ModuleUnzip, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_APPEND"), JS_Append);
