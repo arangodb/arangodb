@@ -765,10 +765,6 @@ TEST_F(memory_format_10_test_case, segment_meta_rw) {
   segment_meta_read_write();
 }
 
-TEST_F(memory_format_10_test_case, columns_rw_sparse_column_dense_block) {
-  sparse_column_dense_block();
-}
-
 TEST_F(memory_format_10_test_case, columns_rw_dense_mask) {
   columns_dense_mask();
 }

@@ -821,64 +821,6 @@ class format_test_case_base : public index_test_base {
     }
   }
 
-  void sparse_column_dense_block() {
-    iresearch::segment_meta seg("_1", codec());
-
-    size_t column_id;
-    const irs::bytes_ref payload(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")));
-
-    // write docs
-    {
-
-      auto writer = codec()->get_columnstore_writer();
-      writer->prepare(dir(), seg);
-      auto column = writer->push_column();
-      column_id = column.first;
-      auto& column_handler = column.second;
-
-      auto id = irs::type_limits<irs::type_t::doc_id_t>::min();
-
-      for (; id <= 1024; ++id, ++seg.docs_count) {
-        auto& stream = column_handler(id);
-        stream.write_bytes(payload.c_str(), payload.size());
-      }
-
-      ++id; // gap
-
-      for (; id <= 2037; ++id, ++seg.docs_count) {
-        auto& stream = column_handler(id);
-        stream.write_bytes(payload.c_str(), payload.size());
-      }
-
-      ASSERT_TRUE(writer->flush());
-    }
-
-    // read documents
-    {
-      irs::bytes_ref actual_value;
-
-      // check 1st segment
-      {
-        auto reader = codec()->get_columnstore_reader();
-        ASSERT_TRUE(reader->prepare(dir(), seg));
-
-        auto column = reader->column(column_id);
-        ASSERT_NE(nullptr, column);
-        auto values = column->values();
-
-        for (irs::doc_id_t id = irs::type_limits<irs::type_t::doc_id_t>::min(); id <= seg.docs_count; ++id) {
-          if (id == 1025) {
-            // gap
-            ASSERT_FALSE(values(id, actual_value));
-          } else {
-            ASSERT_TRUE(values(id, actual_value));
-            ASSERT_EQ(payload, actual_value);
-          }
-        }
-      }
-    }
-  }
-
   void columns_dense_mask() {
     iresearch::segment_meta seg("_1", codec());
     const irs::doc_id_t MAX_DOC = 1026;
