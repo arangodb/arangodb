@@ -761,9 +761,9 @@ removed in future versions of ArangoDB:
 
 * the persistent index type is marked for removal in 4.0 and is thus deprecated.
 
-  The performance characteristics aren't great and it takes up resources even
-  if no such index is present using the MMFiles storage engine. With the RocksDB
-  storage engine, there is no difference between skiplist and persistent indexes anyway.
+  This index type was added when there was only the MMFiles storage engine as
+  kind of a stop gap. We recommend to switch to RocksDB engine, which persists
+  all index types with no difference between skiplist and persistent indexes.
 
 * the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
 
