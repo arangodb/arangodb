@@ -2591,7 +2591,7 @@ bool meta_reader::read(column_meta& column) {
 // |Bloom filter offset| <- not implemented yet
 // |Footer|
 
-const size_t INDEX_BLOCK_SIZE = 1024;
+const uint32_t INDEX_BLOCK_SIZE = 1024;
 const size_t MAX_DATA_BLOCK_SIZE = 8192;
 
 // By default we treat columns as a variable length sparse columns
@@ -3175,7 +3175,7 @@ class sparse_block : util::noncopyable {
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    const size_t size = in.read_vint(); // total number of entries in a block
+    const uint32_t size = in.read_vint(); // total number of entries in a block
     assert(size);
 
     auto begin = std::begin(index_);
@@ -3360,7 +3360,7 @@ class dense_block : util::noncopyable {
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
-    const size_t size = in.read_vint(); // total number of entries in a block
+    const uint32_t size = in.read_vint(); // total number of entries in a block
     assert(size);
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
@@ -4063,7 +4063,7 @@ class sparse_column final : public column {
     if (!column::read(in, buf)) {
       return false;
     }
-    size_t blocks_count = in.read_vint(); // total number of column index blocks
+    uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count + 1); // +1 for upper bound
 
@@ -4460,7 +4460,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
       return false;
     }
 
-    size_t blocks_count = in.read_vint(); // total number of column index blocks
+    uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
