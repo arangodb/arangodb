@@ -558,23 +558,6 @@ Result RocksDBTransactionState::addOperation(
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
 }
 
-// only a valid under an exlusive lock as an only operation
-void RocksDBTransactionState::addTruncateOperation(TRI_voc_cid_t cid) {
-  auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
-  if (tcoll == nullptr) {
-    std::string message = "collection '" + std::to_string(cid) +
-    "' not found in transaction state";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-  }
-  tcoll->addTruncateOperation();
-  _numRemoves += tcoll->numRemoves();
-  TRI_ASSERT(_numInserts == 0 && _numUpdates == 0);
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _numLogdata += _numRemoves; // cheat our own sanity checks
-#endif
-}
-
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
   TRI_ASSERT(_rocksMethods);
   return _rocksMethods.get();

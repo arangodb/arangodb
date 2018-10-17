@@ -119,11 +119,7 @@ class RocksDBTransactionState final : public TransactionState {
       TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
       bool& hasPerformedIntermediateCommit);
   
-  /// @brief will perform _numRemoves = _initialNumberDocuments
-  /// be aware that this is only a valid operation under an
-  /// exclusive collection lock
-  void addTruncateOperation(TRI_voc_cid_t cid);
-
+  /// @brief return wrapper around rocksdb transaction
   RocksDBMethods* rocksdbMethods();
 
   /// @brief insert a snapshot into a (not yet started) transaction.
