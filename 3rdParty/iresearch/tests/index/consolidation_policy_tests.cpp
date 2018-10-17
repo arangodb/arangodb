@@ -63,10 +63,10 @@ TEST(consolidation_test_tier, test_defaults) {
     // 1st tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 2, 3, 4 }, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 2, 3, 4 }, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -74,7 +74,7 @@ TEST(consolidation_test_tier, test_defaults) {
     // no more segments to consolidate
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
   }
@@ -97,10 +97,10 @@ TEST(consolidation_test_tier, test_defaults) {
     // 1st tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -108,10 +108,10 @@ TEST(consolidation_test_tier, test_defaults) {
     // 2nd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -119,7 +119,7 @@ TEST(consolidation_test_tier, test_defaults) {
     // no more segments to consolidate
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
   }
@@ -160,10 +160,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 1st tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 2, 3, 4, 10, 11 }, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 2, 3, 4, 10, 11 }, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -171,10 +171,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 2nd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {7, 8, 9, 16}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {7, 8, 9, 16}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -182,10 +182,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 3rd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {5, 6}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {5, 6}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -193,7 +193,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // no more segments to consolidate
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
   }
@@ -223,10 +223,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 1st tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -234,10 +234,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 2nd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {2, 3}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {2, 3}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -269,10 +269,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 1st tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {2, 3, 4}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {2, 3, 4}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -280,10 +280,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 2nd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {7, 8, 9}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {7, 8, 9}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -291,10 +291,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 3rd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 5}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 5}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -302,7 +302,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // no more segments to consolidate
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
   }
@@ -340,10 +340,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 1st tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 10, 17}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 10, 17}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -351,10 +351,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 2nd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {3, 4, 14, 15, 16}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {3, 4, 14, 15, 16}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -362,10 +362,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 3rd tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {2, 12, 13}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {2, 12, 13}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -373,10 +373,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 4th tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {1, 11}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {1, 11}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -384,10 +384,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 5th tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {7, 8}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {7, 8}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -395,10 +395,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 6th tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {5, 6}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {5, 6}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -406,10 +406,10 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // 7th tier
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {9}, candidates);
       candidates.clear();
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {9}, candidates);
       consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
     }
@@ -417,10 +417,9 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     // no more segments to consolidate
     {
       std::set<const irs::segment_meta*> candidates;
-      policy(candidates, dir, meta, consolidating_segments);
+      policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
-
   }
 }
 
