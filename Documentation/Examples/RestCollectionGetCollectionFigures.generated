@@ -13,7 +13,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">10199</span> 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">10203</span> 
   }, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -38,7 +38,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-12T14:54:57Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-17T11:12:11Z"</span>, 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
@@ -60,13 +60,13 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">10201</span>, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">10205</span>, 
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hBB84C201834/10195"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h686EDFF39FBB/10199"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10195"</span> 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10199"</span> 
 }
