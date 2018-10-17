@@ -500,8 +500,8 @@ void Scheduler::shutdown() {
   // One has to clean up the ioContext here, because there could a lambda
   // in its queue, that requires for it finalization some object (for example vocbase)
   // that would already be destroyed
-  _ioContext.reset();
   _managerContext.reset();
+  _ioContext.reset();
 }
 
 void Scheduler::startIoService() {

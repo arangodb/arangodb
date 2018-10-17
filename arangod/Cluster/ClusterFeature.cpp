@@ -246,8 +246,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "ClusterFeature::prepare()";
-
   // create callback registery
   _agencyCallbackRegistry.reset(
     new AgencyCallbackRegistry(agencyCallbacksPath()));
@@ -359,7 +357,6 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "ClusterFeature::start()";
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     ClusterComm::initialize();

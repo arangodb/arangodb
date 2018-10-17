@@ -304,7 +304,6 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialize() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "ClusterComm::initialize";
   auto i = instance();   // this will create the static instance
   i->startBackgroundThread();
 }
