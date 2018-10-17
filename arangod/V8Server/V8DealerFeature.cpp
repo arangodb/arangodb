@@ -214,7 +214,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+  ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
   
   // try to append the current version name to the startup directory,
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
