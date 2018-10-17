@@ -331,7 +331,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @note @FA{header} must be lowercase.
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_rid_t extractRevision(char const*, bool&);
+  TRI_voc_rid_t extractRevision(char const*, bool&) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extracts a string parameter value

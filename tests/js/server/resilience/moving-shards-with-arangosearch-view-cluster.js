@@ -33,7 +33,9 @@ const db = arangodb.db;
 const _ = require("lodash");
 const internal = require("internal");
 const wait = internal.wait;
-const supervisionState = require("@arangodb/cluster").supervisionState;
+const request = require("@arangodb/request");
+const cluster = require("@arangodb/cluster");
+const supervisionState = cluster.supervisionState;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -418,41 +420,52 @@ function MovingShardsWithViewSuite (options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief GET url and return the parsed body as JSON. If the parsed body
+/// contains an .error property, throws an Error containing the .errorMessage.
+/// Also throws if the GET failed, or the body doesn't contain a JSON string.
+////////////////////////////////////////////////////////////////////////////////
+
+  function GETAndParseOrThrow (url) {
+    let res;
+    try {
+      console.warn(`GET ${url}`);
+      const envelope = { method: "GET", url };
+      res = request(envelope);
+    } catch (err) {
+      console.error(`Exception for GET ${url}:`, err.stack);
+      throw err;
+    }
+    const body = res.body;
+    if (typeof body !== "string") {
+      console.error(`Error after GET ${url}; body is not a string`);
+      throw new Error("body is not a string");
+    }
+
+    const parsedBody = JSON.parse(body);
+
+    if (parsedBody.hasOwnProperty("error") && parsedBody.error) {
+      const error = Object.assign({}, parsedBody);
+      error.errorMessage = `GET ${url} returned error: ${error.errorMessage}`;
+      throw new arangodb.ArangoError(error);
+    }
+
+    console.info(parsedBody);
+
+    return parsedBody;
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get DBServers per shard via the view api. Returns an object which
 /// which keys are shards and which values are sets of DBServers.
 ////////////////////////////////////////////////////////////////////////////////
 
   function getViewServersPerShard() {
-    const request = require("@arangodb/request");
-    const endpointToURL = require("@arangodb/cluster").endpointToURL;
+    const endpointToURL = cluster.endpointToURL;
 
     global.ArangoClusterInfo.flush();
 
     let serversPerShard = {};
-
-    const GETAndParseOrThrow = url => {
-      let res;
-      try {
-        const envelope = { method: "GET", url };
-        res = request(envelope);
-      } catch (err) {
-        console.error(`Exception for GET ${url}:`, err.stack);
-        throw err;
-      }
-      const body = res.body;
-      if (typeof body !== "string") {
-        console.error("Error after GET /_api/view; body is not a string");
-        throw new Error("body is not a string");
-      }
-
-      const parsedBody = JSON.parse(body);
-
-      if (parsedBody.hasOwnProperty("error") && parsedBody.error) {
-        throw new Error(`GET ${url} returned error: ${parsedBody.errorMessage}`);
-      }
-
-      return parsedBody;
-    };
 
     getDBServers().forEach(serverId => {
       const dbServerEndpoint =
@@ -461,9 +474,29 @@ function MovingShardsWithViewSuite (options) {
 
       const views = GETAndParseOrThrow(url + '/_api/view').result;
       views.forEach(v => {
-        const links =
-          GETAndParseOrThrow(url + '/_api/view/' + v.name + '/properties')
-            .links;
+        let links;
+        try {
+          links =
+            GETAndParseOrThrow(url + '/_api/view/' + v.name + '/properties')
+              .links;
+        } catch (e) {
+          // After shards are moved, it takes a little time before the view(s)
+          // aren't available via the REST api anymore. Thus there is a race
+          // between the HTTP calls to `/_api/view` and
+          // `/_api/view/<name>/properties`, and the second GET may fail because
+          // the view disappeared between the calls.
+          // If that's the case, we treat the view as non-existent on this
+          // server.
+
+          if (e instanceof arangodb.ArangoError
+            && e.errorNum === internal.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+            console.info(`Exception during getViewServersPerShard(): ${e}`);
+
+            return;
+          }
+
+          throw e;
+        }
 
         if (links === undefined) {
           return;

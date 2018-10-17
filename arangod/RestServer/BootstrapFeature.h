@@ -35,6 +35,8 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void unprepare() override final;
 
+  static std::string const& name() noexcept;
+
   bool isReady() const {
     return _isReady;
   }
