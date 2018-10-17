@@ -33,7 +33,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace arangodb::rest;
 
 GlobalTailingSyncer::GlobalTailingSyncer(
     ReplicationApplierConfiguration const& configuration,
@@ -106,7 +105,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     try {
       GlobalInitialSyncer init(_state.applier);
       VPackBuilder inventoryResponse;
-      Result res = init.inventory(inventoryResponse);
+      Result res = init.getInventory(inventoryResponse);
       _queriedTranslations = true;
 
       if (res.fail()) {

@@ -83,22 +83,20 @@ TRI_voc_tick_t MMFilesWalAccess::lastTick() const {
 
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
-WalAccessResult MMFilesWalAccess::openTransactions(
-    uint64_t tickStart, uint64_t tickEnd, WalAccess::Filter const& filter,
-    TransactionCallback const& cb) const {
+WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filter,
+                                                   TransactionCallback const& cb) const {
   LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
-      << "determining transactions, tick range " << tickStart << " - "
-      << tickEnd;
+      << "determining transactions, tick range " << filter.tickStart << " - "
+      << filter.tickEnd;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
 
+  MMFilesLogfileManager* mgr = MMFilesLogfileManager::instance();
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
-  std::vector<arangodb::MMFilesWalLogfile*> logfiles =
-      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-          tickStart, tickEnd, fromTickIncluded);
+  auto logfiles = mgr->getLogfilesForTickRange(filter.tickStart, filter.tickEnd, fromTickIncluded);
   // always return the logfiles we have used
-  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
+  TRI_DEFER(mgr->returnLogfiles(logfiles));
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
@@ -139,12 +137,12 @@ WalAccessResult MMFilesWalAccess::openTransactions(
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t const foundTick = marker->getTick();
 
-        if (foundTick <= tickStart) {
+        if (foundTick <= filter.tickStart) {
           // marker too old
           continue;
         }
 
-        if (foundTick > tickEnd) {
+        if (foundTick > filter.tickEnd) {
           // marker too new
           break;
         }
@@ -408,7 +406,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     return TRI_ERROR_NO_ERROR;
   }
 
-  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize) {
+  WalAccessResult tail(size_t chunkSize) {
     MMFilesLogfileManagerState const state =
         MMFilesLogfileManager::instance()->state();
 
@@ -416,7 +414,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     bool fromTickIncluded = false;
     std::vector<arangodb::MMFilesWalLogfile*> logfiles =
         MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-            tickStart, tickEnd, fromTickIncluded);
+            _filter.tickStart, _filter.tickEnd, fromTickIncluded);
     // always return the logfiles we have used
     TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
 
@@ -482,19 +480,19 @@ struct MMFilesWalAccessContext : WalAccessContext {
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
 
-          if (foundTick <= tickEnd) {
+          if (foundTick <= _filter.tickEnd) {
             lastScannedTick = foundTick;
           }
 
-          if (foundTick <= tickStart) {
+          if (foundTick <= _filter.tickStart) {
             // marker too old
             continue;
           }
 
-          if (foundTick >= tickEnd) {
+          if (foundTick >= _filter.tickEnd) {
             hasMore = false;
 
-            if (foundTick > tickEnd) {
+            if (foundTick > _filter.tickEnd) {
               // marker too new
               break;
             }
@@ -559,10 +557,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
 };
 
 /// Tails the wall, this will already sanitize the
-WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
+WalAccessResult MMFilesWalAccess::tail(WalAccess::Filter const& filter,
                                        size_t chunkSize,
                                        TRI_voc_tid_t barrierId,
-                                       WalAccess::Filter const& filter,
                                        MarkerCallback const& callback) const {
   /*OG_TOPIC(WARN, Logger::REPLICATION)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "
@@ -571,13 +568,12 @@ WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
      filter.firstRegularTick;*/
 
   LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
-      << "dumping log, tick range " << tickStart << " - " << tickEnd;
+      << "dumping log, tick range " << filter.tickStart << " - " << filter.tickEnd;
 
   if (barrierId > 0) {
     // extend the WAL logfile barrier
-    MMFilesLogfileManager::instance()->extendLogfileBarrier(barrierId, 180,
-                                                            tickStart);
+    MMFilesLogfileManager::instance()->extendLogfileBarrier(barrierId, 180, filter.tickStart);
   }
   MMFilesWalAccessContext ctx(filter, callback);
-  return ctx.tail(tickStart, tickEnd, chunkSize);
+  return ctx.tail(chunkSize);
 }

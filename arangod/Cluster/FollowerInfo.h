@@ -38,7 +38,7 @@ class FollowerInfo {
   mutable Mutex                                _mutex;
   arangodb::LogicalCollection*                 _docColl;
   std::string                                  _theLeader;
-     // if the latter is empty, the we are leading
+     // if the latter is empty, then we are leading
 
  public:
 

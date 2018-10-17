@@ -136,7 +136,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  std::unique_ptr<asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::steady_timer> _steady_timer;
 
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);

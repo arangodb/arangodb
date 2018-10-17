@@ -418,6 +418,8 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   }
 #ifdef USE_IRESEARCH
   else if (type == IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    // FIXME TODO the check below is insufficient and will lead to false-positives since there are other IResearchLink-specific properties which may differ
+    // FIXME TODO use IndexFactory::compare(...) instead
     // must check if the "view" field is the same, otherwise we may confuse
     // two links for different views on the same collection
     auto lhValue = lhs.get("view");

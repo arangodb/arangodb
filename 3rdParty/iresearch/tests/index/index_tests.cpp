@@ -1154,7 +1154,7 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void profile_bulk_index_dedicated_consolidate(size_t num_threads, size_t batch_size, size_t consolidate_interval) {
-    const auto policy = irs::index_utils::consolidate_all();
+    const auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
     auto* directory = &dir();
     irs::index_writer::options options;
     std::atomic<bool> working(true);
@@ -11874,7 +11874,7 @@ TEST_F(memory_index_test, reuse_segment_writer) {
 
   // merge all segments
   {
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     writer->commit();
   }
 }
@@ -12744,7 +12744,7 @@ TEST_F(memory_index_test, consolidate_single_segment) {
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // nothing to consolidate
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
@@ -12781,7 +12781,7 @@ TEST_F(memory_index_test, consolidate_single_segment) {
     count = 0;
     dir().visit(get_number_of_files_in_segments);
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // nothing to consolidate
     expected_consolidating_segments = { 0 }; // expect first segment to be marked for consolidation
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
     writer->commit();
@@ -12899,7 +12899,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer, &dir]() {
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
@@ -13062,7 +13062,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer, &dir]() {
       // consolidation will fail because of
-      ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+      ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       auto check_consolidating_segments = [](
           std::set<const irs::segment_meta*>& candidates,
@@ -13221,7 +13221,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer, &dir]() {
       // consolidation will fail because of
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
@@ -13360,7 +13360,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer, &dir]() {
       // consolidation will fail because of
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
@@ -13528,7 +13528,7 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
 //
 //    writer->begin();
 //    writer->clear();
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 //    writer->commit(); // commit transaction
 //
 //    auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -13561,7 +13561,7 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
 //    ));
 //
 //    writer->begin();
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 //    writer->clear();
 //    writer->commit(); // commit transaction
 //
@@ -13588,7 +13588,7 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
     ));
     writer->commit();
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -13626,7 +13626,7 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
     writer->commit();
 
     writer->clear();
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -13706,7 +13706,7 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -13715,7 +13715,7 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // all segments are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -13725,7 +13725,7 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
 
     writer->commit(); // commit transaction (will commit nothing)
     ASSERT_EQ(1+count, irs::directory_cleaner::clean(dir())); // +1 for corresponding segments_* file
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // nothing to consolidate
     writer->commit(); // commit transaction (will commit nothing)
 
     // validate structure
@@ -13796,14 +13796,14 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     ));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -13905,14 +13905,14 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
     ));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir())); // segments_1
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -14194,7 +14194,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_FALSE(writer->begin()); // begin transaction (will not start transaction)
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -14202,7 +14202,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     // all segments are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -14217,7 +14217,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // nothing to consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -14300,14 +14300,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
@@ -14427,14 +14427,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
@@ -14588,14 +14588,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1};
@@ -14715,14 +14715,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -14846,14 +14846,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -15005,14 +15005,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(writer->begin()); // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -15174,14 +15174,14 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidate_all())); // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidate_all()));
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -15291,7 +15291,7 @@ TEST_F(memory_index_test, segment_consolidate) {
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
 
-  auto always_merge = irs::index_utils::consolidate_all();
+  auto always_merge = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
   // remove empty new segment
@@ -16187,7 +16187,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc6->stored.begin(), doc6->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes(1))); // value garanteeing merge
+    irs::index_utils::consolidate_bytes options;
+    options.threshold = 1;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16264,7 +16266,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes(0))); // value garanteeing non-merge
+    irs::index_utils::consolidate_bytes options;
+    options.threshold = 0;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16329,7 +16333,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(1))); // value garanteeing merge
+    irs::index_utils::consolidate_bytes_accum options;
+    options.threshold = 1;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be merged with something
 
@@ -16370,7 +16376,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc2->stored.begin(), doc2->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_bytes_accum(0))); // value garanteeing non-merge
+    irs::index_utils::consolidate_bytes_accum options;
+    options.threshold = 0;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16449,7 +16457,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_count(1))); // value garanteeing merge
+    irs::index_utils::consolidate_docs_live options;
+    options.threshold = 1;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<irs::string_ref> expectedName = { "A", "E" };
@@ -16503,7 +16513,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
       doc5->stored.begin(), doc5->stored.end()
     ));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_count(0))); // value garanteeing non-merge
+    irs::index_utils::consolidate_docs_live options;
+    options.threshold = 0;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
@@ -16579,7 +16591,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_fill(1))); // value garanteeing merge
+    irs::index_utils::consolidate_docs_fill options;
+    options.threshold = 1;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing merge
     writer->commit();
 
     std::unordered_set<irs::string_ref> expectedName = { "A", "C" };
@@ -16630,7 +16644,9 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
-    ASSERT_TRUE(writer->consolidate(iresearch::index_utils::consolidate_fill(0))); // value garanteeing non-merge
+    irs::index_utils::consolidate_docs_fill options;
+    options.threshold = 0;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(options))); // value garanteeing non-merge
     writer->commit();
 
     auto reader = iresearch::directory_reader::open(dir(), codec());
