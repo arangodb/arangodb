@@ -1,6 +1,10 @@
 devel
 -----
 
+* An aardvark statistics route could not collect and sum up the statistics of
+  all coordinators if one of them was ahead and had more results as the
+	others.
+
 * Web UI now checks if server statistics are enabled before it sends its first
   request to the statistics API
 
