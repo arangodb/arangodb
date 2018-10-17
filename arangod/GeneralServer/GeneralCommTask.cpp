@@ -460,7 +460,7 @@ void GeneralCommTask::handleRequestDirectly(
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   auto self = shared_from_this();
-  handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
+  handler->runHandler([self, this](rest::RestHandler* handler) {
 
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
