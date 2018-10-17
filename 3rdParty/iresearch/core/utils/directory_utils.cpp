@@ -534,9 +534,8 @@ bool ref_tracking_directory::rename(
   try {
     SCOPED_LOCK(mutex_);
 
-    if (refs_.emplace(dst, attribute_->add(dst)).second) {
-      refs_.erase(src);
-    }
+    refs_.emplace(dst, attribute_->add(dst));
+    refs_.erase(src);
 
     return true;
   } catch (...) {

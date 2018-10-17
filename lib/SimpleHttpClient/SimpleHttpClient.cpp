@@ -245,6 +245,10 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   // create a new result
   _result = new SimpleHttpResult();
+  auto resultGuard = scopeGuard([this] {
+    delete _result;
+    _result = nullptr;
+  });
 
   // reset error message
   _errorMessage = "";
@@ -326,8 +330,6 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           if (_connection->isInterrupted()) {
             this->close();
-            delete _result;
-            _result = nullptr;
             setErrorMessage("Command locally aborted");
             return nullptr;
           }
@@ -407,10 +409,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
-    if ( application_features::ApplicationServer::isStopping()) {
+    if (application_features::ApplicationServer::isStopping()) {
       setErrorMessage("Command locally aborted");
-      delete _result;
-      _result = nullptr;
       return nullptr;
     }
 
@@ -428,8 +428,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   // set result type in getResult()
   SimpleHttpResult* result = getResult(haveSentRequest);
-
   _result = nullptr;
+  resultGuard.cancel(); // doesn't matter but do it anyway
 
   return result;
 }

@@ -333,6 +333,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef IRESEARCH_DEBUG
+#define IRS_ASSERT(CHECK) \
+    ( (CHECK) ? void(0) : []{assert(!#CHECK);}() )
+#else
+#define IRS_ASSERT(CHECK) void(0)
+#endif
+
 #define UNUSED(par) (void)(par)
 
 #define NS_BEGIN(ns) namespace ns {

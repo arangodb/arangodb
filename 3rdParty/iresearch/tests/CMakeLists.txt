@@ -125,6 +125,10 @@ set(IReSearch_tests_headers
 if (MSVC)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+
+  # when compiling or linking against GTEST on MSVC2017 the following
+  # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
+  add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING)
 endif()
 
 add_custom_target(${IResearchTests_TARGET_NAME}
