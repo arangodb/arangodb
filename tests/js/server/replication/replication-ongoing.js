@@ -125,24 +125,23 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     var slaveState = replication.applier.state();
 
     if (slaveState.state.lastError.errorNum > 0) {
-      console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
+      console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
       break;
     }
 
     if (!slaveState.state.running) {
-      console.log("slave is not running");
+      console.topic("replication=error", "slave is not running");
       break;
     }
 
     if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
       compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-      //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
-      console.log("slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+      console.topic("replication=debug", "slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
       break;
     }
 
     if (!printed) {
-      console.log("waiting for slave to catch up");
+      console.topic("replication=debug", "waiting for slave to catch up");
       printed = true;
     }
     internal.wait(0.5, false);
@@ -1238,12 +1237,12 @@ function ReplicationOtherDBSuite() {
     while (i-- > 0) {
       let state = replication.applier.state();
       if (!state.running) {
-        console.log("slave is not running");
+        console.topic("replication=error", "slave is not running");
         break;
       }
       if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
         compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
-        console.log("slave has caught up");
+        console.topic("replication=error", "slave has caught up");
         break;
       }
       internal.sleep(0.5);
@@ -1285,12 +1284,12 @@ function ReplicationOtherDBSuite() {
     while (i-- > 0) {
       let state = replication.applier.state();
       if (!state.running) {
-        console.log("slave is not running");
+        console.topic("replication=error", "slave is not running");
         break;
       }
       if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
         compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
-        console.log("slave has caught up");
+        console.topic("replication=error", "slave has caught up");
         break;
       }
       internal.sleep(0.5);

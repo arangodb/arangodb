@@ -10,3 +10,5 @@ AQL Fundamentals
 * [Query Results](QueryResults.md): the result of an AQL query is an array of values. 
 * [Query Errors](QueryErrors.md): errors may arise from the AQL parsing or execution. 
 
+Learn more about optimizing your queries by going through the
+[Performance Course](https://www.arangodb.com/arangodb-performance-course/).
