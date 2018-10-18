@@ -97,9 +97,9 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
-    if (_nrMinimalThreads == 0) {
-      _nrMinimalThreads = _nrMaximalThreads / 2;
-    }
+  }
+  if (_nrMinimalThreads == 0) {
+    _nrMinimalThreads = _nrMaximalThreads / 2;
   }
 
   if (_queueSize == 0) {
