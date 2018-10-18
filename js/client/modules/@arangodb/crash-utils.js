@@ -148,10 +148,9 @@ Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
 
 function analyzeCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
-  const coreFN = instanceInfo.rootDir + '\\' + 'core.dmp';
 
-  if (!fs.exists(coreFN)) {
-    print('core file ' + coreFN + ' not found?');
+  if (!fs.exists(instanceInfo.coreFilePattern)) {
+    print('core file ' + instanceInfo.coreFilePattern + ' not found?');
     return;
   }
 
@@ -167,7 +166,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
 
   const args = [
     '-z',
-    coreFN,
+    instanceInfo.coreFilePattern,
     '-lines',
     '-logo',
     cdbOutputFile,
@@ -193,9 +192,9 @@ function checkMonitorAlive (binary, arangod, options, res) {
       let rc = statusExternal(arangod.monitor.pid, false);
       if (rc.status !== 'RUNNING') {
         arangod.monitor = rc;
-        if (arangod.monitor.exit !== 0) {
-          // ok, procdump exited with a failure,
-          // this means it wrote an exception dump.
+        // procdump doesn't set propper exit codes, check for
+        // dumps that may exist:
+        if (fs.exists(arangod.coreFilePattern)) {
           print("checkMonitorAlive: marking crashy");
           arangod.monitor.monitorExited = true;
           arangod.monitor.pid = null;
