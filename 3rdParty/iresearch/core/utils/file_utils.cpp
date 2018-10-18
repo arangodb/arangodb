@@ -972,9 +972,6 @@ bool remove(const file_path_t path) NOEXCEPT {
 
       return false;
     }
-
-    return true;
-  }
   #else
     auto res = ::remove(path);
 
@@ -983,8 +980,6 @@ bool remove(const file_path_t path) NOEXCEPT {
 
       return false;
     }
-
-    return true;
   #endif
 
   return true;

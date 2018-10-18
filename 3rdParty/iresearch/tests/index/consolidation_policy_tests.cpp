@@ -440,6 +440,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.lookahead = 0;//irs::integer_traits<size_t>::const_max;
 
     auto policy = irs::index_utils::consolidation_policy(options);
+
     irs::index_writer::consolidating_segments_t consolidating_segments;
     std::set<const irs::segment_meta*> candidates;
 
