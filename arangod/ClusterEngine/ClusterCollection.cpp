@@ -96,7 +96,7 @@ ClusterCollection::ClusterCollection(
           TRI_ERROR_BAD_PARAMETER,
           "volatile collections are unsupported in the RocksDB engine");
     }
-  } else {
+  } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -195,7 +195,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     merge.add("cacheEnabled",
               VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));
 
-  } else {
+  } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -252,7 +252,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
     result.add("cacheEnabled", VPackValue(Helper::readBooleanValue(
                                    _info.slice(), "cacheEnabled", false)));
 
-  } else {
+  } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
