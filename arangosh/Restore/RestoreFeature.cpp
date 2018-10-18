@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -71,10 +72,18 @@ arangodb::Result checkHttpResponse(
         };
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL,
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum,
         "got invalid response from server: HTTP " +
         itoa(response->getHttpReturnCode()) + ": '" +
-        response->getHttpReturnMessage() +
+        errorMsg +
         "' while executing '" +
         requestAction +
         "' with this payload: '" +
