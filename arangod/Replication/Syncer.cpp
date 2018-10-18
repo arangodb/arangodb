@@ -306,7 +306,9 @@ Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpcl
 void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
-  jobPosted();
+  if (!jobPosted()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
 
   try {
     auto self = shared_from_this();
@@ -328,7 +330,9 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 }
     
 /// @brief notifies that a job was posted
-void Syncer::JobSynchronizer::jobPosted() {
+/// returns false if job counter could not be increased (e.g. because
+/// the syncer was stopped/aborted already)
+bool Syncer::JobSynchronizer::jobPosted() {
   while (true) {
     CONDITION_LOCKER(guard, _condition);
    
@@ -339,7 +343,12 @@ void Syncer::JobSynchronizer::jobPosted() {
     // particular case, we simply wait for _jobsInFlight to become 0 again 
     if (_jobsInFlight == 0) { 
       ++_jobsInFlight;
-      break;
+      return true;
+    }
+
+    if (_syncer->isAborted()) {
+      // syncer already stopped... no need to carry on here
+      return false;
     }
     guard.wait(10 * 1000);
   }
