@@ -1,6 +1,13 @@
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
 
+* The single database or single coordinator statistics in a cluster
+  environment within the Web UI sometimes got called way too often.
+  This caused artifacts in the graphs, which is now fixed.
+
+* An aardvark statistics route could not collect and sum up the statistics of
+  all coordinators if one of them was ahead and had more results than the others
+
 * Web UI now checks if server statistics are enabled before it sends its first
   request to the statistics API
 

@@ -326,17 +326,14 @@ RequestPriority RestHandler::priority(RequestLane l) const {
     case RequestLane::AGENCY_CLUSTER:
     case RequestLane::CLUSTER_ADMIN:
     case RequestLane::SERVER_REPLICATION:
-      p = RequestPriority::LOW;
-      break;
-
     case RequestLane::CLIENT_V8:
     case RequestLane::CLUSTER_V8:
     case RequestLane::TASK_V8:
-      p = RequestPriority::V8;
+      p = RequestPriority::LOW;
       break;
   }
 
-  if (p == RequestPriority::HIGH || p == RequestPriority::V8) {
+  if (p == RequestPriority::HIGH) {
     return p;
   }
 

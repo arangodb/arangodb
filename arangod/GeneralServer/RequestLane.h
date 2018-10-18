@@ -39,7 +39,7 @@ enum class RequestLane {
   // that do AQL requests, user administrator that
   // internally uses AQL.
   CLIENT_AQL,
-    
+
   // For requests that are executed within an V8 context,
   // but not for requests that might use a V8 context for
   // user defined functions.
@@ -52,29 +52,29 @@ enum class RequestLane {
   // For requests between agents. These are basically the
   // requests used to implement RAFT.
   AGENCY_INTERNAL,
-   
+
   // For requests from the DBserver or Coordinator accessing
   // the agency.
   AGENCY_CLUSTER,
-   
+
   // For requests from the DBserver to the Coordinator or
   // from the Coordinator to the DBserver. But not using
   // V8 or having high priority.
   CLUSTER_INTERNAL,
-    
+
   // For requests from the from the Coordinator to the
   // DBserver using V8.
   CLUSTER_V8,
-    
+
   // For requests from the DBserver to the Coordinator or
   // from the Coordinator to the DBserver for administration
   // or diagnostic purpose. Should not block.
   CLUSTER_ADMIN,
-    
+
   // For requests used between leader and follower for
   // replication.
   SERVER_REPLICATION,
-  
+
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
   TASK_V8
@@ -86,7 +86,8 @@ enum class RequestLane {
   // AGENCY_CALLBACK`
 };
 
-enum class RequestPriority { HIGH, MED, LOW, V8 };
+enum class RequestPriority { HIGH, MED, LOW };
+
 }
 
 #endif

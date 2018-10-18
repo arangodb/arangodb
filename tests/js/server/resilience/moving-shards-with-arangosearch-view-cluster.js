@@ -489,7 +489,7 @@ function MovingShardsWithViewSuite (options) {
           // server.
 
           if (e instanceof arangodb.ArangoError
-            && e.errorNum === internal.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+            && e.errorNum === internal.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
             console.info(`Exception during getViewServersPerShard(): ${e}`);
 
             return;
