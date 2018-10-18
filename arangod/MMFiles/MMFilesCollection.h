@@ -536,6 +536,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool _doCompact;
   TRI_voc_tick_t _maxTick;
+
+
+  std::atomic<uint32_t> _next;
 };
 }
 
