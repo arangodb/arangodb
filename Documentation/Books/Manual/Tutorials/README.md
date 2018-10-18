@@ -6,6 +6,9 @@ Tutorials
 
 - [AQL](../../AQL/Tutorial/index.html):
   Introduction to ArangoDB's query language AQL
+
+- [Performance Course](https://www.arangodb.com/arangodb-performance-course/):
+  Performance Optimization Basics: How to make your queries faster
  
 - [Geo Queries](https://www.arangodb.com/using-arangodb-geo-index-cursor-via-aql/):
   How to use the ArangoDB Geo Index Cursor via AQL
@@ -15,9 +18,9 @@ Tutorials
 
 - [ArangoSearch](https://www.arangodb.com/tutorials/arangosearch/):
   The implementation of ArangoDB's view engine
- 
-Deployment
-----------
+
+Deployment & Administration
+---------------------------
 
 - [ArangoDB Starter](Starter/README.md):
   Starting an ArangoDB Cluster or database the easy way
@@ -34,6 +37,8 @@ Deployment
 - [Monitor ArangoDB](https://www.arangodb.com/tutorials/monitoring-collectd-prometheus-grafana/):
   Set up a monitoring system for ArangoDB using _collectd_, _Prometheus_ and _Grafana_
 
+- [Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/):
+  Concepts, maintenance, resilience and troubleshooting
 
 Graphs
 ------
