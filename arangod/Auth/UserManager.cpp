@@ -571,6 +571,9 @@ Result auth::UserManager::accessUser(std::string const& user,
 }
 
 bool auth::UserManager::userExists(std::string const& user) {
+  if (user.empty()) {
+    return false;
+  }
   loadFromDB();
 
   READ_LOCKER(readGuard, _userCacheLock);
