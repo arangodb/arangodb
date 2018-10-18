@@ -326,9 +326,12 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     
     if (result.ok()) {
-      rocksdb::SequenceNumber seqNr = _rocksTransaction->GetCommitedSeqNumber();
-      seqNr += numOps; // add to get to the end seq_nr of the batch
-      TRI_ASSERT(seqNr > 0);
+      TRI_ASSERT(numOps > 0); // simon: should hold unless we're beeing stupid
+      rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
+      if (ADB_LIKELY(numOps > 0)) {
+        postCommitSeq += numOps - 1; // add to get to the next batch
+      }
+      TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
       
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
@@ -336,7 +339,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
-        collection->commitCounts(id(), seqNr);
+        collection->commitCounts(id(), postCommitSeq);
         committed = true;
       }
 

@@ -86,14 +86,14 @@ function recoverySuite () {
         assertEqual([], c.edges("test/" + i));
       }
 
-      //internal.waitForEstimatorSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
           case 'hash':
           case 'edge':
-            assertEqual(i.selectivityEstimate, 1);
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(i));
             break;
             default:
             fail();
