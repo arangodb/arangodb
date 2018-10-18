@@ -70,7 +70,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
   // turn on intermediate commits as the number of keys to delete can be huge here
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-  RocksDBCollection *physical = static_cast<RocksDBCollection*>(coll->getPhysical());
+  RocksDBCollection* physical = static_cast<RocksDBCollection*>(coll->getPhysical());
   
   Result res = trx.begin();
 
@@ -649,7 +649,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor its indexes can be invalidated
 
-    RocksDBCollection *physical = static_cast<RocksDBCollection*>(col->getPhysical());
+    RocksDBCollection* physical = static_cast<RocksDBCollection*>(col->getPhysical());
     size_t currentChunkId = 0;
 
     std::string lowKey;
@@ -792,9 +792,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           }
         };  // compare chunk - end
 
+    uint64_t documentsFound = 0;
     auto iterator = createPrimaryIndexIterator(&trx, col);
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+          ++documentsFound;
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
@@ -820,6 +822,15 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       currentChunkId++;
       if (currentChunkId < numChunks) {
         resetChunk();
+      }
+    }
+
+    {
+      uint64_t numberDocumentsAfterSync = documentsFound + stats.numDocsInserted - stats.numDocsRemoved;
+      uint64_t numberDocumentsDueToCounter = col->numberDocuments(&trx, transaction::CountType::Normal);
+      syncer.setProgress(std::string("number of remaining documents in collection '") + col->name() + "' " + std::to_string(numberDocumentsAfterSync) + ", number of documents due to counter: " + std::to_string(numberDocumentsDueToCounter));
+      if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
+        TRI_ASSERT(false);
       }
     }
 
