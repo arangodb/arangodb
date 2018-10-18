@@ -434,6 +434,7 @@ bool consolidateCleanupStore(
     irs::directory& directory,
     irs::index_writer& writer,
     arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& policy,
+    irs::merge_writer::flush_progress_t const& progress,
     bool runCleanupAfterConsolidation,
     arangodb::iresearch::IResearchView const& view,
     const char* storeName
@@ -450,7 +451,7 @@ bool consolidateCleanupStore(
       << "registering consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
     try {
-      writer.consolidate(policy.policy());
+      writer.consolidate(policy.policy(), nullptr, progress);
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
@@ -751,8 +752,10 @@ IResearchView::IResearchView(
     struct State : public IResearchViewMeta {
       size_t _cleanupIntervalCount{ 0 };
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
+      irs::merge_writer::flush_progress_t _progress;
     } state;
 
+    state._progress = [this]()->bool { return !_asyncTerminate.load(); };
     _asyncFeature->async(
       self(),
       [this, state](size_t& timeoutMsec, bool) mutable ->bool {
@@ -797,6 +800,7 @@ IResearchView::IResearchView(
                  *_storePersisted._directory,
                  *_storePersisted._writer,
                  state._consolidationPolicy,
+                 state._progress,
                  runCleanupAfterConsolidation,
                  *this,
                  "persistent store")
