@@ -475,7 +475,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   };
 
   let res = {};
-  if (platform.substr(0, 3) === 'win') {
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     res = executeExternal(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
