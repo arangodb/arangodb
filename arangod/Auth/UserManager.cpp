@@ -571,7 +571,7 @@ Result auth::UserManager::accessUser(std::string const& user,
 }
 
 bool auth::UserManager::userExists(std::string const& user) {
-  if(user.empty()) {
+  if (user.empty()) {
     return false;
   }
   loadFromDB();
