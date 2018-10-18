@@ -493,6 +493,19 @@ SECTION("test_cleanup") {
   CHECK(view->memory() <= memory);
 }
 
+SECTION("test_consolidate") {
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\":\"arangosearch\", \"consolidationIntervalMsec\": 1000 }");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto logicalView = vocbase.createView(viewCreateJson->slice());
+  REQUIRE((false == !logicalView));
+  // FIXME TODO write test to check that long-running consolidation aborts on view drop
+  // 1. create view with policy that blocks
+  // 2. start policy
+  // 3. drop view
+  // 4. unblock policy
+  // 5. ensure view drops immediately
+}
+
 SECTION("test_drop") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   std::string dataPath = ((((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
