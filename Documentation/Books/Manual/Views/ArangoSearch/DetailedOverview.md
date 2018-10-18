@@ -157,7 +157,7 @@ of removing unused segments after release of internal resources.
       i.e. the candidate segment's valid document count is less than the average
       segment's total document count multiplied by the `{threshold}`.
     - **tier**: Consolidate based on segment byte size and live document count
-                as dicated by the customization attributes.
+      as dictated by the customization attributes.
 
 ## Link properties
 
