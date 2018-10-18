@@ -952,7 +952,7 @@ bool SynchronizeShard::first() {
         ep, database, collection->name(), clientId, lockJobId, true);
       if (!result.ok()) {
         std::string errorMessage = 
-          "synchronizeOneShard: error in startReadLockOnLeader (soft):"
+          "synchronizeOneShard: error in startReadLockOnLeader (hard):"
           + res.errorMessage();
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMessage;
         _result.reset(TRI_ERROR_INTERNAL, errorMessage);
