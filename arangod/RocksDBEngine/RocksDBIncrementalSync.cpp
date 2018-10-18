@@ -749,8 +749,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     LogicalCollection* coll = trx.documentCollection();
     auto iterator = createPrimaryIndexIterator(&trx, coll);
+    uint64_t documentsFound = 0;
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+          ++documentsFound;
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
@@ -776,6 +778,15 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       currentChunkId++;
       if (currentChunkId < numChunks) {
         resetChunk();
+      }
+    }
+
+    {
+      uint64_t numberDocumentsAfterSync = documentsFound + stats.numDocsInserted - stats.numDocsRemoved;
+      uint64_t numberDocumentsDueToCounter = col->numberDocuments(&trx, transaction::CountType::Normal);
+      syncer.setProgress(std::string("number of remaining documents in collection '") + col->name() + "' " + std::to_string(numberDocumentsAfterSync) + ", number of documents due to counter: " + std::to_string(numberDocumentsDueToCounter));
+      if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
+        TRI_ASSERT(false);
       }
     }
 

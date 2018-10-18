@@ -95,6 +95,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     VIEW_CREATE,
     VIEW_CHANGE,
     TRANSACTION,
+    TRANSACTION_HALTED,
     SINGLE_PUT,
     SINGLE_REMOVE
   };
@@ -113,12 +114,16 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         _lastWrittenSequence(0) {}
 
   bool Continue() override {
+    if (_state == TRANSACTION_HALTED) {
+      return false;
+    }
+
     if (_responseSize > _maxResponseSize) {
       // it should only be possible to be in the middle of a huge batch,
       // if and only if we are in one big transaction. We may not stop
-      // while
       if (_state == TRANSACTION && _removedDocRid == 0) {
-        return false;
+        // this will make us process one more marker still
+        _state = TRANSACTION_HALTED;
       }
     }
     return true;
@@ -128,8 +133,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
 
-    //LOG_TOPIC(ERR, Logger::ENGINES) << "[LOG] " << _currentSequence
-    //  << " " << rocksDBLogTypeName(type);
+    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
+    // << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
         resetTransientState(); // finish ongoing trx
@@ -402,8 +407,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
     incTick();
-    
-    //LOG_TOPIC(ERR, Logger::ENGINES) << "[PUT] cf: " << column_family_id
+    // LOG_TOPIC(WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id
     // << ", key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
@@ -634,6 +638,7 @@ public:
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    TRI_ASSERT(_state != TRANSACTION_HALTED);
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -645,7 +650,7 @@ public:
   }
   
   uint64_t endBatch() {
-    TRI_ASSERT(_removedDocRid == 0);
+    TRI_ASSERT(_removedDocRid == 0 || _state == TRANSACTION_HALTED);
     resetTransientState();
     return _currentSequence;
   }
@@ -735,6 +740,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   if (chunkSize < 16384) { // we need to have some sensible minimum
     chunkSize = 16384;
   }
+  
   // pre 3.4 breaking up write batches is not supported
   size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
 
@@ -815,7 +821,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  //LOG_TOPIC(WARN, Logger::ENGINES) << "2. firstTick: " << firstTick << " lastWrittenTick: " << lastWrittenTick
-  //<< " latestTick: " << latestTick;
+  // LOG_TOPIC(WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << " lastWrittenTick: " << lastWrittenTick
+  // << " latestTick: " << latestTick;
   return result;
 }
