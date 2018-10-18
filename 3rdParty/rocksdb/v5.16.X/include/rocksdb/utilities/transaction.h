@@ -438,7 +438,7 @@ class Transaction {
 
   virtual uint64_t GetLogNumber() const { return log_number_; }
   
-  // WAL sequence number of WriteBatch, only valid after
+  // Sequence number in WAL where operations start, only valid after
   // a successfull commit with the WRITE_COMMITTED db txn policy
   virtual SequenceNumber GetCommitedSeqNumber() const {
     return 0;
