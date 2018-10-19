@@ -21,8 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/locale/encoding.hpp>
-
 #include "file_utils.hpp"
 #include "locale_utils.hpp"
 #include "log.hpp"
@@ -30,16 +28,6 @@
 #include "utf8_path.hpp"
 
 NS_LOCAL
-
-// in some situations codecvt returned from boost::filesystem::path seems to get corrupted
-// always use UTF-8 locale for reading/writing filesystem paths
-const std::codecvt<wchar_t, char, std::mbstate_t>& fs_codecvt() {
-  static auto default_locale = iresearch::locale_utils::locale("", true);
-
-  return std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
-    default_locale
-  );
-}
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
@@ -57,7 +45,9 @@ inline bool append_path(std::string& buf, const irs::string_ref& value) {
 
 // use inline to avoid GCC warning
 inline bool append_path(std::string& buf, const wstring_ref& value) {
-  static auto& fs_cvt = fs_codecvt();
+  // always use UTF-8 locale for reading/writing filesystem paths
+  // forceUnicodeSystem since using UCS2
+  static auto& fs_cvt = irs::locale_utils::converter<wchar_t>("utf8", true);
   auto size = value.size() * 4; // same ratio as boost::filesystem
   auto start = buf.size();
 
@@ -89,7 +79,9 @@ inline bool append_path(std::string& buf, const wstring_ref& value) {
 
 // use inline to avoid GCC warning
 inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
-  static auto& fs_cvt = fs_codecvt();
+  // always use UTF-8 locale for reading/writing filesystem paths
+  // forceUnicodeSystem since using UTF8
+  static auto& fs_cvt = irs::locale_utils::converter<wchar_t>("utf8", true);
   auto size = value.size() * 3; // same ratio as boost::filesystem
   auto start = buf.size();
 

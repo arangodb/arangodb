@@ -9,42 +9,79 @@
     el: '#content',
 
     initialize: function (options) {
+      var self = this;
       this.collectionName = options.collectionName;
       this.model = this.collection;
+
+      // rerender
+      self.interval = window.setInterval(function () {
+        if (window.location.hash.indexOf('cIndices/' + self.collectionName) !== -1 && window.VISIBLE) {
+          if ($('#collectionEditIndexTable').is(':visible') && !$('#indexDeleteModal').is(':visible')) {
+            self.rerender();
+          }
+        }
+      }, self.refreshRate);
     },
+
+    interval: null,
+    refreshRate: 10000,
 
     template: templateEngine.createTemplate('indicesView.ejs'),
 
     events: {
     },
 
+    remove: function () {
+      if (this.interval) {
+        window.clearInterval(this.interval);
+      }
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     render: function () {
       var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/engine'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          $(self.el).html(self.template.render({
-            model: self.model,
-            supported: data.supports.indexes
-          }));
+      var continueFunction = function (data) {
+        $(self.el).html(self.template.render({
+          model: self.model,
+          supported: data.supports.indexes
+        }));
 
-          self.breadcrumb();
-          window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
+        self.breadcrumb();
+        window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
 
-          self.getIndex();
+        self.getIndex();
 
-          // check permissions and adjust views
-          arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
-        },
-        error: function () {
-          arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
-        }
-      });
+        // check permissions and adjust views
+        arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
+      };
+
+      if (!this.engineData) {
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/engine'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.engineData = data;
+            continueFunction(data);
+          },
+          error: function () {
+            arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
+          }
+        });
+      } else {
+        continueFunction(this.engineData);
+      }
+    },
+
+    rerender: function () {
+      this.getIndex(true);
     },
 
     changeViewToReadOnly: function () {
@@ -61,12 +98,12 @@
       );
     },
 
-    getIndex: function () {
+    getIndex: function (rerender) {
       var callback = function (error, data, id) {
         if (error) {
           window.arangoHelper.arangoError('Index', data.errorMessage);
         } else {
-          this.renderIndex(data, id);
+          this.renderIndex(data, id, rerender);
         }
       }.bind(this);
 
@@ -152,6 +189,8 @@
           } else {
             arangoHelper.arangoError('Document error', 'Could not create index.');
           }
+        } else {
+          arangoHelper.arangoNotification('Index', 'Creation in progress. This may take a while.');
         }
         // toggle back
         self.toggleNewIndexView();
@@ -272,7 +311,7 @@
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
     },
-    renderIndex: function (data, id) {
+    renderIndex: function (data, id, rerender) {
       this.index = data;
 
       // get pending jobs
@@ -325,6 +364,10 @@
         var fieldString = '';
         var actionString = '';
 
+        if (rerender) {
+          $('#collectionEditIndexTable tbody').empty();
+        }
+
         _.each(this.index.indexes, function (v) {
           if (v.type === 'primary' || v.type === 'edge') {
             actionString = '<span class="icon_arangodb_locked" ' +
@@ -342,9 +385,9 @@
           var position = v.id.indexOf('/');
           var indexId = v.id.substr(position + 1, v.id.length);
           var selectivity = (
-          v.hasOwnProperty('selectivityEstimate')
-            ? (v.selectivityEstimate * 100).toFixed(2) + '%'
-            : 'n/a'
+            v.hasOwnProperty('selectivityEstimate')
+              ? (v.selectivityEstimate * 100).toFixed(2) + '%'
+              : 'n/a'
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var deduplicate = (v.hasOwnProperty('deduplicate') ? v.deduplicate : 'n/a');

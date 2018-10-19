@@ -48,6 +48,9 @@ class EdgeDefinition {
         _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
+  void setName(std::string const& newName) {
+    _edgeCollection = newName;
+  }
   std::set<std::string> const& getFrom() const { return _from; }
   std::set<std::string> const& getTo() const { return _to; }
 
@@ -71,6 +74,10 @@ class EdgeDefinition {
   bool operator==(EdgeDefinition const& other) const;
   bool operator!=(EdgeDefinition const& other) const;
   bool isVertexCollectionUsed(std::string const& collectionName) const;
+  bool isFromVertexCollectionUsed(std::string const& collectionName) const;
+  bool isToVertexCollectionUsed(std::string const& collectionName) const;
+
+  bool renameCollection(std::string const& oldName, std::string const& newName);
 
  private:
   std::string _edgeCollection;
@@ -150,9 +157,14 @@ class Graph {
   /// @brief get the cids of all edgeCollections
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
 
+  /// @brief get the cids of all edgeCollections as reference
+  std::map<std::string, EdgeDefinition> & edgeDefinitions();
+
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
+
+  bool renameCollections(std::string const& oldName, std::string const& newName);
 
   boost::optional<EdgeDefinition const&> getEdgeDefinition(
       std::string const& collectionName) const;

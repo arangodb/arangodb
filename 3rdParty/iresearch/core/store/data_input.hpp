@@ -90,8 +90,8 @@ struct IRESEARCH_API data_input
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_input : public data_input {
  public:
-  DECLARE_PTR(index_input);
-  DECLARE_FACTORY(index_input);
+  DECLARE_UNIQUE_PTR(index_input);
+  DEFINE_FACTORY_INLINE(index_input);
 
   virtual ~index_input();
   virtual ptr dup() const NOEXCEPT = 0; // non-thread-safe fd copy (offset preserved)

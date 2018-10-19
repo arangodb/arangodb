@@ -37,8 +37,8 @@ TEST(bit_utils_test, zig_zag_32) {
   EXPECT_EQ(max, zig_zag_decode32(zig_zag_encode32(max)));
 
   const int32_t step = 255;
-  const int32_t range_min = -std::numeric_limits< int32_t >::min() / step;
-  const int32_t range_max = std::numeric_limits< int32_t >::max() / step;
+  const int32_t range_min = -std::numeric_limits< int16_t >::min() / step;
+  const int32_t range_max = std::numeric_limits< int16_t >::max() / step;
 
   for (int32_t i = range_min; i < range_max; i += step) {
     EXPECT_EQ(i, zig_zag_decode32(zig_zag_encode32(i)));
@@ -55,8 +55,8 @@ TEST(bit_utils_test, zig_zag_64) {
   EXPECT_EQ(max, zig_zag_decode64(zig_zag_encode64(max)));
 
   const int64_t step = 255;
-  const int64_t range_min = -std::numeric_limits< int32_t >::min() / step;
-  const int64_t range_max = std::numeric_limits< int32_t >::max() / step;
+  const int64_t range_min = -(std::numeric_limits< int32_t >::min() / uint32_t(step));
+  const int64_t range_max = std::numeric_limits< int32_t >::max() / uint32_t(step);
 
   for (int64_t i = range_min; i < range_max; i += step) {
     EXPECT_EQ(i, zig_zag_decode64(zig_zag_encode64(i)));

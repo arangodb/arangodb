@@ -27,9 +27,9 @@
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
 #include "utils/async_utils.hpp"
+#include "utils/crc.hpp"
 #include "utils/utf8_path.hpp"
 
-#include <boost/crc.hpp>
 #include <cstdio>
 #include <vector>
 #include <string>
@@ -879,7 +879,7 @@ void directory_test_case::smoke_store() {
   auto it = names.end();
   for (const auto& name : names) {
     --it;
-    boost::crc_32_type crc;
+    irs::crc32c crc;
 
     auto file = dir_->create(name);
     ASSERT_FALSE(!file);
@@ -911,7 +911,7 @@ void directory_test_case::smoke_store() {
 
   for (const auto& name : names) {
     --it;
-    boost::crc_32_type crc;
+    irs::crc32c crc;
     bool exists;
 
     ASSERT_TRUE(dir_->exists(exists, name) && exists);

@@ -278,20 +278,18 @@ struct segment_meta_reader : public iresearch::segment_meta_reader {
  * document_mask_writer
  * ------------------------------------------------------------------*/
 
-class document_mask_writer: public iresearch::document_mask_writer {
+class document_mask_writer: public irs::document_mask_writer {
  public:
   document_mask_writer(const index_segment& data);
   virtual std::string filename(
-    const iresearch::segment_meta& meta
+    const irs::segment_meta& meta
   ) const override;
-  void prepare(
-    iresearch::directory& dir,
-    const iresearch::segment_meta& meta
-  ) override;
 
-  void begin(uint32_t count) override;
-  void write(const iresearch::doc_id_t& doc_id) override;
-  void end() override;
+  void write(
+    irs::directory& dir,
+    const irs::segment_meta& meta,
+    const irs::document_mask& docs_mask
+  ) override;
 
  private:
   const index_segment& data_;
@@ -352,7 +350,7 @@ class field_writer : public iresearch::field_writer {
 class format : public iresearch::format {
  public:
   DECLARE_FORMAT_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   format();
   format(const index_segment& data);
 

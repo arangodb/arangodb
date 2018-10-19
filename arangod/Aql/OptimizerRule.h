@@ -55,13 +55,13 @@ struct OptimizerRule {
     // ========================================================
     replaceNearWithinFulltext,
 
-    // remove legacy geo functions
-    removeLegacyGeoFunctions_pass1,
-
     inlineSubqueriesRule,
 
     // split and-combined filters into multiple smaller filters
     splitFiltersRule,
+    
+    /// simplify some conditions in CalculationNodes
+    simplifyConditionsRule,
 
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
@@ -165,7 +165,7 @@ struct OptimizerRule {
     // merge filters into graph traversals
     optimizeTraversalsRule,
     // remove redundant filters statements
-    removeFiltersCoveredByTraversal_pass6,
+    removeFiltersCoveredByTraversal,
 
     // remove calculations that are redundant
     // needs to run after filter removal
@@ -177,15 +177,18 @@ struct OptimizerRule {
 #endif
 
     // remove now obsolete path variables
-    removeTraversalPathVariable_pass6,
+    removeTraversalPathVariable,
     prepareTraversalsRule,
 
     // when we have single document operations, fill in special cluster
     // handling.
-    substituteSingleDocumentOperations_pass6,
+    substituteSingleDocumentOperations,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
+    
+    /// Pass 9: fuse filter conditions
+    fuseFiltersRule,
 
     /// Pass 9: patch update statements
     patchUpdateStatementsRule,

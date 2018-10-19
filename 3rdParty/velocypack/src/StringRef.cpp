@@ -1,7 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Library to build up VPack documents.
+///
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,26 +19,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
-#define ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
+#include "velocypack/StringRef.h"
+#include "velocypack/Slice.h"
 
-#include "Basics/Common.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
-
-namespace arangodb {
-
-class EngineEqualityCheckFeature final : public application_features::ApplicationFeature {
- public:
-  explicit EngineEqualityCheckFeature(
-    application_features::ApplicationServer& server
-  );
-
-  void start() override final;
-};
-
+using namespace arangodb::velocypack;
+  
+StringRef::StringRef(arangodb::velocypack::Slice const& slice) {
+  VELOCYPACK_ASSERT(slice.isString());
+  arangodb::velocypack::ValueLength l;
+  _data = slice.getString(l);
+  _length = l;
 }
-
-#endif
+  
+/// @brief create a StringRef from a VPack slice of type String
+StringRef& StringRef::operator=(arangodb::velocypack::Slice const& slice) {
+  arangodb::velocypack::ValueLength l;
+  _data = slice.getString(l);
+  _length = l;
+  return *this;
+}

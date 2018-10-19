@@ -70,10 +70,9 @@ SECTION("test_defaults") {
   CHECK((true == metaState._collections.empty()));
   CHECK(true == (10 == meta._cleanupIntervalStep));
   CHECK(true == (60 * 1000 == meta._consolidationIntervalMsec));
-  CHECK((std::string("bytes_accum") == meta._consolidationPolicy.type()));
-  CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
+  CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
   CHECK((false == !meta._consolidationPolicy.policy()));
-  CHECK((0.85f == meta._consolidationPolicy.threshold()));
+  CHECK((0.1f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
 }
 
@@ -88,7 +87,10 @@ SECTION("test_inheritDefaults") {
   defaultsState._collections.insert(42);
   defaults._cleanupIntervalStep = 654;
   defaults._consolidationIntervalMsec = 456;
-  defaults._consolidationPolicy = ConsolidationPolicy("bytes", 101, .11f);
+  defaults._consolidationPolicy = ConsolidationPolicy(
+    irs::index_writer::consolidation_policy_t(),
+    std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"bytes\", \"threshold\": 0.11 }"))
+  );
   defaults._locale = irs::locale_utils::locale("C");
 
   {
@@ -99,10 +101,9 @@ SECTION("test_inheritDefaults") {
     CHECK((42 == *(metaState._collections.begin())));
     CHECK(654 == meta._cleanupIntervalStep);
     CHECK(456 == meta._consolidationIntervalMsec);
-    CHECK((std::string("bytes") == meta._consolidationPolicy.type()));
-    CHECK((101 == meta._consolidationPolicy.segmentThreshold()));
-    CHECK((false == !meta._consolidationPolicy.policy()));
-    CHECK((.11f == meta._consolidationPolicy.threshold()));
+    CHECK((std::string("bytes") == meta._consolidationPolicy.properties().get("type").copyString()));
+    CHECK((true == !meta._consolidationPolicy.policy()));
+    CHECK((.11f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
   }
 }
@@ -120,10 +121,9 @@ SECTION("test_readDefaults") {
     CHECK((true == metaState._collections.empty()));
     CHECK(10 == meta._cleanupIntervalStep);
     CHECK(60 * 1000 == meta._consolidationIntervalMsec);
-    CHECK((std::string("bytes_accum") == meta._consolidationPolicy.type()));
-    CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
+    CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
     CHECK((false == !meta._consolidationPolicy.policy()));
-    CHECK((0.85f == meta._consolidationPolicy.threshold()));
+    CHECK((0.1f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
   }
 }
@@ -179,14 +179,7 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"segmentThreshold\": 0.5 } }");
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK((std::string("consolidationPolicy=>segmentThreshold") == errorField));
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"threshold\": -0.5 } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": -0.5 } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK((std::string("consolidationPolicy=>threshold") == errorField));
@@ -194,7 +187,7 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"threshold\": 1.5 } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": 1.5 } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK((std::string("consolidationPolicy=>threshold") == errorField));
@@ -218,7 +211,7 @@ SECTION("test_readCustomizedValues") {
         \"collections\": [ 42 ], \
         \"consolidationIntervalMsec\": 456, \
         \"cleanupIntervalStep\": 654, \
-        \"consolidationPolicy\": { \"type\": \"bytes\", \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \
+        \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": 0.11 }, \
         \"locale\": \"ru_RU.KOI8-R\" \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
@@ -233,10 +226,9 @@ SECTION("test_readCustomizedValues") {
   CHECK((42 == *(metaState._collections.begin())));
   CHECK(654 == meta._cleanupIntervalStep);
   CHECK(456 == meta._consolidationIntervalMsec);
-  CHECK((std::string("bytes") == meta._consolidationPolicy.type()));
-  CHECK((1001 == meta._consolidationPolicy.segmentThreshold()));
+  CHECK((std::string("bytes") == meta._consolidationPolicy.properties().get("type").copyString()));
   CHECK((false == !meta._consolidationPolicy.policy()));
-  CHECK((.11f == meta._consolidationPolicy.threshold()));
+  CHECK((.11f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
   CHECK(std::string("C") == iresearch::locale_utils::name(meta._locale));
 }
 
@@ -262,11 +254,9 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("consolidationIntervalMsec");
   CHECK((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
-  CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
-  tmpSlice2 = tmpSlice.get("segmentThreshold");
-  CHECK((tmpSlice2.isNumber<size_t>() && 300 == tmpSlice2.getNumber<size_t>()));
+  CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("threshold");
-  CHECK((tmpSlice2.isNumber<float>() && .85f == tmpSlice2.getNumber<float>()));
+  CHECK((tmpSlice2.isNumber<float>() && .1f == tmpSlice2.getNumber<float>()));
   tmpSlice2 = tmpSlice.get("type");
   CHECK((tmpSlice2.isString() && std::string("bytes_accum") == tmpSlice2.copyString()));
 }
@@ -277,7 +267,10 @@ SECTION("test_writeCustomizedValues") {
     arangodb::iresearch::IResearchViewMeta meta;
     arangodb::iresearch::IResearchViewMetaState metaState;
     meta._consolidationIntervalMsec = 0;
-    meta._consolidationPolicy = ConsolidationPolicy("fill", 0, .2f);
+    meta._consolidationPolicy = ConsolidationPolicy(
+      irs::index_writer::consolidation_policy_t(),
+      std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"fill\", \"threshold\": 0.2 }"))
+    );
 
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -290,9 +283,7 @@ SECTION("test_writeCustomizedValues") {
     tmpSlice = slice.get("consolidationIntervalMsec");
     CHECK((tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>()));
     tmpSlice = slice.get("consolidationPolicy");
-    CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
-    tmpSlice2 = tmpSlice.get("segmentThreshold");
-    CHECK((tmpSlice2.isNumber<size_t>() && 0 == tmpSlice2.getNumber<size_t>()));
+    CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
     tmpSlice2 = tmpSlice.get("threshold");
     CHECK((tmpSlice2.isNumber<float>() && .2f == tmpSlice2.getNumber<float>()));
     tmpSlice2 = tmpSlice.get("type");
@@ -308,7 +299,10 @@ SECTION("test_writeCustomizedValues") {
   metaState._collections.insert(62);
   meta._cleanupIntervalStep = 654;
   meta._consolidationIntervalMsec = 456;
-  meta._consolidationPolicy = ConsolidationPolicy("bytes", 101, .11f);
+  meta._consolidationPolicy = ConsolidationPolicy(
+    irs::index_writer::consolidation_policy_t(),
+    std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"bytes\", \"threshold\": 0.11 }"))
+  );
   meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
@@ -338,9 +332,7 @@ SECTION("test_writeCustomizedValues") {
   tmpSlice = slice.get("consolidationIntervalMsec");
   CHECK((true == tmpSlice.isNumber<size_t>() && 456 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
-  CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
-  tmpSlice2 = tmpSlice.get("segmentThreshold");
-  CHECK((tmpSlice2.isNumber<size_t>() && 101 == tmpSlice2.getNumber<size_t>()));
+  CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("threshold");
   CHECK((tmpSlice2.isNumber<float>() && .11f == tmpSlice2.getNumber<float>()));
   tmpSlice2 = tmpSlice.get("type");
@@ -359,7 +351,7 @@ SECTION("test_readMaskAll") {
     \"collections\": [ 42 ], \
     \"consolidationIntervalMsec\": 654, \
     \"cleanupIntervalStep\": 456, \
-    \"consolidationPolicy\": { \"threshold\": 0.1 }, \
+    \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": 0.1 }, \
     \"locale\": \"ru_RU.KOI8-R\" \
   }");
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));

@@ -230,8 +230,8 @@ void ClusterInfo::cleanup() {
   if (theInstance == nullptr) {
     return;
   }
-  
-  MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);  
+
+  MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);
 
   TRI_ASSERT(theInstance->_newPlannedViews.empty()); // only non-empty during loadPlan()
   theInstance->_plannedViews.clear();
@@ -1009,11 +1009,11 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  LOG_TOPIC(ERR, Logger::CLUSTER) << "Error while loading " << prefixCurrent
-                                  << " httpCode: " << result.httpCode()
-                                  << " errorCode: " << result.errorCode()
-                                  << " errorMessage: " << result.errorMessage()
-                                  << " body: " << result.body();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Error while loading " << prefixCurrent
+                                    << " httpCode: " << result.httpCode()
+                                    << " errorCode: " << result.errorCode()
+                                    << " errorMessage: " << result.errorMessage()
+                                    << " body: " << result.body();
 }
 
 /// @brief ask about a collection
@@ -1561,16 +1561,29 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   {
     // check if a collection with the same name is already planned
     loadPlan();
-
     READ_LOCKER(readLocker, _planProt.lock);
-    AllCollections::const_iterator it = _plannedCollections.find(databaseName);
-    if (it != _plannedCollections.end()) {
-      DatabaseCollections::const_iterator it2 = (*it).second.find(name);
+    {
+      AllCollections::const_iterator it = _plannedCollections.find(databaseName);
+      if (it != _plannedCollections.end()) {
+        DatabaseCollections::const_iterator it2 = (*it).second.find(name);
 
-      if (it2 != (*it).second.end()) {
-        // collection already exists!
-        events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        if (it2 != (*it).second.end()) {
+          // collection already exists!
+          events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        }
+      }
+    } {
+      // check against planned views as well
+      AllViews::const_iterator it = _plannedViews.find(databaseName);
+      if (it != _plannedViews.end()) {
+        DatabaseViews::const_iterator it2 = (*it).second.find(name);
+
+        if (it2 != (*it).second.end()) {
+          // view already exists!
+          events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        }
       }
     }
   }
@@ -2073,17 +2086,29 @@ int ClusterInfo::createViewCoordinator(
   {
     // check if a view with the same name is already planned
     loadPlan();
-
     READ_LOCKER(readLocker, _planProt.lock);
-    AllViews::const_iterator it = _plannedViews.find(databaseName);
+    {
+      AllViews::const_iterator it = _plannedViews.find(databaseName);
+      if (it != _plannedViews.end()) {
+        DatabaseViews::const_iterator it2 = (*it).second.find(name);
 
-    if (it != _plannedViews.end()) {
-      DatabaseViews::const_iterator it2 = (*it).second.find(name);
+        if (it2 != (*it).second.end()) {
+          // view already exists!
+          events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        }
+      }
+    } {
+      // check against planned collections as well
+      AllCollections::const_iterator it = _plannedCollections.find(databaseName);
+      if (it != _plannedCollections.end()) {
+        DatabaseCollections::const_iterator it2 = (*it).second.find(name);
 
-      if (it2 != (*it).second.end()) {
-        // view already exists!
-        events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        if (it2 != (*it).second.end()) {
+          // collection already exists!
+          events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        }
       }
     }
   }
@@ -2232,7 +2257,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
   }
 
-  auto const view = res.slice()[0].get(
+  auto const view = res.slice()[0].get<std::string>(
     { AgencyCommManager::path(), "Plan", "Views", databaseName, viewID }
   );
 
@@ -3172,11 +3197,11 @@ std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
 
       // _serversAliases is a map-type <Alias, ServerID>
       auto ita = _serverAliases.find(serverID_);
-      
+
       if (ita != _serverAliases.end()) {
         serverID_ = (*ita).second;
       }
-      
+
       // _serversAliases is a map-type <ServerID, std::string>
       auto it = _serverAdvertisedEndpoints.find(serverID_);
       if (it != _serverAdvertisedEndpoints.end()) {

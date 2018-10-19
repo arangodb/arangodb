@@ -492,7 +492,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
-                                                      bool& isValid) {
+                                                      bool& isValid) const {
   isValid = true;
   bool found;
   std::string const& etag = _request->header(header, found);

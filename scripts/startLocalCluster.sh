@@ -174,6 +174,14 @@ start() {
         CMD=$ARANGOD
     fi
 
+    if [ "$USE_RR" = "true" ]; then
+        if ! which rr > /dev/null; then
+            echo 'rr binary not found in PATH!' >&2
+            exit 1
+        fi
+        CMD="rr $CMD"
+    fi
+
     TYPE=$1
     PORT=$2
     mkdir -p cluster/data$PORT cluster/apps$PORT

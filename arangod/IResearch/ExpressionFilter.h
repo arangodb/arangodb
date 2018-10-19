@@ -95,7 +95,7 @@ struct ExpressionExecutionContext : irs::attribute {
 ///////////////////////////////////////////////////////////////////////////////
 class ByExpression final : public irs::filter {
  public:
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   DECLARE_FILTER_TYPE();
 
   ByExpression() noexcept;

@@ -234,7 +234,6 @@
       // choose non default values to check if they are corretly dumped and imported
       cleanupIntervalStep: 456,
       consolidationPolicy: {
-        segmentThreshold: 456,
         threshold: 0.3,
         type: "bytes_accum" // undocumented?
       },

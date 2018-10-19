@@ -67,7 +67,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     // 'make(...)' method wrapper for irs::analysis::analyzer types
     struct Builder {
       typedef irs::analysis::analyzer::ptr ptr;
-      DECLARE_FACTORY_DEFAULT(irs::string_ref const& type, irs::string_ref const& properties);
+      DECLARE_FACTORY(irs::string_ref const& type, irs::string_ref const& properties);
     };
 
     mutable irs::unbounded_object_pool<Builder> _cache; // cache of irs::analysis::analyzer (constructed via AnalyzerBuilder::make(...))
