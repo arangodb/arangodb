@@ -125,6 +125,18 @@ public:
   }
 };
 
+static std::stringstream& AppendShardInformationToMessage(
+    std::string const& database, std::string const& shard,
+    std::string const& planId,
+    std::chrono::system_clock::time_point const& startTime,
+    std::stringstream& msg) {
+  auto const endTime = system_clock::now();
+  msg << "local shard: '" << database << "/" << shard << "', "
+      << "for central: '" << database << "/" << planId << "', "
+      << "started: " << timepointToString(startTime) << ", "
+      << "ended: " << timepointToString(endTime);
+  return msg;
+}
 
 static arangodb::Result getReadLockId (
   std::string const& endpoint, std::string const& database,
@@ -676,11 +688,9 @@ bool SynchronizeShard::first() {
         std::find(planned.begin(), planned.end(), ourselves) == planned.end() ||
         planned.front() != leader) {
       // Things have changed again, simply terminate:
-      auto const endTime = system_clock::now();
       std::stringstream error;
-      error  << "cancelled, " << database << "/" << shard << ", " << database
-             << "/" << planId << ", started " << startTimeStr << ", ended "
-             << timepointToString(endTime);
+      error << "cancelled, ";
+      AppendShardInformationToMessage(database, shard, planId, startTime, error);
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
@@ -690,12 +700,9 @@ bool SynchronizeShard::first() {
     try {   // ci->getCollection can throw
       ci = clusterInfo->getCollection(database, planId);
     } catch(...) {
-      auto const endTime = system_clock::now();
       std::stringstream msg;
-      msg << "exception in getCollection, " << database << "/"
-          << shard << ", " << database
-          << "/" << planId << ", started " << startTimeStr << ", ended "
-          << timepointToString(endTime);
+      msg << "exception in getCollection, ";
+      AppendShardInformationToMessage(database, shard, planId, startTime, msg);
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: "
           << msg.str();
       _result.reset(TRI_ERROR_FAILED, msg.str());
@@ -716,12 +723,9 @@ bool SynchronizeShard::first() {
         break; // start synchronization work
       }
       // We are already there, this is rather strange, but never mind:
-      auto const endTime = system_clock::now();
       std::stringstream error;
-      error
-        << "already done, " << database << "/" << shard
-        << ", " << database << "/" << planId << ", started "
-        << startTimeStr << ", ended " << timepointToString(endTime);
+      error << "already done, ";
+      AppendShardInformationToMessage(database, shard, planId, startTime, error);
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
@@ -772,11 +776,12 @@ bool SynchronizeShard::first() {
 
         if (asResult.ok()) {
 
-          auto const endTime = system_clock::now();
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-            << "synchronizeOneShard: shortcut worked, done, " << database << "/"
-            << shard << ", " << database << "/" << planId <<", started: "
-            << startTimeStr << " ended: " << timepointToString(endTime);
+          if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
+            std::stringstream msg;
+            msg << "synchronizeOneShard: shortcut worked, done, ";
+            AppendShardInformationToMessage(database, shard, planId, startTime, msg);
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << msg.str();
+          }
           collection->followers()->setTheLeader(leader);
           notify();
           return false;
@@ -834,8 +839,6 @@ bool SynchronizeShard::first() {
 
       auto sy = details->slice();
       auto const endTime = system_clock::now();
-      bool longSync = false;
-
       // Long shard sync initialisation
       if (endTime-startTime > seconds(5)) {
         LOG_TOPIC(INFO, Logger::MAINTENANCE)
@@ -843,7 +846,6 @@ bool SynchronizeShard::first() {
           << shard << " " << res.errorMessage() <<  " start time: "
           << timepointToString(startTime) <<  ", end time: "
           << timepointToString(system_clock::now());
-        longSync = true;
       }
 
       // If this did not work, then we cannot go on:
@@ -1016,11 +1018,10 @@ bool SynchronizeShard::first() {
       _result.reset(TRI_ERROR_NO_ERROR);
 
     } catch (std::exception const& e) {
-      auto const endTime = system_clock::now();
       std::stringstream error;
-      error << "synchronization of local shard '" << database << "/" << shard
-            << "' for central '" << database << "/" << planId << "' failed: "
-            << e.what() << timepointToString(endTime);
+      error << "synchronization of";
+      AppendShardInformationToMessage(database, shard, planId, startTime, error);
+      error << " failed: " << e.what();
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
       _result.reset(TRI_ERROR_INTERNAL, e.what());
       return false;
@@ -1035,12 +1036,13 @@ bool SynchronizeShard::first() {
   }
 
   // Tell others that we are done:
-  auto const endTime = system_clock::now();
-  LOG_TOPIC(INFO, Logger::MAINTENANCE)
-    << "synchronizeOneShard: done, " << database << "/" << shard << ", "
-    << database << "/" << planId << ", started: "
-    << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
-
+  if (Logger::isEnabled(LogLevel::INFO, Logger::MAINTENANCE)) {
+    // This wrap is just to not write the stream if not needed.
+    std::stringstream msg;
+    AppendShardInformationToMessage(database, shard, planId, startTime, msg);
+    LOG_TOPIC(INFO, Logger::MAINTENANCE)
+      << "synchronizeOneShard: done, " << msg.str();
+  }
   notify();
   return false;
 
