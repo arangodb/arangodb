@@ -2649,12 +2649,6 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == false);
 
-  TRI_IF_FAILURE("RestReplicationHandler::destroyBeforeLock") {
-    // This will flag the query as destroyed while getting the
-    // blocking lock
-    cancelBlockingTransaction(id);
-  }
-
   return q->trx()->begin();
 }
 
