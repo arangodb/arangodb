@@ -703,8 +703,7 @@ bool SynchronizeShard::first() {
       std::stringstream msg;
       msg << "exception in getCollection, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, msg);
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: "
-          << msg.str();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << msg.str();
       _result.reset(TRI_ERROR_FAILED, msg.str());
       return false;
     }
@@ -771,7 +770,6 @@ bool SynchronizeShard::first() {
         database << "/" << shard << "' for central '" << database << "/" <<
         planId << "'";
       try {
-
         auto asResult = addShardFollower(ep, database, shard, 0, clientId, 60.0);
 
         if (asResult.ok()) {
@@ -945,7 +943,7 @@ bool SynchronizeShard::first() {
         return false;
       }
 
-      // Now start a read transaction to stop writes:
+      // Now start a exclusive transaction to stop writes:
       lockJobId = 0;
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
