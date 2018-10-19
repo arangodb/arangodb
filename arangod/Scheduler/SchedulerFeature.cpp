@@ -97,9 +97,9 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
-    if (_nrMinimalThreads == 0) {
-      _nrMinimalThreads = _nrMaximalThreads / 2;
-    }
+  }
+  if (_nrMinimalThreads == 0) {
+    _nrMinimalThreads = _nrMaximalThreads / 2;
   }
 
   if (_queueSize == 0) {
@@ -302,7 +302,7 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize, _fifo1Size, _fifo2Size);
+                                           _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
 }

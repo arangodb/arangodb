@@ -657,11 +657,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   if (_keyGenerator != nullptr) {
     result.openObject();
     _keyGenerator->toVelocyPack(result);
-    result.close();
   } else {
     result.openArray();
-    result.close();
   }
+  result.close();
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
