@@ -63,6 +63,7 @@ ClusterIndex::ClusterIndex(
       _info(info),
       _clusterSelectivity(/* default */0.1) {
   TRI_ASSERT(_info.slice().isObject());
+  TRI_ASSERT(_info.isClosed());
 }
 
 ClusterIndex::~ClusterIndex() {}
@@ -109,6 +110,8 @@ bool ClusterIndex::hasSelectivityEstimate() const {
     _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
     _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
     _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    return false;
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -137,6 +140,8 @@ bool ClusterIndex::isPersistent() const {
     return _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     return true;
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    return false;
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -153,6 +158,8 @@ bool ClusterIndex::isSorted() const {
     _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
     _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
     _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    return false;
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -176,7 +183,12 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   }
 
   merge.close();
-  _info = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  TRI_ASSERT(merge.slice().isObject());
+  TRI_ASSERT(_info.slice().isObject());
+  VPackBuilder tmp = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  _info = std::move(tmp);
+  TRI_ASSERT(_info.slice().isObject());
+  TRI_ASSERT(_info.isClosed());
 }
 
 bool ClusterIndex::hasCoveringIterator() const {
@@ -189,7 +201,6 @@ bool ClusterIndex::hasCoveringIterator() const {
   }
   return false;
 }
-
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
@@ -227,7 +238,7 @@ bool ClusterIndex::supportsFilterCondition(
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
         return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                         estimatedItems, estimatedCost);
-      }
+      } 
       break;
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
@@ -255,6 +266,10 @@ bool ClusterIndex::supportsFilterCondition(
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
+  }
+  
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return false;
   }
   TRI_ASSERT(false);
   return false;
@@ -312,6 +327,10 @@ bool ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
+      
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return false;
+  }
   TRI_ASSERT(false);
   return false;
 }
@@ -364,6 +383,10 @@ aql::AstNode* ClusterIndex::specializeCondition(
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
+  }
+      
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return node;
   }
   TRI_ASSERT(false);
   return node;

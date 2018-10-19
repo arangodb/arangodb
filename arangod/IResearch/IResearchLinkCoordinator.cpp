@@ -27,11 +27,13 @@
 #include "IResearchFeature.h"
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterInfo.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
@@ -63,7 +65,7 @@ namespace iresearch {
 IResearchLinkCoordinator::IResearchLinkCoordinator(
     TRI_idx_iid_t id,
     LogicalCollection& collection
-): arangodb::Index(id, collection, IResearchLinkHelper::emptyIndexSlice()) {
+): arangodb::ClusterIndex(id, collection, static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType(), arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, IResearchLinkHelper::emptyIndexSlice()) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse
