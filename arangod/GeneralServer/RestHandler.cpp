@@ -160,14 +160,21 @@ bool RestHandler::forwardRequest() {
   }
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder payload{&builder};
-      payload->add("preferred_username", VPackValue(_request->user()));
+
+    // when in superuser mode, username is empty
+    //  in this case ClusterComm will add the default superuser token
+    std::string const& username = _request->user();
+    if (!username.empty()) {
+
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder payload{&builder};
+        payload->add("preferred_username", VPackValue(username));
+      }
+      VPackSlice slice = builder.slice();
+      headers.emplace(StaticStrings::Authorization,
+                      "bearer " + auth->tokenCache()->generateJwt(slice));
     }
-    VPackSlice slice = builder.slice();
-    headers.emplace(StaticStrings::Authorization,
-                    "bearer " + auth->tokenCache()->generateJwt(slice));
   }
 
   auto& values = _request->values();
