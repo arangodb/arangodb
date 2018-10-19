@@ -397,7 +397,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   Result createBlockingTransaction(aql::QueryId id,
                                    LogicalCollection& col,
-                                   double ttl) const;
+                                   double ttl,
+                                   AccessMode::Type access) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock
