@@ -232,7 +232,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   //   A) var.vertices[n] (.*)
   //   B) var.edges[n] (.*)
   //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
-  //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
+  //   D) var.edges[*] (.*) (ALL|NONE) (.*)
 
   auto unusedWalker = [](AstNode const* n) {};
   bool isEdge = false;
@@ -336,6 +336,18 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
+
+          // Check that the expansion [*] contains no inline expression;
+          // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
+          // respectively.
+          TRI_ASSERT(node->numMembers() == 5);
+          if (node->getMemberUnchecked(2)->type != NODE_TYPE_NOP
+          || node->getMemberUnchecked(3)->type != NODE_TYPE_NOP
+          || node->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
+            notSupported = true;
+            return node;
+          }
+
           // We continue in this pattern, all good
           patternStep++;
           parentOfReplace = node;
