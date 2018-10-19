@@ -2656,7 +2656,6 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   auto q = query.release();
   // Make sure to return the query after we are done
   TRI_DEFER(queryRegistry->close(&_vocbase, id));
-
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == false);
 
