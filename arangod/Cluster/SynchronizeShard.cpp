@@ -480,8 +480,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
   }
 
-  result = getReadLock(endpoint, database, collection, clientId, rlid, timeout,
-                       hard);
+  result = getReadLock(endpoint, database, collection, clientId, rlid, hard, timeout);
 
   return result;
 
