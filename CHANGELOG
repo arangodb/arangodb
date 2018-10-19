@@ -1,6 +1,9 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* fixes validation of allowed or not allowed foxx service mount paths within
+  the Web UI
+
 * The single database or single coordinator statistics in a cluster
   environment within the Web UI sometimes got called way too often.
   This caused artifacts in the graphs, which is now fixed.
