@@ -221,7 +221,6 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  // TODO: determine good default value?
   uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
   grantTemporaryRights();
@@ -464,19 +463,14 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   }
 
   static uint64_t const DefaultChunkSize = 5000;
-  uint64_t chunkSize = DefaultChunkSize;
 
   // determine chunk size
-  bool found;
-  std::string const& value = _request->value("chunkSize", found);
+  uint64_t chunkSize = _request->parsedValue("chunkSize", DefaultChunkSize);
 
-  if (found) {
-    chunkSize = StringUtils::uint64(value);
-    if (chunkSize < 100) {
-      chunkSize = DefaultChunkSize;
-    } else if (chunkSize > 20000) {
-      chunkSize = 20000;
-    }
+  if (chunkSize < 100) {
+    chunkSize = DefaultChunkSize;
+  } else if (chunkSize > 20000) {
+    chunkSize = 20000;
   }
 
   //first suffix needs to be the batch id
@@ -517,36 +511,28 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   static uint64_t const DefaultChunkSize = 5000;
-  uint64_t chunkSize = DefaultChunkSize;
 
   // determine chunk size
-  bool found;
-  std::string const& value1 = _request->value("chunkSize", found);
+  uint64_t chunkSize = _request->parsedValue("chunkSize", DefaultChunkSize);
 
-  if (found) {
-    chunkSize = StringUtils::uint64(value1);
-    if (chunkSize < 100) {
-      chunkSize = DefaultChunkSize;
-    } else if (chunkSize > 20000) {
-      chunkSize = 20000;
-    }
+  if (chunkSize < 100) {
+    chunkSize = DefaultChunkSize;
+  } else if (chunkSize > 20000) {
+    chunkSize = 20000;
   }
 
   // chunk is supplied by old clients, low is an optimization
   // for rocksdb, because seeking should be cheaper
-  std::string const& value2 = _request->value("chunk", found);
-  size_t chunk = 0;
-  if (found) {
-    chunk = static_cast<size_t>(StringUtils::uint64(value2));
-  }
-  std::string const& lowKey = _request->value("low", found);
+  size_t chunk = static_cast<size_t>(_request->parsedValue("chunk", uint64_t(0)));
 
-  std::string const& value3 = _request->value("type", found);
+  bool found;
+  std::string const& lowKey = _request->value("low", found);
+  std::string const& value = _request->value("type", found);
 
   bool keys = true;
-  if (value3 == "keys") {
+  if (value == "keys") {
     keys = true;
-  } else if (value3 == "docs") {
+  } else if (value == "docs") {
     keys = false;
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -556,9 +542,9 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
   size_t offsetInChunk = 0;
   size_t maxChunkSize = SIZE_MAX;
-  std::string const& value4 = _request->value("offset", found);
+  std::string const& value2 = _request->value("offset", found);
   if (found) {
-    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value2));
     // "offset" was introduced with ArangoDB 3.3. if the client sends it,
     // it means we can adapt the result size dynamically and the client
     // may refetch data for the same chunk

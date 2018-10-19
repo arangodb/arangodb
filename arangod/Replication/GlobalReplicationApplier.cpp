@@ -106,8 +106,11 @@ std::string GlobalReplicationApplier::getStateFilename() const {
     arangodb::SystemDatabaseFeature
   >();
   auto vocbase = sysDbFeature->use();
+    
+  std::string const path = engine->databasePath(vocbase.get());
+  if (path.empty()) {
+    return std::string();
+  }
 
-  return arangodb::basics::FileUtils::buildFilename(
-    engine->databasePath(vocbase.get()), "GLOBAL-REPLICATION-APPLIER-STATE"
-  );
+  return arangodb::basics::FileUtils::buildFilename(path, "GLOBAL-REPLICATION-APPLIER-STATE");
 }

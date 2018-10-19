@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,22 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterRestExportHandler.h"
-#include "Basics/Exceptions.h"
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_COLLECTION_HANDLER_H
+#define ARANGOD_ROCKSDB_ROCKSDB_REST_COLLECTION_HANDLER_H 1
 
-using namespace arangodb;
-using namespace arangodb::rest;
+#include "RestHandler/RestCollectionHandler.h"
 
-ClusterRestExportHandler::ClusterRestExportHandler(GeneralRequest* request,
-                                                   GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+namespace arangodb {
 
-RestStatus ClusterRestExportHandler::execute() {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "'/_api/export' is not supported in a cluster");
-    return RestStatus::DONE;
+class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
+ public:
+  RocksDBRestCollectionHandler(GeneralRequest*, GeneralResponse*);
+protected:
+  Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                               velocypack::Builder& builder) override final;
+};
+
 }
+
+#endif

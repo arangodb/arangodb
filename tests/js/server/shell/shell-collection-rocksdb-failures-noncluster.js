@@ -150,9 +150,7 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
       }
 
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
+      // all commits failed, no documents removed
       assertEqual(c.count(), 20000);
 
       // Test Primary
@@ -226,9 +224,7 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
       }
 
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
+      // At 10k removals a intermediate commit happens, then a fail
       assertEqual(c.count(), 10000);
 
       // Test Primary

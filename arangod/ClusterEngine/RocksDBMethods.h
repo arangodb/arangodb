@@ -20,17 +20,25 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_COMMON_H
-#define ARANGOD_CLUSTER_ENGINE_COMMON_H 1
+#ifndef ARANGOD_CLUSTER_ENGINE_ROCKSDB_METHODS_H
+#define ARANGOD_CLUSTER_ENGINE_ROCKSDB_METHODS_H 1
+
+#include "Basics/Result.h"
 
 namespace arangodb {
+namespace rocksdb {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief recalculate collection count on all DBServers
+  ////////////////////////////////////////////////////////////////////////////////
   
-  enum class ClusterEngineType {
-    MMFilesEngine,
-    RocksDBEngine,
-    MockEngine
-  };
+  Result recalculateCountsOnAllDBServers(std::string const& dbname,
+                                         std::string const& collname);
   
-}  // namespace arangodb
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief wait for estimator sync on all DBServers
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  Result waitForEstimatorSync();
+}}
 
 #endif
