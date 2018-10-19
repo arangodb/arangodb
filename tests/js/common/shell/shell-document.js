@@ -1427,7 +1427,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief bad handle
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandle : function () {
+    testDBErrorHandlingBadHandle : function () {
       try {
         db._document("  123456");
         fail();
@@ -1441,7 +1441,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief bad handle replace
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandleReplace : function () {
+    testDBErrorHandlingBadHandleReplace : function () {
       try {
         db._replace("123456  ", {});
         fail();
@@ -1455,7 +1455,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief bad handle delete
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandleDelete : function () {
+    testDBErrorHandlingBadHandleDelete : function () {
       try {
         db._remove("123/45/6");
         fail();
@@ -1469,7 +1469,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 /// @brief unknown document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingUnknownDocument : function () {
+    testDBErrorHandlingUnknownDocument : function () {
       var collection = db._create(cn, { waitForSync : false });
 
       try {

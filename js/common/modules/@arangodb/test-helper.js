@@ -89,3 +89,13 @@ exports.Helper = {
     }
   }
 };
+
+exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
+  for (let testcase in deriveFrom) {
+    let targetTestCase = testcase + namespace;
+    if (deriveTo.hasOwnProperty(targetTestCase)) {
+      throw("Duplicate testname - deriveTo already has the property " + targetTestCase);
+    }
+    deriveTo[targetTestCase] = deriveFrom[testcase];
+  }
+};

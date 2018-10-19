@@ -1022,7 +1022,7 @@ function SphericalIndexCreationSuite() {
 /// @brief test: updates
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdates : function () {
+    testSPIUpdates : function () {
       collection.truncate();
 
       //collection.ensureGeoIndex("coordinates", true);
@@ -1096,7 +1096,7 @@ function SphericalIndexCreationSuite() {
 /// @brief test: index creation (list)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationIndexLocationList : function () {
+    testSPICreationIndexLocationList : function () {
       //var idx = collection.ensureGeoIndex("loc");
       let idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
       var id = idx.id;
@@ -1145,7 +1145,7 @@ function SphericalIndexCreationSuite() {
 /// @brief test: index creation (list, geo-json)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationIndexLocationListGeo : function () {
+    testSPICreationIndexLocationListGeo : function () {
       //var idx = collection.ensureGeoIndex("loc", true);
       let idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: true, legacy: false});
       var id = idx.id;
@@ -1194,7 +1194,7 @@ function SphericalIndexCreationSuite() {
 /// @brief test: index creation (attributes)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationIndexLocationAttributes : function () {
+    testSPICreationIndexLocationAttributes : function () {
       //var idx = collection.ensureGeoIndex("lat", "lon");
       let idx = collection.ensureIndex({type: "geo", fields:["lat", "lon"], legacy: false});
       var id = idx.id;
@@ -1227,7 +1227,7 @@ function SphericalIndexCreationSuite() {
 /// @brief test: constraint creation (list)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationConstraintLocationList : function () {
+    testSPICreationConstraintLocationList : function () {
       //var idx = collection.ensureGeoConstraint("loc", false);
       let idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
       var id = idx.id;

@@ -81,7 +81,7 @@ function arrayHashIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndex : function () {
+    testHashIndex : function () {
       var id = collection.ensureHashIndex("a[*]");
 
       var idx = collection.index(id.id);
@@ -231,7 +231,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndex : function () {
+    testSkiplistIndex : function () {
       var id = collection.ensureSkiplist("a[*]");
 
       var idx = collection.index(id.id);
