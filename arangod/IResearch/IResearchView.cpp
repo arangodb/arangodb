@@ -2043,7 +2043,7 @@ void IResearchView::registerFlushCallback() {
 
   auto viewSelf = self();
 
-  flush->registerCallback(this, [viewSelf]() noexcept {
+  flush->registerCallback(this, [viewSelf]() {
     static struct NoopFlushTransaction: arangodb::FlushTransaction {
       NoopFlushTransaction(): FlushTransaction("ArangoSearchNoop") {}
       virtual arangodb::Result commit() override {
