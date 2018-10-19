@@ -2134,6 +2134,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
   const std::string checksum = checksumSlice.copyString();
 
+  // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum = computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
     generateError(referenceChecksum);
@@ -2595,9 +2596,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
-  auto planBuilder = std::make_shared<VPackBuilder>();
-  planBuilder->openObject();
-  planBuilder->close();
+  auto planBuilder = std::make_shared<VPackBuilder>(VPackSlice::emptyObjectSlice());
 
   auto query = std::make_unique<aql::Query>(
     false,
@@ -2625,6 +2624,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, col, access);
     query->setTransactionContext(ctx);
+    // Inject will take over responsiblilty of transaction, even on error case.
     query->injectTransaction(trx.release());
   }
   auto trx = query->trx();
@@ -2706,8 +2706,6 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::Quer
     }
     TRI_DEFER(queryRegistry->close(&_vocbase, id));
 
-    // referenceChecksum is the stringified number of documents in the
-    // collection
     uint64_t num = col->numberDocuments(query->trx(), transaction::CountType::Normal);
     return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
