@@ -169,7 +169,7 @@ function checkData(server) {
 
   assertTrue(res instanceof request.Response);
   //assertTrue(res.hasOwnProperty('statusCode'));
-  assertTrue(res.statusCode === 200);
+  assertEqual(res.statusCode, 200);
   return res.json.count;
 }
 
@@ -258,11 +258,12 @@ function setReadOnly(endpoint, ro) {
   print(JSON.stringify(res));
 
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   let json = arangosh.checkRequestResult(res.json);
   assertTrue(json.hasOwnProperty('mode'));
-  assertTrue(json.mode === (ro ? "readonly" : "default"));
+  assertEqual(json.mode, (ro ? "readonly" : "default"));
 }
 
 // Testsuite that checks the read-only mode in the context
@@ -306,8 +307,8 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
 
       let endpoints = getClusterEndpoints();
-      assertTrue(endpoints.length === servers.length);
-      assertTrue(endpoints[0] === currentLead);
+      assertEqual(endpoints.length, servers.length);
+      assertEqual(endpoints[0], currentLead);
     },
 
     testReadFromLeader: function () {
