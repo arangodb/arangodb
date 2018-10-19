@@ -50,12 +50,12 @@ private:
   arangodb::Result getReadLock(
     std::string const& endpoint, std::string const& database,
     std::string const& collection, std::string const& clientId, uint64_t rlid,
-    bool hard, double timeout = 300.0);
+    bool soft, double timeout = 300.0);
 
   arangodb::Result startReadLockOnLeader(
     std::string const& endpoint, std::string const& database,
     std::string const& collection, std::string const& clientId, uint64_t& rlid,
-    bool hard, double timeout = 300.0);
+    bool soft, double timeout = 300.0);
 
 };
 

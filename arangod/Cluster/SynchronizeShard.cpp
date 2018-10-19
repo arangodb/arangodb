@@ -79,7 +79,6 @@ std::string const RESTRICT_TYPE("restrictType");
 std::string const RESTRICT_COLLECTIONS("restrictCollections");
 std::string const SKIP_CREATE_DROP("skipCreateDrop");
 std::string const TTL("ttl");
-std::string const DOHARDLOCK("doHardLock");
 
 using namespace std::chrono;
 
@@ -384,7 +383,7 @@ static arangodb::Result cancelBarrier(
 arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  uint64_t rlid, bool hard, double timeout) {
+  uint64_t rlid, bool soft, double timeout) {
 
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
@@ -397,7 +396,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
-    body.add(DOHARDLOCK, VPackValue(hard));
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft));
   }
 
   auto url = DB + database + REPL_HOLD_READ_LOCK;
@@ -467,7 +466,7 @@ static inline bool isStopping() {
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  uint64_t& rlid, bool hard, double timeout) {
+  uint64_t& rlid, bool soft, double timeout) {
 
   // Read lock id
   rlid = 0;
@@ -480,7 +479,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
   }
 
-  result = getReadLock(endpoint, database, collection, clientId, rlid, hard, timeout);
+  result = getReadLock(endpoint, database, collection, clientId, rlid, soft, timeout);
 
   return result;
 
@@ -884,7 +883,7 @@ bool SynchronizeShard::first() {
         << "synchronizeOneShard: startReadLockOnLeader (soft): " << ep << ":"
         << database << ":" << collection->name();
       res = startReadLockOnLeader(
-        ep, database, collection->name(), clientId, lockJobId, false);
+        ep, database, collection->name(), clientId, lockJobId, true);
       if (!res.ok()) {
         std::string errorMessage = 
           "synchronizeOneShard: error in startReadLockOnLeader (soft):"
@@ -948,7 +947,7 @@ bool SynchronizeShard::first() {
         << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
         << database << ":" << collection->name();
       Result result = startReadLockOnLeader(
-        ep, database, collection->name(), clientId, lockJobId, true);
+        ep, database, collection->name(), clientId, lockJobId, false);
       if (!result.ok()) {
         std::string errorMessage = 
           "synchronizeOneShard: error in startReadLockOnLeader (hard):"
