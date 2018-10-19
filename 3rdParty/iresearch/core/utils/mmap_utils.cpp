@@ -106,7 +106,7 @@ bool mmap_handle::open(const file_path_t path) NOEXCEPT {
   if (size) {
     size_ = size;
 
-    void* addr = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    void* addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if (MAP_FAILED == addr) {
       IR_FRMT_ERROR("Failed to mmap input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);

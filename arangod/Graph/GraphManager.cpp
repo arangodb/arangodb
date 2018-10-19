@@ -119,14 +119,24 @@ OperationResult GraphManager::findOrCreateVertexCollectionByName(
 
 bool GraphManager::renameGraphCollection(std::string const& oldName, std::string const& newName) {
   // todo: return a result, by now just used in the graph modules
-  VPackBuilder graphsBuilder;
-  readGraphs(graphsBuilder, aql::PART_DEPENDENT);
-  VPackSlice graphs = graphsBuilder.slice();
+
+  std::vector<std::unique_ptr<Graph>> renamedGraphs;
+
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    bool renamed = graph->renameCollections(oldName, newName);
+    if (renamed) {
+      renamedGraphs.emplace_back(std::move(graph));
+    }
+    return Result{};
+  };
+  Result res = applyOnAllGraphs(callback);
+  if (res.fail()) {
+    return false;
+  }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
-
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
     return false;
@@ -134,86 +144,29 @@ bool GraphManager::renameGraphCollection(std::string const& oldName, std::string
   OperationOptions options;
   OperationResult checkDoc;
 
-
-  for (auto graphSlice : VPackArrayIterator(graphs.get("graphs"))) {
+  for (auto const& graph : renamedGraphs) {
     VPackBuilder builder;
-
-    graphSlice = graphSlice.resolveExternals();
-    TRI_ASSERT(graphSlice.isObject() && graphSlice.hasKey(StaticStrings::KeyString));
-    if (!graphSlice.isObject() || !graphSlice.hasKey(StaticStrings::KeyString)) {
-      // return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
-      return false;
-    }
-    std::unique_ptr<Graph> graph;
-    try {
-      graph = Graph::fromPersistence(graphSlice, _vocbase);
-    } catch (basics::Exception&) {
-      // return {e.message(), e.code()};
-      return false;
-    }
-    TRI_ASSERT(graph != nullptr);
-    if (graph == nullptr) {
-      return false;
-    }
-
-    // rename not allowed in a smart collection
-    if (graph->isSmart()) {
-      continue;
-    }
-
     builder.openObject();
-    builder.add(StaticStrings::KeyString, VPackValue(graphSlice.get(StaticStrings::KeyString).copyString()));
-
-    builder.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
-    for (auto const& sGED : graph->edgeDefinitions()) {
-      builder.openObject();
-      std::string col = sGED.first;
-      std::set<std::string> froms = sGED.second.getFrom();
-      std::set<std::string> tos = sGED.second.getTo();
-
-      if (col != oldName) {
-        builder.add("collection", VPackValue(col));
-      } else {
-        builder.add("collection", VPackValue(newName));
-      }
-
-      builder.add("from", VPackValue(VPackValueType::Array));
-      for (auto const& from : froms) {
-        if (from != oldName) {
-          builder.add(VPackValue(from));
-        } else {
-          builder.add(VPackValue(newName));
-        }
-      }
-      builder.close(); // array
-
-      builder.add("to", VPackValue(VPackValueType::Array));
-      for (auto const& to : tos) {
-        if (to != oldName) {
-          builder.add(VPackValue(to));
-        } else {
-          builder.add(VPackValue(newName));
-        }
-      }
-      builder.close(); // array
-
-      builder.close(); // object
-    }
-    builder.close(); // array
-    builder.close(); // object
-
+    graph->toPersistence(builder);
+    builder.close();
+    
     try {
-      checkDoc =
+      OperationResult checkDoc =
           trx.update(StaticStrings::GraphCollection, builder.slice(), options);
       if (checkDoc.fail()) {
-        trx.finish(checkDoc.result);
-        return false;
+        res = trx.finish(checkDoc.result);
+        if (res.fail()) {
+          return false;
+        }
       }
     } catch (...) {
     }
-  }
+  };
 
-  trx.finish(checkDoc.result);
+  res = trx.finish(checkDoc.result);
+  if (res.fail()) {
+    return false;
+  }
   return true;
 }
 

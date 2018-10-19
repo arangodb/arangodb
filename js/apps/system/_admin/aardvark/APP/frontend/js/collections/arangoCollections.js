@@ -37,7 +37,7 @@
         case 6:
           return 'loading';
         default:
-          return;
+          return 'unknown';
       }
     },
 

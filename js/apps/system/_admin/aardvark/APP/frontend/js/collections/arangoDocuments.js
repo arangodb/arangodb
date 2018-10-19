@@ -183,10 +183,16 @@
       var bindVars;
       var tmp;
       var queryObj;
+
+      var pageSize = this.getPageSize();
+      if (pageSize === 'all') {
+        pageSize = this.MAX_SORT + 38000; // will result in 50k docs
+      }
+
       bindVars = {
         '@collection': this.collectionID,
         'offset': this.getOffset(),
-        'count': this.getPageSize()
+        'count': pageSize
       };
 
       // fetch just the first 25 attributes of the document
@@ -215,7 +221,8 @@
 
       queryObj = {
         query: query,
-        bindVars: bindVars
+        bindVars: bindVars,
+        batchSize: pageSize
       };
 
       if (this.filters.length > 0) {

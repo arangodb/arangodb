@@ -128,15 +128,25 @@ class RocksDBReplicationContext {
                                  size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                                  std::string const& lowKey, velocypack::Slice const& ids);
 
+  // lifetime in seconds
   double expires() const;
   bool isDeleted() const;
-  void deleted();
+  void setDeleted();
   bool isUsed() const;
+  /// set use flag and extend lifetime
   bool use(double ttl, bool exclusive);
   /// remove use flag
   void release();
+  /// extend lifetime without using the context
+  void extendLifetime(double ttl);
+  
+  // buggy clients may not send the serverId
+  TRI_server_id_t replicationClientId() const {
+    return _serverId != 0 ? _serverId : _id;
+  }
 
  private:
+  
   void releaseDumpingResources();
   CollectionIterator* getCollectionIterator(TRI_voc_cid_t cid, bool sorted);
   void internalBind(TRI_vocbase_t& vocbase, bool allowChange = true);
@@ -144,8 +154,8 @@ class RocksDBReplicationContext {
   mutable Mutex _contextLock;
   TRI_vocbase_t* _vocbase;
   TRI_server_id_t const _serverId;
-
-  TRI_voc_tick_t _id; // batch id
+  TRI_voc_tick_t const _id; // batch id
+  
   uint64_t _lastTick; // the time at which the snapshot was taken
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
@@ -159,6 +169,7 @@ class RocksDBReplicationContext {
   double const _ttl;
   /// @brief expiration time, updated under lock by ReplicationManager
   double _expires;
+  
   /// @brief true if context is deleted, updated under lock by ReplicationManager
   bool _isDeleted;
   /// @brief true if context cannot be used concurrently, updated under lock by ReplicationManager

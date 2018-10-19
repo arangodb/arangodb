@@ -34,6 +34,76 @@
 #include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
+
+namespace {
+// Find the actual bytes of the attribute name of the VPack value
+// at position base, also determine the length len of the attribute.
+// This takes into account the different possibilities for the format
+// of attribute names:
+static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len) {
+  uint8_t const b = *base;
+  if (b >= 0x40 && b <= 0xbe) {
+    // short UTF-8 string
+    len = b - 0x40;
+    return base + 1;
+  }
+  if (b == 0xbf) {
+    // long UTF-8 string
+    len = 0;
+    // read string length
+    for (size_t i = 8; i >= 1; i--) {
+      len = (len << 8) + base[i];
+    }
+    return base + 1 + 8;  // string starts here
+  }
+
+  // translate attribute name
+  return findAttrName(arangodb::velocypack::Slice(base).makeKey().start(), len);
+}
+
+struct ObjectIndexSorterShort {
+  explicit ObjectIndexSorterShort(uint8_t const* objBase) : objBase(objBase) {}
+
+  bool operator()(arangodb::velocypack::ValueLength const& a, 
+                  arangodb::velocypack::ValueLength const& b) const {
+    uint8_t const* aa = objBase + a;
+    uint8_t const* bb = objBase + b;
+    if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
+      // The fast path, short strings:
+      uint8_t m = (std::min)(*aa - 0x40, *bb - 0x40);
+      int c = memcmp(aa + 1, bb + 1, arangodb::velocypack::checkOverflow(m));
+      return (c < 0 || (c == 0 && *aa < *bb));
+    } else {
+      uint64_t lena;
+      uint64_t lenb;
+      aa = findAttrName(aa, lena);
+      bb = findAttrName(bb, lenb);
+      uint64_t m = (std::min)(lena, lenb);
+      int c = memcmp(aa, bb, arangodb::velocypack::checkOverflow(m));
+      return (c < 0 || (c == 0 && lena < lenb));
+    }
+  }
+  
+  uint8_t const* objBase;
+};
+
+struct ObjectIndexSorterLong {
+  bool operator()(arangodb::velocypack::Builder::SortEntry const& a, 
+                  arangodb::velocypack::Builder::SortEntry const& b) const {
+    // return true iff a < b:
+    uint8_t const* pa = a.nameStart;
+    uint64_t sizea = a.nameSize;
+    uint8_t const* pb = b.nameStart;
+    uint64_t sizeb = b.nameSize;
+    size_t const compareLength = arangodb::velocypack::checkOverflow((std::min)(sizea, sizeb));
+    int res = memcmp(pa, pb, compareLength);
+
+    return (res < 0 || (res == 0 && sizea < sizeb));
+  }
+};
+
+} // namespace
+
   
 std::string Builder::toString() const {
   Options options;
@@ -52,63 +122,9 @@ std::string Builder::toJson() const {
   return buffer;
 }
   
-void Builder::doActualSort(std::vector<SortEntry>& entries) {
-  VELOCYPACK_ASSERT(entries.size() > 1);
-  std::sort(entries.begin(), entries.end(),
-            [](SortEntry const& a, SortEntry const& b) {
-    // return true iff a < b:
-    uint8_t const* pa = a.nameStart;
-    uint64_t sizea = a.nameSize;
-    uint8_t const* pb = b.nameStart;
-    uint64_t sizeb = b.nameSize;
-    size_t const compareLength = checkOverflow((std::min)(sizea, sizeb));
-    int res = memcmp(pa, pb, compareLength);
-
-    return (res < 0 || (res == 0 && sizea < sizeb));
-  });
-};
-
-uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
-  uint8_t const b = *base;
-  if (b >= 0x40 && b <= 0xbe) {
-    // short UTF-8 string
-    len = b - 0x40;
-    return base + 1;
-  }
-  if (b == 0xbf) {
-    // long UTF-8 string
-    len = 0;
-    // read string length
-    for (size_t i = 8; i >= 1; i--) {
-      len = (len << 8) + base[i];
-    }
-    return base + 1 + 8;  // string starts here
-  }
-
-  // translate attribute name
-  return findAttrName(Slice(base).makeKey().start(), len);
-}
-
 void Builder::sortObjectIndexShort(uint8_t* objBase,
                                    std::vector<ValueLength>& offsets) const {
-  std::sort(offsets.begin(), offsets.end(), [&objBase](ValueLength a, ValueLength b) -> bool {
-    uint8_t const* aa = objBase + a;
-    uint8_t const* bb = objBase + b;
-    if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
-      // The fast path, short strings:
-      uint8_t m = (std::min)(*aa - 0x40, *bb - 0x40);
-      int c = memcmp(aa + 1, bb + 1, checkOverflow(m));
-      return (c < 0 || (c == 0 && *aa < *bb));
-    } else {
-      uint64_t lena;
-      uint64_t lenb;
-      aa = findAttrName(aa, lena);
-      bb = findAttrName(bb, lenb);
-      uint64_t m = (std::min)(lena, lenb);
-      int c = memcmp(aa, bb, checkOverflow(m));
-      return (c < 0 || (c == 0 && lena < lenb));
-    }
-  });
+  std::sort(offsets.begin(), offsets.end(), ::ObjectIndexSorterShort(objBase));
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
@@ -116,30 +132,22 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   _sortEntries.clear();
 
   size_t const n = offsets.size();
+  VELOCYPACK_ASSERT(n > 1);
   _sortEntries.reserve(n);
   for (size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
-    e.nameStart = findAttrName(objBase + e.offset, e.nameSize);
+    e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
     _sortEntries.push_back(e);
   }
   VELOCYPACK_ASSERT(_sortEntries.size() == n);
-  doActualSort(_sortEntries);
+  std::sort(_sortEntries.begin(), _sortEntries.end(), ::ObjectIndexSorterLong());
 
   // copy back the sorted offsets
   for (size_t i = 0; i < n; i++) {
     offsets[i] = _sortEntries[i].offset;
   }
   _sortEntries.clear();
-}
-
-void Builder::sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets) {
-  if (offsets.size() > 32) {
-    sortObjectIndexLong(objBase, offsets);
-  } else {
-    sortObjectIndexShort(objBase, offsets);
-  }
 }
 
 void Builder::removeLast() {

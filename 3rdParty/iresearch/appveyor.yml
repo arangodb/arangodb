@@ -11,7 +11,7 @@ build:
 
 environment:
   BOOST_VERSION: default
-  CMAKE_OPTIONS: -DUSE_TESTS=On -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=8
+  CMAKE_OPTIONS: -DUSE_TESTS=On -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=16 -D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1 # _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING required for GTEST/MSVC2017
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
   ############################################################################
@@ -34,12 +34,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       BUILD_TYPE: shared
+      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
+      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      CONFIGURATION: Release
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+      BUILD_TYPE: shared
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
       VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_58_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       BUILD_TYPE: static
+      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
+      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      CONFIGURATION: Release
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+      BUILD_TYPE: static
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
       VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_58_0
       CONFIGURATION: Release
@@ -52,42 +68,42 @@ environment:
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=*type_utils*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=*type_utils*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Debug
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: shared
       TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: static
       TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_58_0
+      BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
   ############################################################################
@@ -162,12 +178,14 @@ install:
   - cd %DEPS_DIR%
   - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1
   - cd %GTEST_DIR%
-  - mkdir build && cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" ..
-  - cmake --build . %CMAKE_BUILD_OPTIONS%
-  - cmake --install .
-  - mkdir ..\googletest\lib  
-  - move /Y googletest\%CONFIGURATION%\* ..\googletest\lib
+  - appveyor-retry git fetch --tags
+  - appveyor-retry git checkout tags/release-1.8.0
+  - cd googletest
+#  - mkdir build && cd build
+#  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DINSTALL_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" ..
+#  - cmake --build . %CMAKE_BUILD_OPTIONS%
+#  - mkdir %GTEST_DIR%\googletest\lib
+#  - move /Y %CONFIGURATION%\* %GTEST_DIR%\googletest\lib || true
   - set GTEST_ROOT=%GTEST_DIR%\googletest
 
   ############################################################################
@@ -175,7 +193,7 @@ install:
   ############################################################################
   - set ICU_DIR=%DEPS_DIR%\icu
   - mkdir %ICU_DIR% && cd %ICU_DIR%
-  - set ICU_URL="https://kent.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-Win64-msvc10.zip"
+  - set ICU_URL="https://iweb.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-Win64-msvc10.zip"
   - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
   - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
   - set ICU_ROOT=%ICU_DIR%\icu

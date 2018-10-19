@@ -51,7 +51,7 @@ LogicalView::LogicalView(
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
-     category(),
+     LogicalView::category(),
      LogicalDataSource::Type::emplace(
        arangodb::basics::VelocyPackHelper::getStringRef(
          definition, StaticStrings::DataSourceType, ""
@@ -289,12 +289,17 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
 }
 
 arangodb::Result LogicalViewStorageEngine::drop() {
+  if (deleted()) {
+    return Result(); // view already dropped
+  }
+
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   auto res = dropImpl();
 
-  if (res.ok()) {
+  // skip on error or if already called by dropImpl()
+  if (res.ok() && !deleted()) {
     deleted(true);
     engine->dropView(vocbase(), *this);
   }

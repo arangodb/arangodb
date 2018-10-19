@@ -62,6 +62,8 @@
     "no-mixed-spaces-and-tabs": 1,
     "no-extra-boolean-cast": 1,
     "handle-callback-err": 1,
-    "object-property-newline": 1
+    "object-property-newline": 1,
+    "object-curly-spacing": 0,
+    "standard/no-callback-literal": 0
   }
 }

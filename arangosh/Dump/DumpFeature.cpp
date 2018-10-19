@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -82,9 +83,16 @@ arangodb::Result checkHttpResponse(
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: HTTP " +
-                                    itoa(response->getHttpReturnCode()) + ": " +
-                                    response->getHttpReturnMessage()};
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum, "got invalid response from server: HTTP " +
+                      itoa(response->getHttpReturnCode()) + ": " + errorMsg};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -284,7 +292,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
     if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
+              "got invalid response from server: required header is missing"};
     }
 
     // now actually write retrieved data to dump file

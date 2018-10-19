@@ -269,9 +269,16 @@ class ServerState {
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
+  
+  /// @brief check equality of engines with other registered servers
+  bool checkEngineEquality(AgencyComm&);
 
-  /// @brief register at agency
-  bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
+  /// @brief register at agency, might already be done
+  bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
+  
+  /// @brief write the Current/ServersRegistered entry
+  bool registerAtAgencyPhase2(AgencyComm&);
+  
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
   

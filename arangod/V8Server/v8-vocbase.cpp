@@ -218,7 +218,7 @@ static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (console != nullptr) {
     while (true) {
       ShellBase::EofType eof;
-      std::string input = console->prompt("debug> ", "debug", eof);
+      std::string input = console->prompt("debug> ", "debug>", eof);
 
       if (eof == ShellBase::EOF_FORCE_ABORT) {
         break;
