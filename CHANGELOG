@@ -1,3 +1,10 @@
+v3.3.19 (XXXX-XX-XX)
+--------------------
+
+* fixes validation of allowed or not allowed foxx service mount paths within
+  the Web UI
+
+
 v3.3.18 (2018-10-12)
 --------------------
 
