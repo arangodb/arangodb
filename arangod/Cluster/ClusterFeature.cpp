@@ -272,11 +272,6 @@ void ClusterFeature::prepare() {
     }
   }
 
-  if (startClusterComm) {
-    // initialize ClusterComm library, must call initialize only once
-    ClusterComm::initialize();
-  }
-
   // return if cluster is disabled
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
@@ -361,6 +356,11 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
+
+  if (ServerState::instance()->isAgent() || _enableCluster) {
+    ClusterComm::initialize();
+  }
+
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -440,6 +440,8 @@ void ClusterFeature::stop() {
       }
     }
   }
+
+  ClusterComm::instance()->stopBackgroundThreads();
 }
 
 
@@ -448,7 +450,7 @@ void ClusterFeature::unprepare() {
     ClusterComm::cleanup();
     return;
   }
-  
+
   if (_heartbeatThread != nullptr) {
     _heartbeatThread->beginShutdown();
   }
@@ -479,7 +481,6 @@ void ClusterFeature::unprepare() {
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
 
-
   // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string alk = ServerState::roleToAgencyListKey(role);
@@ -501,7 +502,6 @@ void ClusterFeature::unprepare() {
   }
 
   AgencyCommManager::MANAGER->stop();
-  ClusterComm::cleanup();
 
   ClusterInfo::cleanup();
 }
