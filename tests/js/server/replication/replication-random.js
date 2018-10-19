@@ -130,7 +130,7 @@ function ReplicationSuite() {
       }
         
       if (!printed) {
-        console.topic("replication=error", "waiting for slave to catch up");
+        console.topic("replication=debug", "waiting for slave to catch up");
         printed = true;
       }
       internal.wait(0.5, false);
