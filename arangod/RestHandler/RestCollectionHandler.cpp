@@ -394,6 +394,10 @@ void RestCollectionHandler::handleCommandPut() {
           res = methods::Collections::warmup(_vocbase, coll);
           VPackObjectBuilder obj(&builder, true);
           obj->add("result", VPackValue(res.ok()));
+        } else if (sub == "recalculateCount") {
+          res = methods::Collections::recalculateCount(_vocbase, coll);
+          VPackObjectBuilder obj(&builder, true);
+          obj->add("result", VPackValue(res.ok()));
         } else {
           res.reset(TRI_ERROR_HTTP_NOT_FOUND,
                     "expecting one of the actions 'load', 'unload', 'truncate',"
