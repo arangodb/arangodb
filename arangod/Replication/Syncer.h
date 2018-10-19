@@ -83,7 +83,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     void request(std::function<void()> const& cb);
 
     /// @brief notifies that a job was posted
-    void jobPosted();
+    /// returns false if job counter could not be increased (e.g. because
+    /// the syncer was stopped/aborted already)
+    bool jobPosted();
 
     /// @brief notifies that a job was done
     void jobDone();

@@ -168,16 +168,18 @@ class arangodb::SchedulerThread : public Thread {
 Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
                      uint64_t fifo1Size, uint64_t fifo2Size)
     : _counters(0),
-      _maxFifoSize{fifo1Size, fifo2Size},
+      _maxFifoSize{fifo1Size, fifo2Size, fifo2Size},
       _fifo1(_maxFifoSize[FIFO1]),
       _fifo2(_maxFifoSize[FIFO2]),
-      _fifos{&_fifo1, &_fifo2},
+      _fifo3(_maxFifoSize[FIFO3]),
+      _fifos{&_fifo1, &_fifo2, &_fifo3},
       _minThreads(nrMinimum),
       _maxThreads(nrMaximum),
       _lastAllBusyStamp(0.0) {
   LOG_TOPIC(DEBUG, Logger::THREADS) << "Scheduler configuration min: " << nrMinimum << " max: " << nrMaximum;
   _fifoSize[FIFO1] = 0;
   _fifoSize[FIFO2] = 0;
+  _fifoSize[FIFO3] = 0;
 
   // setup signal handlers
   initializeSignalHandlers();
@@ -266,9 +268,21 @@ bool Scheduler::queue(RequestPriority prio,
     // or if the scheduler queue is already full, then
     // append it to the fifo2. Otherewise directly queue
     // it.
-    case RequestPriority::LOW:
+    case RequestPriority::MED:
       if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO2, callback);
+      } else {
+        post(callback);
+      }
+      break;
+
+    // If there is anything in the fifo1, fifo2, fifo3
+    // or if the scheduler queue is already full, then
+    // append it to the fifo2. Otherwise directly queue
+    // it.
+    case RequestPriority::LOW:
+      if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] || 0 < _fifoSize[FIFO3] || !canPostDirectly(prio)) {
+        ok = pushToFifo(FIFO3, callback);
       } else {
         post(callback);
       }
@@ -297,6 +311,10 @@ void Scheduler::drain() {
     if (!found) {
       found = popFifo(FIFO2);
     }
+
+    if (!found) {
+      found = popFifo(FIFO3);
+    }
   }
 }
 
@@ -312,6 +330,8 @@ void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
   b.add("fifo1-size", VPackValue(_maxFifoSize[FIFO1]));
   b.add("current-fifo2", VPackValue(_fifoSize[FIFO2]));
   b.add("fifo2-size", VPackValue(_maxFifoSize[FIFO2]));
+  b.add("current-fifo3", VPackValue(_fifoSize[FIFO3]));
+  b.add("fifo3-size", VPackValue(_maxFifoSize[FIFO3]));
 }
 
 Scheduler::QueueStatistics Scheduler::queueStatistics() const {
@@ -321,7 +341,8 @@ Scheduler::QueueStatistics Scheduler::queueStatistics() const {
                          numWorking(counters),
                          numQueued(counters),
                          static_cast<uint64_t>(_fifoSize[FIFO1]),
-                         static_cast<uint64_t>(_fifoSize[FIFO2])};
+                         static_cast<uint64_t>(_fifoSize[FIFO2]),
+                         static_cast<uint64_t>(_fifoSize[FIFO3])};
 }
 
 std::string Scheduler::infoStatus() {
@@ -334,7 +355,9 @@ std::string Scheduler::infoStatus() {
          " F1 " + std::to_string(_fifoSize[FIFO1]) +
          " (<=" + std::to_string(_maxFifoSize[FIFO1]) + ") F2 " +
          std::to_string(_fifoSize[FIFO2]) +
-        " (<=" + std::to_string(_maxFifoSize[FIFO2]) + ")";
+         " (<=" + std::to_string(_maxFifoSize[FIFO2]) + ") F3 " +
+         std::to_string(_fifoSize[FIFO3]) +
+         " (<=" + std::to_string(_maxFifoSize[FIFO3]) + ")";
 }
 
 bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
@@ -346,6 +369,7 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
     case RequestPriority::HIGH:
       return nrWorking + nrQueued < _maxThreads;
 
+    case RequestPriority::MED:
     case RequestPriority::LOW:
       return nrWorking + nrQueued < _maxThreads - _minThreads;
   }
