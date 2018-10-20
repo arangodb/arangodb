@@ -51,12 +51,28 @@ struct test_sobject {
   static ptr make(int i) { return ptr(new test_sobject(i)); }
 };
 
+struct test_sobject_nullptr {
+  DECLARE_SHARED_PTR(test_sobject_nullptr);
+  static size_t make_count;
+  static ptr make() { ++make_count; return nullptr; }
+};
+
+/*static*/ size_t test_sobject_nullptr::make_count = 0;
+
 struct test_uobject {
   DECLARE_UNIQUE_PTR(test_uobject);
   int id;
   test_uobject(int i): id(i) {}
   static ptr make(int i) { return ptr(new test_uobject(i)); }
 };
+
+struct test_uobject_nullptr {
+  DECLARE_UNIQUE_PTR(test_uobject_nullptr);
+  static size_t make_count;
+  static ptr make() { ++make_count; return nullptr; }
+};
+
+/*static*/ size_t test_uobject_nullptr::make_count = 0;
 
 NS_END
 
@@ -149,6 +165,35 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     }
   }
 
+  // null objects not considered part of pool
+  {
+    std::condition_variable cond;
+    std::mutex mutex;
+    irs::bounded_object_pool<test_sobject_nullptr> pool(2);
+    test_sobject_nullptr::make_count = 0;
+    auto obj = pool.emplace().release();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(1, test_sobject_nullptr::make_count);
+
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void {
+        auto obj = pool.emplace();
+        ASSERT_FALSE(obj);
+        ASSERT_EQ(2, test_sobject_nullptr::make_count);
+        emplace = true;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+      });
+
+    ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock, std::chrono::milliseconds(100)) || emplace);
+    obj.reset();
+    lock.unlock();
+    thread.join();
+    }
+  }
+
   // test object reuse
   {
     iresearch::bounded_object_pool<test_sobject> pool(1);
@@ -224,6 +269,34 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
       obj.reset();
       lock.unlock();
       thread.join();
+    }
+  }
+
+  // null objects not considered part of pool
+  {
+    std::condition_variable cond;
+    std::mutex mutex;
+    irs::bounded_object_pool<test_uobject_nullptr> pool(2);
+    test_uobject_nullptr::make_count = 0;
+    auto obj = pool.emplace().release();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(1, test_uobject_nullptr::make_count);
+
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void {
+        SCOPED_LOCK(mutex);
+        auto obj = pool.emplace();
+        ASSERT_FALSE(obj);
+        ASSERT_EQ(2, test_uobject_nullptr::make_count);
+        cond.notify_all();
+      });
+
+    ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(100)));
+    obj.reset();
+    lock.unlock();
+    thread.join();
     }
   }
 
@@ -312,6 +385,20 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
     auto obj_shared = pool.emplace(2).release();
     ASSERT_TRUE(bool(obj_shared));
     ASSERT_EQ(2, obj_shared->id);
+  }
+
+  // null objects not considered part of pool
+  {
+    irs::unbounded_object_pool<test_sobject_nullptr> pool(2);
+    test_sobject_nullptr::make_count = 0;
+    auto obj = pool.emplace();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(1, test_sobject_nullptr::make_count);
+    obj.reset();
+    auto obj_shared = pool.emplace().release();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(2, test_sobject_nullptr::make_count);
+    obj.reset();
   }
 
   // test object reuse
@@ -411,6 +498,20 @@ TEST(unbounded_object_pool_tests, test_uobject_pool) {
       lock.unlock();
       thread.join();
     }
+  }
+
+  // null objects not considered part of pool
+  {
+    irs::unbounded_object_pool<test_uobject_nullptr> pool(2);
+    test_uobject_nullptr::make_count = 0;
+    auto obj = pool.emplace();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(1, test_uobject_nullptr::make_count);
+    obj.reset();
+    auto obj_shared = pool.emplace().release();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(2, test_uobject_nullptr::make_count);
+    obj.reset();
   }
 
   // test object reuse
@@ -655,6 +756,20 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
     ASSERT_EQ(2, obj_shared->id);
   }
 
+  // null objects not considered part of pool
+  {
+    irs::unbounded_object_pool_volatile<test_sobject_nullptr> pool(2);
+    test_sobject_nullptr::make_count = 0;
+    auto obj = pool.emplace();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(1, test_sobject_nullptr::make_count);
+    obj.reset();
+    auto obj_shared = pool.emplace().release();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(2, test_sobject_nullptr::make_count);
+    obj.reset();
+  }
+
   // test object reuse
   {
     iresearch::unbounded_object_pool_volatile<test_sobject> pool(1);
@@ -805,6 +920,20 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
       lock.unlock();
       thread.join();
     }
+  }
+
+  // null objects not considered part of pool
+  {
+    irs::unbounded_object_pool_volatile<test_uobject_nullptr> pool(2);
+    test_uobject_nullptr::make_count = 0;
+    auto obj = pool.emplace();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(1, test_uobject_nullptr::make_count);
+    obj.reset();
+    auto obj_shared = pool.emplace().release();
+    ASSERT_FALSE(obj);
+    ASSERT_EQ(2, test_uobject_nullptr::make_count);
+    obj.reset();
   }
 
   // test object reuse
