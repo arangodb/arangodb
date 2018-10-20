@@ -11,8 +11,8 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
-    <span class="hljs-string">"products/10696"</span>, 
-    <span class="hljs-string">"products/10693"</span>, 
+    <span class="hljs-string">"products/10685"</span>, 
+    <span class="hljs-string">"products/10692"</span>, 
     <span class="hljs-string">"products/10689"</span> 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
@@ -25,7 +25,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00013709068298339844</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00015211105346679688</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
