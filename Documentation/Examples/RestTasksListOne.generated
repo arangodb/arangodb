@@ -7,7 +7,7 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1539356100.0982738</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1539774734.5303588</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
   <span class="hljs-string">"offset"</span> : <span class="hljs-number">20</span>, 
