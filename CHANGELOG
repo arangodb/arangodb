@@ -1,4 +1,4 @@
-v3.3.19 (XXXX-XX-XX)
+v3.3.19 (2018-10-20)
 --------------------
 
 * fixes validation of allowed or not allowed foxx service mount paths within
@@ -10,10 +10,6 @@ v3.3.19 (XXXX-XX-XX)
 
 * An aardvark statistics route could not collect and sum up the statistics of
   all coordinators if one of them was ahead and had more results than the others
-
-
-v3.3.18 (2018-10-17)
---------------------
 
 * upgraded arangodb starter version to 0.13.6
 
@@ -74,6 +70,12 @@ v3.3.18 (2018-10-17)
   the `_frontend` system collection is not required for normal ArangoDB operations,
   so if it is missing for whatever reason, ensure that normal operations can go
   on.
+
+
+v3.3.18
+-------
+
+* not released
 
 
 v3.3.17 (2018-10-04)
