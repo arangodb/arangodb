@@ -1,6 +1,8 @@
 devel
 -----
 
+* disallow empty LDAP password
+
 * The single database or single coordinator statistics in a cluster
   environment within the Web UI sometimes got called way too often.
   This caused artifacts in the graphs, which is now fixed.
