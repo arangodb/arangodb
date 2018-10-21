@@ -20,7 +20,8 @@
 
 #include "asm-utf8check.h"
 
-#include <cstddef>
+#if ASM_OPTIMIZATIONS == 1
+
 #include <cstring>
 #include <x86intrin.h>
 /*
@@ -477,3 +478,5 @@ bool validate_utf8_fast_avx(uint8_t const* src, size_t len) {
 #endif // __AVX2__
 
 }}
+
+#endif // ASM_OPTIMIZATIONS == 1
