@@ -2,8 +2,8 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
 * fix side-effects of sorting larger arrays (>= 16 members) of constant literal
-  values in AQL, when the array was used not used for IN-value filtering but also
-  later in a query.
+  values in AQL, when the array was used not only for IN-value filtering but also
+  later in the query.
   The array values were sorted so the IN-value lookup could use a binary search
   instead of a linear search, but this did not take into account that the array
   could have been used elsewhere in the query, e.g. as a return value. The fix
