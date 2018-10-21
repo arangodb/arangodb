@@ -10,6 +10,8 @@ v3.4.0-rc.3 (XXXX-XX-XX)
   will create a copy of the array and sort the copy, leaving the original array
   untouched.
 
+* disallow empty LDAP password
+
 * fixes validation of allowed or not allowed foxx service mount paths within
   the Web UI
 
