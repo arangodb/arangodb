@@ -157,7 +157,7 @@ class Result {
    */
   virtual std::string errorMessage() &&;
 
- protected:
+ private:
   int _errorNumber;
   std::string _errorMessage;
 };
