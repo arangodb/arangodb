@@ -52,13 +52,15 @@ ServerFeature::ServerFeature(
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
-      _operationMode(OperationMode::MODE_SERVER),
-      _codePage(65001), // default to UTF8
-      _originalCodePage(UINT16_MAX) {
+      _operationMode(OperationMode::MODE_SERVER)
+#if _WIN32
+      ,_codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX)
+#endif
+  {
   setOptional(true);
 
   startsAfter("AQLPhase");
-
   startsAfter("Statistics");
   startsAfter("Upgrade");
 }

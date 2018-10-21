@@ -388,7 +388,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   return true;
 }
 
-// POST method for /_api/aql/instantiate (internal)
+// POST method for /_api/aql/instantiate (internal, deprecated)
 // The body is a VelocyPack with attributes "plan" for the execution plan and
 // "options" for the options, all exactly as in AQL_EXECUTEJSON.
 void RestAqlHandler::createQueryFromVelocyPack() {
@@ -560,7 +560,7 @@ RestStatus RestAqlHandler::execute() {
       if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "instantiate") {
-        createQueryFromVelocyPack();
+        createQueryFromVelocyPack(); // deprecated in 3.4
       } else if (suffixes[0] == "setup") {
         setupClusterQuery();
       } else {

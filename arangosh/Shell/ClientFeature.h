@@ -123,8 +123,10 @@ class ClientFeature final : public application_features::ApplicationFeature,
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
+#if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;
+#endif
 };
 
 }  // namespace arangodb
