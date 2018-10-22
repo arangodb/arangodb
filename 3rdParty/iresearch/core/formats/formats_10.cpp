@@ -217,7 +217,7 @@ inline void prepare_output(
   if (!out) {
     std::stringstream ss;
 
-    ss << "Failed to create file, path: " << str;
+    ss << "failed to create file, path: " << str;
 
     throw detailed_io_error(ss.str());
   }
@@ -241,7 +241,7 @@ inline void prepare_input(
   if (!in) {
     std::stringstream ss;
 
-    ss << "Failed to open file, path: " << str;
+    ss << "failed to open file, path: " << str;
 
     throw detailed_io_error(ss.str());
   }
@@ -652,8 +652,9 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
   }
 
   if (id < doc.last) {
-    // docs out of order
-    throw index_error();
+    throw index_error(
+      std::string("while beginning doc in postings_writer, error: docs out of order '") + std::to_string(id) + "' < '" + std::to_string(doc.last) + "'"
+    );
   }
 
   doc.doc(id - doc.last);
@@ -999,7 +1000,7 @@ class doc_iterator : public iresearch::doc_iterator {
         if (!doc_in_) {
           IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
 
-          throw detailed_io_error("Failed to reopen document input");
+          throw detailed_io_error("failed to reopen document input");
         }
       }
 
@@ -1354,7 +1355,7 @@ class pos_iterator: public position {
     if (!pos_in_) {
       IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen positions input");
+      throw detailed_io_error("failed to reopen positions input");
     }
 
     pos_in_->seek(state.term_state->pos_start);
@@ -1467,7 +1468,7 @@ class offs_pay_iterator final: public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1612,7 +1613,7 @@ class offs_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1722,7 +1723,7 @@ class pay_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -2042,10 +2043,9 @@ void index_meta_writer::commit() {
     if (!dir_->rename(src, dst)) {
       std::stringstream ss;
 
-      ss << "Failed to rename file, src path: " << src
-         << " dst path: " << dst;
+      ss << "failed to rename file, src path: " << src << " dst path: " << dst;
 
-      throw(detailed_io_error(ss.str()));
+      throw detailed_io_error(ss.str());
     }
 
     complete(*meta_);
@@ -2119,7 +2119,7 @@ void index_meta_reader::read(
   if (!in) {
     std::stringstream ss;
 
-    ss << "Failed to open file, path: " << meta_file;
+    ss << "failed to open file, path: " << meta_file;
 
     throw detailed_io_error(ss.str());
   }
@@ -2195,18 +2195,15 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error("failed to create file, path: " + meta_file);
   }
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
-  out->write_vlong(meta.docs_count);
   out->write_vlong(meta.live_docs_count);
+  out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
+  out->write_vlong(meta.size);
   out->write_byte(flags);
   write_strings( *out, meta.files );
   format_utils::write_footer(*out);
@@ -2240,7 +2237,7 @@ void segment_meta_reader::read(
   if (!in) {
     std::stringstream ss;
 
-    ss << "Failed to open file, path: " << meta_file;
+    ss << "failed to open file, path: " << meta_file;
 
     throw detailed_io_error(ss.str());
   }
@@ -2256,14 +2253,25 @@ void segment_meta_reader::read(
 
   auto name = read_string<std::string>(*in);
   const auto version = in->read_vlong();
-  const auto docs_count = in->read_vlong();
   const auto live_docs_count = in->read_vlong();
+  const auto docs_count = in->read_vlong() + live_docs_count;
+
+  if (docs_count < live_docs_count) {
+    throw index_error(std::string("while reader segment meta '") + name
+      + "', error: docs_count(" + std::to_string(docs_count)
+      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")"
+    );
+  }
+
+  const auto size = in->read_vlong();
   const auto flags = in->read_byte();
   auto files = read_strings<segment_meta::file_set>(*in);
 
   if (flags & ~(segment_meta_writer::flags_t::HAS_COLUMN_STORE)) {
-    // corrupted index
-    throw index_error(); // use of unsupported flags
+    throw index_error(
+      std::string("while reading segment meta '" + name
+      + "', error: use of unsupported flags '" + std::to_string(flags) + "'")
+    );
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2277,6 +2285,7 @@ void segment_meta_reader::read(
   meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
+  meta.size = size;
   meta.files = std::move(files);
 }
 
@@ -2329,11 +2338,7 @@ void document_mask_writer::write(
   auto out = dir.create(filename);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << filename;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error("Failed to create file, path: " + filename);
   }
 
   // segment can't have more than integer_traits<uint32_t>::const_max documents
@@ -2342,9 +2347,11 @@ void document_mask_writer::write(
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   out->write_vint(count);
+
   for (auto mask : docs_mask) {
     out->write_vint(mask);
   }
+
   format_utils::write_footer(*out);
 }
 
@@ -2678,7 +2685,9 @@ void read_compact(
   );
 
   if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
-    throw irs::index_error(); // corrupted index
+    throw index_error(
+      std::string("while reading compact, error: invalid buffer size '") + std::to_string(buf_size) + "'"
+    );
   }
 }
 
@@ -3190,7 +3199,11 @@ class sparse_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'sparse_block' found in columnstore");
+      return false;
+    }
 
     auto begin = std::begin(index_);
 
@@ -3375,7 +3388,11 @@ class dense_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'dense_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -3543,7 +3560,11 @@ class dense_fixed_length_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
-    assert(size_);
+
+    if (!size_) {
+      IR_FRMT_ERROR("Empty 'dense_fixed_length_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -3684,7 +3705,11 @@ class sparse_mask_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
-    assert(size_);
+
+    if (!size_) {
+      IR_FRMT_ERROR("Empty 'sparse_mask_block' found in columnstore");
+      return false;
+    }
 
     auto begin = std::begin(keys_);
 
@@ -3805,7 +3830,11 @@ class dense_mask_block {
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'dense_mask_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -4973,9 +5002,12 @@ bool postings_reader::prepare(
   );
 
   const uint64_t block_size = in.read_vint();
+
   if (block_size != postings_writer::BLOCK_SIZE) {
-    // invalid block size
-    throw index_error();
+    throw index_error(
+      std::string("while preparing postings_reader in segment '") + state.meta->name
+      + "', error: invalid block size '" + std::to_string(block_size) + "'"
+    );
   }
 
   return true;

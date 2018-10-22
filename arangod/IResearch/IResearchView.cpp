@@ -1535,23 +1535,24 @@ int IResearchView::insert(
     new IResearchView(vocbase, info, *feature, planVersion)
   );
   auto& impl = reinterpret_cast<IResearchView&>(*view);
+  auto meta = std::make_shared<AsyncMeta>();
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  {
-    WriteMutex mutex(impl._mutex); // '_meta' can be asynchronously read by async jobs started in constructor
-    SCOPED_LOCK(mutex);
+  if (!meta->init(properties, error)
+      || !impl.updateProperties(meta).ok() // update separately since per-instance async jobs already started
+      || !impl._metaState.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
-    if (!impl._meta->init(properties, error)
-        || !impl._metaState.init(properties, error)) {
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    if (error.empty()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to initialize arangosearch view from definition, error: " << error;
-
-      return nullptr;
+        << "failed to initialize arangosearch view '" << impl.name() << "' from definition";
+    } else {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to initialize arangosearch view '" << impl.name() << "' from definition, error in attribute: " << error;
     }
 
-    impl.updateProperties(impl._meta); // trigger reload of settings for async jobs
+    return nullptr;
   }
 
   auto links = properties.hasKey(StaticStrings::LinksField)
@@ -1933,7 +1934,12 @@ arangodb::Result IResearchView::updateProperties(
     auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
 
     if (!meta.init(slice, error, initialMeta)) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to update arangosearch view '") + name() + "' from definition")
+        : (std::string("failed to update arangosearch view '") + name() + "' from definition, error in attribute: " + error)
+      );
     }
 
     // reset non-updatable values to match current meta

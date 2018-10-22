@@ -337,10 +337,11 @@ void skip_reader::reset() {
 void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t step) {
   // read level length
   const auto length = stream->read_vlong();
+
   if (!length) {
-    // corrupted index
-    throw index_error();
+    throw index_error("while loading level, error: zero length");
   }
+
   const auto begin = stream->file_pointer();
   const auto end = begin + length;
 
