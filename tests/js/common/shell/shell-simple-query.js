@@ -2127,7 +2127,7 @@ function SimpleQuerySparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRange: function () {
+    testSparseRange: function () {
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
 
@@ -2145,7 +2145,7 @@ function SimpleQuerySparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRangeMultipleIndexes: function () {
+    testSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
       collection.ensureSkiplist('age', { sparse: false });
 
@@ -2205,7 +2205,7 @@ function SimpleQueryUniqueRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRange: function () {
+    testUniqueRange: function () {
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
 
@@ -2261,7 +2261,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRange: function () {
+    testUniqueSparseRange: function () {
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
 
@@ -2279,7 +2279,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 // / @brief test: range
 // //////////////////////////////////////////////////////////////////////////////
 
-    testRangeMultipleIndexes: function () {
+    testUniqueSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
       collection.ensureUniqueSkiplist('age', { sparse: false });
 

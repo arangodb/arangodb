@@ -559,7 +559,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleInsert : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var query = "INSERT { value: 'foobar', _key: 'test' } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
@@ -767,7 +767,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleUpdate : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var query = "UPDATE { value: 'foobar', _key: 'test17' } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });

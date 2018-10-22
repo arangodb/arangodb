@@ -449,6 +449,7 @@ function ReplicationOtherDBSuite () {
     }
   };
 
+  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
   return suite;
 }
 

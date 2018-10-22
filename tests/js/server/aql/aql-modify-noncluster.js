@@ -1977,7 +1977,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleInsert : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 });
 
@@ -1990,7 +1990,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWhat : function () {
+    testSingleInsertWhat : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("INSERT { value: 'foobar', _key: 'test' } IN @@cn LET inserted = NEW RETURN inserted", { "@cn": cn1 });
 
@@ -2394,7 +2394,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleUpdate : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 });
 
@@ -2406,7 +2406,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWhatNew : function () {
+    testSingleUpdateWhatNew : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn LET updated = NEW RETURN updated", { "@cn": cn1 });
 
@@ -2418,7 +2418,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWhatOld : function () {
+    testSingleUpdateWhatOld : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn LET old = OLD RETURN old", { "@cn": cn1 });
 

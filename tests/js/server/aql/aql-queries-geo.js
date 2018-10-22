@@ -1015,7 +1015,7 @@ function geoJsonTestSuite() {
     /// @brief test simple circle on sphere
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsCircle1: function () {
+    testJsonContainsCircle1: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_DISTANCE(GEO_POINT(102, 0), x.geometry) <= 450000 RETURN x._key",
         bindVars: {
@@ -1029,7 +1029,7 @@ function geoJsonTestSuite() {
     /// @brief test simple circle on sphere (without circle edge included)
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsCircle2: function () {
+    testJsonContainsCircle2: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_DISTANCE(GEO_POINT(101, 0), x.geometry) < 283439.318405 RETURN x._key",
         bindVars: {
@@ -1043,7 +1043,7 @@ function geoJsonTestSuite() {
     /// @brief test simple circle on sphere
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsCircle3: function () {
+    testJsonContainsCircle3: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_DISTANCE(GEO_POINT(101, 0), x.geometry) <= 100000 RETURN x._key",
         bindVars: {
@@ -1057,7 +1057,7 @@ function geoJsonTestSuite() {
     /// @brief test simple circle on sphere
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsCircle4: function () {
+    testJsonContainsCircle4: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_DISTANCE(GEO_POINT(101, 0), x.geometry) <= 100000 RETURN x._key",
         bindVars: {
@@ -1071,7 +1071,7 @@ function geoJsonTestSuite() {
     /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsPolygon1: function () {
+    testJsonContainsPolygon1: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_CONTAINS(GEO_POLYGON(@poly), x.geometry) RETURN x._key",
         bindVars: {
@@ -1086,7 +1086,7 @@ function geoJsonTestSuite() {
     /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsPolygon2: function () {
+    testJsonContainsPolygon2: function () {
       runQuery({
         string: `LET poly = GEO_POLYGON(@coords)
                  FOR x IN @@cc
@@ -1104,7 +1104,7 @@ function geoJsonTestSuite() {
     /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testIntersectsPolygon1: function () {
+    testJsonIntersectsPolygon1: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_INTERSECTS(GEO_POLYGON(@poly), x.geometry) RETURN x._key",
         bindVars: {
@@ -1119,7 +1119,7 @@ function geoJsonTestSuite() {
     /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testIntersectsPolygon2: function () {
+    testJsonIntersectsPolygon2: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_INTERSECTS(GEO_POLYGON(@poly), x.geometry) RETURN x._key",
         bindVars: {
@@ -1134,7 +1134,7 @@ function geoJsonTestSuite() {
     /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
-    testIntersectsPolygon3: function () {
+    testJsonIntersectsPolygon3: function () {
       runQuery({
         string: "FOR x IN @@cc FILTER GEO_INTERSECTS(GEO_POLYGON(@poly), x.geometry) RETURN x._key",
         bindVars: {
@@ -1149,7 +1149,7 @@ function geoJsonTestSuite() {
     /// @brief test polygon intersection using a reference
     ////////////////////////////////////////////////////////////////////////////////
 
-    testIntersectsPolygon4: function () {
+    testJsonIntersectsPolygon4: function () {
       runQuery({
         string: `LET poly = GEO_POLYGON(@coords)
                  FOR x IN @@cc
