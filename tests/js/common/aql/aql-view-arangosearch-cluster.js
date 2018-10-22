@@ -546,7 +546,7 @@ jsunity.run(function IResearchAqlTestSuite_s1_r2() {
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
   let suite = {};
   
-  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 }),
+  deriveTestSuite(IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 }),
                   suite, "_FourShardsReplTwo");
   return suite;
 });
