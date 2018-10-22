@@ -2623,7 +2623,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
       // first copy the original node before sorting, as the node may be used
       // somewhere else too
       rhs = clone(rhs);
-      node->changeMember(1, clone(rhs));
+      node->changeMember(1, rhs);
       rhs->sort();
       // remove the sortedness bit for IN/NIN operator node, as the operand is now sorted
       node->setBoolValue(false);
