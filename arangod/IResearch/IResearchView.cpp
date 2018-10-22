@@ -1543,8 +1543,14 @@ int IResearchView::insert(
       || !impl.updateProperties(meta).ok() // update separately since per-instance async jobs already started
       || !impl._metaState.init(properties, error)) {
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to initialize arangosearch view from definition, error: " << error;
+
+    if (error.empty()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to initialize arangosearch view '" << impl.name() << "' from definition";
+    } else {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to initialize arangosearch view '" << impl.name() << "' from definition, error in attribute: " << error;
+    }
 
     return nullptr;
   }
@@ -1928,7 +1934,12 @@ arangodb::Result IResearchView::updateProperties(
     auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
 
     if (!meta.init(slice, error, initialMeta)) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to update arangosearch view '") + name() + "' from definition")
+        : (std::string("failed to update arangosearch view '") + name() + "' from definition, error in attribute: " + error)
+      );
     }
 
     // reset non-updatable values to match current meta
