@@ -29,6 +29,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <algorithm>
 #include <string>
 
