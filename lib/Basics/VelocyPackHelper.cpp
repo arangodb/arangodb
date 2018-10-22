@@ -165,9 +165,12 @@ void VelocyPackHelper::initialize() {
   CustomTypeHandler.reset(new DefaultCustomTypeHandler);
 
   VPackOptions::Defaults.customTypeHandler = CustomTypeHandler.get();
-  VPackOptions::Defaults.escapeUnicode = false;  // false here, but will be set
-                                                 // when converting to JSON for
-                                                 // HTTP xfer
+
+  // false here, but will be set when converting to JSON for HTTP xfer
+  VPackOptions::Defaults.escapeUnicode = false;  
+  
+  // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted order)
+  VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(
