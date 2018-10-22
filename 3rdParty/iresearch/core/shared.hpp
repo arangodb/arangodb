@@ -154,13 +154,14 @@
   #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
-// hook for GCC8.2 optimized code
+// hook for GCC 8.1/8.2 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 #if defined(__OPTIMIZE__) && defined(__GNUC__) \
-    && (__GNUC__ == 8 && __GNUC_MINOR__ == 2)
-  #define GCC8_2_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+    && ((__GNUC__ == 8 && __GNUC_MINOR__ == 1) \
+        || (__GNUC__ == 8 && __GNUC_MINOR__ == 2))
+  #define GCC8_12_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define GCC8_2_OPTIMIZED_WORKAROUND(...)
+  #define GCC8_12_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC2017.3-8 optimized code
