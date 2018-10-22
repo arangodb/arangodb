@@ -415,7 +415,24 @@ class compound_term_iterator : public irs::term_iterator {
     return current_term_;
   }
  private:
-  typedef std::pair<irs::seek_term_iterator::ptr, const doc_map_f*> term_iterator_t;
+  struct term_iterator_t {
+    irs::seek_term_iterator::ptr first;
+    const doc_map_f* second;
+
+    term_iterator_t(
+      irs::seek_term_iterator::ptr&& term_itr,
+      const doc_map_f* doc_map
+    ): first(std::move(term_itr)), second(doc_map) {
+    }
+
+    // GCC 8.2.0 optimized code requires an *explicit* noexcept non-inlined
+    // move constructor implementation, otherwise the move constructor is fully
+    // optimized out
+    GCC8_2_OPTIMIZED_WORKAROUND(__attribute__((noinline)))
+    term_iterator_t(term_iterator_t&& other) NOEXCEPT
+      : first(std::move(other.first)), second(std::move(other.second)) {
+    }
+  };
 
   compound_term_iterator(const compound_term_iterator&) = delete; // due to references
   compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references

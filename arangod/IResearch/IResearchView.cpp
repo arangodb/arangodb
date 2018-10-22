@@ -1535,23 +1535,18 @@ int IResearchView::insert(
     new IResearchView(vocbase, info, *feature, planVersion)
   );
   auto& impl = reinterpret_cast<IResearchView&>(*view);
+  auto meta = std::make_shared<AsyncMeta>();
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  {
-    WriteMutex mutex(impl._mutex); // '_meta' can be asynchronously read by async jobs started in constructor
-    SCOPED_LOCK(mutex);
+  if (!meta->init(properties, error)
+      || !impl.updateProperties(meta).ok() // update separately since per-instance async jobs already started
+      || !impl._metaState.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to initialize arangosearch view from definition, error: " << error;
 
-    if (!impl._meta->init(properties, error)
-        || !impl._metaState.init(properties, error)) {
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to initialize arangosearch view from definition, error: " << error;
-
-      return nullptr;
-    }
-
-    impl.updateProperties(impl._meta); // trigger reload of settings for async jobs
+    return nullptr;
   }
 
   auto links = properties.hasKey(StaticStrings::LinksField)

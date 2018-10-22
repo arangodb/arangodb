@@ -2173,6 +2173,63 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   ASSERT_TRUE(expected_string.empty());
 }
 
+TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
+  irs::memory_directory data_dir;
+
+  // populate directory
+  {
+    tests::json_doc_generator gen(
+      test_base::resource("simple_sequential_33.json"),
+      &tests::generic_json_field_factory
+    );
+    std::vector<const tests::document*> docs;
+    docs.reserve(33);
+
+    for (size_t i = 0; i < 33; ++i) {
+      docs.emplace_back(gen.next());
+    }
+
+    auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
+
+    for (auto* doc: docs) {
+      ASSERT_NE(nullptr, doc);
+      ASSERT_TRUE(insert(
+        *writer,
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      ));
+      writer->commit(); // create segmentN
+    }
+  }
+
+  auto reader = irs::directory_reader::open(data_dir, codec_ptr);
+
+  ASSERT_EQ(33, reader.size());
+
+  // merge 33 segments to writer (segments > 32 to trigger GCC 8.2.0 optimizer bug)
+  {
+    irs::memory_directory dir;
+    irs::index_meta::index_segment_t index_segment;
+    irs::merge_writer writer(dir, "merged");
+
+    for (auto& sub_reader: reader) {
+      writer.add(sub_reader);
+    }
+
+    index_segment.meta.codec = codec_ptr;
+    ASSERT_TRUE(writer.flush(index_segment));
+
+    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    ASSERT_EQ(33, segment.docs_count());
+    ASSERT_EQ(33, segment.field("name")->docs_count());
+    ASSERT_EQ(33, segment.field("seq")->docs_count());
+    ASSERT_EQ(33, segment.field("same")->docs_count());
+    ASSERT_EQ(13, segment.field("duplicated")->docs_count());
+  }
+}
+
 TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
