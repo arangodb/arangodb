@@ -418,33 +418,33 @@ struct AqlValue final {
   ~AqlValue() = default;
   
   /// @brief whether or not the value must be destroyed
-  constexpr inline bool requiresDestruction() const noexcept {
+  inline bool requiresDestruction() const noexcept {
     auto t = type();
     return (t != VPACK_SLICE_POINTER && t != VPACK_INLINE);
   }
 
   /// @brief whether or not the value is empty / none
-  constexpr inline bool isEmpty() const noexcept { 
+  inline bool isEmpty() const noexcept { 
     return (_data.internal[0] == '\x00' && _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
   }
   
   /// @brief whether or not the value is a pointer
-  constexpr inline bool isPointer() const noexcept {
+  inline bool isPointer() const noexcept {
     return type() == VPACK_SLICE_POINTER;
   }
 
   /// @brief whether or not the value is an external manager document
-  constexpr inline bool isManagedDocument() const noexcept {
+  inline bool isManagedDocument() const noexcept {
     return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
   }
   
   /// @brief whether or not the value is a range
-  constexpr inline bool isRange() const noexcept {
+  inline bool isRange() const noexcept {
     return type() == RANGE;
   }
   
   /// @brief whether or not the value is a docvec
-  constexpr inline bool isDocvec() const noexcept {
+  inline bool isDocvec() const noexcept {
     return type() == DOCVEC;
   }
 
@@ -600,7 +600,7 @@ struct AqlValue final {
   
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
-  constexpr inline AqlValueType type() const noexcept {
+  inline AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
   }
   
