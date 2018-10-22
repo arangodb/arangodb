@@ -2855,7 +2855,7 @@ class writer final : public iresearch::columnstore_writer {
 
     void finish() {
       auto& out = *ctx_->data_out_;
-      write_enum(out, props_); // column properties
+      write_enum(out, ColumnProperty(((column_props_ & CP_DENSE) << 3) | blocks_props_)); // column properties
       out.write_vint(block_index_.total()); // total number of items
       out.write_vint(max_); // max column key
       out.write_vint(avg_block_size_); // avg data block size
@@ -2908,6 +2908,13 @@ class writer final : public iresearch::columnstore_writer {
         return;
       }
 
+      // refresh column properties
+      // column is dense IFF
+      // - all blocks are dense
+      // - there are no gaps between blocks
+      column_props_ &= ColumnProperty(column_index_.empty() || 1 == block_index_.min_key() - max_);
+
+      // update max element
       max_ = block_index_.max_key();
 
       auto& out = *ctx_->data_out_;
@@ -2934,10 +2941,16 @@ class writer final : public iresearch::columnstore_writer {
       block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_));
       length_ += block_buf_.size();
 
-      // refresh column properties
-      props_ &= block_props;
+      // refresh blocks properties
+      blocks_props_ &= block_props;
       // reset buffer stream after flush
       block_buf_.reset();
+
+      // refresh column properties
+      // column is dense IFF
+      // - all blocks are dense
+      // - there are no gaps between blocks
+      column_props_ &= ColumnProperty(0 != (block_props & CP_DENSE));
     }
 
     writer* ctx_; // writer context
@@ -2947,7 +2960,8 @@ class writer final : public iresearch::columnstore_writer {
     memory_output blocks_index_; // blocks index
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
     doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key (among flushed blocks)
-    ColumnProperty props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column properties
+    ColumnProperty blocks_props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column blocks properties
+    ColumnProperty column_props_{ CP_DENSE }; // aggregated column block index properties
     uint32_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
     uint32_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
   }; // column
@@ -3551,8 +3565,13 @@ class dense_fixed_length_block : util::noncopyable {
   }
 
   bool value(doc_id_t key, bytes_ref& out) const {
+    key -= base_key_;
+
+    if (key >= size_) {
+      return false;
+    }
+
     // expect 0-based key
-    assert(key < size_);
 
     if (data_.empty()) {
       // block without data, but we've found a key
@@ -3715,16 +3734,123 @@ class sparse_mask_block : util::noncopyable {
   doc_id_t size_{}; // number of documents in a block
 }; // sparse_mask_block
 
-// placeholder for 'dense_fixed_length_column' specialization
-// doesn't store any data
-struct dense_mask_block;
+class dense_mask_block {
+ public:
+  class iterator {
+   public:
+    bool seek(doc_id_t doc) NOEXCEPT {
+      if (doc < doc_) {
+        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+          return next();
+        }
+
+        // don't seek backwards
+        return true;
+      }
+
+      doc_ = doc;
+      return next();
+    }
+
+    const irs::doc_id_t& value() const NOEXCEPT {
+      return value_;
+    }
+
+    const irs::bytes_ref& value_payload() const NOEXCEPT {
+      return irs::bytes_ref::NIL;
+    }
+
+    bool next() NOEXCEPT {
+      if (doc_ >= max_) {
+        seal();
+        return false;
+      }
+
+      value_ = doc_++;
+
+      return true;
+    }
+
+    void seal() NOEXCEPT {
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      doc_ = max_;
+    }
+
+    void reset(const dense_mask_block& block) NOEXCEPT {
+      block_ = &block;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      doc_ = block.min_;
+      max_ = block.max_;
+    }
+
+    bool operator==(const dense_mask_block& rhs) const NOEXCEPT {
+      return block_ == &rhs;
+    }
+
+    bool operator!=(const dense_mask_block& rhs) const NOEXCEPT {
+      return !(*this == rhs);
+    }
+
+   private:
+    const dense_mask_block* block_{};
+    doc_id_t value_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    doc_id_t max_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+  }; // iterator
+
+  dense_mask_block() NOEXCEPT
+    : min_(type_limits<type_t::doc_id_t>::invalid()),
+      max_(type_limits<type_t::doc_id_t>::invalid()) {
+  }
+
+  bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
+    const auto size = in.read_vint(); // total number of entries in a block
+    assert(size);
+
+    // dense block must be encoded with RL encoding, avg must be equal to 1
+    uint32_t avg;
+    if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
+      // invalid block type
+      return false;
+    }
+
+    // mask block has no data, so all offsets should be equal to 0
+    if (!encode::avg::check_block_rl64(in, 0)) {
+      // invalid block type
+      return false;
+    }
+
+    max_ = min_ + size;
+
+    return true;
+  }
+
+  bool value(doc_id_t key, bytes_ref& /*reader*/) const NOEXCEPT {
+    return min_ <= key && key < max_;
+  }
+
+  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+    for (auto doc = min_; doc < max_; ++doc) {
+      if (!visitor(doc, DUMMY)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+ private:
+  doc_id_t min_;
+  doc_id_t max_;
+}; // dense_mask_block
 
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
   : public block_cache_traits<sparse_block, Allocator>::cache_t,
     public block_cache_traits<dense_block, Allocator>::cache_t,
     public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t,
-    public block_cache_traits<sparse_mask_block, Allocator>::cache_t {
+    public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
+    public block_cache_traits<dense_mask_block, Allocator>::cache_t {
  public:
   DECLARE_SHARED_PTR(read_context);
 
@@ -3745,6 +3871,7 @@ class read_context
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_length_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
+      block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
       stream_(std::move(in)) {
   }
@@ -4320,11 +4447,13 @@ class dense_fixed_length_column final : public column {
   }
 
   bool value(doc_id_t key, bytes_ref& value) const {
-    if ((key -= min_) >= this->count()) {
+    const auto base_key = key - min_;
+
+    if (base_key >= this->count()) {
       return false;
     }
 
-    const auto block_idx = key / this->avg_block_count();
+    const auto block_idx = base_key / this->avg_block_count();
     assert(block_idx < refs_.size());
 
     auto& ref = const_cast<block_ref&>(refs_[block_idx]);
@@ -4337,7 +4466,7 @@ class dense_fixed_length_column final : public column {
     }
 
     assert(cached);
-    return cached->value(key -= block_idx*this->avg_block_count(), value);
+    return cached->value(key, value);
   }
 
   virtual bool visit(
@@ -4563,6 +4692,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
         return false;
       }
 
+
       value_ = min_++;
 
       return true;
@@ -4590,16 +4720,25 @@ irs::doc_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() c
 typedef std::function<
   column::ptr(const context_provider& ctxs, ColumnProperty prop)
 > column_factory_f;
+                                                               //  Column  |          Blocks
+const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_MASK CP_FIXED CP_DENSE
+  &sparse_column<sparse_block>::make,                          //    0     |    0        0        0
+  &sparse_column<dense_block>::make,                           //    0     |    0        0        1
+  &sparse_column<sparse_block>::make,                          //    0     |    0        1        0
+  &sparse_column<dense_fixed_length_block>::make,              //    0     |    0        1        1
+  nullptr, /* invalid properties, should never happen */       //    0     |    1        0        0
+  nullptr, /* invalid properties, should never happen */       //    0     |    1        0        1
+  &sparse_column<sparse_mask_block>::make,                     //    0     |    1        1        0
+  &sparse_column<dense_mask_block>::make,                      //    0     |    1        1        1
 
-column_factory_f g_column_factories[] {
-  &sparse_column<sparse_block>::make,                          // CP_SPARSE == 0
-  &sparse_column<dense_block>::make,                           // CP_DENSE  == 1
-  &sparse_column<sparse_block>::make,                          // CP_FIXED  == 2
-  &dense_fixed_length_column<dense_fixed_length_block>::make,  // CP_DENSE | CP_FIXED == 3
-  nullptr,                                                     // CP_MASK == 4
-  nullptr,                                                     // CP_DENSE | CP_MASK == 5
-  &sparse_column<sparse_mask_block>::make,                     // CP_FIXED | CP_MASK == 6
-  &dense_fixed_length_column<dense_mask_block>::make           // CP_DENSE | CP_FIXED | CP_MASK == 7
+  &sparse_column<sparse_block>::make,                          //    1     |    0        0        0
+  &sparse_column<dense_block>::make,                           //    1     |    0        0        1
+  &sparse_column<sparse_block>::make,                          //    1     |    0        1        0
+  &dense_fixed_length_column<dense_fixed_length_block>::make,  //    1     |    0        1        1
+  nullptr, /* invalid properties, should never happen */       //    1     |    1        0        0
+  nullptr, /* invalid properties, should never happen */       //    1     |    1        0        1
+  &sparse_column<sparse_mask_block>::make,                     //    1     |    1        1        0
+  &dense_fixed_length_column<dense_mask_block>::make           //    1     |    1        1        1
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -4682,13 +4821,36 @@ bool reader::prepare(
   for (size_t i = 0, size = columns.capacity(); i < size; ++i) {
     // read column properties
     const auto props = read_enum<ColumnProperty>(*stream);
+
+    if (props >= IRESEARCH_COUNTOF(g_column_factories)) {
+      IR_FRMT_ERROR(
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
+        i, static_cast<uint32_t>(props)
+      );
+      return false;
+    }
+
     // create column
     const auto& factory = g_column_factories[props];
-    assert(factory);
+
+    if (!factory) {
+      static_assert(
+        std::is_same<std::underlying_type<ColumnProperty>::type, uint32_t>::value,
+        "Enum 'ColumnProperty' has different underlying type"
+      );
+
+      IR_FRMT_ERROR(
+        "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
+        i, static_cast<uint32_t>(props)
+      );
+      return false;
+    }
+
     auto column = factory(*this, props);
+
     // read column
     if (!column || !column->read(*stream, buf)) {
-      IR_FRMT_ERROR("Unable to load blocks index for column id=" IR_SIZE_T_SPECIFIER, i);
+      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
       return false;
     }
 
