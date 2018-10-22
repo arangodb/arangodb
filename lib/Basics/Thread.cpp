@@ -158,6 +158,7 @@ std::string Thread::stringify(ThreadState state) {
 
 Thread::Thread(std::string const& name, bool deleteOnExit)
     : _deleteOnExit(deleteOnExit),
+      _threadStructInitialized(false),
       _name(name),
       _thread(),
       _threadNumber(0),
@@ -181,12 +182,14 @@ Thread::~Thread() {
       << "delete(" << _name << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
-    if (TRI_IsSelfThread(&_thread)) {
-      // we must ignore any errors here, but TRI_DetachThread will log them
-      TRI_DetachThread(&_thread);
-    } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+    if (_threadStructInitialized) {
+      if (TRI_IsSelfThread(&_thread)) {
+        // we must ignore any errors here, but TRI_DetachThread will log them
+        TRI_DetachThread(&_thread);
+      } else {
+        // we must ignore any errors here, but TRI_JoinThread will log them
+        TRI_JoinThread(&_thread);
+      }
     }
 
     _state.store(ThreadState::DETACHED);
@@ -320,6 +323,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     return false;
   }
 
+  TRI_ASSERT(!_threadStructInitialized);
+  memset(&_thread, 0, sizeof(thread_t));
+
   bool ok =
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
@@ -332,6 +338,8 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     // must cleanup to prevent memleaks
     cleanupMe();
   }
+
+  _threadStructInitialized = true;
 
   return ok;
 }
