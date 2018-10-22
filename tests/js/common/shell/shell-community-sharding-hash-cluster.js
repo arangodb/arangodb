@@ -378,7 +378,7 @@ function EdgeShardingSuite() {
       }
     },
 
-    testCreateWithCommunitySharding : function () {
+    testEdgeCreateWithCommunitySharding : function () {
       let c = db._createEdgeCollection(name1, { shardingStrategy: hash, numberOfShards: 5 });
       assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);

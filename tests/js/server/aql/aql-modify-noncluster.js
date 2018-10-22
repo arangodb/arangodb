@@ -1249,7 +1249,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFound : function () {
+    testSingleRemoveNotFound : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "REMOVE 'foobar' IN @@cn", { "@cn": cn1 });
     },
 
@@ -1257,7 +1257,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove - return what
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFoundWhat : function () {
+    testSingleRemoveNotFoundWhat : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "REMOVE 'foobar' IN @@cn LET removed = OLD RETURN removed", { "@cn": cn1 });
     },
 
@@ -2378,7 +2378,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFound : function () {
+    testSingleUpdateNotFound : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "UPDATE { _key: 'foobar' } WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
     },
 
@@ -2386,7 +2386,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFoundWhatNew : function () {
+    testSingleUpdateNotFoundWhatNew : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "UPDATE { _key: 'foobar' } WITH { value1: 1 } IN @@cn LET updated = NEW RETURN updated", { "@cn": cn1 });
     },
 
