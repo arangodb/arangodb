@@ -11,7 +11,7 @@ build:
 
 environment:
   BOOST_VERSION: default
-  CMAKE_OPTIONS: -DUSE_TESTS=On -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=16 -D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1 # _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING required for GTEST/MSVC2017
+  CMAKE_OPTIONS: -DUSE_TESTS=On -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=16
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
   ############################################################################
@@ -126,28 +126,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
@@ -180,12 +180,6 @@ install:
   - cd %GTEST_DIR%
   - appveyor-retry git fetch --tags
   - appveyor-retry git checkout tags/release-1.8.0
-  - cd googletest
-#  - mkdir build && cd build
-#  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DINSTALL_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" ..
-#  - cmake --build . %CMAKE_BUILD_OPTIONS%
-#  - mkdir %GTEST_DIR%\googletest\lib
-#  - move /Y %CONFIGURATION%\* %GTEST_DIR%\googletest\lib || true
   - set GTEST_ROOT=%GTEST_DIR%\googletest
 
   ############################################################################

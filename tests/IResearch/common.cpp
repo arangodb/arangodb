@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Basics/files.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "V8/v8-utils.h"
@@ -130,6 +131,7 @@ namespace tests {
 
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
+  ClusterEngine::Mocking = true;
 }
 
 // @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL

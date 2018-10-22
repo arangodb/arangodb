@@ -34,6 +34,6 @@ ClusterRestExportHandler::ClusterRestExportHandler(GeneralRequest* request,
 RestStatus ClusterRestExportHandler::execute() {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "'/_api/export' is not yet supported in a cluster");
+                  "'/_api/export' is not supported in a cluster");
     return RestStatus::DONE;
 }

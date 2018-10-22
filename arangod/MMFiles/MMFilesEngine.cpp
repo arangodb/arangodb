@@ -874,6 +874,7 @@ std::string MMFilesEngine::createCollection(
     LogicalCollection const& collection
 ) {
   auto path = databasePath(&vocbase);
+  TRI_ASSERT(!path.empty());
 
   // sanity check
   if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >

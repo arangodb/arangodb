@@ -257,11 +257,7 @@ ClusterComm::ClusterComm(bool ignored)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm() {
-  for (ClusterCommThread * thread: _backgroundThreads) {
-    thread->beginShutdown();
-    delete thread;
-  }
-
+  stopBackgroundThreads();
   cleanupAllQueues();
 }
 
@@ -317,6 +313,10 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
+  if (!_theInstance) {
+    return ;
+  }
+
   _theInstance.reset();    // no more operations will be started, but running
                            // ones have their copy of the shared_ptr
 }
@@ -340,6 +340,16 @@ void ClusterComm::startBackgroundThread() {
     } // else
   } // for
 }
+
+void ClusterComm::stopBackgroundThreads() {
+  for (ClusterCommThread * thread: _backgroundThreads) {
+    thread->beginShutdown();
+    delete thread;
+  }
+
+  _backgroundThreads.clear();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief choose next communicator via round robin
@@ -1277,7 +1287,7 @@ void ClusterCommThread::run() {
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
 }
-        
+
 /// @brief logs a connection error (backend unavailable)
 void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result, double timeout, int /*line*/) {
   std::string msg = "cannot create connection to server";
@@ -1285,7 +1295,7 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
     msg += ": '" + result->serverID + '\'';
   }
   msg += " at endpoint " + result->endpoint + "', timeout: " + std::to_string(timeout);
-  
+
   if (useErrorLogLevel) {
     LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
   } else {

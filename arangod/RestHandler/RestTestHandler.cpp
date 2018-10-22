@@ -118,7 +118,6 @@ RestStatus RestTestHandler::execute() {
     }
 
     if (body.hasKey("workload")) {
-
       auto workload = body.get("workload");
 
       if (workload.isNumber()) {
@@ -134,7 +133,7 @@ RestStatus RestTestHandler::execute() {
   auto self(shared_from_this());
 
   bool ok = SchedulerFeature::SCHEDULER->queue(
-    PriorityRequestLane(res.get()),
+    priority(res.get()),
     [this, self, duration]() {
       auto stop = clock::now() + duration;
 

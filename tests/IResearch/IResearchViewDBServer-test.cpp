@@ -328,6 +328,8 @@ SECTION("test_drop_database") {
   REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
   REQUIRE((nullptr != vocbase));
   REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
+  REQUIRE((false == !logicalCollection));
   CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice(), error)));
   auto logicalWiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
   REQUIRE((false == !logicalWiew));

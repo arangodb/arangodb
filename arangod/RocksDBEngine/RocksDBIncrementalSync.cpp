@@ -106,8 +106,9 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          trx.remove(col->name(), builder.slice(), options);
-          ++stats.numDocsRemoved;
+          if (trx.remove(col->name(), builder.slice(), options).ok()) {
+            ++stats.numDocsRemoved;
+          }
           // continue iteration
           return true;
         }
@@ -133,8 +134,9 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          trx.remove(col->name(), builder.slice(), options);
-          ++stats.numDocsRemoved;
+          if (trx.remove(col->name(), builder.slice(), options).ok()) {
+            ++stats.numDocsRemoved;
+          }
         }
 
         // continue iteration until end
@@ -272,8 +274,9 @@ Result syncChunkRocksDB(
         // we have a local key that is not present remotely
         keyBuilder->clear();
         keyBuilder->add(VPackValue(localKey));
-        trx->remove(collectionName, keyBuilder->slice(), options);
-        ++stats.numDocsRemoved;
+        if (trx->remove(collectionName, keyBuilder->slice(), options).ok()) {
+          ++stats.numDocsRemoved;
+        }
 
         ++nextStart;
       } else if (res == 0) {
@@ -316,8 +319,9 @@ Result syncChunkRocksDB(
       // we have a local key that is not present remotely
       keyBuilder->clear();
       keyBuilder->add(VPackValue(localKey));
-      trx->remove(collectionName, keyBuilder->slice(), options);
-      ++stats.numDocsRemoved;
+      if (trx->remove(collectionName, keyBuilder->slice(), options).ok()) {
+        ++stats.numDocsRemoved;
+      }
     }
     ++nextStart;
   }
@@ -439,6 +443,9 @@ Result syncChunkRocksDB(
         if (conflictId.isSet()) {
           physical->readDocumentWithCallback(trx, conflictId, [&](LocalDocumentId const&, VPackSlice doc) {
             res = trx->remove(collectionName, doc, options).result;
+            if (res.ok()) {
+              ++stats.numDocsRemoved;
+            }
           });
         }
         return res;
@@ -467,6 +474,8 @@ Result syncChunkRocksDB(
             return opRes.result;
           }
         }
+      
+        ++stats.numDocsInserted;
       } else {
         // REPLACE
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
@@ -490,7 +499,6 @@ Result syncChunkRocksDB(
           }
         }
       }
-      ++stats.numDocsInserted;
     }
 
     if (foundLength >= toFetch.size()) {
@@ -586,6 +594,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
+  uint64_t const numberDocumentsRemovedBeforeStart = stats.numDocsRemoved;
 
   {
     if (syncer.isAborted()) {
@@ -610,7 +619,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           res.errorNumber(),
           std::string("unable to start transaction: ") + res.errorMessage());
     }
-
+    
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
     // Neither it nor its indexes can be invalidated
@@ -683,8 +692,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             // smaller values than lowKey mean they don't exist remotely
             tempBuilder.clear(); 
             tempBuilder.add(VPackValue(docKey));
-            trx.remove(col->name(), tempBuilder.slice(), options);
-            ++stats.numDocsRemoved;
+            
+            if (trx.remove(col->name(), tempBuilder.slice(), options).ok()) {
+              ++stats.numDocsRemoved;
+            }
             return;
           }
           
@@ -749,8 +760,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     LogicalCollection* coll = trx.documentCollection();
     auto iterator = createPrimaryIndexIterator(&trx, coll);
+    uint64_t documentsFound = 0;
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+          ++documentsFound;
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
@@ -776,6 +789,15 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       currentChunkId++;
       if (currentChunkId < numChunks) {
         resetChunk();
+      }
+    }
+
+    {
+      uint64_t numberDocumentsAfterSync = documentsFound + stats.numDocsInserted - (stats.numDocsRemoved - numberDocumentsRemovedBeforeStart);
+      uint64_t numberDocumentsDueToCounter = col->numberDocuments(&trx, transaction::CountType::Normal);
+      syncer.setProgress(std::string("number of remaining documents in collection '") + col->name() + "' " + std::to_string(numberDocumentsAfterSync) + ", number of documents due to collection count: " + std::to_string(numberDocumentsDueToCounter));
+      if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "number of remaining documents in collection '" + col->name() + "' is " + std::to_string(numberDocumentsAfterSync) + " and differs from number of documents returned by collection count " + std::to_string(numberDocumentsDueToCounter);
       }
     }
 
