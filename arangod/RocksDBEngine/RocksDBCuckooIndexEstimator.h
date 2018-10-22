@@ -518,10 +518,10 @@ class RocksDBCuckooIndexEstimator {
   void removeBlocker(uint64_t trxId) {
     WRITE_LOCKER(locker, _lock);
     auto it = _blockers.find(trxId);
-    if (_blockers.end() != it) {
+    if (ADB_LIKELY(_blockers.end() != it)) {
       auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
       TRI_ASSERT(_blockersBySeq.end() != cross);
-      if (_blockersBySeq.end() != cross) {
+      if (ADB_LIKELY(_blockersBySeq.end() != cross)) {
         _blockersBySeq.erase(cross);
       }
       _blockers.erase(it);

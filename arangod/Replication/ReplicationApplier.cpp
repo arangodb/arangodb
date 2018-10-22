@@ -386,11 +386,15 @@ void ReplicationApplier::removeState() {
   if (!applies()) {
     return;
   }
+  
+  std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return;
+  }
 
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   _state.reset(false);
-
-  std::string const filename = getStateFilename();
 
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
@@ -436,6 +440,11 @@ bool ReplicationApplier::loadState() {
   }
 
   std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return false;
+  }
+
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "looking for replication state file '" << filename << "' for " << _databaseName;
 
@@ -486,11 +495,16 @@ void ReplicationApplier::persistState(bool doSync) {
   if (!applies()) {
     return;
   }
+  
+  std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return;
+  }
 
   VPackBuilder builder;
   _state.toVelocyPack(builder, false);
 
-  std::string const filename = getStateFilename();
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state to file '" << filename << "' for " << _databaseName;
 

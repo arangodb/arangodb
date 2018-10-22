@@ -89,11 +89,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void addOperation(TRI_voc_document_operation_e operationType,
                     TRI_voc_rid_t revisionId);
   
-  /// @brief will perform _numRemoves = _initialNumberDocuments
-  /// be aware that this is only a valid operation under an
-  /// exclusive collection lock
-  void addTruncateOperation();
-
   /**
    * @brief Prepare collection for commit by placing index blockers
    * @param trxId        Active transaction ID
@@ -142,12 +137,14 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numRemoves;
   bool _usageLocked;
 
+  struct IndexOperations {
+    std::vector<uint64_t> inserts;
+    std::vector<uint64_t> removals;
+  };
+  
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  std::unordered_map<uint64_t,
-                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
-      _trackedIndexOperations;
-
+  std::unordered_map<uint64_t, IndexOperations> _trackedIndexOperations;
 };
 }
 

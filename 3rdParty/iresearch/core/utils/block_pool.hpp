@@ -52,9 +52,8 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   typedef const typename container::value_type& const_reference;
   typedef typename container::const_pointer const_pointer;
 
-  explicit block_pool_const_iterator(container* pool)
-    : pool_(pool) {
-    reset(pool_->size());
+  explicit block_pool_const_iterator(container* pool): pool_(pool) {
+    reset(pool_->value_count());
   }
 
   block_pool_const_iterator(container* pool, size_t offset)
@@ -145,7 +144,11 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
     return !(*this < rhs);
   }
 
-  bool eof() const { return block_offset() + std::distance(block_->begin, pos_) == pool_->size(); }
+  bool eof() const {
+    return block_offset()
+      + std::distance(block_->begin, pos_) == pool_->value_count()
+      ;
+  }
 
   const_pointer buffer() const {
     return pos_;
@@ -166,8 +169,8 @@ class block_pool_const_iterator : public std::iterator < std::random_access_iter
   }
 
   void reset(size_t offset) {
-    if (offset >= pool_->size()) {
-      block_start_ = pool_->size();
+    if (offset >= pool_->value_count()) {
+      block_start_ = pool_->value_count();
       block_ = nullptr;
       pos_ = nullptr;
       return;
@@ -551,7 +554,7 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   }
 
   void seek(size_t offset) {
-    if (offset >= where_.parent().size()) {
+    if (offset >= where_.parent().value_count()) {
       where_.parent().alloc_buffer();
     }
 
@@ -582,7 +585,7 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
   }
 
   void alloc_slice(size_t size) {
-    auto pool_size = where_.parent().size();
+    auto pool_size = where_.parent().value_count();
     auto slice_start = where_.pool_offset() + size;
     auto next_block_start = where_.block_offset() + block_type::SIZE;
 
@@ -594,7 +597,7 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
         where_.refresh();
       } else {
         // do not span slice over 2 blocks, start slice at start of block allocated above
-        where_.reset(where_.parent().block_offset(where_.parent().count() - 1));
+        where_.reset(where_.parent().block_offset(where_.parent().block_count() - 1));
       }
     } else if (slice_start > next_block_start) {
       // can reuse existing pool but slice is not in the current buffer
@@ -756,6 +759,12 @@ class block_pool {
     }
   }
 
+  size_t block_count() const { return get_blocks().size(); }
+
+  size_t value_count() const { return block_type::SIZE * block_count(); }
+
+  size_t size() const { return sizeof(value_type) * value_count(); }
+
   iterator write(iterator where, value_type b) {
     if (where.eof()) {
       alloc_buffer();
@@ -786,7 +795,6 @@ class block_pool {
 
     return where;
   }
-
 
   iterator read(iterator where, pointer b) {
     if (where.eof()) {
@@ -826,7 +834,7 @@ class block_pool {
   }
 
   reference at(size_t offset) {
-    assert(offset < this->size());
+    assert(offset < this->value_count());
 
     const size_t idx = offset / block_type::SIZE;
     const size_t pos = offset % block_type::SIZE;
@@ -861,24 +869,18 @@ class block_pool {
   iterator end() { return iterator(this); }
 
   pointer buffer(size_t i) {
-    assert(i < count());
+    assert(i < block_count());
     return get_blocks()[i];
   }
 
   const_pointer buffer(size_t i) const {
-    assert(i < count());
+    assert(i < block_count());
     return get_blocks()[i];
   }
 
   size_t block_offset(size_t i) const {
-    assert(i < count());
+    assert(i < block_count());
     return block_type::SIZE * i;
-  }
-
-  size_t count() const { return get_blocks().size(); }
-
-  size_t size() const {
-    return block_type::SIZE * get_blocks().size();
   }
 
  private:

@@ -98,7 +98,10 @@ namespace {
         bool acquire,
         char const* file,
         int line
-    ): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
+    ): _locked(false),
+       _locker(&mutex, type, false, file, line),
+       _owner(owner),
+       _update(noop) {
       if (acquire) {
         lock();
       }
@@ -108,9 +111,7 @@ namespace {
       unlock();
     }
 
-    bool isLocked() {
-      return _locker.isLocked();
-    }
+    bool isLocked() { return _locked; }
 
     void lock() {
       // recursive locking of the same instance is not yet supported (create a new instance instead)
@@ -121,13 +122,17 @@ namespace {
         _owner.store(std::this_thread::get_id());
         _update = owned;
       }
+
+      _locked = true;
     }
 
     void unlock() {
       _update(*this);
+      _locked = false;
     }
 
    private:
+    bool _locked; // track locked state separately for recursive lock aquisition
     arangodb::basics::WriteLocker<T> _locker;
     std::atomic<std::thread::id>& _owner;
     void (*_update)(RecursiveWriteLocker& locker);
@@ -867,7 +872,10 @@ void TRI_vocbase_t::shutdown() {
 
   // starts unloading of collections
   for (auto& collection : collections) {
-    collection->close(); // required to release indexes
+    {
+      WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+      collection->close(); // required to release indexes
+    }
     unloadCollection(collection.get(), true);
   }
 
@@ -1840,8 +1848,13 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
+    WRITE_LOCKER_EVENTUAL(locker, it->lock());
     it->close(); // required to release indexes
   }
+
+  _dataSourceById.clear(); // clear map before deallocating TRI_vocbase_t members
+  _dataSourceByName.clear(); // clear map before deallocating TRI_vocbase_t members
+  _dataSourceByUuid.clear(); // clear map before deallocating TRI_vocbase_t members
 }
 
 std::string TRI_vocbase_t::path() const {
@@ -2110,6 +2123,43 @@ std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
   }
 
   return collections;
+}
+
+bool TRI_vocbase_t::visitDataSources(
+    dataSourceVisitor const& visitor,
+    bool lockWrite /*= false*/
+) {
+  TRI_ASSERT(visitor);
+
+  if (!lockWrite) {
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+
+    for (auto& entry: _dataSourceById) {
+      if (entry.second && !visitor(*(entry.second))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
+
+  dataSources.reserve(_dataSourceById.size());
+
+  // create a copy of all the datasource in case 'visitor' modifies '_dataSourceById'
+  for (auto& entry: _dataSourceById) {
+    dataSources.emplace_back(entry.second);
+  }
+
+  for (auto& dataSource: dataSources) {
+    if (dataSource && !visitor(*dataSource)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /// @brief extract the _rev attribute from a slice

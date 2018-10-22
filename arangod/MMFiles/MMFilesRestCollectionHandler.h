@@ -17,24 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
-#define ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
+#ifndef ARANGOD_MMFILES_MMFILES_REST_COLLECTION_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_COLLECTION_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestHandler/RestCollectionHandler.h"
 
 namespace arangodb {
 
-class EngineEqualityCheckFeature final : public application_features::ApplicationFeature {
+class MMFilesRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  explicit EngineEqualityCheckFeature(
-    application_features::ApplicationServer& server
-  );
-
-  void start() override final;
+  MMFilesRestCollectionHandler(GeneralRequest*, GeneralResponse*);
+protected:
+  Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                               velocypack::Builder& builder) override final;
 };
 
 }
