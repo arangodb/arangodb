@@ -445,12 +445,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     (*rip->_options._curlRcFn)(rc);
   }
 
+  MUTEX_LOCKER(guard, _handlesLock);
   auto inProgress = _handlesInProgress.find(rip->_ticketId);
   auto curlHandle = (*inProgress).second->getSharedPtr();
-  {
-    MUTEX_LOCKER(guard, _handlesLock);
-    _handlesInProgress.erase(rip->_ticketId);
-  }
+  _handlesInProgress.erase(rip->_ticketId);
 
   rip->_callbacks._scheduleMe([curlHandle, this, handle, rc, rip]
   {// lamda rewrite starts
