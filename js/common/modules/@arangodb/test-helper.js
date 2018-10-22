@@ -96,7 +96,7 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
     if (testcase === "setUp" ||
         testcase === "tearDown" ||
         testcase === "setUpAll" ||
-        testcase === "tearDownAll"]) {
+        testcase === "tearDownAll") {
       targetTestCase = testcase;
     }
     if (deriveTo.hasOwnProperty(targetTestCase)) {
