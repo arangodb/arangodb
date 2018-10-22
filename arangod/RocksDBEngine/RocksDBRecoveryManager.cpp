@@ -282,6 +282,34 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       (*it).second = keyValue;
     }
   }
+  
+  bool truncateIndexes(uint64_t objectId) {
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine::CollectionPair pair = engine->mapObjectToCollection(objectId);
+    if (pair.first == 0 || pair.second == 0) {
+      return false;
+    }
+
+    DatabaseFeature* df = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vb = df->useDatabase(pair.first);
+    if (vb == nullptr) {
+      return false;
+    }
+    TRI_DEFER(vb->release());
+
+    auto coll = vb->lookupCollection(pair.second);
+
+    if (coll == nullptr) {
+      return false;
+    }
+
+    for (auto const& idx : coll->getIndexes()) {
+      idx->afterTruncate();
+    }
+
+    return true;
+  }
 
   RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
     RocksDBEngine* engine =
@@ -517,10 +545,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           ops->removed = 0;
           ops->added = 0;
           ops->mustTruncate = true;
-          auto est = findEstimator(objectId);
-          if (est != nullptr && est->commitSeq() < currentSeqNum) {
-            // We track estimates for this index
-            est->bufferTruncate(currentSeqNum + 1);
+
+          if (!truncateIndexes(objectId)) {
+            // unable to truncate indexes of the collection.
+            // may be due to collection having been deleted etc.
+            LOG_TOPIC(DEBUG, Logger::ENGINES) << "unable to truncate indexes for objectId " << objectId;
           }
         }
 
