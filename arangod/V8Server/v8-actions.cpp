@@ -38,6 +38,7 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -359,6 +360,22 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     req->ForceSet(UserKey, v8::Null(isolate));
   } else {
     req->ForceSet(UserKey, TRI_V8_STD_STRING(isolate, user));
+  }
+  
+  TRI_GET_GLOBAL_STRING(IsAdminUser);
+  if (request->authenticated()) {
+    if (user.empty()) { // superuser
+      req->ForceSet(IsAdminUser, v8::True(isolate));
+    } else if (ExecContext::CURRENT != nullptr &&
+               ExecContext::CURRENT->isAdminUser()) {
+      req->ForceSet(IsAdminUser, v8::True(isolate));
+    } else {
+      req->ForceSet(IsAdminUser, v8::False(isolate));
+    }
+  } else if (!ExecContext::isAuthEnabled()) {
+    req->ForceSet(IsAdminUser, v8::True(isolate));
+  } else {
+    req->ForceSet(IsAdminUser, v8::False(isolate));
   }
 
   // create database attribute
