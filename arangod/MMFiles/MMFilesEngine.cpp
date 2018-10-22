@@ -355,6 +355,51 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   _deleted.clear();
 }
 
+Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
+  Result result;
+
+  LOG_TOPIC(DEBUG, Logger::ENGINES)
+      << "beginning upgrade task to persist LocalDocumentIds";
+
+  // ensure we are not in recovery
+  TRI_ASSERT(!inRecovery());
+
+  // flush the wal and wait for compactor just to be sure
+  result = flushWal(true, true, false);
+  if (result.fail()) {
+    return result;
+  }
+
+  result = catchToResult([this, &result, &vocbase]() -> Result {
+    // stop the compactor so we can make sure there's no other interference
+    stopCompactor(&vocbase);
+
+    auto collections = vocbase.collections(false);
+    for (auto c : collections) {
+      auto collection = static_cast<MMFilesCollection*>(c->getPhysical());
+      LOG_TOPIC(DEBUG, Logger::ENGINES)
+          << "processing collection '" << c->name() << "'";
+      collection->open(false);
+      auto guard = scopeGuard([this, &collection]() -> void {
+        collection->close();
+      });
+
+      result = collection->persistLocalDocumentIds();
+      if (result.fail()) {
+        return result;
+      }
+    }
+    return Result();
+  });
+
+  if (result.fail()) {
+    LOG_TOPIC(ERR, Logger::ENGINES)
+        << "failure in persistence: " << result.errorMessage();
+  }
+
+  return result;
+}
+
 // fill the Builder object with an array of databases that were detected
 // by the storage engine. this method must sort out databases that were not
 // fully created (see "createDatabase" below). called at server start only

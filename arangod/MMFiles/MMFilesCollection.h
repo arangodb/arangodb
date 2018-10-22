@@ -415,6 +415,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
+  Result persistLocalDocumentIds();
+
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -538,6 +540,9 @@ class MMFilesCollection final : public PhysicalCollection {
                         bool& waitForSync);
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
+
+  static Result persistLocalDocumentIdsForDatafile(
+      MMFilesCollection& collection, MMFilesDatafile& file);
 
  private:
   mutable arangodb::MMFilesDitches _ditches;

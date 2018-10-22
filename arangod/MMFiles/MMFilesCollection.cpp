@@ -39,6 +39,7 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionWriteLocker.h"
+#include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
@@ -587,6 +588,7 @@ bool MMFilesCollection::isVolatile() const { return _isVolatile; }
 
 /// @brief closes an open collection
 int MMFilesCollection::close() {
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "closing '" << _logicalCollection.name() << "'";
   if (!_logicalCollection.deleted() &&
       !_logicalCollection.vocbase().isDropped()) {
     auto primIdx = primaryIndex();
@@ -1086,6 +1088,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   // name
   if (!isCompactor && datafile->isPhysical()) {
     // and use the correct name
+    std::string oldName = datafile->getName();
     std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
     std::string filename =
         arangodb::basics::FileUtils::buildFilename(path(), jname);
@@ -1105,7 +1108,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     }
 
     LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "renamed journal from '"
-                                                  << datafile->getName() << "' to '"
+                                                  << oldName << "' to '"
                                                   << filename << "'";
   }
 
@@ -3051,6 +3054,149 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
   } else {
     _revisionsCache.remove(documentId);
   }
+}
+
+namespace {
+Result countDocumentsIterator(MMFilesMarker const* marker,
+                              void* counter, MMFilesDatafile*) {
+  Result res;
+  TRI_ASSERT(nullptr != counter);
+  if (marker->getType() == TRI_DF_MARKER_VPACK_DOCUMENT) {
+    (*static_cast<int*>(counter))++;
+  }
+  return res;
+}
+
+Result persistLocalDocumentIdIterator(
+    MMFilesMarker const* marker, void* data, MMFilesDatafile* inputFile) {
+  Result res;
+  auto outputFile = static_cast<MMFilesDatafile*>(data);
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
+      auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
+
+      VPackSlice const slice(
+          reinterpret_cast<char const*>(marker) +
+          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      uint8_t const* vpack = slice.begin();
+
+      LocalDocumentId localDocumentId;
+      if (marker->getSize() ==
+          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)
+          + slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
+        // we do have a LocalDocumentId stored at the end of the marker
+        uint8_t const* ptr = vpack + slice.byteSize();
+        localDocumentId = LocalDocumentId(
+            encoding::readNumber<LocalDocumentId::BaseType>(
+                ptr, sizeof(LocalDocumentId::BaseType)));
+      } else {
+        localDocumentId = LocalDocumentId::create();
+      }
+
+      MMFilesCrudMarker updatedMarker(TRI_DF_MARKER_VPACK_DOCUMENT,
+                                      transactionId, localDocumentId, slice);
+
+      std::unique_ptr<char> buffer(new char[updatedMarker.size()]);
+      MMFilesMarker* outputMarker =
+          reinterpret_cast<MMFilesMarker*>(buffer.get());
+      MMFilesDatafileHelper::InitMarker(outputMarker, updatedMarker.type(),
+                                        updatedMarker.size(),
+                                        marker->getTick());
+      updatedMarker.store(buffer.get());
+
+      MMFilesMarker* result;
+      res = outputFile->reserveElement(outputMarker->getSize(), &result, 0);
+      if (res.fail()) {
+        return res;
+      }
+      res = outputFile->writeCrcElement(result, outputMarker);
+      if (res.fail()) {
+        return res;
+      }
+      break;
+    }
+    case TRI_DF_MARKER_HEADER:
+    case TRI_DF_MARKER_COL_HEADER:
+    case TRI_DF_MARKER_FOOTER: {
+      // skip marker, either already written or will be written by other methods
+      break;
+    }
+    default: {
+      // direct copy
+      MMFilesMarker* result;
+      res = outputFile->reserveElement(marker->getSize(), &result, 0);
+      if (res.fail()) {
+        return res;
+      }
+      res = outputFile->writeElement(result, marker);
+      if (res.fail()) {
+        return res;
+      }
+      break;
+    }
+  }
+
+  return res;
+}
+}
+
+Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
+    MMFilesCollection& collection, MMFilesDatafile& file) {
+  Result res;
+  // make a first pass to count documents and determine output size
+  size_t numDocuments = 0;
+  res = TRI_IterateDatafile(&file, ::countDocumentsIterator, &numDocuments);
+  if (res.fail()) {
+    return res;
+  }
+
+  size_t outputSizeLimit = file.currentSize() +
+                           (numDocuments * sizeof(LocalDocumentId));
+  MMFilesDatafile* outputFile =
+      collection.createCompactor(file.fid(), outputSizeLimit);
+  if (nullptr == outputFile) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+
+  res = TRI_IterateDatafile(&file, ::persistLocalDocumentIdIterator,
+                            outputFile);
+  if (res.fail()) {
+    return res;
+  }
+
+  res = collection.closeCompactor(outputFile);
+  if (res.fail()) {
+    return res;
+  }
+
+  // TODO detect error in replacement?
+  MMFilesCompactorThread::RenameDatafileCallback(
+      &file, outputFile, &collection._logicalCollection);
+
+  return res;
+}
+
+Result MMFilesCollection::persistLocalDocumentIds() {
+  WRITE_LOCKER(dataLocker, _dataLock);
+  TRI_ASSERT(_compactors.empty());
+
+  // convert journal to datafile first
+  if (!_journals.empty()) {
+    int res = rotateActiveJournal();
+    if (TRI_ERROR_NO_ERROR != res) {
+      return Result(res);
+    }
+  }
+
+  // now handle datafiles
+  for (auto file : _datafiles) {
+    Result result = persistLocalDocumentIdsForDatafile(*this, *file);
+    if (result.fail()) {
+      return result;
+    }
+  }
+
+  return Result();
 }
 
 /// @brief creates a new entry in the primary index
