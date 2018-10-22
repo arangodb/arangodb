@@ -763,37 +763,75 @@ class format_test_case_base : public index_test_base {
   }
 
   void segment_meta_read_write() {
-    iresearch::segment_meta meta;
-    meta.name = "meta_name";
-    meta.docs_count = 453;
-    meta.live_docs_count = 345;
-    meta.version = 100;
-
-    meta.files.emplace("file1");
-    meta.files.emplace("index_file2");
-    meta.files.emplace("file3");
-    meta.files.emplace("stored_file4");
-
-    // write segment meta
+    // read valid meta
     {
-      auto writer = codec()->get_segment_meta_writer();
-      writer->write(dir(), meta);
+      iresearch::segment_meta meta;
+      meta.name = "meta_name";
+      meta.docs_count = 453;
+      meta.live_docs_count = 345;
+      meta.size = 666;
+      meta.version = 100;
+      meta.column_store = true;
+
+      meta.files.emplace("file1");
+      meta.files.emplace("index_file2");
+      meta.files.emplace("file3");
+      meta.files.emplace("stored_file4");
+
+      // write segment meta
+      {
+        auto writer = codec()->get_segment_meta_writer();
+        writer->write(dir(), meta);
+      }
+
+      // read segment meta
+      {
+        irs::segment_meta read_meta;
+        read_meta.name = meta.name;
+        read_meta.version = 100;
+
+        auto reader = codec()->get_segment_meta_reader();
+        reader->read(dir(), read_meta);
+        ASSERT_EQ(meta.codec, read_meta.codec); // codec stays nullptr
+        ASSERT_EQ(meta.name, read_meta.name);
+        ASSERT_EQ(meta.docs_count, read_meta.docs_count);
+        ASSERT_EQ(meta.live_docs_count, read_meta.live_docs_count);
+        ASSERT_EQ(meta.version, read_meta.version);
+        ASSERT_EQ(meta.size, read_meta.size);
+        ASSERT_EQ(meta.files, read_meta.files);
+        ASSERT_EQ(meta.column_store, read_meta.column_store);
+      }
     }
 
-    // read segment meta
+    // read broken meta (live_docs_count > docs_count)
     {
-      irs::segment_meta read_meta;
-      read_meta.name = meta.name;
-      read_meta.version = 100;
+      iresearch::segment_meta meta;
+      meta.name = "broken_meta_name";
+      meta.docs_count = 453;
+      meta.live_docs_count = 1345;
+      meta.size = 666;
+      meta.version = 100;
 
-      auto reader = codec()->get_segment_meta_reader();
-      reader->read(dir(), read_meta);
-      ASSERT_EQ(meta.codec, read_meta.codec); // codec stays nullptr
-      ASSERT_EQ(meta.name, read_meta.name);
-      ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-      ASSERT_EQ(meta.live_docs_count, read_meta.live_docs_count);
-      ASSERT_EQ(meta.version, read_meta.version);
-      ASSERT_EQ(meta.files, read_meta.files);
+      meta.files.emplace("file1");
+      meta.files.emplace("index_file2");
+      meta.files.emplace("file3");
+      meta.files.emplace("stored_file4");
+
+      // write segment meta
+      {
+        auto writer = codec()->get_segment_meta_writer();
+        writer->write(dir(), meta);
+      }
+
+      // read segment meta
+      {
+        irs::segment_meta read_meta;
+        read_meta.name = meta.name;
+        read_meta.version = 100;
+
+        auto reader = codec()->get_segment_meta_reader();
+        ASSERT_THROW(reader->read(dir(), read_meta), irs::index_error);
+      }
     }
   }
 
