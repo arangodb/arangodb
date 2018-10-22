@@ -490,9 +490,12 @@ void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
   for (auto& filename: segment.meta.files) {
     uint64_t size;
 
-    if (dir.length(size, filename)) {
-      segment.meta.size += size;
+    if (!dir.length(size, filename)) {
+      IR_FRMT_WARN("Failed to get length of the file '%s'", filename.c_str());
+      continue;
     }
+
+    segment.meta.size += size;
   }
 
   auto writer = segment.meta.codec->get_segment_meta_writer();

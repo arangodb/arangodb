@@ -3190,7 +3190,11 @@ class sparse_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'sparse_block' found in columnstore");
+      return false;
+    }
 
     auto begin = std::begin(index_);
 
@@ -3375,7 +3379,11 @@ class dense_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'dense_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -3543,7 +3551,11 @@ class dense_fixed_length_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
-    assert(size_);
+
+    if (!size_) {
+      IR_FRMT_ERROR("Empty 'dense_fixed_length_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -3684,7 +3696,11 @@ class sparse_mask_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
-    assert(size_);
+
+    if (!size_) {
+      IR_FRMT_ERROR("Empty 'sparse_mask_block' found in columnstore");
+      return false;
+    }
 
     auto begin = std::begin(keys_);
 
@@ -3805,7 +3821,11 @@ class dense_mask_block {
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'dense_mask_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
