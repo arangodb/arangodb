@@ -396,9 +396,6 @@ class bounded_object_pool {
     }
   }
 
-  // MSVC 2017.3 through 2017.8 incorectly increment counter if this function is inlined during optimization
-  // MSVC 2017.2 and below TODO test for both debug and release
-  MSVC2017_345678_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void unlock(node_type& slot) const NOEXCEPT {
     free_list_.push(slot);
     cond_.notify_all();
