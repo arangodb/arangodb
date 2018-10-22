@@ -71,10 +71,9 @@ static void JS_RotateVocbaseCol(
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  OperationResult result = trx.rotateActiveJournal(collection->name(), OperationOptions());
-  res.reset(result.result);
-
+  
+  MMFilesCollection* mcoll = static_cast<MMFilesCollection*>(collection->getPhysical());
+  res.reset(mcoll->rotateActiveJournal());
   trx.finish(res);
 
   if (!res.ok()) {

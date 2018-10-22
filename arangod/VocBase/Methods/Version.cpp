@@ -155,7 +155,10 @@ Result Version::write(TRI_vocbase_t* vocbase,
   TRI_ASSERT(engine != nullptr);
   
   std::string versionFile = engine->versionFilename(vocbase->id());
-  TRI_ASSERT(!versionFile.empty());
+  if (versionFile.empty()) {
+    // cluster engine
+    return Result();
+  }
     
   VPackOptions opts;
   opts.buildUnindexedObjects = true;

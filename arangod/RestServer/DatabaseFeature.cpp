@@ -638,7 +638,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_voc_tick_t id = 0;
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
@@ -649,19 +649,48 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
       newLists = new DatabasesLists(*oldLists);
 
       auto it = newLists->_databases.find(name);
+
       if (it == newLists->_databases.end()) {
         // not found
         delete newLists;
         events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-      } else {
-        vocbase = it->second;
-        id = vocbase->id();
-        // mark as deleted
-
-        newLists->_databases.erase(it);
-        newLists->_droppedDatabases.insert(vocbase);
       }
+
+      vocbase = it->second;
+      id = vocbase->id();
+      // mark as deleted
+
+      // call LogicalDataSource::drop() to allow instances to clean up internal
+      // state (e.g. for LogicalView implementations)
+      TRI_vocbase_t::dataSourceVisitor visitor = [&res, &vocbase](
+          arangodb::LogicalDataSource& dataSource
+      )->bool {
+        // skip LogicalCollection since their internal state is always in the
+        // StorageEngine (optimization)
+        if (arangodb::LogicalCollection::category() == dataSource.category()) {
+          return true;
+        }
+
+        auto result = dataSource.drop();
+
+        if (!result.ok()) {
+          res = result.errorNumber();
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "failed to drop DataSource '" << dataSource.name() << "' while dropping database '" << vocbase->name() << "': " << result.errorNumber() << " " << result.errorMessage();
+        }
+
+        return true; // try next DataSource
+      };
+
+      vocbase->visitDataSources(visitor, true); // aquire a write lock to avoid potential deadlocks
+
+      if (TRI_ERROR_NO_ERROR != res) {
+        return res;
+      }
+
+      newLists->_databases.erase(it);
+      newLists->_droppedDatabases.insert(vocbase);
     } catch (...) {
       delete newLists;
       return TRI_ERROR_OUT_OF_MEMORY;

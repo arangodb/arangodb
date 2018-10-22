@@ -318,7 +318,6 @@ class IResearchView final
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
     irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
-    std::atomic<size_t> _segmentCount{}; // FIXME remove total number of segments in the writer
     irs::index_writer::ptr _writer;
 
     DataStore() = default;

@@ -95,7 +95,7 @@ ClusterCollection::ClusterCollection(
           TRI_ERROR_BAD_PARAMETER,
           "volatile collections are unsupported in the RocksDB engine");
     }
-  } else {
+  } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -144,7 +144,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
 
   // duplicate all the error handling of the storage engines
   if (_engineType == ClusterEngineType::MMFilesEngine) {  // duplicate the error validation
-
     // validation
     uint32_t tmp = Helper::getNumericValue<uint32_t>(
         slice, "indexBuckets",
@@ -195,12 +194,22 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     merge.add("cacheEnabled",
               VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));
 
-  } else {
+  } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   merge.close();
-  _info = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  TRI_ASSERT(merge.slice().isObject());
+  TRI_ASSERT(merge.isClosed());
+ 
+  TRI_ASSERT(_info.slice().isObject()); 
+  TRI_ASSERT(_info.isClosed());
+   
+  VPackBuilder tmp = VPackCollection::merge(_info.slice(), merge.slice(), true);
+  _info = std::move(tmp);
+  
+  TRI_ASSERT(_info.slice().isObject()); 
+  TRI_ASSERT(_info.isClosed());
 
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index>& idx : _indexes) {
@@ -242,7 +251,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
     result.add("cacheEnabled", VPackValue(Helper::readBooleanValue(
                                    _info.slice(), "cacheEnabled", false)));
 
-  } else {
+  } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }

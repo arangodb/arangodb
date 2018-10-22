@@ -125,7 +125,8 @@ bool PessimisticTransaction::IsExpired() const {
 WriteCommittedTxn::WriteCommittedTxn(TransactionDB* txn_db,
                                      const WriteOptions& write_options,
                                      const TransactionOptions& txn_options)
-    : PessimisticTransaction(txn_db, write_options, txn_options){};
+    : PessimisticTransaction(txn_db, write_options, txn_options),
+      _commited_seq_nr(0) {};
 
 Status PessimisticTransaction::CommitBatch(WriteBatch* batch) {
   TransactionKeyMap keys_to_unlock;
@@ -228,10 +229,15 @@ Status WriteCommittedTxn::PrepareInternal() {
   WriteOptions write_options = write_options_;
   write_options.disableWAL = false;
   WriteBatchInternal::MarkEndPrepare(GetWriteBatch()->GetWriteBatch(), name_);
+  uint64_t seq_used = kMaxSequenceNumber;
   Status s =
       db_impl_->WriteImpl(write_options, GetWriteBatch()->GetWriteBatch(),
                           /*callback*/ nullptr, &log_number_, /*log ref*/ 0,
-                          /* disable_memtable*/ true);
+                          /*disable_memtable*/ true, &seq_used);
+  assert(!s.ok() || seq_used != kMaxSequenceNumber);
+  if (s.ok()) {
+    _commited_seq_nr = seq_used;
+  }
   return s;
 }
 
@@ -320,7 +326,14 @@ Status PessimisticTransaction::Commit() {
 }
 
 Status WriteCommittedTxn::CommitWithoutPrepareInternal() {
-  Status s = db_->Write(write_options_, GetWriteBatch()->GetWriteBatch());
+  uint64_t seq_used = kMaxSequenceNumber;
+  auto s = db_impl_->WriteImpl(write_options_, GetWriteBatch()->GetWriteBatch(),
+                               /*callback*/ nullptr, /*log nr*/ nullptr,
+                               /*log ref*/ 0, /*disable_memtable*/ false, &seq_used);
+  assert(!s.ok() || seq_used != kMaxSequenceNumber);
+  if (s.ok()) {
+    _commited_seq_nr = seq_used;
+  }
   return s;
 }
 
