@@ -2,8 +2,8 @@ Persistent indexes
 ==================
 
 {% hint 'warning' %}
-The persistent index type is considered as deprecated from version 3.4 on.
-It will be removed in 4.0. If you use the RocksDB storage engine, you can
+The persistent index type is considered as deprecated from version 3.4.0 on.
+It will be removed in 4.0.0. If you use the RocksDB storage engine, you can
 replace it with a skiplist index, which uses the same implementation.
 {% endhint %}
 

@@ -7,7 +7,7 @@
 @HINTS
 {% hint 'warning' %}
 This route should no longer be used.
-All endpoints for Simple Queries are deprecated from version 3.4 on.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
 They are superseded by AQL queries.
 {% endhint %}
 

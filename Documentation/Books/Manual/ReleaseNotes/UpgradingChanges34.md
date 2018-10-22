@@ -759,7 +759,7 @@ removed in future versions of ArangoDB:
   The types `geo1` and `geo2` will still work in ArangoDB 3.4, but may be removed
   in future versions.
 
-* the persistent index type is marked for removal in 4.0 and is thus deprecated.
+* the persistent index type is marked for removal in 4.0.0 and is thus deprecated.
 
   This index type was added when there was only the MMFiles storage engine as
   kind of a stop gap. We recommend to switch to RocksDB engine, which persists

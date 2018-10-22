@@ -10,7 +10,7 @@ Legacy compatibility mode is strictly intended as a temporary stop
 gap solution for supporting existing services while
 [upgrading to ArangoDB 3.x](../Migrating2x/README.md)
 and is not a permanent feature of ArangoDB or Foxx. It is considered
-as deprecated from v3.4 on.
+as deprecated from v3.4.0 on.
 {% endhint %}
 
 In order to mark an existing service as a legacy service,

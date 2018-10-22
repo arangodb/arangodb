@@ -6,7 +6,7 @@
 
 @HINTS
 {% hint 'warning' %}
-Accessing collections by their numeric ID is deprecated from version 3.4 on.
+Accessing collections by their numeric ID is deprecated from version 3.4.0 on.
 You should reference them via their names instead.
 {% endhint %}
 
