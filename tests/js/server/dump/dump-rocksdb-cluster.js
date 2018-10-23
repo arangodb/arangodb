@@ -529,7 +529,7 @@ function dumpTestEnterpriseSuite () {
       assertEqual(100, c.count());
     },
 
-    testEdges : function () {
+    testEEEdges : function () {
       let c = db._collection(edges);
       let p = c.properties();
       assertEqual(3, c.type()); // Edges
