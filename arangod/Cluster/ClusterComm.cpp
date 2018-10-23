@@ -230,7 +230,8 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm()
-    : _logConnectionErrors(false),
+    : _roundRobin(0),
+      _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -246,7 +247,8 @@ ClusterComm::ClusterComm()
 
 /// @brief Unit test constructor
 ClusterComm::ClusterComm(bool ignored)
-    : _logConnectionErrors(false),
+    : _roundRobin(0),
+      _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
 
@@ -305,7 +307,7 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
 
 void ClusterComm::initialize() {
   auto i = instance();   // this will create the static instance
-  i->startBackgroundThread();
+  i->startBackgroundThreads();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -322,11 +324,10 @@ void ClusterComm::cleanup() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the communication background thread
+/// @brief start the communication background threads
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::startBackgroundThread() {
-  _roundRobin = 0;
+void ClusterComm::startBackgroundThreads() {
 
   for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
     ClusterCommThread * thread = new ClusterCommThread();
