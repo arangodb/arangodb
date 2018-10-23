@@ -727,57 +727,6 @@ size_t AqlValue::docvecSize() const {
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
-/// only construct those attributes that are needed in the expression
-v8::Handle<v8::Value> AqlValue::toV8Partial(
-    v8::Isolate* isolate, transaction::Methods* trx,
-    std::unordered_set<std::string> const& attributes) const {
-  AqlValueType t = type();
-
-  if (t == DOCVEC || t == RANGE) {
-    // cannot make use of these types
-    return v8::Null(isolate);
-  }
-
-  VPackOptions* options = trx->transactionContext()->getVPackOptions();
-  VPackSlice s(slice());
-
-  if (s.isObject()) {
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-    // only construct those attributes needed
-    size_t left = attributes.size();
-
-    // we can only have got here if we had attributes
-    TRI_ASSERT(left > 0);
-
-    // iterate over all the object's attributes
-    for (auto const& it : VPackObjectIterator(s, false)) {
-      // check if we need to render this attribute
-      auto it2 = attributes.find(it.key.copyString());
-
-      if (it2 == attributes.end()) {
-        // we can skip the attribute
-        continue;
-      }
-
-      result->ForceSet(TRI_V8_STD_STRING(isolate, (*it2)),
-                       TRI_VPackToV8(isolate, it.value, options, &s));
-
-      if (--left == 0) {
-        // we have rendered all required attributes
-        break;
-      }
-    }
-
-    // return partial object
-    return result;
-  }
-
-  // fallback
-  return TRI_VPackToV8(isolate, s, options);
-}
-
-/// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, transaction::Methods* trx) const {
   
