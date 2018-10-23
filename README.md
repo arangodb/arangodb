@@ -6,7 +6,7 @@ ArangoDB
 Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
 ArangoDB is a multi-model, open-source database with flexible data models for
-documents, graphs, and key-values. Build high performance applications using a
+documents, graphs, and key-values. Build high-performance applications using a
 convenient SQL-like query language or JavaScript extensions. Use ACID
 transactions if you require them. Scale horizontally with a few mouse clicks.
 
@@ -14,10 +14,10 @@ The supported data models can be mixed in queries and allow ArangoDB to be the
 aggregation point for your data.
 
 To get started, try one of our 10 minutes [tutorials](https://www.arangodb.com/tutorials)
-in your favorite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
+in your favourite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
 
 For the impatient: [download](https://www.arangodb.com/download) and install
-ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1:8529/`.
+ArangoDB. Start the server `arranged` and point your browser to `http://127.0.0.1:8529/`.
 
 Key Features in ArangoDB
 ------------------------
@@ -58,11 +58,11 @@ Other features of ArangoDB include:
   application-logic and database together for maximal throughput
 - JavaScript for all: **no language zoo**, you can use one language from your
   browser to your back-end
-- **Flexible data modeling**: model your data as combination of key-value pairs,
+- **Flexible data modelling**: model your data as a combination of key-value pairs,
   documents or graphs - perfect for social relations
 - Different **storage engines**: ArangoDB provides a storage engine for mostly
-  in-memory operations and an alternative storage engine based on RocksDB which 
-  handle datasets that are much bigger than RAM.
+  in-memory operations and an alternative storage engine based on RocksDB which handle
+datasets that are much bigger than RAM.
 - **Powerful query language** (AQL) to retrieve and modify data 
 - **Transactions**: run queries on multiple documents or collections with
   optional transactional consistency and isolation
@@ -72,8 +72,8 @@ Other features of ArangoDB include:
   durability or more performance
 - **Schema-free schemata** let you combine the space efficiency of MySQL with the
   performance power of NoSQL
-- Free **index choice**: use the correct index for your problem, be it a skiplist 
-  or a fulltext search
+- Free **index choice**: use the correct index for your problem, be it a skip list 
+  or a full text search
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
 - It is **open source** (Apache License 2.0)
 
