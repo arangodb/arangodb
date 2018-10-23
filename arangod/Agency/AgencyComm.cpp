@@ -692,19 +692,44 @@ void AgencyCommManager::addEndpoint(std::string const& endpoint) {
   if (iter == _endpoints.end()) {
     LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "using agency endpoint '"
                                          << normalized << "'";
-
     _endpoints.emplace_back(normalized);
   }
 }
 
-void AgencyCommManager::removeEndpoint(std::string const& endpoint) {
+void AgencyCommManager::updateEndpoints(std::vector<std::string> const& newEndpoints) {
   MUTEX_LOCKER(locker, _lock);
+  
+  std::set<std::string> currentSet;
+  auto iter = _endpoints.begin();
+  for (; iter != _endpoints.end(); ++iter) {
+    currentSet.emplace(*iter);
+  }
 
-  std::string normalized = Endpoint::unifiedForm(endpoint);
-
-  _endpoints.erase(
-    std::remove(_endpoints.begin(), _endpoints.end(), normalized),
-    _endpoints.end());
+  std::set<std::string> updatedSet;
+  for (std::string const& endp : newEndpoints) {
+    updatedSet.emplace(Endpoint::unifiedForm(endp));
+  }
+  
+  std::set<std::string> toRemove;
+  std::set_difference(currentSet.begin(), currentSet.end(),
+                      updatedSet.begin(), updatedSet.end(),
+                      std::inserter(toRemove, toRemove.begin()));
+  
+  std::set<std::string> toAdd;
+  std::set_difference(updatedSet.begin(), updatedSet.end(),
+                      currentSet.begin(), currentSet.end(),
+                      std::inserter(toAdd, toAdd.begin()));
+  
+  for (std::string const& rem : toRemove) {
+    LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "Removing endpoint " << rem << " from agent pool";
+    _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), rem),
+                     _endpoints.end());
+  }
+  
+  for (std::string const& add : toAdd) {
+    LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "Adding endpoint " << add << " to agent pool";
+    _endpoints.emplace_back(add);
+  }
 }
 
 std::string AgencyCommManager::endpointsString() const {
@@ -745,6 +770,7 @@ AgencyCommManager::createNewConnection() {
 }
 
 void AgencyCommManager::switchCurrentEndpoint() {
+  _lock.assertLockedByCurrentThread();
   if (_endpoints.empty()) {
     return;
   }
@@ -1298,29 +1324,6 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
 
   TRI_ASSERT(false);
   return false;
-}
-
-
-void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
-
-  auto stored = AgencyCommManager::MANAGER->endpoints();
-
-  for (const auto& i : VPackObjectIterator(current)) {
-    auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
-    if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-        << "Adding endpoint " << endpoint << " to agent pool";
-      AgencyCommManager::MANAGER->addEndpoint(endpoint);
-    }
-    stored.erase(
-      std::remove(stored.begin(), stored.end(), endpoint), stored.end());
-  }
-
-  for (const auto& i : stored) {
-    LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-      << "Removing endpoint " << i << " from agent pool";
-    AgencyCommManager::MANAGER->removeEndpoint(i);
-  }
 }
 
 
