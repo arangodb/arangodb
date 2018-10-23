@@ -92,7 +92,7 @@ function getClusterEndpoints() {
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
-  assertTrue(res.statusCode === 200, JSON.stringify(res));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   assertTrue(res.json.hasOwnProperty('endpoints'));
   assertTrue(res.json.endpoints instanceof Array);
@@ -123,7 +123,7 @@ function getApplierState(endpoint) {
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
-  assertEqual(res.statusCode, 200);
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   return arangosh.checkRequestResult(res.json);
 }
@@ -166,8 +166,8 @@ function checkData(server) {
   });
 
   assertTrue(res instanceof request.Response);
-  //assertTrue(res.hasOwnProperty('statusCode'));
-  assertTrue(res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   return res.json.count;
 }
 
@@ -280,8 +280,8 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
 
       let endpoints = getClusterEndpoints();
-      assertTrue(endpoints.length === servers.length);
-      assertTrue(endpoints[0] === currentLead);
+      assertEqual(endpoints.length, servers.length);
+      assertEqual(endpoints[0], currentLead);
     },
 
     // Basic test if followers get in sync
@@ -340,8 +340,8 @@ function ActiveFailoverSuite() {
 
       // we assume the second leader is still the leader
       let endpoints = getClusterEndpoints();
-      assertTrue(endpoints.length === servers.length);
-      assertTrue(endpoints[0] === currentLead);
+      assertEqual(endpoints.length, servers.length);
+      assertEqual(endpoints[0], currentLead);
 
       print("Starting data creation task on ", currentLead, " (expect it to fail later)");
       connectToServer(currentLead);
@@ -405,7 +405,7 @@ function ActiveFailoverSuite() {
       // await failover and check that follower get in sync
       let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === nextLead, "Did not fail to best in-sync follower");
+      assertEqual(currentLead, nextLead, "Did not fail to best in-sync follower");
 
       internal.wait(5); // settle down, heartbeat interval is 1s
       let cc = checkData(currentLead);
@@ -446,7 +446,7 @@ function ActiveFailoverSuite() {
 
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === firstLeader, "Did not fail to original leader");
+      assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);

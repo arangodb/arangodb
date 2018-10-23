@@ -337,10 +337,6 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestBatchHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::COLLECTION_PATH,
-      RestHandlerCreator<RestCollectionHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
       RestHandlerCreator<RestControlPregelHandler>::createNoData);
 

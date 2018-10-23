@@ -48,6 +48,7 @@ struct WalAccessResult : public Result {
   WalAccessResult(WalAccessResult const& other) = default;
   WalAccessResult& operator=(WalAccessResult const& other)  = default;
 */
+  using Result::reset;
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
   TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
@@ -56,7 +57,7 @@ struct WalAccessResult : public Result {
 
   Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included, TRI_voc_tick_t lastScannedTick,
                 TRI_voc_tick_t latest) {
-    _errorNumber = errorNumber;
+    reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
     _lastScannedTick = lastScannedTick;

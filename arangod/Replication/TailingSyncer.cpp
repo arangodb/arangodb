@@ -114,6 +114,9 @@ TailingSyncer::TailingSyncer(
   // FIXME: move this into engine code
   std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
   _supportsSingleOperations = (engineName == "mmfiles");
+ 
+  // Replication for RocksDB expects only one open transaction at a time 
+  _supportsMultipleOpenTransactions = (engineName != "rocksdb");
 }
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
@@ -502,6 +505,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "starting replication transaction " << tid;
 
+  TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
+
   auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
   Result res = trx->begin();
 
@@ -574,6 +579,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   Result res = trx->commit();
   
   _ongoingTransactions.erase(it);
+
+  TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
   return res;
 }
 
@@ -1629,6 +1636,8 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
     }
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
   }
+
+  TRI_ASSERT(_ongoingTransactions.size() <= 1 || _supportsMultipleOpenTransactions);
 
   {
     std::string const progress =

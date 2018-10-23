@@ -201,6 +201,11 @@ class WriteCommittedTxn : public PessimisticTransaction {
                     const TransactionOptions& txn_options);
 
   virtual ~WriteCommittedTxn() {}
+  
+  SequenceNumber GetCommitedSeqNumber() const override {
+    assert(txn_state_ == COMMITED);
+    return _commited_seq_nr;
+  }
 
  private:
   Status PrepareInternal() override;
@@ -216,6 +221,10 @@ class WriteCommittedTxn : public PessimisticTransaction {
   // No copying allowed
   WriteCommittedTxn(const WriteCommittedTxn&);
   void operator=(const WriteCommittedTxn&);
+  
+ protected:
+  // seq_nr of WriteBatch in WAL
+  SequenceNumber _commited_seq_nr;
 };
 
 }  // namespace rocksdb

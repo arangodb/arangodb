@@ -62,8 +62,8 @@ jsUnity.results.pass = function (index, testName) {
   RESULTS[testName].status = true;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_GREEN + ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s');
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
+    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's');
 
   STARTTEST = newtime;
 };
@@ -76,8 +76,8 @@ jsUnity.results.fail = function (index, testName, message) {
   RESULTS[testName].message = message;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s: ' +
+  print(newtime.toISOString() + internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
+    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's: ' +
     internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
@@ -174,10 +174,18 @@ function Run (testsuite) {
   FAILED += result.failed;
   DURATION += result.duration;
 
+  let duplicates = [];
   for (var attrname in RESULTS) {
     if (RESULTS.hasOwnProperty(attrname)) {
+      if (COMPLETE.hasOwnProperty(attrname)) {
+        print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
+        duplicates.push(attrname);
+      }
       COMPLETE[attrname] = RESULTS[attrname];
     }
+  }
+  if (duplicates.length !== 0) {
+    throw("Duplicate testsuite '" + duplicates + "'");
   }
   return result;
 }

@@ -56,6 +56,11 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
    return itr.first->second;
   }
 
+  bool remove(const Key& key) {
+    SCOPED_LOCK(lock_);
+    return refs_.erase(key) > 0;
+  }
+
   bool contains(const Key& key) const NOEXCEPT {
     SCOPED_LOCK(lock_);
     return refs_.find(key) != refs_.end();
