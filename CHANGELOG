@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixes validation of allowed or not allowed foxx service mount paths within
+  the Web UI
+
 * fixed handling of broken Foxx services
 
   Installation now also fails when the service encounters an error when
