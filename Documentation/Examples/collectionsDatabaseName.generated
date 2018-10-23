@@ -10,11 +10,11 @@ arangosh&gt; db._collections();
   [ArangoCollection <span class="hljs-number">13</span>, <span class="hljs-string">"_modules"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
   [ArangoCollection <span class="hljs-number">32</span>, <span class="hljs-string">"_queues"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
   [ArangoCollection <span class="hljs-number">15</span>, <span class="hljs-string">"_routing"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  [ArangoCollection <span class="hljs-number">80</span>, <span class="hljs-string">"_statistics"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  [ArangoCollection <span class="hljs-number">85</span>, <span class="hljs-string">"_statistics15"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  [ArangoCollection <span class="hljs-number">75</span>, <span class="hljs-string">"_statisticsRaw"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  [ArangoCollection <span class="hljs-number">79</span>, <span class="hljs-string">"_statistics"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  [ArangoCollection <span class="hljs-number">84</span>, <span class="hljs-string">"_statistics15"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  [ArangoCollection <span class="hljs-number">74</span>, <span class="hljs-string">"_statisticsRaw"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
   [ArangoCollection <span class="hljs-number">8</span>, <span class="hljs-string">"_users"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  [ArangoCollection <span class="hljs-number">110</span>, <span class="hljs-string">"animals"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  [ArangoCollection <span class="hljs-number">101</span>, <span class="hljs-string">"demo"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  [ArangoCollection <span class="hljs-number">110502</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  [ArangoCollection <span class="hljs-number">109</span>, <span class="hljs-string">"animals"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  [ArangoCollection <span class="hljs-number">100</span>, <span class="hljs-string">"demo"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  [ArangoCollection <span class="hljs-number">110490</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 ]
