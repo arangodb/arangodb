@@ -215,6 +215,8 @@ class concurrent_stack : private util::noncopyable {
 ///        if an object is available in a pool then in is returned but tracked
 ///        by the pool
 ///        when the object is released it is placed back into the pool
+/// @note object 'ptr' that evaluate to false after make(...) are not considered
+///       part of the pool
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class bounded_object_pool {
@@ -236,20 +238,27 @@ class bounded_object_pool {
   ///        semantic similar to smart pointers
   /////////////////////////////////////////////////////////////////////////////
   class ptr : util::noncopyable {
+   private:
+    static node_type EMPTY_SLOT;
+
    public:
+    ptr() NOEXCEPT
+      : slot_(&EMPTY_SLOT) {
+    }
+
     explicit ptr(node_type& slot) NOEXCEPT
       : slot_(&slot) {
     }
 
     ptr(ptr&& rhs) NOEXCEPT
       : slot_(rhs.slot_) {
-      rhs.slot_ = nullptr; // take ownership
+      rhs.slot_ = &EMPTY_SLOT; // take ownership
     }
 
     ptr& operator=(ptr&& rhs) NOEXCEPT {
       if (this != &rhs) {
         slot_ = rhs.slot_;
-        rhs.slot_ = nullptr; // take ownership
+        rhs.slot_ = &EMPTY_SLOT; // take ownership
       }
       return *this;
     }
@@ -265,7 +274,7 @@ class bounded_object_pool {
     std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto* slot = slot_;
-      slot_ = nullptr; // moved
+      slot_ = &EMPTY_SLOT; // moved
 
       // in case if exception occurs
       // destructor will be called
@@ -276,21 +285,23 @@ class bounded_object_pool {
       });
     }
 
-    operator bool() const NOEXCEPT { return nullptr != slot_; }
+    operator bool() const NOEXCEPT { return &EMPTY_SLOT != slot_; }
     element_type& operator*() const NOEXCEPT { return *slot_->value.ptr; }
     element_type* operator->() const NOEXCEPT { return get(); }
-    element_type* get() const NOEXCEPT { return slot_->value.ptr.get(); }
+    element_type* get() const NOEXCEPT {
+      return slot_->value.ptr.get();
+    }
 
    private:
     static void reset_impl(node_type*& slot) NOEXCEPT {
-      if (!slot) {
+      if (slot == &EMPTY_SLOT) {
         // nothing to do
         return;
       }
 
       assert(slot->value.owner);
       slot->value.owner->unlock(*slot);
-      slot = nullptr; // release ownership
+      slot = &EMPTY_SLOT; // release ownership
     }
 
     node_type* slot_;
@@ -327,7 +338,13 @@ class bounded_object_pool {
       }
     }
 
-    return ptr(*head);
+    if (value) {
+      return ptr(*head);
+    }
+
+    free_list_.push(*head); // put empty slot back into the free list
+
+    return ptr();
   }
 
   size_t size() const NOEXCEPT { return pool_.size(); }
@@ -379,9 +396,6 @@ class bounded_object_pool {
     }
   }
 
-  // MSVC 2017.3 through 2017.8 incorectly increment counter if this function is inlined during optimization
-  // MSVC 2017.2 and below TODO test for both debug and release
-  MSVC2017_345678_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void unlock(node_type& slot) const NOEXCEPT {
     free_list_.push(slot);
     cond_.notify_all();
@@ -392,6 +406,9 @@ class bounded_object_pool {
   mutable std::vector<node_type> pool_;
   mutable stack free_list_;
 }; // bounded_object_pool
+
+template<typename T>
+typename bounded_object_pool<T>::node_type bounded_object_pool<T>::ptr::EMPTY_SLOT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    unbounded pool
@@ -480,6 +497,10 @@ class unbounded_object_pool_base : private util::noncopyable {
   }
 
   void release(typename T::ptr&& value) NOEXCEPT {
+    if (!value) {
+      return; // do not hold nullptr values in the pool since emplace(...) uses nullptr to denot creation failure
+    }
+
     auto* slot = free_slots_.pop();
 
     if (!slot) {
@@ -487,6 +508,7 @@ class unbounded_object_pool_base : private util::noncopyable {
       return;
     }
 
+    assert(value);
     slot->value = std::move(value);
     free_objects_.push(*slot);
   }
@@ -506,6 +528,8 @@ class unbounded_object_pool_base : private util::noncopyable {
 ///        space in the pool is available
 ///        pool owns produced object so it's not allowed to destroy before
 ///        all acquired objects will be destroyed
+/// @note object 'ptr' that evaluate to false when returnd back into the pool
+///       will be discarded instead
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class unbounded_object_pool : public unbounded_object_pool_base<T> {
@@ -658,6 +682,8 @@ NS_END // detail
 ///        space in the pool is available
 ///        pool may be safely destroyed even there are some produced objects
 ///        alive
+/// @note object 'ptr' that evaluate to false when returnd back into the pool
+///       will be discarded instead
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class unbounded_object_pool_volatile
@@ -824,9 +850,11 @@ class unbounded_object_pool_volatile
 
   template<typename... Args>
   ptr emplace(Args&&... args) {
+    static const generation_ptr_t no_gen;
     const auto gen = atomic_utils::atomic_load(&gen_); // retrieve before seek/instantiate
+    auto value = this->acquire(std::forward<Args>(args)...);
 
-    return ptr(this->acquire(std::forward<Args>(args)...), gen);
+    return value ? ptr(std::move(value), gen) : ptr(nullptr, no_gen);
   }
 
   size_t generation_size() const NOEXCEPT {

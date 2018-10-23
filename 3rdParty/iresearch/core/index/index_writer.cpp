@@ -109,7 +109,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(meta);
 
   if (!reader) {
-    throw irs::index_error(); // failed to open segment
+    throw irs::index_error(
+      std::string("while adding document mask modified records to document_mask of segment '") +meta.name
+      + "', error: failed to open segment"
+    );
   }
 
   bool modified = false;
@@ -161,7 +164,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(ctx.segment_.meta);
 
   if (!reader) {
-    throw irs::index_error(); // failed to open segment
+    throw irs::index_error(
+      std::string("while adding document mask modified records to flush_segment_context of segment '") + ctx.segment_.meta.name
+      + "', error: failed to open segment"
+    );
   }
 
   assert(doc_limits::valid(ctx.doc_id_begin_));
@@ -447,7 +453,7 @@ size_t readers_cache::purge(
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                      index_writer implementation 
+// --SECTION--                                      index_writer implementation
 // ----------------------------------------------------------------------------
 
 const std::string index_writer::WRITE_LOCK_NAME = "write.lock";
@@ -661,17 +667,30 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   assert(segment_.ctx());
   assert(segment_.ctx()->writer_);
   auto& segment = *(segment_.ctx());
+  const auto& limits = writer_.segment_limits_;
+  auto& writer = *segment.writer_;
 
-  if (segment.writer_->initialized()) {
+  if (writer.initialized()) {
     // if not reached the limit of the current segment then use it
-    if ((!writer_.segment_limits_.segment_docs_max
-         || writer_.segment_limits_.segment_docs_max > segment.writer_->docs_cached()) // too many docs
-        && (!writer_.segment_limits_.segment_memory_max
-            || writer_.segment_limits_.segment_memory_max > segment.writer_->memory_active()) // too much memory
-        && !doc_limits::eof(segment.writer_->docs_cached())) { // segment full
+    if ((!limits.segment_docs_max
+         || limits.segment_docs_max > writer.docs_cached()) // too many docs
+        && (!limits.segment_memory_max
+            || limits.segment_memory_max > writer.memory_active()) // too much memory
+        && !doc_limits::eof(writer.docs_cached())) { // segment full
       return ctx;
-    } else if (!segment.flush()) { // force a flush of a full segment
-      throw index_error(); // failed to flush segment
+    }
+
+    // force a flush of a full segment
+    IR_FRMT_TRACE(
+      "Flushing segment '%s', docs=" IR_SIZE_T_SPECIFIER ", memory=" IR_SIZE_T_SPECIFIER ", docs limit=" IR_SIZE_T_SPECIFIER ", memory limit=" IR_SIZE_T_SPECIFIER "",
+      writer.name().c_str(), writer.docs_cached(), writer.memory_active(), limits.segment_docs_max, limits.segment_memory_max
+    );
+
+    if (!segment.flush()) {
+      throw index_error(
+        std::string("while flushing segment '") + segment.writer_meta_.meta.name
+        + "', error: failed to flush segment"
+      );
     }
   }
 
@@ -1133,7 +1152,7 @@ index_writer::ptr index_writer::make(
   PTR_NAMED(
     index_writer,
     writer,
-    std::move(lock), 
+    std::move(lock),
     std::move(lockfile_ref),
     dir,
     codec,
@@ -1161,7 +1180,7 @@ void index_writer::close() {
   write_lock_.reset();
 }
 
-uint64_t index_writer::buffered_docs() const { 
+uint64_t index_writer::buffered_docs() const {
   uint64_t docs_in_ram = 0;
   auto ctx = const_cast<index_writer*>(this)->get_flush_context();
   SCOPED_LOCK(ctx->mutex_); // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
@@ -2013,7 +2032,7 @@ bool index_writer::start() {
   REGISTER_TIMER_DETAILED();
 
   if (pending_state_) {
-    // begin has been already called 
+    // begin has been already called
     // without corresponding call to commit
     return false;
   }
@@ -2041,7 +2060,7 @@ bool index_writer::start() {
 
     auto sync = [&dir](const std::string& file) {
       if (!dir.sync(file)) {
-        throw detailed_io_error("Failed to sync file, path: ") << file;
+        throw detailed_io_error("failed to sync file, path: " + file);
       }
 
       return true;
@@ -2117,14 +2136,14 @@ void index_writer::rollback() {
   }
 
   // ...........................................................................
-  // all functions below are noexcept 
+  // all functions below are noexcept
   // ...........................................................................
 
   // guarded by commit_lock_
   writer_->rollback();
   pending_state_.reset();
 
-  // reset actual meta, note that here we don't change 
+  // reset actual meta, note that here we don't change
   // segment counters since it can be changed from insert function
   meta_.reset(*(committed_state_->first));
 }

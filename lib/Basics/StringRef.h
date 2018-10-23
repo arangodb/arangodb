@@ -31,6 +31,7 @@
 #include <velocypack/Value.h>
 
 #include <iosfwd>
+#include <functional>
 
 namespace arangodb {
 

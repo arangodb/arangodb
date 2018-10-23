@@ -253,17 +253,15 @@ void RocksDBSettingsManager::setMaxUpdateSequenceNumber(rocksdb::SequenceNumber 
 
   auto current = _maxUpdateSeqNo.load(std::memory_order_acquire);
 
-  if (current >= seqNo) {
-    // current sequence number is already higher than the one we got
-    return;
+  while (current < seqNo &&
+         !_maxUpdateSeqNo.compare_exchange_strong(current, seqNo, std::memory_order_release)) {
+    // someone else has updated the max sequence number, simply try again
   }
-
-  bool res = _maxUpdateSeqNo.compare_exchange_strong(current, seqNo, std::memory_order_release);
-
-  if (!res) {
-    // someone else has updated the max sequence number
-    TRI_ASSERT(current >= seqNo);
-  }
+  
+  // current sequence number is now at least as high as we want it to be
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_maxUpdateSeqNo.load() >= seqNo);
+#endif
 }
 
 /// retrieve initial values from the database

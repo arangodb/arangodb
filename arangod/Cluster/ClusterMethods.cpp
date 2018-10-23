@@ -1514,67 +1514,6 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the active journals for the collection on all DBServers
-////////////////////////////////////////////////////////////////////////////////
-
-int rotateActiveJournalOnAllDBServers(std::string const& dbname,
-                                      std::string const& collname) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-
-  // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-  TRI_ASSERT(collinfo != nullptr);
-
-  // Some stuff to prepare cluster-intern requests:
-  // We have to contact everybody:
-  unsigned int expected = 0;
-  auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  for (auto const& p : *shards) {
-    auto serverList = ci->getResponsibleServer(p.first);
-    for (auto& s : *serverList) {
-      cc->asyncRequest(coordTransactionID, "server:" + s,
-                      arangodb::rest::RequestType::PUT,
-                      "/_db/" + StringUtils::urlEncode(dbname) +
-                          "/_api/collection/" + p.first + "/rotate",
-                      std::shared_ptr<std::string>(), headers, nullptr, 600.0);
-
-      ++expected;
-    }
-  }
-
-  // Now listen to the results:
-  unsigned int nrok = 0;
-  for (unsigned int count = expected; count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        nrok++;
-      }
-    }
-  }
-
-
-  // Note that nrok is always at least 1!
-  if (nrok < expected) {
-    return TRI_ERROR_FAILED;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 

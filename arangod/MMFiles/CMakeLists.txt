@@ -34,6 +34,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesPersistentIndexKeyComparator.cpp
   MMFiles/MMFilesPrimaryIndex.cpp
   MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRestCollectionHandler.cpp
   MMFiles/MMFilesRestExportHandler.cpp
   MMFiles/MMFilesRestHandlers.cpp
   MMFiles/MMFilesRestReplicationHandler.cpp
