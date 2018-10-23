@@ -129,17 +129,6 @@ NS_ROOT
 
 typedef std::basic_string<byte_type> bstring;
 
-template<typename T>
-inline std::basic_string<T>& oversize(
-  // 31 == 32 - 1: because std::basic_string reserves a \0 at the end
-  // 32 is the original default value used in bytes_builder
-  std::basic_string<T>& buf, size_t size = 31
-) {
-  buf.resize(size);
-  buf.resize(buf.capacity()); // use up the entire buffer
-  return buf;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_string_ref
 //////////////////////////////////////////////////////////////////////////////
