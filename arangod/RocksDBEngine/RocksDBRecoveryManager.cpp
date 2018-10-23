@@ -283,6 +283,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
   
+  /// Truncate indexes of collection
   bool truncateIndexes(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -299,13 +300,16 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     TRI_DEFER(vb->release());
 
     auto coll = vb->lookupCollection(pair.second);
-
     if (coll == nullptr) {
       return false;
     }
-
+    
     for (auto const& idx : coll->getIndexes()) {
-      idx->afterTruncate();
+      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+      RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+      if (est) {
+        est->bufferTruncate(currentSeqNum);
+      }
     }
 
     return true;
@@ -537,7 +541,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           if (!truncateIndexes(objectId)) {
             // unable to truncate indexes of the collection.
             // may be due to collection having been deleted etc.
-            LOG_TOPIC(DEBUG, Logger::ENGINES) << "unable to truncate indexes for objectId " << objectId;
+            LOG_TOPIC(WARN, Logger::ENGINES) << "unable to truncate indexes for objectId " << objectId;
           }
         }
 
