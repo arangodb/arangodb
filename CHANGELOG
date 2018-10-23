@@ -1,10 +1,14 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+* The order of JSON object attribute keys in JSON return values will now be 
+  "random" in more cases. In JSON, there is no defined order for object attribute
+  keys anyway, so ArangoDB is taking the freedom to return the attribute keys in
+  a non-deterministic, seemingly unordered way.
 
-* Fixed an AQL bug where the optimize-traversals rule was falsely applied to
+* Fixed an AQL bug where the `optimize-traversals` rule was falsely applied to
   extensions with inline expressions and thereby ignoring them
-
+  
 * fix side-effects of sorting larger arrays (>= 16 members) of constant literal
   values in AQL, when the array was used not only for IN-value filtering but also
   later in the query.
