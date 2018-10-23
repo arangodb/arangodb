@@ -1,8 +1,24 @@
-v3.3.19 (XXXX-XX-XX)
+v3.3.20 (XXXX-XX-XX)
 --------------------
 
 * Fixed an AQL bug where the optimize-traversals rule was falsely applied to
   extensions with inline expressions and thereby ignoring them
+
+* fix side-effects of sorting larger arrays (>= 16 members) of constant literal
+  values in AQL, when the array was not used only for IN-value filtering but also
+  later in the query. 
+  The array values were sorted so the IN-value lookup could use a binary search
+  instead of a linear search, but this did not take into account that the array
+  could have been used elsewhere in the query, e.g. as a return value. The fix
+  will create a copy of the array and sort the copy, leaving the original array
+  untouched.
+
+
+v3.3.19 (2018-10-20)
+--------------------
+
+* fixes validation of allowed or not allowed foxx service mount paths within
+  the Web UI
 
 * The single database or single coordinator statistics in a cluster
   environment within the Web UI sometimes got called way too often.
@@ -10,10 +26,6 @@ v3.3.19 (XXXX-XX-XX)
 
 * An aardvark statistics route could not collect and sum up the statistics of
   all coordinators if one of them was ahead and had more results than the others
-
-
-v3.3.18 (2018-10-17)
---------------------
 
 * upgraded arangodb starter version to 0.13.6
 
@@ -74,6 +86,12 @@ v3.3.18 (2018-10-17)
   the `_frontend` system collection is not required for normal ArangoDB operations,
   so if it is missing for whatever reason, ensure that normal operations can go
   on.
+
+
+v3.3.18
+-------
+
+* not released
 
 
 v3.3.17 (2018-10-04)
