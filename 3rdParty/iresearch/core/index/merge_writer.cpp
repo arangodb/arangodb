@@ -30,7 +30,6 @@
 #include "index/segment_reader.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
-#include "utils/index_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -416,7 +415,24 @@ class compound_term_iterator : public irs::term_iterator {
     return current_term_;
   }
  private:
-  typedef std::pair<irs::seek_term_iterator::ptr, const doc_map_f*> term_iterator_t;
+  struct term_iterator_t {
+    irs::seek_term_iterator::ptr first;
+    const doc_map_f* second;
+
+    term_iterator_t(
+      irs::seek_term_iterator::ptr&& term_itr,
+      const doc_map_f* doc_map
+    ): first(std::move(term_itr)), second(doc_map) {
+    }
+
+    // GCC 8.1.0/8.2.0 optimized code requires an *explicit* noexcept non-inlined
+    // move constructor implementation, otherwise the move constructor is fully
+    // optimized out (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87665)
+    GCC8_12_OPTIMIZED_WORKAROUND(__attribute__((noinline)))
+    term_iterator_t(term_iterator_t&& other) NOEXCEPT
+      : first(std::move(other.first)), second(std::move(other.second)) {
+    }
+  };
 
   compound_term_iterator(const compound_term_iterator&) = delete; // due to references
   compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
@@ -746,15 +762,18 @@ bool write_columns(
     columnstore& cs,
     irs::directory& dir,
     const irs::segment_meta& meta,
-    compound_column_iterator_t& column_itr
+    compound_column_iterator_t& column_itr,
+    const irs::merge_writer::flush_progress_t& progress
 ) {
+  REGISTER_TIMER_DETAILED();
   assert(cs);
+  assert(progress);
 
-  auto visitor = [&cs](
+  auto visitor = [&cs, &progress](
       const irs::sub_reader& segment,
       const doc_map_f& doc_map,
       const irs::column_meta& column) {
-    return cs.insert(segment, column.id, doc_map);
+    return progress() && cs.insert(segment, column.id, doc_map);
   };
 
   auto cmw = meta.codec->get_column_meta_writer();
@@ -769,7 +788,9 @@ bool write_columns(
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment 
-    column_itr.visit(visitor); 
+    if (!progress() || !column_itr.visit(visitor)) {
+      return false; // failed to visit all values
+    }
 
     if (!cs.empty()) {
       cmw->write((*column_itr).name, cs.id());
@@ -783,16 +804,18 @@ bool write_columns(
 //////////////////////////////////////////////////////////////////////////////
 /// @brief write field term data
 //////////////////////////////////////////////////////////////////////////////
-bool write(
+bool write_fields(
     columnstore& cs,
     irs::directory& dir,
     const irs::segment_meta& meta,
     compound_field_iterator& field_itr,
     const field_meta_map_t& field_meta_map,
-    const irs::flags& fields_features
+    const irs::flags& fields_features,
+    const irs::merge_writer::flush_progress_t& progress
 ) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
+  assert(progress);
 
   irs::flush_state flush_state;
   flush_state.dir = &dir;
@@ -805,13 +828,14 @@ bool write(
   auto fw = meta.codec->get_field_writer(true);
   fw->prepare(flush_state);
 
-  auto merge_norms = [&cs] (
+  auto merge_norms = [&cs, &progress] (
       const irs::sub_reader& segment,
       const doc_map_f& doc_map,
       const irs::field_meta& field) {
     // merge field norms if present
-    if (irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)) {
-      cs.insert(segment, field.norm, doc_map);
+    if (irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)
+        && (!progress() || !cs.insert(segment, field.norm, doc_map))) {
+      return false;
     }
 
     return true;
@@ -824,7 +848,9 @@ bool write(
     auto& field_features = field_meta.features;
 
     // remap merge norms
-    field_itr.visit(merge_norms); 
+    if (!progress() || !field_itr.visit(merge_norms)) {
+      return false;
+    }
 
     // write field terms
     auto terms = field_itr.iterator();
@@ -901,10 +927,12 @@ merge_writer::operator bool() const NOEXCEPT {
 
 bool merge_writer::flush(
     index_meta::index_segment_t& segment,
-    bool persist_segment_meta /* = true */
+    const flush_progress_t& progress /*= {}*/
 ) {
   REGISTER_TIMER_DETAILED();
 
+  static const flush_progress_t progress_noop = []()->bool { return true; };
+  auto& progress_callback = progress ? progress : progress_noop;
   std::unordered_map<irs::string_ref, const irs::field_meta*> field_metas;
   compound_field_iterator fields_itr;
   compound_column_iterator_t columns_itr;
@@ -949,6 +977,10 @@ bool merge_writer::flush(
   segment.meta.docs_count = base_id - type_limits<type_t::doc_id_t>::min(); // total number of doc_ids
   segment.meta.live_docs_count = segment.meta.docs_count; // all merged documents are live
 
+  if (!progress_callback()) {
+    return false; // progress callback requested termination
+  }
+
   //...........................................................................
   // write merged segment data
   //...........................................................................
@@ -960,17 +992,25 @@ bool merge_writer::flush(
     return false; // flush failure
   }
 
+  if (!progress_callback()) {
+    return false; // progress callback requested termination
+  }
+
   // write columns
-  if (!write_columns(cs, track_dir, segment.meta, columns_itr)) {
+  if (!write_columns(cs, track_dir, segment.meta, columns_itr, progress_callback)) {
     return false; // flush failure
   }
 
   // write field meta and field term data
-  if (!write(cs, track_dir, segment.meta, fields_itr, field_metas, fields_features)) {
+  if (!write_fields(cs, track_dir, segment.meta, fields_itr, field_metas, fields_features, progress_callback)) {
     return false; // flush failure
   }
 
   segment.meta.column_store = cs.flush();
+
+  if (!progress_callback()) {
+    return false; // progress callback requested termination
+  }
 
   // ...........................................................................
   // write segment meta
@@ -978,10 +1018,6 @@ bool merge_writer::flush(
   if (!track_dir.swap_tracked(segment.meta.files)) {
     IR_FRMT_ERROR("Failed to swap list of tracked files in: %s", __FUNCTION__);
     return false;
-  }
-
-  if (persist_segment_meta) {
-    index_utils::write_index_segment(dir_, segment);
   }
 
   return true;

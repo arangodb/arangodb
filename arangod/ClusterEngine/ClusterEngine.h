@@ -58,6 +58,7 @@ class ClusterEngine final : public StorageEngine {
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
+  bool isMock() const;
   ClusterEngineType engineType() const;
 
   // storage engine overrides
@@ -127,9 +128,13 @@ class ClusterEngine final : public StorageEngine {
     arangodb::velocypack::Builder& result
   ) override;
 
-  std::string versionFilename(TRI_voc_tick_t id) const override;
+  std::string versionFilename(TRI_voc_tick_t id) const override {
+    // the cluster engine does not have any versioning information
+    return std::string();
+  }
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
-    return _basePath;
+    // the cluster engine does not have any database path
+    return std::string();
   }
   std::string collectionPath(
       TRI_vocbase_t const& vocbase,
@@ -341,6 +346,9 @@ class ClusterEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  // mock mode
+  static bool Mocking;
 
  private:
   /// path to arangodb data dir

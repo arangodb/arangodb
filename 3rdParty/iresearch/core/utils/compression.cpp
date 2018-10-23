@@ -74,7 +74,8 @@ void compressor::compress(const char* src, size_t size) {
 
   if (lz4_size < 0) {
     this->size_ = 0;
-    throw index_error(); // corrupted index
+
+    throw index_error("while compressing, error: LZ4 returned negative size");
   }
 
   this->data_ = reinterpret_cast<const byte_type*>(buf);

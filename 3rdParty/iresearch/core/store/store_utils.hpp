@@ -723,7 +723,7 @@ inline void visit(
 // specified 'visitor'
 template<typename Visitor>
 inline void visit(
-    uint64_t base, const uint64_t avg,
+    uint32_t base, const uint32_t avg,
     uint32_t* begin, uint32_t* end,
     Visitor visitor) {
   for (; begin != end; ++begin, base += avg) {
@@ -766,7 +766,7 @@ inline void decode(
 
 // Decodes average compressed block denoted by [begin;end)
 inline void decode(
-    const uint64_t base, const uint64_t avg,
+    const uint32_t base, const uint32_t avg,
     uint32_t* begin, uint32_t* end) {
   visit(base, avg, begin, end, [begin](uint32_t decoded) mutable {
     *begin++ = decoded;
@@ -778,7 +778,7 @@ inline uint32_t write_block(
     const uint64_t base,
     const uint64_t avg,
     const uint64_t* RESTRICT decoded,
-    const size_t size,
+    const uint64_t size, // same type as 'read_block'/'write_block'
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
@@ -790,7 +790,7 @@ inline uint32_t write_block(
     const uint32_t base,
     const uint32_t avg,
     const uint32_t* RESTRICT decoded,
-    const size_t size,
+    const uint32_t size, // same type as 'read_block'/'write_block'
     uint32_t* RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
@@ -805,7 +805,7 @@ inline void skip_block64(index_input& in, size_t size) {
 }
 
 // Skips average encoded 64-bit block
-inline void skip_block32(index_input& in, size_t size) {
+inline void skip_block32(index_input& in, uint32_t size) {
   in.read_vint(); // skip base
   in.read_vint(); // skip avg
   bitpack::skip_block32(in, size);
@@ -917,7 +917,7 @@ inline void visit_block_packed_tail(
 template<typename Visitor>
 inline void visit_block_packed_tail(
     data_input& in,
-    size_t size,
+    uint32_t size,
     uint32_t* packed,
     Visitor visitor) {
   const uint32_t base = in.read_vint();
@@ -929,7 +929,7 @@ inline void visit_block_packed_tail(
     return;
   }
 
-  const size_t block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
+  const uint32_t block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
 
   in.read_bytes(
     reinterpret_cast<byte_type*>(packed),
@@ -965,7 +965,7 @@ inline void visit_block_packed(
 template<typename Visitor>
 inline void visit_block_packed(
     data_input& in,
-    size_t size,
+    uint32_t size,
     uint32_t* packed,
     Visitor visitor) {
   const uint32_t base = in.read_vint();
