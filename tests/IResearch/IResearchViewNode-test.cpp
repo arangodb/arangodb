@@ -1016,8 +1016,8 @@ SECTION("serialize") {
 SECTION("collections") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
-  arangodb::LogicalCollection* collection0{};
-  arangodb::LogicalCollection* collection1{};
+  std::shared_ptr<arangodb::LogicalCollection> collection0;
+  std::shared_ptr<arangodb::LogicalCollection> collection1;
 
   // create collection0
   {

@@ -2483,14 +2483,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
-  arangodb::LogicalCollection* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> col;
 
   if (!uuid.empty()) {
-    col = _vocbase.lookupCollectionByUuid(uuid).get();
+    col = _vocbase.lookupCollectionByUuid(uuid);
   }
 
   if (col != nullptr) {
-    col = _vocbase.lookupCollection(name).get();
+    col = _vocbase.lookupCollection(name);
   }
 
   if (col != nullptr && col->type() == type) {
@@ -2543,7 +2543,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 #endif
 
   if (dst != nullptr) {
-    *dst = col;
+    *dst = col.get();
   }
 
   return TRI_ERROR_NO_ERROR;

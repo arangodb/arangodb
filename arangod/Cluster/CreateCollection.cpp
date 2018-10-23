@@ -155,12 +155,13 @@ bool CreateCollection::first() {
 
     _result = Collections::create(
       vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
-      [=](LogicalCollection& col) {
+      [=](std::shared_ptr<LogicalCollection> const& col)->void {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
         << "/" << shard << " successfully created";
-        col.followers()->setTheLeader(leader);
+        col->followers()->setTheLeader(leader);
+
         if (leader.empty()) {
-          col.followers()->clear();
+          col->followers()->clear();
         }
       });
 
