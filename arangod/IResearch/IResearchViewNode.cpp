@@ -666,6 +666,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto& view = *this->view();
   PrimaryKeyIndexReader* reader;
 
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+    << "Start getting snapshot for view '" << view.name() << "'";
+
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
@@ -697,6 +700,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       "failed to get snapshot while creating arangosearch view ExecutionBlock"
     );
   }
+
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+    << "Finish getting snapshot for view '" << view.name() << "'";
 
   if (_sortCondition.empty()) {
     // unordered case
