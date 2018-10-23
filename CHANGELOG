@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed an AQL bug where the optimize-traversals rule was falsely applied to
+  extensions with inline expressions and thereby ignoring them
+
 * disallow empty LDAP password
 
 * The single database or single coordinator statistics in a cluster
