@@ -30,6 +30,7 @@
 #include "utils/bitvector.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/range.hpp"
@@ -109,10 +110,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(meta);
 
   if (!reader) {
-    throw irs::index_error(
-      std::string("while adding document mask modified records to document_mask of segment '") +meta.name
-      + "', error: failed to open segment"
-    );
+    throw irs::index_error(irs::string_utils::to_string(
+      "while adding document mask modified records to document_mask of segment '%s', error: failed to open segment",
+      meta.name.c_str()
+    ));
   }
 
   bool modified = false;
@@ -164,10 +165,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(ctx.segment_.meta);
 
   if (!reader) {
-    throw irs::index_error(
-      std::string("while adding document mask modified records to flush_segment_context of segment '") + ctx.segment_.meta.name
-      + "', error: failed to open segment"
-    );
+    throw irs::index_error(irs::string_utils::to_string(
+      "while adding document mask modified records to flush_segment_context of segment '%s', error: failed to open segment",
+      ctx.segment_.meta.name.c_str()
+    ));
   }
 
   assert(doc_limits::valid(ctx.doc_id_begin_));
@@ -687,10 +688,10 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     );
 
     if (!segment.flush()) {
-      throw index_error(
-        std::string("while flushing segment '") + segment.writer_meta_.meta.name
-        + "', error: failed to flush segment"
-      );
+      throw index_error(string_utils::to_string(
+        "while flushing segment '%s', error: failed to flush segment",
+        segment.writer_meta_.meta.name.c_str()
+      ));
     }
   }
 
@@ -2060,7 +2061,10 @@ bool index_writer::start() {
 
     auto sync = [&dir](const std::string& file) {
       if (!dir.sync(file)) {
-        throw detailed_io_error("failed to sync file, path: " + file);
+        throw detailed_io_error(string_utils::to_string(
+          "failed to sync file, path: %s",
+          file.c_str()
+        ));
       }
 
       return true;
