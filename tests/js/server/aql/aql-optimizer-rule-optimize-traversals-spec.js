@@ -675,17 +675,16 @@ describe('Rule optimize-traversals', () => {
     //   p.vertices[*].label ALL == true
     // . That is, inline expressions were ignored.
     it('inline expressions should not be changed', () => {
-      { // create data
-        graph = graphModule._create(graphName, [
-          graphModule._relation('E', 'V', 'V')]);
+      // create data
+      graph = graphModule._create(graphName, [
+        graphModule._relation('E', 'V', 'V')]);
 
-        graph.V.save({_key: '1', label: false});
-        graph.V.save({_key: '2', label: true});
-        graph.V.save({_key: '3', label: false});
+      graph.V.save({_key: '1', label: false});
+      graph.V.save({_key: '2', label: true});
+      graph.V.save({_key: '3', label: false});
 
-        graph.E.save('V/1', 'V/2', {});
-        graph.E.save('V/1', 'V/3', {});
-      }
+      graph.E.save('V/1', 'V/2', {});
+      graph.E.save('V/1', 'V/3', {});
 
       const query = `
         FOR v, e, p IN 1..10 OUTBOUND 'V/1' GRAPH '${graphName}'
