@@ -5,10 +5,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-23T15:38:06Z"</span>, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"107693"</span>, 
+  <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-23T21:03:01Z"</span>, 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"107705"</span>, 
   <span class="hljs-string">"server"</span> : { 
     <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.0-rc.3"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"90072757132035"</span> 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"280752357615217"</span> 
   } 
 }

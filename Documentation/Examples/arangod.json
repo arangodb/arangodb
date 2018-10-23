@@ -136,23 +136,6 @@
     "section" : "arangosearch",
     "type" : "uint64"
   },
-  "audit.hostname" : {
-    "default" : "",
-    "description" : "hostname to use",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "audit",
-    "type" : "string"
-  },
-  "audit.output" : {
-    "default" : [
-    ],
-    "description" : "audit destination(s)",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "audit",
-    "type" : "string..."
-  },
   "cache.rebalancing-interval" : {
     "default" : 2000000,
     "description" : "microseconds between rebalancing attempts",
@@ -162,7 +145,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 19594968268,
+    "default" : 19609896960,
     "description" : "size of cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -656,7 +639,6 @@
   },
   "javascript.module-directory" : {
     "default" : [
-      "./enterprise/js"
     ],
     "description" : "additional paths containing JavaScript modules",
     "enterpriseOnly" : false,
@@ -738,271 +720,6 @@
     "hidden" : true,
     "section" : "javascript",
     "type" : "string..."
-  },
-  "ldap.async-connect" : {
-    "default" : false,
-    "description" : "Whether or not the connection to the LDAP library will be done asynchronously",
-    "enterpriseOnly" : false,
-    "hidden" : true,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.basedn" : {
-    "default" : "",
-    "description" : "ldap basedn, eg. dc=example,dc=com",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.binddn" : {
-    "default" : "",
-    "description" : "ldap binddn, eg. cn=admin,dc=example,dc=com",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.bindpasswd" : {
-    "default" : "",
-    "description" : "ldap bindpassword, eg. admin",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.debug" : {
-    "default" : false,
-    "description" : "Turn on internal OpenLDAP library output (warning: will print to stdout)",
-    "enterpriseOnly" : false,
-    "hidden" : true,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.enabled" : {
-    "default" : false,
-    "description" : "enable LDAP",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.network-timeout" : {
-    "default" : 0,
-    "description" : "Timeout value (in seconds) after which network operations following the initial connection return in case of no activity (a value of 0 means default timeout)",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "double"
-  },
-  "ldap.port" : {
-    "default" : 389,
-    "description" : "port to use",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "uint16"
-  },
-  "ldap.prefix" : {
-    "default" : "",
-    "description" : "ldap prefix, eg. uid= xor dn= xor cn=",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.referrals" : {
-    "default" : false,
-    "description" : "Whether or not the LDAP library should implicitly chase referrals",
-    "enterpriseOnly" : false,
-    "hidden" : true,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.refresh-rate" : {
-    "default" : 300,
-    "description" : "Refresh user settings after this time (in seconds)",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "double"
-  },
-  "ldap.restart" : {
-    "default" : false,
-    "description" : "Whether or not the LDAP library should implicitly restart connections",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.retries" : {
-    "default" : 1,
-    "description" : "Number of tries to attempt connecting to the LDAP server. Setting it to values greater than one will retry connecting in case the LDAP server is unavailable or denies the connection",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "uint32"
-  },
-  "ldap.roles-attribute-name" : {
-    "default" : "",
-    "description" : "ldap attributename where the role are located.",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-exclude" : {
-    "default" : "",
-    "description" : "Regexp to exclude groups. Leave empty to exclude none.",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-include" : {
-    "default" : "",
-    "description" : "Regexp to include groups. Leave empty to include all.",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-search" : {
-    "default" : "",
-    "description" : "ldap search for roles; '{USER}' is replaced by the 'dn' of the user.",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-transformation" : {
-    "default" : [
-    ],
-    "description" : "Regexp to normalizer role name, e.g. '/^ *(.*[^ ]])*/$2/'",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string..."
-  },
-  "ldap.search-attribute" : {
-    "default" : "uid",
-    "description" : "ldap search attribute, eg. uid",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.search-filter" : {
-    "default" : "objectClass=*",
-    "description" : "ldap search filter, eg. (objectClass=simpleSecurityObject)",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.search-scope" : {
-    "default" : "sub",
-    "description" : "ldap search scope, one of base, one, sub",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.serialize-timeout" : {
-    "default" : 5,
-    "description" : "Maximum amount of time (in seconds) that will be waited for the serialization mutex",
-    "enterpriseOnly" : false,
-    "hidden" : true,
-    "section" : "ldap",
-    "type" : "double"
-  },
-  "ldap.serialized" : {
-    "default" : false,
-    "description" : "Whether or not calls into the LDAP library should be serialized. This option can be used to work around thread-unsafe LDAP library functionality",
-    "enterpriseOnly" : false,
-    "hidden" : true,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.server" : {
-    "default" : "",
-    "description" : "server to use",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.suffix" : {
-    "default" : "",
-    "description" : "ldap suffix, eg. ,dc=example,dc=com",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.superuser-role" : {
-    "default" : "",
-    "description" : "Role mapping to the super-users",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.timeout" : {
-    "default" : 0,
-    "description" : "Timeout value (in seconds) for synchronous LDAP API calls (a value of 0 means default timeout)",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "double"
-  },
-  "ldap.tls" : {
-    "default" : false,
-    "description" : "enable TLS",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.tls-cacert-dir" : {
-    "default" : "",
-    "description" : "ldap tls cacert dir",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls-cacert-file" : {
-    "default" : "",
-    "description" : "ldap tls cacert file",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls-cert-check-strategy" : {
-    "default" : "hard",
-    "description" : "ldap tls cert check strategy, one of never, hard, demand, allow, try",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls-version" : {
-    "default" : "1.2",
-    "description" : "ldap tls version, one of 1.0, 1.1, 1.2",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.url" : {
-    "default" : "",
-    "description" : "ldap url, eg. ldap://example.com:389/dc=example,dc=com?uid?sub",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
   },
   "log" : {
     "default" : [
@@ -1325,7 +1042,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 19594968268,
+    "default" : 19609896960,
     "description" : "size of block cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -1379,22 +1096,6 @@
     "hidden" : false,
     "section" : "rocksdb",
     "type" : "boolean"
-  },
-  "rocksdb.encryption-key-generator" : {
-    "default" : "",
-    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
-    "enterpriseOnly" : true,
-    "hidden" : false,
-    "section" : "rocksdb",
-    "type" : "string"
-  },
-  "rocksdb.encryption-keyfile" : {
-    "default" : "",
-    "description" : "file containing encryption key. If set, encryption will be enabled.",
-    "enterpriseOnly" : true,
-    "hidden" : false,
-    "section" : "rocksdb",
-    "type" : "string"
   },
   "rocksdb.intermediate-commit-count" : {
     "default" : 1000000,
@@ -1895,14 +1596,6 @@
     "section" : "ssl",
     "type" : "uint64",
     "values" : "Possible values: 1, 2, 3, 4, 5"
-  },
-  "ssl.require-peer-certificate" : {
-    "default" : false,
-    "description" : "require a peer certificate when connecting",
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "section" : "ssl",
-    "type" : "boolean"
   },
   "ssl.session-cache" : {
     "default" : false,

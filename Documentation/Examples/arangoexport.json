@@ -231,7 +231,7 @@
     "type" : "boolean"
   },
   "output-directory" : {
-    "default" : "/oskar/work/ArangoDB/export",
+    "default" : "/home/fceller/ArangoDB-3.4/export",
     "description" : "output directory",
     "enterpriseOnly" : false,
     "hidden" : false,

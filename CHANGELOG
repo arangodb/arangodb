@@ -1,4 +1,4 @@
-v3.4.0-rc.3 (XXXX-XX-XX)
+v3.4.0-rc.3 (2018-10-23)
 ------------------------
 
 * The order of JSON object attribute keys in JSON return values will now be 
