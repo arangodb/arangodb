@@ -117,7 +117,9 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
 
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
-  TRI_DEFER(sendRemoveBarrier());
+  TRI_DEFER(if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
+  });
 
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
@@ -126,8 +128,11 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     if (r.fail()) {
       return r;
     }
+    
+    startRecurringBatchExtension();
   }
   TRI_DEFER(if (!_state.isChildSyncer) {
+    _batchPingTimer->cancel();
     _batch.finish(_state.connection, _progress);
   });
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";
@@ -192,11 +197,11 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
-      
+
       DatabaseGuard guard(nameSlice.copyString());
 
       // change database name in place
-      auto configurationCopy = _state.applier;
+      ReplicationApplierConfiguration configurationCopy = _state.applier;
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
@@ -317,12 +322,12 @@ Result GlobalInitialSyncer::updateServerInventory(
                          .errorNumber();
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, Logger::FIXME)
+            LOG_TOPIC(ERR, Logger::REPLICATION)
                 << "unable to drop collection " << collection->name() << ": "
                 << TRI_errno_string(res);
           }
         } catch (...) {
-          LOG_TOPIC(ERR, Logger::FIXME)
+          LOG_TOPIC(ERR, Logger::REPLICATION)
               << "unable to drop collection " << collection->name();
         }
       }
@@ -362,8 +367,8 @@ Result GlobalInitialSyncer::updateServerInventory(
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief returns the inventory
-Result GlobalInitialSyncer::inventory(VPackBuilder& builder) {
+/// @brief fetch the server's inventory, public method for TailingSyncer
+Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   } else if (application_features::ApplicationServer::isStopping()) {
@@ -390,9 +395,10 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   }
 
   // send request
-  std::unique_ptr<SimpleHttpResult> response(
-      _state.connection.client->retryRequest(rest::RequestType::GET, url,
-                                             nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  });
 
   if (replutils::hasFailed(response.get())) {
     if (!_state.isChildSyncer) {

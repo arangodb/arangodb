@@ -120,7 +120,7 @@ void SchedulerFeature::start() {
 
   if (_nrMaximalThreads > 8 * N) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads
+        << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
   }
@@ -134,7 +134,7 @@ void SchedulerFeature::start() {
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads << ") should be at least "
+        << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
         << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads + 1;
   }
@@ -157,15 +157,16 @@ void SchedulerFeature::start() {
 
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
 
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (dealer->isEnabled()) {
-    dealer->defineContextUpdate(
-        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-          TRI_InitV8Dispatcher(isolate, context);
-        },
-        nullptr);
-  }
+  try {
+    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+    if (dealer->isEnabled()) {
+      dealer->defineContextUpdate(
+          [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+            TRI_InitV8Dispatcher(isolate, context);
+          },
+          nullptr);
+    }
+  } catch(...) {}
 }
 
 void SchedulerFeature::beginShutdown() {

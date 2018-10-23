@@ -43,7 +43,6 @@
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-vpack.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/GeoJson.h"
@@ -520,8 +519,8 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
 };
 
 /// @brief register warning
-void registerWarning(ExpressionContext* expressionContext, 
-                     char const* functionName, 
+void registerWarning(ExpressionContext* expressionContext,
+                     char const* functionName,
                      Result const& rr) {
   std::string msg = "in function '";
   msg.append(functionName);
@@ -821,7 +820,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
   ::registerWarning(expressionContext, functionName, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-bool parameterToTimePoint(ExpressionContext* expressionContext, 
+bool parameterToTimePoint(ExpressionContext* expressionContext,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters,
                           tp_sys_clock_ms& tp,
@@ -1207,7 +1206,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   size_t const n = parameters.size();
 
   if (n == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
+    return AqlValue(AqlValueHintEmptyObject());
   }
 
   // use the first argument as the preliminary result
@@ -1393,7 +1392,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
     func = AqlFunctionFeature::getFunctionByName(ucInvokeFN);
     if (func->implementation != nullptr) {
       std::pair<size_t, size_t> numExpectedArguments = func->numArguments();
-     
+
       if (invokeParams.size() < numExpectedArguments.first ||
           invokeParams.size() > numExpectedArguments.second) {
         THROW_ARANGO_EXCEPTION_PARAMS(
@@ -1621,10 +1620,10 @@ AqlValue Functions::ToString(ExpressionContext*,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-    
+
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-    
+
   ::appendAsString(trx, adapter, value);
   return AqlValue(buffer->begin(), buffer->length());
 }
@@ -1639,9 +1638,9 @@ AqlValue Functions::ToBase64(ExpressionContext*,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   ::appendAsString(trx, adapter, value);
-  
+
   std::string encoded = basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
-    
+
   return AqlValue(encoded);
 }
 
@@ -1650,14 +1649,14 @@ AqlValue Functions::ToHex(ExpressionContext*,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-    
+
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-    
+
   ::appendAsString(trx, adapter, value);
-    
+
     std::string encoded = basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
-    
+
   return AqlValue(encoded);
 }
 
@@ -1749,7 +1748,7 @@ AqlValue Functions::ToArray(ExpressionContext*,
   }
 
   if (value.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -1955,7 +1954,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "REVERSE";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (value.isArray()) {
@@ -2006,7 +2005,7 @@ AqlValue Functions::First(ExpressionContext* expressionContext,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "FIRST";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isArray()) {
@@ -2028,7 +2027,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
                          transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "LAST";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isArray()) {
@@ -2048,11 +2047,11 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
 }
 
 /// @brief function NTH
-AqlValue Functions::Nth(ExpressionContext* expressionContext, 
+AqlValue Functions::Nth(ExpressionContext* expressionContext,
                         transaction::Methods* trx,
                         VPackFunctionParameters const& parameters) {
   static char const* AFN = "NTH";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isArray()) {
@@ -2702,7 +2701,7 @@ void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset,
 }
 
 /// @brief function TRIM
-AqlValue Functions::Trim(ExpressionContext* expressionContext, 
+AqlValue Functions::Trim(ExpressionContext* expressionContext,
                          transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "TRIM";
@@ -2856,7 +2855,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext,
                          transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "LIKE";
-  
+
   bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -2915,7 +2914,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
     if (limitNumber == 0) {
-      return AqlValue(VPackSlice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -3077,7 +3076,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
 
   UErrorCode status = U_ZERO_ERROR;
 
-  matcher->reset(valueToMatch); 
+  matcher->reset(valueToMatch);
   bool find = matcher->find();
   if (!find) {
     return AqlValue(AqlValueHintNull());
@@ -3119,7 +3118,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
     if (limitNumber == 0) {
-      return AqlValue(VPackSlice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -3232,7 +3231,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   static char const* AFN = "REGEX_TEST";
-  
+
   bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -3274,7 +3273,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
   static char const* AFN = "REGEX_REPLACE";
-  
+
   bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 3, false);
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -3937,7 +3936,7 @@ AqlValue Functions::Unset(ExpressionContext* expressionContext,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNSET";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isObject()) {
@@ -3960,7 +3959,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNSET_RECURSIVE";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isObject()) {
@@ -3982,7 +3981,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
 AqlValue Functions::Keep(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "KEEP";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isObject()) {
@@ -4005,7 +4004,7 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   static char const* AFN = "TRANSLATE";
-  
+
   AqlValue key = ExtractFunctionParameterValue(parameters, 0);
   AqlValue lookupDocument = ExtractFunctionParameterValue(parameters, 1);
 
@@ -4109,7 +4108,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -4173,7 +4172,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext,
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -4604,7 +4603,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
   static char const* AFN = "SORTED_UNIQUE";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isArray()) {
@@ -4640,7 +4639,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "SORTED";
-  
+
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isArray()) {
@@ -4723,7 +4722,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNION_DISTINCT";
-  
+
   size_t const n = parameters.size();
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
@@ -6232,7 +6231,7 @@ AqlValue Functions::Push(ExpressionContext* expressionContext, transaction::Meth
 AqlValue Functions::Pop(ExpressionContext* expressionContext, transaction::Methods* trx,
                         VPackFunctionParameters const& parameters) {
   static char const* AFN = "POP";
-  
+
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (list.isNull(true)) {
@@ -6263,7 +6262,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "APPEND";
-  
+
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
   AqlValue toAppend = ExtractFunctionParameterValue(parameters, 1);
 
@@ -6340,7 +6339,7 @@ AqlValue Functions::Unshift(ExpressionContext* expressionContext,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   static char const* AFN = "UNSHIFT";
-  
+
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (!list.isNull(true) && !list.isArray()) {
@@ -6426,7 +6425,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   if (!list.isArray()) {
@@ -6487,7 +6486,7 @@ AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
   }
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   if (!list.isArray() || !values.isArray()) {
@@ -6522,7 +6521,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
   if (!list.isArray()) {
@@ -6769,7 +6768,7 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
   static char const* AFN = "PERCENTILE";
-  
+
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
 
   if (!list.isArray()) {
@@ -7061,33 +7060,33 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
   if (!feature) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
-    
+
   auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
   VPackBuilder builder(*buffer);
   if (ServerState::instance()->isCoordinator()) {
     std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
     if (!c) {
       ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
     c->collectAQLResults(builder);
-    
+
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
     if (!worker) {
       ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
-      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+      return AqlValue(AqlValueHintEmptyArray());
     }
     worker->aqlResult(builder);
   }
-  
+
   if (builder.isEmpty()) {
-    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
+    return AqlValue(AqlValueHintEmptyArray());
   }
   TRI_ASSERT(builder.slice().isArray());
-  
+
   // move the buffer into
   bool shouldDelete = true;
   AqlValue val(buffer.get(), shouldDelete);
@@ -7101,7 +7100,7 @@ AqlValue Functions::Assert(ExpressionContext* expressionContext,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   static char const* AFN = "ASSERT";
-  
+
   auto const expr = ExtractFunctionParameterValue(parameters, 0);
   auto const message = ExtractFunctionParameterValue(parameters, 1);
 
@@ -7119,7 +7118,7 @@ AqlValue Functions::Assert(ExpressionContext* expressionContext,
 AqlValue Functions::Warn(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "WARN";
-  
+
   auto const expr = ExtractFunctionParameterValue(parameters, 0);
   auto const message = ExtractFunctionParameterValue(parameters, 1);
 
@@ -7174,7 +7173,7 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
   return AqlValue(::executeDateFormatRegex(formatString, tp));
 }
 
-AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, 
+AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
                                    transaction::Methods*,
                                    VPackFunctionParameters const& params){
   ::registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);

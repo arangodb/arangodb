@@ -453,23 +453,6 @@ void RestCollectionHandler::handleCommandPut() {
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*detailedCount*/ true);
           }
-
-        } else if (sub == "rotate") {
-          auto ctx = transaction::StandaloneContext::Create(_vocbase);
-          SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::WRITE);
-
-          res = trx.begin();
-
-          if (res.ok()) {
-            auto result =
-              trx.rotateActiveJournal(coll->name(), OperationOptions());
-
-            res = trx.finish(result.result);
-          }
-
-          builder.openObject();
-          builder.add("result", VPackValue(true));
-          builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, *coll);
 
@@ -477,9 +460,12 @@ void RestCollectionHandler::handleCommandPut() {
 
           obj->add("result", VPackValue(res.ok()));
         } else {
-          res.reset(TRI_ERROR_HTTP_NOT_FOUND,
-                    "expecting one of the actions 'load', 'unload', 'truncate',"
-                    " 'properties', 'rename', 'loadIndexesIntoMemory'");
+          res = handleExtraCommandPut(*coll, sub, builder);
+          if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
+            res.reset(TRI_ERROR_HTTP_NOT_FOUND,
+                      "expecting one of the actions 'load', 'unload', 'truncate',"
+                      " 'properties', 'rename', 'loadIndexesIntoMemory'");
+          }
         }
     }
   );

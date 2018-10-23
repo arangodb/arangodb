@@ -48,8 +48,8 @@ class LocalDocumentId;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
-  friend class RocksDBVPackIndex;
   friend class RocksDBFulltextIndex;
+  friend class RocksDBVPackIndex;
 
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
@@ -117,7 +117,7 @@ class RocksDBCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions&) override;
 
   void deferDropCollection(
     std::function<bool(LogicalCollection&)> const& callback
@@ -175,8 +175,11 @@ class RocksDBCollection final : public PhysicalCollection {
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
 
-  void setRevision(TRI_voc_rid_t revisionId);
-  void adjustNumberDocuments(int64_t adjustment);
+  /// adjust the current number of docs
+  void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
+  /// load the number of docs from storage
+  void loadInitialNumberDocuments();
+
   uint64_t objectId() const { return _objectId; }
 
   int lockWrite(double timeout = 0.0);

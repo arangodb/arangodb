@@ -34,8 +34,8 @@ var internal = require("internal");
 
 function SkiplistIndexSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionSkip";
-  var collection = null;
+  const cn = "UnitTestsCollectionSkip";
+  let collection = null;
 
   return {
 
@@ -53,16 +53,8 @@ function SkiplistIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      // try...catch is necessary as some tests delete the collection itself!
-      try {
-        collection.unload();
-        collection.drop();
-      }
-      catch (err) {
-      }
-
+      collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,12 +69,13 @@ function SkiplistIndexSuite() {
         docs.push({value: i % 100});
       }
       collection.save(docs);
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureSkiplist("value");
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      idx = collection.ensureSkiplist("value"); // fetch new estimates
       let oldEstimate = idx.selectivityEstimate;
 
-      assertTrue(oldEstimate > 0);
-      assertTrue(oldEstimate < 1);
+      assertTrue(oldEstimate >= 0);
+      assertTrue(oldEstimate <= 1);
       try {
         internal.db._executeTransaction({
           collections: {write: cn},
@@ -102,21 +95,16 @@ function SkiplistIndexSuite() {
       } catch (e) {
         assertEqual(e.errorMessage, "banana");
         // Insert failed.
-        // Validate that estimate is non modified
+        // Validate that estimate is non-modified
         idx = collection.ensureSkiplist("value");
         internal.waitForEstimatorSync(); // make sure estimates are consistent
         assertEqual(idx.selectivityEstimate, oldEstimate);
       }
     },
 
-
   };
 
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(SkiplistIndexSuite);
 

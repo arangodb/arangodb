@@ -126,7 +126,7 @@ arangodb::Result applyDataSourceRegistrationCallbacks(
     try {
       auto res = callback(dataSource, trx);
 
-      if (!res.ok()) {
+      if (res.fail()) {
         return res;
       }
     } catch (...) {
@@ -905,7 +905,7 @@ Result transaction::Methods::begin() {
   } else {
     auto res = _state->beginTransaction(_localHints);
 
-    if (!res.ok()) {
+    if (res.fail()) {
       return res;
     }
   }
@@ -941,7 +941,7 @@ Result transaction::Methods::commit() {
   } else {
     auto res = _state->commitTransaction(this);
 
-    if (!res.ok()) {
+    if (res.fail()) {
       return res;
     }
   }
@@ -965,7 +965,7 @@ Result transaction::Methods::abort() {
   } else {
     auto res = _state->abortTransaction(this);
 
-    if (!res.ok()) {
+    if (res.fail()) {
       return res;
     }
   }
@@ -1053,7 +1053,7 @@ OperationResult transaction::Methods::anyLocal(
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-    if (!res.ok()) {
+    if (res.fail()) {
       return OperationResult(res);
     }
   }
@@ -1142,11 +1142,6 @@ TRI_col_type_e transaction::Methods::getCollectionType(
   return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
-/// @brief return the name of a collection
-std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) {
-  return resolver()->getCollectionName(cid);
-}
-
 /// @brief Iterate over all elements of the collection.
 void transaction::Methods::invokeOnAllElements(
     std::string const& collectionName,
@@ -1176,7 +1171,7 @@ void transaction::Methods::invokeOnAllElements(
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = trxCol->unlockRecursive(AccessMode::Type::READ, _state->nestingLevel());
 
-    if (!res.ok()) {
+    if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
@@ -1464,6 +1459,7 @@ OperationResult transaction::Methods::documentLocal(
   }
 
   VPackBuilder resultBuilder;
+  ManagedDocumentResult result;
 
   auto workForOneDocument = [&](VPackSlice const value,
                                 bool isMultiple) -> Result {
@@ -1477,7 +1473,8 @@ OperationResult transaction::Methods::documentLocal(
       expectedRevision = TRI_ExtractRevisionId(value);
     }
 
-    ManagedDocumentResult result;
+    result.clear();
+
     Result res = collection->read(
       this, key, result, !isLocked(collection, AccessMode::Type::READ));
 
@@ -1607,7 +1604,6 @@ OperationResult transaction::Methods::insertLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   std::shared_ptr<std::vector<ServerID> const> followers;
-
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1640,6 +1636,7 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   VPackBuilder resultBuilder;
+  ManagedDocumentResult documentResult;
   TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice const value) -> Result {
@@ -1647,25 +1644,25 @@ OperationResult transaction::Methods::insertLocal(
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
-    ManagedDocumentResult documentResult;
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
+    documentResult.clear();
 
     auto const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
-    Result res = collection->insert( this, value, documentResult, options
-                                   , resultMarkerTick, needsLock, revisionId
-                                   );
+    Result res = collection->insert(this, value, documentResult, options,
+                                    resultMarkerTick, needsLock, revisionId);
 
-    ManagedDocumentResult previousDocumentResult; // return OLD
     TRI_voc_rid_t previousRevisionId = 0;
-    if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
+    ManagedDocumentResult previousDocumentResult; // return OLD
+
+    if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
       resultMarkerTick = 0;
-      res = collection->replace( this, value, documentResult, options
-                               , resultMarkerTick, needsLock, previousRevisionId
-                               , previousDocumentResult);
-      if(res.ok() && !options.silent){
+      res = collection->replace(this, value, documentResult, options,
+                                resultMarkerTick, needsLock, previousRevisionId,
+                                previousDocumentResult);
+      if (res.ok() && !options.silent) {
         // If we are silent, then revisionId will not be looked at further
         // down. In the silent case, documentResult is empty, so nobody
         // must actually look at it!
@@ -1677,7 +1674,7 @@ OperationResult transaction::Methods::insertLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (!res.ok()) {
+    if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
       // in the single document case no body needs to be created at all.
       return res;
@@ -1686,30 +1683,25 @@ OperationResult transaction::Methods::insertLocal(
     if (!options.silent) {
       TRI_ASSERT(!documentResult.empty());
 
-      StringRef keyString(transaction::helpers::extractKeyFromDocument(
-      VPackSlice(documentResult.vpack())));
+      StringRef keyString(transaction::helpers::extractKeyFromDocument(VPackSlice(documentResult.vpack())));
 
       bool showReplaced = false;
-      if(options.returnOld && previousRevisionId){
+      if (options.returnOld && previousRevisionId) {
         showReplaced = true;
-      }
-
-      if(showReplaced){
         TRI_ASSERT(!previousDocumentResult.empty());
       }
 
-      buildDocumentIdentity(collection, resultBuilder
-                            ,cid, keyString, revisionId ,previousRevisionId
-                            ,showReplaced ? &previousDocumentResult : nullptr
-                            ,options.returnNew ? &documentResult : nullptr);
+      buildDocumentIdentity(collection, resultBuilder,
+                            cid, keyString, revisionId, previousRevisionId,
+                            showReplaced ? &previousDocumentResult : nullptr,
+                            options.returnNew ? &documentResult : nullptr);
     }
     return Result();
   };
 
   Result res;
-  bool const multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
-  if (multiCase) {
+  if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
@@ -1923,10 +1915,12 @@ OperationResult transaction::Methods::modifyLocal(
 
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
+  ManagedDocumentResult previous;
+  ManagedDocumentResult result;
 
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
-                             &resultBuilder, &cid](VPackSlice const newVal,
+                             &resultBuilder, &cid, &previous, &result](VPackSlice const newVal,
                                                    bool isBabies) -> Result {
     Result res;
     if (!newVal.isObject()) {
@@ -1934,10 +1928,10 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    ManagedDocumentResult result;
     TRI_voc_rid_t actualRevision = 0;
-    ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
+    result.clear();
+    previous.clear();
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
@@ -1953,16 +1947,13 @@ OperationResult transaction::Methods::modifyLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      // still return
-      if (!isBabies) {
+    if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection, resultBuilder, cid, key,
                               actualRevision, 0,
                               options.returnOld ? &previous : nullptr, nullptr);
       }
-      return res;
-    } else if (!res.ok()) {
       return res;
     }
 
@@ -1990,7 +1981,7 @@ OperationResult transaction::Methods::modifyLocal(
       VPackArrayIterator it(newValue);
       while (it.valid()) {
         res = workForOneDocument(it.value(), true);
-        if (!res.ok()) {
+        if (res.fail()) {
           createBabiesError(resultBuilder, errorCounter, res.errorNumber(),
                             options.silent);
         }
@@ -2094,7 +2085,7 @@ OperationResult transaction::Methods::removeLocal(
     OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-      
+  
   std::shared_ptr<std::vector<ServerID> const> followers;
 
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2129,11 +2120,11 @@ OperationResult transaction::Methods::removeLocal(
   }
 
   VPackBuilder resultBuilder;
+  ManagedDocumentResult previous;
   TRI_voc_tick_t maxTick = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
     TRI_voc_rid_t actualRevision = 0;
-    ManagedDocumentResult previous;
     transaction::BuilderLeaser builder(this);
     StringRef key;
     if (value.isString()) {
@@ -2156,6 +2147,7 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_voc_tick_t resultMarkerTick = 0;
+    previous.clear();
 
     Result res = collection->remove(this, value, options, resultMarkerTick,
                                  !isLocked(collection, AccessMode::Type::WRITE),
@@ -2165,7 +2157,7 @@ OperationResult transaction::Methods::removeLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (!res.ok()) {
+    if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key,
                               actualRevision, 0,
@@ -2184,13 +2176,12 @@ OperationResult transaction::Methods::removeLocal(
   };
 
   Result res;
-  bool multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
-  if (multiCase) {
+  if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
-      if (!res.ok()) {
+      if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
@@ -2368,18 +2359,12 @@ OperationResult transaction::Methods::truncateLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
-  try {
-    collection->truncate(this, options);
-  } catch (basics::Exception const& ex) {
+  Result res = collection->truncate(this, options);;
+  if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
       unlockRecursive(cid, AccessMode::Type::WRITE);
     }
-    return OperationResult(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    if (lockResult.is(TRI_ERROR_LOCKED)) {
-      unlockRecursive(cid, AccessMode::Type::WRITE);
-    }
-    return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
+    return OperationResult(res);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2447,52 +2432,8 @@ OperationResult transaction::Methods::truncateLocal(
     }
   }
 
-  Result res;
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     res = unlockRecursive(cid, AccessMode::Type::WRITE);
-  }
-
-  return OperationResult(res);
-}
-
-/// @brief rotate all active journals of a collection
-OperationResult transaction::Methods::rotateActiveJournal(
-    std::string const& collectionName, OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  OperationResult result;
-
-  if (_state->isCoordinator()) {
-    result = rotateActiveJournalCoordinator(collectionName, options);
-  } else {
-    result = rotateActiveJournalLocal(collectionName, options);
-  }
-
-  return result;
-}
-
-/// @brief rotate the journal of a collection
-OperationResult transaction::Methods::rotateActiveJournalCoordinator(
-    std::string const& collectionName, OperationOptions const& options) {
-  return OperationResult(
-    rotateActiveJournalOnAllDBServers(vocbase().name(), collectionName)
-  );
-}
-
-/// @brief rotate the journal of a collection
-OperationResult transaction::Methods::rotateActiveJournalLocal(
-    std::string const& collectionName, OperationOptions const& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
-
-  Result res;
-  try {
-    res.reset(collection->getPhysical()->rotateActiveJournal());
-  } catch (basics::Exception const& ex) {
-    return OperationResult(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 
   return OperationResult(res);
@@ -2600,7 +2541,7 @@ OperationResult transaction::Methods::countLocal(
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-    if (!res.ok()) {
+    if (res.fail()) {
       return OperationResult(res);
     }
   }
@@ -2950,7 +2891,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     }
   );
 
-  if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
+  if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
     // trigger exception as per the original behaviour (tests depend on this)
     if (res.ok() && !visited) {
       addCollection(cid); // will throw on error
@@ -3137,32 +3078,6 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,
-                                       TRI_voc_cid_t& cid, char const*& key,
-                                       size_t& outLength) {
-  char const* p = static_cast<char const*>(
-      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
-
-  if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-
-  if (*handle >= '0' && *handle <= '9') {
-    cid = NumberUtils::atoi_zero<TRI_voc_cid_t>(handle, p);
-  } else {
-    cid = resolver()->getCollectionIdCluster(std::string(handle, p - handle));
-  }
-
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-
-  key = p + 1;
-  outLength = length - (key - handle);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result transaction::Methods::resolveId(char const* handle, size_t length,
                                        std::shared_ptr<LogicalCollection>& collection, char const*& key,
                                        size_t& outLength) {
   char const* p = static_cast<char const*>(
@@ -3267,11 +3182,7 @@ Result Methods::replicateOperations(LogicalCollection* collection,
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
-
-  if (nrGood == followers->size()) {
-    return Result();
-  }
+  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
 
   // If any would-be-follower refused to follow there must be a
   // new leader in the meantime, in this case we must not allow

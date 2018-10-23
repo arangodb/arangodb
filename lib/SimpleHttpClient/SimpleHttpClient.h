@@ -321,8 +321,10 @@ class SimpleHttpClient {
 
   SimpleHttpClientParams& params() { return _params; };
   
+  /// @brief Thread-safe check abortion status
   bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
 
+  /// @brief Thread-safe set abortion status
   void setAborted(bool value) noexcept;
 
  private:

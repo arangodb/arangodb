@@ -1,68 +1,68 @@
-/*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
+/* jshint globalstrict:false, strict:false, unused: false */
+/* global assertEqual, assertTrue, assertFalse, arango, ARGUMENTS */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the replication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the replication
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var errors = arangodb.errors;
+var jsunity = require('jsunity');
+var arangodb = require('@arangodb');
 var db = arangodb.db;
 
-var replication = require("@arangodb/replication");
+var replication = require('@arangodb/replication');
+var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 let compareTicks = replication.compareTicks;
-var console = require("console");
-var internal = require("internal");
+var console = require('console');
+var internal = require('internal');
 var masterEndpoint = arango.getEndpoint();
 var slaveEndpoint = ARGUMENTS[0];
 
-var cn = "UnitTestsReplication";
-var cn2 = "UnitTestsReplication2";
-    
-var connectToMaster = function() {
-  arango.reconnect(masterEndpoint, db._name(), "root", "");
+var cn = 'UnitTestsReplication';
+var cn2 = 'UnitTestsReplication2';
+
+var connectToMaster = function () {
+  arango.reconnect(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-var connectToSlave = function() {
-  arango.reconnect(slaveEndpoint, db._name(), "root", "");
+var connectToSlave = function () {
+  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-var collectionChecksum = function(name) {
+var collectionChecksum = function (name) {
   var c = db._collection(name).checksum(true, true);
   return c.checksum;
 };
 
-var collectionCount = function(name) {
+var collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
+var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
   var state = {};
 
   db._flushCache();
@@ -77,31 +77,31 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
   }
 
   var includeSystem = true;
-  var restrictType = "";
+  var restrictType = '';
   var restrictCollections = [];
   applierConfiguration = applierConfiguration || { };
 
   if (typeof applierConfiguration === 'object') {
-    if (applierConfiguration.hasOwnProperty("includeSystem")) {
+    if (applierConfiguration.hasOwnProperty('includeSystem')) {
       includeSystem = applierConfiguration.includeSystem;
     }
-    if (applierConfiguration.hasOwnProperty("restrictType")) {
+    if (applierConfiguration.hasOwnProperty('restrictType')) {
       restrictType = applierConfiguration.restrictType;
     }
-    if (applierConfiguration.hasOwnProperty("restrictCollections")) {
+    if (applierConfiguration.hasOwnProperty('restrictCollections')) {
       restrictCollections = applierConfiguration.restrictCollections;
     }
   }
 
   var keepBarrier = false;
-  if (applierConfiguration.hasOwnProperty("keepBarrier")) {
+  if (applierConfiguration.hasOwnProperty('keepBarrier')) {
     keepBarrier = applierConfiguration.keepBarrier;
   }
 
   var syncResult = replication.sync({
     endpoint: masterEndpoint,
-    username: "root",
-    password: "",
+    username: 'root',
+    password: '',
     verbose: true,
     includeSystem,
     restrictType,
@@ -114,13 +114,13 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
   connectToMaster();
   masterFunc2(state);
 
-  // use lastLogTick as of now
+  //  use lastLogTick as of now
   state.lastLogTick = replication.logger.state().state.lastLogTick;
 
   applierConfiguration = applierConfiguration || {};
   applierConfiguration.endpoint = masterEndpoint;
-  applierConfiguration.username = "root";
-  applierConfiguration.password = "";
+  applierConfiguration.username = 'root';
+  applierConfiguration.password = '';
   applierConfiguration.force32mode = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
@@ -132,8 +132,7 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
   replication.applier.properties(applierConfiguration);
   if (keepBarrier) {
     replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
-  }
-  else {
+  } else {
     replication.applier.start(syncResult.lastLogTick);
   }
 
@@ -141,8 +140,8 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
 
   while (true) {
     var r = slaveFuncOngoing(state);
-    if (r === "wait") {
-      // special return code that tells us to hang on
+    if (r === 'wait') {
+      //  special return code that tells us to hang on
       internal.wait(0.5, false);
       continue;
     }
@@ -153,24 +152,26 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
     var slaveState = replication.applier.state();
 
     if (slaveState.state.lastError.errorNum > 0) {
-      console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
+      console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
       break;
     }
 
     if (!slaveState.state.running) {
-      console.log("slave is not running");
+      console.topic('replication=error', 'slave is not running');
       break;
     }
 
     if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-        compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-      //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
-      console.log("slave has caught up. syncResult.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+        compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
+      console.topic('replication=debug',
+                    'slave has caught up. syncResult.lastLogTick:', state.lastLogTick,
+                    'slaveState.lastAppliedContinuousTick:', slaveState.state.lastAppliedContinuousTick,
+                    'slaveState.lastProcessedContinuousTick:', slaveState.state.lastProcessedContinuousTick);
       break;
     }
 
     if (!printed) {
-      console.log("waiting for slave to catch up");
+      console.topic('replication=debug', 'waiting for slave to catch up');
       printed = true;
     }
     internal.wait(0.5, false);
@@ -180,7 +181,7 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
   slaveFuncFinal(state);
 };
 
-var stopApplier = function(dbName) {
+var stopApplier = function (dbName) {
   connectToSlave();
   try {
     db._useDatabase(dbName);
@@ -191,35 +192,35 @@ var stopApplier = function(dbName) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Basic test definition
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Basic test definition
+// //////////////////////////////////////////////////////////////////////////////
 
-function BaseTestConfig() {
+function BaseTestConfig () {
   'use strict';
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test require from present
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test require from present
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRequireFromPresentFalse: function() {
+    testRequireFromPresentFalse: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
         },
 
-        function(state) {
-          // flush the wal logs on the master so the start tick is not available
-          // anymore when we start replicating
+        function (state) {
+          //  flush the wal logs on the master so the start tick is not available
+          //  anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
             db._collection(cn).save({
               value: i
             });
-            internal.wal.flush(); //true, true);
+            internal.wal.flush();
           }
           db._collection(cn).save({
             value: i
@@ -228,19 +229,19 @@ function BaseTestConfig() {
           internal.wait(6, false);
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
-          if (db._engine().name === "rocksdb") {
-            // rocksdb keeps wal longer
+        function (state) {
+          if (db._engine().name === 'rocksdb') {
+            //  rocksdb keeps wal longer
             let cc = db._collection(cn).count();
-            assertEqual(cc, 31, "rocksdb must keep wal, documents not there");
+            assertEqual(cc, 31, 'rocksdb must keep wal, documents not there');
           } else {
-            // data loss on slave!
+            //  data loss on slave!
             let cc = db._collection(cn).count();
-            assertTrue(cc < 25, "Expected less than " + cc);
+            assertTrue(cc < 25, 'Expected less than ' + cc);
           }
         }, {
           requireFromPresent: false,
@@ -248,12 +249,12 @@ function BaseTestConfig() {
         }
       );
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test require from present
-    ////////////////////////////////////////////////////////////////////////////////
 
-    testRequireFromPresentTrue : function () {
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test require from present
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRequireFromPresentTrue: function () {
       connectToMaster();
 
       compare(
@@ -262,11 +263,13 @@ function BaseTestConfig() {
         },
 
         function (state) {
-          // flush the wal logs on the master so the start tick is not available
-          // anymore when we start replicating
+          //  flush the wal logs on the master so the start tick is not available
+          //  anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({ value: i });
-            internal.wal.flush(); //true, true);
+            db._collection(cn).save({
+              value: i
+            });
+            internal.wal.flush();
           }
           internal.wal.flush(true, true);
           internal.wait(6, false);
@@ -277,10 +280,10 @@ function BaseTestConfig() {
         },
 
         function (state) {
-          // wait for slave applier to have started and run
+          //  wait for slave applier to have started and run
           internal.wait(5, false);
 
-          // slave should not have stopped
+          //  slave should not have stopped
           assertTrue(replication.applier.state().state.running);
           return true;
         },
@@ -296,11 +299,11 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test require from present, no barrier
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test require from present, no barrier
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRequireFromPresentTrueNoBarrier : function () {
+    testRequireFromPresentTrueNoBarrier: function () {
       connectToMaster();
 
       compare(
@@ -309,30 +312,32 @@ function BaseTestConfig() {
         },
 
         function (state) {
-          // flush the wal logs on the master so the start tick is not available
-          // anymore when we start replicating
+          //  flush the wal logs on the master so the start tick is not available
+          //  anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({ value: i });
-            internal.wal.flush(); //true, true);
+            db._collection(cn).save({
+              value: i
+            });
+            internal.wal.flush();
           }
           internal.wal.flush(true, true);
           internal.wait(6, false);
         },
 
         function (state) {
-          // wait for slave applier to have started and detect the mess
+          //  wait for slave applier to have started and detect the mess
           return replication.applier.state().state.running;
         },
 
         function (state) {
-          if (db._engine().name === "rocksdb") {
-            // rocksdb keeps wal longer
-            assertTrue(replication.applier.state().state.running, "Applier should be running");            
-            assertEqual(db._collection(cn).count(), 30, "rocksdb must keep wal");
+          if (db._engine().name === 'rocksdb') {
+            //  rocksdb keeps wal longer
+            assertTrue(replication.applier.state().state.running, 'Applier should be running');
+            assertEqual(db._collection(cn).count(), 30, 'rocksdb must keep wal');
           } else {
-            // slave should have failed
+            //  slave should have failed
             assertFalse(replication.applier.state().state.running);
-            // data loss on slave!
+            //  data loss on slave!
             assertTrue(db._collection(cn).count() < 25);
           }
         },
@@ -346,109 +351,111 @@ function BaseTestConfig() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test suite for _system database
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Test suite for _system database
+// //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function ReplicationSuite () {
+  let suite = {
 
-  let suite = BaseTestConfig();
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set up
-  ////////////////////////////////////////////////////////////////////////////////
+    setUp: function () {
+      stopApplier('_system');
 
-  suite.setUp = function() {
-    stopApplier("_system");
+      connectToMaster();
 
-    connectToMaster();
+      db._drop(cn);
+      db._drop(cn2);
+    },
 
-    db._drop(cn);
-    db._drop(cn2);
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      stopApplier('_system');
+
+      connectToMaster();
+      db._drop(cn);
+      db._drop(cn2);
+
+      connectToSlave();
+      db._drop(cn);
+      db._drop(cn2);
+    }
   };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tear down
-  ////////////////////////////////////////////////////////////////////////////////
-
-  suite.tearDown = function() {
-    stopApplier("_system");
-    
-    connectToMaster();
-    db._drop(cn);
-    db._drop(cn2);
-
-    connectToSlave();
-    db._drop(cn);
-    db._drop(cn2);
-  };
+  deriveTestSuite(BaseTestConfig(), suite, '_Repl');
 
   return suite;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test suite for other database
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Test suite for other database
+// //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationOtherDBSuite() {
-  const dbName = "UnitTestDB";
+function ReplicationOtherDBSuite () {
+  const dbName = 'UnitTestDB';
 
-  let suite = BaseTestConfig();
+  let suite = {
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set up
-  ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
-  suite.setUp = function() {
-    stopApplier(dbName);
+    setUp: function () {
+      stopApplier(dbName);
 
-    db._useDatabase("_system");
-    connectToSlave();
-    try {
-      db._dropDatabase(dbName);
-    } catch (e) {
+      db._useDatabase('_system');
+      connectToSlave();
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
+
+      db._createDatabase(dbName);
+
+      connectToMaster();
+
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      stopApplier(dbName);
+
+      db._useDatabase('_system');
+      connectToMaster();
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
+
+      db._useDatabase('_system');
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
     }
-
-    db._createDatabase(dbName);
-
-    connectToMaster();
-
-    try {
-      db._dropDatabase(dbName);
-    } catch (e) {
-    }
-    db._createDatabase(dbName);
-    db._useDatabase(dbName);
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tear down
-  ////////////////////////////////////////////////////////////////////////////////
-
-  suite.tearDown = function() {
-    stopApplier(dbName);
-
-    db._useDatabase("_system");
-    connectToMaster();
-    try {
-      db._dropDatabase(dbName);
-    } catch (e) {
-    }
-
-    db._useDatabase("_system");
-    try {
-      db._dropDatabase(dbName);
-    } catch (e) {
-    }
-  };
-
+  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
   return suite;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);

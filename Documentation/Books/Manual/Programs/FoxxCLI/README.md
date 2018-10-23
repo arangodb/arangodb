@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/foxx-cli.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/foxx-cli.git / docs/Manual/ -->
 # Foxx CLI
 
 Foxx CLI is command line tool for managing and developing ArangoDB

@@ -98,7 +98,7 @@ bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
   if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
         << "logic error. checking wrong lock type";
     return false;
   }
@@ -111,7 +111,7 @@ bool RocksDBTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  std::string collName(_collection->name());
+  std::string collName(_collection->name()); // WTF?!
   if (_transaction->isLockedShard(collName)) {
     return true;
   }
@@ -313,22 +313,21 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
                                                 uint64_t commitSeq) {
     TRI_ASSERT(_collection != nullptr);
-  
+
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
   if (commitSeq != 0) { // is '0' for filling new indexes
     if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
       RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
-      coll->adjustNumberDocuments(adjustment);
-      coll->setRevision(_revision);
-      
+      coll->adjustNumberDocuments(_revision, adjustment);
+
       RocksDBEngine* engine = rocksutils::globalRocksEngine();
       RocksDBSettingsManager::CounterAdjustment update(commitSeq, _numInserts, _numRemoves,
                                                        _revision);
       engine->settingsManager()->updateCounter(coll->objectId(), update);
     }
   }
-  
+
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
@@ -339,8 +338,8 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
     auto estimator = ridx->estimator();
     if (estimator) {
-      estimator->bufferUpdates(commitSeq, std::move(pair.second.first),
-                                          std::move(pair.second.second));
+      estimator->bufferUpdates(commitSeq, std::move(pair.second.inserts),
+                                          std::move(pair.second.removals));
       estimator->removeBlocker(trxId);
     }
   }
@@ -355,13 +354,13 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
 void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].first.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].inserts.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].second.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].removals.emplace_back(hash);
 }
 
 /// @brief lock a collection
@@ -374,7 +373,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;
@@ -468,7 +467,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
       !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }

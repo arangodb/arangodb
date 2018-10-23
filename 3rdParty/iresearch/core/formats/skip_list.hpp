@@ -59,7 +59,10 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT;
+  skip_writer(
+    size_t skip_0,
+    size_t skip_n
+  ) NOEXCEPT;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
@@ -81,8 +84,14 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   /// @param max_levels maximum number of levels in a skip-list
   /// @param count total number of elements to store in a skip-list
   /// @param write write function
+  /// @param alloc memory file allocator
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(size_t max_levels, size_t count, const write_f& write = nop);
+  void prepare(
+    size_t max_levels,
+    size_t count,
+    const write_f& write = nop,
+    const memory_allocator& alloc = memory_allocator::global()
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds skip at the specified number of elements
@@ -112,10 +121,11 @@ class IRESEARCH_API skip_writer: util::noncopyable {
   static void nop(size_t, index_output&) { }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+
   std::vector<memory_output> levels_;
-  write_f write_; // write function
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
+  write_f write_; // write function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_writer
 

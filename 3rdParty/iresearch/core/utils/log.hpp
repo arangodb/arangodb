@@ -30,18 +30,21 @@
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
   #define IR_FILEPATH_SPECIFIER  "%ws"
+  #define IR_UINT32_T_SPECIFIER  "%u"
   #define IR_UINT64_T_SPECIFIER  "%I64u"
   #define IR_SIZE_T_SPECIFIER    "%Iu"
   #define IR_SSIZE_T_SPECIFIER   "%Id"
   #define IR_PTRDIFF_T_SPECIFIER "%Id"
 #elif defined(__APPLE__)
   #define IR_FILEPATH_SPECIFIER  "%s"
+  #define IR_UINT32_T_SPECIFIER  "%u"
   #define IR_UINT64_T_SPECIFIER  "%llu"
   #define IR_SIZE_T_SPECIFIER    "%zu"
   #define IR_SSIZE_T_SPECIFIER   "%zd"
   #define IR_PTRDIFF_T_SPECIFIER "%zd"
 #elif defined(__GNUC__)
   #define IR_FILEPATH_SPECIFIER  "%s"
+  #define IR_UINT32_T_SPECIFIER  "%u"
   #define IR_UINT64_T_SPECIFIER  "%lu"
   #define IR_SIZE_T_SPECIFIER    "%zu"
   #define IR_SSIZE_T_SPECIFIER   "%zd"
@@ -83,7 +86,8 @@ NS_END
 
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
@@ -93,7 +97,8 @@ NS_END
   #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, prefix, format, ...) \
-    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
+    if (::iresearch::logger::enabled(level)) \
+      std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, ##__VA_ARGS__)

@@ -57,6 +57,8 @@ bool createLink(
 ) {
   bool isNew = false;
   auto link = collection.createIndex(&trx, definition, isNew);
+  LOG_TOPIC_IF(DEBUG, arangodb::iresearch::TOPIC, link)
+      << "added link '" << link->id() << "'";
 
   return link && isNew;
 }
@@ -134,7 +136,7 @@ arangodb::Result modifyLinks(
   if (!links.isObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error parsing link parameters from json for IResearch view '") + view.name() + "'"
+      std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "'"
     );
   }
 
@@ -160,7 +162,7 @@ arangodb::Result modifyLinks(
     if (!collection.isString()) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for IResearch view '") + view.name() + "' offset '" + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
+        std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' offset '" + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
       );
     }
 
@@ -196,7 +198,7 @@ arangodb::Result modifyLinks(
     if (!arangodb::iresearch::mergeSliceSkipKeys(namedJson, link, acceptor)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to update link definition with the view name while updating IResearch view '") + view.name() + "' collection '" + collectionName + "'"
+        std::string("failed to update link definition with the view name while updating arangosearch view '") + view.name() + "' collection '" + collectionName + "'"
       );
     }
 
@@ -208,7 +210,7 @@ arangodb::Result modifyLinks(
     if (!linkMeta.init(namedJson.slice(), error)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for IResearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
+        std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
       );
     }
 
@@ -242,7 +244,7 @@ arangodb::Result modifyLinks(
   if (!trxResolver) {
     return arangodb::Result(
       TRI_ERROR_ARANGO_ILLEGAL_STATE,
-      std::string("failed to find collection name resolver while updating IResearch view '") + view.name() + "'"
+      std::string("failed to find collection name resolver while updating arangosearch view '") + view.name() + "'"
     );
   }
 
@@ -273,7 +275,7 @@ arangodb::Result modifyLinks(
 
         return arangodb::Result(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          std::string("failed to get collection while updating IResearch view '") + view.name() + "' collection '" + collectionName + "'"
+          std::string("failed to get collection while updating arangosearch view '") + view.name() + "' collection '" + collectionName + "'"
         );
       }
 
@@ -282,6 +284,11 @@ arangodb::Result modifyLinks(
       // remove modification state if removal of non-existant link
       if (!state._link // links currently does not exist
           && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "found link for collection '"
+            << state._collection->name() << "' - slated for removal";
+
         view.drop(state._collection->id()); // drop any stale data for the specified collection
         itr = linkModifications.erase(itr);
 
@@ -291,6 +298,9 @@ arangodb::Result modifyLinks(
       if (state._link // links currently exists
           && !state._stale // did not originate from the stale list (remove stale links lower)
           && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "found link '" << state._link->id() << "' for collection '"
+            << state._collection->name() << "' - slated for removal";
         auto cid = state._collection->id();
 
         // remove duplicate removal requests (e.g. by name + by CID)
@@ -305,8 +315,19 @@ arangodb::Result modifyLinks(
 
       if (state._link // links currently exists
           && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "found link '" << state._link->id() << "' for collection '"
+            << state._collection->name() << "' - slated for update";
         collectionsToUpdate.emplace(state._collection->id());
       }
+
+      LOG_TOPIC_IF(TRACE, arangodb::iresearch::TOPIC, state._link)
+          << "found link '" << state._link->id() << "' for collection '"
+          << state._collection->name() << "' - unsure what to do";
+
+      LOG_TOPIC_IF(TRACE, arangodb::iresearch::TOPIC, !state._link)
+          << "no link found for collection '"
+          << state._collection->name() << "'";
 
       ++itr;
     }
@@ -322,6 +343,9 @@ arangodb::Result modifyLinks(
           && (collectionsToRemove.find(cid) != collectionsToRemove.end() // also has a removal request (duplicate removal request)
               || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) { // also has a reindex request
         itr = linkModifications.erase(itr);
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "modification unnecessary, came from stale list, for link '"
+            << state._link->id() << "'";
 
         continue;
       }
@@ -338,6 +362,9 @@ arangodb::Result modifyLinks(
           && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
           && collectionsToUpdate.find(state._collection->id()) != collectionsToUpdate.end()) { // also has a reindex request
         itr = linkModifications.erase(itr);
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "modification unnecessary, remove+update, for link '"
+            << state._link->id() << "'";
 
         continue;
       }
@@ -348,6 +375,9 @@ arangodb::Result modifyLinks(
           && collectionsToRemove.find(state._collection->id()) == collectionsToRemove.end() // not a reindex request
           && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) { // link meta not modified
         itr = linkModifications.erase(itr);
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+            << "modification unnecessary, no change, for link '"
+            << state._link->id() << "'";
 
         continue;
       }
@@ -359,6 +389,8 @@ arangodb::Result modifyLinks(
   // execute removals
   for (auto& state: linkModifications) {
     if (state._link) { // link removal or recreate request
+      LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+          << "removed link '" << state._link->id() << "'";
       state._valid = dropLink(*(state._collection), *(state._link));
       modified.emplace(state._collection->id());
     }
@@ -392,7 +424,7 @@ arangodb::Result modifyLinks(
 
   return arangodb::Result(
     TRI_ERROR_ARANGO_ILLEGAL_STATE,
-    std::string("failed to update links while updating IResearch view '") + view.name() + "', retry same request or examine errors for collections: " + error
+    std::string("failed to update links while updating arangosearch view '") + view.name() + "', retry same request or examine errors for collections: " + error
   );
 }
 
@@ -432,7 +464,7 @@ namespace iresearch {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid output buffer provided for IResearch link normalized definition generation")
+      std::string("invalid output buffer provided for arangosearch link normalized definition generation")
     );
   }
 
@@ -442,7 +474,7 @@ namespace iresearch {
   if (!meta.init(definition, error)) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error parsing IResearch link parameters from json: ") + error
+      std::string("error parsing arangosearch link parameters from json: ") + error
     );
   }
 
@@ -461,7 +493,7 @@ namespace iresearch {
     ? arangodb::Result()
     : arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error generating IResearch link normalized definition")
+        std::string("error generating arangosearch link normalized definition")
       )
     ;
 }
@@ -477,6 +509,8 @@ namespace iresearch {
     arangodb::velocypack::Slice const& links,
     std::unordered_set<TRI_voc_cid_t> const& stale /*= {}*/
 ) {
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+      << "beginning IResearchLinkHelper::updateLinks";
   try {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       return modifyLinks<IResearchViewCoordinator, IResearchLinkCoordinator>(
@@ -488,7 +522,7 @@ namespace iresearch {
       );
     }
 
-    auto* dbServerView = LogicalView::cast<IResearchViewDBServer>(&view);
+    auto* dbServerView = dynamic_cast<IResearchViewDBServer*>(&view);
 
     // dbserver has both IResearchViewDBServer and IResearchView instances
     if (dbServerView) {
@@ -510,30 +544,30 @@ namespace iresearch {
     );
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
+      << "caught exception while updating links for arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
-      std::string("error updating links for IResearch view '") + view.name() + "'"
+      std::string("error updating links for arangosearch view '") + view.name() + "'"
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.what();
+      << "caught exception while updating links for arangosearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating links for IResearch view '") + view.name() + "'"
+      std::string("error updating links for arangosearch view '") + view.name() + "'"
     );
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while updating links for IResearch view '" << view.name() << "'";
+      << "caught exception while updating links for arangosearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating links for IResearch view '") + view.name() + "'"
+      std::string("error updating links for arangosearch view '") + view.name() + "'"
     );
   }
 }

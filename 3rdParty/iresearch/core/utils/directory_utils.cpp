@@ -21,15 +21,40 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "directory_utils.hpp"
 #include "index/index_meta.hpp"
 #include "formats/formats.hpp"
 #include "utils/attributes.hpp"
 #include "utils/log.hpp"
 
-#include "directory_utils.hpp"
-
 NS_ROOT
 NS_BEGIN(directory_utils)
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                           memory_allocator utils
+// ----------------------------------------------------------------------------
+
+memory_allocator& ensure_allocator(
+    directory& dir, size_t size
+) {
+  return size
+    ? *dir.attributes().emplace<memory_allocator>(size)
+    : memory_allocator::global();
+}
+
+memory_allocator& get_allocator(const directory& dir) {
+  auto& allocator = dir.attributes().get<memory_allocator>();
+
+  if (allocator) {
+    return *allocator;
+  }
+
+  return memory_allocator::global();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                            index_file_refs utils
+// ----------------------------------------------------------------------------
 
 // return a reference to a file or empty() if not found
 index_file_refs::ref_t reference(
@@ -189,7 +214,7 @@ void remove_all_unreferenced(directory& dir) {
 }
 
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
-  const directory& dir, format& codec
+  const directory& dir, const format& codec
 ) {
   static const auto acceptor = [](
       const std::string& filename, 
@@ -318,16 +343,19 @@ index_input::ptr tracking_directory::open(
 }
 
 bool tracking_directory::remove(const std::string& name) NOEXCEPT {
-  bool result = impl_.remove(name);
+  if (!impl_.remove(name)) {
+    return false;
+  }
 
   try {
     files_.erase(name);
+    return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
-  return result;
+  return false;
 }
 
 bool tracking_directory::rename(
@@ -338,9 +366,8 @@ bool tracking_directory::rename(
   }
 
   try {
-    if (files_.emplace(dst).second) {
-      files_.erase(src);
-    }
+    files_.emplace(dst);
+    files_.erase(src);
 
     return true;
   } catch (...) {
@@ -415,12 +442,13 @@ index_output::ptr ref_tracking_directory::create(
   const std::string& name
 ) NOEXCEPT {
   try {
-    auto ref = attribute_->add(name);
-    SCOPED_LOCK(mutex_);
     auto result = impl_.create(name);
 
     // only track ref on successful call to impl_
     if (result) {
+      auto ref = attribute_->add(name);
+
+      SCOPED_LOCK(mutex_);
       refs_.emplace(*ref, std::move(ref));
     }
 
@@ -484,18 +512,23 @@ index_input::ptr ref_tracking_directory::open(
 }
 
 bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
-  bool result = impl_.remove(name);
+  if (!impl_.remove(name)) {
+    return false;
+  }
 
   try {
+    attribute_->remove(name);
+
     SCOPED_LOCK(mutex_);
 
     refs_.erase(name);
+    return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
-  return result;
+  return false;
 }
 
 bool ref_tracking_directory::rename(
@@ -506,16 +539,19 @@ bool ref_tracking_directory::rename(
   }
 
   try {
-    SCOPED_LOCK(mutex_);
+    auto ref = attribute_->add(dst);
 
-    if (refs_.emplace(dst, attribute_->add(dst)).second) {
+    {
+      SCOPED_LOCK(mutex_);
+
+      refs_.emplace(dst, ref);
       refs_.erase(src);
     }
 
+    attribute_->remove(src);
     return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
-    impl_.rename(dst, src); // revert
   }
 
   return false;

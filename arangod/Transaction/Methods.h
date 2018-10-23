@@ -115,7 +115,6 @@ class Methods {
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
 
-  using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
   /// @brief transaction::Methods
@@ -254,9 +253,6 @@ class Methods {
   bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
 
-  /// @brief return the name of a collection
-  std::string collectionName(TRI_voc_cid_t cid);
-
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
                            std::function<bool(arangodb::LocalDocumentId const&)>);
@@ -327,10 +323,6 @@ class Methods {
   /// @brief remove all documents in a collection
   OperationResult truncate(std::string const& collectionName,
                            OperationOptions const& options);
-
-  /// @brief rotate all active journals of the collection
-  OperationResult rotateActiveJournal(std::string const& collectionName,
-                                      OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
   virtual OperationResult count(std::string const& collectionName, CountType type);
@@ -516,10 +508,6 @@ class Methods {
 
   OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
                                                  OperationOptions const& options);
-
-  OperationResult rotateActiveJournalLocal(std::string const& collectionName,
-                                           OperationOptions const& options);
-
 
  protected:
 

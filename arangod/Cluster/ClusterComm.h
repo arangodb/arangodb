@@ -498,7 +498,7 @@ class ClusterComm {
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unordered_map<std::string, std::string> const& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-      bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
+      bool singleRequest = false, ClusterCommTimeout connectTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
@@ -574,6 +574,10 @@ class ClusterComm {
   /// instead.
   ////////////////////////////////////////////////////////////////////////////////
   void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
+  
+  typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
+  void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
+                            bool retryOnCollNotFound, AsyncCallback const&);
  
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
@@ -638,8 +642,8 @@ class ClusterComm {
     std::shared_ptr<ClusterCommResult> result;
   };
 
-  typedef std::unordered_map<communicator::Ticket, AsyncResponse>::iterator ResponseIterator;
   std::unordered_map<communicator::Ticket, AsyncResponse> responses;
+  typedef decltype(ClusterComm::responses)::iterator ResponseIterator;
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;
@@ -677,12 +681,17 @@ class ClusterComm {
 
   void cleanupAllQueues();
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<communicator::Ticket> activeServerTickets(std::vector<std::string> const& servers);
+
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief logs a connection error (backend unavailable)
+  //////////////////////////////////////////////////////////////////////////////
+  static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result, double timeout, int line);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread

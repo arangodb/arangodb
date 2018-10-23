@@ -229,6 +229,8 @@ class Buffer {
     return append(value.data(), value.size());
   }
 
+  // reserves len *extra* bytes of storage space
+  // this should probably be renamed to reserveExtra
   inline void reserve(ValueLength len) {
     VELOCYPACK_ASSERT(_size <= _capacity);
 
@@ -255,8 +257,8 @@ class Buffer {
 
     // need reallocation
     ValueLength newLen = _size + len;
-    static constexpr double growthFactor = 1.25;
-    if (_size > 0 && newLen < growthFactor * _size) {
+    constexpr double growthFactor = 1.25;
+    if (newLen < growthFactor * _size) {
       // ensure the buffer grows sensibly and not by 1 byte only
       newLen = static_cast<ValueLength>(growthFactor * _size);
     }

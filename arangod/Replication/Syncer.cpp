@@ -306,7 +306,9 @@ Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpcl
 void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
-  jobPosted();
+  if (!jobPosted()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
 
   try {
     auto self = shared_from_this();
@@ -328,11 +330,28 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 }
     
 /// @brief notifies that a job was posted
-void Syncer::JobSynchronizer::jobPosted() {
-  CONDITION_LOCKER(guard, _condition);
+/// returns false if job counter could not be increased (e.g. because
+/// the syncer was stopped/aborted already)
+bool Syncer::JobSynchronizer::jobPosted() {
+  while (true) {
+    CONDITION_LOCKER(guard, _condition);
+   
+    // _jobsInFlight should be 0 in almost all cases, however, there
+    // is a small window in which the request has been processed already
+    // (i.e. after waitForResponse() has returned and before jobDone()
+    // has been called and has decreased _jobsInFlight). For this
+    // particular case, we simply wait for _jobsInFlight to become 0 again 
+    if (_jobsInFlight == 0) { 
+      ++_jobsInFlight;
+      return true;
+    }
 
-  TRI_ASSERT(_jobsInFlight == 0);
-  ++_jobsInFlight;
+    if (_syncer->isAborted()) {
+      // syncer already stopped... no need to carry on here
+      return false;
+    }
+    guard.wait(10 * 1000);
+  }
 }
 
 /// @brief notifies that a job was done
@@ -341,6 +360,7 @@ void Syncer::JobSynchronizer::jobDone() {
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
+  _condition.signal();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
@@ -382,9 +402,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
 }
 
 Syncer::~Syncer() {
-  try {
-    sendRemoveBarrier();
-  } catch (...) {
+  if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
   }
 }
 
@@ -409,32 +428,6 @@ TRI_voc_tick_t Syncer::stealBarrier() {
   _state.barrier.id = 0;
   _state.barrier.updateTime = 0;
   return id;
-}
-
-/// @brief send a "remove barrier" command
-Result Syncer::sendRemoveBarrier() {
-  if (_state.isChildSyncer || _state.barrier.id == 0) {
-    return Result();
-  }
-
-  try {
-    std::string const url = replutils::ReplicationUrl + "/barrier/" +
-                            basics::StringUtils::itoa(_state.barrier.id);
-
-    // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _state.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                               url, nullptr, 0));
-
-    if (replutils::hasFailed(response.get())) {
-      return replutils::buildHttpError(response.get(), url, _state.connection);
-    }
-    _state.barrier.id = 0;
-    _state.barrier.updateTime = 0;
-    return Result();
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
-  }
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -822,7 +815,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no name specified for view");
   }
-  VPackSlice guidSlice = slice.get("globallyUniqueId");
+  VPackSlice guidSlice = slice.get(StaticStrings::DataSourceGuid);
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
@@ -835,12 +828,16 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   
   auto view = vocbase.lookupView(guidSlice.copyString());
   if (view) { // identical view already exists
-    VPackSlice properties = slice.get("properties");
-    if (properties.isObject()) {
-      bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-      return view->updateProperties(properties, false, doSync);
+    VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+    if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+      auto res = vocbase.renameView(view->id(), nameSlice.copyString());
+      if (!res.ok()) {
+        return res;
+      }
     }
-    return {};
+    
+    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+    return view->updateProperties(slice, false, doSync);
   }
   
   view = vocbase.lookupView(nameSlice.copyString());

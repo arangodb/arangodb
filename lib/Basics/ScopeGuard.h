@@ -68,7 +68,7 @@ class ScopeGuard {
   ScopeGuard(ScopeGuard const&) = delete;
   ScopeGuard& operator=(ScopeGuard const&) = delete;
 
-  ScopeGuard(T&& func) noexcept : _func(std::move(func)), _active(true) {}
+  ScopeGuard(T&& func) noexcept : _func(std::forward<T>(func)), _active(true) {}
 
   ScopeGuard(ScopeGuard&& other) noexcept(
       std::is_nothrow_move_constructible<T>::value)
@@ -118,7 +118,7 @@ class ScopeGuard {
 
 template <class T>
 ScopeGuard<T> scopeGuard(T&& f) {
-  return ScopeGuard<T>(std::move(f));
+  return ScopeGuard<T>(std::forward<T>(f));
 }
 
 }  // namespace arangodb

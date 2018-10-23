@@ -24,57 +24,82 @@
 #ifndef IRESEARCH_LOCALE_UTILS_H
 #define IRESEARCH_LOCALE_UTILS_H
 
+#include <locale>
+
 #include "shared.hpp"
+#include "string.hpp"
 
 NS_ROOT
 NS_BEGIN( locale_utils )
 
 /**
+ * @brief provide a common way to access the codecvt facet of a locale
+ *        will work even on MSVC with missing symbol exports
+ * @param locale the locale to query for the desired facet
+ **/
+template<typename T>
+const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
+  return std::use_facet<std::codecvt<T, char, mbstate_t>>(locale);
+}
+
+#if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
+  // MSVC2013 does not properly export
+  // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
+  template<>
+  IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+#elif defined(_MSC_VER) && _MSC_VER <= 1915 // MSVC2015/MSVC2017
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  template<>
+  IRESEARCH_API const std::codecvt<char16_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+
+  template<>
+  IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+#endif
+
+/**
+ * @brief create a locale from name (language[_COUNTRY][.encoding][@variant])
+ * @param name name of the locale to create (nullptr == "C")
+ * @param encodingOverride force locale to have the specified output encoding (nullptr == take from 'name')
+ * @param forceUnicodeSystem force the internal system encoding to be unicode
+ **/
+IRESEARCH_API std::locale locale(
+  const irs::string_ref& name,
+  const irs::string_ref& encodingOverride = irs::string_ref::NIL,
+  bool forceUnicodeSystem = true
+);
+
+/**
  * @brief extract the locale country from a locale
  * @param locale the locale from which to extract the country
  **/
-IRESEARCH_API std::string country(std::locale const& locale);
+IRESEARCH_API const irs::string_ref& country(std::locale const& locale);
 
 /**
  * @brief extract the locale encoding from a locale
  * @param locale the locale from which to extract the encoding
  **/
-IRESEARCH_API std::string encoding(std::locale const& locale);
+IRESEARCH_API const irs::string_ref& encoding(std::locale const& locale);
 
 /**
  * @brief extract the locale language from a locale
  * @param locale the locale from which to extract the language
  **/
-IRESEARCH_API std::string language(std::locale const& locale);
-
-/**
- * @brief create a locale from czName
- * @param czName name of the locale to create (nullptr == "C")
- * @param bForceUTF8 force locale to have UTF8 encoding
- **/
-IRESEARCH_API std::locale locale(char const* czName, bool bForceUTF8 = false);
-
-/**
- * @brief create a locale from sName
- * @param sName name of the locale to create
- * @param bForceUTF8 force locale to have UTF8 encoding
- **/
-IRESEARCH_API std::locale locale(std::string const& sName, bool bForceUTF8 = false);
-
-/**
- * @brief build a locale from <czLanguage>_<czCountry>.<czEncoding>@<czVariant>
- * @param sLanguage locale language (required)
- * @param sCountry locale country
- * @param sEncoding locale character encoding
- * @param sVariant locale additional back-end specific parameters
- **/
-IRESEARCH_API std::locale locale(std::string const& sLanguage, std::string const& sCountry, std::string const& sEncoding, std::string const& sVariant = "");
+IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
 
 /**
  * @brief extract the locale name from a locale
  * @param locale the locale from which to extract the name
  **/
-IRESEARCH_API std::string name(std::locale const& locale);
+IRESEARCH_API const std::string& name(std::locale const& locale);
 
 /**
  * @brief extract the locale utf8 from a locale

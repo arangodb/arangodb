@@ -64,6 +64,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+// fall back to the using the mock storage engine
+bool ClusterEngine::Mocking = false;
+
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
   : StorageEngine(
@@ -86,13 +89,19 @@ bool ClusterEngine::isMMFiles() const {
   return _actualEngine && _actualEngine->name() == MMFilesEngine::FeatureName;
 }
 
+bool ClusterEngine::isMock() const {
+  return ClusterEngine::Mocking || (_actualEngine && _actualEngine->name() == "Mock");
+}
+
 ClusterEngineType ClusterEngine::engineType() const {
   TRI_ASSERT(_actualEngine != nullptr);
 
-  if (_actualEngine->name() == MMFilesEngine::FeatureName) {
+  if (isMMFiles()) {
     return ClusterEngineType::MMFilesEngine;
-  } else if (_actualEngine->name() == RocksDBEngine::FeatureName) {
+  } else if (isRocksDB()) {
     return ClusterEngineType::RocksDBEngine;
+  } else if (isMock()) {
+    return ClusterEngineType::MockEngine;
   }
 
   TRI_ASSERT(false);
@@ -105,13 +114,6 @@ ClusterEngineType ClusterEngine::engineType() const {
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void ClusterEngine::prepare() {
-  // get base path from DatabasePathFeature
-  auto databasePathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
-  _basePath = databasePathFeature->directory();
-
-  TRI_ASSERT(!_basePath.empty());
   if (!ServerState::instance()->isCoordinator()) {
     setEnabled(false);
   }
@@ -159,11 +161,6 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
       builder.add("cacheEnabled", VPackValue(false));
     }
   }
-}
-
-void ClusterEngine::addParametersForNewIndex(VPackBuilder& builder,
-                                             VPackSlice info) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // create storage-engine specific collection
@@ -219,10 +216,6 @@ int ClusterEngine::getViews(
 ) {
 
   return TRI_ERROR_NO_ERROR;
-}
-
-std::string ClusterEngine::versionFilename(TRI_voc_tick_t id) const {
-  return _basePath + TRI_DIR_SEPARATOR_CHAR + "VERSION-" + std::to_string(id);
 }
 
 VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
@@ -396,7 +389,7 @@ void ClusterEngine::addOptimizerRules() {
     MMFilesOptimizerRules::registerResources();
   } else if (engineType() == ClusterEngineType::RocksDBEngine) {
     RocksDBOptimizerRules::registerResources();
-  } else {
+  } else if (engineType() != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
   }
 }
@@ -414,7 +407,7 @@ void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
 void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing timeout
-  std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
 /// @brief open an existing database. internal function

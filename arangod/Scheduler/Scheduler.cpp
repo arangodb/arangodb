@@ -56,7 +56,7 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
 class SchedulerManagerThread final : public Thread {
  public:
-  SchedulerManagerThread(std::shared_ptr<Scheduler> scheduler, asio_ns::io_context* service)
+  SchedulerManagerThread(std::shared_ptr<Scheduler> const& scheduler, asio_ns::io_context* service)
       : Thread("SchedulerManager", true),
         _scheduler(scheduler),
         _service(service) {}
@@ -89,7 +89,7 @@ class SchedulerManagerThread final : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(std::shared_ptr<Scheduler> scheduler, asio_ns::io_context* service)
+  SchedulerThread(std::shared_ptr<Scheduler> const& scheduler, asio_ns::io_context* service)
       : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
@@ -214,8 +214,7 @@ Scheduler::~Scheduler() {
   }
 }
 
-// do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const callback, bool isV8,
+void Scheduler::post(std::function<void()> const& cb, bool isV8,
                      uint64_t timeout) {
   // increment number of queued and guard against exceptions
   incQueued();
@@ -234,7 +233,9 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
   });
 
   // capture without self, ioContext will not live longer than scheduler
-  _ioContext->post([this, callback, isV8, timeout]() {
+  // do not pass callback by reference, might get deleted before execution
+  //asio_ns::post([this, cb, isV8, timeout]() { <-- breaks tests in jenkins
+  _ioContext->post([this, cb, isV8, timeout]() {
     // at the end (either success or exception),
     // reduce number of queued V8
     auto guard = scopeGuard([this, isV8]() {
@@ -268,17 +269,17 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
 
       std::shared_ptr<asio_ns::deadline_timer> timer(
           newDeadlineTimer(boost::posix_time::millisec(timeout)));
-      timer->async_wait(
-          [this, callback, isV8, t, timer](const asio::error_code& error) {
+      timer->async_wait([this, cb = std::move(cb), isV8, t, timer]
+                        (const asio::error_code& error) {
             if (error != asio::error::operation_aborted) {
-              post(callback, isV8, t);
+              post(cb, isV8, t);
             }
           });
 
       return;
     }
 
-    callback();
+    cb();
   });
 
   // no exception happened, cancel guards
@@ -286,20 +287,20 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
   guardQueue.cancel();
 }
 
-// do not pass callback by reference, might get deleted before execution
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const callback) {
+                     std::function<void()> const& cb) {
   incQueued();
-
   try {
     // capture without self, ioContext will not live longer than scheduler
-    strand.post([this, callback]() {
+    // do not pass callback by reference, might get deleted before execution
+    //asio_ns::post(strand, [this, cb, isV8, timeout]() { <-- breaks tests in jenkins
+    strand.post([this, cb]() {
       decQueued();
 
       JobGuard guard(this);
       guard.work();
 
-      callback();
+      cb();
     });
   } catch (...) {
     decQueued();
@@ -349,6 +350,12 @@ bool Scheduler::queue(RequestPriority prio,
       TRI_ASSERT(false);
       break;
   }
+
+  // THIS IS A UGLY HACK TO SUPPORT THE NEW IO CONTEXT INFRASTRUCTURE
+  //  This is needed, since a post on the scheduler does no longer result in a
+  //  drain immerdiately. The reason for that is, that no worker thread returns
+  //  from `run_once`.
+  this->drain();
 
   return ok;
 }
@@ -732,6 +739,10 @@ bool Scheduler::threadShouldStop(double now) {
 }
 
 void Scheduler::startNewThread() {
+  TRI_IF_FAILURE("Scheduler::startNewThread") {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Debug: preventing thread from starting";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   auto thread = new SchedulerThread(shared_from_this(), _ioContext.get());
   if (!thread->start()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,

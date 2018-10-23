@@ -885,9 +885,10 @@ void PhysicalCollectionMock::setPath(std::string const& value) {
   physicalPath = value;
 }
 
-void PhysicalCollectionMock::truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions& options) {
+arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods*, arangodb::OperationOptions&) {
   before();
   documents.clear();
+  return arangodb::Result();
 }
 
 arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, arangodb::velocypack::Slice const key) {
@@ -1306,7 +1307,7 @@ void StorageEngineMock::prepareDropDatabase(
     bool useWriteMarker,
     int& status
 ) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
@@ -1400,7 +1401,7 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
 }
 
 void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
@@ -1499,8 +1500,8 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   static std::atomic<TRI_voc_tid_t> lastId(0);
-
   ++beginTransactionCount;
+  _hints = hints;
 
   auto res = useCollections(_nestingLevel);
 

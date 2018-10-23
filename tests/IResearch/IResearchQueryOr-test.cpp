@@ -283,7 +283,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // d.name == 'A' OR d.name == 'Q', d.seq DESC

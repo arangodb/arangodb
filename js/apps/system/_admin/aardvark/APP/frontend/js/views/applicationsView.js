@@ -108,8 +108,10 @@
     },
 
     createInstallModal: function (event) {
-      event.preventDefault();
-      window.App.navigate('services/install', {trigger: true});
+      if (!this.readOnly) {
+        event.preventDefault();
+        window.App.navigate('services/install', {trigger: true});
+      }
     },
 
     setReadOnly: function () {

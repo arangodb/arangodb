@@ -198,6 +198,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       if (r.fail()) {
         return r;
       }
+      
+      startRecurringBatchExtension();
     }
 
     VPackSlice collections, views;
@@ -214,29 +216,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
       // we do not really care about the state response
       collections = inventoryResponse.slice().get("collections");
-      views = inventoryResponse.slice().get("views");
       if (!collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "collections section is missing from response");
       }
-    }
-
-    if (!_config.applier._skipCreateDrop &&
-        _config.applier._restrictCollections.empty()) {
-      r = handleViewCreation(views); // no requests to master
-      if (r.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "Error during intial sync view creation: " << r.errorMessage();
-        return r;
-      }
-    } else {
-      _config.progress.set("view creation skipped because of configuration");
+      views = inventoryResponse.slice().get("views");
     }
 
     // strip eventual objectIDs and then dump the collections
     auto pair = rocksutils::stripObjectIds(collections);
-    r = handleLeaderCollections(pair.first, incremental);
-
+    r = handleCollectionsAndViews(pair.first, views, incremental);
+    
     // all done here, do not try to finish batch if master is unresponsive
     if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -271,8 +261,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   }
 }
 
-/// @brief returns the inventory
-Result DatabaseInitialSyncer::inventory(VPackBuilder& builder) {
+/// @brief fetch the server's inventory, public method for TailingSyncer
+Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -343,9 +333,11 @@ Result DatabaseInitialSyncer::sendFlush() {
   // send request
   _config.progress.set("sending WAL flush command to url " + url);
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::PUT, url,
-                                              body.c_str(), body.size()));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::PUT, url,
+                                        body.c_str(), body.size()));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _config.connection);
@@ -542,9 +534,12 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     double t = TRI_microtime();
 
     // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                                nullptr, 0, headers));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::GET, url,
+                                          nullptr, 0, headers));
+    });
+    
 
     if (replutils::hasFailed(response.get())) {
       stats.waitedForDump += TRI_microtime() - t;
@@ -576,8 +571,9 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
         }
 
         std::string const jobUrl = "/_api/job/" + jobId;
-        response.reset(_config.connection.client->request(
-            rest::RequestType::PUT, jobUrl, nullptr, 0));
+        _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+        });
 
         if (response != nullptr && response->isComplete()) {
           if (response->hasHeaderField("x-arango-async-id")) {
@@ -853,9 +849,12 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
   // so we're sending the x-arango-async header here
   auto headers = replutils::createHeaders();
   headers[StaticStrings::Async] = "store";
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::POST, url,
-                                              nullptr, 0, headers));
+  
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::POST, url,
+                                        nullptr, 0, headers));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _config.connection);
@@ -880,8 +879,9 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     }
 
     std::string const jobUrl = "/_api/job/" + jobId;
-    response.reset(_config.connection.client->request(rest::RequestType::PUT,
-                                                      jobUrl, nullptr, 0));
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+    });
 
     if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
@@ -952,9 +952,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     _config.progress.set(msg);
 
     // now delete the keys we ordered
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _config.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                                url, nullptr, 0));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ,
+                                          url, nullptr, 0));
+    });
   };
 
   TRI_DEFER(shutdown());
@@ -1269,8 +1271,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const& masterColl =
         !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-             ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
-             : fetchCollectionDump(col, masterColl, _config.master.lastLogTick)
+             ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
+             : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick)
              ;
 
     if (!res.ok()) {
@@ -1376,9 +1378,11 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                              nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  });
+  
   if (replutils::hasFailed(response.get())) {
     if (!_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -1411,12 +1415,13 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 }
 
 /// @brief handle the inventory response of the master
-Result DatabaseInitialSyncer::handleLeaderCollections(
-    VPackSlice const& collSlice, bool incremental) {
-  TRI_ASSERT(collSlice.isArray());
+Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSlices,
+                                                        VPackSlice const& viewSlices,
+                                                        bool incremental) {
+  TRI_ASSERT(collSlices.isArray());
 
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
-  for (VPackSlice it : VPackArrayIterator(collSlice)) {
+  for (VPackSlice it : VPackArrayIterator(collSlices)) {
     if (!it.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "collection declaration is invalid in response");
@@ -1455,14 +1460,14 @@ Result DatabaseInitialSyncer::handleLeaderCollections(
       continue;
     }
 
-    if (!_config.applier._restrictType.empty()) {
+    if (_config.applier._restrictType != ReplicationApplierConfiguration::RestrictType::None) {
       auto const it = _config.applier._restrictCollections.find(masterName);
       bool found = (it != _config.applier._restrictCollections.end());
 
-      if (_config.applier._restrictType == "include" && !found) {
+      if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include && !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType == "exclude" && found) {
+      } else if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Exclude && found) {
         // collection should be excluded
         continue;
       }
@@ -1478,12 +1483,8 @@ Result DatabaseInitialSyncer::handleLeaderCollections(
   // the master
   //  ------------------------------------------------------------------------------------
 
-  // STEP 3: sync collection data from master and create initial indexes
-  // ----------------------------------------------------------------------------------
-
   // iterate over all collections from the master...
-  std::array<SyncPhase, 3> phases{
-      {PHASE_VALIDATE, PHASE_DROP_CREATE, PHASE_DUMP}};
+  std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
   for (auto const& phase : phases) {
     Result r = iterateCollections(collections, incremental, phase);
 
@@ -1491,8 +1492,30 @@ Result DatabaseInitialSyncer::handleLeaderCollections(
       return r;
     }
   }
-
-  return Result();
+  
+  // STEP 3: now that the collections exist create the views
+  // this should be faster than re-indexing afterwards
+  // ----------------------------------------------------------------------------------
+  
+  if (!_config.applier._skipCreateDrop &&
+      _config.applier._restrictCollections.empty() &&
+      !viewSlices.isNone()) {
+    // views are optional, and 3.3 and before will not send any view data
+    Result r = handleViewCreation(viewSlices); // no requests to master
+    if (r.fail()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+      << "Error during intial sync view creation: " << r.errorMessage();
+      return r;
+    }
+  } else {
+    _config.progress.set("view creation skipped because of configuration");
+  }
+  
+  // STEP 4: sync collection data from master and create initial indexes
+  // ----------------------------------------------------------------------------------
+  
+  // now load the data into the collections
+  return iterateCollections(collections, incremental, PHASE_DUMP);
 }
 
 /// @brief iterate over all collections from an array and apply an action
@@ -1521,14 +1544,7 @@ Result DatabaseInitialSyncer::iterateCollections(
 /// @brief create non-existing views locally
 Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
   for (VPackSlice slice  : VPackArrayIterator(views)) {
-
-    // Remove the links from the view slice
-    //  This is required since views are created before collections.
-    //  Hence, the collection does not exist and the view creation is aborted.
-    // The association views <-> collections is still created via the indexes.
-    auto patchedSlice = VPackCollection::remove(slice, std::vector<std::string>{"links"});
-
-    Result res = createView(vocbase(), patchedSlice.slice());
+    Result res = createView(vocbase(), slice);
     if (res.fail()) {
       return res;
     }

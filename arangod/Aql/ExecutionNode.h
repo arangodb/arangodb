@@ -777,16 +777,12 @@ class LimitNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class LimitBlock;
 
-  /// @brief constructors for various arguments, always with offset and limit
  public:
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
       : ExecutionNode(plan, id),
         _offset(offset),
         _limit(limit),
         _fullCount(false) {}
-
-  LimitNode(ExecutionPlan* plan, size_t id, size_t limit)
-      : LimitNode(plan, id, 0, limit) {}
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -824,14 +820,8 @@ class LimitNode : public ExecutionNode {
   /// @brief return the offset value
   size_t offset() const { return _offset; }
 
-  /// @brief set the offset value
-  void setOffset(size_t offset) { _offset = offset; }
-
   /// @brief return the limit value
   size_t limit() const { return _limit; }
-
-  /// @brief set the limit value
-  void setLimit(size_t limit) { _limit = limit; }
 
  private:
   /// @brief the offset
@@ -1076,6 +1066,8 @@ class FilterNode : public ExecutionNode {
       std::unordered_set<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
+
+  Variable const* inVariable() const { return _inVariable; }
 
  private:
   /// @brief input variable to read from

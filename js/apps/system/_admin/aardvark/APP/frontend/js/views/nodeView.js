@@ -71,7 +71,10 @@
       if (this.coordinator) {
         dashboard = this.coordinator.get('name');
         // coordinator
-        this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
+        if (this.dashboards[dashboard]) {
+          this.dashboards[dashboard].clearInterval();
+        }
+        this.dashboards[dashboard] = new window.DashboardView({
           dygraphConfig: window.dygraphConfig,
           database: window.App.arangoDatabase,
           serverToShow: {
@@ -85,7 +88,10 @@
         // db server
         var attributes = this.dbServer.toJSON();
         dashboard = attributes.name;
-        this.dashboards[attributes.name] = new window.DashboardView({
+        if (this.dashboards[dashboard]) {
+          this.dashboards[dashboard].clearInterval();
+        }
+        this.dashboards[dashboard] = new window.DashboardView({
           dygraphConfig: null,
           database: window.App.arangoDatabase,
           serverToShow: {

@@ -124,6 +124,14 @@ struct AqlValueHintUInt {
   uint64_t const value;
 };
 
+struct AqlValueHintEmptyArray {
+  constexpr AqlValueHintEmptyArray() noexcept {}
+};
+
+struct AqlValueHintEmptyObject {
+  constexpr AqlValueHintEmptyObject() noexcept {}
+};
+
 struct AqlValue final {
  friend struct std::hash<arangodb::aql::AqlValue>;
  friend struct std::equal_to<arangodb::aql::AqlValue>;
@@ -330,6 +338,16 @@ struct AqlValue final {
   // construct from std::string
   explicit AqlValue(std::string const& value) : AqlValue(value.c_str(), value.size()) {}
   
+  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept {
+    _data.internal[0] = 0x01; // empty array in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
+
+  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept {
+    _data.internal[0] = 0x0a; // empty object in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
+
   // construct from Buffer, potentially taking over its ownership
   // (by adjusting the boolean passed)
   AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete) {
@@ -507,12 +525,6 @@ struct AqlValue final {
     TRI_ASSERT(isDocvec());
     return _data.docvec->at(position).get();
   }
-  
-  /// @brief construct a V8 value as input for the expression execution in V8
-  /// only construct those attributes that are needed in the expression
-  v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    transaction::Methods*,
-                                    std::unordered_set<std::string> const&) const;
   
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;

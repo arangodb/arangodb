@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Queries
 
 This function implements the
@@ -78,7 +78,7 @@ Performs a database query using the given _query_ and _bindVars_, then returns a
 
   - **fullCount**: `Boolean`
 
-    If set to true and the query contains a LIMIT clause, then the result will have an extra attribute with the sub-attributes stats and fullCount, { ... , "extra": { "stats": { "fullCount": 123 } } }. The fullCount attribute will contain the number of documents in the result before the last top-level LIMIT in the query was applied. It can be used to count the number of documents that match certain filter criteria, but only return a subset of them, in one go. It is thus similar to MySQL's SQL_CALC_FOUND_ROWS hint. Note that setting the option will disable a few LIMIT optimizations and may lead to more documents being processed, and thus make queries run longer. Note that the fullCount attribute may only be present in the result if the query has a top-level LIMIT clause and the LIMIT clause is actually used in the query.
+    If set to true and the query contains a LIMIT clause, then the result will have an extra attribute with the sub-attributes stats and fullCount, { ... , "extra": { "stats": { "fullCount": 123 } } }. The fullCount attribute will contain the number of documents in the result before the last LIMIT in the query was applied. It can be used to count the number of documents that match certain filter criteria, but only return a subset of them, in one go. It is thus similar to MySQL's SQL_CALC_FOUND_ROWS hint. Note that setting the option will disable a few LIMIT optimizations and may lead to more documents being processed, and thus make queries run longer. Note that the fullCount attribute will only be present in the result if the query has a LIMIT clause and the LIMIT clause is actually used in the query.
 
   - **maxPlans**: `Integer`
 

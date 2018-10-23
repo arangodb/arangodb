@@ -92,8 +92,8 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
 
   VPackArrayIterator dataIterator(data);
   VPackArrayIterator rawIterator(raw);
-          
-  auto storeSingleValue = [this](size_t row, size_t column, VPackArrayIterator& it, std::vector<AqlValue>& madeHere) {
+
+  auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it, std::vector<AqlValue>& madeHere) {
     AqlValue a(it.value());
     it.next();
     try {
@@ -113,10 +113,10 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
   };
     
   int64_t runLength = 0;
-  size_t tablePos = 0;
   RunType runType = NoRun;
   
   try {
+    size_t tablePos = 0;
     // skip the first two records
     rawIterator.next();
     rawIterator.next();

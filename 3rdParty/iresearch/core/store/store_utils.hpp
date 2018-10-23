@@ -199,6 +199,7 @@ inline StringType read_string(data_input& in) {
 #ifdef IRESEARCH_DEBUG
   const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
   assert(read == len);
+  UNUSED(read);
 #else
   in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
 #endif // IRESEARCH_DEBUG
@@ -664,14 +665,9 @@ NS_END // delta
 
 NS_BEGIN(avg)
 
-typedef std::pair<
-  uint64_t, // base
-  uint64_t // avg
-> stats;
-
 // Encodes block denoted by [begin;end) using average encoding algorithm
-// Returns block base & average
-inline stats encode(uint64_t* begin, uint64_t* end) {
+// Returns block std::pair{ base, average }
+inline std::pair<uint64_t, uint64_t> encode(uint64_t* begin, uint64_t* end) {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
@@ -683,8 +679,29 @@ inline stats encode(uint64_t* begin, uint64_t* end) {
   );
 
   *begin++ = 0; // zig_zag_encode64(*begin - base - avg*0) == 0
-  for (size_t avg_base = base; begin <= end; ++begin) {
+  for (uint64_t avg_base = base; begin <= end; ++begin) {
     *begin = zig_zag_encode64(*begin - (avg_base += avg));
+  }
+
+  return std::make_pair(base, avg);
+}
+
+// Encodes block denoted by [begin;end) using average encoding algorithm
+// Returns block std::pair{ base, average }
+inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) {
+  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  --end;
+
+  const uint32_t base = *begin;
+
+  const std::ptrdiff_t distance[] { 1, std::distance(begin, end) }; // prevent division by 0
+  const uint32_t avg = std::lround(
+    static_cast<float_t>(*end - base) / distance[distance[1] > 0]
+  );
+
+  *begin++ = 0; // zig_zag_encode32(*begin - base - avg*0) == 0
+  for (uint32_t avg_base = base; begin <= end; ++begin) {
+    *begin = zig_zag_encode32(*begin - (avg_base += avg));
   }
 
   return std::make_pair(base, avg);
@@ -702,6 +719,18 @@ inline void visit(
   }
 }
 
+// Visit average compressed block denoted by [begin;end) with the
+// specified 'visitor'
+template<typename Visitor>
+inline void visit(
+    uint32_t base, const uint32_t avg,
+    uint32_t* begin, uint32_t* end,
+    Visitor visitor) {
+  for (; begin != end; ++begin, base += avg) {
+    visitor(base + zig_zag_decode32(*begin));
+  }
+}
+
 // Visit average compressed, bit packed block denoted
 // by [begin;begin+size) with the specified 'visitor'
 template<typename Visitor>
@@ -714,6 +743,18 @@ inline void visit_packed(
   }
 }
 
+// Visit average compressed, bit packed block denoted
+// by [begin;begin+size) with the specified 'visitor'
+template<typename Visitor>
+inline void visit_packed(
+    uint32_t base,  const uint32_t avg,
+    uint32_t* begin, size_t size,
+    const uint32_t bits, Visitor visitor) {
+  for (size_t i = 0; i < size; ++i, base += avg) {
+    visitor(base + zig_zag_decode32(packed::at(begin, i, bits)));
+  }
+}
+
 // Decodes average compressed block denoted by [begin;end)
 inline void decode(
     const uint64_t base, const uint64_t avg,
@@ -723,15 +764,36 @@ inline void decode(
   });
 }
 
+// Decodes average compressed block denoted by [begin;end)
+inline void decode(
+    const uint32_t base, const uint32_t avg,
+    uint32_t* begin, uint32_t* end) {
+  visit(base, avg, begin, end, [begin](uint32_t decoded) mutable {
+    *begin++ = decoded;
+  });
+}
+
 inline uint32_t write_block(
     data_output& out,
     const uint64_t base,
     const uint64_t avg,
     const uint64_t* RESTRICT decoded,
-    const size_t size,
+    const uint64_t size, // same type as 'read_block'/'write_block'
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
+  return bitpack::write_block(out, decoded, size, encoded);
+}
+
+inline uint32_t write_block(
+    data_output& out,
+    const uint32_t base,
+    const uint32_t avg,
+    const uint32_t* RESTRICT decoded,
+    const uint32_t size, // same type as 'read_block'/'write_block'
+    uint32_t* RESTRICT encoded) {
+  out.write_vint(base);
+  out.write_vint(avg);
   return bitpack::write_block(out, decoded, size, encoded);
 }
 
@@ -742,6 +804,13 @@ inline void skip_block64(index_input& in, size_t size) {
   bitpack::skip_block64(in, size);
 }
 
+// Skips average encoded 64-bit block
+inline void skip_block32(index_input& in, uint32_t size) {
+  in.read_vint(); // skip base
+  in.read_vint(); // skip avg
+  bitpack::skip_block32(in, size);
+}
+
 template<typename Visitor>
 inline void visit_block_rl64(
     data_input& in,
@@ -750,6 +819,19 @@ inline void visit_block_rl64(
     size_t size,
     Visitor visitor) {
   base += in.read_vlong();
+  for (; size; --size, base += avg) {
+    visitor(base);
+  }
+}
+
+template<typename Visitor>
+inline void visit_block_rl32(
+    data_input& in,
+    uint32_t base,
+    const uint32_t avg,
+    size_t size,
+    Visitor visitor) {
+  base += in.read_vint();
   for (; size; --size, base += avg) {
     visitor(base);
   }
@@ -768,6 +850,19 @@ inline bool check_block_rl64(
     && 0 == value; // delta
 }
 
+inline bool check_block_rl32(
+    data_input& in,
+    uint32_t expected_avg) {
+  in.read_vint(); // skip base
+  const uint32_t avg = in.read_vint();
+  const uint32_t bits = in.read_vint();
+  const uint32_t value = in.read_vint();
+
+  return expected_avg == avg
+    && bitpack::ALL_EQUAL == bits
+    && 0 == value; // delta
+}
+
 inline bool read_block_rl64(
     irs::data_input& in,
     uint64_t& base,
@@ -776,6 +871,19 @@ inline bool read_block_rl64(
   avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
+
+  return bitpack::ALL_EQUAL == bits
+    && 0 == value; // delta
+}
+
+inline bool read_block_rl32(
+    irs::data_input& in,
+    uint32_t& base,
+    uint32_t& avg) {
+  base = in.read_vint();
+  avg = in.read_vint();
+  const uint32_t bits = in.read_vint();
+  const uint32_t value = in.read_vint();
 
   return bitpack::ALL_EQUAL == bits
     && 0 == value; // delta
@@ -807,6 +915,31 @@ inline void visit_block_packed_tail(
 }
 
 template<typename Visitor>
+inline void visit_block_packed_tail(
+    data_input& in,
+    uint32_t size,
+    uint32_t* packed,
+    Visitor visitor) {
+  const uint32_t base = in.read_vint();
+  const uint32_t avg = in.read_vint();
+  const uint32_t bits = in.read_vint();
+
+  if (bitpack::ALL_EQUAL == bits) {
+    visit_block_rl32(in, base, avg, size, visitor);
+    return;
+  }
+
+  const uint32_t block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
+
+  in.read_bytes(
+    reinterpret_cast<byte_type*>(packed),
+    sizeof(uint32_t)*packed::blocks_required_32(block_size, bits)
+  );
+
+  visit_packed(base, avg, packed, size, bits, visitor);
+}
+
+template<typename Visitor>
 inline void visit_block_packed(
     data_input& in,
     size_t size,
@@ -824,6 +957,29 @@ inline void visit_block_packed(
   in.read_bytes(
     reinterpret_cast<byte_type*>(packed),
     sizeof(uint64_t)*packed::blocks_required_64(size, bits)
+  );
+
+  visit_packed(base, avg, packed, size, bits, visitor);
+}
+
+template<typename Visitor>
+inline void visit_block_packed(
+    data_input& in,
+    uint32_t size,
+    uint32_t* packed,
+    Visitor visitor) {
+  const uint32_t base = in.read_vint();
+  const uint32_t avg = in.read_vint();
+  const uint32_t bits = in.read_vint();
+
+  if (bitpack::ALL_EQUAL == bits) {
+    visit_block_rl32(in, base, avg, size, visitor);
+    return;
+  }
+
+  in.read_bytes(
+    reinterpret_cast<byte_type*>(packed),
+    sizeof(uint32_t)*packed::blocks_required_32(size, bits)
   );
 
   visit_packed(base, avg, packed, size, bits, visitor);

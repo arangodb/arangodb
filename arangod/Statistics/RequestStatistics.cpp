@@ -166,8 +166,8 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   }
 
   if (tries > 1) {
-    LOG_TOPIC(WARN, Logger::REQUESTS) << "_freeList.push failed " << tries - 1
-                                      << " times.";
+    LOG_TOPIC(WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1
+                                    << " times.";
   }
 }
 

@@ -34,11 +34,9 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -136,8 +134,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (options->processingResult().touched("cluster.disable-dispatcher-kickstarter") ||
       options->processingResult().touched("cluster.disable-dispatcher-frontend")) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-      << "The dispatcher feature isn't available anymore. Use ArangoDBStarter for this now! See https://github.com/arangodb-helper/ArangoDBStarter/ for more details.";
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+        << "The dispatcher feature isn't available anymore. Use "
+        << "ArangoDBStarter for this now! See "
+        << "https://github.com/arangodb-helper/ArangoDBStarter/ for more "
+        << "details.";
     FATAL_ERROR_EXIT();
   }
 
@@ -156,7 +157,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       << "must at least specify one endpoint in --cluster.agency-endpoint";
     FATAL_ERROR_EXIT();
   }
-  
+
   // validate --cluster.my-address
   if (_myEndpoint.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine internal address for server '"
@@ -165,7 +166,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     "address for this server in the agency.";
     FATAL_ERROR_EXIT();
   }
-  
+
   // now we can validate --cluster.my-address
   if (Endpoint::unifiedForm(_myEndpoint).empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "invalid endpoint '" << _myEndpoint
@@ -239,7 +240,8 @@ void ClusterFeature::prepare() {
   if (_enableCluster &&
       _requirePersistedId &&
       !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename()
+    << "' not found. Please make sure this instance is started using an already existing database directory";
     FATAL_ERROR_EXIT();
   }
 
@@ -413,34 +415,6 @@ void ClusterFeature::start() {
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
-  while (true) {
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      builder.add("endpoint", VPackValue(_myEndpoint));
-      builder.add("advertisedEndpoint", VPackValue(_myAdvertisedEndpoint));
-      builder.add("host", VPackValue(ServerState::instance()->getHost()));
-      builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
-      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
-    } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
-      FATAL_ERROR_EXIT();
-    }
-
-    result = comm.setValue("Current/ServersRegistered/" + myId,
-                           builder.slice(), 0.0);
-
-    if (result.successful()) {
-      break;
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-        << "failed to register server in agency: http code: "	
-        << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-
   comm.increment("Current/Version");
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
@@ -470,42 +444,36 @@ void ClusterFeature::stop() {
 
 
 void ClusterFeature::unprepare() {
-  if (_enableCluster) {
-    if (_heartbeatThread != nullptr) {
-      _heartbeatThread->beginShutdown();
-    }
-
-    // change into shutdown state
-    ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-
-    AgencyComm comm;
-    comm.sendServerState(0.0);
-
-    if (_heartbeatThread != nullptr) {
-      int counter = 0;
-      while (_heartbeatThread->isRunning()) {
-        std::this_thread::sleep_for(std::chrono::microseconds(100000));
-        // emit warning after 5 seconds
-        if (++counter == 10 * 5) {
-          LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
-        }
-      }
-    }
-
-    if (_unregisterOnShutdown) {
-      ServerState::instance()->unregister();
-    }
-  }
-
   if (!_enableCluster) {
     ClusterComm::cleanup();
     return;
+  }
+  
+  if (_heartbeatThread != nullptr) {
+    _heartbeatThread->beginShutdown();
   }
 
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   AgencyComm comm;
+  comm.sendServerState(0.0);
+
+  if (_heartbeatThread != nullptr) {
+    int counter = 0;
+    while (_heartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
+      }
+    }
+  }
+
+  if (_unregisterOnShutdown) {
+    ServerState::instance()->unregister();
+  }
+
   comm.sendServerState(0.0);
 
   // Try only once to unregister because maybe the agencycomm
@@ -569,5 +537,3 @@ void ClusterFeature::syncDBServerStatusQuo() {
     _heartbeatThread->syncDBServerStatusQuo(true);
   }
 }
-
-

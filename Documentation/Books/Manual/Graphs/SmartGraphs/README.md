@@ -18,6 +18,10 @@ The optimizer is clever enough to identify if we are on a SmartGraph or not.
 The difference is only in the management section: creating and modifying the underlying collections of the graph.
 For a detailed API reference please refer to [SmartGraph Management](../SmartGraphs/Management.md).
 
+Do the hands-on
+[ArangoDB SmartGraphs Tutorial](https://www.arangodb.com/using-smartgraphs-arangodb/)
+to learn more.
+
 What makes a graph smart?
 -------------------------
 

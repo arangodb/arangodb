@@ -101,6 +101,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let env = {};
   let customInstanceInfos = {};
+  let healthCheck = function () {return true;};
+
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
+    healthCheck = startStopHandlers.healthCheck;
+  }
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStart')) {
     customInstanceInfos['preStart'] = startStopHandlers.preStart(options,
@@ -155,6 +160,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let results = {};
   let continueTesting = true;
+  let serverDead = false;
   let count = 0;
   let forceTerminate = false;
   let graphCount = 0;
@@ -169,9 +175,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       count += 1;
 
       let collectionsBefore = [];
-      db._collections().forEach(collection => {
-        collectionsBefore.push(collection._name);
-      });
+      if (!serverDead) {
+        db._collections().forEach(collection => {
+          collectionsBefore.push(collection._name);
+        });
+      }
       while (first || options.loopEternal) {
         if (!continueTesting) {
           print('oops! Skipping, ' + te + ' server is gone.');
@@ -214,40 +222,50 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           }
         }
 
-        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
+            healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
+          continueTesting = true; 
 
-        // Check whether some collections were left behind, and if mark test as failed.
-        let collectionsAfter = [];
-        db._collections().forEach(collection => {
-          collectionsAfter.push(collection._name);
-        });
-        let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
-          return (name[0] !== '_'); // exclude system collections from the comparison
-        });
-
-        if (delta.length !== 0) {
-          results[te] = {
-            status: false,
-            message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
-          };
-          collectionsBefore = [];
+          // Check whether some collections were left behind, and if mark test as failed.
+          let collectionsAfter = [];
           db._collections().forEach(collection => {
-            collectionsBefore.push(collection._name);
+            collectionsAfter.push(collection._name);
           });
-        }
+          let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+            return (name[0] !== '_'); // exclude system collections from the comparison
+          });
 
-        let graphs = db._collection('_graphs');
-        if (graphs && graphs.count() !== graphCount) {
+          if (delta.length !== 0) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
+            };
+            collectionsBefore = [];
+            db._collections().forEach(collection => {
+              collectionsBefore.push(collection._name);
+            });
+          }
+
+          let graphs = db._collection('_graphs');
+          if (graphs && graphs.count() !== graphCount) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+                JSON.stringify(graphs.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+            graphCount = graphs.count();
+          }
+        } else {
+          serverDead = true;
+          continueTesting = false;
           results[te] = {
             status: false,
-            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-              JSON.stringify(graphs.toArray()) +
-              ' ] - Original test status: ' +
-              JSON.stringify(results[te])
+            message: 'server is dead.'
           };
-          graphCount = graphs.count();
         }
-
+        
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
           customInstanceInfos['alive'] = startStopHandlers.alive(options,
                                                                  serverOptions,
@@ -292,7 +310,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 
-  print('Shutting down...');
+  print(Date() + ' Shutting down...');
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
                                                                serverOptions,

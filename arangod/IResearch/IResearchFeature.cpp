@@ -43,7 +43,6 @@
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
 #include "IResearchViewDBServer.h"
-#include "IResearchViewSingleServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
@@ -350,7 +349,7 @@ void registerViewFactory() {
   } else if (arangodb::ServerState::instance()->isDBServer()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewSingleServer::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_FAILED,
@@ -361,7 +360,7 @@ void registerViewFactory() {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       res.errorNumber(),
-      std::string("failure registering IResearch view factory: ") + res.errorMessage()
+      std::string("failure registering arangosearch view factory: ") + res.errorMessage()
     );
   }
 }
@@ -823,7 +822,7 @@ void IResearchFeature::start() {
       registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+        << "failure to find feature 'AQLFunctions' while registering arangosearch filters";
     }
 
   }

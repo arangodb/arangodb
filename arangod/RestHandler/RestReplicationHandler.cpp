@@ -82,7 +82,12 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection " << name << ". Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
+      LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+          << "Restore ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+          << "restore ONLY this collection use 'arangorestore --force'. "
+          << "However this is not recommended and you should instead restore "
+          << "the EdgeCollection of the SmartGraph instead.";
       return true;
     }
   }
@@ -1012,8 +1017,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("unable to create collection '") + name + "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
     }
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreCollectionCoordinator "
-      << "could not drop collection: " << ex.what();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "processRestoreCollectionCoordinator "
+        << "could not drop collection: " << ex.what();
   } catch (...) {}
 
   // now re-create the collection
@@ -1423,6 +1429,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    options.overwrite = true;
     opRes = trx.insert(collectionName, requestSlice, options);
     if (opRes.fail()) {
       return opRes.result;
@@ -1567,8 +1574,9 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
         if (value.isString()) {
           std::string const typeString = value.copyString();
           if ((typeString == "primary") ||(typeString == "edge")) {
-            LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreIndexes silently ignoring primary or edge index: " <<
-              idxDef.toJson();
+            LOG_TOPIC(DEBUG, Logger::REPLICATION)
+                << "processRestoreIndexes silently ignoring primary or edge "
+                << "index: " << idxDef.toJson();
             continue;
           }
         }
@@ -2055,17 +2063,19 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const followerId = body.get("followerId");
-  VPackSlice const readLockId = body.get("readLockId");
-  VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString()) {
+  VPackSlice const followerIdSlice = body.get("followerId");
+  VPackSlice const readLockIdSlice = body.get("readLockId");
+  VPackSlice const shardSlice = body.get("shard");
+  VPackSlice const checksumSlice = body.get("checksum");
+  if (!followerIdSlice.isString() ||
+      !shardSlice.isString() ||
+      !checksumSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId' and 'shard' attributes must be strings");
+                  "'followerId', 'shard' and 'checksum' attributes must be strings");
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.copyString());
-
+  auto col = _vocbase.lookupCollection(shardSlice.copyString());
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2073,8 +2083,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  if (readLockId.isNone()) {
-    // Short cut for the case that the collection is empty
+  const std::string followerId = followerIdSlice.copyString();
+  // Short cut for the case that the collection is empty
+  if (readLockIdSlice.isNone()) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
@@ -2085,9 +2096,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
-
-        if (nr == 0) {
-          col->followers()->add(followerId.copyString());
+        if (nr == 0 && checksumSlice.isEqualString("0")) {
+          col->followers()->add(followerId);
 
           VPackBuilder b;
           {
@@ -2107,55 +2117,56 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  VPackSlice const checksum = body.get("checksum");
-  // optional while introducing this bugfix. should definitely be required with
-  // 3.4
-  // and throw a 400 then when no checksum is provided
-  if (checksum.isString() && readLockId.isString()) {
-    std::string referenceChecksum;
-    {
-      CONDITION_LOCKER(locker, _condVar);
-      auto it = _holdReadLockJobs.find(readLockId.copyString());
-      if (it == _holdReadLockJobs.end()) {
-        // Entry has been removed since, so we cancel the whole thing
-        // right away and generate an error:
-        generateError(rest::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_TRANSACTION_INTERNAL,
-                      "read transaction was cancelled");
-        return;
-      }
+  if (!readLockIdSlice.isString() || readLockIdSlice.getStringLength() == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'readLockId' is not a string or empty");
+    return;
+  }
+  // previous versions < 3.3x might not send the checksum, if mixed clusters
+  // get into trouble here we may need to be more lenient
+  TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
-      auto trx = it->second;
-      if (!trx) {
-        generateError(rest::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_TRANSACTION_INTERNAL,
-                      "Read lock not yet acquired!");
-        return;
-      }
+  const std::string readLockId = readLockIdSlice.copyString();
 
-      // referenceChecksum is the stringified number of documents in the
-      // collection
-      uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
-      referenceChecksum = std::to_string(num);
-    }
-
-    auto result = col->compareChecksums(checksum, referenceChecksum);
-
-    if (result.fail()) {
-      auto errorNumber = result.errorNumber();
-      rest::ResponseCode code;
-      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
-          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
-        code = rest::ResponseCode::BAD;
-      } else {
-        code = rest::ResponseCode::SERVER_ERROR;
-      }
-      generateError(code, errorNumber, result.errorMessage());
+  std::string referenceChecksum;
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(readLockId);
+    if (it == _holdReadLockJobs.end()) {
+      // Entry has been removed since, so we cancel the whole thing
+      // right away and generate an error:
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_TRANSACTION_INTERNAL,
+                    "read transaction was cancelled");
       return;
     }
+
+    auto trx = it->second;
+    if (!trx) {
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_TRANSACTION_INTERNAL,
+                    "Read lock not yet acquired!");
+      return;
+    }
+
+    // referenceChecksum is the stringified number of documents in the
+    // collection
+    uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
+    referenceChecksum = std::to_string(num);
   }
 
-  col->followers()->add(followerId.copyString());
+  if (!checksumSlice.isEqualString(referenceChecksum)) {
+    const std::string checksum = checksumSlice.copyString();
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
+     << "Expected: " << referenceChecksum << " Actual: " << checksum;
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+                  "'checksum' is wrong. Expected: "
+                  + referenceChecksum
+                  + ". Actual: " + checksum);
+    return;
+  }
+
+  col->followers()->add(followerId);
 
   VPackBuilder b;
   {

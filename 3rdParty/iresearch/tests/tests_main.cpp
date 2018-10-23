@@ -335,6 +335,7 @@ void install_stack_trace_handler() {
         IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
         IR_LOG_STACK_TRACE();
         rethrow(ex, info, dest);
+        abort(); // otherwise MacOS reports "function declared 'noreturn' should not return"
       }
     #else
       void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {

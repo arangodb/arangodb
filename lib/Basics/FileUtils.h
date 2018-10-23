@@ -72,19 +72,24 @@ void spit(std::string const& filename, StringBuffer const& content,
 // returns true if a file could be removed
 bool remove(std::string const& fileName, int* errorNumber = nullptr);
 
-// returns true if a file could be renamed
-bool rename(std::string const& oldName, std::string const& newName,
-            int* errorNumber = nullptr);
-
 // creates a new directory
 bool createDirectory(std::string const& name, int* errorNumber = nullptr);
 bool createDirectory(std::string const& name, int mask, int* errorNumber = nullptr);
 
-// copies directories / files recursive
-bool copyRecursive(std::string const& source, std::string const& target,
+/// @brief copies directories / files recursive
+/// will not copy files/directories for which the filter function
+/// returns true
+bool copyRecursive(std::string const& source, 
+                   std::string const& target,
+                   std::function<bool(std::string const&)> const& filter,
                    std::string& error);
+
+/// @brief will not copy files/directories for which the filter function
+/// returns true
 bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, std::string& error);
+                            std::string const& target, 
+                            std::function<bool(std::string const&)> const& filter,
+                            std::string& error);
 
 // returns list of files
 std::vector<std::string> listFiles(std::string const& directory);

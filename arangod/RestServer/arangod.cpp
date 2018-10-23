@@ -59,7 +59,6 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/EngineEqualityCheckFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -142,7 +141,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",              "Agency",
         "Cluster",             "Daemon",
-        "Endpoint",            "EngineEqualityCheck", 
+        "Endpoint",
         "FoxxQueues",          "GeneralServer",       
         "Greetings",           "LoggerBufferFeature", 
         "Server",              "SslServer",           
@@ -176,7 +175,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new DatabaseFeature(server));
     server.addFeature(new DatabasePathFeature(server));
     server.addFeature(new EndpointFeature(server));
-    server.addFeature(new EngineEqualityCheckFeature(server));
     server.addFeature(new EngineSelectorFeature(server));
     server.addFeature(new EnvironmentFeature(server));
     server.addFeature(new FileDescriptorsFeature(server));
@@ -295,6 +293,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
 
+  TRI_GET_ARGV(ARGC, ARGV);
   ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
   runServer(ARGC, ARGV, context);
 
@@ -306,6 +305,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 #endif
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
 #if _WIN32
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
     ARGC = argc;

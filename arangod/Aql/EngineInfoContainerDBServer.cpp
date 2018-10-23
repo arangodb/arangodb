@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -150,7 +150,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       }
 
       // do not set '_type' of the engine here,
-      // bacause satellite collections may consists of
+      // because satellite collections may consist of
       // multiple "main nodes"
 
       break;
@@ -849,11 +849,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& it : edges) {
         knownEdges.emplace(it->name());
       }
+
+      TRI_ASSERT(_query);
+      auto& resolver = _query->resolver();
+
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*>* cs =
+      std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
+        if (!resolver.getCollection(collection.first)) {
+          // not a collection, filter out
+          continue;
+        }
+
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
@@ -1077,11 +1086,19 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // Add all Vertex Collections to the Transactions, Traversals do never write
   auto& vCols = node->vertexColls();
   if (vCols.empty()) {
+    TRI_ASSERT(_query);
+    auto& resolver = _query->resolver();
+
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*>* cs =
+    std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
+      if (!resolver.getCollection(col.first)) {
+        // not a collection, filter out
+        continue;
+      }
+
       handleCollection(col.second, AccessMode::Type::READ);
     }
   } else {

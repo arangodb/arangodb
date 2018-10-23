@@ -35,8 +35,6 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include <boost/locale/conversion.hpp>
-#include <boost/locale/generator.hpp>
 #include "analysis/text_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
@@ -65,7 +63,7 @@ using namespace iresearch::analysis;
 
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   std::unordered_set<std::string> emptySet;
-  std::locale locale = iresearch::locale_utils::locale(nullptr, true); // utf8 encoding used bellow
+  auto locale = irs::locale_utils::locale("C.UTF-8"); // utf8 encoding used bellow
   std::string sField = "test field";
   std::wstring sDataUCS2 = L"1,24\u00A0prosenttia"; // 00A0 == non-breaking whitespace
   std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
@@ -89,12 +87,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
-  boost::locale::generator localeGenerator;
   std::unordered_set<std::string> emptySet;
   std::string sField = "test field";
 
   {
-    std::locale locale = localeGenerator.generate("en_US.UTF-8");
+    auto locale = irs::locale_utils::locale("en_US.UTF-8");
     std::string sDataASCII = " A  hErd of   quIck brown  foXes ran    and Jumped over  a     runninG dog";
     std::string data(sDataASCII);
     text_token_stream stream(locale, emptySet);
@@ -140,7 +137,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   {
     std::unordered_set<std::string> stopwordSet = { "a", "of", "and" };
-    std::locale locale = localeGenerator.generate("en_US.UTF-8");
+    auto locale = irs::locale_utils::locale("en_US.UTF-8");
     std::string sDataASCII = " A thing of some KIND and ANoTher ";
     std::string data(sDataASCII);
     text_token_stream stream(locale, stopwordSet);
@@ -167,7 +164,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   }
 
   {
-    std::locale locale = localeGenerator.generate("ru_RU.UTF-8");
+    auto locale = irs::locale_utils::locale("ru_RU.UTF-8");
     std::wstring sDataUCS2 = L"\u041F\u043E \u0432\u0435\u0447\u0435\u0440\u0430\u043C \u0401\u0436\u0438\u043A \u0445\u043E\u0434\u0438\u043B \u043A \u041C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443 \u0441\u0447\u0438\u0442\u0430\u0442\u044C \u0437\u0432\u0451\u0437\u0434\u044B";
     std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
     text_token_stream stream(locale, emptySet);
@@ -202,7 +199,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   }
 
   {
-    std::locale locale = localeGenerator.generate("tr-TR.UTF-8");
+    auto locale = irs::locale_utils::locale("tr-TR.UTF-8");
     std::wstring sDataUCS2 = L"\u0130I";
     std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
     text_token_stream stream(locale, emptySet);
@@ -224,7 +221,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   {
     // there is no Snowball stemmer for Chinese
-    std::locale locale = localeGenerator.generate("zh_CN.UTF-8");
+    auto locale = irs::locale_utils::locale("zh_CN.UTF-8");
     std::wstring sDataUCS2 = L"\u4ECA\u5929\u4E0B\u5348\u7684\u592A\u9633\u5F88\u6E29\u6696\u3002";
     std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
     text_token_stream stream(locale, emptySet);
@@ -260,7 +257,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   {
     // ICU locale will fail initialization for an invalid std:locale
-    std::locale locale = localeGenerator.generate("invalid12345.UTF-8");
+    auto locale = irs::locale_utils::locale("invalid12345.UTF-8");
     std::string sDataASCII = "abc";
     std::string data(sDataASCII);
     text_token_stream stream(locale, emptySet);
@@ -270,7 +267,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
-  boost::locale::generator localeGenerator;
   std::unordered_set<std::string> emptySet;
   std::string sField = "test field";
   const char* czOldStopwordPath = iresearch::getenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
@@ -279,7 +275,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
   iresearch::setenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE, IResearch_test_resource_dir, true);
 
   {
-    std::locale locale = localeGenerator.generate("en_US.UTF-8");
+    auto locale = irs::locale_utils::locale("en_US.UTF-8");
     std::string sDataASCII = "A E I O U";
     auto stream = text_token_stream::make(locale);
 
