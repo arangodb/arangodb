@@ -1,6 +1,10 @@
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
 
+
+* Fixed an AQL bug where the optimize-traversals rule was falsely applied to
+  extensions with inline expressions and thereby ignoring them
+
 * fix side-effects of sorting larger arrays (>= 16 members) of constant literal
   values in AQL, when the array was used not only for IN-value filtering but also
   later in the query.
