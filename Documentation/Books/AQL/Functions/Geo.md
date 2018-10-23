@@ -117,9 +117,11 @@ This function can be **optimized** via a S2 based geospatial index, please look 
 
 Determine whether a coordinate is inside a polygon.
 
-Note: the *IS_IN_POLYGON* AQL function is **deprecated** as of ArangoDB 3.4.0 in
+{% hint 'warning' %}
+The *IS_IN_POLYGON* AQL function is **deprecated** as of ArangoDB 3.4.0 in
 favor of the new `GEO_CONTAINS` AQL function, which works with
 [GeoJSON](https://tools.ietf.org/html/rfc7946) Polygons and MultiPolygons.
+{% endhint %}
 
 `IS_IN_POLYGON(polygon, latitude, longitude) → bool`
 
@@ -279,12 +281,13 @@ Geo Index Functions
 -------------------
 
 {% hint 'warning' %}
-The AQL functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` are deprecated.
+The AQL functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` are
+deprecated starting from version 3.4.0.
 Please use the [Geo utility functions](#geo-utility-functions) instead.
 {% endhint %}
 
-AQL offers the following functions to filter data based on [geo
-indexes](../../Manual/Indexing/Geo.html). These functions require the collection
+AQL offers the following functions to filter data based on
+[geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection
 to have at least one geo index. If no geo index can be found, calling this
 function will fail with an error at runtime. There is no error when explaining
 the query however.
@@ -292,8 +295,8 @@ the query however.
 ### NEAR()
 
 {% hint 'warning' %}
-`NEAR` is a *deprecated* AQL function. Use [DISTANCE()](#distance) in a query
-like this instead:
+`NEAR` is a deprecated AQL function from version 3.4.0 on.
+Use [DISTANCE()](#distance) in a query like this instead:
 
 ```js
 FOR doc IN doc
@@ -330,8 +333,8 @@ contain the distance value in an attribute of that name.
 ### WITHIN()
 
 {% hint 'warning' %}
-`WITHIN` is a *deprecated* AQL function. Use [DISTANCE()](#distance) in a query
-like this instead:
+`WITHIN` is a deprecated AQL function from version 3.4.0 on.
+Use [DISTANCE()](#distance) in a query like this instead:
 
 ```js
 FOR doc IN doc
@@ -369,7 +372,7 @@ value in an attribute of that name.
 ### WITHIN_RECTANGLE()
 
 {% hint 'warning' %}
-`WITHIN_RECTANGLE` is a *deprecated* AQL function. Use
+`WITHIN_RECTANGLE` is a deprecated AQL function from version 3.4.0 on. Use
 [GEO_CONTAINS](#geocontains) and a GeoJSON polygon instead:
 
 ```js
