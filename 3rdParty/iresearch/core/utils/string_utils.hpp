@@ -80,10 +80,12 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
 template <typename... Args>
 inline std::string to_string(const char* format, Args&&... args) {
   std::string buf;
-  auto result = to_string(buf, format, std::forward<Args>(args)...);
+  const auto result = to_string(buf, format, std::forward<Args>(args)...);
 
   assert(result >= 0);
   assert(size_t(result) == buf.size());
+
+  UNUSED(result);
 
   return buf;
 }
