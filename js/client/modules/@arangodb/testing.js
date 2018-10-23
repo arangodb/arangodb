@@ -84,7 +84,13 @@ let optionsDocumentation = [
   '   - `writeXmlReport`:  Write junit xml report files',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
+  '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
   '   - `rr`: if set to true arangod instances are run with rr',
+  '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
+  '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
+  '                        or a coma separated list for multiple exceptions; ',
+  '                        filtering by asterisk is possible',
+  '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
   '',
@@ -142,6 +148,8 @@ const optionsDefaults = {
   'protocol': 'tcp',
   'replication': false,
   'rr': false,
+  'exceptionFilter': null,
+  'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
   'skipLogAnalysis': true,
@@ -162,7 +170,8 @@ const optionsDefaults = {
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
   'testFailureText': 'testfailures.txt',
-  'testCase': undefined
+  'testCase': undefined,
+  'disableMonitor': false
 };
 
 const _ = require('lodash');
@@ -184,6 +193,8 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 // / @brief test functions for all
 // //////////////////////////////////////////////////////////////////////////////
 
+let failedRuns = {
+};
 let allTests = [
 ];
 
@@ -224,7 +235,7 @@ function testCaseMessage (test) {
   }
 }
 
-function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
+function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
@@ -240,12 +251,12 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   let SuccessMessages = '';
   try {
     /* jshint forin: false */
-    for (let testrunName in r) {
-      if (skipInternalMember(r, testrunName)) {
+    for (let testrunName in res) {
+      if (skipInternalMember(res, testrunName)) {
         continue;
       }
 
-      let testrun = r[testrunName];
+      let testrun = res[testrunName];
 
       let successCases = {};
       let failedCases = {};
@@ -355,17 +366,20 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
     print(failedMessages);
     /* jshint forin: true */
 
-    let color = (!r.crashed && r.status === true) ? GREEN : RED;
+    let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '';
-    if (r.crashed === true) {
-      crashedText = ' BUT! - We had at least one unclean shutdown or crash during the testrun.';
+    let crashedText = '\n';
+    if (res.crashed === true) {
+      for (let failed in failedRuns) {
+        crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
+      }
+      crashedText += "\nMarking crashy!";
       crashText = RED + crashedText + RESET;
     }
-    print('\n' + color + '* Overall state: ' + ((r.status === true) ? 'Success' : 'Fail') + RESET + crashText);
+    print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
 
     let failText = '';
-    if (r.status !== true) {
+    if (res.status !== true) {
       failText = '   Suites failed: ' + failedSuite + ' Tests Failed: ' + failedTests;
       print(color + failText + RESET);
     }
@@ -375,7 +389,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   } catch (x) {
     print('exception caught while pretty printing result: ');
     print(x.message);
-    print(JSON.stringify(r));
+    print(JSON.stringify(res));
   }
 }
 
@@ -417,8 +431,6 @@ function printUsage () {
     }
   }
 }
-
-
 
 let allTestPaths = {};
 
@@ -578,10 +590,10 @@ function iterateTests(cases, options, jsonReply) {
 
   let results = {};
   let cleanup = true;
-    
+
   // real ugly hack. there are some suites which are just placeholders
   // for other suites
-  caselist = (function() { 
+  caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
       let w = testFuncs[caselist[n]];
@@ -627,6 +639,10 @@ function iterateTests(cases, options, jsonReply) {
     } else {
       cleanup = false;
     }
+    if (pu.serverCrashed) {
+      failedRuns[currentTest] = pu.serverFailMessages;
+      pu.serverFailMessages = "";
+    }
   }
 
   results.status = globalStatus;
@@ -637,7 +653,8 @@ function iterateTests(cases, options, jsonReply) {
       pu.cleanupDBDirectories(options);
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
-            pu.getCleanupDBDirectories());
+            pu.getCleanupDBDirectories() +
+            cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed);
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");

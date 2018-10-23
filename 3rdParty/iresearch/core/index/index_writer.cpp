@@ -109,7 +109,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(meta);
 
   if (!reader) {
-    throw irs::index_error(); // failed to open segment
+    throw irs::index_error(
+      std::string("while adding document mask modified records to document_mask of segment '") +meta.name
+      + "', error: failed to open segment"
+    );
   }
 
   bool modified = false;
@@ -161,7 +164,10 @@ bool add_document_mask_modified_records(
   auto reader = readers.emplace(ctx.segment_.meta);
 
   if (!reader) {
-    throw irs::index_error(); // failed to open segment
+    throw irs::index_error(
+      std::string("while adding document mask modified records to flush_segment_context of segment '") + ctx.segment_.meta.name
+      + "', error: failed to open segment"
+    );
   }
 
   assert(doc_limits::valid(ctx.doc_id_begin_));
@@ -672,15 +678,19 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
             || limits.segment_memory_max > writer.memory_active()) // too much memory
         && !doc_limits::eof(writer.docs_cached())) { // segment full
       return ctx;
-    } else { // force a flush of a full segment
-      IR_FRMT_TRACE(
-        "Flushing segment '%s', docs=" IR_SIZE_T_SPECIFIER ", memory=" IR_SIZE_T_SPECIFIER ", docs limit=" IR_SIZE_T_SPECIFIER ", memory limit=" IR_SIZE_T_SPECIFIER "",
-        writer.name().c_str(), writer.docs_cached(), writer.memory_active(), limits.segment_docs_max, limits.segment_memory_max
-      );
+    }
 
-      if (!segment.flush()) {
-        throw index_error(); // failed to flush segment
-      }
+    // force a flush of a full segment
+    IR_FRMT_TRACE(
+      "Flushing segment '%s', docs=" IR_SIZE_T_SPECIFIER ", memory=" IR_SIZE_T_SPECIFIER ", docs limit=" IR_SIZE_T_SPECIFIER ", memory limit=" IR_SIZE_T_SPECIFIER "",
+      writer.name().c_str(), writer.docs_cached(), writer.memory_active(), limits.segment_docs_max, limits.segment_memory_max
+    );
+
+    if (!segment.flush()) {
+      throw index_error(
+        std::string("while flushing segment '") + segment.writer_meta_.meta.name
+        + "', error: failed to flush segment"
+      );
     }
   }
 
@@ -2050,7 +2060,7 @@ bool index_writer::start() {
 
     auto sync = [&dir](const std::string& file) {
       if (!dir.sync(file)) {
-        throw detailed_io_error("Failed to sync file, path: ") << file;
+        throw detailed_io_error("failed to sync file, path: " + file);
       }
 
       return true;

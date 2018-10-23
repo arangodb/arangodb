@@ -539,8 +539,9 @@ template <> bool Node::handle<ERASE>(VPackSlice const& slice) {
 
     if (this->slice().isArray()) {
       if (haveVal) {
+        VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
-          if (old != slice.get("val")) {
+          if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/true) != 0) {
             tmp.add(old);
           }
         }
@@ -581,8 +582,13 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
   Builder tmp;
   { VPackArrayBuilder t(&tmp);
     if (this->slice().isArray()) {
+      VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
-        tmp.add(old == slice.get("val") ? slice.get("new") : old);
+        if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/true) == 0) {
+          tmp.add(slice.get("new"));
+        } else {
+          tmp.add(old);
+        }
       }
     }
   }

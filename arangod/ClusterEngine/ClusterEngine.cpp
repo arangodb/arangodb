@@ -407,7 +407,7 @@ void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
 void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing timeout
-  std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
 /// @brief open an existing database. internal function
