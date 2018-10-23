@@ -54,6 +54,7 @@ Contributing features, documentation, tests
 * Please let us know if you plan to work on a ticket. This way we can make sure
   redundant work is avoided.
 
+* Feel free to contact us
 
 Additional Resources
 --------------------
