@@ -24,173 +24,91 @@
 #ifndef ARANGOD_MMFILES_GEO_INDEX_H
 #define ARANGOD_MMFILES_GEO_INDEX_H 1
 
-#include "Basics/Common.h"
-#include "Indexes/IndexIterator.h"
+#include "Geo/GeoParams.h"
+#include "GeoIndex/Index.h"
 #include "MMFiles/MMFilesIndex.h"
-#include "MMFiles/mmfiles-geo-index.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/LocalDocumentId.h"
 
+#include <s2/s2cell_id.h>
+#include <s2/s2point.h>
+#include <s2/util/gtl/btree_map.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-// GeoCoordinate.data must be capable of storing revision ids
-static_assert(sizeof(GeoCoordinate::data) >= sizeof(arangodb::LocalDocumentId),
-              "invalid size of GeoCoordinate.data");
 
 namespace arangodb {
-class MMFilesGeoIndex;
 
-class MMFilesGeoIndexIterator final : public IndexIterator {
- public:
-  /// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
-  MMFilesGeoIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          MMFilesGeoIndex const* index,
-                          arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*);
-
-  ~MMFilesGeoIndexIterator() { replaceCursor(nullptr); }
-
-  char const* typeName() const override { return "geo-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  size_t findLastIndex(GeoCoordinates* coords) const;
-  void replaceCursor(::GeoCursor* c);
-  void createCursor(double lat, double lon);
-  void evaluateCondition();  // called in constructor
-
-  MMFilesGeoIndex const* _index;
-  ::GeoCursor* _cursor;
-  ::GeoCoordinate _coor;
-  arangodb::aql::AstNode const* _condition;
-  double _lat;
-  double _lon;
-  bool _near;
-  bool _inclusive;
-  bool _done;
-  double _radius;
-};
-
-class MMFilesGeoIndex final : public MMFilesIndex {
-  friend class MMFilesGeoIndexIterator;
-
+class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
  public:
   MMFilesGeoIndex() = delete;
 
-  MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*,
-                  arangodb::velocypack::Slice const&);
+  MMFilesGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+  );
 
-  ~MMFilesGeoIndex();
-
- public:
-  /// @brief geo index variants
-  enum IndexVariant {
-    INDEX_GEO_NONE = 0,
-    INDEX_GEO_INDIVIDUAL,
-    INDEX_GEO_COMBINED
+  struct IndexValue {
+    IndexValue() : documentId(0), centroid(0,0,0) {}
+    IndexValue(LocalDocumentId lid, S2Point&& c)
+        : documentId(lid), centroid(c) {}
+    LocalDocumentId documentId;
+    S2Point centroid;
   };
 
- public:
+  typedef gtl::btree_multimap<S2CellId, IndexValue> IndexTree;
+
   IndexType type() const override {
-    if (_variant == INDEX_GEO_COMBINED) {
+    if ("geo1" == _typeName) {
       return TRI_IDX_TYPE_GEO1_INDEX;
+    } else if ("geo2" == _typeName) {
+      return TRI_IDX_TYPE_GEO2_INDEX;
     }
-
-    return TRI_IDX_TYPE_GEO2_INDEX;
+    return TRI_IDX_TYPE_GEO_INDEX;
   }
 
-  char const* typeName() const override {
-    if (_variant == INDEX_GEO_COMBINED) {
-      return "geo1";
-    }
-    return "geo2";
+  bool pointsOnly() const {
+    return (_typeName != "geo");
   }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
-
-  bool allowExpansion() const override { return false; }
+  char const* typeName() const override { return _typeName.c_str(); }
 
   bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return true; }
+  bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
-  // Uses default toVelocyPackFigures
+  using arangodb::Index::toVelocyPack;
+  void toVelocyPack(velocypack::Builder&,
+                    std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
-  bool matchesDefinition(VPackSlice const& info) const override;
+  bool matchesDefinition(velocypack::Slice const& info) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, OperationMode mode) override;
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&,
                 OperationMode mode) override;
 
+  IndexIterator* iteratorForCondition(transaction::Methods*,
+                                      ManagedDocumentResult*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
+                                      IndexIteratorOptions const&) override;
+
   void load() override {}
   void unload() override;
 
-  /// @brief looks up all points within a given radius
-  GeoCoordinates* withinQuery(transaction::Methods*, double, double,
-                              double) const;
-
-  /// @brief looks up the nearest points
-  GeoCoordinates* nearQuery(transaction::Methods*, double, double,
-                            size_t) const;
-
-  bool isSame(std::vector<std::string> const& location, bool geoJson) const {
-    return (!_location.empty() && _location == location && _geoJson == geoJson);
-  }
-
-  bool isSame(std::vector<std::string> const& latitude,
-              std::vector<std::string> const& longitude) const {
-    return (!_latitude.empty() && !_longitude.empty() &&
-            _latitude == latitude && _longitude == longitude);
-  }
-
-  static LocalDocumentId toLocalDocumentId(uint64_t internal);
+  IndexTree const& tree() const { return _tree; }
 
  private:
-  /// @brief attribute paths
-  std::vector<std::string> _location;
-  std::vector<std::string> _latitude;
-  std::vector<std::string> _longitude;
-
-  /// @brief the geo index variant (geo1 or geo2)
-  IndexVariant _variant;
-
-  /// @brief whether the index is a geoJson index (latitude / longitude
-  /// reversed)
-  bool _geoJson;
-
-  /// @brief the actual geo index
-  GeoIdx* _geoIndex;
+  MMFilesGeoIndex::IndexTree _tree;
+  std::string const _typeName;
 };
-}
-
-namespace std {
-template <>
-class default_delete<GeoCoordinates> {
- public:
-  void operator()(GeoCoordinates* result) {
-    if (result != nullptr) {
-      GeoIndex_CoordinatesFree(result);
-    }
-  }
-};
-}
+}  // namespace arangodb
 
 #endif

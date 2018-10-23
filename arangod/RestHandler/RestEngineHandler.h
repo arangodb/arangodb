@@ -33,7 +33,7 @@ class RestEngineHandler : public arangodb::RestBaseHandler {
 
  public:
   char const* name() const override final { return "RestEngineHandler"; }
-  bool isDirect() const override { return true; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
 protected:

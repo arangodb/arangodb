@@ -26,19 +26,18 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class ClientFeature;
 
 class ConsoleFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ConsoleFeature(application_features::ApplicationServer* server);
+  explicit ConsoleFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
- public:
   bool quiet() const { return _quiet; }
   void setQuiet(bool value) { _quiet = value; }
   bool colors() const { return _colors; }
@@ -51,7 +50,6 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
 
  private:
 #ifdef _WIN32
-  uint16_t _codePage;
   bool _cygwinShell;
 #endif
   bool _quiet;
@@ -109,7 +107,10 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   FILE* _toAuditFile;
   // amount of time the last executed shell operation took
   double _lastDuration;
+  // timestamp of startup time
+  double const _startTime;
 };
+
 }
 
 #endif

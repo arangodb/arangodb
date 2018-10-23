@@ -32,15 +32,14 @@ class LogicalCollection;
 
 Result syncChunkRocksDB(
     DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+    InitialSyncerIncrementalSyncStats& stats,
     std::string const& keysId, uint64_t chunkId, std::string const& lowString,
     std::string const& highString,
-    std::vector<std::pair<std::string, uint64_t>> const& markers);
+    std::vector<std::string> const& markers);
 
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
-                             std::string const& keysId, std::string const& cid,
-                             std::string const& collectionName,
-                             TRI_voc_tick_t maxTick);
+                             std::string const& keysId);
 }
 
 #endif

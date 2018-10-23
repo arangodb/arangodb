@@ -51,9 +51,12 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration();
-
- protected:
-  std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  
+  std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
+  std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                    bool useTick,
+                                                    TRI_voc_tick_t barrierId) const override;
+protected:
 
   std::string getStateFilename() const override;
 };

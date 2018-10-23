@@ -1,11 +1,12 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from errors.dat
-////////////////////////////////////////////////////////////////////////////////
+/// auto-generated file generated from errors.dat
 
 #include "Basics/Common.h"
-#include "./lib/Basics/voc-errors.h"
+#include "Basics/voc-errors.h"
 
-void TRI_InitializeErrorMessages () {
+/// helper macro to define an error string
+#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
+
+void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_NO_ERROR, "no error");
   REG_ERROR(ERROR_FAILED, "failed");
   REG_ERROR(ERROR_SYS_ERROR, "system error");
@@ -36,6 +37,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
   REG_ERROR(ERROR_ONLY_ENTERPRISE, "only enterprise version");
   REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
+  REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
+  REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
+  REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
+  REG_ERROR(ERROR_DISABLED, "disabled");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -45,6 +50,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");
+  REG_ERROR(ERROR_HTTP_GATEWAY_TIMEOUT, "gateway timeout");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
@@ -70,7 +76,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
+  REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
@@ -78,7 +84,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
-  REG_ERROR(ERROR_ARANGO_VIEW_NOT_FOUND, "view not found");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
@@ -125,7 +130,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
-  REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT, "the checksum format is wrong");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
   REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
@@ -174,12 +178,15 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR, "conflicting replication factor with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
-  REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "no leader");
+  REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
+  REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
   REG_ERROR(ERROR_QUERY_SCRIPT, "runtime error '%s'");
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number out of range");
+  REG_ERROR(ERROR_QUERY_INVALID_GEO_VALUE, "invalid geo coordinate value");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
@@ -206,7 +213,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, "invalid aggregate expression");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
-  REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, "collection '%s' used as expression operand");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
   REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
@@ -216,6 +222,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
+  REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
+  REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
@@ -267,7 +275,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
-  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING, "Invalid example type. Has to be String, Array or Object");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT, "Invalid example type. Has to be Array or Object");
@@ -277,6 +284,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS, "collection used in orphans");
   REG_ERROR(ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST, "edge collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_GRAPH_EMPTY, "empty graph");
+  REG_ERROR(ERROR_GRAPH_INTERNAL_DATA_CORRUPT, "internal graph data corrupt");
+  REG_ERROR(ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET, "edge collection already set");
+  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST, "malformed orphan list");
+  REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
@@ -307,6 +318,18 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CANNOT_DROP_SMART_COLLECTION, "cannot drop this smart collection");
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
+  REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_NO_DBSERVERS, "no dbservers during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS, "mismatching leaders during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS, "mismatching followers during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES, "inconsistent attributes during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS, "mismatching shards during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_FAILED, "move shard job failed during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED, "move shard job disappeared during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, "agency transaction failed during cluster repairs");
   REG_ERROR(ERROR_AGENCY_INQUIRY_SYNTAX, "Illegal inquiry syntax");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_BE_OBJECT, "Inform message must be an object.");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM, "Inform message must contain uint parameter 'term'");
@@ -322,4 +345,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
+  REG_ERROR(ERROR_ACTION_ALREADY_REGISTERED, "maintenance action already registered");
+  REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
+  REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
+  REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
 }

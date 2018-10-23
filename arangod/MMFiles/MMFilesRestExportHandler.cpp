@@ -197,14 +197,12 @@ void MMFilesRestExportHandler::createCursor() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   VPackBuilder optionsBuilder;
 
@@ -249,7 +247,8 @@ void MMFilesRestExportHandler::createCursor() {
 
   // this may throw!
   auto collectionExport =
-      std::make_unique<MMFilesCollectionExport>(_vocbase, name, _restrictions);
+    std::make_unique<MMFilesCollectionExport>(_vocbase, name, _restrictions);
+
   collectionExport->run(waitTime, limit);
 
   size_t batchSize =
@@ -259,40 +258,45 @@ void MMFilesRestExportHandler::createCursor() {
       options, "ttl", 30);
   bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
       options, "count", false);
-
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
+
   {
-    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(), collectionExport.get(), batchSize, ttl, count);
+    auto cursor = std::make_unique<MMFilesExportCursor>(
+      _vocbase,
+      TRI_NewTickServer(),
+      collectionExport.get(),
+      batchSize,
+      ttl,
+      count
+    );
+
     collectionExport.release();
- 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));
   }
 
   TRI_ASSERT(c != nullptr);
+  TRI_DEFER(cursors->release(c));
 
   resetResponse(rest::ResponseCode::CREATED);
 
-  try {
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue(static_cast<int>(_response->responseCode())));
-    c->dump(builder);
-    builder.close();
-
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::CREATED, builder.slice());
-
-    cursors->release(c);
-  } catch (...) {
-    cursors->release(c);
-    throw;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
+  Result r = c->dumpSync(builder);
+  if (r.fail()) {
+    generateError(r);
+    return;
   }
+  builder.close();
+
+  _response->setContentType(rest::ContentType::JSON);
+  generateResult(rest::ResponseCode::CREATED, builder.slice());
 }
 
 void MMFilesRestExportHandler::modifyCursor() {
@@ -305,8 +309,7 @@ void MMFilesRestExportHandler::modifyCursor() {
   }
 
   std::string const& id = suffixes[0];
-
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -324,26 +327,24 @@ void MMFilesRestExportHandler::modifyCursor() {
     }
     return;
   }
+  TRI_DEFER(cursors->release(cursor));
 
-  try {
-    resetResponse(rest::ResponseCode::OK);
+  resetResponse(rest::ResponseCode::OK);
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue((int)_response->responseCode()));
-    cursor->dump(builder);
-    builder.close();
-
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-
-    cursors->release(cursor);
-  } catch (...) {
-    cursors->release(cursor);
-    throw;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
+  Result r = cursor->dumpSync(builder);
+  if (r.fail()) {
+    generateError(r);
+    return;
   }
+  builder.close();
+
+  _response->setContentType(rest::ContentType::JSON);
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void MMFilesRestExportHandler::deleteCursor() {
@@ -356,8 +357,7 @@ void MMFilesRestExportHandler::deleteCursor() {
   }
 
   std::string const& id = suffixes[0];
-
-  auto cursors = _vocbase->cursorRepository();
+  CursorRepository* cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -372,8 +372,8 @@ void MMFilesRestExportHandler::deleteCursor() {
   VPackBuilder result;
   result.openObject();
   result.add("id", VPackValue(id));
-  result.add("error", VPackValue(false));
-  result.add("code",
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code,
              VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 

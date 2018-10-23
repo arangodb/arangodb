@@ -1,7 +1,9 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-first-tick
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-first-tick</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
-"{\"firstTick\":\"6\"}"
+{ 
+  <span class="hljs-string">"firstTick"</span> : <span class="hljs-string">"5"</span> 
+}

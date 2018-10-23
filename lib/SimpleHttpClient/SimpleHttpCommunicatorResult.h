@@ -72,7 +72,7 @@ class SimpleHttpCommunicatorResult: public SimpleHttpResult {
       throw std::runtime_error(message);
     }
     virtual std::string getHeaderField(std::string const& header, bool& found) const override {
-      auto headers = _response->headers();
+      auto const& headers = _response->headers();
       auto it = headers.find(header);
       if (it == headers.end()) {
         return "";

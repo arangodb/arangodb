@@ -75,47 +75,48 @@ extern int Aqldebug;
     T_INTEGER = 284,
     T_DOUBLE = 285,
     T_PARAMETER = 286,
-    T_ASSIGN = 287,
-    T_NOT = 288,
-    T_AND = 289,
-    T_OR = 290,
-    T_NIN = 291,
-    T_REGEX_MATCH = 292,
-    T_REGEX_NON_MATCH = 293,
-    T_EQ = 294,
-    T_NE = 295,
-    T_LT = 296,
-    T_GT = 297,
-    T_LE = 298,
-    T_GE = 299,
-    T_LIKE = 300,
-    T_PLUS = 301,
-    T_MINUS = 302,
-    T_TIMES = 303,
-    T_DIV = 304,
-    T_MOD = 305,
-    T_QUESTION = 306,
-    T_COLON = 307,
-    T_SCOPE = 308,
-    T_RANGE = 309,
-    T_COMMA = 310,
-    T_OPEN = 311,
-    T_CLOSE = 312,
-    T_OBJECT_OPEN = 313,
-    T_OBJECT_CLOSE = 314,
-    T_ARRAY_OPEN = 315,
-    T_ARRAY_CLOSE = 316,
-    T_OUTBOUND = 317,
-    T_INBOUND = 318,
-    T_ANY = 319,
-    T_ALL = 320,
-    T_NONE = 321,
-    UMINUS = 322,
-    UPLUS = 323,
-    FUNCCALL = 324,
-    REFERENCE = 325,
-    INDEXED = 326,
-    EXPANSION = 327
+    T_DATA_SOURCE_PARAMETER = 287,
+    T_ASSIGN = 288,
+    T_NOT = 289,
+    T_AND = 290,
+    T_OR = 291,
+    T_NIN = 292,
+    T_REGEX_MATCH = 293,
+    T_REGEX_NON_MATCH = 294,
+    T_EQ = 295,
+    T_NE = 296,
+    T_LT = 297,
+    T_GT = 298,
+    T_LE = 299,
+    T_GE = 300,
+    T_LIKE = 301,
+    T_PLUS = 302,
+    T_MINUS = 303,
+    T_TIMES = 304,
+    T_DIV = 305,
+    T_MOD = 306,
+    T_QUESTION = 307,
+    T_COLON = 308,
+    T_SCOPE = 309,
+    T_RANGE = 310,
+    T_COMMA = 311,
+    T_OPEN = 312,
+    T_CLOSE = 313,
+    T_OBJECT_OPEN = 314,
+    T_OBJECT_CLOSE = 315,
+    T_ARRAY_OPEN = 316,
+    T_ARRAY_CLOSE = 317,
+    T_OUTBOUND = 318,
+    T_INBOUND = 319,
+    T_ANY = 320,
+    T_ALL = 321,
+    T_NONE = 322,
+    UMINUS = 323,
+    UPLUS = 324,
+    FUNCCALL = 325,
+    REFERENCE = 326,
+    INDEXED = 327,
+    EXPANSION = 328
   };
 #endif
 
@@ -124,7 +125,7 @@ extern int Aqldebug;
 
 union YYSTYPE
 {
-#line 20 "Aql/grammar.y" /* yacc.c:1909  */
+#line 34 "Aql/grammar.y" /* yacc.c:1909  */
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -134,7 +135,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 138 "Aql/grammar.hpp" /* yacc.c:1909  */
+#line 139 "Aql/grammar.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

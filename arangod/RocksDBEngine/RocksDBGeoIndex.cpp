@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,354 +17,305 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBGeoIndex.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "GeoIndex/Near.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
-using namespace arangodb::rocksdbengine;
 
-RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
-    arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
-    : IndexIterator(collection, trx, mmdr, index),
-      _index(index),
-      _cursor(nullptr),
-      _coor(),
-      _condition(cond),
-      _lat(0.0),
-      _lon(0.0),
-      _near(true),
-      _inclusive(false),
-      _done(false),
-      _radius(0.0) {
-  evaluateCondition();
-}
-
-void RocksDBGeoIndexIterator::evaluateCondition() {
-  if (_condition) {
-    auto numMembers = _condition->numMembers();
-
-    TRI_ASSERT(numMembers == 1);  // should only be an FCALL
-    auto fcall = _condition->getMember(0);
-    TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
-    TRI_ASSERT(fcall->numMembers() == 1);
-    auto args = fcall->getMember(0);
-
-    numMembers = args->numMembers();
-    TRI_ASSERT(numMembers >= 3);
-
-    _lat = args->getMember(1)->getDoubleValue();
-    _lon = args->getMember(2)->getDoubleValue();
-
-    if (numMembers == 3) {
-      // NEAR
-      _near = true;
-    } else {
-      // WITHIN
-      TRI_ASSERT(numMembers == 5);
-      _near = false;
-      _radius = args->getMember(3)->getDoubleValue();
-      _inclusive = args->getMember(4)->getBoolValue();
+template <typename CMP = geo_index::DocumentsAscending>
+class RDBNearIterator final : public IndexIterator {
+ public:
+  /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
+  RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
+                  RocksDBGeoIndex const* index,
+                  geo::QueryParams&& params)
+      : IndexIterator(collection, trx),
+        _index(index),
+        _near(std::move(params)) {
+    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
+    TRI_ASSERT(options.prefix_same_as_start);
+    _iter = mthds->NewIterator(options, _index->columnFamily());
+    TRI_ASSERT(_index->columnFamily()->GetID() ==
+               RocksDBColumnFamily::geo()->GetID());
+    if (!params.fullRange) {
+      estimateDensity();
     }
-  } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "No condition passed to RocksDBGeoIndexIterator constructor";
   }
-}
 
-size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
-  TRI_ASSERT(coords != nullptr);
+  char const* typeName() const override {
+    return "geo-index-iterator";
+  }
 
-  // determine which documents to return...
-  size_t numDocs = coords->length;
+  /// internal retrieval loop
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
+    if (_near.isDone()) {
+      // we already know that no further results will be returned by the index
+      TRI_ASSERT(!_near.hasNearest());
+      return false;
+    }
 
-  if (!_near) {
-    // WITHIN
-    // only return those documents that are within the specified radius
-    TRI_ASSERT(numDocs > 0);
-
-    // linear scan for the first document outside the specified radius
-    // scan backwards because documents with higher distances are more
-    // interesting
-    int iterations = 0;
-    while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
-           (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
-      // document is outside the specified radius!
-      --numDocs;
-
-      if (numDocs == 0) {
-        break;
-      }
-
-      if (++iterations == 8 && numDocs >= 10) {
-        // switch to a binary search for documents inside/outside the specified
-        // radius
-        size_t l = 0;
-        size_t r = numDocs - 1;
-
-        while (true) {
-          // determine midpoint
-          size_t m = l + ((r - l) / 2);
-          if ((_inclusive && coords->distances[m] > _radius) ||
-              (!_inclusive && coords->distances[m] >= _radius)) {
-            // document is outside the specified radius!
-            if (m == 0) {
-              numDocs = 0;
-              break;
-            }
-            r = m - 1;
-          } else {
-            // still inside the radius
-            numDocs = m + 1;
-            l = m + 1;
-          }
-
-          if (r < l) {
-            break;
-          }
+    while (limit > 0 && !_near.isDone()) {
+      while (limit > 0 && _near.hasNearest()) {
+        if (std::forward<F>(cb)(_near.nearest())) {
+          limit--;
         }
-        break;
+        _near.popNearest();
+      }
+      // need to fetch more geo results
+      if (limit > 0 && !_near.isDone()) {
+        TRI_ASSERT(!_near.hasNearest());
+        performScan();
       }
     }
+    return !_near.isDone();
   }
-  return numDocs;
-}
 
-bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
-  if (!_cursor) {
-    createCursor(_lat, _lon);
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override {
+    return nextToken(
+        [this, &cb](geo_index::Document const& gdoc) -> bool {
+          bool result = true; // this is updated by the callback
+          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            geo::FilterType const ft = _near.filterType();
+            if (ft != geo::FilterType::NONE) {  // expensive test
+              geo::ShapeContainer const& filter = _near.filterShape();
+              TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false;
+                return;
+              }
+            }
+            cb(gdoc.token, doc);  // return document
+            result = true;
+          })) {
+            return false; // ignore document
+          }
+          return result;
+        },
+        limit);
+  }
 
-    if (!_cursor) {
-      // actually validate that we got a valid cursor
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    return nextToken(
+        [this, &cb](geo_index::Document const& gdoc) -> bool {
+          geo::FilterType const ft = _near.filterType();
+          if (ft != geo::FilterType::NONE) {
+            geo::ShapeContainer const& filter = _near.filterShape();
+            TRI_ASSERT(!filter.empty());
+            bool result = true; // this is updated by the callback
+            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false;
+              }
+            })) {
+              return false;
+            }
+            if (!result) {
+              return false;
+            }
+          }
+
+          cb(gdoc.token);  // return result
+          return true;
+        },
+        limit);
+  }
+
+  void reset() override { _near.reset(); }
+
+ private:
+  // we need to get intervals representing areas in a ring (annulus)
+  // around our target point. We need to fetch them ALL and then sort
+  // found results in a priority list according to their distance
+  void performScan() {
+    rocksdb::Comparator const* cmp = _index->comparator();
+    // list of sorted intervals to scan
+    std::vector<geo::Interval> const scan = _near.intervals();
+    // LOG_TOPIC(INFO, Logger::ENGINES) << "# intervals: " << scan.size();
+    // size_t seeks = 0;
+
+    for (size_t i = 0; i < scan.size(); i++) {
+      geo::Interval const& it = scan[i];
+      TRI_ASSERT(it.range_min <= it.range_max);
+      RocksDBKeyBounds bds = RocksDBKeyBounds::GeoIndex(
+          _index->objectId(), it.range_min.id(), it.range_max.id());
+
+      // intervals are sorted and likely consecutive, try to avoid seeks
+      // by checking whether we are in the range already
+      bool seek = true;
+      if (i > 0) {
+        TRI_ASSERT(scan[i - 1].range_max < it.range_min);
+        if (!_iter->Valid()) {  // no more valid keys after this
+          break;
+        } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
+          continue;  // beyond range already
+        } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
+          seek = false;  // already in range: min <= key <= max
+          TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
+        } else {  // cursor is positioned below min range key
+          TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
+          int k = 10;  // try to catch the range
+          while (k > 0 && _iter->Valid() &&
+                 cmp->Compare(_iter->key(), bds.start()) < 0) {
+            _iter->Next();
+            --k;
+          }
+          seek = !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
+        }
+      }
+
+      if (seek) {  // try to avoid seeking at all cost
+        // LOG_TOPIC(INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
+        // seeks++;
+        _iter->Seek(bds.start());
+      }
+
+      while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
+        LocalDocumentId documentId = RocksDBKey::indexDocumentId(
+            RocksDBEntryType::GeoIndexValue, _iter->key());
+        _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
+        _iter->Next();
+      }
+    }
+
+    _near.didScanIntervals(); // calculate next bounds
+    // LOG_TOPIC(INFO, Logger::ENGINES) << "# seeks: " << seeks;
+  }
+
+  /// find the first indexed entry to estimate the # of entries
+  /// around our target coordinates
+  void estimateDensity() {
+    S2CellId cell = S2CellId(_near.origin());
+
+    RocksDBKeyLeaser key(_trx);
+    key->constructGeoIndexValue(_index->objectId(), cell.id(), LocalDocumentId(1));
+    _iter->Seek(key->string());
+    if (!_iter->Valid()) {
+      _iter->SeekForPrev(key->string());
+    }
+    if (_iter->Valid()) {
+      _near.estimateDensity(RocksDBValue::centroid(_iter->value()));
     }
   }
 
-  TRI_ASSERT(_cursor != nullptr);
+ private:
+  RocksDBGeoIndex const* _index;
+  geo_index::NearUtils<CMP> _near;
+  std::unique_ptr<rocksdb::Iterator> _iter;
+};
+typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-  if (_done) {
-    // we already know that no further results will be returned by the index
-    return false;
-  }
-
-  TRI_ASSERT(limit > 0);
-  if (limit > 0) {
-    // only need to calculate distances for WITHIN queries, but not for NEAR
-    // queries
-    bool withDistances;
-    double maxDistance;
-    if (_near) {
-      withDistances = false;
-      maxDistance = -1.0;
-    } else {
-      withDistances = true;
-      maxDistance = _radius;
-    }
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
-        _cursor, static_cast<int>(limit), withDistances, maxDistance));
-
-    size_t const length = coords ? coords->length : 0;
-
-    if (length == 0) {
-      // Nothing Found
-      // TODO validate
-      _done = true;
-      return false;
-    }
-
-    size_t numDocs = findLastIndex(coords.get());
-    if (numDocs == 0) {
-      // we are done
-      _done = true;
-      return false;
-    }
-
-    for (size_t i = 0; i < numDocs; ++i) {
-      cb(LocalDocumentId(coords->coordinates[i].data));
-    }
-    // If we return less then limit many docs we are done.
-    _done = numDocs < limit;
-  }
-  return true;
-}
-
-void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
-  if (_cursor) {
-    ::GeoIndex_CursorFree(_cursor);
-  }
-  _cursor = c;
-  _done = false;
-}
-
-void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
-  _coor = GeoCoordinate{lat, lon, 0};
-  // GeoIndex is always exclusively write-locked with rocksdb
-  replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, RocksDBTransactionState::toMethods(_trx), &_coor));
-}
-
-/// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) {
-  TRI_IF_FAILURE("GeoIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
-}
-
-void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
-
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
-                                 arangodb::LogicalCollection* collection,
-                                 VPackSlice const& info)
+RocksDBGeoIndex::RocksDBGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
-      _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
-      _geoJson(false),
-      _geoIndex(nullptr) {
+      geo_index::Index(info, _fields),
+      _typeName(typeName) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-
-  if (_fields.size() == 1) {
-    _geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        info, "geoJson", false);
-    auto& loc = _fields[0];
-    _location.reserve(loc.size());
-    for (auto const& it : loc) {
-      _location.emplace_back(it.name);
-    }
-    _variant =
-        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
-  } else if (_fields.size() == 2) {
-    _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
-    auto& lat = _fields[0];
-    _latitude.reserve(lat.size());
-    for (auto const& it : lat) {
-      _latitude.emplace_back(it.name);
-    }
-    auto& lon = _fields[1];
-    _longitude.reserve(lon.size());
-    for (auto const& it : lon) {
-      _longitude.emplace_back(it.name);
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "RocksDBGeoIndex can only be created with one or two fields.");
-  }
-
-  int numPots = 0;
-  int numSlots = 0;
-
-  if (!collection->isAStub()) {
-    // get the highest inserted pot and slot numbers
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-    rocksdb::ReadOptions opts;
-    std::unique_ptr<rocksdb::Iterator> iter(
-        db->NewIterator(opts, RocksDBColumnFamily::geo()));
-    rocksdb::Comparator const* cmp = this->comparator();
-    RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
-    iter->Seek(b1.start());
-    while (iter->Valid() && cmp->Compare(iter->key(), b1.end()) < 0) {
-      std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
-      TRI_ASSERT(pair.first == false);
-      if (numPots < pair.second) {
-        numPots = pair.second;
-      }
-      iter->Next();
-    }
-
-    RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
-    iter->Seek(b2.start());
-    while (iter->Valid() && cmp->Compare(iter->key(), b2.end()) < 0) {
-      // found a key smaller than bounds end
-      std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
-      TRI_ASSERT(pair.first);
-      if (numSlots < pair.second) {
-        numSlots = pair.second;
-      }
-      iter->Next();
-    }
-  }
- 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "using numpots: " << numPots << ", numslots: " << numSlots << " for geo index with objectId " << _objectId;
-
-  _geoIndex = GeoIndex_new(nullptr, _objectId, numPots, numSlots);
-  if (_geoIndex == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-}
-
-RocksDBGeoIndex::~RocksDBGeoIndex() {
-  if (_geoIndex != nullptr) {
-    GeoIndex_free(_geoIndex);
-  }
+  TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                   bool forPersistence) const {
+void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
+         std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+  TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
-  // Basic index
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-
-  if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-      _variant == INDEX_GEO_COMBINED_LON_LAT) {
-    builder.add("geoJson", VPackValue(_geoJson));
-  }
-
+  RocksDBIndex::toVelocyPack(builder, flags);
+  _coverParams.toVelocyPack(builder);
+  builder.add("geoJson",
+              VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
   // geo indexes are always sparse.
-  // "ignoreNull" has the same meaning as "sparse" and is only returned for
-  // backwards compatibility
-  // the "constraint" attribute has no meaning since ArangoDB 2.5 and is only
-  // returned for backwards compatibility
-  builder.add("constraint", VPackValue(false));
-  builder.add("unique", VPackValue(false));
-  builder.add("ignoreNull", VPackValue(true));
-  builder.add("sparse", VPackValue(true));
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(true)
+  );
   builder.close();
 }
 
 /// @brief Test if this index matches the definition
 bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
+  TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
       // Invalid ID
       return false;
     }
+
     // Short circuit. If id is correct the index is identical.
     StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
-  value = info.get("fields");
+
+  if (_unique != basics::VelocyPackHelper::getBooleanValue(
+                   info, arangodb::StaticStrings::IndexUnique, false
+                 )
+     ) {
+    return false;
+  }
+
+  if (_sparse != basics::VelocyPackHelper::getBooleanValue(
+                   info, arangodb::StaticStrings::IndexSparse, true
+                 )
+     ) {
+    return false;
+  }
+
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
@@ -374,18 +324,12 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
-    return false;
-  }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
-    return false;
-  }
 
   if (n == 1) {
-    if (_geoJson != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                        info, "geoJson", false)) {
+    bool gj1 =
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool gj2 = _variant == geo_index::Index::Variant::GEOJSON;
+    if (gj1 != gj2) {
       return false;
     }
   }
@@ -409,165 +353,109 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
+/// @brief creates an IndexIterator for the given Condition
+IndexIterator* RocksDBGeoIndex::iteratorForCondition(
+    transaction::Methods* trx, ManagedDocumentResult*,
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
+  TRI_ASSERT(node != nullptr);
+
+  geo::QueryParams params;
+  params.sorted = opts.sorted;
+  params.ascending = opts.ascending;
+  params.pointsOnly = pointsOnly();
+  params.fullRange = opts.fullRange;
+  params.limit = opts.limit;
+  geo_index::Index::parseCondition(node, reference, params);
+
+  // FIXME: <Optimize away>
+  params.sorted = true;
+  if (params.filterType != geo::FilterType::NONE) {
+    TRI_ASSERT(!params.filterShape.empty());
+    params.filterShape.updateBounds(params);
+  }
+  //        </Optimize away>
+
+  TRI_ASSERT(!opts.sorted || params.origin.is_valid());
+  // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
+  // is not necessary, > would be missing entries.
+  params.cover.worstIndexedLevel = _coverParams.worstIndexedLevel;
+  if (params.cover.bestIndexedLevel > _coverParams.bestIndexedLevel) {
+    // it is unnessesary to use a better level than configured
+    params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
+  }
+
+
+  if (params.ascending) {
+    return new RDBNearIterator<geo_index::DocumentsAscending>(
+      &_collection, trx, this, std::move(params)
+    );
+  } else {
+    return new RDBNearIterator<geo_index::DocumentsDescending>(
+      &_collection, trx, this, std::move(params)
+    );
+  }
+}
+
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
-                                       RocksDBMethods* mthd,
-                                       LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc,
-                                       OperationMode mode) {
-  // GeoIndex is always exclusively write-locked with rocksdb
-  double latitude;
-  double longitude;
+                                         RocksDBMethods* mthd,
+                                         LocalDocumentId const& documentId,
+                                         velocypack::Slice const& doc,
+                                         OperationMode mode) {
+  // covering and centroid of coordinate / polygon / ...
+  size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
+  std::vector<S2CellId> cells;
+  cells.reserve(reserve);
+  S2Point centroid;
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
+  if (res.fail()) {
+    // Invalid, no insert. Index is sparse
+    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+  }
+  TRI_ASSERT(!cells.empty());
+  TRI_ASSERT(S2::IsUnitLength(centroid));
 
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    if (!lat.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-
-    VPackSlice lon = doc.get(_longitude);
-    if (!lon.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    latitude = lat.getNumericValue<double>();
-    longitude = lon.getNumericValue<double>();
-  } else {
-    VPackSlice loc = doc.get(_location);
-    if (!loc.isArray() || loc.length() < 2) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    VPackSlice first = loc.at(0);
-    if (!first.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    VPackSlice second = loc.at(1);
-    if (!second.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    if (_geoJson) {
-      longitude = first.getNumericValue<double>();
-      latitude = second.getNumericValue<double>();
-    } else {
-      latitude = first.getNumericValue<double>();
-      longitude = second.getNumericValue<double>();
+  RocksDBValue val = RocksDBValue::S2Value(centroid);
+  RocksDBKeyLeaser key(trx);
+  for (S2CellId cell : cells) {
+    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
+    if (r.fail()) {
+      return r;
     }
   }
 
-  // and insert into index
-  GeoCoordinate gc;
-  gc.latitude = latitude;
-  gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(documentId.id());
-
-  int res = GeoIndex_insert(_geoIndex, mthd, &gc);
-  if (res == -1) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "found duplicate entry in geo-index, should not happen";
-    return IndexResult(TRI_ERROR_INTERNAL, this);
-  } else if (res == -2) {
-    return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
-  } else if (res == -3) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "illegal geo-coordinates, ignoring entry";
-  } else if (res < 0) {
-    return IndexResult(TRI_ERROR_INTERNAL, this);
-  }
   return IndexResult();
 }
 
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
-                                       RocksDBMethods* mthd,
-                                       LocalDocumentId const& documentId,
-                                       arangodb::velocypack::Slice const& doc,
-                                       OperationMode mode) {
-  // GeoIndex is always exclusively write-locked with rocksdb
-  double latitude = 0.0;
-  double longitude = 0.0;
-  bool ok = true;
+                                         RocksDBMethods* mthd,
+                                         LocalDocumentId const& documentId,
+                                         VPackSlice const& doc,
+                                         OperationMode mode) {
+  // covering and centroid of coordinate / polygon / ...
+  std::vector<S2CellId> cells;
+  S2Point centroid;
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
+  if (res.fail()) {  // might occur if insert is rolled back
+    // Invalid, no insert. Index is sparse
+    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
+  }
+  TRI_ASSERT(!cells.empty());
 
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    VPackSlice lon = doc.get(_longitude);
-    if (!lat.isNumber()) {
-      ok = false;
-    } else {
-      latitude = lat.getNumericValue<double>();
-    }
-    if (!lon.isNumber()) {
-      ok = false;
-    } else {
-      longitude = lon.getNumericValue<double>();
-    }
-  } else {
-    VPackSlice loc = doc.get(_location);
-    if (!loc.isArray() || loc.length() < 2) {
-      ok = false;
-    } else {
-      VPackSlice first = loc.at(0);
-      if (!first.isNumber()) {
-        ok = false;
-      }
-      VPackSlice second = loc.at(1);
-      if (!second.isNumber()) {
-        ok = false;
-      }
-      if (ok) {
-        if (_geoJson) {
-          longitude = first.getNumericValue<double>();
-          latitude = second.getNumericValue<double>();
-        } else {
-          latitude = first.getNumericValue<double>();
-          longitude = second.getNumericValue<double>();
-        }
-      }
+  RocksDBKeyLeaser key(trx);
+  // FIXME: can we rely on the region coverer to return
+  // the same cells everytime for the same parameters ?
+  for (S2CellId cell : cells) {
+    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
+    if (r.fail()) {
+      return r;
     }
   }
-
-  if (ok) {
-    GeoCoordinate gc;
-    gc.latitude = latitude;
-    gc.longitude = longitude;
-    gc.data = static_cast<uint64_t>(documentId.id());
-    // ignore non-existing elements in geo-index
-    GeoIndex_remove(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc);
-  }
-
   return IndexResult();
-}
-
-void RocksDBGeoIndex::truncate(transaction::Methods* trx) {
-  TRI_ASSERT(_geoIndex != nullptr);
-  RocksDBIndex::truncate(trx);
-  GeoIndex_reset(_geoIndex, RocksDBTransactionState::toMethods(trx));
-}
-
-/// @brief looks up all points within a given radius
-GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
-                                             double lat, double lon,
-                                             double radius) const {
-  GeoCoordinate gc;
-  gc.latitude = lat;
-  gc.longitude = lon;
-  // GeoIndex is always exclusively write-locked with rocksdb
-  GeoCoordinates* coords = GeoIndex_PointsWithinRadius(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc, radius);
-  return coords;
-}
-
-/// @brief looks up the nearest points
-GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx,
-                                           double lat, double lon,
-                                           size_t count) const {
-  GeoCoordinate gc;
-  gc.latitude = lat;
-  gc.longitude = lon;
-  // GeoIndex is always exclusively write-locked with rocksdb
-  GeoCoordinates* coords =
-      GeoIndex_NearestCountPoints(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc, static_cast<int>(count));
-  return coords;
 }

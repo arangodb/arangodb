@@ -31,24 +31,33 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
+static LanguageFeature* Instance = nullptr;
+
 LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Language"),
-      _binaryPath(server->getBinaryPath()),
+      _locale(),
+      _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr) {
+  Instance = this;
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 LanguageFeature::~LanguageFeature() {
   if (_icuDataPtr != nullptr) {
     TRI_Free(_icuDataPtr);
   }
+}
+
+LanguageFeature* LanguageFeature::instance() {
+  return Instance;
 }
 
 void LanguageFeature::collectOptions(
@@ -61,13 +70,10 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                                   std::string const& binaryExecutionPath,
                                   std::string& path,
                                   std::string const& binaryName) {
-  char const* icuDataEnv = getenv("ICU_DATA");
   std::string fn("icudtl.dat");
-
-  if (icuDataEnv != nullptr) {
-    path = FileUtils::buildFilename(icuDataEnv, fn);
+  if (TRI_GETENV("ICU_DATA", path)) {
+    path = FileUtils::buildFilename(path, fn);
   }
-
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -95,8 +101,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
       std::string msg = std::string("cannot locate '") + path +
                         "'; please make sure it is available; "
                         "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
+      std::string icupath;
+      if (TRI_GETENV("ICU_DATA", icupath)) {
+        msg += icupath;
       }
       msg += "' should point to the directory containing '" + fn + "'";
 
@@ -109,7 +116,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
 #ifndef _WIN32
       setenv("ICU_DATA", icu_path.c_str(), 1);
 #else
-      SetEnvironmentVariable("ICU_DATA", icu_path.c_str());
+      UnicodeString uicuEnv(icu_path.c_str(), (uint16_t) icu_path.length());
+      SetEnvironmentVariableW(L"ICU_DATA", uicuEnv.getTerminatedBuffer());
 #endif
     }
   }
@@ -148,10 +156,20 @@ void LanguageFeature::start() {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+    _locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
+                     /* 
+                        const   char * variant  = 0,
+                        const   char * keywordsAndValues = 0
+                     */
+                     );
   } else {
+    _locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "using default language '" << languageName << "'";
 }
+
+} // arangodb

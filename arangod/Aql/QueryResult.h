@@ -45,9 +45,8 @@ struct QueryResult {
       : code(code),
         cached(false),
         details(details),
-        warnings(nullptr),
         result(nullptr),
-        profile(nullptr),
+        extra(nullptr),
         context(nullptr) {}
 
   explicit QueryResult(int code) : QueryResult(code, "") {}
@@ -56,15 +55,23 @@ struct QueryResult {
 
   virtual ~QueryResult() {}
 
+  void set(int c, std::string const& d) {
+    code = c;
+    cached = false;
+    details = d;
+    result.reset();
+    extra.reset();
+    context.reset();
+  }
+
+ public:
   int code;
   bool cached;
   std::string details;
   std::unordered_set<std::string> bindParameters;
   std::vector<std::string> collectionNames;
-  std::shared_ptr<arangodb::velocypack::Builder> warnings;
   std::shared_ptr<arangodb::velocypack::Builder> result;
-  std::shared_ptr<arangodb::velocypack::Builder> stats;
-  std::shared_ptr<arangodb::velocypack::Builder> profile;
+  std::shared_ptr<arangodb::velocypack::Builder> extra;
   std::shared_ptr<transaction::Context> context;
 };
 }

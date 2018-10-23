@@ -42,6 +42,10 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'readOnly': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: readOnly
 // //////////////////////////////////////////////////////////////////////////////
@@ -120,12 +124,12 @@ function readOnly (options) {
 
     // database with only collection access
     [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
-    [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
+    [200, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
     [403, 'post', '/_db/testdb2/_api/document/testcol2', 'test', {_key: 'wxyz'}],
     [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test', {_key: 'wxyz'}],
 
     [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test2', {}],
-    [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
+    [200, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
     [202, 'post', '/_db/testdb2/_api/document/testcol2', 'test2', {_key: 'wxyz'}],
     [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key: 'wxyz'}],
 
@@ -169,7 +173,6 @@ function readOnly (options) {
     users.save('test', '', true);
     users.save('test2', '', true);
     users.grantDatabase('test', '_system', 'ro');
-    users.grantCollection('test', '_system', 'testcol', 'ro');
 
     db._createDatabase('testdb2');
     db._useDatabase('testdb2');
@@ -185,7 +188,24 @@ function readOnly (options) {
     /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
        print(res); */`
   ]);
-
+  if (res.status !== true) {
+    pu.shutdownInstance(adbInstance, options);
+    return {
+      readOnly : {
+        status: false,
+        total: 1,
+        message: 'the readonly suite failed to setup the environment.',
+        duration: 2,
+        failed: 1,
+        failTest: {
+          status: false,
+          total: 1,
+          duration: 1,
+          message: 'the readonly suite failed to setup the environment.'
+        }
+      }
+    };
+  }
   let bodies = run(requests.splice(0, 4));
   requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
   run(requests);
@@ -195,9 +215,11 @@ function readOnly (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['readOnly'] = readOnly;
-
+  defaultFns.push('readOnly');
+  
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

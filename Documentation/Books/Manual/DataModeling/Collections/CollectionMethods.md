@@ -1,7 +1,9 @@
 Collection Methods
 ==================
 
-### Drop
+Drop
+----
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -40,7 +42,9 @@ first.
     @endDocuBlock collectionDropSystem
 
 
-### Truncate
+Truncate
+--------
+
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
@@ -69,11 +73,16 @@ Truncates a collection:
     @endDocuBlock collectionTruncate
 
 
-### Properties
+Properties
+----------
+
 <!-- arangod/V8Server/v8-collection.cpp -->
+
 @startDocuBlock collectionProperties
 
-### Figures
+Figures
+-------
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -156,7 +165,7 @@ may be empty when called on a coordinator in a cluster.
 Additionally, the filesizes of collection and index parameter JSON files are
 not reported. These files should normally have a size of a few bytes
 each. Please also note that the *fileSize* values are reported in bytes
-and reflect the logical file sizes. Some filesystems may use optimisations
+and reflect the logical file sizes. Some filesystems may use optimizations
 (e.g. sparse files) so that the actual physical file size is somewhat
 different. Directories and sub-directories may also require space in the
 file system, but this space is not reported in the *fileSize* results.
@@ -180,7 +189,9 @@ used as a lower bound approximation of the disk usage.
 
 
 
-### Load
+Load
+----
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -205,7 +216,9 @@ Loads a collection into memory.
     @endDocuBlock collectionLoad
 
 
-### Revision
+Revision
+--------
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -225,7 +238,8 @@ The revision id returned is a string value. Clients should treat this value
 as an opaque string, and only use it for equality/non-equality comparisons.
 
 
-### Path
+Path
+----
 
 
 returns the physical path of the collection
@@ -240,7 +254,9 @@ MMFiles engine.
 
 
 
-### Checksum
+Checksum
+--------
+
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
@@ -263,7 +279,9 @@ The checksum calculation algorithm changed in ArangoDB 3.0, so checksums from
 **Note**: this method is not available in a cluster.
 
 
-### Unload
+Unload
+------
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -289,7 +307,9 @@ until all query have finished.
     @endDocuBlock CollectionUnload
 
 
-### Rename
+Rename
+------
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -323,7 +343,9 @@ database.
     @endDocuBlock collectionRename
 
 
-### Rotate
+Rotate
+------
+
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -338,4 +360,9 @@ for the collection, the operation will fail with an error.
 **Note**: this method is specific for the MMFiles storage engine, and there
 it is not available in a cluster.
 
+**Note**: please note that you need appropriate user permissions to execute this. 
+ - To do the rename collections in first place you need to have administrative rights on the database
+ - To have access to the resulting renamed collection you either need to have access to 
+   all collections of that database (`*`) or a main system administrator has to give you access to 
+   the newly named one.
 

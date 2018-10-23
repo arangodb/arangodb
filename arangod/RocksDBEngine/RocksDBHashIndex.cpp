@@ -32,15 +32,18 @@ using namespace arangodb;
 /// @brief Test if this index matches the definition
 /// different to the Index::matchesDefinition because the ordering can
 /// be arbitrary
+/// an index on ["a", "b"] is considered identical to an index on ["b", "a"]
+/// this is to ensure compatibility with the MMFiles engine's hash index
 bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
@@ -52,21 +55,29 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid);
   }
 
-  value = info.get("fields");
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
 
   size_t const n = static_cast<size_t>(value.length());
+
   if (n != _fields.size()) {
     return false;
   }
+
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique, false
+                 )
+     ) {
     return false;
   }
+
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", false)) {
+                   info, arangodb::StaticStrings::IndexSparse, false
+                 )
+     ) {
     return false;
   }
 

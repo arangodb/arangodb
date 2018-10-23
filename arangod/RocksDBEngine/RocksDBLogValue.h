@@ -45,64 +45,81 @@ class RocksDBLogValue {
 
   static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t id);
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id);
-  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
+  
+  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t cid);
-  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t dbid,
                                         TRI_voc_cid_t cid,
                                         StringRef const& uuid);
-  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue CollectionRename(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t cid,
                                           StringRef const& oldName);
-  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue CollectionChange(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionTruncate(TRI_voc_tick_t dbid,
+                                            TRI_voc_cid_t cid,
+                                            uint64_t objectId);
 
-  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId,
+  static RocksDBLogValue IndexCreate(TRI_voc_tick_t dbid,
                                      TRI_voc_cid_t cid,
                                      VPackSlice const& indexInfo);
-  static RocksDBLogValue IndexDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
+  static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
                                    TRI_idx_iid_t indexId);
 
-  static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
-  static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
+  static RocksDBLogValue ViewCreate(TRI_voc_tick_t, TRI_voc_cid_t);
+  static RocksDBLogValue ViewDrop(TRI_voc_tick_t, TRI_voc_cid_t,
+                                  StringRef const& uuid);
+  static RocksDBLogValue ViewChange(TRI_voc_tick_t, TRI_voc_cid_t);
+
+#ifdef USE_IRESEARCH
+  static RocksDBLogValue IResearchLinkDrop(TRI_voc_tick_t, TRI_voc_cid_t,
+                                           TRI_voc_cid_t, TRI_idx_iid_t);
+#endif
 
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_tid_t trxId);
-  static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
-  static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
+                                          TRI_voc_tid_t tid);
+  static RocksDBLogValue CommitTransaction(TRI_voc_tick_t vocbaseId,
+                                           TRI_voc_tid_t tid);
+  static RocksDBLogValue DocumentRemoveV2(TRI_voc_rid_t rid);
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
-  static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId,
-                                      TRI_voc_cid_t cid, StringRef const&);
+  static RocksDBLogValue SingleRemoveV2(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
+                                        TRI_voc_rid_t rid);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the revisionId from a value
-  ///
-  /// May be called only on PrimaryIndexValue values. Other types will throw.
-  //////////////////////////////////////////////////////////////////////////////
 
   static RocksDBLogType type(rocksdb::Slice const&);
   static TRI_voc_tick_t databaseId(rocksdb::Slice const&);
   static TRI_voc_tid_t transactionId(rocksdb::Slice const&);
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
+  static TRI_voc_cid_t viewId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
+  
+  /// CollectionTruncate contains an object id
+  static uint64_t objectId(rocksdb::Slice const&);
+  
+  /// For DocumentRemoveV2 and SingleRemoveV2
+  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);
+  
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
+  static velocypack::Slice viewSlice(rocksdb::Slice const&);
+  /// @brief get UUID from collection drop marker
   static arangodb::StringRef collectionUUID(rocksdb::Slice const&);
+  /// @brief get UUID from view drop marker
+  static arangodb::StringRef viewUUID(rocksdb::Slice const&);
+  
+  // deprecated method for old collection drop marker
   static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
-  static arangodb::StringRef documentKey(rocksdb::Slice const&);
 
   static bool containsDatabaseId(RocksDBLogType type);
   static bool containsCollectionId(RocksDBLogType type);
-  
+  static bool containsViewId(RocksDBLogType type);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() const { return _buffer; }  // to be used with put
-  /*VPackSlice slice() const { return VPackSlice(
-      reinterpret_cast<uint8_t const*>(_buffer.data())
-  ); }*/                                                 // return a slice
-
   RocksDBLogType type() const {
     return static_cast<RocksDBLogType>(*(_buffer.data()));
   }
@@ -112,9 +129,11 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
+#ifdef USE_IRESEARCH
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t, uint64_t);
+#endif
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, StringRef const& data);
-  RocksDBLogValue(RocksDBLogType, StringRef const& data);
 
  private:
   std::string _buffer;

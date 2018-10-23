@@ -36,25 +36,39 @@ struct AccessMode {
     WRITE = 2,
     EXCLUSIVE = 4
   };
+  // no need to create an object of it
+  AccessMode() = delete; 
+
   static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                 AccessMode::Type::READ < AccessMode::Type::WRITE &&
                 AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
   
-  static inline bool isRead(Type type) {
+  static bool isNone(Type type) {
+    return (type == Type::NONE);
+  }
+  
+  static bool isRead(Type type) {
     return (type == Type::READ);
   }
   
-  static inline bool isWrite(Type type) {
+  static bool isWrite(Type type) {
     return (type == Type::WRITE);
   }
   
-  static inline bool isExclusive(Type type) {
+  static bool isExclusive(Type type) {
     return (type == Type::EXCLUSIVE);
   }
 
-  static inline bool isWriteOrExclusive(Type type) {
+  static bool isWriteOrExclusive(Type type) {
     return (isWrite(type) || isExclusive(type));
+  }
+
+  /// @brief checks if the type of the two modes is different
+  /// this will intentially treat EXCLUSIVE the same as WRITE
+  static bool isReadWriteChange(Type lhs, Type rhs) {
+    return ((isWriteOrExclusive(lhs) && !isWriteOrExclusive(rhs)) ||
+            (!isWriteOrExclusive(lhs) && isWriteOrExclusive(rhs)));
   }
 
   /// @brief get the transaction type from a string
@@ -73,7 +87,7 @@ struct AccessMode {
   }
 
   /// @brief return the type of the transaction as a string
-  static inline char const* typeString(Type value) {
+  static char const* typeString(Type value) {
     switch (value) {
       case Type::NONE: 
         return "none";
@@ -91,4 +105,12 @@ struct AccessMode {
 
 }
 
+namespace std {
+template <>
+struct hash<arangodb::AccessMode::Type> {
+  size_t operator()(arangodb::AccessMode::Type const& value) const noexcept {
+    return static_cast<size_t>(value);
+  }
+};
+}
 #endif

@@ -174,7 +174,7 @@ RETURN { found: OLD, updated: NEW }
 A more detailed description of `UPSERT` can be found here:
 http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
 
-### Miscellaneous changes
+### Miscellaneous AQL changes
 
 When errors occur inside AQL user functions, the error message will now contain a stacktrace,
 indicating the line of code in which the error occurred. This should make debugging AQL user functions
@@ -212,7 +212,7 @@ You can now write tests for your Foxx apps using the Mocha testing framework:
 https://www.arangodb.com/2015/04/testing-foxx-mocha/
 
 A recipe for writing tests for your Foxx apps can be found in the cookbook:
-https://docs.arangodb.com/2.8/cookbook/FoxxTesting.html
+https://docs.arangodb.com/2.8/Cookbook/FoxxTesting.html
 
 ### API Documentation
 

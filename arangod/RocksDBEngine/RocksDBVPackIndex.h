@@ -26,8 +26,10 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
 #define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
 
-#include "Aql/AstNode.h"
 #include "Basics/Common.h"
+#include "Aql/AstNode.h"
+#include "Basics/SmallVector.h"
+#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -66,7 +68,6 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
                                   transaction::Methods* trx,
-                                  ManagedDocumentResult* mmdr,
                                   arangodb::RocksDBVPackIndex const* index,
                                   VPackSlice const& indexValues);
 
@@ -79,9 +80,15 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief Get the next limit many element in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
+  
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return true; }
 
  private:
   arangodb::RocksDBVPackIndex const* _index;
@@ -98,23 +105,27 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackIndexIterator(LogicalCollection* collection,
                             transaction::Methods* trx,
-                            ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse,
-                            RocksDBKeyBounds&& bounds);
+                            bool reverse, RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 
  public:
-  char const* typeName() const override {
-    return "rocksdb-index-iterator";
-  }
+  char const* typeName() const override { return "rocksdb-index-iterator"; }
 
-  /// @brief Get the next limit many element in the index
+  /// @brief Get the next limit many elements in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
+  
+  void skip(uint64_t count, uint64_t& skipped) override;
 
   /// @brief Reset the cursor
   void reset() override;
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return true; }
 
  private:
   bool outOfRange() const;
@@ -124,7 +135,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
   RocksDBKeyBounds _bounds;
-  rocksdb::Slice _upperBound;  // used for iterate_upper_bound
+  // used for iterate_upper_bound iterate_lower_bound
+  rocksdb::Slice _rangeBound;
 };
 
 class RocksDBVPackIndex : public RocksDBIndex {
@@ -135,21 +147,27 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   RocksDBVPackIndex() = delete;
 
-  RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
-                    arangodb::velocypack::Slice const&);
+  RocksDBVPackIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBVPackIndex();
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
+  bool needToPersistEstimate() const override;
 
-  bool allowExpansion() const override { return true; }
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   bool canBeDropped() const override { return true; }
+  
+  bool hasCoveringIterator() const override { return true; }
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
@@ -167,11 +185,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
   IndexIterator* lookup(transaction::Methods*,
-                                    ManagedDocumentResult* mmdr,
-                                    arangodb::velocypack::Slice const,
-                                    bool reverse) const;
+                        arangodb::velocypack::Slice const, bool reverse) const;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
@@ -179,20 +196,24 @@ class RocksDBVPackIndex : public RocksDBIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
+  
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  void serializeEstimate(std::string& output) const override;
+  rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const override;
 
-  bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
-
+  bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
+  
   void recalculateEstimates() override;
+  
+  void afterTruncate() override;
 
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*,
@@ -212,25 +233,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
-
- private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
-
-  void matchAttributes(
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
-
  private:
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
@@ -240,18 +242,20 @@ class RocksDBVPackIndex : public RocksDBIndex {
                  std::vector<int>& expanding);
 
   /// @brief helper function to insert a document into any index type
-  int fillElement(velocypack::Builder& leased, LocalDocumentId const& documentId,
-                  VPackSlice const& doc, std::vector<RocksDBKey>& elements,
-                  std::vector<uint64_t>& hashes);
+  int fillElement(velocypack::Builder& leased,
+                  LocalDocumentId const& documentId, VPackSlice const& doc,
+                  SmallVector<RocksDBKey>& elements,
+                  SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(velocypack::Builder& leased, LocalDocumentId const& documentId,
+  void addIndexValue(velocypack::Builder& leased,
+                     LocalDocumentId const& documentId,
                      VPackSlice const& document,
-                     std::vector<RocksDBKey>& elements,
-                     std::vector<VPackSlice>& sliceStack,
-                     std::vector<uint64_t>& hashes);
+                     SmallVector<RocksDBKey>& elements,
+                     SmallVector<uint64_t>& hashes,
+                     SmallVector<VPackSlice>& sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
@@ -261,9 +265,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void buildIndexValues(velocypack::Builder& leased,
                         LocalDocumentId const& documentId,
                         VPackSlice const document, size_t level,
-                        std::vector<RocksDBKey>& elements,
-                        std::vector<VPackSlice>& sliceStack,
-                        std::vector<uint64_t>& hashes);
+                        SmallVector<RocksDBKey>& elements,
+                        SmallVector<uint64_t>& hashes,
+                        SmallVector<VPackSlice>& sliceStack);
 
  private:
   /// @brief the attribute paths
@@ -274,9 +278,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief whether or not array indexes will de-duplicate their input values
   bool _deduplicate;
-
-  /// @brief whether or not at least one attribute is expanded
-  bool _useExpansion;
 
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;

@@ -30,20 +30,19 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/WorkMonitor.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief local thread number
-////////////////////////////////////////////////////////////////////////////////
-
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
@@ -55,16 +54,7 @@ std::atomic<uint64_t> NEXT_THREAD_ID(1);
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current work description as thread local variable
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local Thread* Thread::CURRENT_THREAD = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief static started with access to the private variables
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::startThread(void* arg) {
 #if defined(ARANGODB_HAVE_GETTID)
   LOCAL_THREAD_NUMBER = (uint64_t)gettid();
@@ -79,46 +69,28 @@ void Thread::startThread(void* arg) {
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
-  
+
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   if (0 <= ptr->_affinity) {
     TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
   }
 
-  bool pushed = WorkMonitor::pushThread(ptr);
+  auto guard = scopeGuard([&ptr]() {
+    ptr->cleanupMe();
+  });
 
   try {
     ptr->runMe();
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
-    if (pushed) {
-      WorkMonitor::popThread(ptr);
-    }
-
-    ptr->cleanupMe();
+    ptr->crashNotification(ex);
     throw;
-  } catch (...) {
-    if (pushed) {
-      WorkMonitor::popThread(ptr);
-    }
-
-    ptr->cleanupMe();
-    throw;
-  }
-
-  if (pushed) {
-    WorkMonitor::popThread(ptr);
-  }
-
-  ptr->cleanupMe();
+  } 
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the process id
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_pid_t Thread::currentProcessId() {
 #ifdef _WIN32
   return _getpid();
@@ -127,23 +99,14 @@ TRI_pid_t Thread::currentProcessId() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread process id
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
-  
-////////////////////////////////////////////////////////////////////////////////
+
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
-////////////////////////////////////////////////////////////////////////////////
-
 char const* Thread::currentThreadName() { return LOCAL_THREAD_NAME; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread id
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_tid_t Thread::currentThreadId() {
 #ifdef TRI_HAVE_WIN32_THREADS
   return GetCurrentThreadId();
@@ -172,42 +135,35 @@ std::string Thread::stringify(ThreadState state) {
   return "unknown";
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a thread
-////////////////////////////////////////////////////////////////////////////////
-
 Thread::Thread(std::string const& name, bool deleteOnExit)
     : _deleteOnExit(deleteOnExit),
+      _threadStructInitialized(false),
       _name(name),
       _thread(),
       _threadNumber(0),
       _threadId(),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED),
-      _affinity(-1),
-      _workDescription(nullptr) {
+      _affinity(-1) {
   TRI_InitThread(&_thread);
-
-  // allow failing memory allocations for all threads by default
-  TRI_AllowMemoryFailures();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the thread
-////////////////////////////////////////////////////////////////////////////////
-
 Thread::~Thread() {
   auto state = _state.load();
   LOG_TOPIC(TRACE, Logger::THREADS)
       << "delete(" << _name << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
-    if (TRI_IsSelfThread(&_thread)) {
-      // we must ignore any errors here, but TRI_DetachThread will log them
-      TRI_DetachThread(&_thread);
-    } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+    if (_threadStructInitialized) {
+      if (TRI_IsSelfThread(&_thread)) {
+        // we must ignore any errors here, but TRI_DetachThread will log them
+        TRI_DetachThread(&_thread);
+      } else {
+        // we must ignore any errors here, but TRI_JoinThread will log them
+        TRI_JoinThread(&_thread);
+      }
     }
 
     _state.store(ThreadState::DETACHED);
@@ -222,14 +178,11 @@ Thread::~Thread() {
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
-  
+
   LOCAL_THREAD_NAME = nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flags the thread as stopping
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::THREADS)
       << "beginShutdown(" << _name << ") in state " << stringify(_state.load());
@@ -250,10 +203,7 @@ void Thread::beginShutdown() {
       << stringify(_state.load());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called from the destructor
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief derived class MUST call from its destructor
 void Thread::shutdown() {
   LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
@@ -285,7 +235,7 @@ void Thread::shutdown() {
       break;
     }
 
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 
   if (_state.load() != ThreadState::STOPPED) {
@@ -295,10 +245,7 @@ void Thread::shutdown() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current thread was asked to stop
-////////////////////////////////////////////////////////////////////////////////
-
 bool Thread::isStopping() const {
   auto state = _state.load(std::memory_order_relaxed);
 
@@ -306,10 +253,7 @@ bool Thread::isStopping() const {
          state == ThreadState::DETACHED;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the thread
-////////////////////////////////////////////////////////////////////////////////
-
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -341,6 +285,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     return false;
   }
 
+  TRI_ASSERT(!_threadStructInitialized);
+  memset(&_thread, 0, sizeof(thread_t));
+
   bool ok =
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
@@ -354,35 +301,15 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     cleanupMe();
   }
 
+  _threadStructInitialized = true;
+
   return ok;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::setProcessorAffinity(size_t c) { _affinity = (int)c; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the current work description
-////////////////////////////////////////////////////////////////////////////////
-
-void Thread::setWorkDescription(WorkDescription* desc) {
-  _workDescription.store(desc);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the previous work description
-////////////////////////////////////////////////////////////////////////////////
-
-WorkDescription* Thread::setPrevWorkDescription() {
-  return _workDescription.exchange(_workDescription.load()->_prev.load());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets status
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::addStatus(VPackBuilder* b) {
   b->add("affinity", VPackValue(_affinity));
 

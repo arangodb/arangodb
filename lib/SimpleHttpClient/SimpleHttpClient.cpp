@@ -25,6 +25,7 @@
 
 #include "SimpleHttpClient.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
@@ -33,6 +34,9 @@
 
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <thread>
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -45,7 +49,7 @@ std::unordered_map<std::string, std::string> const
     SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
-size_t SimpleHttpClientParams::MaxPacketSize = 256 * 1024 * 1024;
+size_t SimpleHttpClientParams::MaxPacketSize = 512 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    SimpleHttpClientParams const& params)
@@ -60,7 +64,8 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _errorMessage(""),
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
-      _result(nullptr) {
+      _result(nullptr),
+      _aborted(false) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -92,6 +97,11 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
+
+void SimpleHttpClient::setAborted(bool value) noexcept {
+  _aborted.store(value, std::memory_order_release);
+  setInterrupted(value);
+}
 
 void SimpleHttpClient::setInterrupted(bool value) {
   if (_connection != nullptr) {
@@ -165,15 +175,28 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     result = nullptr;
 
     if (tries++ >= _params._maxRetries) {
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT)
+          << "" << _params._retryMessage << " - no retries left";
+      break;
+    }
+
+    if (application_features::ApplicationServer::isStopping()) {
+      // abort this client, will also lead to exiting this loop next
+      setAborted(true);
+    }
+
+    if (isAborted()) {
       break;
     }
 
     if (!_params._retryMessage.empty() && (_params._maxRetries - tries) > 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _params._retryMessage
-                << " - retries left: " << (_params._maxRetries - tries);
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT)
+          << "" << _params._retryMessage
+          << " - retries left: " << (_params._maxRetries - tries);
     }
 
-    usleep(static_cast<TRI_usleep_t>(_params._retryWaitTime));
+    // 1 microsecond == 10^-6 seconds
+    std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
   }
 
   return result;
@@ -213,12 +236,19 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
-
+  if (isAborted()) {
+    return nullptr;
+  }
+  
   // ensure that result is empty
   TRI_ASSERT(_result == nullptr);
 
   // create a new result
   _result = new SimpleHttpResult();
+  auto resultGuard = scopeGuard([this] {
+    delete _result;
+    _result = nullptr;
+  });
 
   // reset error message
   _errorMessage = "";
@@ -300,14 +330,13 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           if (_connection->isInterrupted()) {
             this->close();
-            delete _result;
-            _result = nullptr;
             setErrorMessage("Command locally aborted");
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          _state = DEAD;
-          setErrorMessage("Request timeout reached");
+          LOG_TOPIC(DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
+
+          std::this_thread::sleep_for(std::chrono::microseconds(5000));
           break;
         }
 
@@ -328,15 +357,16 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             processHeader();
           }
 
-          if (_state == IN_READ_BODY && !_result->hasContentLength()) {
-            // If we are reading the body and no content length was
-            // found in the header, then we must read until no more
-            // progress is made (but without an error), this then means
-            // that the server has closed the connection and we must
-            // process the body one more time:
-            _result->setContentLength(_readBuffer.length() - _readBufferOffset);
-            processBody();
-          } else if (_state == IN_READ_BODY) {
+          if (_state == IN_READ_BODY) {
+            if (!_result->hasContentLength()) {
+              // If we are reading the body and no content length was
+              // found in the header, then we must read until no more
+              // progress is made (but without an error), this then means
+              // that the server has closed the connection and we must
+              // process the body one more time:
+              _result->setContentLength(_readBuffer.length() -
+                                        _readBufferOffset);
+            }
             processBody();
           }
 
@@ -379,17 +409,27 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
+    if (application_features::ApplicationServer::isStopping()) {
+      setErrorMessage("Command locally aborted");
+      return nullptr;
+    }
+
     remainingTime = endTime - TRI_microtime();
+    if (isAborted()) {
+      setErrorMessage("Client request aborted");
+      break;
+    }
   }
 
   if (_state < FINISHED && _errorMessage.empty()) {
     setErrorMessage("Request timeout reached");
+    _result->setHttpReturnCode(TRI_ERROR_HTTP_GATEWAY_TIMEOUT);
   }
 
   // set result type in getResult()
   SimpleHttpResult* result = getResult(haveSentRequest);
-
   _result = nullptr;
+  resultGuard.cancel(); // doesn't matter but do it anyway
 
   return result;
 }
@@ -508,9 +548,11 @@ void SimpleHttpClient::setRequest(
 
   // append hostname
   std::string hostname = _connection->getEndpoint()->host();
-  
-  LOG_TOPIC(DEBUG, Logger::HTTPCLIENT) << "request to " << hostname << ": " << GeneralRequest::translateMethod(method) << ' ' << *l;
-  
+
+  LOG_TOPIC(DEBUG, Logger::HTTPCLIENT)
+      << "request to " << hostname << ": "
+      << GeneralRequest::translateMethod(method) << ' ' << *l;
+
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(hostname);
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
@@ -532,14 +574,13 @@ void SimpleHttpClient::setRequest(
   }
 
   // do basic authorization
-  if (!_params._basicAuth.empty()) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
-    _writeBuffer.appendText(_params._basicAuth);
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-  }
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
     _writeBuffer.appendText(_params._jwt);
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+  } else if (!_params._basicAuth.empty()) {
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
+    _writeBuffer.appendText(_params._basicAuth);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
@@ -660,8 +701,11 @@ void SimpleHttpClient::processHeader() {
       // found content-length header in response
       else if (_result->hasContentLength() && _result->getContentLength() > 0) {
         if (_result->getContentLength() > _params._maxPacketSize) {
-          std::string errorMessage("ignoring HTTP response with 'Content-Length' bigger than max packet size (");
-          errorMessage += std::to_string(_result->getContentLength()) + " > " + std::to_string(_params._maxPacketSize) + ")";
+          std::string errorMessage(
+              "ignoring HTTP response with 'Content-Length' bigger than max "
+              "packet size (");
+          errorMessage += std::to_string(_result->getContentLength()) + " > " +
+                          std::to_string(_params._maxPacketSize) + ")";
           setErrorMessage(errorMessage, true);
 
           // reset connection
@@ -703,7 +747,6 @@ void SimpleHttpClient::processHeader() {
       TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
       TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
       pos = static_cast<char const*>(memchr(ptr, '\n', remain));
-
     }
   }
 }
@@ -808,8 +851,11 @@ void SimpleHttpClient::processChunkedHeader() {
 
   // failed: too many bytes
   if (contentLength > _params._maxPacketSize) {
-    std::string errorMessage("ignoring HTTP response with 'Content-Length' bigger than max packet size (");
-    errorMessage += std::to_string(contentLength) + " > " + std::to_string(_params._maxPacketSize) + ")";
+    std::string errorMessage(
+        "ignoring HTTP response with 'Content-Length' bigger than max packet "
+        "size (");
+    errorMessage += std::to_string(contentLength) + " > " +
+                    std::to_string(_params._maxPacketSize) + ")";
     setErrorMessage(errorMessage, true);
     // reset connection
     this->close();
@@ -861,7 +907,7 @@ void SimpleHttpClient::processChunkedBody() {
     }
 
     _readBufferOffset += (size_t)_nextChunkedSize + 2;
-    
+
     _state = IN_READ_CHUNKED_HEADER;
     processChunkedHeader();
   }
@@ -886,8 +932,8 @@ std::string SimpleHttpClient::getHttpErrorMessage(
 
     VPackSlice slice = builder->slice();
     if (slice.isObject()) {
-      VPackSlice msg = slice.get("errorMessage");
-      int errorNum = slice.get("errorNum").getNumericValue<int>();
+      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+      int errorNum = slice.get(StaticStrings::ErrorNum).getNumericValue<int>();
 
       if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
         if (errorCode != nullptr) {
@@ -965,5 +1011,5 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
 
   return "";
 }
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb

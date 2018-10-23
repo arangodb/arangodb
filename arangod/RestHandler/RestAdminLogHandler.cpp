@@ -40,8 +40,6 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestAdminLogHandler::isDirect() const { return true; }
-
 RestStatus RestAdminLogHandler::execute() {
   size_t const len = _request->suffixes().size();
 
@@ -186,8 +184,10 @@ void RestAdminLogHandler::reportLogs() {
     result.add("lid", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(buf._id));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(buf._id));
+      } catch (...) {}
     }
 
     result.close();
@@ -195,8 +195,10 @@ void RestAdminLogHandler::reportLogs() {
     result.add("topic", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(LogTopic::lookup(buf._topicId)));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(LogTopic::lookup(buf._topicId)));
+      } catch (...) {}
     }
     result.close();
 
@@ -204,32 +206,34 @@ void RestAdminLogHandler::reportLogs() {
     result.add("level", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      uint32_t l = 0;
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        uint32_t l = 0;
 
-      switch (buf._level) {
-        case LogLevel::FATAL:
-          l = 0;
-          break;
-        case LogLevel::ERR:
-          l = 1;
-          break;
-        case LogLevel::WARN:
-          l = 2;
-          break;
-        case LogLevel::DEFAULT:
-        case LogLevel::INFO:
-          l = 3;
-          break;
-        case LogLevel::DEBUG:
-          l = 4;
-          break;
-        case LogLevel::TRACE:
-          l = 5;
-          break;
-      }
+        switch (buf._level) {
+          case LogLevel::FATAL:
+            l = 0;
+            break;
+          case LogLevel::ERR:
+            l = 1;
+            break;
+          case LogLevel::WARN:
+            l = 2;
+            break;
+          case LogLevel::DEFAULT:
+          case LogLevel::INFO:
+            l = 3;
+            break;
+          case LogLevel::DEBUG:
+            l = 4;
+            break;
+          case LogLevel::TRACE:
+            l = 5;
+            break;
+        }
 
-      result.add(VPackValue(l));
+        result.add(VPackValue(l));
+      } catch (...) {}
     }
 
     result.close();
@@ -238,8 +242,10 @@ void RestAdminLogHandler::reportLogs() {
     result.add("timestamp", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(static_cast<size_t>(buf._timestamp)));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(static_cast<size_t>(buf._timestamp)));
+      } catch (...) {}
     }
 
     result.close();
@@ -248,8 +254,10 @@ void RestAdminLogHandler::reportLogs() {
     result.add("text", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(buf._message));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(buf._message));
+      } catch (...) {}
     }
 
     result.close();
@@ -280,7 +288,7 @@ void RestAdminLogHandler::setLogLevel() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::GET) {
-    // report loglevel
+    // report log level
     VPackBuilder builder;
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
@@ -291,15 +299,13 @@ void RestAdminLogHandler::setLogLevel() {
 
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::PUT) { 
-    // set loglevel
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    // set log level
+    bool parseSuccess = false;
+    VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      // error message generated in parseVelocyPackBody
-      return;
+      return; // error message generated in parseVPackBody
     }
     
-    VPackSlice slice = parsedBody->slice();
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
@@ -311,7 +317,7 @@ void RestAdminLogHandler::setLogLevel() {
       }
     }
     
-    // now report current loglevel
+    // now report current log level
     VPackBuilder builder;
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();

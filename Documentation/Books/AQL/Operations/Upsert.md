@@ -4,12 +4,21 @@ UPSERT
 The *UPSERT* keyword can be used for checking whether certain documents exist,
 and to update/replace them in case they exist, or create them in case they do not exist.
 On a single server, upserts are executed transactionally in an all-or-nothing fashion. 
-For sharded collections, the entire update operation is not transactional.
+
+If the RocksDB engine is used and intermediate commits are enabled, a query may 
+execute intermediate transaction commits in case the running transaction (AQL
+query) hits the specified size thresholds. In this case, the query's operations 
+carried out so far will be committed and not rolled back in case of a later abort/rollback. 
+That behavior can be controlled by adjusting the intermediate commit settings for 
+the RocksDB engine. 
+
+For sharded collections, the entire query and/or upsert operation may not be transactional,
+especially if it involves different shards and/or database servers.
 
 Each *UPSERT* operation is restricted to a single collection, and the 
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *UPSERT* statement per collection is allowed per AQL query, and 
-it cannot be followed by read operations that access the same collection, by
+it cannot be followed by read or write operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
 
 The syntax for an upsert operation is:
@@ -53,7 +62,8 @@ Note that in the *UPDATE* case it is possible to refer to the previous version o
 document using the *OLD* pseudo-value.
 
 
-### Setting query options
+Setting query options
+---------------------
 
 As in several above examples, the *ignoreErrors* option can be used to suppress query 
 errors that may occur when trying to violate unique key constraints.
@@ -72,8 +82,25 @@ explicitly.
 To make sure data are durable when an update query returns, there is the *waitForSync* 
 query option.
 
+In order to not accidentially update documents that have been written and updated since 
+you last fetched them you can use the option *ignoreRevs* to either let ArangoDB compare 
+the `_rev` value and only succeed if they still match, or let ArangoDB ignore them (default):
 
-### Returning documents
+```
+FOR i IN 1..1000
+  UPSERT { _key: CONCAT('test', i)}
+    INSERT {foobar: false}
+    UPDATE {_rev: "1287623", foobar: true }
+  IN users OPTIONS { ignoreRevs: false }
+```
+
+*NOTE*: You need to add the `_rev` value in the updateExpression, it will not be used within 
+the searchExpression. Even worse, if you use an outdated `_rev` in the searchExpression
+UPSERT will trigger the INSERT path instead of the UPDATE path, because it has not found a document
+exactly matching the searchExpression.
+
+Returning documents
+-------------------
 
 `UPSERT` statements can optionally return data. To do so, they need to be followed
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements
@@ -95,4 +122,3 @@ INSERT { name: 'superuser', logins: 1, dateCreated: DATE_NOW() }
 UPDATE { logins: OLD.logins + 1 } IN users
 RETURN { doc: NEW, type: OLD ? 'update' : 'insert' }
 ```
-

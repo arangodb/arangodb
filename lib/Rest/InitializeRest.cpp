@@ -27,19 +27,14 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Basics/hashes.h"
-#include "Basics/locks.h"
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
-#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // initialization
@@ -48,8 +43,6 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace rest {
 void InitializeRest() {
-  TRI_InitializeMemory();
-  TRI_InitializeDebugging();
   TRI_InitializeError();
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
@@ -75,8 +68,6 @@ void ShutdownRest() {
   TRI_ShutdownProcess();
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
-  TRI_ShutdownError();
-  TRI_ShutdownDebugging();
 }
 }
 }

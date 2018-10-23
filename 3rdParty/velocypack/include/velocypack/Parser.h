@@ -34,8 +34,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
-#include "velocypack/Value.h"
-#include "velocypack/ValueType.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -79,7 +77,8 @@ class Parser {
     bool isInteger;
   };
 
-  std::shared_ptr<Builder> _b;
+  std::shared_ptr<Builder> _builder;
+  Builder* _builderPtr;
   uint8_t const* _start;
   size_t _size;
   size_t _pos;
@@ -93,21 +92,42 @@ class Parser {
   Parser& operator=(Parser const&) = delete;
   Parser& operator=(Parser&&) = delete;
   ~Parser() = default;
-
-  explicit Parser(Options const* options = &Options::Defaults)
-      : _start(nullptr), _size(0), _pos(0), _nesting(0), options(options) {
-    if (options == nullptr) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
-    _b.reset(new Builder());
-    _b->options = options;
+  
+  Parser()
+      : _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0), 
+        options(&Options::Defaults) {
+    _builder.reset(new Builder());
+    _builderPtr = _builder.get();
+    _builderPtr->options = &Options::Defaults;
   }
 
-  explicit Parser(std::shared_ptr<Builder>& builder,
+  explicit Parser(Options const* options) 
+      : _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0), 
+        options(options) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+    _builder.reset(new Builder());
+    _builderPtr = _builder.get();
+    _builderPtr->options = options;
+  }
+
+  explicit Parser(std::shared_ptr<Builder> const& builder,
                   Options const* options = &Options::Defaults)
-      : _b(builder), _start(nullptr), _size(0), _pos(0), _nesting(0),
+      : _builder(builder),
+        _builderPtr(_builder.get()), 
+        _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0),
          options(options) {
-    if (options == nullptr) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }
@@ -115,15 +135,19 @@ class Parser {
   // This method produces a parser that does not own the builder
   explicit Parser(Builder& builder,
                   Options const* options = &Options::Defaults)
-      : _start(nullptr), _size(0), _pos(0), _nesting(0),
+      : _start(nullptr), 
+        _size(0), 
+        _pos(0), 
+        _nesting(0),
          options(options) {
-    if (options == nullptr) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
-    _b.reset(&builder, BuilderNonDeleter());
+    _builder.reset(&builder, BuilderNonDeleter());
+    _builderPtr = _builder.get();
   }
 
-  Builder const& builder() const { return *_b; }
+  Builder const& builder() const { return *_builderPtr; }
 
   static std::shared_ptr<Builder> fromJson(
       std::string const& json,
@@ -150,7 +174,7 @@ class Parser {
   }
 
   ValueLength parse(std::string const& json, bool multi = false) {
-    return parse(reinterpret_cast<uint8_t const*>(json.c_str()), json.size(),
+    return parse(reinterpret_cast<uint8_t const*>(json.data()), json.size(),
                  multi);
   }
 
@@ -163,7 +187,7 @@ class Parser {
     _size = size;
     _pos = 0;
     if (options->clearBuilderBeforeParse) {
-      _b->clear();
+      _builder->clear();
     }
     return parseInternal(multi);
   }
@@ -173,20 +197,21 @@ class Parser {
 
   std::shared_ptr<Builder> steal() {
     // Parser object is broken after a steal()
-    std::shared_ptr<Builder> res(_b);
-    _b.reset();
+    std::shared_ptr<Builder> res(_builder);
+    _builder.reset();
+    _builderPtr = nullptr;
     return res;
   }
 
   // Beware, only valid as long as you do not parse more, use steal
   // to move the data out!
-  uint8_t const* start() { return _b->start(); }
+  uint8_t const* start() { return _builderPtr->start(); }
 
   // Returns the position at the time when the just reported error
   // occurred, only use when handling an exception.
   size_t errorPos() const { return _pos > 0 ? _pos - 1 : _pos; }
 
-  void clear() { _b->clear(); }
+  void clear() { _builderPtr->clear(); }
 
  private:
   inline int peek() const {
@@ -222,7 +247,7 @@ class Parser {
     if (consume() != 'r' || consume() != 'u' || consume() != 'e') {
       throw Exception(Exception::ParseError, "Expecting 'true'");
     }
-    _b->addTrue();
+    _builderPtr->addTrue();
   }
 
   void parseFalse() {
@@ -231,7 +256,7 @@ class Parser {
         consume() != 'e') {
       throw Exception(Exception::ParseError, "Expecting 'false'");
     }
-    _b->addFalse();
+    _builderPtr->addFalse();
   }
 
   void parseNull() {
@@ -239,7 +264,7 @@ class Parser {
     if (consume() != 'u' || consume() != 'l' || consume() != 'l') {
       throw Exception(Exception::ParseError, "Expecting 'null'");
     }
-    _b->addNull();
+    _builderPtr->addNull();
   }
 
   void scanDigits(ParsedNumber& value) {

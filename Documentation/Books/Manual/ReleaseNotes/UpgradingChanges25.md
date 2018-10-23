@@ -105,7 +105,7 @@ geo or fulltext indexes. They will always be non-unique and sparse.
 
 ### Moved Foxx applications to a different folder.
 
-Until 2.4 foxx apps were stored in the following folder structure:
+Until 2.4 Foxx apps were stored in the following folder structure:
 `<app-path>/databases/<dbname>/<appname>:<appversion>`.
 This caused some trouble as apps where cached based on name and version and updates did not apply.
 Also the path on filesystem and the app's access URL had no relation to one another.
@@ -129,8 +129,8 @@ latter option is only read and used during the upgrade to 2.5 and does not have 
 ### Foxx install process
 
 Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
-specific mountpoint. These operations have been joined together. You can install an app at one
-mountpoint, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been 
+specific mount point. These operations have been joined together. You can install an app at one
+mount point, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been 
 simplified to just:
 
 * install: get your Foxx app up and running
@@ -144,7 +144,7 @@ Removed features
 ----------------
 
 * Startup switch `--javascript.frontend-development-mode`: Its major purpose was internal development
-anyway. Now the web frontend can be set to development mode similar to any other foxx app.
+anyway. Now the web frontend can be set to development mode similar to any other Foxx app.
 * Startup switch `--javascript.dev-app-path`: Was used for the development mode of Foxx. This is
 integrated with the normal app-path now and can be triggered on app level. The second app-path is
 superfluous.

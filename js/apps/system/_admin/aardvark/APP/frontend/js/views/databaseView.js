@@ -7,6 +7,7 @@
   window.DatabaseView = Backbone.View.extend({
     users: null,
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('databaseView.ejs'),
 
@@ -36,12 +37,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#databaseDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -58,8 +54,19 @@
       $('#' + clicked).click();
     },
 
+    setReadOnly: function () {
+      $('#createDatabase').parent().parent().addClass('disabled');
+    },
+
     render: function () {
+      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+    },
+
+    continueRender: function (readOnly) {
       var self = this;
+      if (readOnly) {
+        this.readOnly = readOnly;
+      }
 
       var callback = function (error, db) {
         if (error) {
@@ -68,6 +75,7 @@
           self.currentDB = db;
 
           self.collection.fetch({
+            cache: false,
             success: function () {
               // sorting
               self.collection.sort();
@@ -75,12 +83,17 @@
               $(self.el).html(self.template.render({
                 collection: self.collection,
                 searchString: '',
-                currentDB: self.currentDB
+                currentDB: self.currentDB,
+                readOnly: readOnly
               }));
+
+              if (readOnly) {
+                self.setReadOnly();
+              }
 
               if (self.dropdownVisible === true) {
                 $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
-                $('#databaseToggle').toggleClass('activated');
+                $('#databaseToggle').addClass('activated');
                 $('#databaseDropdown2').show();
               }
 
@@ -97,12 +110,24 @@
       return this;
     },
 
+    checkVisibility: function () {
+      if ($('#databaseDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#databaseDropdown');
+    },
+
     toggleSettingsDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#databaseToggle').toggleClass('activated');
-      $('#databaseDropdown2').slideToggle(200);
+      $('#databaseDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     selectedDatabase: function () {
@@ -112,15 +137,10 @@
     handleError: function (status, text, dbname) {
       if (status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
-        return;
-      }
-      if (status === 400) {
+      } else if (status === 400) {
         arangoHelper.arangoError('DB', 'Invalid Parameters');
-        return;
-      }
-      if (status === 403) {
+      } else if (status === 403) {
         arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
-        return;
       }
     },
 
@@ -146,7 +166,9 @@
 
     createDatabase: function (e) {
       e.preventDefault();
-      this.createAddDatabaseModal();
+      if (!$('#createDatabase').parent().parent().hasClass('disabled')) {
+        this.createAddDatabaseModal();
+      }
     },
 
     switchDatabase: function (e) {
@@ -165,7 +187,10 @@
       var userName = $('#newUser').val();
 
       var options = {
-        name: dbname
+        name: dbname,
+        users: [{
+          username: userName
+        }]
       };
 
       this.collection.create(options, {
@@ -173,25 +198,6 @@
           self.handleError(err.status, err.statusText, dbname);
         },
         success: function (data) {
-          if (userName !== 'root') {
-            $.ajax({
-              type: 'PUT',
-              url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(userName) + '/database/' + encodeURIComponent(dbname)),
-              contentType: 'application/json',
-              data: JSON.stringify({
-                grant: 'rw'
-              })
-            });
-          }
-          $.ajax({
-            type: 'PUT',
-            url: arangoHelper.databaseUrl('/_api/user/root/database/' + encodeURIComponent(dbname)),
-            contentType: 'application/json',
-            data: JSON.stringify({
-              grant: 'rw'
-            })
-          });
-
           if (window.location.hash === '#databases') {
             self.updateDatabases();
           }
@@ -253,7 +259,8 @@
       $(this.el).html(this.template.render({
         collection: reducedCollection,
         searchString: searchString,
-        currentDB: this.currentDB
+        currentDB: this.currentDB,
+        readOnly: this.readOnly
       }));
       this.replaceSVGs();
 

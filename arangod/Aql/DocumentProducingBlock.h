@@ -49,23 +49,25 @@ class DocumentProducingBlock {
 
  public:
   inline bool produceResult() const { return _produceResult; }
-
- private:
-  DocumentProducingFunction buildCallback() const;
+  void buildCallback();
 
  private:
   transaction::Methods* _trxPtr;
   
   DocumentProducingNode const* _node;
-
+  
   /// @brief hether or not we want to build a result
   bool const _produceResult;
 
   /// @brief whether or not we are allowed to pass documents via raw pointers only
+  /// (true for MMFiles, false for RocksDB)
   bool const _useRawDocumentPointers;
 
  protected:  
-  DocumentProducingFunction const _documentProducer;
+  DocumentProducingFunction _documentProducer;
+  
+  /// @brief whether or not we are allowed to use the covering index optimization in a callback
+  bool _allowCoveringIndexOptimization;
 };
 
 }

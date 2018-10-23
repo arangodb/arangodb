@@ -27,8 +27,9 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
+const rpc = require('@arangodb/replication-common');
 
 let logger = {};
 let applier = {};
@@ -143,6 +144,26 @@ applier.state = function () { return applierState(false); };
 globalApplier.state = function () { return applierState(true); };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief return all replication applier states
+// //////////////////////////////////////////////////////////////////////////////
+
+function applierStateAll(global) {
+  var url;
+  if (global) {
+    url = '/_db/_system/_api/replication/applier-state-all?global=true';
+  } else {
+    url = '/_api/replication/applier-state-all';
+  }
+
+  var requestResult = internal.db._connection.GET(url);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
+applier.stateAll= function () { return applierStateAll(false); };
+globalApplier.stateAll = function () { return applierStateAll(true); };
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief stop the replication applier state and "forget" all state
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -178,7 +199,7 @@ function applierProperties(global, config) {
   if (config === undefined) {
     requestResult = internal.db._connection.GET(url);
   } else {
-    requestResult = internal.db._connection.PUT(url, JSON.stringify(config));
+    requestResult = internal.db._connection.PUT(url, config);
   }
   arangosh.checkRequestResult(requestResult);
   return requestResult;
@@ -245,7 +266,7 @@ var sync = function (global, config) {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW(url, JSON.stringify(config || {}), headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, config || {}, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -300,7 +321,7 @@ var setup = function (global, config) {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW(url, JSON.stringify(config), headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, config, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -354,3 +375,4 @@ exports.setupReplication = setupReplication;
 exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.getSyncResult = getSyncResult;
 exports.serverId = serverId;
+exports.compareTicks = rpc.compareTicks;

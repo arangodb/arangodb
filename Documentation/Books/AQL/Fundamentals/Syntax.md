@@ -1,7 +1,8 @@
 AQL Syntax
 ==========
 
-### Query types
+Query types
+-----------
 
 An AQL query must either return a result (indicated by usage of the *RETURN*
 keyword) or execute a data-modification operation (indicated by usage
@@ -14,14 +15,16 @@ AQL only allows *one* query in a single query string; thus semicolons to
 indicate the end of one query and separate multiple queries (as seen in SQL) are
 not allowed.
 
-### Whitespace
+Whitespace
+----------
 
 Whitespaces (blanks, carriage returns, line feeds, and tab stops) can be used
 in the query text to increase its readability. Tokens have to be separated by
 any number of whitespaces. Whitespace within strings or names must be enclosed
 in quotes in order to be preserved.
 
-### Comments
+Comments
+--------
 
 Comments can be embedded at any position in a query. The text contained in the
 comment is ignored by the AQL parser.
@@ -45,12 +48,14 @@ AQL supports two types of comments:
        comment */
     // a single line comment
 
-### Keywords
+Keywords
+--------
 
 On the top level, AQL offers the following operations:
 - `FOR`: array iteration
 - `RETURN`: results projection
-- `FILTER`: results filtering
+- `FILTER`: non-view results filtering
+- `SEARCH`: view results filtering
 - `SORT`: result sorting
 - `LIMIT`: result slicing
 - `LET`: variable assignment
@@ -131,7 +136,8 @@ The complete list of keywords is currently:
 </ul>
 </div>
 
-### Names
+Names
+-----
 
 In general, names are used to identify objects (collections, attributes,
 variables, and functions) in AQL queries.
@@ -159,18 +165,18 @@ FOR f IN ´filter´
   RETURN f.´sort´
 ```
 
-#### Collection names
+### Collection names
 
 Collection names can be used in queries as they are. If a collection happens to
 have the same name as a keyword, the name must be enclosed in backticks.
 
-Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionNames.html)
+Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionAndViewNames.html)
 about collection naming conventions.
 
 AQL currently has a limit of up to 256 collections used in one AQL query.
 This limit applies to the sum of all involved document and edge collections.
 
-#### Attribute names
+### Attribute names
 
 When referring to attributes of documents from a collection, the fully qualified
 attribute name must be used. This is because multiple collections with ambiguous
@@ -191,7 +197,7 @@ In the above example, the attribute names *active*, *name*, *id*, and *userId*
 are qualified using the collection names they belong to (*u* and *f*
 respectively).
 
-#### Variable names
+### Variable names
 
 AQL allows the user to assign values to additional variables in a query.  All
 variables that are assigned a value must have a name that is unique within the
@@ -215,4 +221,3 @@ starts with the underscore character, the underscore must be followed by least o
 letter (a-z or A-Z) or digit (0-9).
 
 The dollar sign can be used only as the very first character in a variable name.
-

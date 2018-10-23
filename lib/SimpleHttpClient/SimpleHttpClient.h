@@ -93,10 +93,7 @@ struct SimpleHttpClientParams {
 
   void setJwt(std::string const& jwt) { _jwt = jwt; }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief sets username and password
-  ////////////////////////////////////////////////////////////////////////////////
-
+  // sets username and password
   void setUserNamePassword(char const* prefix,
                            std::string const& username,
                            std::string const& password) {
@@ -224,7 +221,7 @@ class SimpleHttpClient {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief close connection, go to state IN_CONNECT and clear the input
-  /// buffer. This is used to organise a retry of the connection.
+  /// buffer. This is used to organize a retry of the connection.
   //////////////////////////////////////////////////////////////////////////////
 
   void close();
@@ -323,6 +320,12 @@ class SimpleHttpClient {
                                   int* errorCode = nullptr);
 
   SimpleHttpClientParams& params() { return _params; };
+  
+  /// @brief Thread-safe check abortion status
+  bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
+
+  /// @brief Thread-safe set abortion status
+  void setAborted(bool value) noexcept;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -484,6 +487,8 @@ class SimpleHttpClient {
   rest::RequestType _method;
 
   SimpleHttpResult* _result;
+  
+  std::atomic<bool> _aborted;
 
   // empty map, used for headers
   static std::unordered_map<std::string, std::string> const NO_HEADERS;

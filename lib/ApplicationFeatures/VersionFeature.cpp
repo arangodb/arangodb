@@ -27,15 +27,15 @@
 
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
-VersionFeature::VersionFeature(application_features::ApplicationServer* server) 
+namespace arangodb {
+
+VersionFeature::VersionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Version"),
       _printVersion(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 
   startsAfter("ShellColors");
 }
@@ -52,3 +52,5 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     exit(EXIT_SUCCESS);
   }
 }
+
+} // arangodb

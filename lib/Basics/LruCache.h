@@ -51,7 +51,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_LRUCACHE_H
-#define	ARANGODB_LRUCACHE_H 1
+#define ARANGODB_LRUCACHE_H 1
 
 #include <unordered_map>
 #include <list>

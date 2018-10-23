@@ -198,7 +198,16 @@ void TransactionalBucket::evict(CachedValue* value, bool optimizeForInsertion) {
 
 void TransactionalBucket::clear() {
   TRI_ASSERT(isLocked());
-  memset(this, 0, sizeof(TransactionalBucket));
+  _state.clear(); // "clear" will keep the lock!
+  for (size_t i = 0; i < slotsBlacklist; ++i) {
+    _blacklistHashes[i] = 0;
+  }
+  _blacklistTerm = 0;
+  for (size_t i = 0; i < slotsData; ++i) {
+    _cachedHashes[i] = 0;
+    _cachedData[i] = nullptr;
+  }
+  _state.unlock();
 }
 
 void TransactionalBucket::updateBlacklistTerm(uint64_t term) {

@@ -44,17 +44,33 @@ class DocumentProducingNode {
  public:
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
-
-  std::vector<std::string> const& projection() const {
-    return _projection;
+  
+  std::vector<std::string> const& projections() const {
+    return _projections;
   }
   
-  void setProjection(std::vector<std::string> const& attributeNames) {
-    _projection = attributeNames;
+  void projections(std::vector<std::string> const& projections) {
+    _projections = projections;
   }
 
-  void setProjection(std::vector<std::string>&& attributeNames) {
-    _projection = std::move(attributeNames);
+  void projections(std::vector<std::string>&& projections) {
+    _projections = std::move(projections);
+  }
+  
+  void projections(std::unordered_set<std::string>&& projections) {
+    _projections.clear();
+    _projections.reserve(projections.size());
+    for (auto& it : projections) {
+      _projections.push_back(std::move(it));
+    }
+  }
+  
+  std::vector<size_t> const& coveringIndexAttributePositions() const { 
+    return _coveringIndexAttributePositions;
+  }
+  
+  void resetCoveringIndexAttributePositions() const { 
+    _coveringIndexAttributePositions.clear();
   }
   
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -62,8 +78,16 @@ class DocumentProducingNode {
  protected:
   Variable const* _outVariable;
 
-  /// @brief produce only the following attribute (with possible subattributes)
-  std::vector<std::string> _projection;
+  /// @brief produce only the following attributes
+  std::vector<std::string> _projections;
+
+  /// @brief vector (built up in order of projection attributes) that contains
+  /// the position of the index attribute value in the data returned by the index
+  /// example, if the index is on ["a", "b", "c"], and the projections are ["b", "a"],
+  /// then this vector will contain [1, 0]
+  /// the vector will only be populated by IndexNodes, and will be left empty by
+  /// EnumerateCollectionNodes
+  std::vector<std::size_t> mutable _coveringIndexAttributePositions;
 };
 
 }

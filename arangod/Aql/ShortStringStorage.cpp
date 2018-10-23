@@ -27,9 +27,6 @@
 
 using namespace arangodb::aql;
 
-/// @brief maximum length of a "short" string
-size_t const ShortStringStorage::MaxStringLength = 127;
-
 /// @brief create a short string storage instance
 ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor), _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
@@ -46,7 +43,7 @@ ShortStringStorage::~ShortStringStorage() {
 
 /// @brief register a short string
 char* ShortStringStorage::registerString(char const* p, size_t length) {
-  TRI_ASSERT(length <= MaxStringLength);
+  TRI_ASSERT(length <= maxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
     allocateBlock();

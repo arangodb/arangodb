@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/traversal</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"persons/alice"</span>, 
   <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, 
@@ -10,7 +10,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/travers
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -21,37 +21,37 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--_"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--B"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--A"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--D"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--B"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--_"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--C"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--B"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
         }, 
         { 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         } 
       ], 
@@ -62,7 +62,7 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 
@@ -70,11 +70,11 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13060"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13060"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105762"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105762"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--D"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
             } 
           ], 
@@ -82,13 +82,13 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--_"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             } 
           ] 
@@ -96,19 +96,19 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13060"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13060"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105762"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105762"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--D"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13064"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13064"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105766"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105766"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ce---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--F"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"bob"</span> 
             } 
           ], 
@@ -116,19 +116,19 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--_"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--A"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--D"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
             } 
           ] 
@@ -136,19 +136,19 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13060"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13060"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105762"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105762"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--D"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13067"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13067"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105769"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105769"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/dave"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ce--_"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Ou--_"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"bob"</span> 
             } 
           ], 
@@ -156,19 +156,19 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--_"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--B"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
             } 
           ] 
@@ -176,19 +176,19 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13060"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13060"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105762"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105762"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--D"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13073"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13073"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105775"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105775"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ce--B"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Ou--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"eve"</span> 
             } 
           ], 
@@ -196,19 +196,19 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--_"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--C"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             } 
           ] 
@@ -216,27 +216,27 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13060"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13060"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105762"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105762"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--D"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13073"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13073"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105775"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105775"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ce--B"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Ou--D"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"eve"</span> 
             }, 
             { 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13070"</span>, 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/13070"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105772"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/105772"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ce--A"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Ou--B"</span>, 
               <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"eve"</span> 
             } 
           ], 
@@ -244,25 +244,25 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--_"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca--C"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Oq--B"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             }, 
             { 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR5ca---"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq50Om--_"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 

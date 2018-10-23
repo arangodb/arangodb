@@ -7,7 +7,7 @@
 
   window.FoxxActiveView = Backbone.View.extend({
     tagName: 'div',
-    className: 'tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6',
+    className: 'foxxTile tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-5',
     template: templateEngine.createTemplate('foxxActiveView.ejs'),
     _show: true,
 
@@ -60,7 +60,7 @@
               $(this.el).find('img')
                 .after(
                   '<span class="warning-icons"><span class="fa fa-cog" title="Needs configuration"></span></span>'
-              );
+                );
             }
           }
         }.bind(this);
@@ -74,7 +74,7 @@
               $(this.el).find('img')
                 .after(
                   '<span class="warning-icons"><span class="fa fa-cubes" title="Unconfigured dependencies"></span></span>'
-              );
+                );
             }
           }
         }.bind(this);

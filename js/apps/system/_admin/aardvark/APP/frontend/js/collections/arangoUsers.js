@@ -16,20 +16,23 @@ window.ArangoUsers = Backbone.Collection.extend({
     desc: false
   },
 
+  authOptions: {
+    ro: false
+  },
+
   fetch: function (options) {
-    if (window.App.currentUser && window.App.currentDB.get('name') !== '_system' && frontendConfig.authenticationEnabled) {
-      this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+    if (options.fetchAllUsers) {
+      // flag to load all user profiles, this only works within _system database and needs at least read access
+      this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/');
+    } else if (frontendConfig.authenticationEnabled && window.App.currentUser) {
+      this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
     } else {
-      this.url = frontendConfig.basePath + '/_api/user';
+      this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/');
     }
     return Backbone.Collection.prototype.fetch.call(this, options);
   },
 
   url: frontendConfig.basePath + '/_api/user',
-
-  // comparator : function(obj) {
-  //  return obj.get("user").toLowerCase()
-  // },
 
   comparator: function (item, item2) {
     var a = item.get('user').toLowerCase();
@@ -102,7 +105,6 @@ window.ArangoUsers = Backbone.Collection.extend({
   loadUserSettings: function (callback) {
     var self = this;
 
-    console.log(frontendConfig.authenticationEnabled);
     var url;
     if (!frontendConfig.authenticationEnabled) {
       url = arangoHelper.databaseUrl('/_api/user/root');
@@ -175,11 +177,11 @@ window.ArangoUsers = Backbone.Collection.extend({
           self.activeUser = data.user;
           callback(false, data.user);
         }
-    ).error(
-      function () {
-        callback(true, null);
-      }
-    );
+      ).error(
+        function () {
+          callback(true, null);
+        }
+      );
   }
 
 });

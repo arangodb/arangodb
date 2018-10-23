@@ -34,49 +34,41 @@
 namespace arangodb {
 
 struct WalAccessResult : public Result {
-  WalAccessResult()
-      : Result(TRI_ERROR_NO_ERROR),
-        _fromTickIncluded(false),
-        _lastIncludedTick(0),
-        _latestTick(0) {}
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
-                  TRI_voc_tick_t latest)
+  WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
+
+  WalAccessResult(int code, bool ft, TRI_voc_tick_t included, 
+                  TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : Result(code),
         _fromTickIncluded(ft),
         _lastIncludedTick(included),
+        _lastScannedTick(lastScannedTick),
         _latestTick(latest) {}
 
-  WalAccessResult(WalAccessResult const& other)
-      : Result(other),
-        _fromTickIncluded(other._fromTickIncluded),
-        _lastIncludedTick(other._lastIncludedTick),
-        _latestTick(other._latestTick) {}
-  
-  WalAccessResult& operator=(WalAccessResult const& other) {
-    _errorNumber = other._errorNumber;
-    _errorMessage = other._errorMessage;
-    _fromTickIncluded = other._fromTickIncluded;
-    _lastIncludedTick = other._lastIncludedTick;
-    _latestTick = other._latestTick;
-    return *this;
-  }
-
+/*
+  WalAccessResult(WalAccessResult const& other) = default;
+  WalAccessResult& operator=(WalAccessResult const& other)  = default;
+*/
+  using Result::reset;
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
+  TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
+  void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included, TRI_voc_tick_t lastScannedTick,
                 TRI_voc_tick_t latest) {
-    _errorNumber = errorNumber;
+    reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
+    _lastScannedTick = lastScannedTick;
     _latestTick = latest;
     return *this;
   }
-
+ 
  private:
   bool _fromTickIncluded;
   TRI_voc_tick_t _lastIncludedTick;
+  TRI_voc_tick_t _lastScannedTick;
   TRI_voc_tick_t _latestTick;
 };
 
@@ -88,11 +80,21 @@ class WalAccess {
 
  protected:
   WalAccess() {}
-  virtual ~WalAccess(){};
+  virtual ~WalAccess() {}
 
  public:
   struct Filter {
     Filter() {}
+    
+    /// tick last scanned by the last iteration
+    /// is used to find batches in rocksdb
+    uint64_t tickLastScanned = 0;
+    
+    /// first tick to use
+    uint64_t tickStart = 0;
+    
+    /// last tick to include
+    uint64_t tickEnd = UINT64_MAX;
 
     /// In case collection is == 0,
     bool includeSystem = false;
@@ -130,13 +132,11 @@ class WalAccess {
 
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
-  virtual WalAccessResult openTransactions(
-      uint64_t tickStart, uint64_t tickEnd, Filter const& filter,
+  virtual WalAccessResult openTransactions(Filter const& filter,
       TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+  virtual WalAccessResult tail(Filter const& filter,
                                size_t chunkSize, TRI_voc_tid_t barrierId,
-                               Filter const& filter,
                                MarkerCallback const&) const = 0;
 };
 
@@ -150,10 +150,16 @@ struct WalAccessContext {
   ~WalAccessContext() {}
 
   
+  /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
+  
+  /// @brief check if view should be handled, might already be deleted
+  bool shouldHandleView(TRI_voc_tick_t dbid,
+                        TRI_voc_cid_t vid) const;
 
-  /// @brief Check if collection is in filter
-  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) const;
+  /// @brief Check if collection is in filter, will load collection
+  /// and prevent deletion
+  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
 
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
@@ -168,7 +174,7 @@ struct WalAccessContext {
 
  public:
   /// @brief arbitrary collection filter (inclusive)
-  WalAccess::Filter _filter;
+  const WalAccess::Filter _filter;
   /// @brief callback for marker output
   WalAccess::MarkerCallback _callback;
 

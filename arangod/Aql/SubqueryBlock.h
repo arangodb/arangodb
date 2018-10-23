@@ -34,29 +34,43 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class SubqueryBlock : public ExecutionBlock {
+class SubqueryBlock final : public ExecutionBlock {
  public:
   SubqueryBlock(ExecutionEngine*, SubqueryNode const*, ExecutionBlock*);
   ~SubqueryBlock() = default;
 
-  /// @brief initialize, tell dependency and the subquery
-  int initialize() override final;
-
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
 
   /// @brief shutdown, tell dependency and the subquery
-  int shutdown(int errorCode) override final;
+  std::pair<ExecutionState, Result> shutdown(int errorCode) override final;
 
   /// @brief getter for the pointer to the subquery
   ExecutionBlock* getSubquery() { return _subquery; }
 
  private:
-  /// @brief execute the subquery and return its results
-  std::vector<AqlItemBlock*>* executeSubquery();
+  /// @brief execute the subquery
+  /// is repeatable in case of WAITING
+  /// Fills result in _subqueryResults
+  ExecutionState executeSubquery();
 
   /// @brief destroy the results of a subquery
-  void destroySubqueryResults(std::vector<AqlItemBlock*>*);
+  void destroySubqueryResults();
+
+  /// @brief initialize the subquery,
+  /// is repeatable in case of WAITING
+  ExecutionState initSubquery(size_t position);
+
+  /// @brief forward getSome to const subquery
+  /// is repeatable in case of WAITING
+  ExecutionState getSomeConstSubquery(size_t atMost);
+
+  /// @brief forward getSome to non-const subquery
+  /// is repeatable in case of WAITING
+  ExecutionState getSomeNonConstSubquery(size_t atMost);
+
+ private:
 
   /// @brief output register
   RegisterId _outReg;
@@ -66,7 +80,33 @@ class SubqueryBlock : public ExecutionBlock {
 
   /// @brief whether the subquery is const and will always return the same values
   /// when invoked multiple times
-  bool _subqueryIsConst;
+  bool const _subqueryIsConst;
+
+  /// @brief whether the subquery returns data
+  bool const _subqueryReturnsData;
+
+  /// @brief a unique_ptr to hold temporary results if thread gets suspended
+  ///        guaranteed to be cleared out after a DONE/HASMORE of get/skip-some
+  std::unique_ptr<AqlItemBlock> _result;
+
+  /// @brief the list of results from a single subquery
+  ///        NOTE: Responsibilty here is a bit tricky, it is handed over to the result
+  std::unique_ptr<std::vector<std::unique_ptr<AqlItemBlock>>> _subqueryResults;
+
+  /// @brief the current subquery in process, used if this thread gets suspended.
+  size_t _subqueryPos;
+
+  /// @brief track if we have already initialized this subquery.
+  bool _subqueryInitialized;
+
+  /// @brief track if we have completely executed the subquery.
+  bool _subqueryCompleted;
+
+  /// @brief track if we have completely shutdown the main query.
+  bool _hasShutdownMainQuery;
+
+  /// @brief result of the main query shutdown. is only valid if _hasShutdownMainQuery == true.
+  Result _mainQueryShutdownResult;
 };
 
 }  // namespace arangodb::aql

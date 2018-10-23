@@ -35,10 +35,18 @@
 #error "enterprise version number is not defined"
 #endif
 
+#ifndef NDEBUG
+// no -DNEBUG... so this will be very slow
+#define ARANGODB_VERSION_FULL ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "-NO-NDEBUG]"
+
+#else
+
 #ifdef _DEBUG
 #define ARANGODB_VERSION_FULL ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "-DEBUG]"
 #else
 #define ARANGODB_VERSION_FULL ARANGODB_VERSION " " ARANGODB_ENTERPRISE_VERSION " [" TRI_PLATFORM "]"
+#endif
+
 #endif
 
 #else
@@ -106,6 +114,11 @@ class Version {
 
   /// @brief get ICU version
   static std::string getICUVersion();
+
+#ifdef USE_IRESEARCH
+  /// @brief get IResearch version
+  static std::string getIResearchVersion();
+#endif
   
   /// @brief get compiler
   static std::string getCompiler();

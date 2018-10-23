@@ -33,35 +33,36 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ServerFeature::ServerFeature(application_features::ApplicationServer* server,
-                             int* res)
+namespace arangodb {
+
+ServerFeature::ServerFeature(
+    application_features::ApplicationServer& server,
+    int* res
+)
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
-      _operationMode(OperationMode::MODE_SERVER) {
+      _operationMode(OperationMode::MODE_SERVER)
+#if _WIN32
+      ,_codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX)
+#endif
+  {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Authentication");
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("FeatureCache");
-  startsAfter("Scheduler");
+
+  startsAfter("AQLPhase");
   startsAfter("Statistics");
   startsAfter("Upgrade");
-  startsAfter("V8Dealer");
-  startsAfter("WorkMonitor");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -73,14 +74,11 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--server.rest-server", "start a rest-server",
                            new BooleanParameter(&_restServer));
 
-  options->addOption("--server.session-timeout",
-                     "timeout of web interface server sessions (in seconds)",
-                     new DoubleParameter(&VocbaseContext::ServerSessionTtl));
+  options->addObsoleteOption("--server.session-timeout",
+                             "timeout of web interface server sessions (in seconds)",
+                             true);
 
   options->addSection("javascript", "Configure the Javascript engine");
-
-  options->addHiddenOption("--javascript.unit-tests", "run unit-tests and exit",
-                           new VectorParameter<StringParameter>(&_unitTests));
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
@@ -90,18 +88,17 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--vst.maxsize",
                      "maximal size (in bytes) for a VelocyPack chunk",
                      new UInt32Parameter(&_vstMaxSize));
+#if _WIN32
+  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                           new UInt16Parameter(&_codePage));
+#endif
 }
 
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   int count = 0;
 
   if (_console) {
     _operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!_unitTests.empty()) {
-    _operationMode = OperationMode::MODE_UNITTESTS;
     ++count;
   }
 
@@ -121,28 +118,34 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
+  
+  V8DealerFeature* v8dealer =
+    ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  
+  if (v8dealer->isEnabled()) {
+    if (_operationMode == OperationMode::MODE_SCRIPT) {
+      v8dealer->setMinimumContexts(2);
+    } else {
+      v8dealer->setMinimumContexts(1);
+    }
+  } else if (_operationMode != OperationMode::MODE_SERVER) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Options '--console', '--javascript.unit-tests'"
+       << " or '--javascript.script' are not supported without V8";
+    FATAL_ERROR_EXIT();
+  }
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "SslServer", "Supervisor"});
+                                        "SslServer", "Statistics", "Supervisor"});
 
-    ReplicationFeature* replicationFeature =
-        ApplicationServer::getFeature<ReplicationFeature>("Replication");
-    replicationFeature->disableReplicationApplier();
-
-    StatisticsFeature* statisticsFeature =
-        ApplicationServer::getFeature<StatisticsFeature>("Statistics");
-    statisticsFeature->disableStatistics();
-  }
-
-  V8DealerFeature* v8dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  if (_operationMode == OperationMode::MODE_SCRIPT ||
-      _operationMode == OperationMode::MODE_UNITTESTS) {
-    v8dealer->setMinimumContexts(2);
-  } else {
-    v8dealer->setMinimumContexts(1);
+    if (!options->processingResult().touched("replication.auto-start")) {
+      // turn off replication applier when we do not have a rest server
+      // but only if the config option is not explicitly set (the recovery
+      // test want the applier to be enabled for testing it)
+      ReplicationFeature* replicationFeature =
+          ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      replicationFeature->disableReplicationApplier();
+    }
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
@@ -157,12 +160,18 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
+#if _WIN32
+  _originalCodePage = GetConsoleOutputCP();
+  if (IsValidCodePage(_codePage)) {
+    SetConsoleOutputCP(_codePage);
+  }
+#endif
+
   waitForHeartbeat();
 
   *_result = EXIT_SUCCESS;
 
   switch (_operationMode) {
-    case OperationMode::MODE_UNITTESTS:
     case OperationMode::MODE_SCRIPT:
     case OperationMode::MODE_CONSOLE:
       break;
@@ -186,6 +195,14 @@ void ServerFeature::start() {
 
 }
 
+void ServerFeature::stop() {
+#if _WIN32
+  if (IsValidCodePage(_originalCodePage)) {
+    SetConsoleOutputCP(_originalCodePage);
+  }
+#endif
+}
+
 void ServerFeature::beginShutdown() {
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
@@ -203,7 +220,7 @@ void ServerFeature::waitForHeartbeat() {
     if (HeartbeatThread::hasRunOnce()) {
       break;
     }
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 }
 
@@ -211,8 +228,6 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
   switch (mode) {
     case OperationMode::MODE_CONSOLE:
       return "console";
-    case OperationMode::MODE_UNITTESTS:
-      return "unittests";
     case OperationMode::MODE_SCRIPT:
       return "script";
     case OperationMode::MODE_SERVER:
@@ -221,3 +236,5 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
       return "unknown";
   }
 }
+
+} // arangodb

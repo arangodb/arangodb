@@ -31,16 +31,19 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 /// @brief replication applier for a single database
 class DatabaseReplicationApplier final : public ReplicationApplier {
   friend class DatabaseTailingSyncer;
   friend class RestReplicationHandler;
 
  public:
-  explicit DatabaseReplicationApplier(TRI_vocbase_t* vocbase);
+  explicit DatabaseReplicationApplier(TRI_vocbase_t& vocbase);
 
-  DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration, 
-                             TRI_vocbase_t* vocbase);
+  DatabaseReplicationApplier(
+    ReplicationApplierConfiguration const& configuration,
+    TRI_vocbase_t& vocbase
+  );
 
   ~DatabaseReplicationApplier();
 
@@ -55,23 +58,28 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
   /// @brief configure the replication applier
   void reconfigure(ReplicationApplierConfiguration const& configuration) override;
-  
+
   /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
 
   /// @brief factory function for creating a database-specific replication applier
-  static DatabaseReplicationApplier* create(TRI_vocbase_t* vocbase);
+  static DatabaseReplicationApplier* create(TRI_vocbase_t& vocbase);
 
   /// @brief load a persisted configuration for the applier
-  static ReplicationApplierConfiguration loadConfiguration(TRI_vocbase_t* vocbase);
-  
- protected:
-  std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  static ReplicationApplierConfiguration loadConfiguration(
+    TRI_vocbase_t& vocbase
+  );
 
+  std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
+  std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick, 
+                                                    bool useTick, 
+                                                    TRI_voc_tick_t barrierId) const override;
+
+ protected:
   std::string getStateFilename() const override;
-   
+
  private:
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 };
 
 }

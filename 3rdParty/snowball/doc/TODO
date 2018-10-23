@@ -1,0 +1,15 @@
+Things to do:
+
+ - Write documentation for how to use libstemmer (as opposed to how stemming
+   algorithms themselves work).
+   Currently, the documentation in the include/libstemmer.h header file is
+   pretty clear and comprehensive, but an overview document wouldn't go amiss.
+
+Things that would be nice to include at some point.
+
+ - Add version numbers to each stemming algorithm, and allow the interface to
+   request a specific version of the stemming algorithms.  Default to providing
+   the latest version of the algorithm.
+ - Make mkmodules.pl generate the build system, instead of being called from it.
+   This would allow it to generate the list of modules to be built, so that it's
+   not necessary to change things in more than one place to add a new algorithm.

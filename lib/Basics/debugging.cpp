@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Logger/LogAppender.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -42,38 +42,14 @@
 
 using namespace arangodb;
 
-/// @brief a global string containing the currently registered failure points
-/// the string is a comma-separated list of point names
-static char* FailurePoints = nullptr;
-
-/// @brief a read-write lock for thread-safe access to the failure-points list
-arangodb::basics::ReadWriteLock FailurePointsLock;
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
-/// @brief make a delimited value from a string, so we can unambigiously
-/// search for it (e.g. searching for just "foo" would find "foo" and "foobar",
-/// so we'll be putting the value inside some delimiter: ",foo,")
-static char* MakeValue(char const* value) {
-  if (value == nullptr) {
-    return nullptr;
-  }
-  size_t const len = strlen(value);
-  if (len == 0) {
-    return nullptr;
-  }
+namespace {
+/// @brief a global set containing the currently registered failure points
+std::unordered_set<std::string> failurePoints;
 
-  char* delimited =
-      static_cast<char*>(TRI_Allocate(len + 3));
-
-  if (delimited != nullptr) {
-    memcpy(delimited + 1, value, len);
-    delimited[0] = ',';
-    delimited[len + 1] = ',';
-    delimited[len + 2] = '\0';
-  }
-
-  return delimited;
+/// @brief a read-write lock for thread-safe access to the failure points set
+arangodb::basics::ReadWriteLock failurePointsLock;
 }
 
 /// @brief cause a segmentation violation
@@ -95,158 +71,35 @@ void TRI_SegfaultDebugging(char const* message) {
 
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(char const* value) {
-  char* found = nullptr;
+  READ_LOCKER(readLocker, ::failurePointsLock);
 
-  // try without the lock first (to speed things up)
-  if (FailurePoints == nullptr) {
-    return false;
-  }
-
-  READ_LOCKER(readLocker, FailurePointsLock);
-
-  if (FailurePoints != nullptr) {
-    char* checkValue = MakeValue(value);
-
-    if (checkValue != nullptr) {
-      found = strstr(FailurePoints, checkValue);
-      TRI_Free(checkValue);
-    }
-  }
-
-  return (found != nullptr);
+  return ::failurePoints.find(value) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
 void TRI_AddFailurePointDebugging(char const* value) {
-  char* checkValue = MakeValue(value);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  if (checkValue == nullptr) {
-    return;
-  }
-
-  WRITE_LOCKER(writeLocker, FailurePointsLock);
-
-  char* found;
-  if (FailurePoints == nullptr) {
-    found = nullptr;
-  } else {
-    found = strstr(FailurePoints, checkValue);
-  }
-
-  if (found == nullptr) {
-    // not yet found. so add it
-    char* copy;
-
+  if (::failurePoints.emplace(value).second) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "activating intentional failure point '" << value << "'. the server will misbehave!";
-    size_t n = strlen(checkValue);
-
-    if (FailurePoints == nullptr) {
-      copy =
-          static_cast<char*>(TRI_Allocate(n + 1));
-
-      if (copy == nullptr) {
-        TRI_Free(checkValue);
-        return;
-      }
-
-      memcpy(copy, checkValue, n);
-      copy[n] = '\0';
-    } else {
-      copy = static_cast<char*>(
-          TRI_Allocate(n + strlen(FailurePoints)));
-
-      if (copy == nullptr) {
-        TRI_Free(checkValue);
-        return;
-      }
-
-      memcpy(copy, FailurePoints, strlen(FailurePoints));
-      memcpy(copy + strlen(FailurePoints) - 1, checkValue, n);
-      copy[strlen(FailurePoints) + n - 1] = '\0';
-
-      TRI_Free(FailurePoints);
-    }
-
-    FailurePoints = copy;
   }
-
-  TRI_Free(checkValue);
 }
 
 /// @brief remove a failure point
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, FailurePointsLock);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  if (FailurePoints == nullptr) {
-    return;
-  }
-
-  char* checkValue = MakeValue(value);
-
-  if (checkValue != nullptr) {
-    char* found = strstr(FailurePoints, checkValue);
-
-    if (found == nullptr) {
-      TRI_Free(checkValue);
-      return;
-    }
-
-    if (strlen(FailurePoints) - strlen(checkValue) <= 2) {
-      TRI_Free(FailurePoints);
-      FailurePoints = nullptr;
-
-      TRI_Free(checkValue);
-      return;
-    }
-
-    char* copy = static_cast<char*>(
-        TRI_Allocate(                     strlen(FailurePoints) - strlen(checkValue) + 2));
-
-    if (copy == nullptr) {
-      TRI_Free(checkValue);
-      return;
-    }
-
-    // copy start of string
-    size_t n = found - FailurePoints;
-    memcpy(copy, FailurePoints, n);
-
-    // copy remainder of string
-    memcpy(copy + n, found + strlen(checkValue) - 1,
-           strlen(FailurePoints) - strlen(checkValue) - n + 1);
-
-    copy[strlen(FailurePoints) - strlen(checkValue) + 1] = '\0';
-    TRI_Free(FailurePoints);
-    FailurePoints = copy;
-
-    TRI_Free(checkValue);
-  }
+  ::failurePoints.erase(value);
 }
 
 /// @brief clear all failure points
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(writeLocker, FailurePointsLock);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  if (FailurePoints != nullptr) {
-    TRI_Free(FailurePoints);
-  }
-
-  FailurePoints = nullptr;
+  ::failurePoints.clear();
 }
 
 #endif
-
-/// @brief initialize the debugging
-void TRI_InitializeDebugging() {}
-
-/// @brief shutdown the debugging
-void TRI_ShutdownDebugging() {
-  if (FailurePoints != nullptr) {
-    TRI_Free(FailurePoints);
-  }
-
-  FailurePoints = nullptr;
-}
 
 /// @brief appends a backtrace to the string provided
 void TRI_GetBacktrace(std::string& btstr) {
@@ -268,14 +121,37 @@ void TRI_GetBacktrace(std::string& btstr) {
 
   symbol->MaxNameLen = 255;
   symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-
+  IMAGEHLP_LINE64 line;
+  line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+  char address[64];
+  std::string fn;
+  std::string err;
+  DWORD dwDisplacement;
   for (unsigned int i = 0; i < frames; i++) {
-    char address[64];
-    SymFromAddr(process, (DWORD64)stack[i], 0, symbol);
-
+    DWORD lineNumber;
+    fn.clear();
+    SymFromAddr(process, (DWORD64)stack[i], nullptr, symbol);
+    if (SymGetLineFromAddr64(process, (DWORD64)stack[i], &dwDisplacement, &line)) {
+    // SymGetLineFromAddr64 returned success
+      if (line.FileName!=nullptr) {
+        fn = line.FileName;
+      }
+      lineNumber = line.LineNumber;
+      err.clear();
+    }
+    else {
+        lineNumber = -1;
+        DWORD error = GetLastError();
+        err = std::string("SymGetLineFromAddr64 returned error: ") + std::to_string(error);
+    }
     snprintf(address, sizeof(address), "0x%0X", (unsigned int)symbol->Address);
-    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name +
-             std::string(" [") + address + std::string("]\n");
+    btstr += std::to_string(frames - i - 1) +
+      std::string(": ") + symbol->Name +
+      std::string(" [") + address +
+      std::string("] ") + fn +
+      std::string(":") + std::to_string(lineNumber) +
+      err +
+      std::string("\n");
   }
 
   TRI_Free(symbol);
@@ -382,4 +258,3 @@ void TRI_FlushDebugging(char const* file, int line, char const* message) {
   Logger::flush();
   Logger::shutdown();
 }
-

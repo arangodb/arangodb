@@ -66,20 +66,11 @@
     } \
   } while(0);
 
-#define CATCH_TO_RESULT(result, errorCode) \
-  catch (arangodb::basics::Exception const& e) { \
-    (result).reset(e.code(),e.message()); \
-  } catch (std::exception const& e) { \
-    (result).reset((errorCode),e.what()); \
-  } catch (...) { \
-    (result).reset((errorCode)); \
-  }
-
 namespace arangodb {
 namespace basics {
 
 /// @brief arango exception type
-class Exception : public virtual std::exception {
+class Exception final : public virtual std::exception {
  public:
   static std::string FillExceptionString(int, ...);
   static std::string FillFormatExceptionString(char const* format, ...);
@@ -98,7 +89,7 @@ class Exception : public virtual std::exception {
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
-  ~Exception() throw();
+  ~Exception();
 
  public:
   char const* what() const noexcept override;
@@ -106,7 +97,7 @@ class Exception : public virtual std::exception {
   int code() const noexcept;
   void addToMessage(std::string const&);
  private:
-  void appendLocation();
+  void appendLocation() noexcept;
 
  protected:
   std::string _errorMessage;
@@ -114,6 +105,34 @@ class Exception : public virtual std::exception {
   int const _line;
   int const _code;
 };
+
+template<typename F>
+Result catchToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
+  // TODO check whether there are other specific exceptions we should catch
+  Result result{TRI_ERROR_NO_ERROR};
+  try {
+    result = std::forward<F>(fn)();
+  } catch (arangodb::basics::Exception const& e) {
+    result.reset(e.code(), e.message());
+  } catch (std::bad_alloc const&) {
+    result.reset(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& e) {
+    result.reset(defaultError, e.what());
+  } catch (...) {
+    result.reset(defaultError);
+  }
+  return result;
+}
+
+template<typename F>
+Result catchVoidToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
+  auto wrapped = [&fn]() -> Result {
+    std::forward<F>(fn)();
+    return Result{TRI_ERROR_NO_ERROR};
+  };
+  return catchToResult(wrapped, defaultError);
+}
+
 }
 }
 

@@ -23,12 +23,12 @@
 
 #include "InternalRestTraverserHandler.h"
 
-#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -89,7 +89,7 @@ void InternalRestTraverserHandler::createEngine() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -97,7 +97,10 @@ void InternalRestTraverserHandler::createEngine() {
         "Expected an object with traverser information as body parameter");
     return;
   }
-  TraverserEngineID id = _registry->createNew(_vocbase, parsedBody->slice());
+
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto id = _registry->createNew(_vocbase, std::move(ctx), body, 600.0, true);
+
   TRI_ASSERT(id != 0);
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(id));
@@ -132,9 +135,8 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   auto& registry = _registry;  // For the guard
-  arangodb::basics::ScopeGuard guard{
-      []() -> void {},
-      [registry, &engineId]() -> void { registry->returnEngine(engineId); }};
+  auto cleanup = [registry, &engineId]() { registry->returnEngine(engineId); };
+  TRI_DEFER(cleanup());
 
   if (option == "lock") {
     if (count != 3) {
@@ -149,7 +151,7 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     generateResult(ResponseCode::OK,
-                   arangodb::basics::VelocyPackHelper::TrueValue());
+                   arangodb::velocypack::Slice::trueSlice());
     return;
   }
 
@@ -161,7 +163,7 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -170,7 +172,6 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  VPackSlice body = parsedBody->slice();
   VPackBuilder result;
   if (option == "edge") {
     VPackSlice keysSlice = body.get("keys");
@@ -279,5 +280,5 @@ void InternalRestTraverserHandler::destroyEngine() {
   TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
   _registry->destroy(id);
   generateResult(ResponseCode::OK,
-                 arangodb::basics::VelocyPackHelper::TrueValue());
+                 arangodb::velocypack::Slice::trueSlice());
 }

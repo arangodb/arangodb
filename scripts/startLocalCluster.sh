@@ -41,7 +41,7 @@ if [[ -f cluster/startup_parameters ]];then
 else
   #store parmeters
   if [[ -n "${params[@]}" ]]; then
-    echo "${params[@]}" > cluster/startup_parameters 
+    echo "${params[@]}" > cluster/startup_parameters
   fi
 fi
 
@@ -52,8 +52,13 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
-  STORAGE_ENGINE=""
-else
+  #default engine is RocksDB
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+elif [ "$USE_ROCKSDB" == "0" ]; then 
+  #explicitly disable RocksDB engine, so use MMFiles
+  STORAGE_ENGINE="--server.storage-engine=mmfiles"
+else 
+  #any value other than "0" means RocksDB engine
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
 fi
 DEFAULT_REPLICATION=""
@@ -75,8 +80,8 @@ if (( $NRAGENTS % 2 == 0)) ; then
 fi
 
 SFRE=1.0
-COMP=2000
-KEEP=1000
+COMP=500
+KEEP=2000
 if [ -z "$ONGOING_PORTS" ] ; then
   CO_BASE=$(( $PORT_OFFSET + 8530 ))
   DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -111,10 +116,10 @@ fi
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
     if [ "$INTERACTIVE_MODE" == "C" ] ; then
         ARANGOD="${BUILD}/bin/arangod "
-        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+        CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console "
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
+        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod --console "
         CO_ARANGOD=$ARANGOD
         echo Running cluster in rr with --console.
     fi
@@ -123,44 +128,42 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-echo == Starting agency ... 
+echo == Starting agency ...
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    port=$(( $AG_BASE + $aid ))
-    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
+    PORT=$(( $AG_BASE + $aid ))
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
     $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
         --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --agency.my-address $TRANSPORT://$ADDRESS:$port \
+        --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
-        --database.directory cluster/data$port \
-        --javascript.app-path $SRC_DIR/js/apps \
-        --javascript.startup-directory $SRC_DIR/js \
-        --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.v8-contexts 1 \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$port \
+        --database.directory cluster/data$PORT \
+        --javascript.enabled false \
+        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
-        --server.threads 16 \
-        --log.file cluster/$port.log \
+        --log.file cluster/$PORT.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee cluster/$PORT.stdout 2>&1 &
+        2>&1 | tee cluster/$PORT.stdout &
 done
 
 start() {
-    
+
     if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
+        ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
         ROLE="COORDINATOR"
     fi
@@ -171,10 +174,19 @@ start() {
         CMD=$ARANGOD
     fi
 
+    if [ "$USE_RR" = "true" ]; then
+        if ! which rr > /dev/null; then
+            echo 'rr binary not found in PATH!' >&2
+            exit 1
+        fi
+        CMD="rr $CMD"
+    fi
+
     TYPE=$1
     PORT=$2
-    mkdir cluster/data$PORT cluster/apps$PORT 
+    mkdir -p cluster/data$PORT cluster/apps$PORT
     echo == Starting $TYPE on port $PORT
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \
@@ -190,10 +202,11 @@ start() {
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee cluster/$PORT.stdout 2>&1 &
+        2>&1 | tee cluster/$PORT.stdout &
 }
 
 PORTTOPDB=`expr $DB_BASE + $NRDBSERVERS - 1`

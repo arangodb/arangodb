@@ -23,6 +23,8 @@
 
 #include "ReplicationApplier.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
@@ -30,51 +32,120 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Replication/InitialSyncer.h"
 #include "Replication/TailingSyncer.h"
+#include "Replication/common-defines.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
-#include "VocBase/replication-common.h"
 
 using namespace arangodb;
 
-/// @brief applier thread class
-class ApplyThread : public Thread {
+/// @brief common replication applier
+struct ApplierThread : public Thread {
  public:
-  ApplyThread(ReplicationApplier* applier, std::unique_ptr<TailingSyncer>&& syncer)
-      : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {}
+  
+  ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
+   : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {
+     TRI_ASSERT(_syncer);
+   }
 
-  ~ApplyThread() {
-    shutdown(); 
+  ~ApplierThread() {
+    {
+      MUTEX_LOCKER(locker, _syncerMutex);
+      _syncer.reset();
+    }
+    shutdown();
   }
-
- public:
-  void run() {
+  
+  void run() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
-
+    
     try {
-      Result res = _syncer->run();
+      setAborted(false);
+      Result res = runApplier();
       if (res.fail() && res.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier for " << _applier->databaseName() << ": "
-          << res.errorMessage();
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier thread for "
+        << _applier->databaseName() << ": " << res.errorMessage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread for " << _applier->databaseName() << ": " << ex.what();
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplierThread for " << _applier->databaseName() << ": " << ex.what();
     } catch (...) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread for " << _applier->databaseName();
     }
-
-    // will make the syncer remove its barrier too
-    _syncer.reset();
-
+    
+    {
+      MUTEX_LOCKER(locker, _syncerMutex);
+      // will make the syncer remove its barrier too
+      _syncer->setAborted(false);
+      _syncer.reset();
+    }
+    
     _applier->markThreadStopped();
   }
-
- private:
+  
+  virtual Result runApplier() = 0;
+  
+  void setAborted(bool value) {
+    MUTEX_LOCKER(locker, _syncerMutex);
+    if (_syncer) {
+      _syncer->setAborted(value);
+    }
+  }
+  
+ protected:
   ReplicationApplier* _applier;
-  std::unique_ptr<TailingSyncer> _syncer;
+  Mutex _syncerMutex;
+  std::shared_ptr<Syncer> _syncer;
 };
 
+/// @brief sync thread class
+struct FullApplierThread final : public ApplierThread {
+  FullApplierThread(ReplicationApplier* applier,
+                    std::shared_ptr<InitialSyncer>&& syncer)
+  : ApplierThread(applier, std::move(syncer)) {}
+  
+  Result runApplier() override {
+    TRI_ASSERT(_syncer != nullptr);
+    TRI_ASSERT(_applier != nullptr);
+    
+    InitialSyncer* initSync = static_cast<InitialSyncer*>(_syncer.get());
+    // start initial synchronization
+    bool allowIncremental = _applier->configuration()._incremental;
+    Result r = initSync->run(allowIncremental);
+    if (r.fail() || initSync->isAborted()) {
+      return r;
+    }
+    // steal the barrier from the syncer
+    TRI_voc_tick_t barrierId = initSync->stealBarrier();
+    TRI_voc_tick_t lastLogTick = initSync->getLastLogTick();
+    
+    {
+      MUTEX_LOCKER(locker, _syncerMutex);
+      auto tailer = _applier->buildTailingSyncer(lastLogTick, true, barrierId);
+      _syncer.reset();
+      _syncer = std::move(tailer);
+    }
+    
+    _applier->markThreadTailing();
+    
+    TRI_ASSERT(_syncer);
+    return static_cast<TailingSyncer*>(_syncer.get())->run();
+  }
+};
+
+/// @brief applier thread class. run only the tailing code
+struct TailingApplierThread final : public ApplierThread {
+  TailingApplierThread(ReplicationApplier* applier,
+                       std::shared_ptr<TailingSyncer>&& syncer)
+      : ApplierThread(applier, std::move(syncer)) {}
+  
+ public:
+  Result runApplier() override {
+    TRI_ASSERT(dynamic_cast<TailingSyncer*>(_syncer.get()) != nullptr);
+    return static_cast<TailingSyncer*>(_syncer.get())->run();
+  }
+};
 
 ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                        std::string&& databaseName) 
@@ -84,51 +155,53 @@ ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& co
 }
 
 /// @brief test if the replication applier is running
-bool ReplicationApplier::isRunning() const {
+bool ReplicationApplier::isActive() const {
   READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return _state.isRunning();
+  return _state.isActive();
 }
 
-void ReplicationApplier::markThreadStopped() {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  _state._state = ReplicationApplierState::ActivityState::INACTIVE;
-  setProgressNoLock("applier shut down");
-  
-  LOG_TOPIC(INFO, Logger::REPLICATION) << "stopped replication applier for " << _databaseName;
+/// @brief test if the repication applier is performing initial sync
+bool ReplicationApplier::isInitializing() const {
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return _state.isInitializing();
+}
+
+/// @brief test if the replication applier is shutting down
+bool ReplicationApplier::isShuttingDown() const {
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return _state.isShuttingDown();
 }
 
 /// @brief block the replication applier from starting
-int ReplicationApplier::preventStart() {
+Result ReplicationApplier::preventStart() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
 
-  if (_state.isRunning()) {
+  if (_state.isTailing()) {
     // already running
-    return TRI_ERROR_REPLICATION_RUNNING;
+    return Result(TRI_ERROR_REPLICATION_RUNNING);
   }
 
   if (_state._preventStart) {
     // someone else requested start prevention
-    return TRI_ERROR_LOCKED;
+    return Result(TRI_ERROR_LOCKED);
   }
 
   _state._stopInitialSynchronization = false;
   _state._preventStart = true;
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief unblock the replication applier from starting
-int ReplicationApplier::allowStart() {
+void ReplicationApplier::allowStart() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
 
   if (!_state._preventStart) {
-    return TRI_ERROR_INTERNAL;
+    return;
   }
 
   _state._stopInitialSynchronization = false;
   _state._preventStart = false;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief whether or not autostart option was set
@@ -150,25 +223,36 @@ bool ReplicationApplier::stopInitialSynchronization() const {
   return _state._stopInitialSynchronization;
 }
 
-/// @brief stop the initial synchronization
-void ReplicationApplier::stopInitialSynchronization(bool value) {
+/// @brief set the applier state to tailing
+void ReplicationApplier::markThreadTailing() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  _state._stopInitialSynchronization = value;
-}
+  _state._phase = ReplicationApplierState::ActivityPhase::TAILING;
+  setProgressNoLock("applier started tailing");
   
-/// @brief start the replication applier
-void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  if (!applies()) {
-    return;
-  }
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "started tailing in replication applier for "
+  << _databaseName;
+}
 
+void ReplicationApplier::markThreadStopped() {
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  _state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
+  setProgressNoLock("applier shut down");
+  
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "stopped replication applier for " << _databaseName;
+}
+
+/// Perform some common ops for startReplication / startTailing
+void ReplicationApplier::doStart(std::function<void()>&& cb,
+                                 ReplicationApplierState::ActivityPhase activity) {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   
   if (_state._preventStart) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCKED);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
+                                   std::string("cannot start replication applier for ") +
+                                   _databaseName + ": " + TRI_errno_string(TRI_ERROR_LOCKED));
   }
   
-  if (_state.isRunning()) {
+  if (_state.isActive()) {
     // already started
     return;
   }
@@ -176,32 +260,38 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   while (_state.isShuttingDown()) {
     // another instance is still around
     writeLocker.unlock();
-    usleep(50 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     writeLocker.lock();
   }
-
-  TRI_ASSERT(!_state.isRunning() && !_state.isShuttingDown());
   
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
-      << ", useTick: " << useTick;
-
+  TRI_ASSERT(!_state.isTailing() && !_state.isShuttingDown());
+  
   if (_configuration._endpoint.empty()) {
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }
-    
+  
   if (!isGlobal() && _configuration._database.empty()) {
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }
 
+  { // Debug output
+    VPackBuilder b;
+    b.openObject();
+    _configuration.toVelocyPack(b, false, false);
+    b.close();
+
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "starting applier with configuration " << b.slice().toJson();
+  }
+
   // reset error
   _state._lastError.reset();
   
-  _thread.reset(new ApplyThread(this, buildSyncer(initialTick, useTick, barrierId)));
+  cb();
   
   if (!_thread->start()) {
     _thread.reset();
@@ -209,22 +299,50 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   }
   
   while (!_thread->hasStarted()) {
-    usleep(20000);
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
   
-  TRI_ASSERT(!_state.isRunning() && !_state.isShuttingDown());
-  _state._state = ReplicationApplierState::ActivityState::RUNNING;
+  TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
+  _state._phase = activity;
+}
+
+
+/// @brief perform a complete replication dump and then tail continiously
+void ReplicationApplier::startReplication() {
+  if (!applies()) {
+    return;
+  }
+  
+  doStart([&]() {
+    std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
+    _thread.reset(new FullApplierThread(this, std::move(syncer)));
+  }, ReplicationApplierState::ActivityPhase::INITIAL);
+}
+  
+/// @brief start the replication applier
+void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
+                                      TRI_voc_tick_t barrierId) {
+  if (!applies()) {
+    return;
+  }
+  doStart([&]() {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
+    << ", useTick: " << useTick;
+    std::shared_ptr<TailingSyncer> syncer = buildTailingSyncer(initialTick, useTick, barrierId);
+    _thread.reset(new TailingApplierThread(this, std::move(syncer)));
+  }, ReplicationApplierState::ActivityPhase::TAILING);
   
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "started replication applier for " << _databaseName
-        << ", endpoint '" << _configuration._endpoint << "' from tick "
-        << initialTick;
+    << "started replication applier for " << _databaseName
+    << ", endpoint '" << _configuration._endpoint << "' from tick "
+    << initialTick;
   } else {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "re-started replication applier for "
-        << _databaseName << ", endpoint '" << _configuration._endpoint
-        << "' from previous state";
+    << "re-started replication applier for "
+    << _databaseName << ", endpoint '" << _configuration._endpoint
+    << "' from previous state";
   }
 }
 
@@ -247,7 +365,7 @@ void ReplicationApplier::stopAndJoin() {
 /// active anymore, returns false
 bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
   while (sleepTime > 0) {
-    if (!isRunning()) {
+    if (!isActive()) {
       // already terminated
       return false; 
     }
@@ -257,22 +375,26 @@ bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
     if (sleepChunk > sleepTime) {
       sleepChunk = sleepTime;
     }
-    usleep(static_cast<TRI_usleep_t>(sleepChunk));
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepChunk));
     sleepTime -= sleepChunk;
   }
   
-  return isRunning();
+  return isActive();
 }
 
 void ReplicationApplier::removeState() {
   if (!applies()) {
     return;
   }
+  
+  std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return;
+  }
 
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   _state.reset(false);
-
-  std::string const filename = getStateFilename();
 
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
@@ -299,7 +421,7 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
 
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
 
-  if (_state.isRunning()) {
+  if (_state.isActive()) {
     // cannot change the configuration while the replication is still running
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_RUNNING);
   }
@@ -318,6 +440,11 @@ bool ReplicationApplier::loadState() {
   }
 
   std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return false;
+  }
+
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "looking for replication state file '" << filename << "' for " << _databaseName;
 
@@ -368,11 +495,16 @@ void ReplicationApplier::persistState(bool doSync) {
   if (!applies()) {
     return;
   }
+  
+  std::string const filename = getStateFilename();
+  if (filename.empty()) {
+    // will happen during testing and for coordinator engine
+    return;
+  }
 
   VPackBuilder builder;
   _state.toVelocyPack(builder, false);
 
-  std::string const filename = getStateFilename();
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state to file '" << filename << "' for " << _databaseName;
 
@@ -423,6 +555,13 @@ ReplicationApplierConfiguration ReplicationApplier::configuration() const {
 std::string ReplicationApplier::endpoint() const {
   READ_LOCKER_EVENTUAL(readLocker, _statusLock);
   return _configuration._endpoint;
+}
+
+/// @brief return last persisted tick
+TRI_voc_tick_t ReplicationApplier::lastTick() const {
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return std::max(_state._lastAppliedContinuousTick,
+                  _state._lastProcessedContinuousTick);
 }
 
 /// @brief register an applier error
@@ -476,7 +615,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;
   
-  if (!_state.isRunning() || _state.isShuttingDown()) {
+  if (!_state.isActive() || _state.isShuttingDown()) {
     // not active or somebody else is shutting us down
     return;
   }
@@ -484,17 +623,24 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
   
-  _state._state = ReplicationApplierState::ActivityState::SHUTTING_DOWN;
+  _state._phase = ReplicationApplierState::ActivityPhase::SHUTDOWN;
   _state.setError(r.errorNumber(), r.errorMessage());
+
+  if (_thread != nullptr) {
+    static_cast<ApplierThread*>(_thread.get())->setAborted(true);
+  }
 
   if (joinThread) {
     while (_state.isShuttingDown()) {
       writeLocker.unlock();
-      usleep(50 * 1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
       writeLocker.lock();
     }
     
-    TRI_ASSERT(!_state.isRunning() && !_state.isShuttingDown());
+    TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
+  
+    // wipe aborted flag. this will be passed on to the syncer
+    static_cast<ApplierThread*>(_thread.get())->setAborted(false);
 
     // steal thread
     Thread* t = _thread.release();

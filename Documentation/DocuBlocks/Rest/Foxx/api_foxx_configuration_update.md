@@ -17,4 +17,7 @@ Any omitted options will be ignored.
 @RESTQUERYPARAM{mount,string,required}
 Mount path of the installed service.
 
+@RESTRETURNCODE{200}
+Returned if the request was sucessful.
+
 @endDocuBlock

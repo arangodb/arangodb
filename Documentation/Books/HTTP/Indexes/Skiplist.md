@@ -5,4 +5,4 @@ If a suitable skip-list index exists, then /_api/simple/range and other operatio
 will use this index to execute queries.
 
 <!-- js/actions/api-index.js -->
-@startDocuBlock JSF_post_api_index_skiplist
+@startDocuBlock post_api_index_skiplist

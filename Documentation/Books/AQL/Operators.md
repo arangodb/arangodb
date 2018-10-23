@@ -287,8 +287,8 @@ AQL supports expressing simple numeric ranges with the *..* operator.
 This operator can be used to easily iterate over a sequence of numeric
 values.    
 
-The *..* operator will produce an array of values in the defined range, with 
-both bounding values included.
+The *..* operator will produce an array of the integer values in the 
+defined range, with both bounding values included.
 
 *Examples*
 
@@ -301,6 +301,11 @@ will produce the following result:
 ```json
 [ 2010, 2011, 2012, 2013 ]
 ```
+
+Using the range operator is equivalent to writing an array with the integer
+values in the range specified by the bounds of the range. If the bounds of
+the range operator are non-integers, they will be converted to integer
+values first.
 
 There is also a [RANGE() function](Functions/Numeric.md#range).
 

@@ -1,5 +1,5 @@
 A Hello World Example
----------------------
+=====================
 
 The client API or browser sends a HTTP request to the ArangoDB server and the
 server returns a HTTP response to the client. A HTTP request consists of a

@@ -33,16 +33,16 @@
 #include <sys/sysinfo.h>
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace arangodb {
+
 EnvironmentFeature::EnvironmentFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Environment") {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Greetings");
-  startsAfter("Logger");
+  setOptional(true);
+  startsAfter("GreetingsPhase");
   startsAfter("MaxMapCount");
 }
 
@@ -61,7 +61,7 @@ void EnvironmentFeature::prepare() {
   if (sizeof(void*) == 4) {
     // 32 bit build
     LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
-        << "this is a 32 bit build of ArangoDB. "
+        << "this is a 32 bit build of ArangoDB, which is unsupported. "
         << "it is recommended to run a 64 bit build instead because it can "
         << "address significantly bigger regions of memory";
   }
@@ -239,6 +239,35 @@ void EnvironmentFeature::prepare() {
       // file not found
     }
   }
+  
+  // check kernel ASLR settings
+  try {
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/kernel/randomize_va_space");
+    uint64_t v = basics::StringUtils::uint64(value);
+    // from man proc:
+    //
+    // 0 – No randomization. Everything is static.
+    // 1 – Conservative randomization. Shared libraries, stack, mmap(), VDSO and heap are randomized.
+    // 2 – Full randomization. In addition to elements listed in the previous point, memory managed through brk() is also randomized.
+    char const* s = nullptr;
+    switch (v) {
+      case 0: 
+        s = "nothing"; 
+        break;
+      case 1: 
+        s = "shared libraries, stack, mmap, VDSO and heap"; 
+        break;
+      case 2: 
+        s = "shared libraries, stack, mmap, VDSO, heap and memory managed through brk()"; 
+        break;
+    }
+    if (s != nullptr) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "host ASLR is in use for " << s;
+    }
+  } catch (...) {
+    // file not found or value not convertible into integer
+  }
 
 #endif
 }
@@ -312,3 +341,5 @@ void EnvironmentFeature::start() {
   }
 #endif
 }
+
+} // arangodb

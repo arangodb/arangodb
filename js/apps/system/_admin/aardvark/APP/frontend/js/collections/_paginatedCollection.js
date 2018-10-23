@@ -7,14 +7,14 @@
   window.PaginatedCollection = Backbone.Collection.extend({
     page: 0,
     pagesize: 10,
-    totalAmount: 0,
+    totalAmount: null,
 
     getPage: function () {
       return this.page + 1;
     },
 
     setPage: function (counter) {
-      if (counter >= this.getLastPageNumber()) {
+      if (counter >= this.getLastPageNumber() && this.totalAmount !== null) {
         this.page = this.getLastPageNumber() - 1;
         return;
       }

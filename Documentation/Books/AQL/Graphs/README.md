@@ -10,7 +10,7 @@ The two options in managing graphs are to either use
 - graph functions on a combination of document and edge collections.
 
 Named graphs can be defined through the [graph-module](../../Manual/Graphs/GeneralGraphs/index.html)
-or via the [web interface](../../Manual/Administration/WebInterface/index.html).
+or via the [web interface](../../Manual/Programs/WebInterface/index.html).
 The definition contains the name of the graph, and the vertex and edge collections
 involved. Since the management functions are layered on top of simple sets of
 document and edge collections, you can also use regular AQL functions to work with them. 

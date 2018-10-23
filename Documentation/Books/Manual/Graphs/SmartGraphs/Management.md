@@ -77,8 +77,8 @@ Create a graph with edge definitions and orphan collections:
     ] ]
 
 
-Modify a graph definition during runtime
-----------------------------------------
+Modify a graph definition at runtime
+------------------------------------
 
 After you have created a SmartGraph its definition is also not immutable.
 You can still add or remove relations.
@@ -90,7 +90,7 @@ Than after some time you decide to add it again, it can be used.
 This is because the enforced sharding is still applied to this vertex collection, hence it is suitable to be added again.
 
 
-#### Remove a vertex collection
+### Remove a vertex collection
 
 
 

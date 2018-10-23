@@ -43,8 +43,6 @@ RestActionHandler::RestActionHandler(GeneralRequest* request,
   _action = TRI_LookupActionVocBase(request);
 }
 
-bool RestActionHandler::isDirect() const { return _action == nullptr; }
-
 RestStatus RestActionHandler::execute() {
   TRI_action_result_t result;
 
@@ -86,7 +84,7 @@ RestStatus RestActionHandler::execute() {
   }
 
   // handler has finished, generate result
-  return result.isValid ? RestStatus::DONE : RestStatus::FAIL;
+  return RestStatus::DONE;
 }
 
 bool RestActionHandler::cancel() {
@@ -100,7 +98,8 @@ bool RestActionHandler::cancel() {
 
 TRI_action_result_t RestActionHandler::executeAction() {
   TRI_action_result_t result = _action->execute(
-      _vocbase, _request.get(), _response.get(), &_dataLock, &_data);
+    &_vocbase, _request.get(), _response.get(), &_dataLock, &_data
+  );
 
   if (!result.isValid) {
     if (result.canceled) {

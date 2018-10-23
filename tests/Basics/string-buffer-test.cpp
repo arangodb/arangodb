@@ -473,7 +473,7 @@ SECTION("tst_steal") {
   
   // buffer is now empty
   CHECK((0UL) == TRI_LengthStringBuffer(&sb));
-  CHECK(((void*) 0) == (void*) TRI_BeginStringBuffer(&sb));
+  CHECK(((void*) nullptr) == (void*) TRI_BeginStringBuffer(&sb));
 
   // stolen should still point to ptr
   CHECK(((void*) stolen) == (void*) ptr);

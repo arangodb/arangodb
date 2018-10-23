@@ -3,12 +3,22 @@ REPLACE
 
 The *REPLACE* keyword can be used to completely replace documents in a collection. On a
 single server, the replace operation is executed transactionally in an all-or-nothing 
-fashion. For sharded collections, the entire replace operation is not transactional.
+fashion.
+
+If the RocksDB engine is used and intermediate commits are enabled, a query may 
+execute intermediate transaction commits in case the running transaction (AQL
+query) hits the specified size thresholds. In this case, the query's operations 
+carried out so far will be committed and not rolled back in case of a later abort/rollback. 
+That behavior can be controlled by adjusting the intermediate commit settings for 
+the RocksDB engine. 
+
+For sharded collections, the entire query and/or replace operation may not be transactional,
+especially if it involves different shards and/or database servers.
 
 Each *REPLACE* operation is restricted to a single collection, and the 
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *REPLACE* statement per collection is allowed per AQL query, and 
-it cannot be followed by read operations that access the same collection, by
+it cannot be followed by read or write operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
 The system attributes *_id*, *_key* and *_rev* cannot be replaced, *_from* and *_to* can.
 
@@ -72,7 +82,8 @@ FOR u IN users
   REPLACE u WITH { status: 'inactive', name: u.name } IN backup
 ```
 
-### Setting query options
+Setting query options
+---------------------
 
 *options* can be used to suppress query errors that may occur when trying to
 replace non-existing documents or when violating unique key constraints:
@@ -90,7 +101,17 @@ FOR i IN 1..1000
   REPLACE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
 
-### Returning the modified documents
+In order to not accidentially overwrite documents that have been updated since you last fetched
+them, you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` value and only 
+succeed if they still match, or let ArangoDB ignore them (default):
+
+```
+FOR i IN 1..1000
+  REPLACE { _key: CONCAT('test', i), _rev: "1287623" } WITH { foobar: true } IN users OPTIONS { ignoreRevs: false }
+```
+
+Returning the modified documents
+--------------------------------
 
 The modified documents can also be returned by the query. In this case, the `REPLACE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements are
@@ -115,6 +136,7 @@ returned:
 ```
 FOR u IN users
   REPLACE u WITH { value: "test" } 
+  IN users
   LET previous = OLD 
   RETURN previous._key
 ```
@@ -124,8 +146,7 @@ documents (without some of their system attributes):
 
 ```
 FOR u IN users
-  REPLACE u WITH { value: "test" } 
+  REPLACE u WITH { value: "test" } IN users
   LET replaced = NEW 
   RETURN UNSET(replaced, '_key', '_id', '_rev')
 ```
-

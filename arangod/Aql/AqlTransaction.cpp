@@ -63,49 +63,25 @@ transaction::Methods* AqlTransaction::clone(
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
   if (ServerState::instance()->isCoordinator()) {
-    return processCollectionCoordinator(collection);
+    auto cid = resolver()->getCollectionId(collection->name());
+
+    return addCollection(cid, collection->name(), collection->accessType());
   }
-  return processCollectionNormal(collection);
-}
 
-/// @brief add a coordinator collection to the transaction
-
-Result AqlTransaction::processCollectionCoordinator(
-    aql::Collection* collection) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->getName());
-
-  return addCollection(cid, collection->getName().c_str(),
-                       collection->accessType);
-}
-
-/// @brief add a regular collection to the transaction
-
-Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   TRI_voc_cid_t cid = 0;
+  auto col = resolver()->getCollection(collection->name());
 
-  arangodb::LogicalCollection const* col =
-      resolver()->getCollectionStruct(collection->getName());
-  /*if (col == nullptr) {
-    auto startTime = TRI_microtime();
-    auto endTime = startTime + 60.0;
-    do {
-      usleep(10000);
-      if (TRI_microtime() > endTime) {
-        break;
-      }
-      col = this->resolver()->getCollectionStruct(collection->getName());
-    } while (col == nullptr);
-  }
-  */
   if (col != nullptr) {
-    cid = col->cid();
+    cid = col->id();
+  } else {
+    cid = resolver()->getCollectionId(collection->name());
   }
 
   Result res =
-      addCollection(cid, collection->getName(), collection->accessType);
+      addCollection(cid, collection->name(), collection->accessType());
 
   if (res.ok() && col != nullptr) {
-    collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));
+    collection->setCollection(col.get());
   }
 
   return res;

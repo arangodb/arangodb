@@ -355,11 +355,11 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
 
   builder.add(Value(ValueType::Object));
 
-  std::unordered_map<std::string, Slice> rightValues;
+  std::unordered_map<StringRef, Slice> rightValues;
   {
     ObjectIterator it(right);
     while (it.valid()) {
-      rightValues.emplace(it.key(true).copyString(), it.value());
+      rightValues.emplace(it.key(true).stringRef(), it.value());
       it.next();
     }
   }
@@ -368,7 +368,7 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
     ObjectIterator it(left);
 
     while (it.valid()) {
-      auto key = it.key(true).copyString();
+      auto key = it.key(true).stringRef();
       auto found = rightValues.find(key);
 
       if (found == rightValues.end()) {
@@ -379,7 +379,7 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
         // merge both values
         auto& value = (*found).second;
         if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
-          builder.add(Value(key));
+          builder.add(ValuePair(key, ValueType::String));
           Collection::merge(builder, it.value(), value, true, nullMeansRemove);
         }
         // clear the value in the map so its not added again

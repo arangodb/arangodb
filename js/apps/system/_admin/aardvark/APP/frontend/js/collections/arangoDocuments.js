@@ -36,7 +36,7 @@
       });
     },
 
-    setCollection: function (id) {
+    setCollection: function (id, page) {
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Documents', 'Could not fetch documents count');
@@ -44,7 +44,11 @@
       };
       this.resetFilter();
       this.collectionID = id;
-      this.setPage(1);
+      if (page) {
+        this.setPage(page);
+      } else {
+        this.setPage(1);
+      }
       this.loadTotal(callback);
     },
 
@@ -148,12 +152,17 @@
             data: JSON.stringify(queryObj2),
             contentType: 'application/json',
             success: function () {
+              var error = false;
               if (callback) {
-                callback();
+                callback(error);
               }
               window.progressView.hide();
             },
             error: function () {
+              var error = true;
+              if (callback) {
+                callback(error);
+              }
               window.progressView.hide();
               arangoHelper.arangoError(
                 'Document error', 'Documents inserted, but could not be removed.'
@@ -174,10 +183,16 @@
       var bindVars;
       var tmp;
       var queryObj;
+
+      var pageSize = this.getPageSize();
+      if (pageSize === 'all') {
+        pageSize = this.MAX_SORT + 38000; // will result in 50k docs
+      }
+
       bindVars = {
         '@collection': this.collectionID,
         'offset': this.getOffset(),
-        'count': this.getPageSize()
+        'count': pageSize
       };
 
       // fetch just the first 25 attributes of the document
@@ -206,8 +221,15 @@
 
       queryObj = {
         query: query,
-        bindVars: bindVars
+        bindVars: bindVars,
+        batchSize: pageSize
       };
+
+      if (this.filters.length > 0) {
+        queryObj.options = {
+          fullCount: true
+        };
+      }
 
       var checkCursorStatus = function (jobid) {
         $.ajax({

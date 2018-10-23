@@ -26,33 +26,46 @@
 
 using namespace arangodb;
 
-size_t SocketUnixDomain::write(basics::StringBuffer* buffer, boost::system::error_code& ec) {
-  return socketcommon::doWrite(_socket, buffer, ec);
+size_t SocketUnixDomain::writeSome(basics::StringBuffer* buffer,
+                                   asio_ns::error_code& ec) {
+  return _socket->write_some(asio_ns::buffer(buffer->begin(), buffer->length()),
+                            ec);
 }
-void SocketUnixDomain::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  return socketcommon::doAsyncWrite(_socket, buffer, handler);
+
+void SocketUnixDomain::asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
+                                  AsyncHandler const& handler) {
+  return asio_ns::async_write(*_socket, buffer, handler);
 }
-size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
-  return socketcommon::doRead(_socket, buffer, ec);
+
+size_t SocketUnixDomain::readSome(asio_ns::mutable_buffers_1 const& buffer,
+                                  asio_ns::error_code& ec) {
+  return _socket->read_some(buffer, ec);
 }
-std::size_t SocketUnixDomain::available(boost::system::error_code& ec) {
-  return _socket.available(ec);
+
+std::size_t SocketUnixDomain::available(asio_ns::error_code& ec) {
+  return _socket->available(ec);
 }
-void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  return socketcommon::doAsyncRead(_socket, buffer, handler);
+
+void SocketUnixDomain::asyncRead(asio_ns::mutable_buffers_1 const& buffer,
+                                 AsyncHandler const& handler) {
+  return _socket->async_read_some(buffer, handler);
 }
-void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
-  _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_receive, ec);
+
+void SocketUnixDomain::shutdownReceive(asio_ns::error_code& ec) {
+  _socket->shutdown(asio_ns::local::stream_protocol::socket::shutdown_receive,
+                    ec);
 }
-void SocketUnixDomain::shutdownSend(boost::system::error_code& ec) {
-  _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_send, ec);
+
+void SocketUnixDomain::shutdownSend(asio_ns::error_code& ec) {
+  _socket->shutdown(asio_ns::local::stream_protocol::socket::shutdown_send, ec);
 }
-void SocketUnixDomain::close(boost::system::error_code& ec) {
-  if (_socket.is_open()) {
-    _socket.close(ec); 
-    if (ec && ec != boost::asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "closing socket failed with: " << ec.message();
+
+void SocketUnixDomain::close(asio_ns::error_code& ec) {
+  if (_socket->is_open()) {
+    _socket->close(ec);
+    if (ec && ec != asio_ns::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing socket failed with: "
+                                              << ec.message();
     }
   }
 }

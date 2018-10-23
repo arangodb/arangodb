@@ -1,17 +1,19 @@
-shell> curl --dump - http://localhost:8529/_api/collection/products/checksum?withRevisions=false&withData=true
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/collection/products/checksum?withRevisions=<span class="hljs-literal">false</span>&amp;withData=<span class="hljs-literal">true</span></span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+location: <span class="hljs-regexp">/_api/</span>collection/products/checksum
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9842"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
-  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-  <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"6892543793098805803"</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_VvTRiQW---"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD1CC574CBE4/102414"</span>, 
+  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"3442510889787818590"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"102414"</span>, 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_XWq5mcS--_"</span> 
 }

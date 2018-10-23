@@ -23,6 +23,7 @@
 
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/Arithmetic.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -53,11 +54,11 @@ uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
     }
     case DOCVEC:
     case RANGE: {
-      VPackBuilder builder;
-      toVelocyPack(trx, builder, false);
+      transaction::BuilderLeaser builder(trx);
+      toVelocyPack(trx, *builder.get(), false);
       // we must use the slow hash function here, because a value may have
       // different representations in case its an array/object/number
-      return builder.slice().normalizedHash(seed);
+      return builder->slice().normalizedHash(seed);
     }
   }
 
@@ -278,7 +279,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
 }
 
 /// @brief get the _key attribute from an object/document
-AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getKeyAttribute(transaction::Methods* /*trx*/,
                                    bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -361,7 +362,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _from attribute from an object/document
-AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getFromAttribute(transaction::Methods* /*trx*/,
                                     bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -400,7 +401,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _to attribute from an object/document
-AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getToAttribute(transaction::Methods* /*trx*/,
                                   bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -601,28 +602,9 @@ double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
         return s.getBoolean() ? 1.0 : 0.0;
       }
       if (s.isString()) {
-        std::string v(s.copyString());
-        try {
-          size_t behind = 0;
-          double value = std::stod(v, &behind);
-          while (behind < v.size()) {
-            char c = v[behind];
-            if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
-              failed = true;
-              return 0.0;
-            }
-            ++behind;
-          }
-          TRI_ASSERT(!failed);
-          return value;
-        } catch (...) {
-          if (v.empty()) {
-            return 0.0;
-          }
-          // conversion failed
-          break;
-        }
-      } else if (s.isArray()) {
+        return arangodb::aql::stringToNumber(s.copyString(), failed);  
+      } 
+      if (s.isArray()) {
         auto length = s.length();
         if (length == 0) {
           return 0.0;
@@ -742,57 +724,6 @@ size_t AqlValue::docvecSize() const {
     s += it->size();
   }
   return s;
-}
-
-/// @brief construct a V8 value as input for the expression execution in V8
-/// only construct those attributes that are needed in the expression
-v8::Handle<v8::Value> AqlValue::toV8Partial(
-    v8::Isolate* isolate, transaction::Methods* trx,
-    std::unordered_set<std::string> const& attributes) const {
-  AqlValueType t = type();
-
-  if (t == DOCVEC || t == RANGE) {
-    // cannot make use of these types
-    return v8::Null(isolate);
-  }
-
-  VPackOptions* options = trx->transactionContext()->getVPackOptions();
-  VPackSlice s(slice());
-
-  if (s.isObject()) {
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-    // only construct those attributes needed
-    size_t left = attributes.size();
-
-    // we can only have got here if we had attributes
-    TRI_ASSERT(left > 0);
-
-    // iterate over all the object's attributes
-    for (auto const& it : VPackObjectIterator(s, false)) {
-      // check if we need to render this attribute
-      auto it2 = attributes.find(it.key.copyString());
-
-      if (it2 == attributes.end()) {
-        // we can skip the attribute
-        continue;
-      }
-
-      result->ForceSet(TRI_V8_STD_STRING(isolate, (*it2)),
-                       TRI_VPackToV8(isolate, it.value, options, &s));
-
-      if (--left == 0) {
-        // we have rendered all required attributes
-        break;
-      }
-    }
-
-    // return partial object
-    return result;
-  }
-
-  // fallback
-  return TRI_VPackToV8(isolate, s, options);
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
@@ -949,17 +880,10 @@ AqlValue AqlValue::clone() const {
       return AqlValue(VPackSlice(_data.buffer->data()));
     }
     case DOCVEC: {
-      auto c = std::make_unique<std::vector<AqlItemBlock*>>();
+      auto c = std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
       c->reserve(docvecSize());
-      try {
-        for (auto const& it : *_data.docvec) {
-          c->emplace_back(it->slice(0, it->size()));
-        }
-      } catch (...) {
-        for (auto& it : *c) {
-          delete it;
-        }
-        throw;
+      for (auto const& it : *_data.docvec) {
+        c->emplace_back(it->slice(0, it->size()));
       }
       return AqlValue(c.release());
     }
@@ -990,9 +914,7 @@ void AqlValue::destroy() noexcept {
       break;
     }
     case DOCVEC: {
-      for (auto& it : *_data.docvec) {
-        delete it;
-      }
+      // Will delete all ItemBlocks
       delete _data.docvec;
       break;
     }
@@ -1112,14 +1034,14 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
     if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC ||
         rightType == DOCVEC) {
       // range|docvec against x
-      VPackBuilder leftBuilder;
-      left.toVelocyPack(trx, leftBuilder, false);
+      transaction::BuilderLeaser leftBuilder(trx);
+      left.toVelocyPack(trx, *leftBuilder.get(), false);
 
-      VPackBuilder rightBuilder;
-      right.toVelocyPack(trx, rightBuilder, false);
+      transaction::BuilderLeaser rightBuilder(trx);
+      right.toVelocyPack(trx, *rightBuilder.get(), false);
 
       return arangodb::basics::VelocyPackHelper::compare(
-          leftBuilder.slice(), rightBuilder.slice(), compareUtf8, trx->transactionContextPtr()->getVPackOptions());
+          leftBuilder->slice(), rightBuilder->slice(), compareUtf8, trx->transactionContextPtr()->getVPackOptions());
     }
     // fall-through to other types intentional
   }

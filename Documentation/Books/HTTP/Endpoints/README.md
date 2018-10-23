@@ -19,7 +19,7 @@ Asking about Endpoints via HTTP
 ---------------------------
 
 <!-- js/actions/api-cluster.js -->
-@startDocuBlock JSF_get_api_cluster_endpoints
+@startDocuBlock get_api_cluster_endpoints
 
 <!-- arangod/RestHandler/RestEndpointHandler.h -->
-@startDocuBlock JSF_get_api_endpoint
+@startDocuBlock get_api_endpoint

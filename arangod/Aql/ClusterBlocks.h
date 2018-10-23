@@ -28,98 +28,27 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/SortRegister.h"
 #include "Rest/GeneralRequest.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
+
+namespace httpclient {
+class SimpleHttpResult;
+}
+
 namespace transaction {
 class Methods;
 }
-;
+
 struct ClusterCommResult;
 
 namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
-
-class GatherBlock : public ExecutionBlock {
- public:
-  GatherBlock(ExecutionEngine*, GatherNode const*);
-
-  ~GatherBlock();
-
-  /// @brief initialize
-  int initialize() override;
-
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int) override final;
-
-  /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief count: the sum of the count() of the dependencies or -1 (if any
-  /// dependency has count -1
-  int64_t count() const override final;
-
-  /// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
-  /// any dependency has remaining -1
-  int64_t remaining() override final;
-
-  /// @brief hasMore: true if any position of _buffer hasMore and false
-  /// otherwise.
-  bool hasMore() override final;
-
-  /// @brief getSome
-  AqlItemBlock* getSome(size_t, size_t) override final;
-
-  /// @brief skipSome
-  size_t skipSome(size_t, size_t) override final;
-
- protected:
-  /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
-  /// non-simple case only
-  bool getBlock(size_t i, size_t atLeast, size_t atMost);
-
-  /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
-  /// separately
-  std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
-
- private:
-  /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
-  /// the usual _pos but one pair per dependency
-  std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
-
-  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
-  /// simple case only
-  size_t _atDep = 0;
-
-  /// @brief sort elements for this block
-  std::vector<SortElementBlock> _sortRegisters;
-
-  /// @brief isSimple: the block is simple if we do not do merge sort . . .
-  bool const _isSimple;
-
-  /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-  class OurLessThan {
-   public:
-    OurLessThan(transaction::Methods* trx,
-                std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
-                std::vector<SortElementBlock>& sortRegisters)
-        : _trx(trx),
-          _gatherBlockBuffer(gatherBlockBuffer),
-          _sortRegisters(sortRegisters) {}
-
-    bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b);
-
-   private:
-    transaction::Methods* _trx;
-    std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
-    std::vector<SortElementBlock>& _sortRegisters;
-  };
-  using Heap = std::vector<std::pair<std::size_t,std::size_t>>;
-  std::unique_ptr<Heap> _heap;
-};
 
 class BlockWithClients : public ExecutionBlock {
  public:
@@ -130,62 +59,51 @@ class BlockWithClients : public ExecutionBlock {
 
  public:
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown
-  int shutdown(int) override;
+  std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final {
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  size_t skipSome(size_t atLeast, size_t atMost) override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  /// @brief remaining
-  int64_t remaining() override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  /// @brief hasMore
-  bool hasMore() override final {
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   /// @brief getSomeForShard
-  AqlItemBlock* getSomeForShard(size_t atLeast, size_t atMost,
-                                std::string const& shardId);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
+      size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
-  size_t skipSomeForShard(size_t atLeast, size_t atMost,
-                          std::string const& shardId);
-
-  /// @brief skipForShard
-  bool skipForShard(size_t number, std::string const& shardId);
+  std::pair<ExecutionState, size_t> skipSomeForShard(
+      size_t atMost, std::string const& shardId);
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   virtual bool hasMoreForShard(std::string const& shardId) = 0;
 
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  virtual int64_t remainingForShard(std::string const& shardId) = 0;
+  virtual ExecutionState getHasMoreStateForShard(std::string const& shardId) = 0;
 
  protected:
   /// @brief getOrSkipSomeForShard
-  virtual int getOrSkipSomeForShard(size_t atLeast, size_t atMost,
-                                    bool skipping, AqlItemBlock*& result,
-                                    size_t& skipped,
-                                    std::string const& shardId) = 0;
+  virtual std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
+      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t& skipped, std::string const& shardId) = 0;
 
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId);
+
+  /// @brief hasMoreForClientId: any more for client <cliendId>?
+  virtual bool hasMoreForClientId(size_t clientId) = 0;
+
+ protected:
 
   /// @brief _shardIdMap: map from shardIds to clientNrs
   std::unordered_map<std::string, size_t> _shardIdMap;
@@ -193,73 +111,71 @@ class BlockWithClients : public ExecutionBlock {
   /// @brief _nrClients: total number of clients
   size_t _nrClients;
 
-  /// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
-  /// if we are done for the shard with clientId = i
-  std::vector<bool> _doneForClient;
-
  private:
   bool _wasShutdown;
 };
 
-class ScatterBlock : public BlockWithClients {
+class ScatterBlock final : public BlockWithClients {
  public:
   ScatterBlock(ExecutionEngine* engine, ScatterNode const* ep,
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
 
-  ~ScatterBlock() {}
-
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief shutdown
-  int shutdown(int) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
 
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  int64_t remainingForShard(std::string const& shardId) override;
-
  private:
+
+  /// @brief getHasMoreStateForClientId: State for client <cliendId>?
+  ExecutionState getHasMoreStateForClientId(size_t clientId);
+
+  /// @brief hasMoreForClientId: any more for client <cliendId>?
+  bool hasMoreForClientId(size_t clientId) override;
+
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) override;
+
   /// @brief getOrSkipSomeForShard
-  int getOrSkipSomeForShard(size_t atLeast, size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped,
-                            std::string const& shardId) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
+      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t& skipped, std::string const& shardId) override final;
 
   /// @brief _posForClient:
   std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
-class DistributeBlock : public BlockWithClients {
+class DistributeBlock final : public BlockWithClients {
  public:
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
 
-  ~DistributeBlock() {}
-
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief shutdown
-  int shutdown(int) override;
-
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  int64_t remainingForShard(std::string const& shardId) override { return -1; }
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
 
  private:
-  /// @brief getOrSkipSomeForShard
-  int getOrSkipSomeForShard(size_t atLeast, size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped,
-                            std::string const& shardId) override;
 
-  /// @brief getBlockForClient: try to get at atLeast/atMost pairs into
+  /// @brief hasMoreForClientId: any more for client <cliendId>?
+  bool hasMoreForClientId(size_t clientId) override;
+
+  /// @brief getHasMoreStateForClientId: State for client <cliendId>?
+  ExecutionState getHasMoreStateForClientId(size_t clientId);
+
+  /// @brief getOrSkipSomeForShard
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
+      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t& skipped, std::string const& shardId) override final;
+
+  /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).
-  bool getBlockForClient(size_t atLeast, size_t atMost, size_t clientId);
+  std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
+  
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) override;
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
@@ -269,6 +185,12 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
+
+  // a reusable Builder object for building _key values
+  arangodb::velocypack::Builder _keyBuilder;
+
+  // a reusable Builder object for building document objects
+  arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.
@@ -294,61 +216,214 @@ class DistributeBlock : public BlockWithClients {
   bool _allowSpecifiedKeys;
 };
 
-class RemoteBlock : public ExecutionBlock {
+class RemoteBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
  public:
   RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
               std::string const& server, std::string const& ownName,
               std::string const& queryId);
 
-  ~RemoteBlock();
+  /// @brief timeout
+  static double const defaultTimeOut;
+
+  /// @brief initializeCursor, could be called multiple times
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
+
+  /// @brief shutdown, will be called exactly once for the whole query
+  std::pair<ExecutionState, Result> shutdown(int) override final;
+
+  /// @brief getSome
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
+
+  /// @brief skipSome
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
+
+  /// @brief handleAsyncResult
+  bool handleAsyncResult(ClusterCommResult* result) override;
+
+ private:
+  /**
+   * @brief Handle communication errors in Async case.
+   *
+   * @param result The network response we got from cluster comm.
+   *
+   * @return A wrapped Result Object, that is either ok() or contains
+   *         the error information to be thrown in get/skip some.
+   */
+  arangodb::Result handleCommErrors(ClusterCommResult* result) const;
+
+  /// @brief internal method to send a request. Will register a callback to be reactivated
+  arangodb::Result sendAsyncRequest(
+      rest::RequestType type, std::string const& urlPart,
+      std::shared_ptr<std::string const> body);
+
+  std::shared_ptr<velocypack::Builder> stealResultBody();
+
+  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
+  std::string const _server;
+
+  /// @brief our own identity, in case of the coordinator this is empty,
+  /// in case of the DBservers, this is the shard ID as a string
+  std::string const _ownName;
+
+  /// @brief the ID of the query on the server as a string
+  std::string const _queryId;
+
+  /// @brief whether or not this block will forward initialize,
+  /// initializeCursor or shutDown requests
+  bool const _isResponsibleForInitializeCursor;
+
+  /// @brief the last unprocessed result. Make sure to reset it
+  ///        after it is processed.
+  std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
+
+  /// @brief the last remote response Result object, may contain an error.
+  arangodb::Result _lastError;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class UnsortingGatherBlock
+/// @brief Execution block for gathers without order
+////////////////////////////////////////////////////////////////////////////////
+class UnsortingGatherBlock final : public ExecutionBlock {
+ public:
+  UnsortingGatherBlock(ExecutionEngine& engine, GatherNode const& en)
+    : ExecutionBlock(&engine, &en) {
+    TRI_ASSERT(en.elements().empty());
+  }
+
+  /// @brief initializeCursor
+  std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
+
+  /// @brief getSome
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
+
+  /// @brief skipSome
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
+
+ private:
+  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
+  size_t _atDep{};
+}; // UnsortingGatherBlock
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct SortingStrategy
+////////////////////////////////////////////////////////////////////////////////
+struct SortingStrategy {
+  typedef std::pair<
+    size_t, // dependency index
+    size_t // position within a dependecy
+  > ValueType;
+
+  virtual ~SortingStrategy() = default;
+
+  /// @brief returns next value
+  virtual ValueType nextValue() = 0;
+
+  /// @brief prepare strategy fetching values
+  virtual void prepare(std::vector<ValueType>& /*blockPos*/) { }
+
+  /// @brief resets strategy state
+  virtual void reset() = 0;
+}; // SortingStrategy
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class SortingGatherBlock
+/// @brief Execution block for gathers with order
+////////////////////////////////////////////////////////////////////////////////
+class SortingGatherBlock final : public ExecutionBlock {
+ public:
+  SortingGatherBlock(
+    ExecutionEngine& engine,
+    GatherNode const& en
+  );
+
+  ~SortingGatherBlock();
+
+  /// @brief initializeCursor
+  std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
+
+  /// @brief getSome
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
+
+  /// @brief skipSome
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
+
+ private:
+  
+  void clearBuffers() noexcept;
+
+  /**
+   * @brief Fills all _gatherBlockBuffer entries. Is repeatable during WAITING.
+   *
+   *
+   * @param atMost The amount of data requested per block.
+   *
+   * @return Will return {WAITING, 0} if it had to request new data from upstream.
+   *         If everything is in place: all buffers are either filled, or the upstream
+   *         block is DONE. Will return {DONE, SUM(_gatherBlockBuffer)} on success.
+   */
+  std::pair<ExecutionState, size_t> fillBuffers(size_t atMost);
+ 
+  /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
+  /// non-simple case only
+  std::pair<ExecutionState, bool> getBlocks(size_t i, size_t atMost);
+
+  /// @brief Updates _gatherBlockBuffer and _gatherBlockPos so they point to the
+  /// next row.
+  void nextRow(size_t i);
+
+  /// @brief Calculates and returns the number of available rows in buffer i.
+  size_t availableRows(size_t i) const;
+
+ private:
+
+  /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
+  /// separately
+  std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
+
+  /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
+  /// the usual _pos but one pair per dependency
+  std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
+  
+  /// @brief whether or not the dependency at index is done
+  std::vector<bool> _gatherBlockPosDone;
+
+  /// @brief sort elements for this block
+  std::vector<SortRegister> _sortRegisters;
+
+  /// @brief sorting strategy
+  std::unique_ptr<SortingStrategy> _strategy;
+}; // SortingGatherBlock
+
+class SingleRemoteOperationBlock final : public ExecutionBlock {
+  /// @brief constructors/destructors
+ private:
+  bool getOne(arangodb::aql::AqlItemBlock* aqlres,
+              size_t outputCounter);
+ public:
+  SingleRemoteOperationBlock(ExecutionEngine* engine,
+                             SingleRemoteOperationNode const* en
+                             );
 
   /// @brief timeout
   static double const defaultTimeOut;
 
-  /// @brief initialize
-  int initialize() override final;
-
-  /// @brief initializeCursor, could be called multiple times
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief shutdown, will be called exactly once for the whole query
-  int shutdown(int) override final;
-
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
-  /// @brief hasMore
-  bool hasMore() override final;
-
-  /// @brief count
-  int64_t count() const override final;
-
-  /// @brief remaining
-  int64_t remaining() override final;
-
-  /// @brief internal method to send a request
  private:
-  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::RequestType type, std::string const& urlPart,
-      std::string const& body) const;
+  /// @brief _colectionName: the name of the sharded collection
+  Collection const* _collection;
 
-  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string _server;
-
-  /// @brief our own identity, in case of the coordinator this is empty,
-  /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
-
-  /// @brief the ID of the query on the server as a string
-  std::string _queryId;
-
-  /// @brief whether or not this block will forward initialize, 
-  /// initializeCursor or shutDown requests
-  bool const _isResponsibleForInitializeCursor;
+  /// @brief the key of the document to fetch
+  std::string const _key;
 };
 
 }  // namespace arangodb::aql

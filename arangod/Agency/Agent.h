@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgencyStrings.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
@@ -35,14 +36,15 @@
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/ReadWriteLock.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace consensus {
 
-class Agent : public arangodb::Thread,
-              public AgentInterface {
+class Agent final : public arangodb::Thread,
+                    public AgentInterface {
 
  public:
   /// @brief Construct with program options
@@ -69,6 +71,13 @@ class Agent : public arangodb::Thread,
 
   /// @brief Get timeoutMult:
   int64_t getTimeoutMult() const;
+
+  /**
+   * @brief add gossip peer to configuration
+   * @param   endpoint  new endpoint
+   * @return  true: if new endpoint, false: if already known
+   */
+  bool addGossipPeer(std::string const& endpoint);
 
   /// @brief Adjust timeoutMult:
   void adjustTimeoutMult(int64_t timeoutMult);
@@ -109,13 +118,13 @@ class Agent : public arangodb::Thread,
   /// @brief Attempt write
   ///        Startup flag should NEVER be discarded solely for purpose of
   ///        persisting the agency configuration
-  write_ret_t write(query_t const&, bool discardStartup = false) override;
+  write_ret_t write(query_t const&, WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
   /// @brief Inquire success of logs given clientIds
-  inquire_ret_t inquire(query_t const&);
+  write_ret_t inquire(query_t const&);
 
   /// @brief Attempt read/write transaction
   trans_ret_t transact(query_t const&) override;
@@ -177,10 +186,13 @@ class Agent : public arangodb::Thread,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Report a failed append entry call from AgentCallback
-  void reportFailed(std::string const& slaveId, size_t toLog);
+  void reportFailed(std::string const& slaveId, size_t toLog, bool sent = false);
 
   /// @brief Wait for slaves to confirm appended entries
   AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
+
+  /// @brief Check if everything up to a given index has been committed:
+  bool isCommitted(index_t last_entry) override;
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -198,18 +210,32 @@ class Agent : public arangodb::Thread,
   State const& state() const;
 
   /// @brief execute a callback while holding _ioLock
-  void executeLocked(std::function<void()> const& cb);
+  ///  and read lock for _readDB
+  void executeLockedRead(std::function<void()> const& cb);
+
+  /// @brief execute a callback while holding _ioLock
+  ///  and write lock for _readDB
+  void executeLockedWrite(std::function<void()> const& cb);
 
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
   Store const& readDB() const;
 
   /// @brief Get spearhead store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
   Store const& spearhead() const;
 
   /// @brief Get transient store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
   Store const& transient() const;
 
   /// @brief Serve active agent interface
@@ -222,7 +248,7 @@ class Agent : public arangodb::Thread,
   query_t allLogs() const;
 
   /// @brief Last contact with followers
-  query_t lastAckedAgo() const;
+  void lastAckedAgo(Builder&) const;
 
   /// @brief Am I active agent
   bool active() const;
@@ -236,8 +262,8 @@ class Agent : public arangodb::Thread,
   /// @brief Reset RAFT timeout intervals
   void resetRAFTTimes(double, double);
 
-  /// @brief Get start time of leadership
-  TimePoint const& leaderSince() const;
+  /// @brief How long back did I take over leadership, result in seconds
+  int64_t leaderFor() const;
 
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(query_t const& message);
@@ -251,7 +277,11 @@ class Agent : public arangodb::Thread,
   /// @brief Guarding taking over leadership
   void beginPrepareLeadership() { _preparing = 1; }
   void donePrepareLeadership() { _preparing = 2; }
-  void endPrepareLeadership()  { _preparing = 0; }
+  void endPrepareLeadership()  {
+    _preparing = 0;
+    _leaderSince = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
   int getPrepareLeadership() { return _preparing; }
 
   // #brief access Inception thread
@@ -280,13 +310,13 @@ class Agent : public arangodb::Thread,
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
 
+  /// @brief add agent to configuration (from State after successful local persistence)
+  void updateConfiguration(VPackSlice const&);
+
  private:
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
-
-  /// @brief Notify inactive pool members of changes in configuration
-  void notifyInactive() const;
 
   /// @brief Leader election delegate
   Constituent _constituent;
@@ -312,8 +342,9 @@ class Agent : public arangodb::Thread,
   /// answers to appendEntriesRPC messages come in on the leader, and when
   /// appendEntriesRPC calls are received on the follower. In each case
   /// we hold the _ioLock when _commitIndex is changed. Reading and writing
-  /// must be done under the mutex of _waitForCV to allow a thread to wait
-  /// for a change using that condition variable.
+  /// must be done under the write lock of _outputLog and the mutex of
+  /// _waitForCV to allow a thread to wait for a change using that
+  /// condition variable.
   index_t _commitIndex;
 
   /// @brief Spearhead (write) kv-store
@@ -325,7 +356,7 @@ class Agent : public arangodb::Thread,
   /// @brief Committed (read) kv-store for transient data
   Store _transient;
 
-  /// @brief Condition variable for appending to the log and for 
+  /// @brief Condition variable for appending to the log and for
   /// AgentCallbacks. This is used by the main agent thread to go
   /// to sleep when all necessary checks have been performed. When
   /// new local log entries have been appended to the log or when
@@ -335,7 +366,50 @@ class Agent : public arangodb::Thread,
   arangodb::basics::ConditionVariable _appendCV;
   bool _agentNeedsWakeup;
 
-  /// @brief Condition variable for waiting for confirmation. This is used
+  /// The following two members are strictly only used in the
+  /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
+  /// necessary for these:
+
+  /// @brief _lastSent stores for each follower the time stamp of the time
+  /// when the main Agent thread has last sent a non-empty
+  /// appendEntriesRPC to that follower.
+  std::unordered_map<std::string, SteadyTimePoint> _lastSent;
+
+  /// The following three members are protected by _tiLock:
+
+  /// @brief stores for each follower the highest index log it has reported as
+  /// locally logged.
+  std::unordered_map<std::string, index_t> _confirmed;
+
+  /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
+  std::unordered_map<std::string, SteadyTimePoint> _lastAcked;
+
+  /// @brief The earliest timepoint at which we will send new sendAppendEntries
+  /// to a particular follower. This is a measure to avoid bombarding a
+  /// follower, that has trouble keeping up.
+  std::unordered_map<std::string, SteadyTimePoint> _earliestPackage;
+
+  // @brief Lock for the above time data about other agents. This
+  // protects _confirmed, _lastAcked and _earliestPackage:
+  mutable arangodb::Mutex _tiLock;
+
+  /// @brief RAFT consistency lock:
+  ///   _spearhead
+  ///
+  mutable arangodb::Mutex _ioLock;
+
+  /// @brief RAFT consistency lock:
+  ///   _readDB and _commitIndex
+  /// Allows reading from one or both if used alone.
+  /// Writing requires this held first, then _waitForCV's mutex
+  mutable arangodb::basics::ReadWriteLock _outputLock;
+
+  /// @brief RAFT consistency lock and update notifier:
+  ///   _readDB and _commitIndex
+  /// _waitForCV's mutex held alone, allows reads from _readDB or _commitIndex.
+  /// Writing requires _outputLock in Write mode first, then _waitForCV's mutex
+  ///
+  /// Condition variable for waiting for confirmation. This is used
   /// in threads that wait until the _commitIndex has reached a certain
   /// index. Whenever _commitIndex is advanced (by incoming confirmations
   /// in AgentCallbacks and later discovery in advanceCommitIndex). All
@@ -343,53 +417,22 @@ class Agent : public arangodb::Thread,
   /// and are followed by a broadcast on this condition variable.
   mutable arangodb::basics::ConditionVariable _waitForCV;
 
-  /// The following two members are strictly only used in the
-  /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
-  /// necessary for these:
-
-  /// @brief _lastSent stores for each follower the time stamp of the time 
-  /// when the main Agent thread has last sent a non-empty
-  /// appendEntriesRPC to that follower.
-  std::unordered_map<std::string, TimePoint> _lastSent;
-
-  /// The following three members are protected by _tiLock:
-
-  /// @brief stores for each follower the highest index log it has reported as 
-  /// locally logged.
-  std::unordered_map<std::string, index_t> _confirmed;
-
-  /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
-  std::unordered_map<std::string, TimePoint> _lastAcked;
-
-  /// @brief The earliest timepoint at which we will send new sendAppendEntries
-  /// to a particular follower. This is a measure to avoid bombarding a
-  /// follower, that has trouble keeping up.
-  std::unordered_map<std::string, TimePoint> _earliestPackage;
-
-  // @brief Lock for the above time data about other agents. This
-  // protects _confirmed, _lastAcked and _earliestPackage:
-  mutable arangodb::Mutex _tiLock;
-
-  /**< @brief RAFT consistency lock:
-     _spearhead
-     _readDB
-   */
-  mutable arangodb::Mutex _ioLock;
-
-  /// Rules for the locks: This covers the following locks:
+  /// Rules for access and locks: This covers the following locks:
   ///    _ioLock (here)
-  ///    _logLock (in State)         _waiForCV (here)
-  ///    _tiLock (here)              _tiLock (here)
+  ///    _logLock (in State)
+  ///    _outputLock reading or writing
+  ///    _waitForCV
+  ///    _tiLock (here)
   /// One may never acquire a log in this list whilst holding another one
   /// that appears further down on this list. This is to prevent deadlock.
+  //
   /// For _logLock: This is local to State and we make sure that the few
   /// functions in State that call Agent methods only call those that do
-  /// not acquire the _ioLock.
+  /// not acquire the _ioLock. They only call Agent::setPersistedState which
+  /// acquires _outputLock and _waitForCV but this is OK.
+  //
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
-
-  // @brief guard _activator 
-  mutable arangodb::Mutex _activatorLock;
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
@@ -404,9 +447,10 @@ class Agent : public arangodb::Thread,
                                 // waiting until _commitIndex is at end of
                                 // our log
 
-  /// @brief Keep track of when I last took on leadership
-  TimePoint _leaderSince;
-  
+  /// @brief Keep track of when I last took on leadership, this is seconds
+  /// since the epoch of the steady clock.
+  std::atomic<int64_t> _leaderSince;
+
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
 

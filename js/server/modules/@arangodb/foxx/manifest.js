@@ -10,9 +10,14 @@ const ArangoError = arangodb.ArangoError;
 const errors = arangodb.errors;
 const il = require('@arangodb/util').inline;
 
+const CANONICAL_SCHEMA = 'http://json.schemastore.org/foxx-manifest';
+exports.schemaUrl = CANONICAL_SCHEMA;
+
 // Regular expressions for joi patterns
 const RE_EMPTY = /^$/;
 const RE_NOT_EMPTY = /./;
+const RE_KEY = /^[_$a-z][-_$a-z0-9]*$/i;
+const RE_PKG = /^@[_$a-z][-_$a-z0-9]*(\/[_$a-z][-_$a-z0-9]*)*$/i;
 
 const legacyManifestFields = [
   'assets',
@@ -35,6 +40,7 @@ configTypes.int = configTypes.integer;
 configTypes.bool = configTypes.boolean;
 
 const manifestSchema = {
+  $schema: joi.forbidden().allow(CANONICAL_SCHEMA).default(CANONICAL_SCHEMA),
   // FoxxStore metadata
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
   version: joi.string().optional(),
@@ -165,12 +171,20 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
     const value = inputManifest[key];
     const result = joi.validate(value, schema);
     if (result.error) {
-      const error = result.error.message.replace(/^"value"/, `Value`);
-      errors.push(il`
-        Service at "${mount}" specifies manifest field "${key}"
-        with invalid value "${util.format(value)}":
-        ${error}
-      `);
+      if (key === '$schema') {
+        manifest[key] = CANONICAL_SCHEMA;
+        console.warnLines(il`
+          Service at "${mount}" specifies manifest field "$schema"
+          with invalid value "${util.format(value)}".
+          Did you mean "${CANONICAL_SCHEMA}"?
+        `);
+      } else {
+        const error = result.error.message.replace(/^"value"/, 'Value');
+        errors.push(il`
+          Service at "${mount}" specifies manifest field "${key}"
+          with invalid value "${util.format(value)}": ${error}
+        `);
+      }
     } else {
       manifest[key] = result.value;
     }
@@ -231,7 +245,15 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
         manifest.provides[tokens[0]] = tokens[1] || '*';
       }
     }
+
     for (const name of Object.keys(manifest.provides)) {
+      if (!name.match(RE_KEY) && !name.match(RE_PKG)) {
+        console.warnLines(il`
+          Service at "${mount}" specifies manifest field "provides"
+          with invalid key "${name}" which will no longer be supported in ArangoDB 4.
+        `);
+      }
+
       const version = manifest.provides[name];
       if (!semver.valid(version)) {
         errors.push(il`
@@ -242,8 +264,26 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
     }
   }
 
+  if (manifest.configuration) {
+    for (const key of Object.keys(manifest.configuration)) {
+      if (!key.match(RE_KEY)) {
+        console.warnLines(il`
+          Service at "${mount}" specifies manifest field "configuration"
+          with invalid key "${key}" which will no longer be supported in ArangoDB 4.
+        `);
+      }
+    }
+  }
+
   if (manifest.dependencies) {
     for (const key of Object.keys(manifest.dependencies)) {
+      if (!key.match(RE_KEY)) {
+        console.warnLines(il`
+          Service at "${mount}" specifies manifest field "dependencies"
+          with invalid key "${key}" which will no longer be supported in ArangoDB 4.
+        `);
+      }
+
       if (typeof manifest.dependencies[key] === 'string') {
         const tokens = manifest.dependencies[key].split(':');
         manifest.dependencies[key] = {
@@ -252,11 +292,21 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
           required: true
         };
       }
+
+      const name = manifest.dependencies[key].name;
+      if (name !== '*' && !name.match(RE_KEY) && !name.match(RE_PKG)) {
+        console.warnLines(il`
+          Service at "${mount}" specifies manifest field "dependencies"
+          with "${key}" set to invalid name "${name}"
+          which will no longer be supported in ArangoDB 4.
+        `);
+      }
+
       const version = manifest.dependencies[key].version;
       if (!semver.validRange(version)) {
         errors.push(il`
           Service at "${mount}" specifies manifest field "dependencies"
-          with "${key}" set to invalid value "${version}".
+          with "${key}" set to invalid version "${version}".
         `);
       }
     }
@@ -347,3 +397,4 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
 
 exports.configTypes = configTypes;
 exports.validate = validateManifestFile;
+exports.validateJson = checkManifest;

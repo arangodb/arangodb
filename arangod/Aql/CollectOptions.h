@@ -35,21 +35,32 @@ namespace aql {
 /// @brief CollectOptions
 struct CollectOptions {
   /// @brief selected aggregation method
-  enum CollectMethod {
-    COLLECT_METHOD_UNDEFINED,
-    COLLECT_METHOD_HASH,
-    COLLECT_METHOD_SORTED,
-    COLLECT_METHOD_DISTINCT
+  enum class CollectMethod {
+    UNDEFINED,
+    HASH,
+    SORTED,
+    DISTINCT,
+    COUNT
   };
 
   /// @brief constructor, using default values
-  CollectOptions() : method(COLLECT_METHOD_UNDEFINED) {}
+  CollectOptions() : method(CollectMethod::UNDEFINED) {}
+  
+  CollectOptions(CollectOptions const& other) : method(other.method) {}
+
+  CollectOptions& operator=(CollectOptions const& other) {
+    method = other.method;
+    return *this;
+  }
 
   /// @brief constructor
   explicit CollectOptions(arangodb::velocypack::Slice const&);
 
-  /// @brief whether or not the hash method can be used
-  bool canUseHashMethod() const;
+  /// @brief whether or not the method can be used
+  bool canUseMethod(CollectMethod method) const;
+  
+  /// @brief whether or not the method should be used
+  bool shouldUseMethod(CollectMethod method) const;
 
   /// @brief convert the options to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;

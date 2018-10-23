@@ -1,34 +1,35 @@
 /*jshint strict: false */
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoView
-// /
-// / @file
-// /
-// / DISCLAIMER
-// /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
-// /
-// / @author Daniel H. Larkin
-// / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// /////////////////////////////////////////////////////////////////////////////
+// @brief ArangoView
+// 
+// @file
+// 
+// DISCLAIMER
+// 
+// Copyright 2013 triagens GmbH, Cologne, Germany
+// 
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// 
+// Copyright holder is triAGENS GmbH, Cologne, Germany
+// 
+// @author Daniel H. Larkin
+// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
+const ArangoError = require('@arangodb').ArangoError;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructor
@@ -57,11 +58,31 @@ function ArangoView (database, data) {
 
 exports.ArangoView = ArangoView;
 
-var ArangoError = require('@arangodb').ArangoError;
+// /////////////////////////////////////////////////////////////////////////////
+// @brief pretty print
+// /////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief append the waitForSync parameter to a URL
-// //////////////////////////////////////////////////////////////////////////////
+ArangoView.prototype._PRINT = function (context) {
+  const type = this.type();
+  const name = this.name();
+
+  const colors = internal.COLORS;
+  const useColor = context.useColor;
+
+  context.output += '[ArangoView ';
+  if (useColor) { context.output += colors.COLOR_NUMBER; }
+  context.output += this._id;
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += ', "';
+  if (useColor) { context.output += colors.COLOR_STRING; }
+  context.output += name || 'unknown';
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += '" (type ' + type + ')]';
+};
+
+// /////////////////////////////////////////////////////////////////////////////
+// @brief append the waitForSync parameter to a URL
+// /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype._appendSyncParameter = function (url, waitForSync) {
   if (waitForSync) {
@@ -75,9 +96,9 @@ ArangoView.prototype._appendSyncParameter = function (url, waitForSync) {
   return url;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief append some boolean parameter to a URL
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief append some boolean parameter to a URL
+// /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype._appendBoolParameter = function (url, name, val) {
   if (url.indexOf('?') === -1) {
@@ -89,9 +110,9 @@ ArangoView.prototype._appendBoolParameter = function (url, name, val) {
   return url;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief prefix a URL with the database name of the view
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief prefix a URL with the database name of the view
+// /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype._prefixurl = function (url) {
   if (url.substr(0, 5) === '/_db/') {
@@ -104,9 +125,9 @@ ArangoView.prototype._prefixurl = function (url) {
   return this._dbPrefix + '/' + url;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the base url for view usage
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief return the base url for view usage
+// /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype._baseurl = function (suffix) {
   var url = this._database._viewurl(this.name());
@@ -116,14 +137,6 @@ ArangoView.prototype._baseurl = function (suffix) {
   }
 
   return this._prefixurl(url);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief converts into an array
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoView.prototype.toArray = function () {
-  return this.all().toArray();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -150,9 +163,9 @@ ArangoView.prototype._help = function () {
   internal.print(helpArangoView);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief gets the name of a view
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief gets the name of a view
+// /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype.name = function () {
   if (this._name === null) {
@@ -162,9 +175,9 @@ ArangoView.prototype.name = function () {
   return this._name;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief gets the type of a view
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief gets the type of a view
+// /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype.type = function () {
   if (this._type === null) {
@@ -174,40 +187,92 @@ ArangoView.prototype.type = function () {
   return this._type;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief gets or sets the properties of a view
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief gets or sets the properties of a view
+// /////////////////////////////////////////////////////////////////////////////
 
-ArangoView.prototype.properties = function (properties) {
+ArangoView.prototype.properties = function (properties, partialUpdate) {
   var requestResult;
+
   if (properties === undefined) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
-
-    arangosh.checkRequestResult(requestResult);
+  } else if (partialUpdate === undefined || partialUpdate === true) {
+    requestResult = this._database._connection.PATCH(
+      this._baseurl('properties'), properties
+    );
   } else {
-    var body = properties;
-    requestResult = this._database._connection.PATCH(this._baseurl('properties'),
-      JSON.stringify(body));
-
-    arangosh.checkRequestResult(requestResult);
+    requestResult = this._database._connection.PUT(
+      this._baseurl('properties'), properties
+    );
   }
 
-  return requestResult;
+  arangosh.checkRequestResult(requestResult);
+
+  const mask = {
+    'code': true,
+    'id': true,
+    'name': true,
+    'type': true,
+  };
+  var result = {};
+
+  // remove masked attributes from result
+  for (let attr in requestResult) {
+    if (!mask.hasOwnProperty(attr) && requestResult[attr] !== undefined) {
+      result[attr] = requestResult[attr];
+    }
+  }
+
+  return result;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief drops a view
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// @brief drops a view
+// /////////////////////////////////////////////////////////////////////////////
 
-ArangoView.prototype.drop = function () {
-  var requestResult = this._database._connection.DELETE(this._baseurl());
+ArangoView.prototype.drop = function (options) {
+  var requestResult;
+  if (typeof options === 'object' && options.isSystem) {
+    requestResult = this._database._connection.DELETE(this._baseurl() + '?isSystem=true');
+  } else {
+    requestResult = this._database._connection.DELETE(this._baseurl());
+  }
 
   if (requestResult !== null
+    && requestResult !== undefined
     && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_VIEW_NOT_FOUND.code) {
+    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "view not found"
     arangosh.checkRequestResult(requestResult);
-  } else {
-    this._database._unregisterView(this._name);
   }
+
+  var database = this._database;
+  var name;
+
+  for (name in database) {
+    if (database.hasOwnProperty(name)) {
+      var view = database[name];
+
+      if (view instanceof ArangoView) {
+        if (view.name() === this.name()) {
+          delete database[name];
+        }
+      }
+    }
+  }
+};
+
+// /////////////////////////////////////////////////////////////////////////////
+// @brief renames a view
+// /////////////////////////////////////////////////////////////////////////////
+
+ArangoView.prototype.rename = function (name) {
+  var body = { name: name };
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), body);
+
+  arangosh.checkRequestResult(requestResult);
+
+  delete this._database[this._name];
+  this._database[name] = this;
+  this._name = name;
 };

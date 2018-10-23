@@ -27,28 +27,27 @@
 #include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
+
 namespace rest {
+
 class RestHandlerFactory;
 class AsyncJobManager;
-}
 
-class FeatureCacheFeature;
+}
 
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static std::string operationModeString(OperationMode mode);
 
- public:
-  ServerFeature(application_features::ApplicationServer*, int* result);
+  ServerFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+  void stop() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
- public:
   OperationMode operationMode() const { return _operationMode; }
 
   std::string operationModeString() const {
@@ -56,26 +55,28 @@ class ServerFeature final : public application_features::ApplicationFeature {
   }
 
   std::vector<std::string> const& scripts() const { return _scripts; }
-  std::vector<std::string> const& unitTests() const { return _unitTests; }
   uint32_t const& vstMaxSize() const { return _vstMaxSize; }
   
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
   }
- 
+
  private:
   void waitForHeartbeat();
 
- private:
   bool _console = false;
   bool _restServer = true;
-  std::vector<std::string> _unitTests;
   std::vector<std::string> _scripts;
   uint32_t _vstMaxSize;
   int* _result;
   OperationMode _operationMode;
   bool _isStopping = false;
+ #if _WIN32
+  uint16_t _codePage;
+  uint16_t _originalCodePage;
+#endif
 };
+
 }
 
 #endif

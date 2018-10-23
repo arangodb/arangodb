@@ -1130,6 +1130,32 @@ class KeySpace {
     delete element;
     return false;
   }
+  
+  bool keySet(std::string const& key, double val) {
+    TRI_json_t* json = TRI_CreateNumberJson(val);
+
+    if (json == nullptr) {
+      // OOM
+      return false;
+    }
+    auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(), json);
+    {
+      WRITE_LOCKER(writeLocker, _lock);
+      auto it = _hash.find(key);
+      if (it != _hash.end()) {
+        it->second->json->_value._number = val;
+        return true;
+      } else {
+        auto it2 = _hash.emplace(key, element.get());
+        if (it2.second) {
+          element.release(); // _hash now has ownership
+          return true;
+        }
+      }
+    }
+    // insertion failed
+    return false;
+  }
 
   int keyCas(v8::Isolate* isolate, std::string const& key,
              v8::Handle<v8::Value> const& value,
@@ -1619,11 +1645,12 @@ struct UserStructures {
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_vocbase_t* GetContextVocBase(v8::Isolate* isolate) {
+static inline TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_vocbase != nullptr);
-  return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
+
+  return *static_cast<TRI_vocbase_t*>(v8g->_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1654,12 +1681,7 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "KEYSPACE_CREATE(<name>, <size>, <ignoreExisting>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   int64_t size = 0;
 
@@ -1671,17 +1693,17 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   bool ignoreExisting = false;
+
   if (args.Length() > 2) {
     ignoreExisting = TRI_ObjectToBoolean(args[2]);
   }
 
   auto ptr = std::make_unique<KeySpace>(static_cast<uint32_t>(size));
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
     WRITE_LOCKER(writeLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash != nullptr) {
       if (!ignoreExisting) {
@@ -1715,22 +1737,17 @@ static void JS_KeyspaceDrop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_DROP(<name>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
     WRITE_LOCKER(writeLocker, h->lock);
-
     auto it = h->data.find(name);
 
     if (it == h->data.end()) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Keyspace does not exist");
     }
 
     delete (*it).second;
@@ -1753,20 +1770,14 @@ static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_COUNT(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   uint32_t count;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1796,22 +1807,17 @@ static void JS_KeyspaceExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_EXISTS(<name>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash != nullptr) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -1828,18 +1834,12 @@ static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_KEYS(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1866,18 +1866,12 @@ static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_GET(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1904,18 +1898,12 @@ static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_REMOVE(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1942,21 +1930,15 @@ static void JS_KeyGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_GET(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   v8::Handle<v8::Value> result;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1981,12 +1963,7 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET(<name>, <key>, <value>, <replace>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
   bool replace = true;
@@ -1995,12 +1972,12 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     replace = TRI_ObjectToBoolean(args[3]);
   }
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   bool result;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2012,8 +1989,34 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calls global.KEY_SET('queue-control', 'databases-expire', 0);
+////////////////////////////////////////////////////////////////////////////////
+void TRI_ExpireFoxxQueueDatabaseCache(TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(vocbase->isSystem());
+  std::string const name = "queue-control";
+  std::string const key = "databases-expire";
+  
+  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  bool result;
+  {
+    READ_LOCKER(readLocker, h->lock);
+    
+    auto hash = GetKeySpace(vocbase, name);
+    if (hash == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    
+    result = hash->keySet(key, 0);
+  }
+  if (!result) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2029,12 +2032,7 @@ static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "KEY_SET_CAS(<name>, <key>, <value>, <compare>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
 
@@ -2042,13 +2040,13 @@ static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   int res;
   bool match = false;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2064,6 +2062,7 @@ static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (match) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -2080,21 +2079,15 @@ static void JS_KeyRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_REMOVE(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   bool result;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2106,6 +2099,7 @@ static void JS_KeyRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -2122,21 +2116,15 @@ static void JS_KeyExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_EXISTS(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   bool result;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2148,6 +2136,7 @@ static void JS_KeyExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (result) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -2168,15 +2157,9 @@ static void JS_KeyIncr(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_INCR(<name>, <key>, <value>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
   double incr = 1.0;
 
   if (args.Length() >= 3) {
@@ -2184,11 +2167,11 @@ static void JS_KeyIncr(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   double result;
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2218,24 +2201,19 @@ static void JS_KeyUpdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "KEY_UPDATE(<name>, <key>, <object>, <nullMeansRemove>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
   bool nullMeansRemove = false;
+
   if (args.Length() > 3) {
     nullMeansRemove = TRI_ObjectToBoolean(args[3]);
   }
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  READ_LOCKER(readLocker, h->lock);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto hash = GetKeySpace(vocbase, name);
+  READ_LOCKER(readLocker, h->lock);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2257,19 +2235,13 @@ static void JS_KeyKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_KEYS(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2291,19 +2263,13 @@ static void JS_KeyValues(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_VALUES(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2325,19 +2291,13 @@ static void JS_KeyPush(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_PUSH(<name>, <key>, <value>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2365,19 +2325,13 @@ static void JS_KeyPop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_POP(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2399,20 +2353,14 @@ static void JS_KeyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_TRANSFER(<name>, <key-from>, <key-to>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const keyFrom = TRI_ObjectToString(args[1]);
   std::string const keyTo = TRI_ObjectToString(args[2]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2434,20 +2382,14 @@ static void JS_KeyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_GET_AT(<name>, <key>, <index>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
   int64_t offset = TRI_ObjectToInt64(args[2]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2469,20 +2411,14 @@ static void JS_KeySetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET_AT(<name>, <key>, <index>, <value>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
   int64_t offset = TRI_ObjectToInt64(args[2]);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
-
-  auto hash = GetKeySpace(vocbase, name);
+  auto hash = GetKeySpace(&vocbase, name);
 
   if (hash == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2509,21 +2445,15 @@ static void JS_KeyType(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_TYPE(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   char const* result;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2548,22 +2478,16 @@ static void JS_KeyCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("KEY_COUNT(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string const name = TRI_ObjectToString(args[0]);
   std::string const key = TRI_ObjectToString(args[1]);
-
-  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   uint32_t result;
   bool valid;
+
   {
     READ_LOCKER(readLocker, h->lock);
-
-    auto hash = GetKeySpace(vocbase, name);
+    auto hash = GetKeySpace(&vocbase, name);
 
     if (hash == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);

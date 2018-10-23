@@ -49,17 +49,17 @@ class QueryResources {
   
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(char const*, size_t);
+  char* registerString(char const* p, size_t length);
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
   char* registerString(std::string const& p) {
-    return registerString(p.c_str(), p.length());
+    return registerString(p.data(), p.size());
   }
 
   /// @brief register a potentially UTF-8-escaped string
   /// the string is freed when the query is destroyed
-  char* registerEscapedString(char const*, size_t, size_t&);
+  char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
   char* registerLongString(char* copy, size_t length);

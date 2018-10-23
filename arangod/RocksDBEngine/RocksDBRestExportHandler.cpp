@@ -22,15 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestExportHandler.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBExportCursor.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -43,8 +46,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RocksDBRestExportHandler::RocksDBRestExportHandler(GeneralRequest* request,
-                                                   GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _restrictions() {}
+                                                   GeneralResponse* response,
+                                                   aql::QueryRegistry* queryRegistry)
+    : RestCursorHandler(request, response, queryRegistry), _restrictions() {}
 
 RestStatus RocksDBRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
@@ -58,18 +62,15 @@ RestStatus RocksDBRestExportHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    createCursor();
-    return RestStatus::DONE;
+    return createCursor();
   }
 
   if (type == rest::RequestType::PUT) {
-    modifyCursor();
-    return RestStatus::DONE;
+    return RestCursorHandler::execute();
   }
 
   if (type == rest::RequestType::DELETE_REQ) {
-    deleteCursor();
-    return RestStatus::DONE;
+    return RestCursorHandler::execute();
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -81,16 +82,14 @@ RestStatus RocksDBRestExportHandler::execute() {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
+VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cname,
+                                                         VPackSlice const& slice) {
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+  
   VPackBuilder options;
   options.openObject();
-
-  VPackSlice count = slice.get("count");
-  if (count.isBool()) {
-    options.add("count", count);
-  } else {
-    options.add("count", VPackValue(false));
-  }
 
   VPackSlice batchSize = slice.get("batchSize");
   if (batchSize.isNumber()) {
@@ -103,73 +102,95 @@ VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
   } else {
     options.add("batchSize", VPackValue(1000));
   }
-
-  VPackSlice limit = slice.get("limit");
-  if (limit.isNumber()) {
-    options.add("limit", limit);
-  }
-
-  VPackSlice flush = slice.get("flush");
-  if (flush.isBool()) {
-    options.add("flush", flush);
-  } else {
-    options.add("flush", VPackValue(false));
-  }
-
+  
   VPackSlice ttl = slice.get("ttl");
   if (ttl.isNumber()) {
     options.add("ttl", ttl);
   } else {
     options.add("ttl", VPackValue(30));
   }
-
-  VPackSlice flushWait = slice.get("flushWait");
-  if (flushWait.isNumber()) {
-    options.add("flushWait", flushWait);
-  } else {
-    options.add("flushWait", VPackValue(10));
+  
+  int64_t limit = INT64_MAX;
+  VPackSlice limitSlice = slice.get("limit");
+  if (limitSlice.isNumber()) {
+    limit = limitSlice.getInt();
   }
-  options.close();
-
+  
+  options.add("options", VPackValue(VPackValueType::Object));
+  options.add("stream", VPackValue(true)); // important!!
+  VPackSlice count = slice.get("count");
+  if (count.isBool() && count.getBool()) {
+    // QueryStreamCursor will add `exportCount` as `count`
+    options.add("exportCollection", VPackValue(cname));
+  }
+  options.close(); // options
+  
+  std::string query = "FOR doc IN @@collection ";
+  
+  options.add("bindVars", VPackValue(VPackValueType::Object));
+  options.add("@collection", VPackValue(cname));
+  if (limit != INT64_MAX) {
+    query.append("LIMIT @limit ");
+    options.add("limit", limitSlice);
+  }
+  
   // handle "restrict" parameter
   VPackSlice restrct = slice.get("restrict");
-  if (!restrct.isObject()) {
-    if (!restrct.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR,
-                                     "expecting object for 'restrict'");
-    }
-  } else {
+  if (restrct.isObject()) {
     // "restrict"."type"
     VPackSlice type = restrct.get("type");
     if (!type.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "expecting string for 'restrict.type'");
     }
-    std::string typeString = type.copyString();
-
-    if (typeString == "include") {
-      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
-    } else if (typeString == "exclude") {
-      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "expecting either 'include' or 'exclude' for 'restrict.type'");
-    }
-
-    // "restrict"."fields"
+    
     VPackSlice fields = restrct.get("fields");
     if (!fields.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "expecting array for 'restrict.fields'");
     }
-    for (auto const& name : VPackArrayIterator(fields)) {
-      if (name.isString()) {
-        _restrictions.fields.emplace(name.copyString());
+    
+    if (type.isEqualString("include")) {
+      if (fields.length() == 0) {
+        query.append("RETURN {}");
+      } else {
+        query.append("RETURN KEEP(doc");
       }
+    } else if (type.isEqualString("exclude")) {
+      if (fields.length() == 0) {
+        query.append("RETURN doc");
+      } else {
+        query.append("RETURN UNSET(doc");
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "expecting either 'include' or 'exclude' for 'restrict.type'");
     }
-  }
+    
+    if (fields.length() > 0) {
+      // "restrict"."fields"
+      int i = 0;
+      for (auto const& name : VPackArrayIterator(fields)) {
+        if (name.isString()) {
+          std::string varName = std::string("var").append(std::to_string(i++));
+          query.append(", @").append(varName);
+          options.add(varName, VPackValue(name.copyString()));
+        }
+      }
+      query += ")";
+    }
 
+  } else {
+    if (!restrct.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting object for 'restrict'");
+    }
+    query.append("RETURN doc");
+  }
+  
+  options.close(); // bindVars
+  options.add("query", VPackValue(query));
+  options.close();
+  
   return options;
 }
 
@@ -177,13 +198,13 @@ VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
 /// @brief was docuBlock JSF_post_api_export
 ////////////////////////////////////////////////////////////////////////////////
 
-void RocksDBRestExportHandler::createCursor() {
+RestStatus RocksDBRestExportHandler::createCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/export");
-    return;
+    return RestStatus::DONE;
   }
 
   // extract the cid
@@ -195,161 +216,17 @@ void RocksDBRestExportHandler::createCursor() {
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting "
                   "/_api/export?collection=<identifier>");
-    return;
+    return RestStatus::DONE;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
-    return;
-  }
-  VPackSlice body = parsedBody.get()->slice();
-
-  VPackBuilder optionsBuilder;
-
-  if (!body.isNone()) {
-    if (!body.isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-      return;
-    }
-    optionsBuilder = buildOptions(body);
-  } else {
-    // create an empty options object
-    optionsBuilder.openObject();
-    optionsBuilder.close();
+    return RestStatus::DONE;
   }
 
-  VPackSlice options = optionsBuilder.slice();
-  size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-      options, "limit", 0);
-
-  size_t batchSize =
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-          options, "batchSize", 1000);
-  double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      options, "ttl", 30);
-  bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "count", false);
-
-  auto cursors = _vocbase->cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
-
-  Cursor* c = nullptr;
-  {
-    auto cursor = std::make_unique<RocksDBExportCursor>(
-        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize,
-        ttl, count);
-
-    cursor->use();
-    c = cursors->addCursor(std::move(cursor));
-  }
-
-  TRI_ASSERT(c != nullptr);
-
-  resetResponse(rest::ResponseCode::CREATED);
-
-  try {
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code",
-                VPackValue(static_cast<int>(_response->responseCode())));
-    c->dump(builder);
-    builder.close();
-
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::CREATED, std::move(buffer));
-
-    cursors->release(c);
-  } catch (...) {
-    cursors->release(c);
-    throw;
-  }
-}
-
-void RocksDBRestExportHandler::modifyCursor() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/export/<cursor-id>");
-    return;
-  }
-
-  std::string const& id = suffixes[0];
-
-  auto cursors = _vocbase->cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
-
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
-  bool busy;
-  auto cursor = cursors->find(cursorId, Cursor::CURSOR_EXPORT, busy);
-
-  if (cursor == nullptr) {
-    if (busy) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
-                    TRI_ERROR_CURSOR_BUSY);
-    } else {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
-                    TRI_ERROR_CURSOR_NOT_FOUND);
-    }
-    return;
-  }
-
-  try {
-    resetResponse(rest::ResponseCode::OK);
-
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue((int)_response->responseCode()));
-    cursor->dump(builder);
-    builder.close();
-
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, std::move(buffer));
-
-    cursors->release(cursor);
-  } catch (...) {
-    cursors->release(cursor);
-    throw;
-  }
-}
-
-void RocksDBRestExportHandler::deleteCursor() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /_api/export/<cursor-id>");
-    return;
-  }
-
-  std::string const& id = suffixes[0];
-
-  auto cursors = _vocbase->cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
-
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
-  bool found = cursors->remove(cursorId, Cursor::CURSOR_EXPORT);
-
-  if (!found) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
-    return;
-  }
-
-  VPackBuilder result;
-  result.openObject();
-  result.add("id", VPackValue(id));
-  result.add("error", VPackValue(false));
-  result.add("code",
-             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
-  result.close();
-
-  generateResult(rest::ResponseCode::ACCEPTED, result.slice());
+  VPackBuilder queryBody = buildQueryOptions(name, body);
+  TRI_ASSERT(_query == nullptr);
+  return registerQueryOrCursor(queryBody.slice());
 }

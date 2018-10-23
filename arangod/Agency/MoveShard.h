@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,17 @@ namespace arangodb {
 namespace consensus {
 
 struct MoveShard : public Job {
-  
+
+  MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+            std::string const& creator,
+            std::string const& database,
+            std::string const& collection,
+            std::string const& shard,
+            std::string const& from,
+            std::string const& to,
+            bool isLeader,
+            bool remainsFollower);
+
   MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
             std::string const& creator,
             std::string const& database,
@@ -61,6 +71,7 @@ struct MoveShard : public Job {
   std::string _from;
   std::string _to;
   bool        _isLeader;
+  bool        _remainsFollower;
 };
 }
 }

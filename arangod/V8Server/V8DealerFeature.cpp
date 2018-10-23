@@ -22,25 +22,25 @@
 
 #include "V8DealerFeature.h"
 
+#include <regex>
 #include <thread>
 
-#include "3rdParty/valgrind/valgrind.h"
-
 #include "Actions/actions.h"
-#include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
-#include "Basics/WorkMonitor.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/DatabaseFeature.h"
+#include "Rest/Version.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
@@ -51,6 +51,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-user-functions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
 
@@ -60,8 +61,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
-static thread_local bool alreadyLockedInThread = false;
 
 namespace {
 class V8GcThread : public Thread {
@@ -91,33 +90,32 @@ class V8GcThread : public Thread {
 }
 
 V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "V8Dealer"),
-      _gcFrequency(30.0),
-      _gcInterval(1000),
+      _gcFrequency(60.0),
+      _gcInterval(2000),
       _maxContextAge(60.0),
+      _copyInstallation(false),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
-      _ok(false),
+      _enableJS(true),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
-      _contextsModificationBlockers(0) {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
+      _dynamicContextCreationBlockers(0) {
+  setOptional(true);
+  startsAfter("ClusterPhase");
+
   startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption(
@@ -129,7 +127,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval));
-  
+
   options->addOption("--javascript.app-path", "directory for Foxx applications",
                      new StringParameter(&_appPath));
 
@@ -141,23 +139,28 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption(
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectory));
-
+      new VectorParameter<StringParameter>(&_moduleDirectories));
+  
+  options->addOption(
+     "--javascript.copy-installation",
+     "copy contents of 'javascript.startup-directory' on first start",
+     new BooleanParameter(&_copyInstallation));
+  
   options->addOption(
       "--javascript.v8-contexts",
       "maximum number of V8 contexts that are created for executing JavaScript actions",
       new UInt64Parameter(&_nrMaxContexts));
-  
+
   options->addOption(
       "--javascript.v8-contexts-minimum",
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
-  
+
   options->addHiddenOption(
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
       new UInt64Parameter(&_maxContextInvocations));
-  
+
   options->addHiddenOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
@@ -167,9 +170,31 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute));
+
+  options->addHiddenOption(
+      "--javascript.enabled",
+      "enable the V8 JavaScript engine",
+      new BooleanParameter(&_enableJS));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
+  // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
+  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY &&
+      (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr))) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
+    _enableJS = false;
+  }
+
+  if (!_enableJS) {
+    disable();
+    application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
+      "Script", "FoxxQueues", "Frontend"});
+    return;
+  }
+
   // check the startup path
   if (_startupDirectory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8)
@@ -186,10 +211,29 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+  ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
+  
+  
+  // try to append the current version name to the startup directory,
+  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
+  std::string versionedPath = basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
 
-  _startupLoader.setDirectory(_startupDirectory);
-  ServerState::instance()->setJavaScriptPath(_startupDirectory);
+  LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific startup-directory '" << versionedPath << "'";
+  if (basics::FileUtils::isDirectory(versionedPath)) {
+    // version-specific js path exists!
+    _startupDirectory = versionedPath;
+  }
+
+  for (auto& it : _moduleDirectories) {
+    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
+
+    LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
+    if (basics::FileUtils::isDirectory(versionedPath)) {
+      // version-specific js path exists!
+      it = versionedPath;
+    }
+  }
 
   // check whether app-path was specified
   if (_appPath.empty()) {
@@ -197,7 +241,9 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_appPath, "javascript.app-path", true);
+  // Tests if this path is either a directory (ok) or does not exist (we create it in ::start)
+  // If it is something else this will throw an error.
+  ctx->normalizePath(_appPath, "javascript.app-path", false);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -205,20 +251,53 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
+void V8DealerFeature::prepare() {
+  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  TRI_ASSERT(cluster != nullptr);
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
+}
+
 void V8DealerFeature::start() {
+  if (_copyInstallation) {
+    copyInstallationFiles(); // will exit process if it fails
+  }
+
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory <<
+                                  "', effective module-directories are " << _moduleDirectories;
+  
+  _startupLoader.setDirectory(_startupDirectory);
+  ServerState::instance()->setJavaScriptPath(_startupDirectory);
+  
   // dump paths
   {
     std::vector<std::string> paths;
 
     paths.push_back(std::string("startup '" + _startupDirectory + "'"));
 
-    if (!_moduleDirectory.empty()) {
+    if (!_moduleDirectories.empty()) {
       paths.push_back(std::string(
-          "module '" + StringUtils::join(_moduleDirectory, ";") + "'"));
+          "module '" + StringUtils::join(_moduleDirectories, ";") + "'"));
     }
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
+
+
+      // create app directory if it does not exist
+      if (!basics::FileUtils::isDirectory(_appPath)) {
+        std::string systemErrorStr;
+        long errorNo;
+
+        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo,
+                                               systemErrorStr);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created javascript.app-path directory '" << _appPath << "'";
+        } else {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create javascript.app-path directory '" << _appPath << "': " << systemErrorStr;
+          FATAL_ERROR_EXIT();
+        }
+      }
     }
 
     LOG_TOPIC(INFO, arangodb::Logger::V8) << "JavaScript using " << StringUtils::join(paths, ", ");
@@ -226,11 +305,11 @@ void V8DealerFeature::start() {
 
   // set singleton
   DEALER = this;
-  
+
   if (_nrMinContexts < 1) {
     _nrMinContexts = 1;
   }
-  
+
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts) {
     SchedulerFeature* scheduler =
@@ -258,11 +337,14 @@ void V8DealerFeature::start() {
     CONDITION_LOCKER(guard, _contextCondition);
     _contexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _busyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
-    _freeContexts.reserve(static_cast<size_t>(_nrMaxContexts));
+    _idleContexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _dirtyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
-  
+
     for (size_t i = 0; i < _nrMinContexts; ++i) {
+      guard.unlock(); // avoid lock order inversion in buildContext
       V8Context* context = buildContext(nextId());
+      guard.lock();
+      TRI_ASSERT(context != nullptr);
       try {
         _contexts.push_back(context);
       } catch (...) {
@@ -270,26 +352,129 @@ void V8DealerFeature::start() {
         throw;
       }
     }
-  
-    TRI_ASSERT(_contexts.size() > 0); 
-    TRI_ASSERT(_contexts.size() <= _nrMaxContexts);  
+
+    TRI_ASSERT(_contexts.size() > 0);
+    TRI_ASSERT(_contexts.size() <= _nrMaxContexts);
     for (auto& context : _contexts) {
       // apply context update is only run on contexts that no other
       // threads can see (yet)
+      guard.unlock();
       applyContextUpdate(context);
-      _freeContexts.push_back(context);
+      guard.lock();
+      _idleContexts.push_back(context);
     }
   }
 
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
 
-  loadJavaScriptFileInAllContexts(database->systemDatabase(), "server/initialize.js", nullptr);
-
+  loadJavaScriptFileInAllContexts(
+    database.get(), "server/initialize.js", nullptr
+  );
   startGarbageCollection();
 }
 
+void V8DealerFeature::copyInstallationFiles() {
+  if (!_enableJS && 
+      (ServerState::instance()->isAgent() || ServerState::instance()->isDBServer())) {
+    // skip expensive file-copying in case we are an agency or db server
+    // these do not need JavaScript support
+    return;
+  }
+  // get base path from DatabasePathFeature
+  auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>();
+  const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+  if (copyJSPath == _startupDirectory) {
+    LOG_TOPIC(FATAL, arangodb::Logger::V8)
+    << "'javascript.startup-directory' cannot be inside 'database.directory'";
+    FATAL_ERROR_EXIT();
+  }
+  TRI_ASSERT(!copyJSPath.empty());
+  
+  const std::string checksumFile = FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
+  const std::string copyChecksumFile = FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
+  
+  bool overwriteCopy = false;
+  if (!FileUtils::exists(copyJSPath) ||
+      !FileUtils::exists(checksumFile) ||
+      !FileUtils::exists(copyChecksumFile)) {
+    overwriteCopy = true;
+  } else {
+    try {
+      overwriteCopy = (FileUtils::slurp(copyChecksumFile) != FileUtils::slurp(checksumFile));
+    } catch(basics::Exception const& e) {
+      LOG_TOPIC(ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs <<
+      "' from disk: " << e.what();
+      overwriteCopy = true;
+    }
+  }
+      
+  if (overwriteCopy) {
+    // sanity check before removing an existing directory:
+    // check if for some reason we will be trying to remove the entire database directory...
+    if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
+      LOG_TOPIC(FATAL, Logger::V8) << "JS installation path '" << copyJSPath
+        << "' seems to be invalid";
+      FATAL_ERROR_EXIT();
+    }
+  
+    LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory << "' to '" << copyJSPath << "'";
+    int res = TRI_ERROR_NO_ERROR;
+    if (FileUtils::exists(copyJSPath)) {
+      res = TRI_RemoveDirectory(copyJSPath.c_str());
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << copyJSPath
+        << "': " << TRI_errno_string(res);
+        FATAL_ERROR_EXIT();
+      }
+    }
+    if (!FileUtils::createDirectory(copyJSPath, &res)) {
+      LOG_TOPIC(FATAL, Logger::V8) << "Error creating JS installation path '" << copyJSPath
+      << "': " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
+    }
+
+    // intentionally do not copy js/node/node_modules...
+    // we avoid copying this directory because it contains 5000+ files at the moment,
+    // and copying them one by one is darn slow at least on Windows...
+    std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
+    std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
+    std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
+    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+      if (filename.size() >= nodeModulesPath.size()) {
+        std::string normalized = filename;
+        FileUtils::normalizePath(normalized);
+        TRI_ASSERT(filename.size() == normalized.size());
+        if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
+            normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
+          // filter it out!
+          _nodeModulesDirectory = _startupDirectory;
+          return true;
+        }
+      }
+      // let the file/directory pass through
+      return false;
+    };
+
+    std::string error;
+    if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, filter, error)) {
+      LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << copyJSPath
+        << "': " << error;
+      FATAL_ERROR_EXIT();
+    }
+    // need to keep it because of js/node/node_modules, which we intentionally do not copy!
+    _moduleDirectories.push_back(_startupDirectory);
+  }
+  _startupDirectory = copyJSPath;
+}
+
 V8Context* V8DealerFeature::addContext() {
+  if (application_features::ApplicationServer::isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   V8Context* context = buildContext(nextId());
 
   try {
@@ -297,13 +482,20 @@ V8Context* V8DealerFeature::addContext() {
     // threads can see (yet)
     applyContextUpdate(context);
 
-    DatabaseFeature* database =
-        ApplicationServer::getFeature<DatabaseFeature>("Database");
+    auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+      arangodb::SystemDatabaseFeature
+    >();
+    auto database = sysDbFeature->use();
+
+    TRI_ASSERT(database != nullptr);
 
     // no other thread can use the context when we are here, as the
     // context has not been added to the global list of contexts yet
-    loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
-    return context; 
+    loadJavaScriptFileInContext(
+      database.get(), "server/initialize.js", context, nullptr
+    );
+
+    return context;
   } catch (...) {
     delete context;
     throw;
@@ -311,18 +503,12 @@ V8Context* V8DealerFeature::addContext() {
 }
 
 void V8DealerFeature::unprepare() {
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
-
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
 
   DEALER = nullptr;
-
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
@@ -340,17 +526,8 @@ bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
     return result;
   };
 
-  if (alreadyLockedInThread) {
-    // the condition lock has already been acquired in this thread
-    // we cannot detect this easily here without a thread-local variable
-    // as we may be called from a JavaScript callback here
-    return cb();
-  } else {
-    // the condition lock has not been acquired in this thread, so
-    // we are responsible for locking properly!
-    CONDITION_LOCKER(guard, _contextCondition);
-    return cb();
-  }
+  CONDITION_LOCKER(guard, _contextCondition);
+  return cb();
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -373,10 +550,7 @@ void V8DealerFeature::collectGarbage() {
   uint64_t const reducedWaitTime =
       static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
 
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
-
-  while (_stopping == 0) {
+  while (!_stopping) {
     try {
       V8Context* context = nullptr;
       bool wasDirty = false;
@@ -385,7 +559,7 @@ void V8DealerFeature::collectGarbage() {
         bool gotSignal = false;
         preferFree = !preferFree;
         CONDITION_LOCKER(guard, _contextCondition);
-  
+
         if (_dirtyContexts.empty()) {
           uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
 
@@ -393,7 +567,7 @@ void V8DealerFeature::collectGarbage() {
           gotSignal = guard.wait(waitTime);
         }
 
-        if (preferFree && !_freeContexts.empty()) {
+        if (preferFree && !_idleContexts.empty()) {
           context = pickFreeContextForGc();
         }
 
@@ -403,7 +577,7 @@ void V8DealerFeature::collectGarbage() {
           if (context->invocationsSinceLastGc() < 50 && !context->_hasActiveExternals) {
             // don't collect this one yet. it doesn't have externals, so there
             // is no urge for garbage collection
-            _freeContexts.emplace_back(context);
+            _idleContexts.emplace_back(context);
             context = nullptr;
           } else {
             wasDirty = true;
@@ -411,7 +585,7 @@ void V8DealerFeature::collectGarbage() {
         }
 
         if (context == nullptr && !preferFree && !gotSignal &&
-            !_freeContexts.empty()) {
+            !_idleContexts.empty()) {
           // we timed out waiting for a signal, so we have idle time that we can
           // spend on running the GC pro-actively
           // We'll pick one of the free contexts and clean it up
@@ -430,11 +604,10 @@ void V8DealerFeature::collectGarbage() {
       gc->updateGcStamp(lastGc);
 
       if (context != nullptr) {
-        arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->id());
 
         LOG_TOPIC(TRACE, arangodb::Logger::V8) << "collecting V8 garbage in context #" << context->id()
-                  << ", invocations total: " << context->invocations()  
-                  << ", invocations since last gc: " << context->invocationsSinceLastGc()  
+                  << ", invocations total: " << context->invocations()
+                  << ", invocations since last gc: " << context->invocationsSinceLastGc()
                   << ", hasActive: " << context->_hasActiveExternals
                   << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
@@ -442,7 +615,7 @@ void V8DealerFeature::collectGarbage() {
         {
           // this guard will lock and enter the isolate
           // and automatically exit and unlock it when it runs out of scope
-          V8ContextGuard contextGuard(context);
+          V8ContextEntryGuard contextGuard(context);
 
           v8::HandleScope scope(isolate);
 
@@ -453,8 +626,7 @@ void V8DealerFeature::collectGarbage() {
           {
             v8::Context::Scope contextScope(localContext);
 
-            TRI_ASSERT(context->_locker->IsLocked(isolate));
-            TRI_ASSERT(v8::Locker::IsLocked(isolate));
+            context->assertLocked();
 
             TRI_GET_GLOBALS();
             TRI_RunGarbageCollectionV8(isolate, 1.0);
@@ -470,10 +642,10 @@ void V8DealerFeature::collectGarbage() {
         {
           CONDITION_LOCKER(guard, _contextCondition);
 
-          if (_contexts.size() > _nrMinContexts && 
+          if (_contexts.size() > _nrMinContexts &&
               !context->isDefault() &&
               context->shouldBeRemoved(_maxContextAge, _maxContextInvocations) &&
-              _contextsModificationBlockers == 0) {
+              _dynamicContextCreationBlockers == 0) {
             // remove the extra context as it is not needed anymore
             _contexts.erase(std::remove_if(_contexts.begin(), _contexts.end(), [&context](V8Context* c) {
               return (c->id() == context->id());
@@ -486,9 +658,9 @@ void V8DealerFeature::collectGarbage() {
           } else {
             // put it back into the free list
             if (wasDirty) {
-              _freeContexts.emplace_back(context);
+              _idleContexts.emplace_back(context);
             } else {
-              _freeContexts.insert(_freeContexts.begin(), context);
+              _idleContexts.insert(_idleContexts.begin(), context);
             }
             guard.broadcast();
           }
@@ -498,86 +670,98 @@ void V8DealerFeature::collectGarbage() {
       }
     } catch (...) {
       // simply ignore errors here
-      useReducedWait = false; 
+      useReducedWait = false;
     }
-  } 
-  
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
+  }
 
   _gcFinished = true;
 }
-  
-void V8DealerFeature::unblockContextsModification() {
+
+void V8DealerFeature::unblockDynamicContextCreation() {
   CONDITION_LOCKER(guard, _contextCondition);
-    
-  TRI_ASSERT(_contextsModificationBlockers > 0);
-  --_contextsModificationBlockers;
+
+  TRI_ASSERT(_dynamicContextCreationBlockers > 0);
+  --_dynamicContextCreationBlockers;
 }
 
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
-   
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-  
+
   if (builder != nullptr) {
     builder->openArray();
   }
- 
-  std::vector<V8Context*> contexts; 
+
+  std::vector<V8Context*> contexts;
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    
-    // block the addition or removal of contexts
-    ++_contextsModificationBlockers;
-  
+
+    while (_nrInflightContexts > 0) {
+      // wait until all pending context creation requests have been satisified
+      guard.wait(10000);
+    }
+
     // copy the list of contexts into a local variable
     contexts = _contexts;
+    // block the addition or removal of contexts
+    ++_dynamicContextCreationBlockers;
   }
 
-  TRI_DEFER(unblockContextsModification());
+  TRI_DEFER(unblockDynamicContextCreation());
 
-  // now safely scan the local copy of the contexts  
+  LOG_TOPIC(TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all (" << contexts.size() << ") V8 context";
+
+  // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    while (context->isUsed()) {
+    while (_busyContexts.find(context) != _busyContexts.end()) {
       // we must not enter the context if another thread is also using it...
       guard.wait(10000);
     }
 
-    TRI_ASSERT(!context->isUsed());
-    loadJavaScriptFileInContext(vocbase, file, context, builder);
-    TRI_ASSERT(!context->isUsed());
+    auto it = std::find(_dirtyContexts.begin(), _dirtyContexts.end(), context);
+    if (it != _dirtyContexts.end()) {
+      // context is in _dirtyContexts
+      // remove it from there
+      _dirtyContexts.erase(it);
+
+      guard.unlock();
+      try {
+        loadJavaScriptFileInContext(vocbase, file, context, builder);
+      } catch (...) {
+        guard.lock();
+        _dirtyContexts.push_back(context);
+        throw;
+      }
+      // and re-insert it after we are done
+      guard.lock();
+      _dirtyContexts.push_back(context);
+    } else {
+      // if the context is neither busy nor dirty, it must be idle
+      auto it = std::find(_idleContexts.begin(), _idleContexts.end(), context);
+      if (it != _idleContexts.end()) {
+        // remove it from there
+        _idleContexts.erase(it);
+
+        guard.unlock();
+        try {
+          loadJavaScriptFileInContext(vocbase, file, context, builder);
+        } catch (...) {
+          guard.lock();
+          _idleContexts.push_back(context);
+          throw;
+        }
+        // and re-insert it after we are done
+        guard.lock();
+        _idleContexts.push_back(context);
+      } else {
+        LOG_TOPIC(WARN, Logger::V8) << "v8 context #" << context->id() << " has disappeared";
+      }
+    }
   }
 
   if (builder != nullptr) {
     builder->close();
-  }
-}
-
-void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
-    std::string const& file, VPackBuilder* builder) {
-  // find context with id 0
-    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-
-  // enter context #0
-  V8Context* context = enterContext(vocbase, true, 0);
-  
-  if (context == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not acquire default V8 context");
-  }
-
-  TRI_DEFER(exitContext(context));
-  
-  try {
-    loadJavaScriptFileInternal(file, context, builder);
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->id();
-    throw;
   }
 }
 
@@ -589,27 +773,15 @@ void V8DealerFeature::startGarbageCollection() {
   _gcFinished = false;
 }
 
-void V8DealerFeature::enterContextInternal(TRI_vocbase_t* vocbase,
+void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase,
                                            V8Context* context,
                                            bool allowUseDatabase) {
-  context->lockAndEnter();
-  enterLockedContext(vocbase, context, allowUseDatabase);
-}
-
-void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
-                                         V8Context* context,
-                                         bool allowUseDatabase) {
   TRI_ASSERT(vocbase != nullptr);
 
   // when we get here, we should have a context and an isolate
-  TRI_ASSERT(context != nullptr);
-  TRI_ASSERT(context->_isolate != nullptr);
-  TRI_ASSERT(context->isUsed());
+  context->assertLocked();
 
   auto isolate = context->_isolate;
-
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
 
   {
     v8::HandleScope scope(isolate);
@@ -619,8 +791,7 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_ASSERT(context->_locker->IsLocked(isolate));
-      TRI_ASSERT(v8::Locker::IsLocked(isolate));
+      context->assertLocked();
       TRI_GET_GLOBALS();
 
       // initialize the context data
@@ -641,11 +812,11 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
 /// @brief forceContext == -1 means that any free context may be
 /// picked, or a new one will be created if we have not exceeded
 /// the maximum number of contexts
-/// forceContext == -2 means that any free context may be picked, 
+/// forceContext == -2 means that any free context may be picked,
 /// or a new one will be created if we have not exceeded or exactly
 /// reached the maximum number of contexts. this can be used to
 /// force the creation of another context for high priority tasks
-/// forceContext >= 0 means picking the context with that exact id 
+/// forceContext >= 0 means picking the context with that exact id
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
@@ -654,7 +825,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   if (_stopping) {
     return nullptr;
   }
-  
+
   if (!vocbase->use()) {
     return nullptr;
   }
@@ -678,10 +849,10 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
           break;
         }
 
-        for (auto it = _freeContexts.begin(); it != _freeContexts.end(); ++it) {
+        for (auto it = _idleContexts.begin(); it != _idleContexts.end(); ++it) {
           if ((*it)->id() == id) {
             context = (*it);
-            _freeContexts.erase(it);
+            _idleContexts.erase(it);
             _busyContexts.emplace(context);
             break;
           }
@@ -702,7 +873,6 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         if (context != nullptr) {
           // found the context
           TRI_ASSERT(guard.isLocked());
-          context->lockAndEnter();
           break;
         }
 
@@ -717,13 +887,13 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
 
         if (!found) {
           vocbase->release();
-          LOG_TOPIC(WARN, arangodb::Logger::V8) << "specified context #" << id << " not found";
+          LOG_TOPIC(WARN, arangodb::Logger::V8) << "specified V8 context #" << id << " not found";
           return nullptr;
         }
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "waiting for V8 context #" << id << " to become available";
-      usleep(50 * 1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     }
 
     if (context == nullptr) {
@@ -736,27 +906,22 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   else {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    while (_freeContexts.empty() && !_stopping) {
+    while (_idleContexts.empty() && !_stopping) {
       TRI_ASSERT(guard.isLocked());
 
       LOG_TOPIC(TRACE, arangodb::Logger::V8) << "waiting for unused V8 context";
 
       if (!_dirtyContexts.empty()) {
         // we'll use a dirty context in this case
-        V8Context* context = _dirtyContexts.back();
-        _freeContexts.push_back(context);
+        _idleContexts.push_back(_dirtyContexts.back());
         _dirtyContexts.pop_back();
         break;
       }
 
-      bool contextLimitNotExceeded =
-        ((_contexts.size() + _nrInflightContexts < _nrMaxContexts) ||
-         (forceContext == ANY_CONTEXT_OR_PRIORITY && (_contexts.size() + _nrInflightContexts <= _nrMaxContexts)));
-      
+      bool const contextLimitNotExceeded = (_contexts.size() + _nrInflightContexts < _nrMaxContexts);
+
       if (contextLimitNotExceeded &&
-          _contextsModificationBlockers == 0 && 
-          !MaxMapCountFeature::isNearMaxMappings()) {
-  
+          _dynamicContextCreationBlockers == 0) {
         ++_nrInflightContexts;
 
         TRI_ASSERT(guard.isLocked());
@@ -768,6 +933,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         } catch (...) {
           guard.lock();
 
+          // clean up state
           --_nrInflightContexts;
           throw;
         }
@@ -786,8 +952,9 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
           continue;
         }
 
+        TRI_ASSERT(guard.isLocked());
         try {
-          _freeContexts.push_back(context);
+          _idleContexts.push_back(context);
           LOG_TOPIC(DEBUG, Logger::V8) << "created additional V8 context #" << context->id() << ", number of contexts is now " << _contexts.size();
         } catch (...) {
           TRI_ASSERT(!_contexts.empty());
@@ -800,20 +967,15 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      {
-        JobGuard jobGuard(SchedulerFeature::SCHEDULER);
-        jobGuard.block();
-        
-        TRI_ASSERT(guard.isLocked());
-        guard.wait(100000);
-      }
+      TRI_ASSERT(guard.isLocked());
+      guard.wait(100000);
 
       if (exitWhenNoContext.tick()) {
         vocbase->release();
         return nullptr;
       }
     }
-      
+
     TRI_ASSERT(guard.isLocked());
 
     // in case we are in the shutdown phase, do not enter a context!
@@ -823,49 +985,39 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       return nullptr;
     }
 
-    TRI_ASSERT(!_freeContexts.empty());
+    TRI_ASSERT(!_idleContexts.empty());
 
-    context = _freeContexts.back();
+    context = _idleContexts.back();
     LOG_TOPIC(TRACE, arangodb::Logger::V8) << "found unused V8 context #" << context->id();
     TRI_ASSERT(context != nullptr);
 
-    _freeContexts.pop_back();
+    _idleContexts.pop_back();
 
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
-
-    context->lockAndEnter();
   }
-  
-  TRI_ASSERT(context != nullptr);
-  TRI_ASSERT(context->isUsed());
 
-  enterLockedContext(vocbase, context, allowUseDatabase);
+  TRI_ASSERT(context != nullptr);
+  context->lockAndEnter();
+  context->assertLocked();
+
+  prepareLockedContext(vocbase, context, allowUseDatabase);
   return context;
 }
 
 void V8DealerFeature::exitContextInternal(V8Context* context) {
-  try {
-    exitLockedContext(context);
-    context->unlockAndExit();
-  } catch (...) {
-    // make sure the context will be exited
-    context->unlockAndExit();
-    throw;
-  }
+  TRI_DEFER(context->unlockAndExit());
+  cleanupLockedContext(context);
 }
 
-void V8DealerFeature::exitLockedContext(V8Context* context) {
+void V8DealerFeature::cleanupLockedContext(V8Context* context) {
   TRI_ASSERT(context != nullptr);
 
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "leaving V8 context #" << context->id();
 
   auto isolate = context->_isolate;
   TRI_ASSERT(isolate != nullptr);
-  TRI_ASSERT(context->_locker != nullptr);
-  TRI_ASSERT(context->_locker->IsLocked(isolate));
-  TRI_ASSERT(v8::Locker::IsLocked(isolate));
-  TRI_ASSERT(context->isUsed());
+  context->assertLocked();
 
   bool canceled = false;
 
@@ -918,8 +1070,7 @@ void V8DealerFeature::exitLockedContext(V8Context* context) {
 
     // run global context methods
     if (runGlobal) {
-      TRI_ASSERT(context->_locker->IsLocked(isolate));
-      TRI_ASSERT(v8::Locker::IsLocked(isolate));
+      context->assertLocked();
 
       try {
         context->handleGlobalContextMethods();
@@ -942,10 +1093,10 @@ void V8DealerFeature::exitLockedContext(V8Context* context) {
 }
 
 void V8DealerFeature::exitContext(V8Context* context) {
-  exitLockedContext(context);
+  cleanupLockedContext(context);
 
   V8GcThread* gc = static_cast<V8GcThread*>(_gcThread.get());
-  
+
   if (gc != nullptr) {
     // default is no garbage collection
     bool performGarbageCollection = false;
@@ -958,10 +1109,10 @@ void V8DealerFeature::exitContext(V8Context* context) {
       if (context->_lastGcStamp + 30 * _gcFrequency < lastGc) {
         // force the GC, so that it happens eventually
         forceGarbageCollection = true;
-        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id() 
+        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id()
                   << " has reached GC timeout threshold and will be forced into GC";
       } else {
-        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id() 
+        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id()
                   << " has reached GC timeout threshold and will be scheduled for GC";
       }
     } else if (context->invocationsSinceLastGc() >= _gcInterval) {
@@ -971,10 +1122,10 @@ void V8DealerFeature::exitContext(V8Context* context) {
       performGarbageCollection = true;
     }
 
-    CONDITION_LOCKER(guard, _contextCondition);
     context->unlockAndExit();
+    CONDITION_LOCKER(guard, _contextCondition);
 
-    if (performGarbageCollection && (forceGarbageCollection || !_freeContexts.empty())) {
+    if (performGarbageCollection && (forceGarbageCollection || !_idleContexts.empty())) {
       // only add the context to the dirty list if there is at least one other
       // free context
 
@@ -984,7 +1135,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     } else {
       // note that re-adding the context here should not fail as we reserved
       // enough room for all contexts during startup
-      _freeContexts.emplace_back(context);
+      _idleContexts.emplace_back(context);
     }
 
     _busyContexts.erase(context);
@@ -992,20 +1143,17 @@ void V8DealerFeature::exitContext(V8Context* context) {
     LOG_TOPIC(TRACE, arangodb::Logger::V8) << "returned dirty V8 context #" << context->id();
     guard.broadcast();
   } else {
-    CONDITION_LOCKER(guard, _contextCondition);
     context->unlockAndExit();
+    CONDITION_LOCKER(guard, _contextCondition);
 
     _busyContexts.erase(context);
     // note that re-adding the context here should not fail as we reserved
     // enough room for all contexts during startup
-    _freeContexts.emplace_back(context);
+    _idleContexts.emplace_back(context);
 
     LOG_TOPIC(TRACE, arangodb::Logger::V8) << "returned dirty V8 context #" << context->id() << " back into free";
     guard.broadcast();
   }
-  
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 void V8DealerFeature::defineContextUpdate(
@@ -1017,19 +1165,28 @@ void V8DealerFeature::defineContextUpdate(
 // apply context update is only run on contexts that no other
 // threads can see (yet)
 void V8DealerFeature::applyContextUpdate(V8Context* context) {
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
   for (auto& p : _contextUpdates) {
     auto vocbase = p.second;
 
     if (vocbase == nullptr) {
-      vocbase = DatabaseFeature::DATABASE->systemDatabase();
+      vocbase = sysDbFeature ? sysDbFeature->use().get() : nullptr;
+
+      if (!vocbase) {
+        continue;
+      }
     }
-  
+
     if (!vocbase->use()) {
       // oops
       continue;
     }
 
-    enterContextInternal(vocbase, context, true);
+    context->lockAndEnter();
+    prepareLockedContext(vocbase, context, true);
     TRI_DEFER(exitContextInternal(context));
 
     {
@@ -1106,28 +1263,31 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "commanding GC Thread to terminate";
+    LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "commanding V8 GC thread to terminate";
   }
 
   // shutdown all instances
   {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    for (auto& context : _contexts) {
-      shutdownContext(context);
+    std::vector<V8Context*> contexts;
+    {
+      CONDITION_LOCKER(guard, _contextCondition);
+      contexts = _contexts;
+      _contexts.clear();
     }
 
-    _contexts.clear();
+    for (auto& context : contexts) {
+      shutdownContext(context);
+    }
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "V8 contexts are shut down";
 }
 
 V8Context* V8DealerFeature::pickFreeContextForGc() {
-  int const n = (int)_freeContexts.size();
+  int const n = static_cast<int>(_idleContexts.size());
 
   if (n == 0) {
     // this is easy...
@@ -1144,15 +1304,15 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_freeContexts[i]->invocationsSinceLastGc() < 50 &&
-        !_freeContexts[i]->_hasActiveExternals) {
+    if (_idleContexts[i]->invocationsSinceLastGc() < 50 &&
+        !_idleContexts[i]->_hasActiveExternals) {
       continue;
     }
 
     // compare last GC stamp
     if (pickedContextNr == -1 ||
-        _freeContexts[i]->_lastGcStamp <=
-            _freeContexts[pickedContextNr]->_lastGcStamp) {
+        _idleContexts[i]->_lastGcStamp <=
+            _idleContexts[pickedContextNr]->_lastGcStamp) {
       pickedContextNr = i;
     }
   }
@@ -1165,7 +1325,7 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   }
 
   // this is the context to clean up
-  V8Context* context = _freeContexts[pickedContextNr];
+  V8Context* context = _idleContexts[pickedContextNr];
   TRI_ASSERT(context != nullptr);
 
   // now compare its last GC timestamp with the last global GC stamp
@@ -1179,10 +1339,10 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   // around
   if (n > 1) {
     for (int i = pickedContextNr; i < n - 1; ++i) {
-      _freeContexts[i] = _freeContexts[i + 1];
+      _idleContexts[i] = _idleContexts[i + 1];
     }
   }
-  _freeContexts.pop_back();
+  _idleContexts.pop_back();
 
   return context;
 }
@@ -1203,14 +1363,14 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   try {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextGuard contextGuard(context.get());
+    V8ContextEntryGuard contextGuard(context.get());
 
-    v8::HandleScope handleScope(isolate);
+    v8::HandleScope scope(isolate);
 
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     v8::Persistent<v8::Context> persistentContext;
-    persistentContext.Reset(isolate, v8::Context::New(isolate, 0, global));
+    persistentContext.Reset(isolate, v8::Context::New(isolate, nullptr, global));
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
@@ -1235,11 +1395,14 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       std::string sep = "";
 
       std::vector<std::string> directories;
-      directories.insert(directories.end(), _moduleDirectory.begin(),
-                         _moduleDirectory.end());
+      directories.insert(directories.end(), _moduleDirectories.begin(),
+                         _moduleDirectories.end());
       directories.emplace_back(_startupDirectory);
+      if (!_nodeModulesDirectory.empty()) {
+        directories.emplace_back(_nodeModulesDirectory);
+      }
 
-      for (auto directory : directories) {
+      for (auto const& directory : directories) {
         modules += sep;
         sep = ";";
 
@@ -1247,12 +1410,12 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                    FileUtils::buildFilename(directory, "common/modules") + sep +
                    FileUtils::buildFilename(directory, "node");
       }
-
+      TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
-      TRI_InitV8Buffer(isolate, localContext);
+      TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
-      TRI_InitV8DebugUtils(isolate, localContext, _startupDirectory, modules);
-      TRI_InitV8Shell(isolate, localContext);
+      TRI_InitV8DebugUtils(isolate, localContext);
+      TRI_InitV8Shell(isolate);
 
       {
         v8::HandleScope scope(isolate);
@@ -1273,7 +1436,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                                            v8::ReadOnly);
         }
 
-        for (auto j : _definedStrings) {
+        for (auto const& j : _definedStrings) {
           localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
                                            TRI_V8_STD_STRING(isolate, j.second),
                                            v8::ReadOnly);
@@ -1303,13 +1466,14 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   return context.release();
 }
 
-V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
+V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
+
   return {
     _contexts.size(),
     _busyContexts.size(),
     _dirtyContexts.size(),
-    _freeContexts.size(),
+    _idleContexts.size(),
     _nrMaxContexts
   };
 }
@@ -1317,29 +1481,29 @@ V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
 bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
     std::string const& file, V8Context* context,
     VPackBuilder* builder) {
-  
+
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(context != nullptr);
 
   if (_stopping) {
     return false;
   }
-  
+
   if (!vocbase->use()) {
     return false;
   }
 
-  enterContextInternal(vocbase, context, true);
+  context->lockAndEnter();
+  prepareLockedContext(vocbase, context, true);
+  TRI_DEFER(exitContextInternal(context));
 
   try {
     loadJavaScriptFileInternal(file, context, builder);
   } catch (...) {
     LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->id();
-    exitContextInternal(context);
     throw;
   }
-  
-  exitContextInternal(context);
+
   return true;
 }
 
@@ -1368,7 +1532,9 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
         break;
     }
   }
-  
+
+  localContext->Exit();
+
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file << "' for V8 context #" << context->id();
 }
 
@@ -1380,7 +1546,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextGuard contextGuard(context);
+    V8ContextEntryGuard contextGuard(context);
 
     v8::HandleScope scope(isolate);
 
@@ -1394,22 +1560,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
         action->visit(isolate);
       });
 
-      double availableTime = 30.0;
-
-      if (RUNNING_ON_VALGRIND) {
-        // running under Valgrind
-        availableTime *= 10;
-        int tries = 0;
-
-        while (tries++ < 10 &&
-               TRI_RunGarbageCollectionV8(isolate, availableTime)) {
-          if (tries > 3) {
-            LOG_TOPIC(WARN, arangodb::Logger::V8) << "waiting for garbage v8 collection to end";
-          }
-        }
-      } else {
-        TRI_RunGarbageCollectionV8(isolate, availableTime);
-      }
+      TRI_RunGarbageCollectionV8(isolate, 30.0);
 
       TRI_GET_GLOBALS();
 
@@ -1433,4 +1584,33 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
 
   delete context;
+}
+
+V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate, TRI_vocbase_t* vocbase, bool allowModification)
+  : _isolate(isolate)
+  , _context(nullptr)
+  , _active(isolate ? false : true)
+{
+  if (_active) {
+    if(!vocbase){
+      res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - no vocbase provided");
+      return;
+    }
+    _context = V8DealerFeature::DEALER->enterContext(vocbase, allowModification);
+    if (!_context) {
+      res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - could not acquire context");
+      return;
+    }
+    isolate = _context->_isolate;
+  }
+}
+
+V8ContextDealerGuard::~V8ContextDealerGuard() {
+  if (_active && _context) {
+    try {
+      V8DealerFeature::DEALER->exitContext(_context);
+    }
+    catch (...) {}
+    _isolate = nullptr;
+  }
 }

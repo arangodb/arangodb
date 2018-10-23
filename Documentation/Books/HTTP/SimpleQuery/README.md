@@ -1,7 +1,14 @@
 HTTP Interface for Simple Queries
 =================================
 
-### Simple Queries
+{% hint 'warning' %}
+The Simple Queries API is deprecated from version 3.4.0 on.
+These endpoints should no longer be used.
+They are superseded by AQL queries.
+{% endhint %}
+
+Simple Queries
+--------------
 
 This is an introduction to ArangoDB's HTTP interface for simple queries.
 
@@ -28,43 +35,43 @@ be used with the cursor API to fetch any outstanding results from the server and
 dispose the server-side cursor afterwards.
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_all
+@startDocuBlock put_api_simple_all
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_by_example
+@startDocuBlock put_api_simple_by_example
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_first_example
+@startDocuBlock put_api_simple_first_example
 
 <!-- arangod/RestHandler/RestSimpleHandler.cpp -->
 @startDocuBlock RestLookupByKeys
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_any
+@startDocuBlock put_api_simple_any
 
 <!-- arangod/RestHandler/RestSimpleHandler.cpp -->
 @startDocuBlock RestRemoveByKeys
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_remove_by_example
+@startDocuBlock put_api_simple_remove_by_example
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_replace_by_example
+@startDocuBlock put_api_simple_replace_by_example
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_update_by_example
+@startDocuBlock put_api_simple_update_by_example
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_range
+@startDocuBlock put_api_simple_range
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_near
+@startDocuBlock put_api_simple_near
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_within
+@startDocuBlock put_api_simple_within
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_within_rectangle
+@startDocuBlock put_api_simple_within_rectangle
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_fulltext
+@startDocuBlock put_api_simple_fulltext

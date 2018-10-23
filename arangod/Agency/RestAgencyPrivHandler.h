@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,8 +66,9 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 
  public:
   char const* name() const override final { return "RestAgencyPrivHandler"; }
-  bool isDirect() const override;
-  bool needsOwnThread() const { return true; }
+
+  RequestLane lane() const override final { return RequestLane::AGENCY_INTERNAL; }
+
   RestStatus execute() override;
 
  private:
@@ -103,6 +104,9 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestStatus reportBadQuery(std::string const& message = "bad parameter");
   RestStatus reportMethodNotAllowed();
   RestStatus reportGone();
+  RestStatus reportMessage(arangodb::rest::ResponseCode, std::string const&);
+  RestStatus reportError(VPackSlice);
+  void redirectRequest(std::string const& leaderId);
 
   consensus::Agent* _agent;
 };

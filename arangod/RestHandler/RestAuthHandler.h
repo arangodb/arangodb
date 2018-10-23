@@ -38,18 +38,17 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAuthHandler"; }
-  bool isDirect() const override;
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
  private:
   RestStatus badRequest();
 
  private:
-  std::string _jwtSecret;
   std::string _username;
   bool _isValid = false;
   std::chrono::seconds _validFor;

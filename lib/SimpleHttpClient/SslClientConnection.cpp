@@ -34,6 +34,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include "Basics/Exceptions.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Ssl/ssl-helper.h"
@@ -48,10 +49,6 @@
   errno = GetLastError();
 #else
 #define STR_ERROR() strerror(errno)
-#endif
-
-#ifdef TRI_HAVE_POLL_H
-#include <sys/poll.h>
 #endif
 
 using namespace arangodb;
@@ -174,7 +171,6 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint,
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
 
-  TRI_invalidatesocket(&_socket);
   init(sslProtocol);
 }
 
@@ -189,7 +185,6 @@ SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
 
-  TRI_invalidatesocket(&_socket);
   init(sslProtocol);
 }
 
@@ -219,11 +214,8 @@ void SslClientConnection::init(uint64_t sslProtocol) {
   SSL_METHOD SSL_CONST* meth = nullptr;
 
   switch (SslProtocol(sslProtocol)) {
-#ifndef OPENSSL_NO_SSL2
     case SSL_V2:
-      meth = SSLv2_method();
-      break;
-#endif
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "support for SSLv2 has been dropped");
 
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
@@ -241,7 +233,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
     case TLS_V12:
     case SSL_UNKNOWN:
     default:
-      // default is to use TLSv13
+      // default is to use TLSv12
       meth = TLS_method();
       break;
 #else
@@ -393,7 +385,7 @@ bool SslClientConnection::connectSocket() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
              << SSL_get_cipher(_ssl) << ", " 
              << SSL_get_cipher_version(_ssl) 
-             << " (" << SSL_get_cipher_bits(_ssl, 0) << " bits)"; 
+             << " (" << SSL_get_cipher_bits(_ssl, nullptr) << " bits)"; 
 
   return true;
 }
@@ -410,129 +402,6 @@ void SslClientConnection::disconnectSocket() {
     SSL_free(_ssl);
     _ssl = nullptr;
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare connection for read/write I/O
-////////////////////////////////////////////////////////////////////////////////
-
-bool SslClientConnection::prepare(double timeout, bool isWrite) const {
-  auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
-  double start = TRI_microtime();
-  int res;
-
-#ifdef TRI_HAVE_POLL_H
-  // Here we have poll, on all other platforms we use select
-  bool nowait = (timeout == 0.0);
-  int towait;
-  if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
-    towait = INT_MAX;
-  } else {
-    towait = static_cast<int>(timeout * 1000.0);
-  }
-
-  struct pollfd poller;
-  memset(&poller, 0, sizeof(struct pollfd));  // for our old friend Valgrind
-  poller.fd = fd;
-  poller.events = isWrite ? POLLOUT : POLLIN;
-
-  while (true) {  // will be left by break
-    res = poll(&poller, 1, towait);
-    if (res == -1 && errno == EINTR) {
-      if (!nowait) {
-        double end = TRI_microtime();
-        towait -= static_cast<int>((end - start) * 1000.0);
-        start = end;
-        if (towait < 0) {  // Should not happen, but there might be rounding
-                           // errors, so just to prevent a poll call with
-                           // negative timeout...
-          res = 0;
-          break;
-        }
-      }
-      continue;
-    }
-    break;
-  }
-// Now res can be:
-//   1 : if the file descriptor was ready
-//   0 : if the timeout happened
-//   -1: if an error happened, EINTR within the timeout is already caught
-#else
-  // All versions other use select:
-
-  // An fd_set is a fixed size buffer.
-  // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is
-  // equal to or larger than FD_SETSIZE
-  // will result in undefined behavior. Moreover, POSIX requires fd to be a
-  // valid file descriptor.
-  if (fd < 0 || fd >= FD_SETSIZE) {
-    // invalid or too high file descriptor value...
-    // if we call FD_ZERO() or FD_SET() with it, the program behavior will be
-    // undefined
-    _errorDetails = std::string("file descriptor value too high");
-    return false;
-  }
-
-  fd_set fdset;
-
-  // handle interrupt
-  do {
-    FD_ZERO(&fdset);
-    FD_SET(fd, &fdset);
-
-    fd_set* readFds = nullptr;
-    fd_set* writeFds = nullptr;
-
-    if (isWrite) {
-      writeFds = &fdset;
-    } else {
-      readFds = &fdset;
-    }
-
-    int sockn = (int)(fd + 1);
-
-    struct timeval t;
-    t.tv_sec = (long)timeout;
-    t.tv_usec = (long)((timeout - (double)t.tv_sec) * 1000000.0);
-
-    res = select(sockn, readFds, writeFds, nullptr, &t);
-
-    if ((res == -1 && errno == EINTR)) {
-      int myerrno = errno;
-      double end = TRI_microtime();
-      errno = myerrno;
-      timeout = timeout - (end - start);
-      start = end;
-    }
-  } while ((res == -1) && (errno == EINTR) && (timeout > 0.0));
-#endif
-
-  if (res > 0) {
-    return true;
-  }
-
-  if (res == 0) {
-    if (isWrite) {
-      _errorDetails = std::string("timeout during write");
-      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
-    } else {
-      _errorDetails = std::string("timeout during read");
-      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
-    }
-  } else {  //    res < 0
-#ifdef _WIN32
-    char windowsErrorBuf[256];
-#endif
-
-    char const* pErr = STR_ERROR();
-    _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
-                    std::string(" - ") + pErr;
-
-    TRI_set_errno(errno);
-  }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -686,38 +555,9 @@ bool SslClientConnection::readable() {
     return true;
   }
 
-  if (prepare(0.0, false)) {
+  if (prepare(_socket, 0.0, false)) {
     return checkSocket();
   }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the socket is workable
-////////////////////////////////////////////////////////////////////////////////
-
-bool SslClientConnection::checkSocket() {
-  int so_error = -1;
-  socklen_t len = sizeof so_error;
-
-  TRI_ASSERT(TRI_isvalidsocket(_socket));
-
-  int res =
-      TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    _isConnected = false;
-    TRI_set_errno(errno);
-    return false;
-  }
-
-  if (so_error == 0) {
-    return true;
-  }
-
-  TRI_set_errno(so_error);
-  _isConnected = false;
 
   return false;
 }

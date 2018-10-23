@@ -30,11 +30,11 @@ The app can be installed as follows:
 * click *Install*
 
 Now enter a mountpoint for the application. This is the URL path under which the
-application will become available. For the example app, the mountpoint does not matter.
+application will become available. For the example app, the mount point does not matter.
 The web page in the example app assumes it is served by ArangoDB, too. So it uses a
 relative URL `autocomplete`. This is easiest to set up, but in reality you might want
 to have your web page served by a different server. In this case, your web page will
-have to call the app mountpoint you just entered.
+have to call the app mount point you just entered.
 
 To see the example app in action, click on **Open**. The autocomplete textbox should be
 populated with server data when at least two letters are entered.

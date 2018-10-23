@@ -88,7 +88,12 @@ router.use((req, res, next) => {
   } catch (e) {
     if (e.isArangoError) {
       const status = actions.arangoErrorToHttpCode(e.errorNum);
-      res.throw(status, e.errorMessage, {
+      console.errorStack(e);
+      res.throw(status, (
+        e.codeFrame
+        ? `${e.codeFrame}\n${e}`
+        : String(e)
+      ), {
         errorNum: e.errorNum,
         cause: e
       });
@@ -130,6 +135,7 @@ router.post(prepareServiceRequestBody, (req, res) => {
   ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
+  res.status(201);
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
 .queryParam('mount', schemas.mount)
@@ -180,6 +186,7 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
 .queryParam('teardown', schemas.flag.default(false))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
+.queryParam('force', schemas.flag.default(false))
 .response(200, schemas.fullInfo);
 
 serviceRouter.put(prepareServiceRequestBody, (req, res) => {
@@ -198,6 +205,7 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
 .queryParam('teardown', schemas.flag.default(true))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
+.queryParam('force', schemas.flag.default(false))
 .response(200, schemas.fullInfo);
 
 serviceRouter.delete((req, res) => {
@@ -228,68 +236,98 @@ instanceRouter.use('/configuration', configRouter)
 .response(200, schemas.configs);
 
 configRouter.get((req, res) => {
-  res.json(req.service.getConfiguration());
-});
+  res.json(req.service.getConfiguration(req.queryParams.minimal));
+})
+.queryParam('minimal', joi.boolean().default(false));
 
 configRouter.patch((req, res) => {
   const warnings = FoxxManager.setConfiguration(req.service.mount, {
     configuration: req.body,
     replace: false
   });
-  const values = req.service.getConfiguration(true);
-  res.json({
-    values,
-    warnings
-  });
+  const values = req.service.getConfiguration(req.queryParams.minimal);
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 configRouter.put((req, res) => {
   const warnings = FoxxManager.setConfiguration(req.service.mount, {
     configuration: req.body,
     replace: true
   });
-  const values = req.service.getConfiguration(true);
-  res.json({
-    values,
-    warnings
-  });
+  const values = req.service.getConfiguration(req.queryParams.minimal);
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 const depsRouter = createRouter();
 instanceRouter.use('/dependencies', depsRouter)
 .response(200, schemas.deps);
 
 depsRouter.get((req, res) => {
-  res.json(req.service.getDependencies());
-});
+  res.json(req.service.getDependencies(req.queryParams.minimal));
+})
+.queryParam('minimal', joi.boolean().default(false));
 
 depsRouter.patch((req, res) => {
   const warnings = FoxxManager.setDependencies(req.service.mount, {
     dependencies: req.body,
-    replace: true
+    replace: false
   });
-  const values = req.service.getDependencies(true);
-  res.json({
-    values,
-    warnings
-  });
+  const values = req.service.getDependencies(req.queryParams.minimal);
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 depsRouter.put((req, res) => {
   const warnings = FoxxManager.setDependencies(req.service.mount, {
     dependencies: req.body,
     replace: true
   });
-  const values = req.service.getDependencies(true);
-  res.json({
-    values,
-    warnings
-  });
+  const values = req.service.getDependencies(req.queryParams.minimal);
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 const devRouter = createRouter();
 instanceRouter.use('/development', devRouter)
@@ -319,9 +357,10 @@ scriptsRouter.get((req, res) => {
 scriptsRouter.post('/:name', (req, res) => {
   const service = req.service;
   const scriptName = req.pathParams.name;
-  res.json(FoxxManager.runScript(scriptName, service.mount, [req.body]) || null);
+  const result = FoxxManager.runScript(scriptName, service.mount, req.body !== undefined ? [req.body] : undefined);
+  res.json(result !== undefined ? result : null);
 })
-.body(joi.any())
+.body(joi.any().optional())
 .pathParam('name', joi.string().required())
 .response(200, joi.any().default(null));
 

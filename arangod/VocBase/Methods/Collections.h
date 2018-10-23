@@ -24,6 +24,7 @@
 #define ARANGOD_VOC_BASE_API_COLLECTIONS_H 1
 
 #include "Basics/Result.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -33,52 +34,83 @@
 
 namespace arangodb {
 class LogicalCollection;
+
+namespace transaction {
+class Methods;
+}
+
 namespace methods {
 
 /// Common code for collection REST handler and v8-collections
 struct Collections {
-  typedef std::function<void(LogicalCollection*)> const& FuncCallback;
+  struct Context {
+    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
+    Context(
+      TRI_vocbase_t& vocbase,
+      LogicalCollection& coll,
+      transaction::Methods* trx
+    );
+
+    ~Context();
+
+    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable,
+                              bool forceLoadCollection);
+    TRI_vocbase_t& vocbase() const;
+    LogicalCollection* coll() const;
+
+   private:
+    TRI_vocbase_t& _vocbase;
+    LogicalCollection& _coll;
+    transaction::Methods* _trx;
+    bool const _responsibleForTrx;
+  };
+
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> const& FuncCallback;
+  typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
-  
+
   /// @brief lookup a collection in vocbase or clusterinfo.
   static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection,
-                     FuncCallback);
+                       FuncCallback);
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
-  static Result create(TRI_vocbase_t* vocbase, std::string const& name,
+  static Result create(TRI_vocbase_t*, std::string const& name,
                        TRI_col_type_e collectionType,
                        velocypack::Slice const& properties,
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, FuncCallback);
-  
-  static Result load(TRI_vocbase_t* vocbase, LogicalCollection* coll);
+
+  static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
-  
-  static Result properties(LogicalCollection* coll, velocypack::Builder&);
+
+  static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection* coll,
                                  velocypack::Slice const&);
-  
+
   static Result rename(LogicalCollection* coll, std::string const& newName,
                        bool doOverride);
-  
-  static Result drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
+
+  static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
                      bool allowDropSystem, double timeout);
-  
-  static Result warmup(TRI_vocbase_t* vocbase,
-                       LogicalCollection* coll);
-  
-  static Result revisionId(TRI_vocbase_t* vocbase, LogicalCollection* coll,
-                           TRI_voc_rid_t& rid);
+
+  static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
+
+  static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
+
+  /// @brief Helper implementation similar to ArangoCollection.all() in v8
+  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
+                              DocCallback cb);
 };
 #ifdef USE_ENTERPRISE
-  Result ULColCoordinatorEnterprise(std::string const& databaseName,
-                                    std::string const& collectionCID,
-                                    TRI_vocbase_col_status_e status);
-  
-  Result DropColCoordinatorEnterprise(LogicalCollection* collection,
-                                      bool allowDropSystem);
+Result ULColCoordinatorEnterprise(std::string const& databaseName,
+                                  std::string const& collectionCID,
+                                  TRI_vocbase_col_status_e status);
+
+Result DropColCoordinatorEnterprise(LogicalCollection* collection,
+                                    bool allowDropSystem);
 #endif
 }
 }
+
 #endif

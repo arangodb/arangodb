@@ -30,7 +30,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
 class Transaction;
@@ -49,15 +48,17 @@ class LocalDocumentId;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
-  friend class RocksDBVPackIndex;
   friend class RocksDBFulltextIndex;
+  friend class RocksDBVPackIndex;
 
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
- public:
-  explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
-  RocksDBCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
+  explicit RocksDBCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
+  RocksDBCollection(LogicalCollection& collection, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~RocksDBCollection();
 
@@ -68,12 +69,10 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) const override;
+  virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
   int close() override;
@@ -106,14 +105,9 @@ class RocksDBCollection final : public PhysicalCollection {
                    std::shared_ptr<Index>&) override;
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
-                                                bool reverse) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
-
-  std::unique_ptr<IndexIterator> getSortedAllIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const;
+      transaction::Methods* trx) const override;
 
   void invokeOnAllElements(
       transaction::Methods* trx,
@@ -123,27 +117,37 @@ class RocksDBCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions&) override;
 
-  LocalDocumentId lookupKey(
-      transaction::Methods* trx,
-      arangodb::velocypack::Slice const& key) override;
+  void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) override;
+
+  LocalDocumentId lookupKey(transaction::Methods* trx,
+                            velocypack::Slice const& key) const override;
+
+  bool lookupRevision(transaction::Methods* trx,
+                      velocypack::Slice const& key,
+                      TRI_voc_rid_t& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
   Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool locked) override {
+    if (!key.isString()) {
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
     return this->read(trx, arangodb::StringRef(key), result, locked);
   }
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
-                    ManagedDocumentResult& result) override;
+                    ManagedDocumentResult& result) const override;
 
   bool readDocumentWithCallback(
       transaction::Methods* trx, LocalDocumentId const& token,
-      IndexIterator::DocumentCallback const& cb) override;
+      IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -163,9 +167,7 @@ class RocksDBCollection final : public PhysicalCollection {
                  arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 arangodb::velocypack::Slice const fromSlice,
-                 arangodb::velocypack::Slice const toSlice) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
 
   Result remove(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const slice,
@@ -173,11 +175,11 @@ class RocksDBCollection final : public PhysicalCollection {
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
 
-  void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) override;
+  /// adjust the current number of docs
+  void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
+  /// load the number of docs from storage
+  void loadInitialNumberDocuments();
 
-  void setRevision(TRI_voc_rid_t revisionId);
-  void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
   int lockWrite(double timeout = 0.0);
@@ -192,26 +194,24 @@ class RocksDBCollection final : public PhysicalCollection {
   void compact();
   void estimateSize(velocypack::Builder& builder);
 
-  bool hasGeoIndex() { return _hasGeoIndex; }
-
-  Result serializeIndexEstimates(rocksdb::Transaction*) const;
-  void deserializeIndexEstimates(arangodb::RocksDBCounterManager* mgr);
+  std::pair<Result, rocksdb::SequenceNumber> serializeIndexEstimates(
+    rocksdb::Transaction*, rocksdb::SequenceNumber) const;
+  void deserializeIndexEstimates(arangodb::RocksDBSettingsManager* mgr);
 
   void recalculateIndexEstimates();
 
   Result serializeKeyGenerator(rocksdb::Transaction*) const;
-  void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
+  void deserializeKeyGenerator(arangodb::RocksDBSettingsManager* mgr);
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
  private:
+  /// @brief track the usage of waitForSync option in an operation
+  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
+
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
-  /// @brief creates the initial indexes for the collection
-  void createInitialIndexes();
+  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx,
                 std::shared_ptr<arangodb::Index> idx);
 
@@ -227,26 +227,19 @@ class RocksDBCollection final : public PhysicalCollection {
     return _primaryIndex;
   }
 
-  arangodb::RocksDBOperationResult insertDocument(
+  arangodb::Result insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult removeDocument(
+  arangodb::Result removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool isUpdate, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult lookupDocument(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-      ManagedDocumentResult& result) const;
-
-  arangodb::RocksDBOperationResult updateDocument(
+  arangodb::Result updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
       arangodb::velocypack::Slice const& oldDoc,
       LocalDocumentId const& newDocumentId,
-      arangodb::velocypack::Slice const& newDoc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& newDoc, OperationOptions& options) const;
 
   arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
                                        transaction::Methods*,
@@ -265,7 +258,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void destroyCache() const;
 
   /// is this collection using a cache
-  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
+  inline bool useCache() const noexcept { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
 
@@ -273,10 +266,7 @@ class RocksDBCollection final : public PhysicalCollection {
   uint64_t const _objectId;  // rocksdb-specific object id for collection
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
-  mutable std::atomic<bool> _needToPersistIndexEstimates;
 
-  /// upgrade write locks to exclusive locks if this flag is set
-  bool _hasGeoIndex;
   /// cache the primary index for performance, do not delete
   RocksDBPrimaryIndex* _primaryIndex;
 
@@ -295,8 +285,8 @@ inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
   return rv;
 }
 
-inline RocksDBCollection* toRocksDBCollection(LogicalCollection* logical) {
-  auto phys = logical->getPhysical();
+inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
+  auto phys = logical.getPhysical();
   TRI_ASSERT(phys != nullptr);
   return toRocksDBCollection(phys);
 }

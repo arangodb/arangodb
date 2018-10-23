@@ -96,9 +96,12 @@ MMFilesUnloadCollectionDitch::MMFilesUnloadCollectionDitch(
 MMFilesUnloadCollectionDitch::~MMFilesUnloadCollectionDitch() {}
 
 MMFilesDropCollectionDitch::MMFilesDropCollectionDitch(
-    MMFilesDitches* ditches, arangodb::LogicalCollection* collection,
-    std::function<bool(arangodb::LogicalCollection*)> callback,
-    char const* filename, int line)
+    MMFilesDitches* ditches,
+    arangodb::LogicalCollection& collection,
+    std::function<bool(arangodb::LogicalCollection&)> const& callback,
+    char const* filename,
+    int line
+)
     : MMFilesDitch(ditches, filename, line),
       _collection(collection),
       _callback(callback) {}
@@ -133,10 +136,11 @@ void MMFilesDitches::destroy() {
         type == MMFilesDitch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == MMFilesDitch::TRI_DITCH_DOCUMENT) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. shouldn't have document ditches on unload";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "logic error. shouldn't have document ditches on unload";
       TRI_ASSERT(false);
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown ditch type";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
     }
 
     ptr = next;
@@ -283,14 +287,14 @@ void MMFilesDitches::freeDitch(MMFilesDitch* ditch) {
 /// the flags by the lock
 void MMFilesDitches::freeMMFilesDocumentDitch(MMFilesDocumentDitch* ditch, bool fromTransaction) {
   TRI_ASSERT(ditch != nullptr);
-    
+
   // First see who might still be using the ditch:
   if (fromTransaction) {
     TRI_ASSERT(ditch->usedByTransaction() == true);
   }
 
   {
-    MUTEX_LOCKER(mutexLocker, _lock); 
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     unlink(ditch);
 
@@ -342,14 +346,14 @@ MMFilesCompactionDitch* MMFilesDitches::createMMFilesCompactionDitch(char const*
 
 /// @brief creates a new datafile deletion ditch
 MMFilesDropDatafileDitch* MMFilesDitches::createMMFilesDropDatafileDitch(
-    MMFilesDatafile* datafile, LogicalCollection* collection, 
+    MMFilesDatafile* datafile, LogicalCollection* collection,
     std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch =
         new MMFilesDropDatafileDitch(this, datafile, collection, callback, filename, line);
     link(ditch);
-      
+
     return ditch;
   } catch (...) {
     return nullptr;
@@ -374,7 +378,7 @@ MMFilesRenameDatafileDitch* MMFilesDitches::createMMFilesRenameDatafileDitch(
 
 /// @brief creates a new collection unload ditch
 MMFilesUnloadCollectionDitch* MMFilesDitches::createMMFilesUnloadCollectionDitch(
-    LogicalCollection* collection, 
+    LogicalCollection* collection,
     std::function<bool(LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
@@ -390,8 +394,8 @@ MMFilesUnloadCollectionDitch* MMFilesDitches::createMMFilesUnloadCollectionDitch
 
 /// @brief creates a new datafile drop ditch
 MMFilesDropCollectionDitch* MMFilesDitches::createMMFilesDropCollectionDitch(
-    arangodb::LogicalCollection* collection,
-    std::function<bool(arangodb::LogicalCollection*)> callback,
+    arangodb::LogicalCollection& collection,
+    std::function<bool(arangodb::LogicalCollection&)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch = new MMFilesDropCollectionDitch(this, collection, callback,
@@ -407,10 +411,10 @@ MMFilesDropCollectionDitch* MMFilesDitches::createMMFilesDropCollectionDitch(
 /// @brief inserts the ditch into the linked list of ditches
 void MMFilesDitches::link(MMFilesDitch* ditch) {
   TRI_ASSERT(ditch != nullptr);
-    
+
   ditch->_next = nullptr;
   ditch->_prev = nullptr;
-  
+
   bool const isMMFilesDocumentDitch = (ditch->type() == MMFilesDitch::TRI_DITCH_DOCUMENT);
 
   MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
@@ -425,7 +429,7 @@ void MMFilesDitches::link(MMFilesDitch* ditch) {
     ditch->_prev = _end;
     _end->_next = ditch;
   }
-    
+
   _end = ditch;
 
   if (isMMFilesDocumentDitch) {

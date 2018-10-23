@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
@@ -43,6 +44,7 @@ class SortCondition;
 struct Variable;
 }
 
+class ManagedDocumentResult;
 class MMFilesSkiplistIndex;
 namespace transaction {
 class Methods;
@@ -172,6 +174,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
  private:
   TRI_Skiplist const* _skiplistIndex;
+  IndexLookupContext _context;
   size_t _numPaths;
   bool _reverse;
   Node* _cursor;
@@ -183,6 +186,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   size_t _currentInterval;
 
   MMFilesBaseSkiplistLookupBuilder* _builder;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 
   std::function<int(void*, MMFilesSkiplistIndexElement const*,
                     MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)>
@@ -210,6 +214,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
   /// @brief Get the next elements in the skiplist
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -262,17 +267,17 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesSkiplistIndex() = delete;
 
-  MMFilesSkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  MMFilesSkiplistIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesSkiplistIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_SKIPLIST_INDEX; }
 
   char const* typeName() const override { return "skiplist"; }
-
-  bool allowExpansion() const override { return true; }
 
   bool canBeDropped() const override { return true; }
 
@@ -294,7 +299,8 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   void unload() override;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
@@ -306,20 +312,12 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
  private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
   bool accessFitsIndex(
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,

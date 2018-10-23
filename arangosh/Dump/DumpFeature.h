@@ -18,74 +18,107 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_DUMP_DUMP_FEATURE_H
 #define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "V8Client/ArangoClientHelper.h"
+#include "Basics/Mutex.h"
+#include "Utils/ClientManager.h"
+#include "Utils/ClientTaskQueue.h"
 
 namespace arangodb {
+
 namespace httpclient {
 class SimpleHttpResult;
 }
 
-class DumpFeature final : public application_features::ApplicationFeature,
-                          public ArangoClientHelper {
- public:
-  DumpFeature(application_features::ApplicationServer* server, int* result);
+class ManagedDirectory;
 
+class DumpFeature : public application_features::ApplicationFeature {
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(
+  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
+
+  // for documentation of virtual methods, see `ApplicationFeature`
+  virtual void collectOptions(
+      std::shared_ptr<options::ProgramOptions>) override final;
+  virtual void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
-  void prepare() override final;
-  void start() override final;
+  virtual void start() override final;
+
+  /**
+   * @brief Returns the feature name (for registration with `ApplicationServer`)
+   * @return The name of the feature
+   */
+  static std::string featureName();
+
+  /**
+   * @brief Saves a worker error for later handling and clears queued jobs
+   * @param error Error from a client worker
+   */
+  void reportError(Result const& error);
+
+  /// @brief Holds configuration data to pass between methods
+  struct Options {
+    std::vector<std::string> collections{};
+    std::string outputPath{};
+    uint64_t initialChunkSize{1024 * 1024 * 8};
+    uint64_t maxChunkSize{1024 * 1024 * 64};
+    uint32_t threadCount{2};
+    uint64_t tickStart{0};
+    uint64_t tickEnd{0};
+    bool clusterMode{false};
+    bool dumpData{true};
+    bool force{false};
+    bool ignoreDistributeShardsLikeErrors{false};
+    bool includeSystemCollections{false};
+    bool overwrite{false};
+    bool progress{true};
+  };
+
+  /// @brief Stores stats about the overall dump progress
+  struct Stats {
+    std::atomic<uint64_t> totalBatches{0};
+    std::atomic<uint64_t> totalCollections{0};
+    std::atomic<uint64_t> totalWritten{0};
+  };
+
+  /// @brief Stores all necessary data to dump a single collection or shard
+  struct JobData {
+    JobData(ManagedDirectory&, DumpFeature&, Options const&, Stats&,
+            VPackSlice const&, uint64_t const, std::string const&,
+            std::string const&, std::string const&);
+
+    ManagedDirectory& directory;
+    DumpFeature& feature;
+    Options const& options;
+    Stats& stats;
+
+    VPackSlice const collectionInfo;
+    uint64_t const batchId;
+    std::string const cid;
+    std::string const name;
+    std::string const type;
+  };
 
  private:
-  std::vector<std::string> _collections;
-  uint64_t _chunkSize;
-  uint64_t _maxChunkSize;
-  bool _dumpData;
-  bool _force;
-  bool _ignoreDistributeShardsLikeErrors;
-  bool _includeSystemCollections;
-  std::string _outputDirectory;
-  bool _overwrite;
-  bool _progress;
-  uint64_t _tickStart;
-  uint64_t _tickEnd;
+  ClientManager _clientManager;
+  ClientTaskQueue<JobData> _clientTaskQueue;
+  std::unique_ptr<ManagedDirectory> _directory;
+  int& _exitCode;
+  Options _options;
+  Stats _stats;
+  Mutex _workerErrorLock;
+  std::queue<Result> _workerErrors;
 
- private:
-  int startBatch(std::string DBserver, std::string& errorMsg);
-  void extendBatch(std::string DBserver);
-  void endBatch(std::string DBserver);
-  int dumpCollection(int fd, std::string const& collectionId,
-                     std::string const& name, uint64_t maxTick,
-                     std::string& errorMsg);
-  void flushWal();
-  int runDump(std::string& dbName, std::string& errorMsg);
-  int dumpShard(int fd, std::string const& DBserver, std::string const& name,
-                std::string& errorMsg);
-  int runClusterDump(std::string& errorMsg);
-
- private:
-  int* _result;
-
-  // our batch id
-  uint64_t _batchId;
-
-  // cluster mode flag
-  bool _clusterMode;
-
-  // statistics
-  struct {
-    uint64_t _totalBatches;
-    uint64_t _totalCollections;
-    uint64_t _totalWritten;
-  } _stats;
+  Result runDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
+  Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
+  Result storeDumpJson(VPackSlice const& body, std::string const& dbName) const;
+  Result storeViews(velocypack::Slice const&) const;
 };
-}
+
+}  // namespace arangodb
 
 #endif

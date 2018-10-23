@@ -34,13 +34,14 @@
 
 #include "RocksDBThrottle.h"
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/syscall.h>
 #include <sys/resource.h>
 #endif
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -54,7 +55,7 @@ namespace arangodb {
 ///
 /// To get full performance benefit of this code, the server needs three settings:
 ///
-///  1. /etc/pam.d/login must contain the line "auth	   require    pam_cap.so"
+///  1. /etc/pam.d/login must contain the line "auth   require    pam_cap.so"
 ///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
 ///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
 ///      the arangodb binary executable
@@ -86,24 +87,6 @@ thread_local sPriorityInfo gThreadPriority={false, 0, 0};
 //   one in clang 9.0.0)
 thread_local uint8_t gFlushStart[sizeof(std::chrono::steady_clock::time_point)];
 
-
-///
-/// @brief Object that RocksDBThrottle gives to a compaction thread
-///
-class RocksDBCompactionListener : public rocksdb::CompactionEventListener {
-
-  ///
-  /// @brief This is called for every key in a compaction.  Our code only uses "level"
-  ///  to help manipulate thread priority
-  void OnCompaction(int level, const Slice& key,
-                    CompactionListenerValueType value_type,
-                    const Slice& existing_value,
-                    const SequenceNumber& sn, bool is_new) override
-  {RocksDBThrottle::AdjustThreadPriority( (0==level) ? 2 : 3);};
-
-};// RocksDBCompactionListener
-
-RocksDBCompactionListener gCompactionListener;
 
 
 //
@@ -146,23 +129,9 @@ void RocksDBThrottle::StopThread() {
       _internalRocksDB = nullptr;
       _delayToken.reset();
     } // lock
-
-
-
   } // if
+} // RocksDBThrottle::StopThread
 
-}
-
-
-///
-/// @brief CompactionEventListener::OnCompaction() will get called for every key in a
-///  compaction. We only need the "level" parameter to see if thread priority should change.
-///
-#ifndef WIN32
-CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return &gCompactionListener;};
-#else
-CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return nullptr;};
-#endif  // WIN32
 
 ///
 /// @brief rocksdb does not track flush time in its statistics.  Save start time in
@@ -205,10 +174,16 @@ void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobI
 
 
 void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
-                                                 const rocksdb::CompactionJobInfo& ci) {
+                                            const rocksdb::CompactionJobInfo& ci) {
 
   std::chrono::microseconds elapsed(ci.stats.elapsed_micros);
   SetThrottleWriteRate(elapsed, ci.stats.num_output_records, ci.stats.total_output_bytes, false);
+
+  // rocksdb 5.6 had an API call for when a standard compaction started.  5.14 has no such thing.
+  //  this line fakes "compaction start" by making the wild assumption that the next level compacting
+  //  is likely similar to the previous.  This is only for thread priority manipulation, approximate is fine.
+  //  (and you must have used "setcap" on the arangod binary for it to even matter, see comments at top)
+  RocksDBThrottle::AdjustThreadPriority( (0==ci.base_input_level) ? 2 : 3);
 
 } // RocksDBThrottle::OnCompactionCompleted
 
@@ -222,7 +197,7 @@ void RocksDBThrottle::Startup(rocksdb::DB* db) {
   _threadFuture = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
   while(!_threadRunning.load()) {
-    _threadCondvar.wait(10);
+    _threadCondvar.wait(10000);
   } // while
 
 } // RocksDBThrottle::Startup
@@ -234,17 +209,25 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
   MUTEX_LOCKER(mutexLocker, _threadMutex);
   unsigned target_idx;
 
-  // index 0 for level 0 compactions, index 1 for all others
-  target_idx = (IsLevel0 ? 0 : 1);
+  // throw out anything smaller than 32Mbytes ... be better if this
+  //  was calculated against write_buffer_size, but that varies by column family
+  if ((64<<19)<Bytes) {
+    // index 0 for level 0 compactions, index 1 for all others
+    target_idx = (IsLevel0 ? 0 : 1);
 
-  _throttleData[target_idx]._micros+=Micros;
-  _throttleData[target_idx]._keys+=Keys;
-  _throttleData[target_idx]._bytes+=Bytes;
-  _throttleData[target_idx]._compactions+=1;
+    _throttleData[target_idx]._micros+=Micros;
+    _throttleData[target_idx]._keys+=Keys;
+    _throttleData[target_idx]._bytes+=Bytes;
+    _throttleData[target_idx]._compactions+=1;
 
-  // attempt to override throttle changes by rocksdb ... hammer this often
-  //  (note that _threadMutex IS HELD)
-  SetThrottle();
+    // attempt to override throttle changes by rocksdb ... hammer this often
+    //  (note that _threadMutex IS HELD)
+    SetThrottle();
+  } // if
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    << "SetThrottleWriteRate: Micros " << Micros.count()
+    << ", Keys " << Keys << ", Bytes " << Bytes << ", IsLevel0 " << IsLevel0;
 
   return;
 } // RocksDBThrottle::SetThrottleWriteRate
@@ -262,11 +245,20 @@ void RocksDBThrottle::ThreadLoop() {
     _threadCondvar.signal();
   } // lock
 
+  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    << "ThreadLoop() started";
+
   while(_threadRunning.load()) {
     //
     // start actual throttle work
     //
-    RecalculateThrottle();
+    try {
+      RecalculateThrottle();
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "RecalculateThrottle() sent a throw. RocksDB?";
+      _threadRunning.store(false);
+    } // try/catchxs
 
     ++_replaceIdx;
     if (THROTTLE_INTERVALS==_replaceIdx)
@@ -281,6 +273,9 @@ void RocksDBThrottle::ThreadLoop() {
       } //if
     } // lock
   } // while
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    << "ThreadLoop() ended";
 
 } // RocksDBThrottle::ThreadLoop
 
@@ -320,10 +315,10 @@ void RocksDBThrottle::RecalculateThrottle() {
       tot_bytes+=_throttleData[loop]._bytes;
       tot_compact+=_throttleData[loop]._compactions;
     }   // for
-  } // unique_lock
 
     // flag to skip throttle changes if zero data available
-  no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+    no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+  } // unique_lock
 
   // reduce bytes by 10% for each excess level_0 files and/or excess write buffers
   adjustment_bytes = (tot_bytes*compaction_backlog)/10;
@@ -344,7 +339,6 @@ void RocksDBThrottle::RecalculateThrottle() {
       //  (adjust bytes upward by 1000000 since dividing by microseconds,
       //   yields integer bytes per second)
       new_throttle=((tot_bytes*1000000) / tot_micros.count());
-
     }   // if
 
     // attempt to most recent level0
@@ -377,6 +371,10 @@ void RocksDBThrottle::RecalculateThrottle() {
       if (temp_rate<1)
         temp_rate=1;   // throttle must always have an effect
 
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        << "RecalculateThrottle(): old " << _throttleBps
+        << ", new " << temp_rate;
+
       _throttleBps=temp_rate;
 
       // prepare for next interval
@@ -385,10 +383,17 @@ void RocksDBThrottle::RecalculateThrottle() {
       // never had a valid throttle, and have first hint now
       _throttleBps=new_throttle;
 
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        << "RecalculateThrottle(): first " << _throttleBps;
+
       _firstThrottle=false;
     }  // else if
 
-    SetThrottle();
+    // This SetThrottle() call currently occurs without holding the
+    //  rocksdb db mutex.  Not safe, seen likely crash from it.
+    //  Add back only if this becomes a pluggable WriteController with
+    //  access to db mutex.
+    // SetThrottle();
 
   } // !no_data && unlock _threadMutex
 
@@ -408,11 +413,30 @@ void RocksDBThrottle::SetThrottle() {
     // this routine can get called before _internalRocksDB is set
     if (nullptr != _internalRocksDB) {
       // inform write_controller_ of our new rate
-      if (1<_throttleBps) {
+      //  (column_family.cc RecalculateWriteStallConditions() makes assumptions
+      //   that could force a divide by zero if _throttleBps is less than four ... using 100 for safety)
+      if (100<_throttleBps) {
         // hard casting away of "const" ...
-        _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+        if (((WriteController&)_internalRocksDB->write_controller()).max_delayed_write_rate() < _throttleBps) {
+          ((WriteController&)_internalRocksDB->write_controller()).set_max_delayed_write_rate(_throttleBps);
+        } // if
+
+        // Only replace the token when absolutely necessary.  GetDelayToken()
+        //  also resets internal timers which can result in long pauses if
+        //  flushes/compactions are happening often.
+        if (nullptr == _delayToken.get()) {
+          _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "SetThrottle(): GetDelayTokey(" << _throttleBps << ")";
+        } else {
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "SetThrottle(): set_delayed_write_rate(" << _throttleBps << ")";
+          ((WriteController&)_internalRocksDB->write_controller()).set_delayed_write_rate(_throttleBps);
+        } // else
       } else {
         _delayToken.reset();
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "SetThrottle(): _delaytoken.reset()";
       } // else
     } // if
   } // lock
@@ -478,7 +502,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
 /// @brief Adjust the active thread's priority to match the work
 ///  it is performing.  The routine is called HEAVILY.
 void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
-#ifndef WIN32
+#ifndef _WIN32
   // initialize thread infor if this the first time the thread has ever called
   if (!gThreadPriority._baseSet) {
     pid_t tid;

@@ -14,6 +14,9 @@ db_get @CPACK_PACKAGE_NAME@/storage_engine
 STORAGE_ENGINE=$RET
 export GLIBCXX_FORCE_NEW=1
 
+current=/var/tmp/arangod
+( mkdir -p $current && chown -R arangodb:arangodb $current ) || ar_err "failed to create $current"
+
 if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
     NEW_INSTALL_EXISTING_DIR=true
 else

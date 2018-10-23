@@ -58,7 +58,7 @@ struct thread_data_t {
 static void* ThreadStarter(void* data) {
   sigset_t all;
   sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
   // this will automatically free the thread struct when leaving this function
   std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));
@@ -103,7 +103,32 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   TRI_ASSERT(d != nullptr);
 
-  int rc = pthread_create(thread, nullptr, &ThreadStarter, d.get());
+  pthread_attr_t stackSizeAttribute;
+  size_t stackSize = 0;
+
+  auto err = pthread_attr_init (&stackSizeAttribute);
+  if (err) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "could not initialize stack size attribute.";
+    return false;
+  }
+  err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize); 
+  if (err) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "could not acquire stack size from pthread.";
+    return false;
+  }
+
+  if (stackSize < 8388608) { // 8MB
+    err = pthread_attr_setstacksize (&stackSizeAttribute, 8388608);
+    if (err) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not assign new stack size in pthread.";
+      return false;
+    }
+  }
+
+  int rc = pthread_create(thread, &stackSizeAttribute, &ThreadStarter, d.get());
 
   if (rc != 0) {
     errno = rc;
@@ -156,14 +181,6 @@ int TRI_DetachThread(TRI_thread_t* thread) {
 
 bool TRI_IsSelfThread(TRI_thread_t* thread) {
   return pthread_self() == *thread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allow cancelation
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AllowCancelation() {
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

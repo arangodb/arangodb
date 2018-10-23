@@ -9,11 +9,14 @@
     template: templateEngine.createTemplate('shardsView.ejs'),
     interval: 10000,
     knownServers: [],
+    pending: false,
+    visibleCollection: null,
 
     events: {
       'click #shardsContent .shardLeader span': 'moveShard',
       'click #shardsContent .shardFollowers span': 'moveShardFollowers',
-      'click #rebalanceShards': 'rebalanceShards'
+      'click #rebalanceShards': 'rebalanceShards',
+      'click .sectionHeader': 'toggleSections'
     },
 
     initialize: function (options) {
@@ -43,9 +46,93 @@
       return this;
     },
 
+    renderArrows: function (e) {
+      $('#shardsContent .fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
+      $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+    },
+
+    toggleSections: function (e) {
+      var colName = $(e.currentTarget).parent().attr('id');
+      this.visibleCollection = colName;
+      $('.sectionShardContent').hide();
+      $(e.currentTarget).next().show();
+      this.renderArrows(e);
+
+      this.getShardDetails(colName);
+    },
+
+    renderShardDetail: function (collection, data) {
+      var percent = 0;
+      var inSync = 0;
+      var total = 0;
+
+      _.each(data.results[collection].Plan, function (value, shard) {
+        if (value.progress) {
+          if (value.progress.current === 0) {
+            var spin = '<span>n/A</span>';
+            $('#' + collection + '-' + shard + ' .shardProgress').html(spin);
+          } else {
+            percent = (value.progress.current / value.progress.total * 100).toString().match(/^-?\d+(?:\.\d{0,2})?/)[0] + '%';
+            $('#' + collection + '-' + shard + ' .shardProgress').html(percent);
+          }
+        } else {
+          $('#' + collection + '-' + shard + ' .shardProgress').html(
+            '<i class="fa fa-check-circle">'
+          );
+          inSync++;
+        }
+        total++;
+      });
+
+      if (total === inSync) {
+        $('#' + collection + ' .shardSyncIcons i').addClass('fa-check-circle').removeClass('.fa-times-circle');
+        $('#' + collection + ' .notInSync').addClass('inSync').removeClass('notInSync');
+      } else {
+        $('#' + collection + ' .shardSyncIcons i').addClass('fa-times-circle').removeClass('fa-check-circle');
+      }
+    },
+
+    checkActiveShardDisplay: function () {
+      var self = this;
+
+      _.each($('.sectionShard'), function (elem) {
+        if ($(elem).find('.sectionShardContent').is(':visible')) {
+          self.getShardDetails($(elem).attr('id'));
+        }
+      });
+    },
+
+    getShardDetails: function (collection) {
+      var self = this;
+
+      var body = {
+        collection: collection
+      };
+
+      $('#' + collection + ' .shardProgress').html(
+        '<i class="fa fa-circle-o-notch fa-spin fa-fw"></i>'
+      );
+
+      $.ajax({
+        type: 'PUT',
+        cache: false,
+        data: JSON.stringify(body),
+        url: arangoHelper.databaseUrl('/_admin/cluster/collectionShardDistribution'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        success: function (data) {
+          self.renderShardDetail(collection, data);
+        },
+        error: function (data) {
+        }
+      });
+    },
+
     render: function (navi) {
-      if (window.location.hash === '#shards') {
+      if (window.location.hash === '#shards' && this.pending === false) {
         var self = this;
+        self.pending = true;
 
         $.ajax({
           type: 'GET',
@@ -55,6 +142,7 @@
           processData: false,
           async: true,
           success: function (data) {
+            self.pending = false;
             var collsAvailable = false;
             self.shardDistribution = data.results;
 
@@ -74,6 +162,7 @@
             } else {
               arangoHelper.renderEmpty('No collections and no shards available');
             }
+            self.checkActiveShardDisplay();
           },
           error: function (data) {
             if (data.readyState !== 0) {
@@ -131,7 +220,7 @@
           });
 
           if (from) {
-            delete obj[leader];
+            delete obj[arangoHelper.getDatabaseShortName(leader)];
           }
 
           _.each(obj, function (value) {
@@ -153,7 +242,7 @@
               // this.users !== null ? this.users.whoAmI() : 'root',
               'Please select the target database server. The selected database ' +
                 'server will be the new leader of the shard.',
-                array
+              array
             )
           );
 
@@ -237,8 +326,6 @@
     },
 
     continueRender: function (collections) {
-      var self = this;
-
       delete collections.code;
       delete collections.error;
 
@@ -284,22 +371,9 @@
       });
 
       this.$el.html(this.template.render({
-        collections: ordered
+        collections: ordered,
+        visible: this.visibleCollection
       }));
-
-      var doRerender = false;
-      _.each(collections, function (shard) {
-        _.each(shard.Plan, function (val, key) {
-          if (val.progress) {
-            doRerender = true;
-          }
-        });
-      });
-      if (doRerender) {
-        window.setTimeout(function () {
-          self.render();
-        }, 3000);
-      }
     },
 
     updateServerTime: function () {

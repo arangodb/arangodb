@@ -69,7 +69,7 @@ void RestClusterHandler::handleCommandEndpoints() {
   } else if (ServerState::instance()->isSingleServer()) {
     
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isAutomaticFailoverEnabled() ||
+    if (!replication->isActiveFailoverEnabled() ||
         !AgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_FORBIDDEN,
                            "automatic failover is not enabled"));
@@ -105,7 +105,7 @@ void RestClusterHandler::handleCommandEndpoints() {
       // endpoint value, and can tell the following two cases apart:
       // - endpoint value is not empty: there is a leader, and it is known
       // - endpoint value is empty: leadership challenge is ongoing, current leader is unknown
-      _response->setHeader(StaticStrings::LeaderEndpoint, "");
+      _response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
       return;
     }
       
@@ -134,15 +134,21 @@ void RestClusterHandler::handleCommandEndpoints() {
   
   VPackBuilder builder;
   builder.openObject();
-  builder.add("error", VPackValue(false));
-  builder.add("code", VPackValue(200));
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(200));
   {
     VPackArrayBuilder array(&builder, "endpoints", true);
 
     for (ServerID const& sid : endpoints) {
       VPackObjectBuilder obj(&builder);
-      builder.add(VPackValue("endpoint"));
-      builder.add(VPackValue(ci->getServerEndpoint(sid)));
+      std::string advertised = ci->getServerAdvertisedEndpoint(sid);
+      std::string internal = ci->getServerEndpoint(sid);
+      if (!advertised.empty()) {
+        builder.add("endpoint", VPackValue(advertised));
+        builder.add("internal", VPackValue(internal));
+      } else {
+        builder.add("endpoint", VPackValue(internal));
+      }
     }
   }
   builder.close();

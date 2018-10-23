@@ -24,17 +24,39 @@
 #include "RegexCache.h"
 #include "Basics/Utf8Helper.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
+
+namespace {
+
+static void escapeRegexParams(std::string &out, const char* ptr, size_t length) {
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
+                 c == '.' || c == '*' || c == '\\') {
+      // character with special meaning in a regex
+      out.push_back('\\');
+    }
+    out.push_back(c);
+  }
+}
+
+} // namespace
 
 RegexCache::~RegexCache() {
   clear();
 }
 
 void RegexCache::clear() noexcept {
-  clear(_regexCache);
-  clear(_likeCache);
+  _regexCache.clear();
+  _likeCache.clear();
 }
- 
+
 icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
@@ -46,36 +68,58 @@ icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, 
 
   return fromCache(_temp, _likeCache);
 }
-                                         
-void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept {
-  try {
-    for (auto& it : cache) {
-      delete it.second;
+
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
+  std::string rx;
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(splitExpression, false);
+  if (splitExpression.isArray()) {
+    for (auto const& it : VPackArrayIterator(slice)) {
+      if (!it.isString() || it.getStringLength() == 0) {
+        // one empty string rules them all
+        isEmptyExpression = true;
+        rx = "";
+        break;
+      }
+      if (rx.size() != 0) {
+        rx += '|';
+      }
+
+      arangodb::velocypack::ValueLength length;
+      char const* str = it.getString(length);
+      ::escapeRegexParams(rx, str, length);
     }
-    cache.clear();
-  } catch (...) {
+  } else if (splitExpression.isString()) {
+    arangodb::velocypack::ValueLength length;
+    char const* str = slice.getString(length);
+    ::escapeRegexParams(rx, str, length);
+    if (rx.empty()) {
+      isEmptyExpression = true;
+    }
+  } else {
+    rx.clear();
   }
+  return fromCache(rx, _likeCache);
 }
 
 /// @brief get matcher from cache, or insert a new matcher for the specified pattern
-icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern, 
-                                         std::unordered_map<std::string, icu::RegexMatcher*>& cache) {
+icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
+                                         std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
   auto it = cache.find(pattern);
 
   if (it != cache.end()) {
-    return (*it).second;
+    return (*it).second.get();
   }
-    
-  icu::RegexMatcher* matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
-  try {
-    // insert into cache, no matter if pattern is valid or not
-    cache.emplace(_temp, matcher);
-    return matcher;
-  } catch (...) {
-    delete matcher;
-    throw;
-  }
+  auto matcher = std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+
+  auto p = matcher.get();
+
+  // insert into cache, no matter if pattern is valid or not
+  cache.emplace(pattern, std::move(matcher));
+
+  return p;
 }
 
 /// @brief compile a REGEX pattern from a string
@@ -97,7 +141,7 @@ void RegexCache::buildLikePattern(std::string& out,
                                   bool caseInsensitive) {
   out.clear();
   out.reserve(length + 8); // reserve some room
-  
+
   // pattern is always anchored
   out.push_back('^');
   if (caseInsensitive) {
@@ -134,7 +178,7 @@ void RegexCache::buildLikePattern(std::string& out,
         }
       } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
                  c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
-                 c == '\\' || c == '.') {
+                 c == '\\' || c == '.' || c == '*') {
         // character with special meaning in a regex
         out.push_back('\\');
         out.push_back(c);
@@ -154,4 +198,58 @@ void RegexCache::buildLikePattern(std::string& out,
 
   // always anchor the pattern
   out.push_back('$');
+}
+
+/// @brief inspect a LIKE pattern from a string, and remove all
+/// of its escape characters. will stop at the first wildcards found.
+/// returns a pair with the following meaning:
+/// - first: true if the inspection aborted prematurely because a
+///   wildcard was found, and false if the inspection analyzed at the
+///   complete string
+/// - second: true if the found wildcard is the last byte in the pattern,
+///   false otherwise. can only be true if first is also true
+std::pair<bool, bool> RegexCache::inspectLikePattern(std::string& out,
+                                                     char const* ptr, size_t length) {
+  out.reserve(length);
+  bool escaped = false;
+
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+
+    if (c == '\\') {
+      if (escaped) {
+        // literal backslash
+        out.push_back('\\');
+      }
+      escaped = !escaped;
+    } else {
+      if (c == '%' || c == '_') {
+        if (escaped) {
+          // literal %
+          out.push_back(c);
+        } else {
+          // wildcard found
+          bool wildcardIsLastChar = (i == length - 1);
+          return std::make_pair(true, wildcardIsLastChar);
+        }
+      } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
+                 c == '\\' || c == '.' || c == '*') {
+        // character with special meaning in a regex
+        out.push_back(c);
+      } else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          out.push_back('\\');
+        }
+
+        // literal character
+        out.push_back(c);
+      }
+
+      escaped = false;
+    }
+  }
+
+  return std::make_pair(false, false);
 }

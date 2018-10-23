@@ -5,21 +5,35 @@ engine. The storage engine is responsible for persisting the documents
 on disk, holding copies in memory, providing indexes and caches to
 speed up queries.
 
-Up to version 3.1 ArangoDB only supported memory mapped files (MMFILES)
+Up to version 3.1 ArangoDB only supported memory mapped files (MMFiles)
 as sole storage engine. Beginning with 3.2 ArangoDB has support for
 pluggable storage engines. The second supported engine is RocksDB from
 Facebook.
 
+Up to including versions 3.3, MMFiles was the default storage engine in
+ArangoDB. Since version 3.4, the default storage engine is RocksDB.
+
+| MMFiles | RocksDB |
+|---|---|
+| optional | default |
+| dataset needs to fit into memory | work with as much data as fits on disk |
+| indexes in memory | hot set in memory, data and indexes on disk |
+| slow restart due to index rebuilding | fast startup (no rebuilding of indexes) |
+| volatile collections (only in memory, optional) | collection data always persisted |
+| collection level locking (writes block reads) | concurrent reads and writes |
+
+*Blog article: [Comparing new RocksDB and MMFiles storage engines](https://www.arangodb.com/why-arangodb/comparing-rocksdb-mmfiles-storage-engines/)*
+
 RocksDB is an embeddable persistent key-value store. It is a log
 structure database and is optimized for fast storage.
 
-The MMFILES engine is optimized for the use-case where the data fits
+The MMFiles engine is optimized for the use-case where the data fits
 into the main memory. It allows for very fast concurrent
 reads. However, writes block reads and locking is on collection
 level. Indexes are always in memory and are rebuilt on startup. This
 gives better performance but imposes a longer startup time.
 
-The ROCKSDB engine is optimized for large data-sets and allows for a
+The RocksDB engine is optimized for large data-sets and allows for a
 steady insert performance even if the data-set is much larger than the
 main memory. Indexes are always stored on disk but caches are used to
 speed up performance. RocksDB uses document-level locks allowing for
@@ -45,7 +59,7 @@ The main advantages of RocksDB are
 ### Caveats
 
 RocksDB allows concurrent writes. However, when touching the same document a
-write conflict is raised. This cannot happen with the MMFILES engine, therefore
+write conflict is raised. This cannot happen with the MMFiles engine, therefore
 applications that switch to RocksDB need to be prepared that such exception can
 arise. It is possible to exclusively lock collections when executing AQL. This
 will avoid write conflicts but also inhibits concurrent writes.
@@ -53,7 +67,22 @@ will avoid write conflicts but also inhibits concurrent writes.
 Currently, another restriction is due to the transaction handling in
 RocksDB. Transactions are limited in total size. If you have a statement
 modifying a lot of documents it is necessary to commit data inbetween. This will
-be done automatically for AQL by default.
+be done automatically for AQL by default. Transactions that get too big (in terms of
+number of operations involved or the total size of data modified by the transaction)
+will be committed automatically. Effectively this means that big user transactions
+are split into multiple smaller RocksDB transactions that are committed individually.
+The entire user transaction will not necessarily have ACID properties in this case.
+
+The threshold values for transaction sizes can be configured globally using the
+startup options
+
+* [`--rocksdb.intermediate-commit-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+
+* [`--rocksdb.intermediate-commit-count`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+
+* [`--rocksdb.max-transaction-size`](../Programs/Arangod/Rocksdb.md#non-pass-through-options)
+
+It is also possible to override these thresholds per transaction.
 
 ### Performance
 

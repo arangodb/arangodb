@@ -34,14 +34,76 @@
 using namespace arangodb;
 
 namespace {
-std::atomic<uint16_t> NEXT_TOPIC_ID(0);
-}
 
-Mutex LogTopic::_namesLock;
-std::map<std::string, LogTopic*> LogTopic::_names;
+std::atomic<uint16_t> NEXT_TOPIC_ID(0);
+
+class Topics {
+ public:
+  static Topics& instance() noexcept {
+    // local to avoid init-order-fiasco problem
+    static Topics INSTANCE;
+    return INSTANCE;
+  }
+
+  template<typename Visitor>
+  bool visit(Visitor const& visitor) const {
+    MUTEX_LOCKER(guard, _namesLock);
+
+    for (auto const& topic : _names) {
+      if (!visitor(topic.first, topic.second)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool setLogLevel(std::string const& name, LogLevel level) {
+    MUTEX_LOCKER(guard, _namesLock);
+
+    auto const it = _names.find(name);
+
+    if (it == _names.end()) {
+      return false;
+    }
+
+    auto* topic = it->second;
+
+    if (!topic) {
+      return false;
+    }
+
+    topic->setLogLevel(level);
+    return true;
+  }
+
+  LogTopic* find(std::string const& name) const noexcept {
+    MUTEX_LOCKER(guard, _namesLock);
+    auto const it = _names.find(name);
+    return it == _names.end() ? nullptr : it->second;
+  }
+
+  void emplace(std::string const& name, LogTopic* topic) noexcept {
+    try {
+      MUTEX_LOCKER(guard, _namesLock);
+      _names[name] = topic;
+    } catch(...) { }
+  }
+
+ private:
+  mutable Mutex _namesLock;
+  std::map<std::string, LogTopic*> _names;
+
+  Topics() = default;
+  Topics(const Topics&) = delete;
+  Topics& operator=(const Topics&) = delete;
+}; // Topics
+
+}
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
+LogTopic Logger::AQL("aql", LogLevel::INFO);
 LogTopic Logger::AUTHENTICATION("authentication");
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
@@ -52,11 +114,14 @@ LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
+LogTopic Logger::DUMP("dump", LogLevel::INFO);
 LogTopic Logger::ENGINES("engines", LogLevel::INFO);
 LogTopic Logger::FIXME("general", LogLevel::INFO);
+LogTopic Logger::FLUSH("flush", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
+LogTopic Logger::MAINTENANCE("maintenance", LogLevel::WARN);
 LogTopic Logger::MEMORY("memory", LogLevel::WARN);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
@@ -64,9 +129,11 @@ LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
+LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
 LogTopic Logger::SSL("ssl", LogLevel::WARN);
 LogTopic Logger::STARTUP("startup", LogLevel::INFO);
+LogTopic Logger::STATISTICS("statistics", LogLevel::INFO);
 LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
@@ -88,54 +155,40 @@ LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
   std::vector<std::pair<std::string, LogLevel>> levels;
 
-  MUTEX_LOCKER(guard, _namesLock);
+  auto visitor = [&levels](const std::string& name, const LogTopic* topic) {
+    levels.emplace_back(std::make_pair(name, topic->level()));
+    return true;
+  };
 
-  for (auto const& topic : _names) {
-    levels.emplace_back(std::make_pair(topic.first, topic.second->level()));
-  }
+  Topics::instance().visit(visitor);
 
   return levels;
 }
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
-  MUTEX_LOCKER(guard, _namesLock);
-
-  auto it = _names.find(name);
-
-  if (it == _names.end()) {
+  if (!Topics::instance().setLogLevel(name, level)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
-    return;
-  }
-
-  auto topic = it->second;
-
-  if (topic != nullptr) {
-    topic->setLogLevel(level);
   }
 }
 
 LogTopic* LogTopic::lookup(std::string const& name) {
-  MUTEX_LOCKER(guard, _namesLock);
-
-  auto it = _names.find(name);
-
-  if (it == _names.end()) {
-    return nullptr;
-  }
-
-  return it->second;
+  return Topics::instance().find(name);
 }
 
 std::string LogTopic::lookup(size_t topicId) {
-  MUTEX_LOCKER(guard, _namesLock);
+  std::string name("UNKNOWN");
 
-  for (auto const& it : _names) {
-    if (it.second->_id == topicId) {
-      return it.second->_name;
+  auto visitor = [&name, topicId](std::string const&, LogTopic const* topic) {
+    if (topic->_id == topicId) {
+      name = topic->_name;
+      return false; // break the loop
     }
-  }
+    return true;
+  };
 
-  return std::string("UNKNOWN");
+  Topics::instance().visit(visitor);
+
+  return name;
 }
 
 LogTopic::LogTopic(std::string const& name)
@@ -153,9 +206,5 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     _displayName = std::string("{") + name + "} ";
   }
 
-  try {
-    MUTEX_LOCKER(guard, _namesLock);
-    _names[name] = this;
-  } catch (...) {
-  }
+  Topics::instance().emplace(name, this);
 }

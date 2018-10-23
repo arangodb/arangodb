@@ -1,0 +1,505 @@
+{
+  "check-configuration" : {
+    "default" : false,
+    "description" : "check the configuration and exit",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "config" : {
+    "default" : "",
+    "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "configuration" : {
+    "default" : "",
+    "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "string"
+  },
+  "console.audit-file" : {
+    "default" : "",
+    "description" : "audit log file to save commands and results",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "console",
+    "type" : "string"
+  },
+  "console.auto-complete" : {
+    "default" : true,
+    "description" : "enable auto completion",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "console",
+    "type" : "boolean"
+  },
+  "console.colors" : {
+    "default" : true,
+    "description" : "enable color support",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "console",
+    "type" : "boolean"
+  },
+  "console.pager" : {
+    "default" : false,
+    "description" : "enable paging",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "console",
+    "type" : "boolean"
+  },
+  "console.pager-command" : {
+    "default" : "less -X -R -F -L",
+    "description" : "pager command",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "console",
+    "type" : "string"
+  },
+  "console.pretty-print" : {
+    "default" : true,
+    "description" : "enable pretty printing",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "console",
+    "type" : "boolean"
+  },
+  "console.prompt" : {
+    "default" : "%E@%d> ",
+    "description" : "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "console",
+    "type" : "string"
+  },
+  "default-language" : {
+    "default" : "",
+    "description" : "ISO-639 language code",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "define" : {
+    "default" : [
+    ],
+    "description" : "define key=value for a @key@ entry in config file",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string..."
+  },
+  "dump-dependencies" : {
+    "default" : false,
+    "description" : "dump dependency graph",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "dump-options" : {
+    "default" : true,
+    "description" : "dump configuration options in JSON format",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "javascript.check-syntax" : {
+    "default" : [
+    ],
+    "description" : "syntax check code Javascript code from file",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.client-module" : {
+    "default" : "inspector.js",
+    "description" : "client module to use at startup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.copy-directory" : {
+    "default" : "",
+    "description" : "target directory to copy files from 'javascript.startup-directory' into (only used when `--javascript.copy-installation` is enabled)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.copy-installation" : {
+    "default" : false,
+    "description" : "copy contents of 'javascript.startup-directory'",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.current-module-directory" : {
+    "default" : true,
+    "description" : "add current directory to module path",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.execute" : {
+    "default" : [
+    ],
+    "description" : "execute Javascript code from file",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.execute-string" : {
+    "default" : [
+    ],
+    "description" : "execute Javascript code from string",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.gc-interval" : {
+    "default" : 50,
+    "description" : "request-based garbage collection interval (each n.th command)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.module-directory" : {
+    "default" : [
+    ],
+    "description" : "additional paths containing JavaScript modules",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.startup-directory" : {
+    "default" : "./js",
+    "description" : "startup paths containing the Javascript files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.unit-test-filter" : {
+    "default" : "",
+    "description" : "filter testcases in suite",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.unit-tests" : {
+    "default" : [
+    ],
+    "description" : "do not start as shell, run unit tests instead",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.v8-max-heap" : {
+    "default" : 3072,
+    "description" : "maximal heap size (in MB)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.v8-options" : {
+    "default" : [
+    ],
+    "description" : "options to pass to v8",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "jslint" : {
+    "default" : [
+    ],
+    "description" : "do not start as shell, run jslint instead",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "string..."
+  },
+  "log" : {
+    "default" : [
+      "info"
+    ],
+    "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string..."
+  },
+  "log.color" : {
+    "default" : true,
+    "description" : "use colors for TTY logging",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.file" : {
+    "default" : "-",
+    "description" : "shortcut for '--log.output file://<filename>'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.force-direct" : {
+    "default" : false,
+    "description" : "do not start a seperate thread for logging",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.foreground-tty" : {
+    "default" : false,
+    "description" : "also log to tty if backgrounded",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.keep-logrotate" : {
+    "default" : false,
+    "description" : "keep the old log file after receiving a sighup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.level" : {
+    "default" : [
+      "info"
+    ],
+    "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "string..."
+  },
+  "log.line-number" : {
+    "default" : false,
+    "description" : "append line number and file name",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.output" : {
+    "default" : [
+    ],
+    "description" : "log destination(s)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "string..."
+  },
+  "log.performance" : {
+    "default" : false,
+    "description" : "shortcut for '--log.level performance=trace'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.prefix" : {
+    "default" : "",
+    "description" : "prefix log message with this string",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.role" : {
+    "default" : false,
+    "description" : "log server role",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.shorten-filenames" : {
+    "default" : true,
+    "description" : "shorten filenames in log output (use with --log.line-number)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.thread" : {
+    "default" : false,
+    "description" : "show thread identifier in log message",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.thread-name" : {
+    "default" : false,
+    "description" : "show thread name in log message",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.use-local-time" : {
+    "default" : false,
+    "description" : "use local timezone instead of UTC",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.use-microtime" : {
+    "default" : false,
+    "description" : "use microtime instead",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "quiet" : {
+    "default" : false,
+    "description" : "silent startup",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "random.generator" : {
+    "default" : 1,
+    "description" : "random number generator to use (1 = MERSENNE, 2 = RANDOM, 3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "random",
+    "type" : "uint32",
+    "values" : "Possible values: 1, 2, 3, 4"
+  },
+  "server.ask-jwt-secret" : {
+    "default" : true,
+    "description" : "if this option is specified, the user will be prompted for a JWT secret. This option is not compatible with --server.username or --server.password. If specified, it will be used for all connections - even when a new connection to another server is created",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.authentication" : {
+    "default" : false,
+    "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.connection-timeout" : {
+    "default" : 5,
+    "description" : "connection timeout in seconds",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "double"
+  },
+  "server.database" : {
+    "default" : "_system",
+    "description" : "database name to use when connecting",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.endpoint" : {
+    "default" : "http+tcp://127.0.0.1:8529",
+    "description" : "endpoint to connect to, use 'none' to start without a server",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.max-packet-size" : {
+    "default" : 1073741824,
+    "description" : "maximum packet size (in bytes) for client/server communication",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.password" : {
+    "default" : "",
+    "description" : "password to use when connecting. If not specified and authentication is required, the user will be prompted for a password",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.request-timeout" : {
+    "default" : 1200,
+    "description" : "request timeout in seconds",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "double"
+  },
+  "server.username" : {
+    "default" : "root",
+    "description" : "username to use when connecting",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "ssl.protocol" : {
+    "default" : 5,
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "uint64",
+    "values" : "Possible values: 1, 2, 3, 4, 5"
+  },
+  "temp.path" : {
+    "default" : "",
+    "description" : "path for temporary files",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "temp",
+    "type" : "string"
+  },
+  "version" : {
+    "default" : false,
+    "description" : "reports the version and exits",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  }
+}

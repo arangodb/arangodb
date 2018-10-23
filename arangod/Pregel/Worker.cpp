@@ -57,68 +57,41 @@ using namespace arangodb::pregel;
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
-Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig)
+Worker<V, E, M>::Worker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algo,
+    VPackSlice initConfig
+)
     : _state(WorkerState::IDLE),
-      _config(vocbase, initConfig),
+      _config(&vocbase, initConfig),
       _algorithm(algo),
       _nextGSSSendMessageCount(0),
       _requestedNextGSS(false) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
+
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators.reset(new AggregatorHandler(algo));
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
+
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
     _messageBatchSize = 5000;
   }
+
   _initializeMessageCaches();
-
-  std::function<void()> callback = [this] {
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
-    _callConductor(Utils::finishedStartupPath, package);
-  };
-
-  if (_config.lazyLoading()) {
-    // TODO maybe lazy loading needs to be performed on another thread too
-    std::set<std::string> activeSet = _algorithm->initialActiveSet();
-    if (activeSet.size() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "There needs to be one active vertice");
-    }
-    for (std::string const& documentID : activeSet) {
-      _graphStore->loadDocument(&_config, documentID);
-    }
-    callback();
-  } else {
-    // initialization of the graphstore might take an undefined amount
-    // of time. Therefore this is performed asynchronous
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post(
-        [this, callback] { _graphStore->loadShards(&_config, callback); });
-  }
 }
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
-  usleep(50000);  // 50ms wait for threads to die
+  std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;
@@ -165,6 +138,44 @@ void Worker<V, E, M>::_initializeMessageCaches() {
           new ArrayOutCache<M>(&_config, _messageFormat.get()));
       incoming.release();
     }
+  }
+}
+
+// @brief load the initial worker data, call conductor eventually
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::setupWorker() {
+  std::function<void()> callback = [this] {
+    VPackBuilder package;
+    package.openObject();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_config.executionNumber()));
+    package.add(Utils::vertexCountKey,
+                VPackValue(_graphStore->localVertexCount()));
+    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
+    package.close();
+    _callConductor(Utils::finishedStartupPath, package);
+  };
+  
+  if (_config.lazyLoading()) {
+    // TODO maybe lazy loading needs to be performed on another thread too
+    std::set<std::string> activeSet = _algorithm->initialActiveSet();
+    if (activeSet.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "There needs to be one active vertice");
+    }
+    for (std::string const& documentID : activeSet) {
+      _graphStore->loadDocument(&_config, documentID);
+    }
+    callback();
+  } else {
+    // initialization of the graphstore might take an undefined amount
+    // of time. Therefore this is performed asynchronous
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->post(
+        [this, callback] { _graphStore->loadShards(&_config, callback); },
+        false);
   }
 }
 
@@ -334,7 +345,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    });
+    }, false);
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -403,7 +414,7 @@ bool Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
-  if (TRI_UNLIKELY(!_writeCache)) {  // ~Worker was called
+  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
     LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
     return false;
   }
@@ -566,17 +577,15 @@ void Worker<V, E, M>::_continueAsync() {
   }
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
 
   // wait for new messages before beginning to process
   int64_t milli =
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(new boost::asio::deadline_timer(
-      *ioService, boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this](const boost::system::error_code& error) {
-    if (error != boost::asio::error::operation_aborted) {
+  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  _steady_timer->expires_after(std::chrono::milliseconds(milli));
+  _steady_timer->async_wait([this](const asio::error_code& error) {
+    if (error != asio::error::operation_aborted) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);
         std::swap(_readCache, _writeCache);
@@ -590,7 +599,7 @@ void Worker<V, E, M>::_continueAsync() {
       _conductorAggregators->aggregateValues(*_workerAggregators.get());
       _workerAggregators->resetValues();
       _startProcessing();
-      _boost_timer.reset();
+      _steady_timer.reset();
     }
   });
 }
@@ -618,20 +627,21 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder* b) const {
+void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
   MUTEX_LOCKER(guard, _commandMutex);
+  TRI_ASSERT(b.isEmpty());
 
-  b->openArray();
+  b.openArray();
   auto it = _graphStore->vertexIterator();
   for (VertexEntry const* vertexEntry : it) {
     V* data = _graphStore->mutableVertexData(vertexEntry);
-    b->openObject();
-    b->add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
+    b.openObject();
+    b.add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(*b, data, sizeof(V));
-    b->close();
+    _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
+    b.close();
   }
-  b->close();
+  b.close();
 }
 
 template <typename V, typename E, typename M>
@@ -685,6 +695,11 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
         _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
+    if (!vCompensate) {
+      _state = WorkerState::DONE;
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      return;
+    }
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
@@ -707,7 +722,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-  });
+    }, false);
 }
 
 template <typename V, typename E, typename M>
@@ -733,20 +748,21 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     scheduler->post([path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    });
+    }, false);
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =
         Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+    std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
         120.0,  // timeout
         true);  // single request, no answer expected
+    // Forget about it
+    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 
@@ -767,7 +783,7 @@ void Worker<V, E, M>::_callConductorWithResponse(
     std::unordered_map<std::string, std::string> headers;
 
     std::unique_ptr<ClusterCommResult> result = cc->syncRequest(
-        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        coordinatorTransactionID, "server:" + _config.coordinatorId(),
         rest::RequestType::POST, baseUrl + path, message.toJson(), headers,
         120.0);
     if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {
@@ -777,17 +793,3 @@ void Worker<V, E, M>::_callConductorWithResponse(
     }
   }
 }
-
-// template types to create
-template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
-template class arangodb::pregel::Worker<float, float, float>;
-template class arangodb::pregel::Worker<double, float, double>;
-// custom algorihm types
-template class arangodb::pregel::Worker<SCCValue, int8_t,
-                                        SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t,
-                                        SenderMessage<double>>;
-template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
-template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
-template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;

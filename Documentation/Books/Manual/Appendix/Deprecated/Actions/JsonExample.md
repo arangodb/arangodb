@@ -1,5 +1,5 @@
 A Hello World Example for JSON
-------------------------------
+==============================
 
 If you change the example slightly, then a JSON object will be delivered.
 
@@ -136,7 +136,7 @@ You should see something like
 
     @startDocuBlockInline JSON_07_fetchroutingCreateHelloEcho
     @EXAMPLE_ARANGOSH_OUTPUT{JSON_07_fetchroutingCreateHelloEcho}
-    arango.GET("/hello/echo")
+    arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock JSON_07_fetchroutingCreateHelloEcho
 
@@ -199,7 +199,7 @@ Reload the routing and check http:// 127.0.0.1:8529/hello/echo:
 
     @startDocuBlockInline JSON_10_fetchroutingCreateEchoController
     @EXAMPLE_ARANGOSH_OUTPUT{JSON_10_fetchroutingCreateEchoController}
-    arango.GET("/hello/echo")
+    arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock JSON_10_fetchroutingCreateEchoController
 
@@ -271,7 +271,7 @@ You can also store a function directly in the routing table.
 
     @startDocuBlockInline JSON_12b_fetchroutingEchoFunction
     @EXAMPLE_ARANGOSH_OUTPUT{JSON_12b_fetchroutingEchoFunction}
-    arango.GET("hello/echo")
+    arango.GET_RAW("hello/echo", { "accept" : "application/json" })
     db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
     require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -317,7 +317,7 @@ You should see something like
 
     @startDocuBlockInline JSON_14_fetchroutingRequestHelloEcho
     @EXAMPLE_ARANGOSH_OUTPUT{JSON_14_fetchroutingRequestHelloEcho}
-    arango.GET("/hello/echo")
+    arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
     db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
     require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -344,7 +344,7 @@ You now see the options in the result:
 
     @startDocuBlockInline JSON_16_fetchroutingEchoRequestOptions
     @EXAMPLE_ARANGOSH_OUTPUT{JSON_16_fetchroutingEchoRequestOptions}
-    arango.GET("/echo")
+    arango.GET_RAW("/echo", { accept: "application/json" })
     db._query("FOR route IN _routing FILTER route.url == '/echo' REMOVE route in _routing")
     require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_OUTPUT

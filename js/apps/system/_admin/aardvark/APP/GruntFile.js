@@ -1,6 +1,7 @@
 (function() {
   "use strict";
 
+  const sass = require('node-sass');
   var vName = Date.now();
   module.exports = function(grunt) {
 
@@ -19,7 +20,7 @@
             "frontend/js/lib/bootstrap-min.js",
             "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
-            "frontend/js/lib/dygraph-combined.min.js",
+            "frontend/js/lib/dygraph-combined.min.js"
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",
@@ -28,13 +29,15 @@
             "frontend/css/jquery.contextmenu.css",
             "frontend/css/select2.css",
             "frontend/css/jquery.dataTables.css",
-            "frontend/css/nv.d3.css",
             "frontend/css/swaggerView.css",
             "frontend/css/ansi.css",
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/css/grids-responsive-min.css",
             "frontend/css/tippy.css",
+            "frontend/css/dygraph.css",
+            "frontend/css/leaflet.css",
+            "frontend/css/nv.d3.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
@@ -55,6 +58,7 @@
             "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
             "frontend/js/lib/moment.min.js",
+            "frontend/js/lib/randomColor.js",
             "frontend/js/lib/tippy.js",
             // START SIGMA LIBRARIES
             "frontend/js/lib/sigma.min.js",
@@ -78,21 +82,22 @@
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES
-            // START NEW
             "frontend/js/lib/wheelnav.slicePath.js",
             "frontend/js/lib/wheelnav.min.js",
             "frontend/js/lib/raphael.min.js",
             "frontend/js/lib/raphael.icons.min.js",
-            // END NEW LIBRARIES
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
             "frontend/js/lib/bootstrap-pagination.min.js",
             "frontend/js/lib/jqconsole.min.js",
-            "frontend/js/lib/highlight.7.3.pack.min.js",
+            "frontend/js/lib/highlight.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.min.js",
             "frontend/js/lib/pretty-bytes.js",
+            "frontend/js/lib/marked.min.js",
+            "frontend/js/lib/leaflet.js",
+            "frontend/js/lib/tile.stamen.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
@@ -118,6 +123,7 @@
       sass: {
         dev: {
           options: {
+            implementation: sass,
             style: 'nested'
           },
           files: {
@@ -126,7 +132,8 @@
         },
         dist: {
           options: {
-            style: 'compressed'
+            implementation: sass,
+            // style: 'compressed'
           },
           files: {
             'frontend/build/style.css': '<%= project.standalone.css %>'
@@ -187,7 +194,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js', 'frontend/build/libs.js'],
+            src: ['frontend/build/app.js', 'frontend/build/libs.min.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -268,7 +275,7 @@
         },
         libs: {
           files: {
-            'frontend/build/libs.js': [
+            'frontend/build/libs.min.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>'
             ]
@@ -345,11 +352,6 @@
             'frontend/build/app.min.js': 'frontend/build/app.js'
           }
         },
-        libs1: {
-          files: {
-            'frontend/build/libs.min.js': 'frontend/build/libs.js'
-          }
-        },
         libs2: {
           files: {
             'frontend/src/ace.min.js': 'frontend/src/ace.js'
@@ -359,7 +361,7 @@
 
       concurrent: {
         uglifyFast: ['uglify:default1'],
-        uglifyAll: ['uglify:default1', 'uglify:libs1', 'uglify:libs2']
+        uglifyAll: ['uglify:default1', 'uglify:libs2']
       },
 
       watch: {
@@ -404,6 +406,7 @@
       }
     });
 
+    grunt.loadNpmTasks("grunt-babel");
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');

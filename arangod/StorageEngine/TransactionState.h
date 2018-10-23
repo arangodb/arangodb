@@ -52,22 +52,46 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 namespace transaction {
+
 class Methods;
 struct Options;
+
 }
+
 class ExecContext;
 class TransactionCollection;
 
 /// @brief transaction type
 class TransactionState {
  public:
+
+  /// @brief an implementation-dependent structure for storing runtime data
+  struct Cookie {
+    typedef std::unique_ptr<Cookie> ptr;
+    virtual ~Cookie() {}
+  };
+
+  typedef std::function<void(TransactionState& state)> StatusChangeCallback;
+
   TransactionState() = delete;
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
+  TransactionState(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+  );
   virtual ~TransactionState();
+
+  /// @return a cookie associated with the specified key, nullptr if none
+  Cookie* cookie(void const* key) noexcept;
+
+  /// @brief associate the specified cookie with the specified key
+  /// @return the previously associated cookie, if any
+  Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
   bool isRunningInCluster() const {
     return ServerState::isRunningInCluster(_serverRole);
@@ -75,12 +99,12 @@ class TransactionState {
   bool isDBServer() const { return ServerState::isDBServer(_serverRole); }
   bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
 
-  transaction::Options& options() { return _options; }
-  transaction::Options const& options() const { return _options; }
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-  TRI_voc_tid_t id() const { return _id; }
-  transaction::Status status() const { return _status; }
-  bool isRunning() const { return _status == transaction::Status::RUNNING; }
+  inline transaction::Options& options() { return _options; }
+  inline transaction::Options const& options() const { return _options; }
+  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
+  inline TRI_voc_tid_t id() const { return _id; }
+  inline transaction::Status status() const { return _status; }
+  inline bool isRunning() const { return _status == transaction::Status::RUNNING; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() {
@@ -108,15 +132,15 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
-  std::vector<std::string> collectionNames() const;
+  std::vector<std::string> collectionNames(std::unordered_set<std::string> const& initial = std::unordered_set<std::string>()) const;
 
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType);
 
   /// @brief add a collection to a transaction
-  int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType,
-                    int nestingLevel, bool force);
+  int addCollection(TRI_voc_cid_t cid, std::string const& cname,
+                    AccessMode::Type accessType, int nestingLevel, bool force);
 
   /// @brief make sure all declared collections are used & locked
   Result ensureCollections(int nestingLevel = 0);
@@ -133,6 +157,7 @@ class TransactionState {
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
 
+  /// FIXME delete, server-based locking should take care of this
   int lockCollections();
 
   /// @brief whether or not a transaction consists of a single operation
@@ -160,21 +185,48 @@ class TransactionState {
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
   void setType(AccessMode::Type type);
-  
+
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
+
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shard) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shard the shard name
+   */
+  void setLockedShard(std::string const& shard);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  void setLockedShards(std::unordered_set<std::string> const& lockedShards);
   
+  /// @brief whether or not a transaction is an exclusive transaction on a single collection
+  bool isExclusiveTransactionOnSingleCollection() const;
+
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
                                         size_t& position) const;
-  
-  /// @brief whether or not a transaction is an exclusive transaction on a single collection
-  bool isExclusiveTransactionOnSingleCollection() const;
-  
-  int checkCollectionPermission(TRI_voc_cid_t cid, AccessMode::Type) const;
+
+  /// @brief check if current user can access this collection
+  int checkCollectionPermission(TRI_voc_cid_t cid,
+                                std::string const& cname,
+                                AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
   int releaseCollections();
@@ -183,13 +235,11 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
   
-  /// @brief check the collection permissions
-  
- protected:
-  /// @brief vocbase
-  TRI_vocbase_t* _vocbase;
+  /// @brief vocbase for this transaction
+  TRI_vocbase_t& _vocbase;
+
   /// @brief local trx id
-  TRI_voc_tid_t _id;
+  TRI_voc_tid_t const _id;
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status
@@ -202,13 +252,19 @@ class TransactionState {
 
   ServerState::RoleEnum const _serverRole;  // role of the server
 
-  CollectionNameResolver* _resolver;
-
   transaction::Hints _hints;  // hints;
   int _nestingLevel;
 
   transaction::Options _options;
+
+ private:
+  /// a collection of stored cookies
+  std::map<void const*, Cookie::ptr> _cookies;
+
+  /// the list of locked shards (cluster only)
+  std::unordered_set<std::string> _lockedShards;
 };
+
 }
 
 #endif

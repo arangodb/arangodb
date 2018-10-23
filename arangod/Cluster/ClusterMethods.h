@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+bool shardKeysChanged(LogicalCollection const& collection,
                       VPackSlice const& oldValue, VPackSlice const& newValue,
                       bool isPatch);
 
@@ -87,7 +87,12 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
+                       transaction::Methods const& trx,
                        std::vector<std::pair<std::string, uint64_t>>& result);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the selectivity estimates from DBservers
+////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
                                       std::unordered_map<std::string, double>& result);
@@ -96,8 +101,9 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int createDocumentOnCoordinator(
+Result createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    transaction::Methods const& trx,
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
@@ -109,6 +115,7 @@ int createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    transaction::Methods const& trx,
     VPackSlice const slice, OperationOptions const& options,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
@@ -120,8 +127,8 @@ int deleteDocumentOnCoordinator(
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
+    transaction::Methods const& trx,
+    VPackSlice slice, OperationOptions const& options,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -211,6 +218,7 @@ void fetchVerticesFromEngines(
 
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    transaction::Methods const& trx,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     arangodb::rest::ResponseCode& responseCode,
     arangodb::velocypack::Builder& result);
@@ -221,6 +229,7 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    transaction::Methods const& trx,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
@@ -248,20 +257,6 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
 int rotateActiveJournalOnAllDBServers(std::string const& dbname,
                                       std::string const& collname);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a shard distribution for a new collection, the list
-/// dbServers must be a list of DBserver ids to distribute across. 
-/// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo. If shuffle is true, a few random shuffles
-/// are performed before the list is taken. Thus modifies the list.
-////////////////////////////////////////////////////////////////////////////////
-
-std::unordered_map<std::string, std::vector<std::string>> distributeShards(
-    uint64_t numberOfShards,
-    uint64_t replicationFactor,
-    std::vector<std::string>& dbServers,
-    bool warnAboutReplicationFactor);
-
 class ClusterMethods {
  public:
   // wrapper Class for static functions.
@@ -273,8 +268,9 @@ class ClusterMethods {
   // Note that this returns a newly allocated object and ownership is
   // transferred
   // to the caller, which is expressed by the returned unique_ptr.
-  static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
-      TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
+  static std::shared_ptr<LogicalCollection> createCollectionOnCoordinator(
+      TRI_col_type_e collectionType,
+      TRI_vocbase_t& vocbase,
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication,
@@ -287,7 +283,7 @@ class ClusterMethods {
 /// @brief Persist collection in Agency and trigger shard creation process
 ////////////////////////////////////////////////////////////////////////////////
 
-  static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
+  static std::shared_ptr<LogicalCollection> persistCollectionInAgency(
     LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
     arangodb::velocypack::Slice parameters);

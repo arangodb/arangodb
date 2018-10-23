@@ -25,8 +25,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
+#include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalTailingSyncer.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -89,13 +90,27 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
   return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), std::string());
 }
 
-std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  return std::make_unique<arangodb::GlobalTailingSyncer>(_configuration, initialTick, useTick, barrierId);
+std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
+  return std::make_shared<arangodb::GlobalInitialSyncer>(_configuration);
+}
+
+std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                                            bool useTick,
+                                                                            TRI_voc_tick_t barrierId) const {
+  return std::make_shared<arangodb::GlobalTailingSyncer>(_configuration, initialTick, useTick, barrierId);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_vocbase_t* vocbase = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto vocbase = sysDbFeature->use();
+    
+  std::string const path = engine->databasePath(vocbase.get());
+  if (path.empty()) {
+    return std::string();
+  }
 
-  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "GLOBAL-REPLICATION-APPLIER-STATE");
+  return arangodb::basics::FileUtils::buildFilename(path, "GLOBAL-REPLICATION-APPLIER-STATE");
 }

@@ -28,7 +28,8 @@ in the field `main` of the service manifest.
 
 If *source* is a URL, the URL must be reachable from the server.
 If *source* is a file system path, the path will be resolved on the server.
-In either case the path or URL is expected to resolve to a zip bundle.
+In either case the path or URL is expected to resolve to a zip bundle,
+JavaScript file or (in case of a file system path) directory.
 
 Note that when using file system paths in a cluster with multiple coordinators
 the file system path must resolve to equivalent files on every coordinator.

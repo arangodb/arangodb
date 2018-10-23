@@ -44,4 +44,10 @@ void TRI_UpdateTickServer(TRI_voc_tick_t);
 /// @brief returns the current tick counter
 TRI_voc_tick_t TRI_CurrentTickServer();
 
+/// @brief generates a new tick which also encodes this server's id
+TRI_voc_tick_t TRI_NewServerSpecificTick();
+
+/// @brief extracts the server id from a server-specific tick
+uint32_t TRI_ExtractServerIdFromTick(TRI_voc_tick_t);
+
 #endif

@@ -5,9 +5,7 @@ set(MMFILES_SOURCES
   MMFiles/mmfiles-fulltext-index.cpp
   MMFiles/mmfiles-fulltext-list.cpp
   MMFiles/mmfiles-fulltext-query.cpp
-  MMFiles/mmfiles-geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
-  MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
   MMFiles/MMFilesCollectionExport.cpp
@@ -36,6 +34,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesPersistentIndexKeyComparator.cpp
   MMFiles/MMFilesPrimaryIndex.cpp
   MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRestCollectionHandler.cpp
   MMFiles/MMFilesRestExportHandler.cpp
   MMFiles/MMFilesRestHandlers.cpp
   MMFiles/MMFilesRestReplicationHandler.cpp
@@ -48,7 +47,6 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesTransactionManager.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesV8Functions.cpp
-  MMFiles/MMFilesView.cpp
   MMFiles/MMFilesWalAccess.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp

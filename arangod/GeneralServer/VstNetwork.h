@@ -47,7 +47,7 @@ void appendLittleEndian(basics::StringBuffer* buffer, T v) {
 }
 
 inline constexpr std::size_t chunkHeaderLength(bool sendTotalLen) {
-  // chunkLength uint32 , chunkX uint32 , id uint64 , messageLength unit64
+  // chunkLength uint32 , chunkX uint32 , id uint64 , messageLength uint64
   return sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint64_t) +
          (sendTotalLen ? sizeof(uint64_t) : 0);
 }
@@ -177,6 +177,8 @@ inline void send_many(
     }
   }
 
+  resultVecRef.reserve(numberOfChunks);
+
   // send first
   resultVecRef.push_back(
       createChunkForNetworkDetail(completeMessage->c_str(), offsetBegin,
@@ -199,8 +201,6 @@ inline void send_many(
         completeMessage->c_str(), offsetEnd, totalLen, false, ++chunkNumber,
         id, protocolVersion, totalLen));
   }
-
-  return;
 }
 
 // this function will be called by client code
@@ -224,9 +224,8 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
     // one chunk uncompressed
     rv.push_back(createChunkForNetworkDetail(slices, true, 1, messageid,
                  protocolVersion, chl + payloadLength));
-    return rv;
   } else {
-    // here we enter the domain of multichunck
+    // here we enter the domain of multichunk
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: sending multichunk message";
 
@@ -246,7 +245,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
     for (auto const& slice : slices) {
       try{
         LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
-      } catch(...){}
+      } catch(...) {}
       vstPayload->appendText(slice.startAs<char>(), slice.byteSize());
     }
 

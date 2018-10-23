@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,15 +32,16 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/EndpointFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 consensus::Agent* AgencyFeature::AGENT = nullptr;
 
-AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
+AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
       _size(1),
@@ -51,20 +52,13 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionTouched(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(20000),
-      _compactionKeepSize(10000),
+      _compactionStepSize(1000),
+      _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("Endpoint");
-  startsAfter("QueryRegistry");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Server");
+  startsAfter("FoxxPhase");
 }
 
 AgencyFeature::~AgencyFeature() {}
@@ -202,7 +196,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_compactionKeepSize == 0) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "agency.compaction-keep-size must not be 0, set to 1000";
-    _compactionKeepSize = 1000;
+    _compactionKeepSize = 50000;
   }
 
   if (!_agencyMyAddress.empty()) {
@@ -232,31 +226,50 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (result.touched("agency.supervision")) {
     _supervisionTouched = true;
   }
+
+  // turn off the following features, as they are not needed in an agency:
+  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is 
+  //   the selected storage engine
+  // - ArangoSearch: not needed by agency even if MMFiles is the selected
+  //   storage engine
+  // - Statistics: turn off statistics gathering for agency
+  // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
+
+  std::vector<std::string> disabledFeatures( 
+      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action", "Script", "FoxxQueues", "Frontend"}
+  );
+  if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
+    
+    // console mode inactive. so we can turn off V8
+    disabledFeatures.emplace_back("V8Platform");
+    disabledFeatures.emplace_back("V8Dealer");
+  }
+
+  application_features::ApplicationServer::disableFeatures(disabledFeatures);
 }
 
 void AgencyFeature::prepare() {
-}
-
-void AgencyFeature::start() {
   if (!isEnabled()) {
     return;
   }
 
+  // Available after validateOptions of ClusterFeature
   // Find the agency prefix:
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (!feature->agencyPrefix().empty()) {
     arangodb::consensus::Supervision::setAgencyPrefix(
       std::string("/") + feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix
-      = std::string("/") + feature->agencyPrefix();
+    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();;
   }
-  
-  // TODO: Port this to new options handling
+
   std::string endpoint;
 
   if (_agencyMyAddress.empty()) {
     std::string port = "8529";
 
+    // Available after prepare of EndpointFeature
     EndpointFeature* endpointFeature =
         ApplicationServer::getFeature<EndpointFeature>("Endpoint");
     auto endpoints = endpointFeature->httpEndpoints();
@@ -288,9 +301,15 @@ void AgencyFeature::start() {
         _waitForSync, _supervisionFrequency, _compactionStepSize,
         _compactionKeepSize, _supervisionGracePeriod, _cmdLineTimings,
         _maxAppendSize)));
-  
+
   AGENT = _agent.get();
-  
+}
+
+void AgencyFeature::start() {
+  if (!isEnabled()) {
+    return;
+  }
+ 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
   
@@ -315,7 +334,7 @@ void AgencyFeature::stop() {
   if (_agent->inception() != nullptr) { // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
-      usleep(100000);
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
@@ -326,7 +345,7 @@ void AgencyFeature::stop() {
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
-      usleep(100000);
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
@@ -352,3 +371,4 @@ void AgencyFeature::unprepare() {
   _agent.reset();
 }
 
+} // arangodb

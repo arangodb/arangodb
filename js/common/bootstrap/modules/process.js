@@ -12,19 +12,25 @@ global.DEFINE_MODULE('process', (function () {
   var exports = new EventEmitter();
 
   exports.env = internal.env;
+
   exports.argv = [];
+
   exports.stdout = {
     isTTY: internal.COLOR_OUTPUT,
     write(text) {
       console.infoLines(text);
     }
   };
+
   exports.cwd = function () {
     return fs.makeAbsolute('');
   };
+
   exports.nextTick = function (fn) {
     fn();
   };
+
+  exports.exit = internal.exit;
 
   return exports;
 }()));

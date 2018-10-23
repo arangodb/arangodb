@@ -9,9 +9,9 @@ transported using [JSON](https://en.wikipedia.org/wiki/JSON) via a TCP connectio
 using the HTTP protocol. A [REST API](https://en.wikipedia.org/wiki/Representational_state_transfer)
 is provided to interact with the database system.
 
-The [web interface](../Administration/WebInterface/README.md) that comes with
+The [web interface](../Programs/WebInterface/README.md) that comes with
 ArangoDB, called *Aardvark*, provides graphical user interface that is easy to use.
-An [interactive shell](../GettingStarted/Arangosh.md), called *Arangosh*, is also
+An [interactive shell](../Programs/Arangosh/README.md), called *Arangosh*, is also
 shipped. In addition, there are so called [drivers](https://arangodb.com/downloads/arangodb-drivers/)
 that make it easy to use the database system in various environments and
 programming languages. All these tools use the HTTP interface of the server and
@@ -57,6 +57,14 @@ database *_system* is special, because it cannot be removed. Database users
 are managed in this database, and their credentials are valid for all databases
 of a server instance.
 
+Similarly **databases** may also contain **view** entities. A
+[View](Views/README.md) in its simplest form can be seen as a read-only
+array or collection of documents. The view concept quite closely matches a
+similarly named concept available in most relational database management systems
+(RDBMS). Each view entity usually maps some implementation specific document
+transformation, (possibly identity), onto documents from zero or more
+collections.
+
 Data Retrieval
 --------------
 
@@ -70,4 +78,5 @@ the [ArangoDB Query Language](../../AQL/index.html) (AQL).
 easily processable batches instead of one big hunk.
 
 **Indexes** are used to speed up searches. There are various types of indexes,
-such as [hash indexes](../Indexing/Hash.md) and [geo indexes](../Indexing/Geo.md).
+such as [hash indexes](../Indexing/Hash.md)
+and [geo-spatial indexes](../Indexing/Geo.md).

@@ -1,6 +1,7 @@
 {
   "gitbook": "^3.2.2",
-  "title": "ArangoDB Cookbook",
+  "title": "ArangoDB VERSION_NUMBER Cookbook",
+  "version": "VERSION_NUMBER",
   "author": "ArangoDB GmbH",
   "description": "Recipes for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
@@ -15,6 +16,7 @@
     "ga",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
     "edit-link",
+    "page-toc@git+https://github.com/Simran-B/gitbook-plugin-page-toc.git",
     "localized-footer"
   ],
   "pdf": {
@@ -36,15 +38,15 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/3.2/cookbook/",
-      "changefreq": "weekly",
-      "priority": 0.8
+      "prefix": "https://docs.arangodb.com/devel/Cookbook/",
+      "changefreq": "@GCHANGE_FREQ@",
+      "priority": @GPRIORITY@
     },
     "ga": {
       "token": "UA-81053435-2"
     },
     "edit-link": {
-      "base": "https://github.com/arangodb/Cookbook/edit/master/recipes",
+      "base": "https://github.com/arangodb/arangodb/edit/devel/Documentation/Books/Cookbook",
       "label": "Edit Page"
     },
     "localized-footer": {

@@ -20,6 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "ConsoleFeature.h"
 
 #include "Basics/messages.h"
@@ -27,22 +29,21 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ConsoleThread.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
       _operationMode(OperationMode::MODE_SERVER),
       _consoleThread(nullptr) {
-  startsAfter("Server");
-  startsAfter("GeneralServer");
-  startsAfter("Bootstrap");
+  startsAfter("AgencyPhase");
 }
 
 void ConsoleFeature::start() {
@@ -56,10 +57,14 @@ void ConsoleFeature::start() {
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
 
-  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
 
   _consoleThread.reset(
-      new ConsoleThread(ApplicationFeature::server(), database->systemDatabase()));
+    new ConsoleThread(ApplicationFeature::server(), database.get())
+  );
   _consoleThread->start();
 }
 
@@ -74,8 +79,10 @@ void ConsoleFeature::unprepare() {
   int iterations = 0;
 
   while (_consoleThread->isRunning() && ++iterations < 30) {
-    usleep(100 * 1000);  // spin while console is still needed
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));  // spin while console is still needed
   }
 
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
 }
+
+} // arangodb

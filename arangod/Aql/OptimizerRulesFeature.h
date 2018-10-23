@@ -33,11 +33,13 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   friend class Optimizer;
 
  public:
-  explicit OptimizerRulesFeature(application_features::ApplicationServer* server);
+  explicit OptimizerRulesFeature(
+    application_features::ApplicationServer& server
+  );
 
- public:
   void prepare() override final;
-  
+  void unprepare() override final;
+
   /// @brief translate a list of rule ids into rule name
   static std::vector<std::string> translateRules(std::vector<int> const&);
 
@@ -57,13 +59,14 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
                                  OptimizerRule::RuleLevel level, bool canCreateAdditionalPlans, bool canBeDisabled) {
     registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
   }
- 
+
  private:
   void addRules();
-
   void addStorageEngineRules();
-  
- private:
+
+  static void disableRule(std::string const& name, std::unordered_set<int>& disabled);
+  static void enableRule(std::string const& name, std::unordered_set<int>& disabled);
+
   /// @brief the rules database
   static std::map<int, OptimizerRule> _rules;
 

@@ -1,6 +1,9 @@
 Working with Indexes
 ====================
 
+Learn how to use different indexes efficiently by going through the
+[ArangoDB Performance Course](https://www.arangodb.com/arangodb-performance-course/).
+
 Index Identifiers and Handles
 -----------------------------
 
@@ -43,6 +46,7 @@ returns information about the indexes
 `getIndexes()`
 
 Returns an array of all indexes defined for the collection.
+Since ArangoDB 3.4, `indexes()` is an alias for `getIndexes()`.
 
 Note that `_key` implicitly has an index assigned to it.
 
@@ -80,8 +84,7 @@ Other attributes may be necessary, depending on the index type.
 - *hash*: hash index
 - *skiplist*: skiplist index
 - *fulltext*: fulltext index
-- *geo1*: geo index, with one attribute
-- *geo2*: geo index, with two attributes
+- *geo*: geo index, with _one_ or _two_ attributes
 
 **sparse** can be *true* or *false*.
 
@@ -117,7 +120,7 @@ regardless of the value of this attribute.
 
 
 
-### Dropping an index
+### Dropping an index via a collection handle
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -207,7 +210,7 @@ Returns the index with *index-handle* or null if no such index exists.
     @endDocuBlock IndexHandle
 
 
-### Dropping an index
+### Dropping an index via a database handle
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 

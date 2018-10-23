@@ -22,8 +22,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralClientConnection.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
+#include "Basics/socket-utils.h"
+
+#ifdef TRI_HAVE_POLL_H
+#include <poll.h>
+#endif
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+#include <sys/types.h>
+
+#ifdef _WIN32
+#define STR_ERROR()                                                  \
+  windowsErrorBuf;                                                   \
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
+                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
+  errno = GetLastError();
+#else
+#define STR_ERROR() strerror(errno)
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -45,6 +68,7 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
       _numConnectRetries(0),
       _isConnected(false),
       _isInterrupted(false) {
+  TRI_invalidatesocket(&_socket);
 }
 
 GeneralClientConnection::GeneralClientConnection(
@@ -57,7 +81,9 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _isConnected(false),
-      _isInterrupted(false) {}
+      _isInterrupted(false) {
+  TRI_invalidatesocket(&_socket);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
@@ -106,7 +132,6 @@ GeneralClientConnection* GeneralClientConnection::factory(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::connect() {
-  _isInterrupted = false;
   disconnect();
 
   if (_numConnectRetries < _connectRetries + 1) {
@@ -133,11 +158,217 @@ bool GeneralClientConnection::connect() {
 void GeneralClientConnection::disconnect() {
   if (isConnected()) {
     disconnectSocket();
+    _numConnectRetries = 0;
+    _isConnected = false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepare connection for read/write I/O
+////////////////////////////////////////////////////////////////////////////////
+
+bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool isWrite) {
+  // wait for at most 0.5 seconds for poll/select to complete
+  // if it takes longer, break each poll/select into smaller chunks so we can
+  // interrupt the whole process if it takes too long in total
+  static constexpr double POLL_DURATION = 0.5;
+  auto const fd = TRI_get_fd_or_handle_of_socket(socket);
+  double start = TRI_microtime();
+  int res;
+
+#ifdef TRI_HAVE_POLL_H
+  // Here we have poll, on all other platforms we use select
+  double sinceLastSocketCheck = start;
+  bool nowait = (timeout == 0.0);
+  int towait;
+  if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
+    towait = INT_MAX;
+  } else {
+    towait = static_cast<int>(timeout * 1000.0);
   }
 
-  _isConnected = false;
-  _isInterrupted = false;
-  _numConnectRetries = 0;
+  struct pollfd poller;
+  memset(&poller, 0, sizeof(struct pollfd));  // for our old friend Valgrind
+  poller.fd = fd;
+  poller.events = (isWrite ? POLLOUT : POLLIN);
+
+  while (true) {  // will be left by break
+    res = poll(&poller, 1, towait > static_cast<int>(POLL_DURATION * 1000.0)
+                               ? static_cast<int>(POLL_DURATION * 1000.0)
+                               : towait);
+    if (res == -1 && errno == EINTR) {
+      if (!nowait) {
+        double end = TRI_microtime();
+        towait -= static_cast<int>((end - start) * 1000.0);
+        start = end;
+        if (towait <= 0) {  // Should not happen, but there might be rounding
+                            // errors, so just to prevent a poll call with
+                            // negative timeout...
+          res = 0;
+          break;
+        }
+      }
+      continue;
+    }
+
+    if (res == 0) {
+      if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
+        _errorDetails = std::string("command locally aborted");
+        TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
+        return false;
+      }
+      double end = TRI_microtime();
+      towait -= static_cast<int>((end - start) * 1000.0);
+      if (towait <= 0) {
+        break;
+      }
+
+      // periodically recheck our socket
+      if (end - sinceLastSocketCheck >= 20.0) {
+        sinceLastSocketCheck = end;
+        if (!checkSocket()) {
+          // socket seems broken. now escape this loop
+          break;
+        }
+      }
+
+      start = end;
+      continue;
+    }
+
+    break;
+  }
+// Now res can be:
+//   1 : if the file descriptor was ready
+//   0 : if the timeout happened
+//   -1: if an error happened, EINTR within the timeout is already caught
+#else
+  // All other versions use select:
+
+  // An fd_set is a fixed size buffer.
+  // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is
+  // equal to or larger than FD_SETSIZE
+  // will result in undefined behavior. Moreover, POSIX requires fd to be a
+  // valid file descriptor.
+  if (fd < 0 || fd >= FD_SETSIZE) {
+    // invalid or too high file descriptor value...
+    // if we call FD_ZERO() or FD_SET() with it, the program behavior will be
+    // undefined
+    _errorDetails = std::string("file descriptor value too high");
+    return false;
+  }
+
+  // handle interrupt
+  do {
+  retry:
+    fd_set fdset;
+    FD_ZERO(&fdset);
+    FD_SET(fd, &fdset);
+
+    fd_set* readFds = nullptr;
+    fd_set* writeFds = nullptr;
+
+    if (isWrite) {
+      writeFds = &fdset;
+    } else {
+      readFds = &fdset;
+    }
+
+    int sockn = (int)(fd + 1);
+
+    double waitTimeout = timeout;
+    if (waitTimeout > POLL_DURATION) {
+      waitTimeout = POLL_DURATION;
+    }
+
+    struct timeval t;
+    t.tv_sec = (long)waitTimeout;
+    t.tv_usec = (long)((waitTimeout - (double)t.tv_sec) * 1000000.0);
+
+    res = select(sockn, readFds, writeFds, nullptr, &t);
+
+    if ((res == -1 && errno == EINTR)) {
+      int myerrno = errno;
+      double end = TRI_microtime();
+      errno = myerrno;
+      timeout = timeout - (end - start);
+      start = end;
+    } else if (res == 0) {
+      if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
+        _errorDetails = std::string("command locally aborted");
+        TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
+        return false;
+      }
+      double end = TRI_microtime();
+      timeout = timeout - (end - start);
+      if (timeout <= 0.0) {
+        break;
+      }
+      start = end;
+      goto retry;
+    }
+  } while (res == -1 && errno == EINTR && timeout > 0.0);
+#endif
+
+  if (res > 0) {
+    if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
+      _errorDetails = std::string("command locally aborted");
+      TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
+      return false;
+    }
+    return true;
+  }
+
+  if (res == 0) {
+    if (isWrite) {
+      _errorDetails = std::string("timeout during write");
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
+    } else {
+      _errorDetails = std::string("timeout during read");
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
+    }
+  } else {  // res < 0
+#ifdef _WIN32
+    char windowsErrorBuf[256];
+#endif
+
+    char const* pErr = STR_ERROR();
+    _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
+                    std::string(" - ") + pErr;
+
+    TRI_set_errno(errno);
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the socket is still alive
+////////////////////////////////////////////////////////////////////////////////
+
+bool GeneralClientConnection::checkSocket() {
+  int so_error = -1;
+  socklen_t len = sizeof so_error;
+
+  TRI_ASSERT(TRI_isvalidsocket(_socket));
+
+  int res =
+      TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(errno);
+    disconnect();
+    return false;
+  }
+
+  if (so_error == 0) {
+    return true;
+  }
+
+  TRI_set_errno(so_error);
+  disconnect();
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +390,7 @@ bool GeneralClientConnection::handleWrite(double timeout, void const* buffer,
                                           size_t length, size_t* bytesWritten) {
   *bytesWritten = 0;
 
-  if (prepare(timeout, true)) {
+  if (prepare(_socket, timeout, true)) {
     return this->writeClientConnection(buffer, length, bytesWritten);
   }
 
@@ -185,7 +416,7 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
                                          bool& connectionClosed) {
   connectionClosed = false;
 
-  if (prepare(timeout, false)) {
+  if (prepare(_socket, timeout, false)) {
     return this->readClientConnection(buffer, connectionClosed);
   }
 

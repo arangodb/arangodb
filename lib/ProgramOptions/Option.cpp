@@ -40,7 +40,8 @@ Option::Option(std::string const& value, std::string const& description,
       shorthand(),
       parameter(parameter),
       hidden(hidden),
-      obsolete(obsolete) {
+      obsolete(obsolete),
+      enterpriseOnly(false) {
   auto parts = splitName(value);
   section = parts.first;
   name = parts.second;

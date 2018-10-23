@@ -36,7 +36,7 @@ var arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor (database, data) {
+function ArangoQueryCursor (database, data, stream) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -45,9 +45,12 @@ function ArangoQueryCursor (database, data) {
   this._pos = 0;
   this._count = 0;
   this._total = 0;
+  this._stream = stream || false;
+  this._cached = false;
 
   if (data.result !== undefined) {
     this._count = data.result.length;
+    this._cached = data.cached || false;
 
     if (this._pos < this._count) {
       this._hasNext = true;
@@ -67,25 +70,28 @@ exports.ArangoQueryCursor = ArangoQueryCursor;
 
 ArangoQueryCursor.prototype.toString = function () {
   const currentPos = this._pos, hasNext = this._hasNext;
-  var isCaptureModeActive = internal.isCaptureMode();
-  var rows = [], i = 0;
+  const isCaptureModeActive = internal.isCaptureMode();
+  let rows = [], i = 0;
   this._pos = this._printPos || currentPos;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
   }
 
-  var result = '[object ArangoQueryCursor';
+  let result = '[object ArangoQueryCursor';
 
-  if (this.data.id) {
+  if (this.data.id) { // should always exist for streaming cursors
     result += ' ' + this.data.id;
   }
 
-  if (this._count !== null && this._count !== undefined) {
-    result += ', count: ' + this._count;
+  if (this._stream) {
+    // a streaming query has no count and will not be cached
+    result += ', stream: true';
+  } else {
+    if (this._count !== null && this._count !== undefined) {
+      result += ', count: ' + this._count;
+    }
   }
-
   result += ', cached: ' + (this.data.cached ? 'true' : 'false');
-
   result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 
   if (this.data.hasOwnProperty('extra') &&
@@ -114,7 +120,7 @@ ArangoQueryCursor.prototype.toString = function () {
     if (!isCaptureModeActive) {
       var old = internal.startCaptureMode();
       internal.print(rows);
-      result += '\n\n' + internal.stopCaptureMode(old);
+      result += '\n' + internal.stopCaptureMode(old);
     } else {
       internal.print(rows);
     }
@@ -211,7 +217,7 @@ ArangoQueryCursor.prototype.next = function () {
       this._hasMore = false;
 
       // load more results
-      var requestResult = this._database._connection.PUT(this._baseurl(), '');
+      var requestResult = this._database._connection.PUT(this._baseurl(), null);
 
       arangosh.checkRequestResult(requestResult);
 
@@ -251,7 +257,7 @@ ArangoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var requestResult = this._database._connection.DELETE(this._baseurl(), '');
+  var requestResult = this._database._connection.DELETE(this._baseurl());
 
   arangosh.checkRequestResult(requestResult);
 

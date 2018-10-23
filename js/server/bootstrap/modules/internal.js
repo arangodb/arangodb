@@ -62,6 +62,27 @@
 
   exports.ArangoUsers = global.ArangoUsers;
   delete global.ArangoUsers;
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoGeneralGraphModule
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoGeneralGraphModule = global.ArangoGeneralGraphModule;
+  delete global.ArangoGeneralGraphModule;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoGeneralGraphClass
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoGraph = global.ArangoGraph;
+  delete global.ArangoGraph;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoSmartGraphClass
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoSmartGraph = global.ArangoSmartGraph;
+  delete global.ArangoSmartGraph;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoDatabase
@@ -76,13 +97,6 @@
 
   exports.ShapedJson = function () {};
   delete global.ShapedJson;
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief enableStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.enableStatistics = global.ENABLE_STATISTICS;
-  delete global.ENABLE_STATISTICS;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief dispatcherThreads
@@ -113,13 +127,6 @@
   exports.resetEngine = function () {
     require('@arangodb/actions').reloadRouting();
   };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the authentication cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.reloadAuth = global.RELOAD_AUTH;
-  delete global.RELOAD_AUTH;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief write-ahead log object
@@ -268,6 +275,11 @@
     exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
   }
 
+  if (global.REPLICATION_APPLIER_STATE_ALL) {
+    // TODO: remove this export from the internal module
+    exports.getStateReplicationApplierAll = global.REPLICATION_APPLIER_STATE_ALL;
+  }
+
   if (global.REPLICATION_APPLIER_FORGET) {
     // TODO: remove this export from the internal module
     exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
@@ -383,6 +395,60 @@
   if (global.SYS_CLUSTER_SHARD_DISTRIBUTION) {
     exports.getShardDistribution = global.SYS_CLUSTER_SHARD_DISTRIBUTION;
     delete global.SYS_CLUSTER_SHARD_DISTRIBUTION;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getCollectionShardDistrbiution
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION) {
+    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugSegfault
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_SEGFAULT) {
+    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
+    delete global.SYS_DEBUG_SEGFAULT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugSetFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_SET_FAILAT) {
+    exports.debugSetFailAt = global.SYS_DEBUG_SET_FAILAT;
+    delete global.SYS_DEBUG_SET_FAILAT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugRemoveFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_REMOVE_FAILAT) {
+    exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
+    delete global.SYS_DEBUG_REMOVE_FAILAT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugClearFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_CLEAR_FAILAT) {
+    exports.debugClearFailAt = global.SYS_DEBUG_CLEAR_FAILAT;
+    delete global.SYS_DEBUG_CLEAR_FAILAT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugCanUseFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_CAN_USE_FAILAT) {
+    exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
+    delete global.SYS_DEBUG_CAN_USE_FAILAT;
   }
 
 }());

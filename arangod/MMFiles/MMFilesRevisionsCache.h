@@ -37,11 +37,11 @@ struct MMFilesMarker;
 namespace arangodb {
 
 struct MMFilesRevisionsCacheHelper {
-  static inline uint64_t HashKey(void*, LocalDocumentId::BaseType const* key) {
+  static inline uint64_t HashKey(LocalDocumentId::BaseType const* key) {
     return fasthash64_uint64(*key, 0xdeadbeef);
   }
 
-  static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element, bool) {
+  static inline uint64_t HashElement(MMFilesDocumentPosition const& element, bool) {
     return fasthash64_uint64(element.localDocumentIdValue(), 0xdeadbeef);
   }
 
@@ -55,9 +55,9 @@ struct MMFilesRevisionsCacheHelper {
     return left.localDocumentIdValue() == right.localDocumentIdValue();
   }
 
-  inline bool IsEqualElementElementByKey(void* userData, MMFilesDocumentPosition const& left,
+  inline bool IsEqualElementElementByKey(void*, MMFilesDocumentPosition const& left,
                                          MMFilesDocumentPosition const& right) const {
-    return IsEqualElementElement(userData, left, right);
+    return IsEqualElementElement(nullptr, left, right);
   }
 };
 

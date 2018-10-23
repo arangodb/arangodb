@@ -21,6 +21,10 @@ for i in $@; do
     fi
 done
 
+if ! test -d 3rdParty/arangodb-starter; then
+    MOREOPTS="${MOREOPTS} --downloadStarter"
+fi
+
 export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
 ./Installation/Jenkins/build.sh \
@@ -31,8 +35,7 @@ export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
     --buildDir build-${EP}deb \
     --targetDir /var/tmp/ \
     --jemalloc \
-    --downloadStarter \
-    --noopt \
+    ${MOREOPTS} \
     $@
 
 cd ${DIR}/..

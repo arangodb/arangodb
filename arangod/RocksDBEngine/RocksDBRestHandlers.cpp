@@ -22,8 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestHandlers.h"
+
+#include "Aql/QueryRegistry.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "RocksDBEngine/RocksDBRestCollectionHandler.h"
 #include "RocksDBEngine/RocksDBRestExportHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
@@ -32,14 +36,12 @@ using namespace arangodb;
 
 void RocksDBRestHandlers::registerResources(
     rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      "/_api/export",
-      RestHandlerCreator<RocksDBRestExportHandler>::createNoData);
-
-  handlerFactory->addPrefixHandler(
-      "/_api/replication",
-      RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
-
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
+  handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
+                                   RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData);
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  handlerFactory->addPrefixHandler("/_api/export",
+      RestHandlerCreator<RocksDBRestExportHandler>::createData<aql::QueryRegistry*>, queryRegistry);
+  handlerFactory->addPrefixHandler("/_api/replication",
+                                   RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
 }

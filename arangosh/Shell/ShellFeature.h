@@ -26,11 +26,11 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class ShellFeature final : public application_features::ApplicationFeature {
  public:
-  ShellFeature(application_features::ApplicationServer* server, int* result);
+  ShellFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
@@ -57,7 +57,9 @@ class ShellFeature final : public application_features::ApplicationFeature {
   int* _result;
   RunMode _runMode;
   std::vector<std::string> _positionals;
+  std::string _unitTestFilter;
 };
+
 }
 
 #endif

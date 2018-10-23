@@ -11,11 +11,14 @@ Address of a Collection
 -----------------------
 
 All collections in ArangoDB have a unique identifier and a unique
-name. ArangoDB internally uses the collection's unique identifier to look up
-collections. This identifier, however, is managed by ArangoDB and the user has
-no control over it. In order to allow users to use their own names, each collection
-also has a unique name which is specified by the user. To access a collection
-from the user perspective, the [collection name](../../Appendix/Glossary.md#collection-name) should be used, i.e.:
+name. The namespace for collections is shared with views, so there cannot exist
+a collection and a view with the same name in the same database. ArangoDB
+internally uses the collection's unique identifier to look up collections. This
+identifier, however, is managed by ArangoDB and the user has no control over it.
+In order to allow users to use their own names, each collection also has a
+unique name which is specified by the user. To access a collection from the user
+perspective, the [collection name](../../Appendix/Glossary.md#collection-name)
+should be used, i.e.:
 
 ### Collection
 `db._collection(collection-name)`
@@ -58,10 +61,10 @@ altogether k copies of each shard are kept in the cluster on k different
 servers, and are kept in sync. That is, every write operation is automatically
 replicated on all copies.
 
-This is organised using a leader/follower model. At all times, one of the
+This is organized using a leader/follower model. At all times, one of the
 servers holding replicas for a shard is "the leader" and all others
 are "followers", this configuration is held in the Agency (see 
-[Scalability](../../Scalability/README.md) for details of the ArangoDB
+[Cluster](../../Architecture/DeploymentModes/Cluster/README.md) for details of the ArangoDB
 cluster architecture). Every write operation is sent to the leader
 by one of the coordinators, and then replicated to all followers
 before the operation is reported to have succeeded. The leader keeps

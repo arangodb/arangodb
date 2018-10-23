@@ -32,7 +32,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 
 namespace aql {
 
@@ -43,42 +42,21 @@ struct Variable;
 /// @brief AttributeAccessor
 class AttributeAccessor {
  public:
-  AttributeAccessor(std::vector<std::string>&&, Variable const*, bool dataIsFromCollection);
-  ~AttributeAccessor() = default;
+  explicit AttributeAccessor(Variable const*);
+  virtual ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  AqlValue getSystem(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy);
-  AqlValue getDynamic(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy);
+  virtual AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) = 0;
     
  public:
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
- 
-  bool isSystem() const {
-    return (_type == EXTRACT_KEY || _type == EXTRACT_ID || _type == EXTRACT_FROM || _type == EXTRACT_TO);
-  }
-
-  bool isDynamic() const {
-    return !isSystem();
-  }
-
- private:
-  enum AccessorType {
-    EXTRACT_KEY,
-    EXTRACT_ID,
-    EXTRACT_FROM,
-    EXTRACT_TO,
-    EXTRACT_SINGLE,
-    EXTRACT_MULTI
-  };
 
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
-  std::vector<std::string> const _attributeParts;
-
+  static AttributeAccessor* create(std::vector<std::string>&& path, Variable const* variable, bool dataIsFromCollection);
+ 
+ protected:
   /// @brief the accessed variable
   Variable const* _variable;
-
-  /// @brief type of the accessor
-  AccessorType _type;
 };
 
 }  // namespace arangodb::aql

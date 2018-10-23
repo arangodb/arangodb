@@ -46,7 +46,8 @@ v8::Handle<v8::Value> TRI_VPackToV8(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPack(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
-                  v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
+                  v8::Local<v8::Value> const value, bool keepTopLevelOpen,
+                  bool convertFunctionsToNull = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to VPack value, simplified version

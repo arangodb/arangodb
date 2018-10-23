@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
 #include <numeric>
@@ -56,7 +55,7 @@ void Inception::gossip() {
   if (this->isStopping() || _agent->isStopping()) {
     return;
   }
-  
+
   auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
@@ -66,14 +65,13 @@ void Inception::gossip() {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
-  
-  auto startTime = system_clock::now();
+
+  auto startTime = steady_clock::now();
   seconds timeout(3600);
-  size_t j = 0;
   long waitInterval = 250000;
 
   CONDITION_LOCKER(guard, _cv);
-  
+
   while (!this->isStopping() && !_agent->isStopping()) {
 
     auto const config = _agent->config();  // get a copy of conf
@@ -95,6 +93,7 @@ void Inception::gossip() {
 
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
+
       if (p != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
@@ -103,42 +102,46 @@ void Inception::gossip() {
             continue;
           }
         }
-        std::string clientid = config.id() + std::to_string(j++);
-        auto hf =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
-            << out->toJson() << " to peer " << clientid;
+        
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 1: "
+                                         << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        CoordTransactionID coordTrxId = TRI_NewTickServer();
+        std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(
-          clientid, 1, p, rest::RequestType::POST, path,
+          coordTrxId, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
     }
-    
+
+    if (config.poolComplete()) {
+      _agent->activateAgency();
+      return;
+    }
+        
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
-          if (_acked[pair.second] >= version) {
+          if (_acked[pair.second] > version) {
             continue;
           }
         }
         complete = false;
-        auto const clientid = config.id() + std::to_string(j++);
-        auto hf =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
-            << out->toJson() << " to pool member " << clientid;
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 2: "
+            << out->toJson() << " to pool member " << pair.second;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        CoordTransactionID coordTrxId = TRI_NewTickServer();
+        std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(
-          clientid, 1, pair.second, rest::RequestType::POST, path,
+          coordTrxId, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
@@ -155,7 +158,7 @@ void Inception::gossip() {
     }
 
     // Timed out? :(
-    if ((system_clock::now() - startTime) > timeout) {
+    if ((steady_clock::now() - startTime) > timeout) {
       if (config.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
       } else {
@@ -166,13 +169,17 @@ void Inception::gossip() {
     }
 
     // don't panic just yet
-    _cv.wait(waitInterval);
-    if (waitInterval < 2500000) { // 2.5s
-      waitInterval *= 2;
+    //  wait() is true on signal, false on timeout
+    if (_cv.wait(waitInterval)) {
+        waitInterval = 250000;
+    } else {
+      if (waitInterval < 2500000) { // 2.5s
+        waitInterval *= 2;
+      }
     }
 
   }
-  
+
 }
 
 
@@ -181,7 +188,7 @@ bool Inception::restartingActiveAgent() {
   if (this->isStopping() || _agent->isStopping()) {
     return false;
   }
-  
+
   auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
@@ -195,11 +202,12 @@ bool Inception::restartingActiveAgent() {
 
   auto const  path      = pubApiPrefix + "config";
   auto const  myConfig  = _agent->config();
-  auto const  startTime = system_clock::now();
+  auto const  startTime = steady_clock::now();
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
-  auto const majority   = (myConfig.size()+1)/2;
+  auto const majority   = myConfig.size()/2+1;
+  
 
   Builder greeting;
   {
@@ -209,18 +217,18 @@ bool Inception::restartingActiveAgent() {
   auto const& greetstr = greeting.toJson();
 
   seconds const timeout(3600);
-  long waitInterval(500000);  
-  
+  long waitInterval(500000);
+
   CONDITION_LOCKER(guard, _cv);
 
   active.erase(
     std::remove(active.begin(), active.end(), myConfig.id()), active.end());
 
   while (!this->isStopping() && !_agent->isStopping()) {
-    
+
     active.erase(
       std::remove(active.begin(), active.end(), ""), active.end());
-    
+
     if (active.size() < majority) {
       LOG_TOPIC(INFO, Logger::AGENCY)
         << "Found majority of agents in agreement over active pool. "
@@ -230,58 +238,70 @@ bool Inception::restartingActiveAgent() {
 
     auto gp = myConfig.gossipPeers();
     std::vector<std::string> informed;
-    
-    for (auto& p : gp) {
+    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+
+    for (auto const& p : gp) {
       if (this->isStopping() && _agent->isStopping() && cc==nullptr) {
         return false;
       }
       auto comres = cc->syncRequest(
-        clientId, 1, p, rest::RequestType::POST, path, greetstr,
+        coordinatorTransactionID, p, rest::RequestType::POST, path, greetstr,
         std::unordered_map<std::string, std::string>(), 2.0);
-      if (comres->status == CL_COMM_SENT) {
+
+      if (comres->status == CL_COMM_SENT &&
+        comres->result->getHttpReturnCode() == 200) {
         auto const  theirConfigVP = comres->result->getBodyVelocyPack();
         auto const& theirConfig   = theirConfigVP->slice();
-        auto const& tcc           = theirConfig.get("configuration");
-        auto const& theirId       = tcc.get("id").copyString();
-        
+
+        if (!theirConfig.isObject()) {
+          continue ;
+        }
+        auto const& tcc = theirConfig.get("configuration");
+
+        if (!tcc.isObject() || !tcc.hasKey("id")) {
+          continue ;
+        }
+        auto const& theirId = tcc.get("id").copyString();
+
         _agent->updatePeerEndpoint(theirId, p);
         informed.push_back(p);
       }
     }
-    
-    auto pool = _agent->config().pool();    
-    for (const auto& i : informed) {
+
+    auto pool = _agent->config().pool();
+    for (auto const& i : informed) {
       active.erase(
         std::remove(active.begin(), active.end(), i), active.end());
     }
-    
+
     for (auto& p : pool) {
-      
+
       if (p.first != myConfig.id() && p.first != "") {
 
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return false;
         }
 
+        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
         auto comres = cc->syncRequest(
-          clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
+          coordinatorTransactionID, p.second, rest::RequestType::POST, path, greetstr,
           std::unordered_map<std::string, std::string>(), 2.0);
-        
+
         if (comres->status == CL_COMM_SENT) {
           try {
-            
+
             auto const  theirConfigVP = comres->result->getBodyVelocyPack();
             auto const& theirConfig   = theirConfigVP->slice();
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
             auto const& tcc           = theirConfig.get("configuration");
-            auto const& theirId       = tcc.get("id").copyString();            
-            
+            auto const& theirId       = tcc.get("id").copyString();
+
             // Found RAFT with leader
             if (!theirLeaderId.empty()) {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
                 "Found active RAFTing agency lead by " << theirLeaderId <<
                 ". Finishing startup sequence.";
-              
+
               auto const theirLeaderEp =
                 tcc.get(
                   std::vector<std::string>({"pool", theirLeaderId})).copyString();
@@ -292,7 +312,7 @@ bool Inception::restartingActiveAgent() {
                   return false;
                 }
                 comres = cc->syncRequest(
-                  clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                  coordinatorTransactionID, theirLeaderEp, rest::RequestType::POST, path,
                   greetstr, std::unordered_map<std::string, std::string>(), 2.0);
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
@@ -300,17 +320,18 @@ bool Inception::restartingActiveAgent() {
                   continue;
                 }
               }
-              
+              auto const  theirConfigL = comres->result->getBodyVelocyPack();
+              auto const& lcc           =
+                theirConfigL->slice().get("configuration");
               auto agency = std::make_shared<Builder>();
-              agency->openObject();
-              agency->add("term", theirConfig.get("term"));
-              agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",      tcc.get("active"));
-              agency->add("pool",        tcc.get("pool"));
-              agency->add("min ping",    tcc.get("min ping"));
-              agency->add("max ping",    tcc.get("max ping"));
-              agency->add("timeoutMult", tcc.get("timeoutMult"));
-              agency->close();
+              { VPackObjectBuilder b(agency.get());
+                agency->add("term", theirConfigL->slice().get("term"));
+                agency->add("id", VPackValue(theirLeaderId));
+                agency->add("active",      lcc.get("active"));
+                agency->add("pool",        lcc.get("pool"));
+                agency->add("min ping",    lcc.get("min ping"));
+                agency->add("max ping",    lcc.get("max ping"));
+                agency->add("timeoutMult", lcc.get("timeoutMult")); }
               _agent->notify(agency);
               return true;
             }
@@ -337,9 +358,9 @@ bool Inception::restartingActiveAgent() {
                     LOG_TOPIC(FATAL, Logger::AGENCY)
                       << "Assumed active RAFT peer and I disagree on active membership:";
                     LOG_TOPIC(FATAL, Logger::AGENCY)
-                      << "Their active list is " << theirActive.toJson();  
+                      << "Their active list is " << theirActive.toJson();
                     LOG_TOPIC(FATAL, Logger::AGENCY)
-                      << "My active list is " << myActive.toJson();  
+                      << "My active list is " << myActive.toJson();
                     FATAL_ERROR_EXIT();
                   }
                   return false;
@@ -350,12 +371,12 @@ bool Inception::restartingActiveAgent() {
                 LOG_TOPIC(FATAL, Logger::AGENCY)
                   << "Assumed active RAFT peer and I disagree on active agency size:";
                 LOG_TOPIC(FATAL, Logger::AGENCY)
-                  << "Their active list is " << theirActive.toJson();  
+                  << "Their active list is " << theirActive.toJson();
                 LOG_TOPIC(FATAL, Logger::AGENCY)
-                  << "My active list is " << myActive.toJson();  
+                  << "My active list is " << myActive.toJson();
                 FATAL_ERROR_EXIT();
               }
-            }    
+            }
           } catch (std::exception const& e) {
             if (!this->isStopping()) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
@@ -365,13 +386,13 @@ bool Inception::restartingActiveAgent() {
             }
             return false;
           }
-        } 
+        }
       }
     }
 
-    
+
     // Timed out? :(
-    if ((system_clock::now() - startTime) > timeout) {
+    if ((steady_clock::now() - startTime) > timeout) {
       if (myConfig.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Joined complete pool!";
       } else {
@@ -380,16 +401,16 @@ bool Inception::restartingActiveAgent() {
       }
       break;
     }
-    
+
     _cv.wait(waitInterval);
     if (waitInterval < 2500000) { // 2.5s
       waitInterval *= 2;
     }
-    
+
   }
 
   return false;
-  
+
 }
 
 void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
@@ -401,16 +422,17 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 
 // @brief Thread main
 void Inception::run() {
-  while (ServerState::isMaintenance() &&
+  auto server = ServerState::instance();
+  while (server->isMaintenance() &&
          !this->isStopping() && !_agent->isStopping()) {
-    usleep(1000000);
+    std::this_thread::sleep_for(std::chrono::microseconds(1000000));
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Waiting for RestHandlerFactory to exit maintenance mode before we "
          " start gossip protocol...";
   }
 
   config_t config = _agent->config();
-  
+
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
@@ -425,7 +447,7 @@ void Inception::run() {
     }
     return;
   }
-  
+
   // Gossip
   gossip();
 
@@ -447,6 +469,12 @@ void Inception::run() {
 // @brief Graceful shutdown
 void Inception::beginShutdown() {
   Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
+}
+
+// @brief Let external routines, like Agent::gossip(), signal our condition
+void Inception::signalConditionVar() {
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }

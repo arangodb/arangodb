@@ -47,7 +47,9 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMF
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create logfile '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "unable to create logfile '" << filename << "': "
+          << TRI_errno_string(res);
       return nullptr;
     }
   }
@@ -59,19 +61,21 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMF
 
 /// @brief open an existing logfile
 MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, MMFilesWalLogfile::IdType id,
-                               bool wasCollected, bool ignoreErrors) {
-  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors));
+                                                   bool wasCollected, bool ignoreErrors) {
+  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors, false));
 
   if (df == nullptr) {
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "': " << TRI_errno_string(res);
-      return nullptr;
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "unable to open logfile '" << filename << "': "
+        << TRI_errno_string(res);
+    } else {
+      // cannot figure out the type of error
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "unable to open logfile '" << filename << "'";
     }
-
-    // cannot figure out the type of error
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "'";
     return nullptr;
   }
 
@@ -95,4 +99,3 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, 
 char* MMFilesWalLogfile::reserve(size_t size) {
   return _df->advanceWritePosition(encoding::alignedSize<size_t>(size));
 }
-

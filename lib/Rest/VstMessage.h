@@ -31,91 +31,80 @@
 #include <iterator>
 #include <vector>
 #include "Basics/StringBuffer.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
 namespace rest {
 
 struct VstInputMessage {
-  VstInputMessage() : _buffer(), _id(0), _payloadAmount(0), _payload() {}
-
-  // cppcheck-suppress *
-  VstInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff,
-                  std::size_t amount = 1)
-      : _buffer(std::move(buff)), _id(id), _payloadAmount(amount) {
-    init();
-  }
+  VstInputMessage() : _id(0), _buffer() {}
 
   // no copy
   VstInputMessage(VstInputMessage const& other) = delete;
 
   // just move
   VstInputMessage(VstInputMessage&& other) 
-      : _buffer(std::move(other._buffer)), _id(other._id), _payloadAmount(other._payloadAmount) {
-    init();
-  }
+      : _id(other._id), _buffer(std::move(other._buffer)) {}
 
-  void set(uint64_t id, VPackBuffer<uint8_t>&& buff, std::size_t amount = 1) {
+  void set(uint64_t id, VPackBuffer<uint8_t>&& buff) {
     _id = id;
     _buffer = buff;
-    _payloadAmount = amount;
-    init();
   }
 
-  VPackSlice header() const { return _header; };
-  VPackSlice payload() const {
-    if (!_payload.empty()) {
-      return _payload.front();
+  /// @brief message header, validated
+  velocypack::Slice header() const {
+    if (_buffer.size() > 0) {
+      return VPackSlice(_buffer.data());
     }
-    return VPackSlice::noneSlice();
+    return velocypack::Slice::emptyArraySlice();
+    
+  };
+  /// message payload, not validated
+  arangodb::StringRef payload() const {
+    size_t len = velocypack::Slice(_buffer.data()).byteSize();
+    if (_buffer.size() > len) {
+      return arangodb::StringRef(reinterpret_cast<const char*>(_buffer.data() + len),
+                                 _buffer.size() - len);
+    }
+    return arangodb::StringRef();
   }
-
-  std::vector<VPackSlice> const& payloads() const { return _payload; }
-
+  size_t payloadSize() const {
+    size_t len = velocypack::Slice(_buffer.data()).byteSize();
+    return _buffer.size() - len;
+  }
+  
  private:
-  VPackBuffer<uint8_t> _buffer;
   uint64_t _id;  // id zero signals invalid state
-  std::size_t _payloadAmount;
-  VPackSlice _header;
-  std::vector<VPackSlice> _payload;
-
-  void init() {
-    _header = VPackSlice(_buffer.data());
-    std::size_t offset = _header.byteSize();
-
-    for (std::size_t sliceNum = 0; sliceNum < _payloadAmount; ++sliceNum) {
-      _payload.emplace_back(_buffer.data() + offset);
-      offset += _payload.back().byteSize();
-    }
-  }
+  velocypack::Buffer<uint8_t> _buffer;
 };
 
 struct VPackMessageNoOwnBuffer {
   // cppcheck-suppress *
-  VPackMessageNoOwnBuffer(VPackSlice head, std::vector<VPackSlice>&& payloads,
+  VPackMessageNoOwnBuffer(velocypack::Slice head, std::vector<velocypack::Slice>&& payloads,
                           uint64_t id, bool generateBody = true)
       : _header(head),
         _payloads(std::move(payloads)),
         _id(id),
         _generateBody(generateBody) {}
 
-  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice payload, uint64_t id,
+  VPackMessageNoOwnBuffer(velocypack::Slice head, velocypack::Slice payload, uint64_t id,
                           bool generateBody = true)
       : _header(head), _payloads(), _id(id), _generateBody(generateBody) {
     _payloads.push_back(payload);
   }
 
-  VPackSlice firstPayload() {
+  velocypack::Slice firstPayload() {
     if (_payloads.size() && _generateBody) {
       return _payloads.front();
     }
-    return VPackSlice::noneSlice();
+    return velocypack::Slice::noneSlice();
   }
 
-  std::vector<VPackSlice> payloads() { return _payloads; }
+  std::vector<velocypack::Slice> payloads() { return _payloads; }
 
-  VPackSlice _header;
-  std::vector<VPackSlice> _payloads;
+  velocypack::Slice _header;
+  std::vector<velocypack::Slice> _payloads;
   uint64_t _id;
   bool _generateBody;
 };

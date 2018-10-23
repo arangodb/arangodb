@@ -28,19 +28,25 @@
 const functionsDocumentation = {
   'resilience': 'resilience tests',
   'client_resilience': 'client resilience tests',
-  'cluster_sync': 'cluster sync tests'
+  'active_failover': 'active failover tests'
 };
 const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'resilience': [tu.pathForTesting('server/resilience')],
+  'client_resilience': [tu.pathForTesting('client/resilience')],
+  'active_failover': [tu.pathForTesting('client/active-failover')]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: resilience
 // //////////////////////////////////////////////////////////////////////////////
 
 function resilience (options) {
-  let testCases = tu.scanTestPath('js/server/tests/resilience');
+  let testCases = tu.scanTestPaths(testPaths.resilience);
   options.cluster = true;
   options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
@@ -54,7 +60,7 @@ function resilience (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPath('js/client/tests/resilience');
+  let testCases = tu.scanTestPaths(testPaths.client_resilience);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
@@ -64,33 +70,34 @@ function clientResilience (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: cluster_sync
+// / @brief TEST: active failover
 // //////////////////////////////////////////////////////////////////////////////
 
-function clusterSync (options) {
+function activeFailover (options) {
   if (options.cluster) {
-    // may sound strange but these are actually pure logic tests
-    // and should not be executed on the cluster
     return {
-      'cluster_sync': {
+      'active_failover': {
         'status': true,
         'message': 'skipped because of cluster',
         'skipped': true
       }
     };
   }
-  let testCases = tu.scanTestPath('js/server/tests/cluster-sync');
-  options.propagateInstanceInfo = true;
 
-  return tu.performTests(options, testCases, 'cluster_sync', tu.runThere);
+  let testCases = tu.scanTestPaths(testPaths.active_failover);
+  options.activefailover = true;
+  options.singles = 4;
+  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann'
+  });
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['resilience'] = resilience;
   testFns['client_resilience'] = clientResilience;
-  testFns['cluster_sync'] = clusterSync;
+  testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

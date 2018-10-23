@@ -40,7 +40,8 @@ class RocksDBOptionFeature final
     : public application_features::ApplicationFeature {
  public:
   explicit RocksDBOptionFeature(
-      application_features::ApplicationServer* server);
+      application_features::ApplicationServer& server
+  );
   ~RocksDBOptionFeature() {}
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -63,13 +64,14 @@ class RocksDBOptionFeature final
   uint32_t _numThreadsHigh;
   uint32_t _numThreadsLow;
   uint64_t _blockCacheSize;
-  uint64_t _blockCacheShardBits;
+  int64_t _blockCacheShardBits;
   uint64_t _tableBlockSize;
   uint64_t _recycleLogFileNum;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
   int64_t _level0SlowdownTrigger;
   int64_t _level0StopTrigger;
+  bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
   bool _optimizeFiltersForHits;
   bool _useDirectReads;
@@ -78,6 +80,7 @@ class RocksDBOptionFeature final
   bool _skipCorrupted;
   bool _dynamicLevelBytes;
   bool _enableStatistics;
+  bool _useFileLogging;
 };
 
 }  // namespace arangodb

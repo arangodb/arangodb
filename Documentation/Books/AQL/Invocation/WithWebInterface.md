@@ -46,4 +46,4 @@ Queries can also be saved in the AQL editor along with their bind parameter valu
 for later reuse. This data is stored in the user profile in the current database
 (in the *_users* system table). 
 
-Also see the detailed description of the [Web Interface](../../Manual/Administration/WebInterface/index.html).
+Also see the detailed description of the [Web Interface](../../Manual/Programs/WebInterface/index.html).

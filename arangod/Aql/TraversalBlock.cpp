@@ -28,7 +28,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterTraverser.h"
@@ -47,6 +46,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
@@ -81,19 +81,13 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #ifdef USE_ENTERPRISE
     if (ep->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+        _opts, _mmdr.get(), ep->engines(), _trx->vocbase().name(), _trx
+      ));
     } else {
 #endif
       _traverser.reset(new arangodb::traverser::ClusterTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+        _opts, _mmdr.get(), ep->engines(), _trx->vocbase().name(), _trx
+      ));
 #ifdef USE_ENTERPRISE
     }
 #endif
@@ -130,30 +124,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-}
-
-TraversalBlock::~TraversalBlock() {
-  freeCaches();
-}
-
-void TraversalBlock::freeCaches() {
-  for (auto& v : _vertices) {
-    v.destroy();
-  }
-  _vertices.clear();
-  for (auto& e : _edges) {
-    e.destroy();
-  }
-  _edges.clear();
-  for (auto& p : _paths) {
-    p.destroy();
-  }
-  _paths.clear();
-}
-
-int TraversalBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initialize();
+  
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
   if (usesVertexOutput()) {
@@ -177,62 +148,97 @@ int TraversalBlock::initialize() {
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _pathReg = it->second.registerId;
   }
-
-  return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
-int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+TraversalBlock::~TraversalBlock() {
+  freeCaches();
+}
+
+void TraversalBlock::freeCaches() {
+  for (auto& v : _vertices) {
+    v.destroy();
+  }
+  _vertices.clear();
+  for (auto& e : _edges) {
+    e.destroy();
+  }
+  _edges.clear();
+  for (auto& p : _paths) {
+    p.destroy();
+  }
+  _paths.clear();
+}
+
+std::pair<ExecutionState, arangodb::Result> TraversalBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
+    return res;
+  }
+
   _pos = 0;
   _posInPaths = 0;
   _usedConstant = false;
   freeCaches();
   _traverser->done();
-  return ExecutionBlock::initializeCursor(items, pos);
+  _skipped = 0;
+
+  return res;
 }
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves
-int TraversalBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
+std::pair<ExecutionState, Result> TraversalBlock::shutdown(int errorCode) {
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+
   // We have to clean up the engines in Coordinator Case.
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto cc = arangodb::ClusterComm::instance();
+
     if (cc != nullptr) {
       // nullptr only happens on controlled server shutdown
       std::string const url(
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
-          "/_internal/traverser/");
+        "/_db/"
+        + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name())
+        + "/_internal/traverser/"
+      );
+
       for (auto const& it : *_engines) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
         auto res = cc->syncRequest(
-            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+            coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
             url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
             30.0);
+
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
+
           if (!res->errorMessage.empty()) {
             message += std::string(": ") + res->errorMessage;
           }
+
           LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
         }
       }
     }
   }
 
-  return ExecutionBlock::shutdown(errorCode);
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  return {state, result};
 }
 
-/// @brief read more paths
-bool TraversalBlock::morePaths(size_t hint) {
-  DEBUG_BEGIN_BLOCK();
-  
+/// @brief read more paths from _traverser. returns true if there are more
+/// paths.
+bool TraversalBlock::getSomePaths(size_t hint) {
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -274,23 +280,16 @@ bool TraversalBlock::morePaths(size_t hint) {
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   return !_vertices.empty();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief skip the next paths
 size_t TraversalBlock::skipPaths(size_t hint) {
-  DEBUG_BEGIN_BLOCK();
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
     return 0;
   }
   return _traverser->skip(hint);
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos) {
@@ -306,7 +305,6 @@ void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos
 
 /// @brief initialize the list of paths
 void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
     // No Initialization required.
     return;
@@ -346,164 +344,166 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
                                        "allowed");
     }
   }
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
-AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
-                                      size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
-  while (true) {
-    if (_done) {
-      traceGetSomeEnd(nullptr);
-      return nullptr;
-    }
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+TraversalBlock::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
 
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-        _done = true;
-        traceGetSomeEnd(nullptr);
-        return nullptr;
-      }
-      _pos = 0;  // this is in the first block
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  while (!_done && _skipped < atMost) {
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+
+    if (bufferState == BufferState::WAITING) {
+      return {ExecutionState::WAITING, nullptr};
     }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
+
+    TRI_ASSERT(!_buffer.empty());
 
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
-    size_t const curRegs = cur->getNrRegs();
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
 
-    if (_pos == 0 && !_traverser->hasMore()) {
-      // Initial initialization
+    // Initialization on the first row of each new block
+    if (bufferState == BufferState::HAS_NEW_BLOCK) {
+      // A new row (and therefore block) should only be fetched at the very
+      // beginning, or after the traverser is completely processed; in either
+      // case, the traverser should be done.
+      TRI_ASSERT(_pos == 0 && !_traverser->hasMore());
       initializePaths(cur, _pos);
     }
 
-    // Iterate more paths:
-    if (_posInPaths >= _vertices.size()) {
-      if (!morePaths(atMost)) {
-        // This input does not have any more paths. maybe the next one has.
-        // we can only return nullptr iff the buffer is empty.
-        _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        } else {
-          initializePaths(cur, _pos);
+    if (!_vertices.empty()) {
+      TRI_ASSERT(_posInPaths < _vertices.size());
+
+      size_t available = _vertices.size() - _posInPaths;
+      size_t toSend = (std::min)(atMost - _skipped, available);
+
+      // automatically freed if we throw
+      std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrOutRegs));
+      TRI_ASSERT(nrInRegs <= res->getNrRegs());
+
+      // only copy 1st row of registers inherited from previous frame(s)
+      inheritRegisters(cur, res.get(), _pos);
+
+      for (size_t j = 0; j < toSend; j++) {
+        if (usesVertexOutput()) {
+          res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
         }
-        continue;
-      }
-    }
-
-    size_t available = _vertices.size() - _posInPaths;
-    size_t toSend = (std::min)(atMost, available);
-
-    RegisterId nrRegs =
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-
-    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
-    // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
-
-    // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos);
-
-    for (size_t j = 0; j < toSend; j++) {
-      if (usesVertexOutput()) {
-        res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
-      }
-      if (usesEdgeOutput()) {
-        res->setValue(j, _edgeReg, _edges[_posInPaths].clone());
-      }
-      if (usesPathOutput()) {
-        res->setValue(j, _pathReg, _paths[_posInPaths].clone());
-      }
-      if (j > 0) {
-        // re-use already copied AqlValues
-        res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
-      }
-      ++_posInPaths;
-    }
-    // Advance read position:
-    if (_posInPaths >= _vertices.size()) {
-      // we have exhausted our local paths buffer
-      // fetch more paths into our buffer
-      if (!morePaths(atMost)) {
-        // nothing more to read, re-initialize fetching of paths
-
-        _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        } else {
-          initializePaths(cur, _pos);
+        if (usesEdgeOutput()) {
+          res->setValue(j, _edgeReg, _edges[_posInPaths].clone());
         }
+        if (usesPathOutput()) {
+          res->setValue(j, _pathReg, _paths[_posInPaths].clone());
+        }
+        if (j > 0) {
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(j, nrInRegs);
+        }
+        ++_posInPaths;
       }
+
+      _collector.add(std::move(res));
+
+      advanceCursor(0, toSend);
     }
 
-    // Clear out registers no longer needed later:
-    clearRegisters(res.get());
-    traceGetSomeEnd(res.get());
-    return res.release();
+    // if there are no more paths left, reset traverser (in getSomePaths),
+    // move to the next input row and re-initialize the paths unless we
+    // switched to the next input block. In case we processed the current block
+    // fully, we can't initialize the paths yet as we need the row for this:
+    // this will be done after the next block is fetched.
+    if (_posInPaths >= _vertices.size() && !getSomePaths(atMost)) {
+      _usedConstant = false;
+      AqlItemBlock* removedBlock = advanceCursor(1, 0);
+      if (removedBlock == nullptr) {
+        initializePaths(cur, _pos);
+      }
+      returnBlockUnlessNull(removedBlock);
+    }
   }
 
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  std::unique_ptr<AqlItemBlock> result(_collector.steal());
+  _skipped = 0;
+
+  // Clear out registers no longer needed later:
+  clearRegisters(result.get());
+  traceGetSomeEnd(result.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(result)};
 }
 
 /// @brief skipSome
-size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  size_t skipped = 0;
-
+std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
-    return skipped;
+    traceSkipSomeEnd(0, ExecutionState::DONE);
+    return {ExecutionState::DONE, 0};
   }
 
+  // eat as much as possible from _vertices first
   if (_posInPaths < _vertices.size()) {
-    skipped += (std::min)(atMost, _vertices.size() - _posInPaths);
-    _posInPaths += skipped;
+    size_t const skip = (std::min)(atMost, _vertices.size() - _posInPaths);
+    advanceCursor(0, skip);
+    _posInPaths += skip;
   }
+  // now, _vertices is either empty, or _skipped == atMost.
+  TRI_ASSERT(_vertices.empty() || _skipped == atMost);
 
-  while (skipped < atLeast) {
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-        _done = true;
-        return skipped;
-      }
-      _pos = 0;  // this is in the first block
+  while (_skipped < atMost) {
+    BufferState bufferState = getBlockIfNeeded(atMost);
+
+    if (bufferState == BufferState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
+      return {ExecutionState::WAITING, 0};
     }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
+    TRI_ASSERT(!_buffer.empty());
 
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
-    initializePaths(cur, _pos);
-  
-    while (atMost > skipped) {
-      TRI_ASSERT(atMost >= skipped);
-      skipped += skipPaths(atMost - skipped);
-  
-      if (_traverser->hasMore()) {
-        continue;
-      }
 
-      if (++_pos >= cur->size()) {
-        _buffer.pop_front();  // does not throw
-        delete cur;
-        _pos = 0;
-        break;
-      }
-    
+    // Initialization on the first row of each new block
+    if (bufferState == BufferState::HAS_NEW_BLOCK) {
+      // A new row (and therefore block) should only be fetched at the very
+      // beginning, or after the traverser is completely processed; in either
+      // case, the traverser should be done.
+      TRI_ASSERT(_pos == 0 && !_traverser->hasMore());
       initializePaths(cur, _pos);
     }
-  }
-  
-  return skipped;
 
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+    TRI_ASSERT(atMost >= _skipped);
+    size_t const skip = skipPaths(atMost - _skipped);
+    advanceCursor(0, skip);
+
+    TRI_ASSERT(skip != 0 || !_traverser->hasMore());
+
+    if (!_traverser->hasMore()) {
+      AqlItemBlock *removedBlock = advanceCursor(1, 0);
+      if (removedBlock == nullptr) {
+        initializePaths(cur, _pos);
+      }
+      returnBlockUnlessNull(removedBlock);
+    }
+  }
+
+  size_t skipped = _skipped;
+  _skipped = 0;
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }

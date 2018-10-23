@@ -28,6 +28,7 @@
 #error use <Basics/Common.h>
 #endif
 
+
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -171,6 +172,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -180,7 +182,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -192,6 +193,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -329,6 +331,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -338,7 +341,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -350,6 +352,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -474,6 +477,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -483,7 +487,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -495,6 +498,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -534,11 +538,6 @@
 // for INTxx_MIN and INTxx_MAX
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
-#endif
-
-// for usleep
-#ifndef __USE_BSD
-#define __USE_BSD
 #endif
 
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
@@ -603,7 +602,6 @@
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_SC_PHYS_PAGES 1
-#define TRI_HAVE_SETLK 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
@@ -638,6 +636,7 @@
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -647,7 +646,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -659,6 +657,7 @@
 #define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
+#define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
 
@@ -712,7 +711,6 @@
 #include <WinSock2.h>
 #include <io.h>
 #include <stdio.h>
-
 // available include files
 
 #define TRI_HAVE_DIRECT_H 1
@@ -750,9 +748,7 @@
 #define fsync _commit
 #define isatty _cyg_isatty
 #define putenv _putenv
-#define sleep TRI_sleep
 #define tzset _tzset
-#define usleep TRI_usleep
 
 // available features
 
@@ -774,9 +770,6 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 #define TRI_MISSING_MEMRCHR 1
-
-// usleep in POSIX is for microseconds - not milliseconds
-// has been redefined in win-utils.h
 
 typedef int ssize_t;
 
@@ -819,6 +812,19 @@ typedef unsigned char bool;
 // we do not have owner read and owner write under windows; so map these to
 // global read, global write these are used when creating a file
 
+#ifdef S_IRGRP
+#undef S_IRGRP
+#endif
+#ifdef S_IRUSR
+#undef S_IRUSR
+#endif
+#ifdef S_IWGRP
+#undef S_IWGRP
+#endif
+#ifdef S_IWUSR
+#undef S_IWUSR
+#endif
+
 #define S_IRGRP _S_IREAD
 #define S_IRUSR _S_IREAD
 #define S_IWGRP _S_IWRITE
@@ -829,22 +835,16 @@ typedef unsigned char bool;
 
 #define O_RDONLY _O_RDONLY
 
-#define TRI_CHDIR ::_chdir
 #define TRI_CLOSE ::_close
 #define TRI_CREATE(a, b, c) TRI_createFile((a), (b), (c))
 #define TRI_FSTAT ::_fstat64
-#define TRI_GETCWD ::_getcwd
 #define TRI_LSEEK ::_lseeki64
-#define TRI_MKDIR(a, b) ::_mkdir((a))
+#define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
 #define TRI_READ ::_read
-#define TRI_RMDIR ::_rmdir
-#define TRI_STAT ::_stat64
-#define TRI_UNLINK ::_unlink
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 
-#define TRI_usleep_t unsigned long
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
 #define TRI_stat_t struct _stat64
@@ -854,6 +854,17 @@ typedef unsigned char bool;
 
 #define TRI_ERRORBUF char windowsErrorBuf[256] = "";
 #define TRI_GET_ERRORBUF windowsErrorBuf
+#define TRI_GET_ARGV(ARGC, ARGV) TRI_GET_ARGV_WIN(ARGC, ARGV)
+
+// Implemented wrappers in win-utils.cpp:
+FILE* TRI_FOPEN(char const* filename, char const* mode);
+int TRI_CHDIR(char const* dirname);
+int TRI_STAT(char const* path, TRI_stat_t* buffer);
+char* TRI_GETCWD(char* buffer, int maxlen);
+int TRI_MKDIR_WIN32(char const* dirname);
+int TRI_RMDIR(char const* dirname);
+int TRI_UNLINK(char const* filename);
+void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
 

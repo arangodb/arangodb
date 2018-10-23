@@ -46,6 +46,7 @@ module.exports = new Map([
   }],
   [mimeTypes.lookup('json'), {
     fromClient(body, req, type) {
+      if (!body || !body.length) return undefined;
       body = stringifyBuffer(body, type.parameters.charset);
       return JSON.parse(body);
     },

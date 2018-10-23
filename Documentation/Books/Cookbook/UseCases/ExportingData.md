@@ -17,8 +17,8 @@ First of all we need some data in an ArangoDB collection. For this example we wi
 wget https://jsteemann.github.io/downloads/code/users-100000.json.tar.gz
 # uncompress it
 tar xvfz users-100000.json.tar.gz
-# import into ArangoDB 
-arangoimp --file users-100000.json --collection users --create-collection true
+# import into ArangoDB
+arangoimport --file users-100000.json --collection users --create-collection true
 ```
 
 ### Setting up ArangoDB-PHP
@@ -54,7 +54,7 @@ $connectionOptions = array(
     ConnectionOptions::OPTION_AUTH_PASSWD  => '',
     // timeout in seconds
     ConnectionOptions::OPTION_TIMEOUT      => 30,
-    // database name 
+    // database name
     ConnectionOptions::OPTION_DATABASE     => '_system'
     );
 
@@ -262,7 +262,7 @@ function export($collection, Connection $connection) {
       $output .= '"' . implode('","', $values) . '"' . PHP_EOL;
     }
 
-    // print out the data directly 
+    // print out the data directly
     print $output;
   }
 }
@@ -298,7 +298,8 @@ curl
 ```
 
 
-**Authors:** [Thomas Schmidts](https://github.com/13abylon) and [Jan Steemann](https://github.com/jsteemann)
+**Authors:** [Thomas Schmidts](https://github.com/13abylon)
+  and [Jan Steemann](https://github.com/jsteemann)
 
 **Tags**: #howto #php
 

@@ -46,6 +46,10 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const time = require('internal').time;
 const toArgv = require('internal').toArgv;
 
+const testPaths = {
+  'config': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: config
 // //////////////////////////////////////////////////////////////////////////////
@@ -81,7 +85,7 @@ function config (options) {
     'arangod',
     'arangobench',
     'arangodump',
-    'arangoimp',
+    'arangoimport',
     'arangorestore',
     'arangoexport',
     'arangosh',
@@ -113,7 +117,7 @@ function config (options) {
 
     const run = fs.join(pu.BIN_DIR, test);
 
-    results.absolut[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir);
+    results.absolut[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, false, options.coreCheck);
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
@@ -149,7 +153,7 @@ function config (options) {
 
     const run = fs.join(pu.BIN_DIR, test);
 
-    results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir);
+    results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, false, options.coreCheck);
 
     if (!results.relative[test].status) {
       results.failed += 1;
@@ -173,11 +177,10 @@ function config (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['config'] = config;
   defaultFns.push('config');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

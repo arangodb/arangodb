@@ -1,0 +1,5 @@
+{
+  "name": "service-with-app-folder",
+  "version": "0.0.0",
+  "main": "app/index.js"
+}

@@ -15,7 +15,7 @@
     statsEnabled: false,
     historyInit: false,
     initDone: false,
-    interval: 5000,
+    interval: 10000,
     maxValues: 100,
     knownServers: [],
     chartData: {},
@@ -364,11 +364,11 @@
       },
       {
         id: '#clusterHttp',
-        type: 'bytes',
+        type: 'number',
         options: [{
           area: true,
           values: [],
-          key: 'Bytes',
+          key: 'Requests per second',
           color: 'rgb(0, 166, 90)',
           fillOpacity: 0.1
         }]
@@ -429,6 +429,13 @@
                 }
                 formatted = parseFloat(d3.format('.3f')(d));
                 return formatted;
+              } else if (c.type === 'number') {
+                if (d === null) {
+                  return 'N/A';
+                } else {
+                  formatted = parseFloat(d3.format('.2f')(d));
+                  return formatted;
+                }
               }
             });
 
@@ -531,15 +538,15 @@
           url: 'statistics/coordshort',
           json: true
         })
-        .success(function (data) {
-          this.coordshortTimestamp = Date.now();
-          this.coordshortSuccess = true;
-          this.statsEnabled = data.enabled;
-          callback(data.data);
-        }.bind(this)).error(function (data) {
-          this.coordshortTimestamp = Date.now();
-          this.coordshortSuccess = false;
-        }.bind(this));
+          .success(function (data) {
+            this.coordshortTimestamp = Date.now();
+            this.coordshortSuccess = true;
+            this.statsEnabled = data.enabled;
+            callback(data.data);
+          }.bind(this)).error(function (data) {
+            this.coordshortTimestamp = Date.now();
+            this.coordshortSuccess = false;
+          }.bind(this));
       }
     }
 

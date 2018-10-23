@@ -23,20 +23,20 @@
 
 #include "v8-statistics.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
@@ -47,13 +47,13 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Array> DistributionList(v8::Isolate* isolate,
-                                              StatisticsVector const& dist) {
+                                              std::vector<double> const& dist) {
   v8::EscapableHandleScope scope(isolate);
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
-  for (uint32_t i = 0; i < (uint32_t)dist._value.size(); ++i) {
-    result->Set(i, v8::Number::New(isolate, dist._value[i]));
+  for (uint32_t i = 0; i < (uint32_t)dist.size(); ++i) {
+    result->Set(i, v8::Number::New(isolate, dist[i]));
   }
 
   return scope.Escape<v8::Array>(result);
@@ -77,7 +77,7 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
       v8::Array::New(isolate, (int)dist._counts.size());
   uint32_t pos = 0;
 
-  for (std::vector<uint64_t>::const_iterator i = dist._counts.begin();
+  for (auto i = dist._counts.begin();
        i != dist._counts.end(); ++i, ++pos) {
     counts->Set(pos, v8::Number::New(isolate, (double)*i));
   }
@@ -113,31 +113,40 @@ static void JS_ServerStatistics(
 
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   V8DealerFeature* dealer =
-    application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+      application_features::ApplicationServer::getFeature<V8DealerFeature>(
+          "V8Dealer");
 
   auto v8Counters = dealer->getCurrentContextNumbers();
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "busy"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.busy)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "dirty"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.dirty)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "free"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.free)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
+  v8CountersObj->Set(
+      TRI_V8_ASCII_STRING(isolate, "available"),
+      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
+  v8CountersObj->Set(
+      TRI_V8_ASCII_STRING(isolate, "busy"),
+      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.busy)));
+  v8CountersObj->Set(
+      TRI_V8_ASCII_STRING(isolate, "dirty"),
+      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.dirty)));
+  v8CountersObj->Set(
+      TRI_V8_ASCII_STRING(isolate, "free"),
+      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.free)));
+  v8CountersObj->Set(
+      TRI_V8_ASCII_STRING(isolate, "max"),
+      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
   result->Set(TRI_V8_ASCII_STRING(isolate, "v8Context"), v8CountersObj);
 
   v8::Handle<v8::Object> counters = v8::Object::New(isolate);
-  auto countersRaw = SchedulerFeature::SCHEDULER->getCounters();
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "running"),
-                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numRunning(countersRaw))));
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "working"),
-                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numWorking(countersRaw))));
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "blocked"),
-                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numBlocked(countersRaw))));
+
+  auto qs = SchedulerFeature::SCHEDULER->queueStatistics();
+
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "schedulerThreads"),
+                v8::Number::New(isolate, static_cast<int32_t>(qs._running)));
+
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "inProgress"),
+                v8::Number::New(isolate, static_cast<int32_t>(qs._working)));
+
   counters->Set(TRI_V8_ASCII_STRING(isolate, "queued"),
-                v8::Number::New(isolate, static_cast<int32_t>(SchedulerFeature::SCHEDULER->numQueued())));
+                v8::Number::New(isolate, static_cast<int32_t>(qs._queued)));
+
   result->Set(TRI_V8_ASCII_STRING(isolate, "threads"), counters);
 
   TRI_V8_RETURN(result);
@@ -172,7 +181,7 @@ static void JS_ClientStatistics(
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
-  std::vector<StatisticsCounter> methodRequests;
+  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
@@ -181,7 +190,8 @@ static void JS_ClientStatistics(
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "httpConnections"),
               v8::Number::New(isolate, (double)httpConnections._count));
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "connectionTime"),
+  FillDistribution(isolate, result,
+                   TRI_V8_ASCII_STRING(isolate, "connectionTime"),
                    connectionTime);
 
   StatisticsDistribution totalTime;
@@ -200,10 +210,12 @@ static void JS_ClientStatistics(
                    requestTime);
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"),
                    queueTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), ioTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"),
+                   ioTime);
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"),
                    bytesSent);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesReceived"),
+  FillDistribution(isolate, result,
+                   TRI_V8_ASCII_STRING(isolate, "bytesReceived"),
                    bytesReceived);
 
   TRI_V8_RETURN(result);
@@ -222,7 +234,7 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
-  std::vector<StatisticsCounter> methodRequests;
+  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
@@ -287,18 +299,18 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_ENABLED_STATISTICS"),
-                               JS_EnabledStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_CLIENT_STATISTICS"),
-                               JS_ClientStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_HTTP_STATISTICS"),
-                               JS_HttpStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_SERVER_STATISTICS"),
-                               JS_ServerStatistics);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ENABLED_STATISTICS"),
+      JS_EnabledStatistics);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLIENT_STATISTICS"),
+      JS_ClientStatistics);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_HTTP_STATISTICS"),
+      JS_HttpStatistics);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SERVER_STATISTICS"),
+      JS_ServerStatistics);
 
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "CONNECTION_TIME_DISTRIBUTION"),

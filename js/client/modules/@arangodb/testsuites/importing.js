@@ -25,6 +25,8 @@
 // / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
+const fs = require('fs');
+
 const functionsDocumentation = {
   'importing': 'import tests'
 };
@@ -35,68 +37,81 @@ const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const yaml = require('js-yaml');
 
+const testPaths = {
+  'importing': [
+    tu.pathForTesting('server/import'),
+    tu.pathForTesting('common/test-data/import') // our testdata...
+  ]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: importing
 // //////////////////////////////////////////////////////////////////////////////
 
 const impTodos = [{
   id: 'skip',
-  data: tu.makePathUnix('js/common/test-data/import/import-skip.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-skip.csv')),
   coll: 'UnitTestsImportCsvSkip',
   type: 'csv',
   create: 'true',
   skipLines: 3
 }, {
   id: 'json1',
-  data: tu.makePathUnix('js/common/test-data/import/import-1.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
   coll: 'UnitTestsImportJson1',
   type: 'json',
   create: undefined
 }, {
   id: 'json2',
-  data: tu.makePathUnix('js/common/test-data/import/import-2.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-2.json')),
   coll: 'UnitTestsImportJson2',
   type: 'json',
   create: undefined
 }, {
   id: 'json3',
-  data: tu.makePathUnix('js/common/test-data/import/import-3.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-3.json')),
   coll: 'UnitTestsImportJson3',
   type: 'json',
   create: undefined
 }, {
   id: 'json4',
-  data: tu.makePathUnix('js/common/test-data/import/import-4.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-4.json')),
   coll: 'UnitTestsImportJson4',
   type: 'json',
   create: undefined
 }, {
   id: 'json5',
-  data: tu.makePathUnix('js/common/test-data/import/import-5.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-5.json')),
   coll: 'UnitTestsImportJson5',
   type: 'json',
   create: undefined
 }, {
+  id: 'csvNonoCreate',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
+  coll: 'UnitTestsImportCsvNonoCreate',
+  type: 'csv',
+  create: 'false'
+}, {
   id: 'csv1',
-  data: tu.makePathUnix('js/common/test-data/import/import-1.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
   coll: 'UnitTestsImportCsv1',
   type: 'csv',
   create: 'true'
 }, {
   id: 'csv2',
-  data: tu.makePathUnix('js/common/test-data/import/import-2.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-2.csv')),
   coll: 'UnitTestsImportCsv2',
   type: 'csv',
   create: 'true'
 }, {
   id: 'csv3',
-  data: tu.makePathUnix('js/common/test-data/import/import-3.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-3.csv')),
   coll: 'UnitTestsImportCsv3',
   type: 'csv',
   create: 'true'
 }, {
   id: 'csv4',
-  data: tu.makePathUnix('js/common/test-data/import/import-4.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-4.csv')),
   coll: 'UnitTestsImportCsv4',
   type: 'csv',
   create: 'true',
@@ -104,15 +119,23 @@ const impTodos = [{
   backslash: true
 }, {
   id: 'csv5',
-  data: tu.makePathUnix('js/common/test-data/import/import-5.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-5.csv')),
   coll: 'UnitTestsImportCsv5',
   type: 'csv',
   create: 'true',
   separator: ';',
   backslash: true
 }, {
+  id: 'csv6',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-6.csv')),
+  coll: 'UnitTestsImportCsv6',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  ignoreMissing: true
+}, {
   id: 'csvnoconvert',
-  data: tu.makePathUnix('js/common/test-data/import/import-noconvert.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
   coll: 'UnitTestsImportCsvNoConvert',
   type: 'csv',
   create: 'true',
@@ -121,7 +144,7 @@ const impTodos = [{
   backslash: true
 }, {
   id: 'csvnoeol',
-  data: tu.makePathUnix('js/common/test-data/import/import-noeol.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
   coll: 'UnitTestsImportCsvNoEol',
   type: 'csv',
   create: 'true',
@@ -129,62 +152,54 @@ const impTodos = [{
   backslash: true
 }, {
   id: 'tsv1',
-  data: tu.makePathUnix('js/common/test-data/import/import-1.tsv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),
   coll: 'UnitTestsImportTsv1',
   type: 'tsv',
   create: 'true'
 }, {
   id: 'tsv2',
-  data: tu.makePathUnix('js/common/test-data/import/import-2.tsv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-2.tsv')),
   coll: 'UnitTestsImportTsv2',
   type: 'tsv',
   create: 'true'
 }, {
   id: 'edge',
-  data: tu.makePathUnix('js/common/test-data/import/import-edges.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-edges.json')),
   coll: 'UnitTestsImportEdge',
   type: 'json',
   create: 'false'
 }, {
   id: 'unique',
-  data: tu.makePathUnix('js/common/test-data/import/import-ignore.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-ignore.json')),
   coll: 'UnitTestsImportIgnore',
   type: 'json',
   create: 'false',
   onDuplicate: 'ignore'
 }, {
   id: 'unique',
-  data: tu.makePathUnix('js/common/test-data/import/import-unique-constraints.json'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-unique-constraints.json')),
   coll: 'UnitTestsImportUniqueConstraints',
   type: 'json',
   create: 'false',
   onDuplicate: 'replace'
 }, {
   id: 'removeAttribute',
-  data: tu.makePathUnix('js/common/test-data/import/import-1.csv'),
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
   coll: 'UnitTestsImportRemoveAttribute',
   type: 'csv',
   create: 'true',
   removeAttribute: 'a'
+}, {
+  id: 'createDB',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'UnitTestImportCreateDatabase',
+  createDatabase: 'true'
 }];
 
 function importing (options) {
-  if (options.cluster) {
-    if (options.extremeVerbosity) {
-      print('Skipped because of cluster.');
-    }
-
-    return {
-      'failed': 0,
-      'importing': {
-        'failed': 0,
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-
   let instanceInfo = pu.startInstance('tcp', options, {}, 'importing');
 
   if (instanceInfo === false) {
@@ -201,8 +216,10 @@ function importing (options) {
   let result = { failed: 0 };
 
   try {
-    result.setup = tu.runInArangosh(options, instanceInfo,
-      tu.makePathUnix('js/server/tests/import/import-setup.js'));
+    result.setup = tu.runInArangosh(
+      options,
+      instanceInfo,
+      tu.makePathUnix(fs.join(testPaths.importing[0],'import-setup.js')));
 
     result.setup.failed = 0;
     if (result.setup.status !== true) {
@@ -214,7 +231,7 @@ function importing (options) {
     for (let i = 0; i < impTodos.length; i++) {
       const impTodo = impTodos[i];
 
-      result[impTodo.id] = pu.run.arangoImp(options, instanceInfo, impTodo);
+      result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo);
       result[impTodo.id].failed = 0;
 
       if (result[impTodo.id].status !== true && !options.force) {
@@ -227,17 +244,19 @@ function importing (options) {
     result.check = tu.runInArangosh(
       options,
       instanceInfo,
-      tu.makePathUnix('js/server/tests/import/import.js'));
+      tu.makePathUnix(fs.join(testPaths.importing[0], 'import.js')));
+
     result.check.failed = result.check.success ? 0 : 1;
 
     result.teardown = tu.runInArangosh(
       options,
       instanceInfo,
-      tu.makePathUnix('js/server/tests/import/import-teardown.js'));
+      tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
+
     result.teardown.failed = result.teardown.success ? 0 : 1;
   } catch (banana) {
     print('An exceptions of the following form was caught:',
-      yaml.safeDump(banana));
+          yaml.safeDump(banana));
   }
 
   print('Shutting down...');
@@ -247,11 +266,10 @@ function importing (options) {
   return result;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;
   defaultFns.push('importing');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

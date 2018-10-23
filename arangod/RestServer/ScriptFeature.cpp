@@ -25,25 +25,27 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, int* result)
+namespace arangodb {
+
+ScriptFeature::ScriptFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Script"),
       _result(result) {
-  startsAfter("Database");
-  startsAfter("Nonce");
-  startsAfter("Server");
-  startsAfter("GeneralServer");
+  setOptional(true);
+  startsAfter("AgencyPhase");
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -67,10 +69,12 @@ void ScriptFeature::start() {
 
 int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   bool ok = false;
-
-  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
   V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
+    V8DealerFeature::DEALER->enterContext(database.get(), true);
 
   if (context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
@@ -155,3 +159,5 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+} // arangodb

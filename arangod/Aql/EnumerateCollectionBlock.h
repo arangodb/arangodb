@@ -34,7 +34,6 @@
 namespace arangodb {
 
 class LocalDocumentId;
-class ManagedDocumentResult;
 struct OperationCursor;
 
 namespace aql {
@@ -47,30 +46,25 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   EnumerateCollectionBlock(ExecutionEngine* engine,
                            EnumerateCollectionNode const* ep);
 
-  ~EnumerateCollectionBlock() = default;
-
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override final;
-
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
-  // skip between atLeast and atMost, returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  // skip atMost documents, returns the number actually skipped . . .
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
   /// @brief collection
-  Collection* _collection;
+  Collection const* _collection;
   
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
-
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
+
+  /// @brief Persistent counter of elements that are in flight during WAITING
+  ///        has to be resetted as soon as we return with DONE/HASMORE
+  size_t _inflight;
 };
 
 }  // namespace arangodb::aql

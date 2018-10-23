@@ -28,6 +28,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Acceptor.h"
+#include "Scheduler/JobGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -36,11 +37,11 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
-    : Task(loop, "ListenTask"),
+ListenTask::ListenTask(GeneralServer &server, GeneralServer::IoContext& context, Endpoint* endpoint)
+    : IoTask(server, context, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(Acceptor::factory(*loop._ioService, endpoint)) {}
+      _acceptor(Acceptor::factory(server, context, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 
@@ -49,49 +50,64 @@ ListenTask::~ListenTask() {}
 // -----------------------------------------------------------------------------
 
 bool ListenTask::start() {
-  MUTEX_LOCKER(mutex, _shutdownMutex);
+  TRI_ASSERT(_acceptor);
 
   try {
     _acceptor->open();
-  } catch (boost::system::system_error const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
-              << "' with error: " << err.what();
+  } catch (asio_ns::system_error const& err) {
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "failed to open endpoint '" << _endpoint->specification()
+        << "' with error: " << err.what();
     return false;
   } catch (std::exception const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
-              << "' with error: " << err.what();
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "failed to open endpoint '" << _endpoint->specification()
+        << "' with error: " << err.what();
     return false;
   }
 
-  _handler = [this](boost::system::error_code const& ec) {
-    MUTEX_LOCKER(mutex, _shutdownMutex);
+
+  _bound = true;
+  this->accept();
+  return true;
+}
+
+void ListenTask::accept() {
+
+  auto self(shared_from_this());
+
+  auto handler = [this, self](asio_ns::error_code const& ec) {
 
     if (!_bound) {
       _handler = nullptr;
       return;
     }
 
-    TRI_ASSERT(_handler != nullptr);
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
-      if (ec == boost::asio::error::operation_aborted) {
+      if (ec == asio_ns::error::operation_aborted) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
+                                                 << ec.message();
         return;
       }
 
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
+                                                 << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "too many accept failures, stopping to report";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
+                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "too many accept failures, stopping to report";
       }
     }
 
     ConnectionInfo info;
 
-    auto peer = _acceptor->movePeer();
+    std::unique_ptr<Socket> peer = _acceptor->movePeer();
 
     // set the endpoint
     info.endpoint = _endpoint->specification();
@@ -104,16 +120,14 @@ bool ListenTask::start() {
 
     handleConnected(std::move(peer), std::move(info));
 
-    _acceptor->asyncAccept(_handler);
+    this->accept();
   };
 
-  _bound = true;
-  _acceptor->asyncAccept(_handler);
-  return true;
+  _acceptor->asyncAccept(handler);
 }
 
+
 void ListenTask::stop() {
-  MUTEX_LOCKER(mutex, _shutdownMutex);
 
   if (!_bound) {
     return;

@@ -30,7 +30,7 @@ namespace arangodb {
 
 /// @brief StorageEngine agnostic wal access interface.
 /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
-class MMFilesWalAccess : public WalAccess {
+class MMFilesWalAccess final : public WalAccess {
  public:
   MMFilesWalAccess() {}
 
@@ -49,14 +49,12 @@ class MMFilesWalAccess : public WalAccess {
 
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
-  WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                   WalAccess::Filter const& filter,
+  WalAccessResult openTransactions(WalAccess::Filter const& filter,
                                    TransactionCallback const&) const override;
 
   /// Tails the wall, this will already sanitize the
-  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                       TRI_voc_tid_t barrierId, WalAccess::Filter const& filter,
-                       MarkerCallback const&) const override;
+  WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
+                       TRI_voc_tid_t barrierId, MarkerCallback const&) const override;
 };
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -204,7 +204,7 @@ class AgencyOperation {
   AgencyOperationType type() const;
 
  public:
-  uint32_t _ttl = 0;
+  uint64_t _ttl = 0;
   VPackSlice _oldValue;
 
  private:
@@ -226,8 +226,7 @@ class AgencyCommResult {
   ~AgencyCommResult() = default;
 
  public:
-  void set(int code, std::string const& message,
-           std::string const& clientId);
+  void set(int code, std::string const& message);
 
   bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
@@ -236,8 +235,6 @@ class AgencyCommResult {
   int httpCode() const;
 
   int errorCode() const;
-
-  std::string clientId() const;
 
   std::string errorMessage() const;
 
@@ -253,13 +250,12 @@ class AgencyCommResult {
   void clear();
 
   VPackSlice slice() const;
-  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
+  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) { _vpack = vpack; }
 
  public:
   std::string _location;
   std::string _message;
   std::string _body;
-  std::string _realBody;
 
   std::unordered_map<std::string, AgencyCommResultEntry> _values;
   int _statusCode;
@@ -269,8 +265,6 @@ class AgencyCommResult {
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
 
-public:
-  std::string _clientId;
 };
 
 // -----------------------------------------------------------------------------
@@ -290,6 +284,7 @@ public:
   virtual std::string getClientId() const = 0;
   
   virtual bool validate(AgencyCommResult const& result) const = 0;
+  virtual char const* typeName() const = 0;
   
 };
 
@@ -297,7 +292,7 @@ public:
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
 
-struct AgencyGeneralTransaction : public AgencyTransaction {
+/*struct AgencyGeneralTransaction : public AgencyTransaction {
 
   typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
@@ -339,9 +334,10 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyGeneralTransaction"; }
   std::string clientId;
 
-};
+};*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AgencyWriteTransaction
@@ -376,6 +372,15 @@ public:
     preconditions.push_back(precondition);
   }
 
+  AgencyWriteTransaction(AgencyOperation const& operation,
+                         std::vector<AgencyPrecondition> const& precs) :
+    clientId(to_string(boost::uuids::random_generator()())) {
+    operations.push_back(operation);
+    for (auto const& pre : precs) {
+      preconditions.push_back(pre);
+    }
+  }
+
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs) :
     clientId(to_string(boost::uuids::random_generator()())) {
@@ -401,6 +406,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyWriteTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -461,6 +467,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyTransientTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -494,6 +501,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyReadTransaction"; }
 
   std::vector<std::string> keys;
 
@@ -684,8 +692,7 @@ class AgencyComm {
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, VPackSlice,
-                                    std::string const& clientId = std::string());
+                                    std::string const&, VPackSlice);
 
  private:
   bool lock(std::string const&, double, double,
@@ -694,8 +701,7 @@ class AgencyComm {
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
-                        double, std::string const&, std::string const&,
-                        std::string const& clientId = std::string());
+                        double, std::string const&, std::string const&);
 
   bool tryInitializeStructure();
 

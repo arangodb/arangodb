@@ -5,9 +5,11 @@ Write-ahead log
 
 This module provides functionality for administering the write-ahead logs.
 Most of these functions only return sensible values when invoked with the 
-[mmfiles engine being active](../../Administration/Configuration/GeneralArangod.md#storage-engine).
+[MMFiles engine being active](../../Programs/Arangod/Server.md#storage-engine).
 
-### Configuration
+Configuration
+-------------
+
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
@@ -77,7 +79,8 @@ will be ignored and the configuration for them will not be modified.
     @endDocuBlock WalPropertiesSet
 
 
-### Flushing
+Flushing
+--------
 
 <!-- arangod/V8Server/v8-vocbase.h -->
 
@@ -110,5 +113,3 @@ the write-ahead log garbage collector cannot finish garbage collection.
       require("internal").wal.flush();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock WalFlush
-
-

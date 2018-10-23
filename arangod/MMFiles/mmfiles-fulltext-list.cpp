@@ -25,7 +25,7 @@
 
 /// @brief we'll set this bit (the highest of a uint32_t) if the list is sorted
 /// if the list is not sorted, this bit is cleared
-/// This is done as a space optimisation. A big index will contain a lot of
+/// This is done as a space optimization. A big index will contain a lot of
 /// document lists, and saving an extra boolean value will likely cost an extra
 /// 4 or 8 bytes due to padding. Avoiding saving the sorted flag in an extra
 /// member greatly reduces the index sizes

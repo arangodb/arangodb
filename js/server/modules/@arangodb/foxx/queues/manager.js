@@ -23,8 +23,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const isCluster = require('@arangodb/cluster').isCluster();
-var tasks = require('@arangodb/tasks');
-var db = require('@arangodb').db;
+const tasks = require('@arangodb/tasks');
+const db = require('@arangodb').db;
+const foxxManager = require('@arangodb/foxx/manager');
 
 var runInDatabase = function () {
   var busy = false;
@@ -45,10 +46,6 @@ var runInDatabase = function () {
             busy = true;
             return;
           }
-          // should always call the user who called createQueue
-          // registerTask will throw a forbidden exception if anyone
-          // other than superroot uses this option
-          let runAsUser = queue.runAsUser || '';
 
           var now = Date.now();
           var max = queue.maxWorkers - numBusy;
@@ -82,7 +79,6 @@ var runInDatabase = function () {
               },
               offset: 0,
               isSystem: true,
-              runAsUser: runAsUser,
               params: {
                 job: Object.assign({}, job, {
                   status: 'progress'
@@ -104,11 +100,17 @@ exports.manage = function () {
     return;
   }
 
-  if (isCluster && global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    var foxxQueues = require('@arangodb/foxx/queues');
-    foxxQueues._updateQueueDelay();
-    global.ArangoAgency.set('Current/FoxxmasterQueueupdate', false);
-    // global.ArangoServerState.setFoxxmasterQueueupdate(false);
+  if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
+    if (isCluster) {
+      var foxxQueues = require('@arangodb/foxx/queues');
+      foxxQueues._updateQueueDelay();
+    } else {
+      // On a Foxxmaster change FoxxmasterQueueupdate is set to true
+      // we use this to signify a Leader change to this server
+      foxxManager.healAll(true);
+    }
+    // do not call again immediately
+    global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
 
   var initialDatabase = db._name();
@@ -180,7 +182,7 @@ exports.run = function () {
     try {
       db._useDatabase(name);
       db._jobs.toArray().filter(function(job) {
-        return job.stats === 'progress';
+        return job.status === 'progress';
       }).forEach(function(job) {
         db._jobs.update(job._id, { status: 'pending' });
       });

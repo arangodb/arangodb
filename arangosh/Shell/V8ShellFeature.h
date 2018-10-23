@@ -32,29 +32,37 @@
 #include "Shell/ShellFeature.h"
 
 namespace arangodb {
+
 class ConsoleFeature;
 class V8ClientConnection;
 
 class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
-  V8ShellFeature(application_features::ApplicationServer* server,
-                 std::string const&);
+  V8ShellFeature(
+    application_features::ApplicationServer& server,
+    std::string const& name
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override final;
   void unprepare() override final;
+  void stop() override final;
 
-  std::string const& startupDirectory() {
+  std::string const& startupDirectory() const {
     return _startupDirectory;
   }
-  
+
  private:
   std::string _startupDirectory;
-  std::vector<std::string> _moduleDirectory;
+  std::string _nodeModulesDirectory;
+  std::string _clientModule;
+  std::string _copyDirectory;
+  std::vector<std::string> _moduleDirectories;
   bool _currentModuleDirectory;
+  bool _copyInstallation;
+  bool _removeCopyInstallation;
   uint64_t _gcInterval;
 
  public:
@@ -64,24 +72,26 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   bool runString(std::vector<std::string> const& files,
                  std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,
-                    std::vector<std::string> const&);
+                    std::vector<std::string> const& positionals,
+                    std::string const& testFilter);
   bool jslint(std::vector<std::string> const& files);
 
  private:
+  void copyInstallationFiles();
   bool printHello(V8ClientConnection*);
   void initGlobals();
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
   void loadModules(ShellFeature::RunMode);
-  V8ClientConnection* setup(v8::Local<v8::Context>& context, bool,
-                            std::vector<std::string> const&,
-                            bool* promptError = nullptr);
+  std::shared_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context, bool,
+                                            std::vector<std::string> const&,
+                                            bool* promptError = nullptr);
 
- private:
   std::string _name;
   v8::Isolate* _isolate;
   v8::Persistent<v8::Context> _context;
   ConsoleFeature* _console;
 };
+
 }
 
 #endif

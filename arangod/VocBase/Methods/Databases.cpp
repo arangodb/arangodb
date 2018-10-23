@@ -25,20 +25,21 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/ExecContext.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
+#include "V8Server/v8-user-structures.h"
+#include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
 #include <v8.h>
@@ -51,9 +52,6 @@ using namespace arangodb::methods;
 
 TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   if (DatabaseFeature::DATABASE != nullptr) {
-    if (ServerState::instance()->isCoordinator()) {
-      return DatabaseFeature::DATABASE->lookupDatabaseCoordinator(dbname);
-    }
     return DatabaseFeature::DATABASE->lookupDatabase(dbname);
   }
   return nullptr;
@@ -77,20 +75,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
     }
   } else {
     // slow path for user case
-    if (ServerState::instance()->isCoordinator()) {
-      auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-      std::vector<std::string> names;
-      std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
-      for (std::string const& db : dbs) {
-        if (!auth->isActive() ||
-            auth->authInfo()->canUseDatabase(user, db) != AuthLevel::NONE) {
-          names.push_back(db);
-        }
-      }
-      return names;
-    } else {
-      return databaseFeature->getDatabaseNamesForUser(user);
-    }
+    return databaseFeature->getDatabaseNamesForUser(user);
   }
 }
 
@@ -101,12 +86,12 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "rest database handler: no agency communication";
       return Result(commRes.errorCode(), commRes.errorMessage());
     }
 
-    VPackSlice value = commRes.slice()[0].get(
+    VPackSlice value = commRes.slice()[0].get<std::string>(
         {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey("name")) {
       VPackValueLength l = 0;
@@ -139,13 +124,11 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 arangodb::Result Databases::create(std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -153,13 +136,13 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (options.isNone() || options.isNull()) {
     options = VPackSlice::emptyObjectSlice();
   } else if (!options.isObject()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
   VPackSlice users = inUsers;
   if (users.isNone() || users.isNull()) {
     users = VPackSlice::emptyArraySlice();
   } else if (!users.isArray()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
   VPackBuilder sanitizedUsers;
@@ -176,7 +159,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     } else if (user.hasKey("user")) {
       name = user.get("user");
     }
-    if (!name.isString()) { // empty names are silently ignored later
+    if (!name.isString()) {  // empty names are silently ignored later
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
     sanitizedUsers.add("username", name);
@@ -211,8 +194,9 @@ arangodb::Result Databases::create(std::string const& dbName,
     return Result(TRI_ERROR_INTERNAL);
   }
 
+  UpgradeResult upgradeRes;
   if (ServerState::instance()->isCoordinator()) {
-    if (!TRI_vocbase_t::IsAllowedName(false, dbName)) {
+    if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(dbName))) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     }
 
@@ -243,12 +227,12 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_vocbase_t* vocbase = nullptr;
     int tries = 0;
     while (++tries <= 6000) {
-      vocbase = databaseFeature->useDatabaseCoordinator(id);
+      vocbase = databaseFeature->useDatabase(id);
       if (vocbase != nullptr) {
         break;
       }
       // sleep
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     if (vocbase == nullptr) {
@@ -259,47 +243,24 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_ASSERT(vocbase->name() == dbName);
 
     // we need to add the permissions before running the upgrade script
-    if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(
-          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
-            entry.grantDatabase(dbName, AuthLevel::RW);
-            entry.grantCollection(dbName, "*", AuthLevel::RW);
+      um->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantDatabase(dbName, auth::Level::RW);
+            entry.grantCollection(dbName, "*", auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
           });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "could not acquire V8 context");
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-    TRI_GET_GLOBALS();
-
-    // now run upgrade and copy users into context
     TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
-
-    // initalize database
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
-    // execute script
-    V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-        isolate, isolate->GetCurrentContext(),
-        "server/bootstrap/coordinator-database.js");
-    v8g->_allowUseDatabase = allowUseDatabase;
-
-  } else {
-    // options for database (currently only allows setting "id" for testing
-    // purposes)
+    upgradeRes = methods::Upgrade::createDB(*vocbase, sanitizedUsers.slice());
+  } else { // Single, DBServer, Agency
+    // options for database (currently only allows setting "id"
+    // for testing purposes)
     TRI_voc_tick_t id = 0;
     if (options.hasKey("id")) {
-      id = options.get("id").getUInt();
+      id = basics::VelocyPackHelper::stringUInt64(options, "id");
     }
 
     TRI_vocbase_t* vocbase = nullptr;
@@ -307,74 +268,87 @@ arangodb::Result Databases::create(std::string const& dbName,
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
+  
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(!vocbase->isDangling());
 
+    TRI_DEFER(vocbase->release());
+
     // we need to add the permissions before running the upgrade script
-    if (ServerState::instance()->isSingleServer() &&
-        ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
-                                   [&](AuthUserEntry& entry) {
-                                     entry.grantDatabase(dbName, AuthLevel::RW);
-                                     entry.grantCollection(dbName, "*", AuthLevel::RW);
-                                   });
+      um->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+             entry.grantDatabase(dbName, auth::Level::RW);
+             entry.grantCollection(dbName, "*", auth::Level::RW);
+             return TRI_ERROR_NO_ERROR;
+           });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
+    upgradeRes = methods::Upgrade::createDB(*vocbase, sanitizedUsers.slice());
+  }
 
-    // copy users into context
-    TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
+  if (upgradeRes.fail()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
+    << upgradeRes.errorMessage();
+    return upgradeRes;
+  }
 
-    // switch databases
-    {
-      TRI_GET_GLOBALS();
-      TRI_vocbase_t* orig = v8g->_vocbase;
-      TRI_ASSERT(orig != nullptr);
+  // Entirely Foxx related:
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    try {
+      auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+        arangodb::SystemDatabaseFeature
+      >();
+      auto database = sysDbFeature->use();
 
-      v8g->_vocbase = vocbase;
-
-      // initalize database
-      try {
-        V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-            isolate, isolate->GetCurrentContext(),
-            "server/bootstrap/local-database.js");
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-      } catch (...) {
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-
-        return Result(TRI_ERROR_INTERNAL,
-                      "Could not execute local-database.js");
-      }
+      TRI_ExpireFoxxQueueDatabaseCache(database.get());
+    } catch(...) {
+      // it is of no real importance if cache invalidation fails, because
+      // the cache entry has a ttl
     }
   }
 
   return Result();
+}
+
+namespace  {
+  int dropDBCoordinator(std::string const& dbName) {
+    // Arguments are already checked, there is exactly one argument
+    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
+    if (vocbase == nullptr) {
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
+    
+    TRI_voc_tick_t const id = vocbase->id();
+    vocbase->release();
+    
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::string errorMsg;
+    
+    int res = ci->dropDatabaseCoordinator(dbName, errorMsg, 120.0);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    // now wait for heartbeat thread to drop the database object
+    int tries = 0;
+    while (++tries <= 6000) {
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
+      
+      if (vocbase == nullptr) {
+        // object has vanished
+        break;
+      }
+      
+      vocbase->release();
+      // sleep
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
 }
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
@@ -382,90 +356,60 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   TRI_ASSERT(systemVocbase->isSystem());
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->systemAuthLevel() != AuthLevel::RW) {
+    if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
-  auto ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
-  if (ctx == nullptr) {
-    return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
-  }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-  v8::Isolate* isolate = ctx->_isolate;
-  v8::HandleScope scope(isolate);
-
-  // clear collections in cache object
-  TRI_ClearObjectCacheV8(isolate);
-
-  // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
-    // Arguments are already checked, there is exactly one argument
-    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
-
-    if (vocbase == nullptr) {
-      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  int res;
+  V8DealerFeature* dealer = V8DealerFeature::DEALER;
+  if (dealer != nullptr && dealer->isEnabled()) {
+    V8Context* v8ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
+    if (v8ctx == nullptr) {
+      return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
     }
-
-    TRI_voc_tick_t const id = vocbase->id();
-    vocbase->release();
-
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string errorMsg;
-
-    int res = ci->dropDatabaseCoordinator(dbName, errorMsg, 120.0);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
-    }
-
-    // now wait for heartbeat thread to drop the database object
-    int tries = 0;
-    while (++tries <= 6000) {
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
-
-      if (vocbase == nullptr) {
-        // object has vanished
-        break;
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(v8ctx));
+    v8::Isolate* isolate = v8ctx->_isolate;
+    v8::HandleScope scope(isolate);
+    
+    // clear collections in cache object
+    TRI_ClearObjectCacheV8(isolate);
+    
+    if (ServerState::instance()->isCoordinator()) {
+      // If we are a coordinator in a cluster, we have to behave differently:
+      res = ::dropDBCoordinator(dbName);
+    } else {
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+      
+      if (res != TRI_ERROR_NO_ERROR) {
+        return Result(res);
       }
-
-      vocbase->release();
-      // sleep
-      usleep(10000);
+      
+      TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
+      // run the garbage collection in case the database held some objects which
+      // can now be freed
+      TRI_RunGarbageCollectionV8(isolate, 0.25);
+      TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
+                                  TRI_V8_ASCII_STRING(isolate,
+                                                      "require('internal').executeGlobalContextFunction('"
+                                                      "reloadRouting')"),
+                                  TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
     }
-
   } else {
-    int res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
+    if (ServerState::instance()->isCoordinator()) {
+      // If we are a coordinator in a cluster, we have to behave differently:
+      res = ::dropDBCoordinator(dbName);
+    } else {
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);;
     }
-
-    TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
-
-    // run the garbage collection in case the database held some objects which
-    // can now be freed
-    TRI_RunGarbageCollectionV8(isolate, 0.25);
-
-    TRI_ExecuteJavaScriptString(
-        isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING(isolate, "require('internal').executeGlobalContextFunction('"
-                            "reloadRouting')"),
-        TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
-
-  Result res;
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (ServerState::instance()->isCoordinator() ||
-      !ServerState::instance()->isRunningInCluster()) {
-    res = auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
-      entry.removeDatabase(dbName);
+  
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (res == TRI_ERROR_NO_ERROR && um != nullptr) {
+    return um->enumerateUsers([&](auth::User& entry) -> bool {
+      return entry.removeDatabase(dbName);
     });
   }
+
   return res;
 }
-
-

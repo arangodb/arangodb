@@ -30,7 +30,6 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/asio-helper.h"
 
 namespace arangodb {
 namespace basics {
@@ -64,7 +63,7 @@ class LocalCallbackTask
   LocalCallbackTask(LocalCallbackTask const&) = delete;
   LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
 
-  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void()> cb);
+  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void()> const& cb);
   virtual ~LocalCallbackTask() {}
 
   virtual void run();
@@ -87,10 +86,13 @@ class LocalCallbackTask
 
 class LocalTaskQueue {
  public:
+  typedef std::function<void(std::function<void()>)> PostFn;
+
+  LocalTaskQueue() = delete;
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue();
+  explicit LocalTaskQueue(PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -109,6 +111,13 @@ class LocalTaskQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   void enqueueCallback(std::shared_ptr<LocalCallbackTask>);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief post a function to the scheduler. Should only be used internally
+  /// by task dispatch.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void post(std::function<void()> fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief join a single task. reduces the number of waiting tasks and wakes
@@ -138,6 +147,12 @@ class LocalTaskQueue {
   int status();
 
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief post task to scheduler/io_service
+  //////////////////////////////////////////////////////////////////////////////
+
+  PostFn _poster;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal task queue
   //////////////////////////////////////////////////////////////////////////////

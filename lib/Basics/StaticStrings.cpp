@@ -57,9 +57,44 @@ std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
+std::string const StaticStrings::Group("group");
+std::string const StaticStrings::Namespace("namespace");
+std::string const StaticStrings::Prefix("prefix");
+std::string const StaticStrings::ReplaceExisting("replaceExisting");
+std::string const StaticStrings::OverWrite("overwrite");
+
+// replication headers
+std::string const StaticStrings::ReplicationHeaderCheckMore(
+    "x-arango-replication-checkmore");
+std::string const StaticStrings::ReplicationHeaderLastIncluded(
+    "x-arango-replication-lastincluded");
+std::string const StaticStrings::ReplicationHeaderLastScanned(
+    "x-arango-replication-lastscanned");
+std::string const StaticStrings::ReplicationHeaderLastTick(
+    "x-arango-replication-lasttick");
+std::string const StaticStrings::ReplicationHeaderFromPresent(
+    "x-arango-replication-frompresent");
+std::string const StaticStrings::ReplicationHeaderActive(
+    "x-arango-replication-active");
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
+
+// LogicalDataSource definition fields
+std::string const StaticStrings::DataSourceDeleted("deleted");
+std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
+std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceName("name");
+std::string const StaticStrings::DataSourcePlanId("planId");
+std::string const StaticStrings::DataSourceSystem("isSystem");
+std::string const StaticStrings::DataSourceType("type");
+
+// Index definition fields
+std::string const StaticStrings::IndexFields("fields");
+std::string const StaticStrings::IndexId("id");
+std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexType("type");
+std::string const StaticStrings::IndexUnique("unique");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -78,6 +113,7 @@ std::string const StaticStrings::AccessControlMaxAge("access-control-max-age");
 std::string const StaticStrings::AccessControlRequestHeaders(
     "access-control-request-headers");
 std::string const StaticStrings::Allow("allow");
+std::string const StaticStrings::AllowDirtyReads("x-arango-allow-dirty-read");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
@@ -107,17 +143,51 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
-std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
+std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
 std::string const StaticStrings::Queue("x-arango-queue");
+std::string const StaticStrings::RequestForwardedTo(
+    "x-arango-request-forwarded-to");
+std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
-std::string const StaticStrings::StartThread("x-arango-start-thread");
+std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
+std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
+std::string const StaticStrings::MultiPartContentType("multipart/form-data");
+
+// collection attributes
+std::string const StaticStrings::NumberOfShards("numberOfShards");
+std::string const StaticStrings::ReplicationFactor("replicationFactor");
+std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+
+// graph attribute names
+std::string const StaticStrings::GraphCollection("_graphs");
+std::string const StaticStrings::GraphIsSmart("isSmart");
+std::string const StaticStrings::GraphFrom("from");
+std::string const StaticStrings::GraphTo("to");
+std::string const StaticStrings::GraphOptions("options");
+std::string const StaticStrings::GraphSmartGraphAttribute(
+    "smartGraphAttribute");
+std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
+std::string const StaticStrings::GraphOrphans("orphanCollections");
+std::string const StaticStrings::GraphInitial("initial");
+std::string const StaticStrings::GraphInitialCid("initialCid");
+std::string const StaticStrings::GraphName("name");
+
+// rest query parameter
+std::string const StaticStrings::GraphDropCollections("dropCollections");
+std::string const StaticStrings::GraphDropCollection("dropCollection");
+std::string const StaticStrings::GraphCreateCollections("createCollections");
+std::string const StaticStrings::GraphCreateCollection("createCollection");
+
+// misc strings
+std::string const StaticStrings::LastValue("lastValue");
+std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");

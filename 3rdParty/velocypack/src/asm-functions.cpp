@@ -3,7 +3,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2015-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,45 +26,90 @@
 
 #include <iostream>
 #include <chrono>
+#include <cstring>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Utf8Helper.h"
 #include "asm-functions.h"
+#include "asm-utf8check.h"
 
 using namespace arangodb::velocypack;
 
-size_t JSONStringCopyC(uint8_t* dst, uint8_t const* src, size_t limit) {
-  return JSONStringCopyInline(dst, src, limit);
+namespace {
+
+inline size_t JSONStringCopyC(uint8_t* dst, uint8_t const* src, size_t limit) {
+  // Copy up to limit uint8_t from src to dst.
+  // Stop at the first control character or backslash or double quote.
+  // Report the number of bytes copied. May copy less bytes, for example
+  // for alignment reasons.
+  uint8_t const* end = src + limit;
+  while (src < end && *src >= 32 && *src != '\\' && *src != '"') {
+    *dst++ = *src++;
+  }
+  return limit - (end - src);
 }
 
-size_t JSONStringCopyCheckUtf8C(uint8_t* dst, uint8_t const* src,
-                                size_t limit) {
-  return JSONStringCopyCheckUtf8Inline(dst, src, limit);
+inline size_t JSONStringCopyCheckUtf8C(uint8_t* dst, uint8_t const* src, size_t limit) {
+  // Copy up to limit uint8_t from src to dst.
+  // Stop at the first control character or backslash or double quote.
+  // Also stop at byte with high bit set.
+  // Report the number of bytes copied. May copy less bytes, for example
+  // for alignment reasons.
+  uint8_t const* end = src + limit;
+  while (src < end && *src >= 32 && *src != '\\' && *src != '"' &&
+         *src < 0x80) {
+    *dst++ = *src++;
+  }
+  return limit - (end - src);
 }
 
-size_t JSONSkipWhiteSpaceC(uint8_t const* ptr, size_t limit) {
-  return JSONSkipWhiteSpaceInline(ptr, limit);
+inline size_t JSONSkipWhiteSpaceC(uint8_t const* src, size_t limit) {
+  // Skip up to limit uint8_t from src as long as they are whitespace.
+  // Advance ptr and return the number of skipped bytes.
+  uint8_t const* end = src + limit;
+  while (src < end && (*src == ' ' || *src == '\t' || *src == '\n' || *src == '\r')) {
+    src++;
+  }
+  return limit - (end - src);
 }
+
+inline bool ValidateUtf8StringC(uint8_t const* src, size_t limit) {
+  return Utf8Helper::isValidUtf8(src, static_cast<ValueLength>(limit));
+}
+  
+} // namespace
+
 
 #if defined(__SSE4_2__) && ASM_OPTIMIZATIONS == 1
 
 #include <cpuid.h>
 #include <x86intrin.h>
 
-static bool HasSSE42() {
+namespace {
+
+bool hasSSE42() {
   unsigned int eax, ebx, ecx, edx;
   if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
     if ((ecx & 0x100000) != 0) {
       return true;
-    } else {
-      return false;
-    }
-  } else {
-    return false;
+    } 
   }
+  return false;
 }
-
-static size_t JSONStringCopySSE42(uint8_t* dst, uint8_t const* src,
-                                  size_t limit) {
+  
+#ifdef __AVX2__
+bool hasAVX2() {
+  unsigned int eax, ebx, ecx, edx;
+  if (__get_cpuid(7, &eax, &ebx, &ecx, &edx)) {
+    if ((ebx & bit_AVX2) != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+#endif
+  
+size_t JSONStringCopySSE42(uint8_t* dst, uint8_t const* src, size_t limit) {
   alignas(16) static char const ranges[17] =
       "\x20\x21\x23\x5b\x5d\xff          ";
   //= "\x01\x1f\"\"\\\\\"\"\"\"\"\"\"\"\"\"";
@@ -102,17 +147,16 @@ static size_t JSONStringCopySSE42(uint8_t* dst, uint8_t const* src,
   return count;
 }
 
-static size_t DoInitCopy(uint8_t* dst, uint8_t const* src, size_t limit) {
-  if (assemblerFunctionsEnabled() && HasSSE42()) {
-    JSONStringCopy = JSONStringCopySSE42;
+size_t doInitCopy(uint8_t* dst, uint8_t const* src, size_t limit) {
+  if (assemblerFunctionsEnabled() && ::hasSSE42()) {
+    JSONStringCopy = ::JSONStringCopySSE42;
   } else {
-    JSONStringCopy = JSONStringCopyC;
+    JSONStringCopy = ::JSONStringCopyC;
   }
   return (*JSONStringCopy)(dst, src, limit);
 }
 
-static size_t JSONStringCopyCheckUtf8SSE42(uint8_t* dst, uint8_t const* src,
-                                           size_t limit) {
+size_t JSONStringCopyCheckUtf8SSE42(uint8_t* dst, uint8_t const* src, size_t limit) {
   alignas(16) static unsigned char const ranges[17] =
       "\x20\x21\x23\x5b\x5d\x7f          ";
   //= "\x01\x1f\x80\xff\"\"\\\\\"\"\"\"\"\"\"\"";
@@ -150,17 +194,16 @@ static size_t JSONStringCopyCheckUtf8SSE42(uint8_t* dst, uint8_t const* src,
   return count;
 }
 
-static size_t DoInitCopyCheckUtf8(uint8_t* dst, uint8_t const* src,
-                                  size_t limit) {
-  if (assemblerFunctionsEnabled() && HasSSE42()) {
-    JSONStringCopyCheckUtf8 = JSONStringCopyCheckUtf8SSE42;
+size_t doInitCopyCheckUtf8(uint8_t* dst, uint8_t const* src, size_t limit) {
+  if (assemblerFunctionsEnabled() && ::hasSSE42()) {
+    JSONStringCopyCheckUtf8 = ::JSONStringCopyCheckUtf8SSE42;
   } else {
-    JSONStringCopyCheckUtf8 = JSONStringCopyCheckUtf8C;
+    JSONStringCopyCheckUtf8 = ::JSONStringCopyCheckUtf8C;
   }
   return (*JSONStringCopyCheckUtf8)(dst, src, limit);
 }
 
-static size_t JSONSkipWhiteSpaceSSE42(uint8_t const* ptr, size_t limit) {
+size_t JSONSkipWhiteSpaceSSE42(uint8_t const* ptr, size_t limit) {
   alignas(16) static char const white[17] = " \t\n\r            ";
   __m128i const w = _mm_load_si128(reinterpret_cast<__m128i const*>(white));
   size_t count = 0;
@@ -192,39 +235,92 @@ static size_t JSONSkipWhiteSpaceSSE42(uint8_t const* ptr, size_t limit) {
   return count;
 }
 
-static size_t DoInitSkip(uint8_t const* ptr, size_t limit) {
-  if (assemblerFunctionsEnabled() && HasSSE42()) {
-    JSONSkipWhiteSpace = JSONSkipWhiteSpaceSSE42;
+size_t doInitSkip(uint8_t const* src, size_t limit) {
+  if (assemblerFunctionsEnabled() && ::hasSSE42()) {
+    JSONSkipWhiteSpace = ::JSONSkipWhiteSpaceSSE42;
   } else {
-    JSONSkipWhiteSpace = JSONSkipWhiteSpaceC;
+    JSONSkipWhiteSpace = ::JSONSkipWhiteSpaceC;
   }
-  return (*JSONSkipWhiteSpace)(ptr, limit);
+  return (*JSONSkipWhiteSpace)(src, limit);
 }
+
+#ifdef __AVX2__
+bool ValidateUtf8StringAVX(uint8_t const* src, size_t len) {
+  if (len >= 32) {
+    return validate_utf8_fast_avx(src, len);
+  }
+  return Utf8Helper::isValidUtf8(src, len);
+}
+#endif
+  
+bool ValidateUtf8StringSSE42(uint8_t const* src, size_t len) {
+  if (len >= 16) {
+    return validate_utf8_fast_sse42(src, len);
+  }
+  return Utf8Helper::isValidUtf8(src, len);
+}
+  
+bool doInitValidateUtf8String(uint8_t const* src, size_t limit) {
+#ifdef __AVX2__
+  if (assemblerFunctionsEnabled() && ::hasAVX2()) {
+    ValidateUtf8String = ValidateUtf8StringAVX;
+    return ValidateUtf8StringAVX(src, limit);
+  }
+#endif
+  if (assemblerFunctionsEnabled() && ::hasSSE42()) {
+    ValidateUtf8String = ValidateUtf8StringSSE42;
+  } else {
+    ValidateUtf8String = ::ValidateUtf8StringC;
+  }
+  return (*ValidateUtf8String)(src, limit);
+}
+} // namespace
 
 #else
 
-static size_t DoInitCopy(uint8_t* dst, uint8_t const* src, size_t limit) {
-  JSONStringCopy = JSONStringCopyC;
-  return JSONStringCopyC(dst, src, limit);
+namespace {
+
+size_t doInitCopy(uint8_t* dst, uint8_t const* src, size_t limit) {
+  JSONStringCopy = ::JSONStringCopyC;
+  return ::JSONStringCopyC(dst, src, limit);
 }
 
-static size_t DoInitCopyCheckUtf8(uint8_t* dst, uint8_t const* src,
-                                  size_t limit) {
-  JSONStringCopyCheckUtf8 = JSONStringCopyCheckUtf8C;
-  return JSONStringCopyCheckUtf8C(dst, src, limit);
+size_t doInitCopyCheckUtf8(uint8_t* dst, uint8_t const* src, size_t limit) {
+  JSONStringCopyCheckUtf8 = ::JSONStringCopyCheckUtf8C;
+  return ::JSONStringCopyCheckUtf8C(dst, src, limit);
 }
 
-static size_t DoInitSkip(uint8_t const* ptr, size_t limit) {
-  JSONSkipWhiteSpace = JSONSkipWhiteSpaceC;
-  return JSONSkipWhiteSpace(ptr, limit);
+size_t doInitSkip(uint8_t const* src, size_t limit) {
+  JSONSkipWhiteSpace = ::JSONSkipWhiteSpaceC;
+  return JSONSkipWhiteSpace(src, limit);
 }
+  
+bool doInitValidateUtf8String(uint8_t const* src, size_t limit) {
+  ValidateUtf8String = ::ValidateUtf8StringC;
+  return ValidateUtf8StringC(src, limit);
+}
+
+} // namespace
 
 #endif
 
-size_t (*JSONStringCopy)(uint8_t*, uint8_t const*, size_t) = DoInitCopy;
-size_t (*JSONStringCopyCheckUtf8)(uint8_t*, uint8_t const*,
-                                  size_t) = DoInitCopyCheckUtf8;
-size_t (*JSONSkipWhiteSpace)(uint8_t const*, size_t) = DoInitSkip;
+size_t (*JSONStringCopy)(uint8_t*, uint8_t const*, size_t) = ::doInitCopy;
+size_t (*JSONStringCopyCheckUtf8)(uint8_t*, uint8_t const*, size_t) = ::doInitCopyCheckUtf8;
+size_t (*JSONSkipWhiteSpace)(uint8_t const*, size_t) = ::doInitSkip;
+bool (*ValidateUtf8String)(uint8_t const*, size_t) = ::doInitValidateUtf8String;
+
+void arangodb::velocypack::enableNativeStringFunctions() {
+  JSONStringCopy = ::doInitCopy;
+  JSONStringCopyCheckUtf8 = ::doInitCopyCheckUtf8;
+  JSONSkipWhiteSpace = ::doInitSkip;
+}
+
+void arangodb::velocypack::enableBuiltinStringFunctions() {
+  JSONStringCopy = ::JSONStringCopyC;
+  JSONStringCopyCheckUtf8 = ::JSONStringCopyCheckUtf8C;
+  JSONSkipWhiteSpace = ::JSONSkipWhiteSpaceC;
+}
+
 
 #if defined(COMPILE_VELOCYPACK_ASM_UNITTESTS)
 

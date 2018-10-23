@@ -25,35 +25,42 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"
+#include "Shell/ClientFeature.h"
 
 namespace arangodb {
+
 namespace httpclient {
+
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
+
 }
 
 class ImportFeature final : public application_features::ApplicationFeature,
                             public ArangoClientHelper {
  public:
-  ImportFeature(application_features::ApplicationServer* server, int* result);
+  ImportFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
 
  private:
+  int tryCreateDatabase(ClientFeature*, std::string const& name);
+
   std::string _filename;
   bool _useBackslash;
   bool _convert;
+  bool _autoChunkSize;
   uint64_t _chunkSize;
   uint32_t _threadCount;
   std::string _collectionName;
   std::string _fromCollectionPrefix;
   std::string _toCollectionPrefix;
   bool _createCollection;
+  bool _createDatabase;
   std::string _createCollectionType;
   std::string _typeImport;
   std::vector<std::string> _translations;
@@ -62,11 +69,13 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _quote;
   std::string _separator;
   bool _progress;
+  bool _ignoreMissing;
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
-
   int* _result;
+  bool _latencyStats;
 };
+
 }
 
 #endif

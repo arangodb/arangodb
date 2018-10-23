@@ -26,14 +26,16 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
-  explicit BootstrapFeature(application_features::ApplicationServer*);
+  explicit BootstrapFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
+
+  static std::string const& name() noexcept;
 
   bool isReady() const {
     return _isReady;
@@ -43,6 +45,7 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   bool _isReady;
   bool _bark;
 };
+
 }
 
 #endif

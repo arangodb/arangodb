@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 #define ARANGOD_CLUSTER_DB_SERVER_AGENCY_SYNC_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
 class HeartbeatThread;
@@ -36,6 +38,9 @@ struct DBServerAgencySyncResult {
 
   DBServerAgencySyncResult()
       : success(false), planVersion(0), currentVersion(0) {}
+
+  DBServerAgencySyncResult(bool s, uint64_t p, uint64_t c)
+      : success(s), planVersion(p), currentVersion(c) {}
 
   DBServerAgencySyncResult(const DBServerAgencySyncResult& other)
       : success(other.success),
@@ -53,6 +58,12 @@ class DBServerAgencySync {
  public:
   void work();
 
+  /**
+   * @brief Get copy of current local state
+   * @param  collections  Builder to fill to
+   */
+  static arangodb::Result getLocalCollections(VPackBuilder& collections);
+  
  private:
   DBServerAgencySyncResult execute();
 

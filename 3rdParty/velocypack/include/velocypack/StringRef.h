@@ -29,12 +29,15 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
+#include <algorithm>
+#include <string>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Slice.h"
 
 namespace arangodb {
 namespace velocypack {
+class Slice;
 
 class StringRef {
  public:
@@ -42,64 +45,69 @@ class StringRef {
   constexpr StringRef() noexcept : _data(""), _length(0) {}
 
   /// @brief create a StringRef from an std::string
-  explicit StringRef(std::string const& str) : StringRef(str.c_str(), str.size()) {}
-  
-  /// @brief create a StringRef from a null-terminated C string
-  explicit StringRef(char const* data) : StringRef(data, strlen(data)) {}
-  
-  /// @brief create a StringRef from a VPack slice (must be of type String)
-  explicit StringRef(arangodb::velocypack::Slice const& slice) : StringRef() {
-    VELOCYPACK_ASSERT(slice.isString());
-    arangodb::velocypack::ValueLength l;
-    _data = slice.getString(l);
-    _length = l;
-  }
+  explicit StringRef(std::string const& str) noexcept : StringRef(str.data(), str.size()) {}
   
   /// @brief create a StringRef from a C string plus length
-  StringRef(char const* data, size_t length) : _data(data), _length(length) {}
+  constexpr StringRef(char const* data, size_t length) noexcept : _data(data), _length(length) {}
+  
+  /// @brief create a StringRef from a null-terminated C string
+#if __cplusplus >= 201703
+  constexpr explicit StringRef(char const* data) noexcept : StringRef(data, std::char_traits<char>::length(data)) {}
+#else
+  explicit StringRef(char const* data) noexcept : StringRef(data, strlen(data)) {}
+#endif
+   
+  /// @brief create a StringRef from a VPack slice (must be of type String)
+  explicit StringRef(Slice slice);
   
   /// @brief create a StringRef from another StringRef
-  StringRef(StringRef const& other) noexcept
+  constexpr StringRef(StringRef const& other) noexcept
+      : _data(other._data), _length(other._length) {}
+  
+  /// @brief move a StringRef from another StringRef
+  constexpr StringRef(StringRef&& other) noexcept
       : _data(other._data), _length(other._length) {}
   
   /// @brief create a StringRef from another StringRef
-  StringRef& operator=(StringRef const& other) {
+  StringRef& operator=(StringRef const& other) noexcept {
+    _data = other._data;
+    _length = other._length;
+    return *this;
+  }
+  
+  /// @brief move a StringRef from another StringRef
+  StringRef& operator=(StringRef&& other) noexcept {
     _data = other._data;
     _length = other._length;
     return *this;
   }
   
   /// @brief create a StringRef from an std::string
-  StringRef& operator=(std::string const& other) {
-    _data = other.c_str();
+  StringRef& operator=(std::string const& other) noexcept {
+    _data = other.data();
     _length = other.size();
     return *this;
   }
   
   /// @brief create a StringRef from a null-terminated C string
-  StringRef& operator=(char const* other) {
+  StringRef& operator=(char const* other) noexcept {
     _data = other;
     _length = strlen(other);
     return *this;
   }
   
   /// @brief create a StringRef from a VPack slice of type String
-  StringRef& operator=(arangodb::velocypack::Slice const& slice) {
-    arangodb::velocypack::ValueLength l;
-    _data = slice.getString(l);
-    _length = l;
-    return *this;
-  }
+  StringRef& operator=(Slice slice);
 
-  int compare(std::string const& other) const {
-    int res = memcmp(_data, other.c_str(), (std::min)(_length, other.size()));
+  int compare(std::string const& other) const noexcept {
+    int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
     if (res != 0) {
       return res;
     }
     return static_cast<int>(_length) - static_cast<int>(other.size());
   }
   
-  int compare(StringRef const& other) const {
+  int compare(StringRef const& other) const noexcept {
     int res = memcmp(_data, other._data, (std::min)(_length, other._length));
     if (res != 0) {
       return res;
@@ -107,39 +115,44 @@ class StringRef {
     return static_cast<int>(_length) - static_cast<int>(other._length);
   }
 
+  bool equals(StringRef const& other) const noexcept {
+    return (size() == other.size() &&
+            (memcmp(data(), other.data(), size()) == 0));
+  }
+
   inline std::string toString() const {
     return std::string(_data, _length);
   }
 
-  inline bool empty() const {
+  constexpr inline bool empty() const noexcept {
     return (_length == 0);
   }
   
-  inline char const* begin() const {
+  constexpr inline char const* begin() const noexcept {
     return _data;
   }
   
-  inline char const* end() const {
+  constexpr inline char const* end() const noexcept {
     return _data + _length;
   }
 
-  inline char front() const { return _data[0]; }
+  inline char front() const noexcept { return _data[0]; }
 
-  inline char back() const { return _data[_length - 1]; }
+  inline char back() const noexcept { return _data[_length - 1]; }
   
   inline char operator[](size_t index) const noexcept { 
     return _data[index];
   }
   
-  inline char const* data() const noexcept {
+  constexpr inline char const* data() const noexcept {
     return _data;
   }
 
-  inline size_t size() const noexcept {
+  constexpr inline size_t size() const noexcept {
     return _length;
   }
 
-  inline size_t length() const noexcept {
+  constexpr inline size_t length() const noexcept {
     return _length;
   }
 
@@ -150,41 +163,6 @@ class StringRef {
 
 }
 }
-
-/*
-inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
-  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
-}
-
-inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
-  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
-}
-
-inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
-  size_t const len = strlen(rhs);
-  return (lhs.size() == len && memcmp(lhs.data(), rhs, lhs.size()) == 0);
-}
-
-inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator<(arangodb::StringRef const& lhs, arangodb::StringRef const& rhs) {
-  return (lhs.compare(rhs) < 0);
-}
-
-inline bool operator>(arangodb::StringRef const& lhs, arangodb::StringRef const& rhs) {
-  return (lhs.compare(rhs) > 0);
-}
-*/
 
 namespace std {
 

@@ -31,7 +31,7 @@ namespace arangodb {
 
 class RocksDBEngine;
 
-class RocksDBBackgroundThread : public Thread {
+class RocksDBBackgroundThread final : public Thread {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief engine pointer

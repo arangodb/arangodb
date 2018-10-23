@@ -65,12 +65,12 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata(Metadata const& other);
+  Metadata(Metadata&& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata& operator=(Metadata const& other);
+  Metadata& operator=(Metadata&& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Locks the record for reading
@@ -171,7 +171,7 @@ struct Metadata {
   void toggleResizing() noexcept { _resizing = !_resizing; }
 
  private:
-  mutable basics::ReadWriteSpinLock<64> _lock;
+  mutable basics::ReadWriteSpinLock _lock;
   bool _migrating;
   bool _resizing;
 };

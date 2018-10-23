@@ -13,21 +13,16 @@ module.exports = function(hljs) {
     'specialize strict unaligned varargs ';
   var COMMENT_MODES = [
     hljs.C_LINE_COMMENT_MODE,
-    hljs.COMMENT(
-      /\{/,
-      /\}/,
-      {
-        relevance: 0
-      }
-    ),
-    hljs.COMMENT(
-      /\(\*/,
-      /\*\)/,
-      {
-        relevance: 10
-      }
-    )
+    hljs.COMMENT(/\{/, /\}/, {relevance: 0}),
+    hljs.COMMENT(/\(\*/, /\*\)/, {relevance: 10})
   ];
+  var DIRECTIVE = {
+    className: 'meta',
+    variants: [
+      {begin: /\{\$/, end: /\}/},
+      {begin: /\(\*\$/, end: /\*\)/}
+    ]
+  };
   var STRING = {
     className: 'string',
     begin: /'/, end: /'/,
@@ -52,8 +47,9 @@ module.exports = function(hljs) {
         className: 'params',
         begin: /\(/, end: /\)/,
         keywords: KEYWORDS,
-        contains: [STRING, CHAR_STRING]
-      }
+        contains: [STRING, CHAR_STRING, DIRECTIVE].concat(COMMENT_MODES)
+      },
+      DIRECTIVE
     ].concat(COMMENT_MODES)
   };
   return {
@@ -65,7 +61,8 @@ module.exports = function(hljs) {
       STRING, CHAR_STRING,
       hljs.NUMBER_MODE,
       CLASS,
-      FUNCTION
+      FUNCTION,
+      DIRECTIVE
     ].concat(COMMENT_MODES)
   };
 };

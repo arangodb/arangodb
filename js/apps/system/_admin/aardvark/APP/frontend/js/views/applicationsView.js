@@ -108,9 +108,9 @@
     },
 
     createInstallModal: function (event) {
-      event.preventDefault();
       if (!this.readOnly) {
-        window.foxxInstallView.install(this.reload.bind(this));
+        event.preventDefault();
+        window.App.navigate('services/install', {trigger: true});
       }
     },
 
@@ -142,34 +142,36 @@
       arangoHelper.fixTooltips('icon_arangodb', 'left');
       arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
       return this;
+    },
+
+    installCallback: function (result) {
+      var self = this;
+      var errors = {
+        'ERROR_SERVICE_DOWNLOAD_FAILED': { 'code': 1752, 'message': 'service download failed' }
+      };
+
+      if (result.error === false) {
+        this.collection.fetch({
+          success: function () {
+            window.modalView.hide();
+            self.reload();
+            arangoHelper.arangoNotification('Services', 'Service ' + result.name + ' installed.');
+          }
+        });
+      } else {
+        var res = result;
+        if (result.hasOwnProperty('responseJSON')) {
+          res = result.responseJSON;
+        }
+        switch (res.errorNum) {
+          case errors.ERROR_SERVICE_DOWNLOAD_FAILED.code:
+            arangoHelper.arangoError('Services', 'Unable to download application from the given repository.');
+            break;
+          default:
+            arangoHelper.arangoError('Services', res.errorNum + '. ' + res.errorMessage);
+        }
+      }
     }
 
   });
-
-/* Info for mountpoint
- *
- *
-    window.modalView.createTextEntry(
-      "mount-point",
-      "Mount",
-      "",
-      "The path the app will be mounted. Has to start with /. Is not allowed to start with /_",
-      "/my/app",
-      true,
-      [
-        {
-          rule: Joi.string().required(),
-          msg: "No mountpoint given."
-        },
-        {
-          rule: Joi.string().regex(/^\/[^_]/),
-          msg: "Mountpoints with _ are reserved for internal use."
-        },
-        {
-          rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-          msg: "Mountpoints have to start with / and can only contain [a-zA-Z0-9_-%]"
-        }
-      ]
-    )
- */
 }());

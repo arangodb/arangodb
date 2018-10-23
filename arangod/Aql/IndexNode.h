@@ -26,10 +26,12 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Transaction/Methods.h"
@@ -42,19 +44,19 @@ namespace aql {
 struct Collection;
 class Condition;
 class ExecutionBlock;
+class ExecutionEngine;
 class ExecutionPlan;
-struct Index;
 
 /// @brief class IndexNode
-class IndexNode : public ExecutionNode, public DocumentProducingNode {
+class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class IndexBlock;
 
  public:
-  IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            Collection const* collection, Variable const* outVariable,
+  IndexNode(ExecutionPlan* plan, size_t id,
+            aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, bool reverse);
+            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -63,24 +65,31 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return INDEX; }
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition; }
+  Condition* condition() const { return _condition.get(); }
 
   /// @brief whether or not all indexes are accessed in reverse order
-  bool reverse() const { return _reverse; }
- 
-  /// @brief set reverse mode  
-  void reverse(bool value) { _reverse = value; }
+  IndexIteratorOptions options() const { return _options; }
+
+  /// @brief set reverse mode
+  void setAscending(bool value) { _options.ascending = value; }
+
+  /// @brief whether or not the index node needs a post sort of the results
+  /// of multiple shards in the cluster (via a GatherNode).
+  /// not all queries that use an index will need to produce a sorted result
+  /// (e.g. if the index is used only for filtering)
+  bool needsGatherNodeSort() const { return _needsGatherNodeSort; }
+  void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -99,26 +108,27 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
       std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const { return _indexes; }
 
+  /// @brief called to build up the matching positions of the index values for
+  /// the projection attributes (if any)
+  void initIndexCoversProjections();
+
  private:
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  Collection const* _collection;
-
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
   /// @brief the index(es) condition
-  Condition* _condition;
+  std::unique_ptr<Condition> _condition;
 
   /// @brief the index sort order - this is the same order for all indexes
-  bool _reverse;
+  bool _needsGatherNodeSort;
+
+  /// @brief the index iterator options - same for all indexes
+  IndexIteratorOptions _options;
 };
 
 }  // namespace arangodb::aql

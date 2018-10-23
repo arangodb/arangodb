@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,45 +22,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgentCallback.h"
-
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
 AgentCallback::AgentCallback() :
-  _agent(0), _last(0), _toLog(0), _startTime(0.0) {}
+  _agent(nullptr), _last(0), _toLog(0), _startTime(0.0) {}
 
 AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID,
                              index_t last, size_t toLog)
   : _agent(agent), _last(last), _slaveID(slaveID), _toLog(toLog),
     _startTime(TRI_microtime())  {}
 
-void AgentCallback::shutdown() { _agent = 0; }
+void AgentCallback::shutdown() { _agent = nullptr; }
 
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
       auto body = res->result->getBodyVelocyPack();
+      bool success = false;
       term_t otherTerm = 0;
       try {
+        success = body->slice().get("success").isTrue();
         otherTerm = body->slice().get("term").getNumber<term_t>();
-      } catch (std::exception const&) {
-        LOG_TOPIC(WARN, Logger::AGENCY) <<
-          "Received agent call back without or with invalid term";
+      } catch (std::exception const& e) {
+        LOG_TOPIC(WARN, Logger::AGENCY) 
+          << "Bad callback message received: " << e.what();
+        _agent->reportFailed(_slaveID, _toLog);
       }
       if (otherTerm > _agent->term()) {
         _agent->resign(otherTerm);
-      } else if (!body->slice().get("success").isTrue()) {
+      } else if (!success) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
-        _agent->reportFailed(_slaveID, _toLog);
+        // This reportFailed will reset _confirmed in Agent fot this follower
+        _agent->reportFailed(_slaveID, _toLog, true);
       } else {
         Slice senderTimeStamp = body->slice().get("senderTimeStamp");
         if (senderTimeStamp.isInteger()) {
           try {
             int64_t sts = senderTimeStamp.getNumber<int64_t>();
-            int64_t now = std::llround(readSystemClock() * 1000);
+            int64_t now = std::llround(steadyClockToDouble() * 1000);
             if (now - sts > 1000) {  // a second round trip time!
               LOG_TOPIC(DEBUG, Logger::AGENCY)
                 << "Round trip for appendEntriesRPC took " << now - sts
@@ -85,7 +89,8 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       << _slaveID << "), time("
       << TRI_microtime() - _startTime << ")";
   } else {
-    if (_agent == nullptr || !_agent->isStopping()) {
+    if (!application_features::ApplicationServer::isStopping() &&
+        (_agent == nullptr || !_agent->isStopping())) {
       // Do not warn if we are already shutting down:
       LOG_TOPIC(WARN, Logger::AGENCY) 
         << "Got bad callback from AppendEntriesRPC: "

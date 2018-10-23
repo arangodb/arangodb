@@ -1,0 +1,15 @@
+{
+  "name": "itzpapalotl",
+  "version": "1.2.0",
+  "author": "jsteemann",
+  "description": "random Aztec deity service",
+  "license": "Apache License, Version 2.0",
+
+  "main": "itzpapalotl.js",
+
+  "engines": {
+    "arangodb": "^3.0"
+  },
+
+  "defaultDocument": "index"
+}

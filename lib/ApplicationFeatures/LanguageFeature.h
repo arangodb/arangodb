@@ -23,20 +23,25 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H 1
 
+#include <unicode/locid.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LanguageFeature(application_features::ApplicationServer* server);
+  explicit LanguageFeature(application_features::ApplicationServer& server);
   ~LanguageFeature();
- public:
+
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath, std::string& path, std::string const& binaryName);
+  static LanguageFeature* instance();
+  Locale& getLocale() {return _locale; }
 
- private:
+private:
+  Locale _locale;
   std::string _language;
   char const* _binaryPath;
   void* _icuDataPtr;

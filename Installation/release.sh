@@ -15,11 +15,15 @@ LINT=1
 PARALLEL=8
 
 SED=sed
-isMac=0
+IS_MAC=0
+
+NOTIFY='if test -x /usr/games/oneko; then /usr/games/oneko& fi'
+trap "$NOTIFY" EXIT
+
 if test "$(uname)" == "Darwin"; then
     SED=gsed
     OSNAME=darwin
-    isMac=1
+    IS_MAC=1
 fi
 
 if flex --version; then
@@ -63,12 +67,12 @@ while [ "$#" -gt 0 ];  do
             PARALLEL=$1
             shift
             ;;
-        
+
         --force-tag)
             shift
             FORCE_TAG=1
             ;;
-        
+
         --no-lint)
             LINT=0
             shift
@@ -104,7 +108,7 @@ while [ "$#" -gt 0 ];  do
             DOWNLOAD_SYNCER_USER=$1
             shift
             ;;
-            
+
         --no-book)
             BOOK=0
             shift
@@ -125,10 +129,35 @@ if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     exit 1
 fi
 
-if echo "${VERSION}" | grep -q -- '-'; then
-    echo "${VERSION} mustn't contain minuses! "
+VERSION_RE='^([0-9]+.[0-9]+.[0-9]+)(-((alpha|beta|milestone|preview|rc).)?([0-9]+|devel|nightly))?$'
+
+if echo "${VERSION}" | egrep -q -- $VERSION_RE; then
+    echo "${VERSION} matches $VERSION_RE"
+else
+    echo "${VERSION} does not match $VERSION_RE"
     exit 1
 fi
+
+N1=`echo $VERSION | awk -F- '{print $1}'`
+N2=`echo $VERSION | awk -F- '{print $2}'`
+
+VERSION_MAJOR=$(echo "$N1" | awk -F. '{print $1}')
+VERSION_MINOR=$(echo "$N1" | awk -F. '{print $2}')
+VERSION_PATCH=$(echo "$N1" | awk -F. '{print $3}')
+
+VERSION_RELEASE_TYPE=""
+VERSION_RELEASE_NUMBER=""
+
+if test ! -z "$N2"; then
+  VERSION_RELEASE_TYPE=$(echo "$N2" | awk -F. '{print $1}')
+  VERSION_RELEASE_NUMBER=$(echo "$N2" | awk -F. '{print $2}')
+fi
+
+echo "VERSION_MAJOR:          $VERSION_MAJOR"
+echo "VERSION_MINOR:          $VERSION_MINOR"
+echo "VERSION_PATCH:          $VERSION_PATCH"
+echo "VERSION_RELEASE_TYPE:   $VERSION_RELEASE_TYPE"
+echo "VERSION_RELEASE_NUMBER: $VERSION_RELEASE_NUMBER"
 
 if test "${FORCE_TAG}" == 0; then
     if git tag | grep -q "^v$VERSION$";  then
@@ -138,10 +167,17 @@ if test "${FORCE_TAG}" == 0; then
 fi
 
 if fgrep -q "v$VERSION" CHANGELOG;  then
-    echo "version $VERSION defined in CHANGELOG" 
+    echo "version $VERSION defined in CHANGELOG"
 else
-    echo "$0: version $VERSION not defined in CHANGELOG"
-    exit 1
+    case "$VERSION" in
+        *-devel|*-nightly)
+          ;;
+
+        *)
+          echo "$0: version $VERSION not defined in CHANGELOG"
+          exit 1
+          ;;
+    esac
 fi
 
 if test -z "${DOWNLOAD_SYNCER_USER}"; then
@@ -157,7 +193,7 @@ while test -z "${OAUTH_REPLY}"; do
              --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release-tag-${SEQNO}-${OSNAME}\"}"
                )
     if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
-        # retry with another number... 
+        # retry with another number...
         OAUTH_REPLY=""
         SEQNO=$((SEQNO + 1))
         count=$((count + 1))
@@ -169,15 +205,15 @@ while test -z "${OAUTH_REPLY}"; do
 done
 OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
                      grep '"token"'  |\
-                     sed -e 's;.*": *";;' -e 's;".*;;'
+                     $SED -e 's;.*": *";;' -e 's;".*;;'
            )
 OAUTH_ID=$(echo "$OAUTH_REPLY" | \
                   grep '"id"'  |\
-                  sed -e 's;.*": *;;' -e 's;,;;'
+                  $SED -e 's;.*": *;;' -e 's;,;;'
         )
 
 # shellcheck disable=SC2064
-trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
+trap "$NOTIFY; curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
 
 
 GET_SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}")
@@ -192,42 +228,38 @@ if test -z "${SYNCER_REV}"; then
     exit 1
 fi
 
-echo "${SYNCER_REV}" > SYNCER_REV
-
+${SED} -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
 
 GITSHA=$(git log -n1 --pretty='%h')
 if git describe --exact-match --tags "${GITSHA}"; then
     GITARGS=$(git describe --exact-match --tags "${GITSHA}")
     echo "I'm on tag: ${GITARGS}"
 else
-    GITARGS=$(git branch --no-color| grep '^\*' | sed "s;\* *;;")
+    GITARGS=$(git branch --no-color| grep '^\*' | $SED "s;\* *;;")
     if echo "$GITARGS" |grep -q ' '; then
         GITARGS=devel
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
+
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+git fetch --tags
 
-
-
-VERSION_MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
-VERSION_MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
-VERSION_REVISION=$(echo "$VERSION" | awk -F. '{print $3}')
-VERSION_PACKAGE="1"
 
 # shellcheck disable=SC2002
 cat CMakeLists.txt \
-    | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
-    | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
-    | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
-    | sed -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR \"$VERSION_MAJOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR \"$VERSION_MINOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_PATCH.*~set(ARANGODB_VERSION_PATCH \"$VERSION_PATCH\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_TYPE.*~set(ARANGODB_VERSION_RELEASE_TYPE \"$VERSION_RELEASE_TYPE\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_NUMBER.*~set(ARANGODB_VERSION_RELEASE_NUMBER \"$VERSION_RELEASE_NUMBER\")~" \
           > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt
 
 CMAKE_CONFIGURE="-DUSE_MAINTAINER_MODE=ON"
 
-if [ "${isMac}" == 1 ];  then
+if [ "${IS_MAC}" == 1 ];  then
     CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
@@ -260,10 +292,13 @@ if [ "$LINT" == "1" ]; then
 fi
 
 # we utilize https://developer.github.com/v3/repos/ to get the newest release of the arangodb starter:
-curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
                          grep tag_name | \
                          head -n 1 | \
-                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;' > STARTER_REV
+                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
+${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
+
+./utils/generateREADME.sh
 
 git add -f \
     README \
@@ -275,8 +310,7 @@ git add -f \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
     CMakeLists.txt \
-    STARTER_REV \
-    SYNCER_REV
+    VERSIONS
 
 if [ "$EXAMPLES" == "1" ];  then
     echo "EXAMPLES"
@@ -298,12 +332,21 @@ echo "GRUNT"
 
 git add -f Documentation/Examples/*.generated
 
+echo "MAN"
+(
+    cd build
+    make man
+)
+git add -f Documentation/man
+
+
+
 if [ "$BOOK" == "1" ];  then
     echo "DOCUMENTATION"
     (cd Documentation/Books; make)
 fi
 
-case "$TAG" in
+case "$VERSION" in
     *-milestone*|*-alpha*|*-beta*|devel)
     ;;
 
@@ -320,11 +363,11 @@ if [ "$TAG" == "1" ];  then
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
-        git push --tags
+        git push origin "refs/tags/v$VERSION"
     else
         git tag -f "v$VERSION"
-        git push --tags -f
-    fi        
+        git push -f origin "refs/tags/v$VERSION"
+    fi
 
     cd "${ENTERPRISE_SRC_DIR}"
     git commit --allow-empty -m "release version $VERSION enterprise" -a
@@ -332,12 +375,12 @@ if [ "$TAG" == "1" ];  then
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
-        git push --tags
+        git push origin "refs/tags/v$VERSION"
     else
         git tag -f "v$VERSION"
-        git push --tags -f
+        git push -f origin "refs/tags/v$VERSION"
     fi
-    
+
     echo
     echo "--------------------------------------------------"
     echo "Remember to update the VERSION in 'devel' as well."

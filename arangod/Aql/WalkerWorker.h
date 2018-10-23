@@ -33,9 +33,9 @@ namespace aql {
 template <class T>
 class WalkerWorker {
  public:
-  WalkerWorker() {}
+  WalkerWorker() = default;
 
-  virtual ~WalkerWorker() {}
+  virtual ~WalkerWorker() = default;
 
   virtual bool before(T*) {
     return false;  // true to abort the whole walking process

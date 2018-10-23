@@ -30,16 +30,16 @@ void QueryString::append(std::string& out) const {
   if (empty()) {
     return;
   }
-  out.append(_data, _length);
+  out.append(_queryString);
 }
 
-uint64_t QueryString::hash() {
+uint64_t QueryString::hash() const {
   if (!_hashed) {
-    if (_data == nullptr) {
+    if (empty()) {
       return 0;
     }
 
-    _hash =  fasthash64(_data, _length, 0x3123456789abcdef);
+    _hash =  fasthash64(data(), length(), 0x3123456789abcdef);
     _hashed = true;
   }
 
@@ -47,9 +47,9 @@ uint64_t QueryString::hash() {
 }
     
 std::string QueryString::extract(size_t maxLength) const {
-  if (_length <= maxLength) {
+  if (size() <= maxLength) {
     // no truncation
-    return std::string(_data, _length);
+    return _queryString;
   }
 
   // query string needs truncation
@@ -57,7 +57,7 @@ std::string QueryString::extract(size_t maxLength) const {
     
   // do not create invalid UTF-8 sequences
   while (length > 0) {
-    uint8_t c = _data[length - 1];
+    uint8_t c = _queryString[length - 1];
     if ((c & 128) == 0) {
       // single-byte character
       break;
@@ -74,23 +74,23 @@ std::string QueryString::extract(size_t maxLength) const {
 
   std::string result;
   result.reserve(length + 3);
-  result.append(_data, length);
+  result.append(data(), length);
   result.append("...", 3);
   return result;
 }
 
 /// @brief extract a region from the query
 std::string QueryString::extractRegion(int line, int column) const {
-  TRI_ASSERT(_data != nullptr);
-
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   int currentLine = 1;
   int currentColumn = 0;
 
   char c;
-  char const* p = _data;
+  char const* s = _queryString.data();
+  char const* p = _queryString.data();
+  size_t const n = size();
 
-  while ((static_cast<size_t>(p - _data) < _length) && (c = *p)) {
+  while ((static_cast<size_t>(p - s) < n) && (c = *p)) {
     if (currentLine > line ||
         (currentLine >= line && currentColumn >= column)) {
       break;
@@ -116,21 +116,21 @@ std::string QueryString::extractRegion(int line, int column) const {
   }
 
   // p is pointing at the position in the query the parse error occurred at
-  TRI_ASSERT(p >= _data);
+  TRI_ASSERT(p >= s);
 
-  size_t offset = static_cast<size_t>(p - _data);
+  size_t offset = static_cast<size_t>(p - s);
 
   static int const SNIPPET_LENGTH = 32;
 
-  if (_length < offset + SNIPPET_LENGTH) {
+  if (size() < offset + SNIPPET_LENGTH) {
     // return a copy of the region
-    return std::string(_data + offset, _length - offset);
+    return std::string(s + offset, n - offset);
   }
 
   // copy query part
   std::string result;
   result.reserve(SNIPPET_LENGTH + strlen("..."));
-  result.append(_data + offset, SNIPPET_LENGTH);
+  result.append(s + offset, SNIPPET_LENGTH);
   result.append("...");
 
   return result;

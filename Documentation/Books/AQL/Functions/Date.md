@@ -3,19 +3,33 @@ Date functions
 
 AQL offers functionality to work with dates. Dates are no data types of their own in
 AQL (neither are they in JSON, which is usually used as format to ship data into and
-out of ArangoDB). Instead, dates in AQL are typically represented by either numbers
-(timestamps) or strings.
+out of ArangoDB). Instead, dates in AQL are represented by either numbers or strings.
+
+All date function operations are done in the *unix time* system. Unix time counts
+all non leap seconds beginning with January 1st 1970 00:00:00.000 UTC, also know as
+the Unix epoch. A point in time is called timestamp. A timestamp has the same value
+at every point on earth. The date functions use millisecond precision for timestamps.
+
+time unit definitions
+
+* millisecond: 1/1000 of a second
+* second: one [SI second](https://www.bipm.org/en/publications/si-brochure/second.html)
+* Minute: one minute is defined as 60 seconds
+* Hour: one hour is defined as 60 minutes
+* day: one day is defined as 24 hours
+* week: one week is defined as 7 days
+* year: one year is defined as 365.2425 days
+* month: one month is defined as 1/12 of a year
 
 All functions that require dates as arguments accept the following input values:
 
-- numeric timestamps, indicating the number of milliseconds elapsed since the UNIX
-  epoch (i.e. January 1st 1970 00:00:00.000 UTC).
+- numeric timestamps, millisecond precision;
   An example timestamp value is *1399472349522*, which translates to
   *2014-05-07T14:19:09.522Z*.
 
 - date time strings in formats *YYYY-MM-DDTHH:MM:SS.MMM*,
-  *YYYY-MM-DD HH:MM:SS.MMM*, or *YYYY-MM-DD* Milliseconds are always optional.
-  A timezone difference may optionally be added at the end of the string, with the
+  *YYYY-MM-DD HH:MM:SS.MMM* or *YYYY-MM-DD*; Milliseconds are always optional.
+  A time offset may optionally be added at the end of the string, with the
   hours and minutes that need to be added or subtracted to the date time value.
   For example, *2014-05-07T14:19:09+01:00* can be used to specify a one hour offset,
   and *2014-05-07T14:19:09+07:30* can be specified for seven and half hours offset.
@@ -25,11 +39,6 @@ All functions that require dates as arguments accept the following input values:
   An example value is *2014-05-07T14:19:09.522Z* meaning May 7th 2014, 14:19:09 and
   522 milliseconds, UTC / Zulu time. Another example value without time component is
   *2014-05-07Z*.
-
-  Please note that if no timezone offset is specified in a date string, ArangoDB will
-  assume UTC time automatically. This is done to ensure portability of queries across
-  servers with different timezone settings, and because timestamps will always be
-  UTC-based.
 
 ```js
 DATE_HOUR( 2 * 60 * 60 * 1000 ) // 2
@@ -49,9 +58,9 @@ Current date and time
 
 `DATE_NOW() → timestamp`
 
-Get the current date time as numeric timestamp.
+Get the current unix time as numeric timestamp.
 
-- returns **timestamp** (number): the current time as a timestamp.
+- returns **timestamp** (number): the current unix time as a timestamp.
   The return value has millisecond precision. To convert the return value to
   seconds, divide it by 1000.
 
@@ -77,7 +86,7 @@ in the following order:
 - millisecond
 
 All components following *day* are optional and can be omitted. Note that no
-timezone offsets can be specified when using separate date components, and UTC /
+time offset can be specified when using separate date components, and UTC /
 Zulu time will be used.
 
 The following calls to *DATE_TIMESTAMP()* are equivalent and will all return
@@ -121,7 +130,6 @@ date components separately. All parameters after *day* are optional.
 
 - **year** (number): typically in the range 0..9999, e.g. *2017*
 - **month** (number): 1..12 for January through December
-  (unlike JavaScript, which uses the slightly confusing range 0..11)
 - **day** (number): 1..31 (upper bound depends on number of days in month)
 - **hour** (number, *optional*): 0..23
 - **minute** (number, *optional*): 0..59
@@ -133,7 +141,7 @@ date components separately. All parameters after *day* are optional.
 
 `DATE_TIMESTAMP(date) → timestamp`
 
-Create a UTC timestamp value from *date*. The return value has millisecond precision.
+Create a timestamp value from *date*. The return value has millisecond precision.
 To convert the return value to seconds, divide it by 1000.
 
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
@@ -141,12 +149,11 @@ To convert the return value to seconds, divide it by 1000.
 
 `DATE_TIMESTAMP(year, month, day, hour, minute, second, millisecond) → timestamp`
 
-Create a UTC timestamp value, but allows to specify the individual date components
+Create a timestamp value, but allows to specify the individual date components
 separately. All parameters after *day* are optional.
 
 - **year** (number): typically in the range 0..9999, e.g. *2017*
 - **month** (number): 1..12 for January through December
-  (unlike JavaScript, which uses the slightly confusing range 0..11)
 - **day** (number): 1..31 (upper bound depends on number of days in month)
 - **hour** (number, *optional*): 0..23
 - **minute** (number, *optional*): 0..59
@@ -310,6 +317,28 @@ Return the number of days in the month of *date*.
 
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **daysInMonth** (number): the number of days in *date*'s month (28..31)
+
+### DATE_TRUNC()
+
+`DATE_TRUNC(date, unit) → isoDate`
+
+Truncates the given date after *unit* and returns the modified date.
+
+- **date** (number|string): numeric timestamp or ISO 8601 date time string
+- **unit** (string): either of the following to specify the time unit (case-insensitive):
+  - y, year, years
+  - m, month, months
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+- returns **isoDate** (string): the truncated ISO 8601 date time string
+
+```js
+DATE_TRUNC('2017-02-03', 'month') // 2017-02-01T00:00:00.000Z
+DATE_TRUNC('2017-02-03 04:05:06', 'hours') // 2017-02-03 04:00:00.000Z
+```
 
 ### DATE_FORMAT()
 
@@ -566,7 +595,7 @@ DATE_COMPARE("1985-04-04", DATE_NOW(), "months", "days")
 
 // Will only match on one day if the current year is a leap year!
 // You may want to add or subtract one day from date1 to match every year.
-DATE_COMPARE("1984-02-29", DATE_NOW(), "months", days")
+DATE_COMPARE("1984-02-29", DATE_NOW(), "months", "days")
 
 // compare years, months and days (true, because it's the same day)
 DATE_COMPARE("2001-01-01T15:30:45.678Z", "2001-01-01T08:08:08.008Z", "years", "days")
@@ -623,8 +652,8 @@ Working with dates and indices
 ------------------------------
 
 There are two recommended ways to store timestamps in ArangoDB:
-  - as string with [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) UTC timestamp
-  - as [Epoch number](https://en.wikipedia.org/wiki/Epoch_%28reference_date%29)
+  - string: UTC timestamp with [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)
+  - number: [unix timestamp](https://en.wikipedia.org/wiki/Unix_time) with millisecond precision
 
 The sort order of both is identical due to the sort properties of ISO date strings.
 You can't mix both types, numbers and strings, in a single attribute however.

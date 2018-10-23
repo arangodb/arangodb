@@ -36,7 +36,6 @@ namespace arangodb {
 class ConnectionStatistics {
  public:
   static void initialize();
-  static void shutdown();
 
   static ConnectionStatistics* acquire();
   void release();
@@ -51,7 +50,8 @@ class ConnectionStatistics {
 
   static void fill(basics::StatisticsCounter& httpConnections,
                    basics::StatisticsCounter& totalRequests,
-                   std::vector<basics::StatisticsCounter>& methodRequests,
+                   std::array<basics::StatisticsCounter,
+                              basics::MethodRequestsStatisticsSize>& methodRequests,
                    basics::StatisticsCounter& asyncRequests,
                    basics::StatisticsDistribution& connectionTime);
 
@@ -66,8 +66,6 @@ class ConnectionStatistics {
   }
 
   static size_t const QUEUE_SIZE = 64 * 1024 - 2; // current (1.62) boost maximum
-
-  static Mutex _dataLock;
 
   static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
 

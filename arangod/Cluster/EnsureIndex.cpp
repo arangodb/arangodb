@@ -1,0 +1,170 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
+////////////////////////////////////////////////////////////////////////////////
+
+#include <velocypack/Iterator.h>
+
+#include "EnsureIndex.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Databases.h"
+#include "VocBase/Methods/Indexes.h"
+
+using namespace arangodb;
+using namespace arangodb::application_features;
+using namespace arangodb::maintenance;
+using namespace arangodb::methods;
+
+EnsureIndex::EnsureIndex(
+  MaintenanceFeature& feature, ActionDescription const& desc) :
+  ActionBase(feature, desc) {
+
+  std::stringstream error;
+
+  if (!desc.has(DATABASE)) {
+    error << "database must be specified. ";
+  }
+  TRI_ASSERT(desc.has(DATABASE));
+
+  if (!desc.has(COLLECTION)) {
+    error << "cluster-wide collection must be specified. ";
+  }
+  TRI_ASSERT(desc.has(COLLECTION));
+
+  if (!desc.has(SHARD)) {
+    error << "shard must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SHARD));
+
+  if (!properties().hasKey(ID)) {
+    error << "index properties must include id. ";
+  }
+  TRI_ASSERT(properties().hasKey(ID));
+
+  if (!desc.has(StaticStrings::IndexType)) {
+    error << "index type must be specified - discriminatory. ";
+  }
+  TRI_ASSERT(desc.has(StaticStrings::IndexType));
+
+  if (!desc.has(FIELDS)) {
+    error << "index fields must be specified - discriminatory. ";
+  }
+  TRI_ASSERT(desc.has(FIELDS));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
+
+}
+
+EnsureIndex::~EnsureIndex() {};
+
+bool EnsureIndex::first() {
+
+  arangodb::Result res;
+
+  auto const& database = _description.get(DATABASE);
+  auto const& collection = _description.get(COLLECTION);
+  auto const& shard = _description.get(SHARD);
+  auto const& id = properties().get(ID).copyString();
+
+  VPackBuilder body;
+  
+  try { // now try to guard the database
+    
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
+    
+    auto col = vocbase->lookupCollection(shard);
+    if (col == nullptr) {
+      std::stringstream error;
+      error << "failed to lookup local collection " << shard
+            << " in database " + database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      return false;
+    }
+    
+    auto const props = properties();
+    { VPackObjectBuilder b(&body);
+      body.add(COLLECTION, VPackValue(shard));
+      for (auto const& i : VPackObjectIterator(props)) {
+        body.add(i.key.copyString(), i.value);
+      }}
+    
+    VPackBuilder index;
+    _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    
+    if (_result.ok()) {
+      VPackSlice created = index.slice().get("isNewlyCreated");
+      std::string log =  std::string("Index ") + id;
+      log += (created.isBool() && created.getBool() ? std::string(" created")
+              : std::string(" updated"));
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << log;
+    } else {
+      std::stringstream error;
+      error << "failed to ensure index " << body.slice().toJson() << " "
+            << _result.errorMessage();
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+
+      VPackBuilder eb;
+      { VPackObjectBuilder o(&eb);
+        eb.add("error", VPackValue(true));
+        eb.add("errorMessage", VPackValue(_result.errorMessage()));
+        eb.add("errorNum", VPackValue(_result.errorNumber()));
+        eb.add(ID, VPackValue(id)); }
+
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "Reporting error " << eb.toJson();
+
+      // FIXMEMAINTENANCE: If this action is refused due to missing
+      // components in description, no IndexError gets produced. But
+      // then, if you are missing components, such as database name, will
+      // you be able to produce an IndexError?
+ 
+      _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      _result.reset(TRI_ERROR_INTERNAL, error.str());
+      notify();
+      return false;
+    }
+    
+  } catch (std::exception const& e) { // Guard failed?
+    std::stringstream error;
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    return false;
+  }
+
+  notify();
+  return false;
+    
+}

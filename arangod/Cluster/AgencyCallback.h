@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_AGENCYCALLBACK_H
-#define ARANGODB_CLUSTER_AGENCYCALLBACK_H
+#ifndef ARANGODB_CLUSTER_AGENCY_CALLBACK_H
+#define ARANGODB_CLUSTER_AGENCY_CALLBACK_H
 
 #include "Basics/Common.h"
 
@@ -81,7 +81,7 @@ namespace arangodb {
 /// } 
 ///
 /// In this way, the mutex of the condition variable can at the same time
-/// organise mutual exclusion of the callback function and the checking of
+/// organize mutual exclusion of the callback function and the checking of
 /// the termination condition in the main thread.
 /// The wait for condition variable can conveniently be done with the
 /// method executeByCallbackOrTimeout below.
@@ -103,10 +103,13 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief refetch the value, and call the callback function with it, 
   /// this is called whenever an HTTP request is received from the agency
-  /// (see RestAgencyCallbacksHandler and AgencyCallbackRegistry).
+  /// (see RestAgencyCallbacksHandler and AgencyCallbackRegistry). If the
+  /// forceCheck flag is set, a check is initiated even if the value has
+  /// not changed. This is needed in case other outside conditions could
+  /// have changed (like a Plan change).
   //////////////////////////////////////////////////////////////////////////////
 
-  void refetchAndUpdate(bool needToAcquireMutex = true);
+  void refetchAndUpdate(bool needToAcquireMutex, bool forceCheck);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
@@ -131,7 +134,7 @@ private:
 
   // Compare last value and newly read one and call execute if the are
   // different:
-  void checkValue(std::shared_ptr<VPackBuilder>);
+  void checkValue(std::shared_ptr<VPackBuilder>, bool forceCheck);
 };
 
 }

@@ -1,16 +1,17 @@
 Usual Query Patterns Examples
 =============================
 
-Those pages contain some common query patterns with examples. For better
+These pages contain some common query patterns with examples. For better
 understandability the query results are also included directly below each query.
 
-Normally you would want to run queries on data stored in collections. This section
+Normally, you would want to run queries on data stored in collections. This section
 will provide several examples for that.
 
 Some of the following example queries are executed on a collection 'users' with the data provided here below.
 
 
-### Things to consider when running queries on collections
+Things to consider when running queries on collections
+------------------------------------------------------
 
 Note that all documents created in any collections will automatically get the
 following server-generated attributes:
@@ -32,7 +33,8 @@ establishing references / links between documents. These features have been left
 for brevity as well.
 
 
-### Example data
+Example data
+------------
 
 Some of the following example queries are executed on a collection *users*
 with the following initial data:
@@ -109,6 +111,3 @@ relationships between users. The example data for *relations* are as follows:
   { "from": 100, "to": 206, "type": "girlfriend" }
 ]
 ```
-
-
-

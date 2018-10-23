@@ -6,7 +6,12 @@ It allows you to define a graph that is spread across several edge and document 
 This allows you to structure your models in line with your domain and group them logically in collections giving you the power to query them in the same graph queries.
 There is no need to include the referenced collections within the query, this module will handle it for you.
 
-#### Three Steps to create a graph
+New to ArangoDB? Take the free
+[ArangoDB Graph Course](https://www.arangodb.com/arangodb-graph-course)
+for freshers.
+
+Three Steps to create a graph
+-----------------------------
 
 * Create a graph
 

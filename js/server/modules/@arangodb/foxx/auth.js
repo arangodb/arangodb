@@ -23,6 +23,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const crypto = require('@arangodb/crypto');
+const Y2K = Date.UTC(2000, 0, 1);
+const DAYS_PER_YEAR = 365.242199;
+const MS_PER_YEAR = DAYS_PER_YEAR * 24 * 60 * 60 * 1000;
 
 module.exports = function auth (cfg) {
   if (typeof cfg === 'string') {
@@ -33,9 +36,10 @@ module.exports = function auth (cfg) {
   }
   const hashMethod = cfg.method || 'sha256';
   const saltLength = cfg.saltLength || 16;
+  const workFactor = cfg.workFactor || 1;
 
   return {
-    verify(authData, password) {
+    verify(authData, password = '') {
       if (typeof authData === 'string') {
         authData = {hash: authData};
       } else if (!authData) {
@@ -44,13 +48,28 @@ module.exports = function auth (cfg) {
       const method = authData.method || hashMethod;
       const salt = authData.salt || '';
       const storedHash = authData.hash || '';
-      const generatedHash = crypto[method](salt + password);
+      const iter = authData.iter || 1;
+      const generatedHash = (
+        method === 'pbkdf2'
+        ? crypto.pbkdf2(salt, password, iter, salt.length)
+        : crypto[method](salt + password)
+      );
       return crypto.constantEquals(storedHash, generatedHash);
     },
 
     create(password) {
+      const salt = crypto.genRandomSalt(saltLength);
       const method = hashMethod;
-      const salt = crypto.genRandomAlphaNumbers(saltLength);
+      if (method === 'pbkdf2') {
+        const years = (Date.now() - Y2K) / MS_PER_YEAR;
+        const iter = Math.floor(1000 * Math.pow(2, years / 2) * workFactor);
+        return {
+          method,
+          iter,
+          salt,
+          hash: crypto.pbkdf2(salt, password, iter, saltLength)
+        };
+      }
       const hash = crypto[method](salt + password);
       return {method, salt, hash};
     }

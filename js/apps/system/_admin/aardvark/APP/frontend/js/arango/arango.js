@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
+/* global Blob, window, Joi, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -83,16 +83,16 @@
     },
 
     getCurrentJwt: function () {
-      return localStorage.getItem('jwt');
+      return sessionStorage.getItem('jwt');
     },
 
     getCurrentJwtUsername: function () {
-      return localStorage.getItem('jwtUser');
+      return sessionStorage.getItem('jwtUser');
     },
 
     setCurrentJwt: function (jwt, username) {
-      localStorage.setItem('jwt', jwt);
-      localStorage.setItem('jwtUser', username);
+      sessionStorage.setItem('jwt', jwt);
+      sessionStorage.setItem('jwtUser', username);
     },
 
     checkJwt: function () {
@@ -176,14 +176,18 @@
         if (!$(element).hasClass('nav-header')) {
           if ($(element).find('input').attr('checked')) {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-circle-o');
               $(element).find('i').addClass('fa-dot-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-square-o');
               $(element).find('i').addClass('fa-check-square-o');
             }
           } else {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-dot-circle-o');
               $(element).find('i').addClass('fa-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-check-square-o');
               $(element).find('i').addClass('fa-square-o');
             }
           }
@@ -248,13 +252,6 @@
 
     fixTooltips: function (selector, placement) {
       arangoHelper.createTooltips(selector, placement);
-      /*
-      $(selector).tooltip({
-        placement: placement,
-        hide: false,
-        show: false
-      });
-      */
     },
 
     currentDatabase: function (callback) {
@@ -444,6 +441,32 @@
         },
         Shards: {
           route: '#shards'
+        }
+      };
+
+      menus[activeKey].active = true;
+      if (disabled) {
+        menus[disabled].disabled = true;
+      }
+      this.buildSubNavBar(menus);
+    },
+
+    buildServicesSubNav: function (activeKey, disabled) {
+      var menus = {
+        Store: {
+          route: '#services/install'
+        },
+        Upload: {
+          route: '#services/install/upload'
+        },
+        New: {
+          route: '#services/install/new'
+        },
+        GitHub: {
+          route: '#services/install/github'
+        },
+        Remote: {
+          route: '#services/install/remote'
         }
       };
 
@@ -646,7 +669,13 @@
       docFrameView.customDeleteFunction = function () {
         window.modalView.hide();
         $('.arangoFrame').hide();
-      // callback()
+      };
+
+      docFrameView.customSaveFunction = function (data) {
+        self.closeDocEditor();
+        if (callback) {
+          callback(data);
+        }
       };
 
       $('.arangoFrame #deleteDocumentButton').click(function () {
@@ -831,18 +860,25 @@
         var callback = function (error, data, toRun) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not detect collection type');
+            if (toRun) {
+              toRun(error);
+            }
           } else {
             this.CollectionTypes[identifier] = data.type;
             if (this.CollectionTypes[identifier] === 3) {
-              toRun(false, 'edge');
+              toRun(false, 'edge', data);
             } else {
-              toRun(false, 'document');
+              toRun(false, 'document', data);
             }
           }
         }.bind(this);
         this.arangoDocumentStore.getCollectionInfo(identifier, callback, toRun);
       } else {
-        toRun(false, this.CollectionTypes[identifier]);
+        if (this.CollectionTypes[identifier] === 3) {
+          toRun(false, 'edge');
+        } else {
+          toRun(false, 'document');
+        }
       }
     },
 
@@ -974,6 +1010,9 @@
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
       }
+      if (type === 'json') {
+        dlType = 'application/json; charset=utf-8';
+      }
 
       if (dlType) {
         var blob = new Blob([obj], {type: dlType});
@@ -993,27 +1032,60 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url)
-        .success(function (result, dummy, request) {
-          if (callback) {
-            callback(result);
-            return;
-          }
+      $.ajax(url).success(function (result, dummy, request) {
+        if (callback) {
+          callback(result);
+          return;
+        }
 
-          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
-          var blobUrl = window.URL.createObjectURL(blob);
+        var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+        var blobUrl = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.href = blobUrl;
+        a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+        a.click();
+
+        window.setTimeout(function () {
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 500);
+      });
+    },
+
+    downloadPost: function (url, body, callback, errorCB) {
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function () {
+        if (this.readyState === 4 && this.status === 200) {
+          if (callback) {
+            callback();
+          }
           var a = document.createElement('a');
+          a.download = this.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
           document.body.appendChild(a);
-          a.style = 'display: none';
+          var blobUrl = window.URL.createObjectURL(this.response);
           a.href = blobUrl;
-          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
           a.click();
 
           window.setTimeout(function () {
             window.URL.revokeObjectURL(blobUrl);
             document.body.removeChild(a);
           }, 500);
-        });
+        } else {
+          if (this.readyState === 4) {
+            if (errorCB !== undefined) {
+              errorCB(this.status, this.statusText);
+            }
+          }
+        }
+      };
+      xhr.open('POST', url);
+      if (window.arangoHelper.getCurrentJwt()) {
+        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      }
+      xhr.responseType = 'blob';
+      xhr.send(body);
     },
 
     checkCollectionPermissions: function (collectionID, roCallback) {
@@ -1038,7 +1110,7 @@
       });
     },
 
-    checkDatabasePermissions: function (roCallback) {
+    checkDatabasePermissions: function (roCallback, rwCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser) +
         '/database/' + encodeURIComponent(frontendConfig.db));
@@ -1051,14 +1123,149 @@
         success: function (data) {
           // fetching available dbs and permissions
           if (data.result === 'ro') {
-            roCallback();
+            if (roCallback) {
+              roCallback(true);
+            }
+          } else if (data.result === 'rw') {
+            if (rwCallback) {
+              rwCallback(false);
+            }
+          } else if (data.result === 'none') {
+            if (!frontendConfig.authenticationEnabled) {
+              if (rwCallback) {
+                rwCallback(false);
+              }
+            }
           }
         },
         error: function (data) {
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
-    }
+    },
 
+    getFoxxFlag: function () {
+      var flag;
+
+      if ($('#new-app-replace').prop('checked')) {
+        flag = true;
+      } else {
+        if ($('#new-app-teardown').prop('checked')) {
+          flag = false;
+        }
+      }
+
+      return flag;
+    },
+
+    createMountPointModal: function (callback, mode, mountpoint) {
+      var buttons = []; var tableContent = [];
+
+      var mountPoint;
+
+      if (window.App.replaceApp) {
+        mountPoint = window.App.replaceAppData.mount;
+        mountPoint = mountPoint.substr(1, mountPoint.length);
+      }
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          'new-app-mount',
+          'Mount point',
+          mountPoint,
+          'The path the app will be mounted. Is not allowed to start with _',
+          'mountpoint',
+          false,
+          [
+            {
+              rule: Joi.string().required(),
+              msg: ''
+            }
+          ]
+        )
+      );
+
+      tableContent.push(
+        window.modalView.createCheckboxEntry(
+          'new-app-teardown',
+          'Run setup?',
+          true,
+          "Should this app's setup script be executed after installing the app?",
+          true
+        )
+      );
+
+      if (window.App.replaceApp) {
+        tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-app-replace',
+            'Keep configuration and dependency files?',
+            true,
+            "Should this app's configuration be saved before replacing the app?",
+            false
+          )
+        );
+
+        buttons.push(
+          window.modalView.createSuccessButton('Replace', callback)
+        );
+      } else {
+        buttons.push(
+          window.modalView.createSuccessButton('Install', callback)
+        );
+      }
+
+      var titleString = 'Create Foxx Service';
+      if (window.App.replaceApp) {
+        titleString = 'Replace Foxx Service (' + window.App.replaceAppData.mount + ')';
+      }
+
+      window.modalView.show(
+        'modalTable.ejs',
+        titleString,
+        buttons,
+        tableContent
+      );
+
+      if (!window.App.replaceApp) {
+        window.modalView.modalBindValidation({
+          id: 'new-app-mount',
+          validateInput: function () {
+            return [
+              {
+                rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-\/]+))+$/i),
+                msg: 'May not contain /APP'
+              },
+              {
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-\/]+)+$/),
+                msg: 'Can only contain [a-zA-Z0-9_-/]'
+              },
+              {
+                rule: Joi.string().regex(/([^_]|_open\/)/),
+                msg: 'Mountpoints with _ are reserved for internal use'
+              },
+              {
+                rule: Joi.string().regex(/[^/]$/),
+                msg: 'May not end with /'
+              },
+              {
+                rule: Joi.string().required().min(1),
+                msg: 'Has to be non-empty'
+              }
+            ];
+          }
+        });
+      } else {
+        $('#new-app-mount').attr('disabled', 'true');
+        $('#new-app-replace').attr('checked', false);
+        $('#new-app-replace').on('click', function () {
+          if ($('#new-app-replace').prop('checked')) {
+            $('#new-app-teardown').attr('disabled', true);
+          } else {
+            $('#new-app-teardown').attr('disabled', false);
+          }
+        });
+      }
+    }
   };
 }());

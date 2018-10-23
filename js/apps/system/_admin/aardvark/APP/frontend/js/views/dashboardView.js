@@ -198,7 +198,7 @@
 
     toggleViews: function (e) {
       var id = e.currentTarget.id.split('-')[0]; var self = this;
-      var views = ['replication', 'requests', 'system'];
+      var views = ['requests', 'system'];
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -545,55 +545,6 @@
       cuts[counter] : cuts[counter - 1] + ' - ' + cuts[counter];
     },
 
-    renderReplicationStatistics: function (object) {
-      $('#repl-numbers table tr:nth-child(1) > td:nth-child(2)').html(object.state.totalEvents);
-      $('#repl-numbers table tr:nth-child(2) > td:nth-child(2)').html(object.state.totalRequests);
-      $('#repl-numbers table tr:nth-child(3) > td:nth-child(2)').html(object.state.totalFailedConnects);
-
-      if (object.state.lastAppliedContinuousTick) {
-        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html(object.state.lastAppliedContinuousTick);
-      } else {
-        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html('no data available').addClass('no-data');
-      }
-      if (object.state.lastProcessedContinuousTick) {
-        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html(object.state.lastProcessedContinuousTick);
-      } else {
-        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html('no data available').addClass('no-data');
-      }
-      if (object.state.lastAvailableContinuousTick) {
-        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html(object.state.lastAvailableContinuousTick);
-      } else {
-        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html('no data available').addClass('no-data');
-      }
-
-      $('#repl-progress table tr:nth-child(1) > td:nth-child(2)').html(object.state.progress.message);
-      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.time);
-      $('#repl-progress table tr:nth-child(3) > td:nth-child(2)').html(object.state.progress.failedConnects);
-    },
-
-    getReplicationStatistics: function () {
-      var self = this;
-
-      $.ajax(
-        arangoHelper.databaseUrl('/_api/replication/applier-state'),
-        {async: true}
-      ).done(
-        function (d) {
-          if (d.hasOwnProperty('state')) {
-            var running;
-            if (d.state.running) {
-              running = 'active';
-            } else {
-              running = 'inactive';
-            }
-            running = '<span class="state">' + running + '</span>';
-            $('#replication-chart .dashboard-sub-bar').html('Replication ' + running);
-
-            self.renderReplicationStatistics(d);
-          }
-        });
-    },
-
     checkState: function () {
       var self = this;
 
@@ -774,11 +725,10 @@
             callback(d.enabled, modalView);
           }
           self.updateCharts();
-        }).error(function (e) {
-          console.log('stat fetch req error:' + e);
+        })
+        .error(function (e) {
+          arangoHelper.arangoError('Statistics', 'stat fetch req error:' + JSON.stringify(e));
         });
-
-      this.getReplicationStatistics();
     },
 
     getHistoryStatistics: function (figure) {
@@ -809,7 +759,7 @@
           self.history[self.server][figure] = [];
 
           for (i = 0; i < d.times.length; ++i) {
-            self.mergeDygraphHistory(d, i, true);
+            self.mergeDygraphHistory(d, i);
           }
         }
       );
@@ -863,39 +813,39 @@
       if (self.reRender && self.isVisible) {
         nv.addGraph(function () {
           self.residentChart = nv.models.multiBarHorizontalChart()
-          .x(function (d) {
-            return d.label;
-          })
-          .y(function (d) {
-            return d.value;
-          })
-          .width(dimensions.width)
-          .height(dimensions.height)
-          .margin({
-            top: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-            right: 1,
-            bottom: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-            left: 1
-          })
-          .showValues(false)
-          .showYAxis(false)
-          .showXAxis(false)
-          // .transitionDuration(100)
-          // .tooltip(false)
-          .showLegend(false)
-          .showControls(false)
-          .stacked(true);
+            .x(function (d) {
+              return d.label;
+            })
+            .y(function (d) {
+              return d.value;
+            })
+            .width(dimensions.width)
+            .height(dimensions.height)
+            .margin({
+              top: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
+              right: 1,
+              bottom: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
+              left: 1
+            })
+            .showValues(false)
+            .showYAxis(false)
+            .showXAxis(false)
+            // .transitionDuration(100)
+            // .tooltip(false)
+            .showLegend(false)
+            .showControls(false)
+            .stacked(true);
 
           self.residentChart.yAxis
-          .tickFormat(function (d) {
-            return d + '%';
-          })
-          .showMaxMin(false);
+            .tickFormat(function (d) {
+              return d + '%';
+            })
+            .showMaxMin(false);
           self.residentChart.xAxis.showMaxMin(false);
 
           d3.select('#residentSizeChart svg')
-          .datum(self.history[self.server].residentSizeChart)
-          .call(self.residentChart);
+            .datum(self.history[self.server].residentSizeChart)
+            .call(self.residentChart);
 
           d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
 
@@ -905,10 +855,10 @@
           }
 
           d3.select('.dashboard-bar-chart-title .percentage')
-          .html(currentA + ' (' + currentP + ' %)');
+            .html(currentA + ' (' + currentP + ' %)');
 
           d3.select('.dashboard-bar-chart-title .absolut')
-          .html(data[0]);
+            .html(data[0]);
 
           nv.utils.windowResize(self.residentChart.update);
 
@@ -918,7 +868,7 @@
             function () {
               // no idea why this has to be empty, well anyways...
             }
-           );
+          );
         });
         self.reRender = false;
       } else {
@@ -932,14 +882,14 @@
 
             // update labels
             d3.select('.dashboard-bar-chart-title .percentage')
-            .html(currentA + ' (' + currentP + ' %)');
+              .html(currentA + ' (' + currentP + ' %)');
             d3.select('.dashboard-bar-chart-title .absolut')
-            .html(data[0]);
+              .html(data[0]);
 
             // update data
             d3.select('#residentSizeChart svg')
-            .datum(self.history[self.server].residentSizeChart)
-            .call(self.residentChart);
+              .datum(self.history[self.server].residentSizeChart)
+              .call(self.residentChart);
 
             // trigger resize
             nv.utils.windowResize(self.residentChart.update);
@@ -1011,50 +961,50 @@
             }
 
             self.distributionCharts[k] = nv.models.multiBarHorizontalChart()
-            .x(function (d) {
-              return d.label;
-            })
-            .y(function (d) {
-              return d.value;
-            })
-            .width(dimensions.width)
-            .height(dimensions.height)
-            .margin({
-              top: 5,
-              right: 20,
-              bottom: marginBottom,
-              left: marginLeft
-            })
-            .showValues(false)
-            .showYAxis(true)
-            .showXAxis(true)
-            // .transitionDuration(100)
-            // .tooltips(false)
-            .showLegend(false)
-            .showControls(false)
-            .forceY([0, 1]);
+              .x(function (d) {
+                return d.label;
+              })
+              .y(function (d) {
+                return d.value;
+              })
+              .width(dimensions.width)
+              .height(dimensions.height)
+              .margin({
+                top: 5,
+                right: 20,
+                bottom: marginBottom,
+                left: marginLeft
+              })
+              .showValues(false)
+              .showYAxis(true)
+              .showXAxis(true)
+              // .transitionDuration(100)
+              // .tooltips(false)
+              .showLegend(false)
+              .showControls(false)
+              .forceY([0, 1]);
 
             self.distributionCharts[k].yAxis
-            .showMaxMin(false);
+              .showMaxMin(false);
 
             d3.select('.nv-y.nv-axis')
-            .selectAll('text')
-            .attr('transform', 'translate (0, ' + bottomSpacer + ')');
+              .selectAll('text')
+              .attr('transform', 'translate (0, ' + bottomSpacer + ')');
 
             self.distributionCharts[k].yAxis
-            .tickValues(tickMarks)
-            .tickFormat(function (d) {
-              return fmtNumber(((d * 100 * 100) / 100), 0) + '%';
-            });
+              .tickValues(tickMarks)
+              .tickFormat(function (d) {
+                return fmtNumber(((d * 100 * 100) / 100), 0) + '%';
+              });
 
             if (self.history[self.server][k]) {
               d3.select(selector)
-              .datum(self.history[self.server][k])
-              .call(self.distributionCharts[k]);
+                .datum(self.history[self.server][k])
+                .call(self.distributionCharts[k]);
             } else {
               d3.select(selector)
-              .datum([])
-              .call(self.distributionCharts[k]);
+                .datum([])
+                .call(self.distributionCharts[k]);
             }
 
             nv.utils.windowResize(self.distributionCharts[k].update);
@@ -1079,12 +1029,12 @@
               // update data
               if (self.history[self.server][k]) {
                 d3.select(selector)
-                .datum(self.history[self.server][k])
-                .call(self.distributionCharts[k]);
+                  .datum(self.history[self.server][k])
+                  .call(self.distributionCharts[k]);
               } else {
                 d3.select(selector)
-                .datum([])
-                .call(self.distributionCharts[k]);
+                  .datum([])
+                  .call(self.distributionCharts[k]);
               }
 
               // trigger resize
@@ -1115,9 +1065,14 @@
         } else {
           self.getStatistics();
         }
-      },
-        self.interval
+      }, self.interval
       );
+    },
+
+    clearInterval: function () {
+      if (this.timer) {
+        clearInterval(this.timer);
+      }
     },
 
     resize: function () {
@@ -1139,7 +1094,29 @@
 
     template: templateEngine.createTemplate('dashboardView.ejs'),
 
+    checkEnabledStatistics: function () {
+      if (!frontendConfig.statisticsEnabled || frontendConfig.db !== '_system') {
+        $(this.el).html('');
+        if (this.server) {
+          $(this.el).append(
+            '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
+          );
+        } else {
+          $(this.el).append(
+            '<div style="color: red">Server statistics are disabled.</div>'
+          );
+        }
+        return false;
+      } else {
+        return true;
+      }
+    },
+
     render: function (modalView) {
+      if (!this.checkEnabledStatistics()) {
+        return;
+      }
+
       if (this.serverInfo === undefined) {
         this.serverInfo = {
           isDBServer: false
@@ -1153,20 +1130,6 @@
               hideStatistics: false
             }));
             this.getNodeInfo();
-          }
-
-          if (!enabled || frontendConfig.db !== '_system') {
-            $(this.el).html('');
-            if (this.server) {
-              $(this.el).append(
-                '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
-              );
-            } else {
-              $(this.el).append(
-                '<div style="color: red">Server statistics are disabled.</div>'
-              );
-            }
-            return;
           }
 
           this.prepareDygraphs();
@@ -1227,7 +1190,9 @@
           hideStatistics: true
         }));
         // hide menu entries
-        $('.subMenuEntry').remove();
+        if (!frontendConfig.isCluster) {
+          $('#subNavigationBar .breadcrumb').html('');
+        }
         this.getNodeInfo();
       }
     }

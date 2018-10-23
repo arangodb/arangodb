@@ -83,7 +83,9 @@
         }
       }.bind(this);
 
-      window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
+      if (!frontendConfig.ldapEnabled) {
+        window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
+      }
     },
 
     initialize: function () {
@@ -406,9 +408,11 @@
                 arangoHelper.arangoError('Error', data.errorMessage);
               } catch (ignore) {}
             } else {
-              this.updateCollectionsView();
+              if (window.location.hash === '#collections') {
+                this.updateCollectionsView();
+              }
+              arangoHelper.arangoNotification('Collection', 'Collection "' + data.name + '" successfully created.');
             }
-            window.modalView.hide();
           }.bind(this);
 
           var tmpObj = {
@@ -424,6 +428,8 @@
             tmpObj.journalSize = collSize;
           }
           this.collection.newCollection(tmpObj, callback);
+          window.modalView.hide();
+          arangoHelper.arangoNotification('Collection', 'Collection "' + collName + '" will be created.');
         }
       }.bind(this);
 

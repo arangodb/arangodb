@@ -24,6 +24,7 @@
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
 #include "Aql/QueryResult.h"
+#include "Aql/ExecutionPlan.h"
 
 #include <sstream>
 
@@ -39,8 +40,7 @@ Parser::Parser(Query* query)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _stack(),
-      _isModificationQuery(false) {
+      _stack() {
   _stack.reserve(4);
     
   QueryString const& qs = queryString();
@@ -55,15 +55,21 @@ Parser::~Parser() {}
 /// @brief set data for write queries
 bool Parser::configureWriteQuery(AstNode const* collectionNode,
                                  AstNode* optionNode) {
-  // now track which collection is going to be modified
-  _ast->addWriteCollection(collectionNode);
+  bool isExclusiveAccess = false;
 
-  if (optionNode != nullptr && !optionNode->isConstant()) {
-    _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
+  if (optionNode != nullptr) {
+    if (!optionNode->isConstant()) {
+      _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
+    }
+
+    isExclusiveAccess = ExecutionPlan::hasExclusiveAccessOption(optionNode);
   }
+ 
+  // now track which collection is going to be modified
+  _ast->addWriteCollection(collectionNode, isExclusiveAccess);
 
   // register that we have seen a modification operation
-  _isModificationQuery = true;
+  _query->setIsModificationQuery();
 
   return true;
 }
@@ -86,19 +92,15 @@ QueryResult Parser::parse(bool withDetails) {
   TRI_ASSERT(_scanner != nullptr);
   Aqlset_extra(this, _scanner);
 
-  try {
-    // parse the query string
-    if (Aqlparse(this)) {
-      // lexing/parsing failed
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
-    }
+  auto guard = scopeGuard([this]() {
+    Aqllex_destroy(_scanner);
+    _scanner = nullptr;
+  });
 
-    Aqllex_destroy(_scanner);
-    _scanner = nullptr;
-  } catch (...) {
-    Aqllex_destroy(_scanner);
-    _scanner = nullptr;
-    throw;
+  // parse the query string
+  if (Aqlparse(this)) {
+    // lexing/parsing failed
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
   }
 
   // end main scope

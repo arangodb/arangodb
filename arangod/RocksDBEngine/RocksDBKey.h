@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_H
@@ -28,7 +28,8 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/LocalDocumentId.h"
+#include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
 
@@ -71,7 +72,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
   //////////////////////////////////////////////////////////////////////////////
-  void constructDocument(uint64_t objectId, TRI_voc_rid_t revisionId);
+  void constructDocument(uint64_t objectId, LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a primary index
@@ -92,7 +93,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructEdgeIndexValue(uint64_t indexId,
                                arangodb::StringRef const& vertexId,
-                               TRI_voc_rid_t revisionId);
+                               LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a user-defined,
@@ -103,7 +104,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructVPackIndexValue(uint64_t indexId,
                                 VPackSlice const& indexValues,
-                                TRI_voc_rid_t revisionId);
+                                LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a unique user-defined
@@ -120,13 +121,12 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructFulltextIndexValue(uint64_t indexId,
                                    arangodb::StringRef const& word,
-                                   TRI_voc_rid_t revisionId);
+                                   LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for a geoIndexValue
+  /// @brief Create a fully-specified key for an S2CellId
   //////////////////////////////////////////////////////////////////////////////
-  void constructGeoIndexValue(uint64_t indexId, int32_t offset,
-                              bool isSlot);
+  void constructGeoIndexValue(uint64_t indexId, uint64_t value, LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
@@ -166,7 +166,7 @@ class RocksDBKey {
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBEntryType type(RocksDBKey const&);
-  static inline RocksDBEntryType type(rocksdb::Slice const& slice) {
+  static RocksDBEntryType type(rocksdb::Slice const& slice) {
     return type(slice.data(), slice.size());
   }
 
@@ -213,12 +213,18 @@ class RocksDBKey {
   static uint64_t objectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the revisionId from a key
+  /// @brief Extracts the LocalDocumentId from a key
   ///
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBKey const&);
-  static TRI_voc_rid_t revisionId(RocksDBEntryType type, rocksdb::Slice const&);
+  static LocalDocumentId documentId(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the LocalDocumentId from an index key
+  ///
+  /// May be called only on Index keys. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key
@@ -248,12 +254,13 @@ class RocksDBKey {
   static VPackSlice indexedVPack(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the geo pot offset
+  /// @brief Extracts the geospatial cell id
   ///
   /// May be called only on GeoIndexValues
   //////////////////////////////////////////////////////////////////////////////
-  static std::pair<bool, int32_t> geoValues(rocksdb::Slice const& slice);
+  static uint64_t geoValue(rocksdb::Slice const& slice);
 
+  /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
  public:
@@ -269,12 +276,12 @@ class RocksDBKey {
   }
 
  private:
-  static inline RocksDBEntryType type(char const* data, size_t size) {
+  /// @brief Entry type in the definitions CF
+  static RocksDBEntryType type(char const* data, size_t size) {
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(size >= sizeof(char));
 
     const auto type = static_cast<RocksDBEntryType>(data[0]);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     switch (type) {
       case RocksDBEntryType::Database:
       case RocksDBEntryType::Collection:
@@ -286,9 +293,8 @@ class RocksDBKey {
       case RocksDBEntryType::View:
         return type;
       default:
-        TRI_ASSERT(false);
+        return RocksDBEntryType::Placeholder;
     }
-#endif
     return type;
   }
 
@@ -299,7 +305,7 @@ class RocksDBKey {
 
   // valid on data entries like document, edge, vpack
   static TRI_voc_cid_t objectId(char const* data, size_t size);
-  static TRI_voc_rid_t revisionId(RocksDBEntryType, char const*, size_t);
+  static LocalDocumentId documentId(RocksDBEntryType, char const*, size_t);
   static StringRef primaryKey(char const* data, size_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
@@ -310,6 +316,8 @@ class RocksDBKey {
   std::string _buffer;
   rocksdb::Slice _slice;
 };
+
+std::ostream& operator<<(std::ostream&, RocksDBKey const&);
 
 }  // namespace arangodb
 

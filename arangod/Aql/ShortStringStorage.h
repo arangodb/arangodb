@@ -48,7 +48,7 @@ class ShortStringStorage {
 
  public:
   /// @brief maximum length of strings in short string storage
-  static size_t const MaxStringLength;
+  static constexpr size_t maxStringLength = 127;
 
  private:
   ResourceMonitor* _resourceMonitor;

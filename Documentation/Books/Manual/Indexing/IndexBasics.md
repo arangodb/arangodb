@@ -1,5 +1,5 @@
 Index basics
-------------
+============
 
 Indexes allow fast access to documents, provided the indexed attribute(s)
 are used in a query. While ArangoDB automatically indexes some system
@@ -11,6 +11,9 @@ can be created by specifying the names of the index attributes.
 Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
+Learn how to use different indexes efficiently by going through the
+[ArangoDB Performance Course](https://www.arangodb.com/arangodb-performance-course/).
+
 The system attributes `_id`, `_key`, `_from` and `_to` are automatically indexed
 by ArangoDB, without the user being required to create extra indexes for them.
 `_id` and `_key` are covered by a collection's primary key, and `_from` and `_to`
@@ -21,7 +24,8 @@ indexing `_key`, `_rev`, `_from`, and `_to` is.
 
 ArangoDB provides the following index types:
 
-### Primary Index
+Primary Index
+-------------
 
 For each collection there will always be a *primary index* which is a hash index 
 for the [document keys](../Appendix/Glossary.md#document-key) (`_key` attribute)
@@ -45,7 +49,8 @@ The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
 
 
-### Edge Index
+Edge Index
+----------
 
 Every [edge collection](../Appendix/Glossary.md#edge-collection) also has an 
 automatically created *edge index*. The edge index provides quick access to
@@ -77,7 +82,8 @@ indexes.
 An edge index cannot be dropped or changed.
 
 
-### Hash Index
+Hash Index
+----------
 
 A hash index can be used to quickly find documents with specific attribute values.
 The hash index is unsorted, so it supports equality lookups but no range queries or sorting.
@@ -144,7 +150,8 @@ Hash indexes support [indexing array values](#indexing-array-values) if the inde
 attribute name is extended with a <i>[\*]</i>.
 
 
-### Skiplist Index
+Skiplist Index
+--------------
 
 A skiplist is a sorted index structure. It can be used to quickly find documents 
 with specific attribute values, for range queries and for returning documents from
@@ -175,7 +182,7 @@ the `SORT` clause of the query in the same order as they appear in the index def
 Skiplist indexes are always created in ascending order, but they can be used to access
 the indexed elements in both ascending or descending order. However, for a combined index
 (an index on multiple attributes) this requires that the sort orders in a single query
-as specified in the `SORT` clause must be either all ascending (optionally ommitted 
+as specified in the `SORT` clause must be either all ascending (optionally omitted 
 as ascending is the default) or all descending. 
 
 For example, if the skiplist index is created on attributes `value1` and `value2` 
@@ -236,7 +243,8 @@ Skiplist indexes support [indexing array values](#indexing-array-values) if the 
 attribute name is extended with a <i>[\*]</i>`.
 
 
-### Persistent Index
+Persistent Index
+----------------
 
 The persistent index is a sorted index with persistence. The index entries are written to
 disk when documents are stored or updated. That means the index entries do not need to be
@@ -260,7 +268,8 @@ operations, but only if either all index attributes are provided in a query, or 
 prefix of the index attributes is specified.
 
 
-### Geo Index
+Geo Index
+---------
 
 Users can create additional geo indexes on one or multiple attributes in collections. 
 A geo index is used to find places on the surface of the earth fast. 
@@ -279,7 +288,8 @@ the distance function. Otherwise it will not be used for other types of queries
 or conditions.
 
 
-### Fulltext Index
+Fulltext Index
+--------------
 
 A fulltext index can be used to find words, or prefixes of words inside documents. 
 A fulltext index can be created on a single attribute only, and will index all words 
@@ -297,7 +307,8 @@ minimum length will be included in the index.
 The fulltext index is used via dedicated functions in AQL or the simple queries, but will
 not be enabled for other types of queries or conditions.
 
-### Indexing attributes and sub-attributes
+Indexing attributes and sub-attributes
+--------------------------------------
 
 Top-level as well as nested attributes can be indexed. For attributes at the top level,
 the attribute names alone are required. To index a single field, pass an array with a
@@ -319,7 +330,8 @@ db.posts.ensureIndex({ type: "hash", fields: [ "name.last" ] })
 db.posts.ensureIndex({ type: "hash", fields: [ "name.last", "name.first" ] })
 ```
 
-### Indexing array values
+Indexing array values
+---------------------
 
 If an index attribute contains an array, ArangoDB will store the entire array as the index value
 by default. Accessing individual members of the array via the index is not possible this
@@ -404,7 +416,7 @@ value `bar` will be inserted only once:
 db.posts.insert({ tags: [ "foobar", "bar", "bar" ] });
 ```
 
-This is done to avoid redudant storage of the same index value for the same document, which
+This is done to avoid redundant storage of the same index value for the same document, which
 would not provide any benefit.
 
 If an array index is declared **unique**, the de-duplication of array values will happen before 
@@ -470,22 +482,27 @@ only if the query filters on the indexed attribute using the `IN` operator. The 
 comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `ANY`, `ALL`, `NONE`) currently
 cannot use array indexes.
 
-### Vertex centric indexes
+Vertex centric indexes
+----------------------
 
 As mentioned above, the most important indexes for graphs are the edge
 indexes, indexing the `_from` and `_to` attributes of edge collections.
 They provide very quick access to all edges originating in or arriving
-at a given vertex, which allows to quickly find all neighbours of a vertex
+at a given vertex, which allows to quickly find all neighbors of a vertex
 in a graph.
 
 In many cases one would like to run more specific queries, for example
-finding amongst the edges originating in a given vertex only those
-with the 20 latest time stamps. Exactly this is achieved with "vertex 
-centric indexes". In a sense these are localized indexes for an edge
-collection, which sit at every single vertex.
+finding amongst the edges originating from a given vertex only those
+with a timestamp greater than or equal to some date and time. Exactly this
+is achieved with "vertex centric indexes". In a sense these are localized
+indexes for an edge collection, which sit at every single vertex.
 
 Technically, they are implemented in ArangoDB as indexes, which sort the 
-complete edge collection first by `_from` and then by other attributes.
+complete edge collection first by `_from` and then by other attributes
+for _OUTBOUND_ traversals, or first by `_to` and then by other attributes
+for _INBOUND_ traversals. For traversals in _ANY_ direction two indexes
+are needed, one with `_from` and the other with `_to` as first indexed field.
+
 If we for example have a skiplist index on the attributes `_from` and 
 `timestamp` of an edge collection, we can answer the above question
 very quickly with a single range lookup in the index.
@@ -503,15 +520,17 @@ would simply do
 db.edges.ensureIndex({"type":"skiplist", "fields": ["_from", "timestamp"]});
 ```
 
-Then, queries like
+in arangosh. Then, queries like
 
 ```js
 FOR v, e, p IN 1..1 OUTBOUND "V/1" edges
-  FILTER e.timestamp ALL >= "2016-11-09"
+  FILTER e.timestamp >= "2018-07-09"
   RETURN p
 ```
 
 will be considerably faster in case there are many edges originating
-in vertex `"V/1"` but only few with a recent time stamp.
-
-
+from vertex `"V/1"` but only few with a recent time stamp. Note that the
+optimizer may prefer the default edge index over vertex centric indexes
+based on the costs it estimates, even if a vertex centric index might
+in fact be faster. Vertex centric indexes are more likely to be chosen
+for highly connected graphs and with RocksDB storage engine.

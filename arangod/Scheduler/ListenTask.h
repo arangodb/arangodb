@@ -25,6 +25,9 @@
 #ifndef ARANGOD_SCHEDULER_LISTEN_TASK_H
 #define ARANGOD_SCHEDULER_LISTEN_TASK_H 1
 
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/IoTask.h"
+
 #include "Scheduler/Task.h"
 
 #include "Basics/Mutex.h"
@@ -33,13 +36,17 @@
 #include "Scheduler/Acceptor.h"
 #include "Scheduler/Socket.h"
 
+
+
+
 namespace arangodb {
-class ListenTask : virtual public rest::Task {
+
+class ListenTask : virtual public rest::IoTask {
  public:
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
-  ListenTask(EventLoop, Endpoint*);
+  ListenTask(rest::GeneralServer &server, rest::GeneralServer::IoContext&, Endpoint*);
   ~ListenTask();
 
  public:
@@ -52,18 +59,17 @@ class ListenTask : virtual public rest::Task {
   void stop();
 
  private:
-  void createPeer();
+  void accept();
 
- private:
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
-  
-  Mutex _shutdownMutex; 
+
   bool _bound;
 
   std::unique_ptr<Acceptor> _acceptor;
-  std::function<void(boost::system::error_code const&)> _handler;
+  std::function<void(asio_ns::error_code const&)> _handler;
 };
 }
+
 
 #endif

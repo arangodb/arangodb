@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierState.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -34,7 +34,7 @@ ReplicationApplierState::ReplicationApplierState()
       _lastAppliedContinuousTick(0),
       _lastAvailableContinuousTick(0),
       _safeResumeTick(0),
-      _state(ActivityState::INACTIVE),
+      _phase(ActivityPhase::INACTIVE),
       _preventStart(false),
       _stopInitialSynchronization(false),
       _progressMsg(),
@@ -43,6 +43,7 @@ ReplicationApplierState::ReplicationApplierState()
       _totalRequests(0),
       _totalFailedConnects(0),
       _totalEvents(0),
+      _totalResyncs(0),
       _skippedOperations(0) {
   _progressTime[0] = '\0';
 }
@@ -52,7 +53,7 @@ ReplicationApplierState::~ReplicationApplierState() {}
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
   reset(true);
 
-  _state = other._state;
+  _phase = other._phase;
   _lastAppliedContinuousTick = other._lastAppliedContinuousTick;
   _lastProcessedContinuousTick = other._lastProcessedContinuousTick;
   _lastAvailableContinuousTick = other._lastAvailableContinuousTick;
@@ -69,6 +70,7 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   _totalRequests = other._totalRequests;
   _totalFailedConnects = other._totalFailedConnects;
   _totalEvents = other._totalEvents;
+  _totalResyncs = other._totalResyncs;
   _skippedOperations = other._skippedOperations;
 
   return *this;
@@ -90,18 +92,34 @@ void ReplicationApplierState::reset(bool resetState) {
   _totalRequests = 0;
   _totalFailedConnects = 0;
   _totalEvents = 0;
+  _totalResyncs = 0;
   _skippedOperations = 0;
   
   if (resetState) {
-    _state = ActivityState::INACTIVE;
+    _phase = ActivityPhase::INACTIVE;
   }
+}
+
+static std::string ActivityToString(ReplicationApplierState::ActivityPhase ph) {
+  switch (ph) {
+    case ReplicationApplierState::ActivityPhase::INACTIVE:
+      return "inactive";
+    case ReplicationApplierState::ActivityPhase::INITIAL:
+      return "initial";
+    case ReplicationApplierState::ActivityPhase::TAILING:
+      return "running";
+    case ReplicationApplierState::ActivityPhase::SHUTDOWN:
+      return "shutdown";
+  }
+  return "unknown";
 }
 
 void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) const {
   result.openObject();
 
   if (full) {
-    result.add("running", VPackValue(isRunning()));
+    result.add("running", VPackValue(isTailing())); // isRunning
+    result.add("phase", VPackValue(ActivityToString(_phase)));
 
     // lastAppliedContinuousTick
     if (_lastAppliedContinuousTick > 0) {
@@ -131,6 +149,11 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
       result.add("safeResumeTick", VPackValue(VPackValueType::Null));
     }
 
+    if (isTailing()) {
+      TRI_voc_tick_t ticksBehind = _lastAvailableContinuousTick - std::max(_lastAppliedContinuousTick, _lastProcessedContinuousTick);
+      result.add("ticksBehind", VPackValue(ticksBehind));
+    }
+
     // progress
     result.add("progress", VPackValue(VPackValueType::Object));
     result.add("time", VPackValue(_progressTime));
@@ -143,6 +166,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     result.add("totalRequests", VPackValue(_totalRequests));
     result.add("totalFailedConnects", VPackValue(_totalFailedConnects));
     result.add("totalEvents", VPackValue(_totalEvents));
+    result.add("totalResyncs", VPackValue(_totalResyncs));
     result.add("totalOperationsExcluded", VPackValue(_skippedOperations));
 
     // lastError
@@ -161,3 +185,4 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
 
   result.close();
 }
+

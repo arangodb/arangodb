@@ -33,5 +33,5 @@ int Rebalancer::rebalance() {
   if (_manager != nullptr) {
     return _manager->rebalance();
   }
-  return false;
+  return TRI_ERROR_INTERNAL;
 }

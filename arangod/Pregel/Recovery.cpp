@@ -76,10 +76,10 @@ void RecoveryManager::monitorCollections(
   for (CollectionID const& collname : collections) {
     std::shared_ptr<LogicalCollection> coll =
         ci->getCollection(database, collname);
-
-    CollectionID cid = coll->cid_as_string();
+    CollectionID cid = std::to_string(coll->id());
     std::shared_ptr<std::vector<ShardID>> shards =
         ClusterInfo::instance()->getShardList(cid);
+
     if (!shards) {
       continue;
     }
@@ -137,11 +137,9 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
   return TRI_ERROR_NO_ERROR;
 }
 
-void RecoveryManager::updatedFailedServers() {
+void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) {
   MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
 
-  std::vector<std::string> const failed =
-      ClusterInfo::instance()->getFailedServers();
   for (auto const& pair : _primaryServers) {
     auto const& it = std::find(failed.begin(), failed.end(), pair.second);
     if (it != failed.end()) {
@@ -150,7 +148,7 @@ void RecoveryManager::updatedFailedServers() {
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->post([this, shard] { _renewPrimaryServer(shard); });
+      scheduler->post([this, shard] { _renewPrimaryServer(shard); }, false);
     }
   }
 }
@@ -175,7 +173,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   do {
     std::shared_ptr<std::vector<ServerID>> servers =
         ci->getResponsibleServer(shard);
-    if (servers) {
+    if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
         _primaryServers[shard] = nextPrimary;
@@ -186,7 +184,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         break;
       }
     }
-    usleep(100000);  // 100ms
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));  // 100ms
     tries++;
   } while (tries < 3);
 }

@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "test1": {
+      "description": "a string"
+    },
+    "test2": {
+      "description": "another string"
+    }
+  }
+}

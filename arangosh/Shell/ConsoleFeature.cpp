@@ -20,6 +20,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include <tchar.h>
+#include <unicode/locid.h>
+#include <string.h>
+#include <locale.h>
+#endif
+
 #include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -34,7 +41,6 @@
 #include <iomanip>
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -46,10 +52,11 @@ static const int BACKGROUND_WHITE =
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
-      _codePage(-1),
       _cygwinShell(false),
 #endif
       _quiet(false),
@@ -64,18 +71,16 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),
       _toAuditFile(nullptr),
-      _lastDuration(0.0) {
+      _lastDuration(0.0),
+      _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
-
+  startsAfter("BasicsPhase");
   if (!_supportsColors) {
     _colors = false;
   }
 
 #if _WIN32
-  _codePage = GetConsoleOutputCP();
-
   CONSOLE_SCREEN_BUFFER_INFO info;
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
 
@@ -115,11 +120,6 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--console.prompt", "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
                      new StringParameter(&_prompt));
-
-#if _WIN32
-  options->addHiddenOption("--console.code-page", "Windows code page to use",
-                           new UInt16Parameter(&_codePage));
-#endif
 }
 
 void ConsoleFeature::prepare() {
@@ -132,12 +132,6 @@ void ConsoleFeature::prepare() {
 
 void ConsoleFeature::start() {
   openLog();
-
-#if _WIN32
-  if (_codePage != -1) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
 }
 
 void ConsoleFeature::unprepare() {
@@ -307,23 +301,26 @@ std::string ConsoleFeature::readPassword() {
   TRI_DEFER(TRI_SetStdinVisibility(true));
 
   std::string password;
+
+#ifdef _WIN32
+  std::wstring wpassword;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wpassword);
+  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  pw.toUTF8String<std::string>(password);
+#else
   std::getline(std::cin, password);
+#endif
   return password;
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet) {
-    if (_pager) {
-      std::ostringstream s;
+  if (!_quiet && _pager) {
+    std::ostringstream s;
 
-      s << "Using pager '" << _pagerCommand << "' for output buffering.";
+    s << "Using pager '" << _pagerCommand << "' for output buffering.";
 
-      printLine(s.str());
-    }
-
-    if (_prettyPrint) {
-      printLine("Pretty printing values.");
-    }
+    printLine(s.str());
   }
 }
 
@@ -368,7 +365,7 @@ void ConsoleFeature::print(std::string const& message) {
 
 void ConsoleFeature::openLog() {
   if (!_auditFile.empty()) {
-    _toAuditFile = fopen(_auditFile.c_str(), "w");
+    _toAuditFile = TRI_FOPEN(_auditFile.c_str(), "w");
 
     std::ostringstream s;
 
@@ -421,6 +418,10 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
       } else if (c == 't') {
         std::ostringstream tmp;
         tmp << std::setprecision(6) << std::fixed << TRI_microtime();
+        result.append(tmp.str());
+      } else if (c == 'a') {
+        std::ostringstream tmp;
+        tmp << std::setprecision(6) << std::fixed << (TRI_microtime() - _startTime);
         result.append(tmp.str());
       } else if (c == 'p') {
         std::ostringstream tmp;
@@ -513,3 +514,5 @@ void ConsoleFeature::stopPager() {
   }
 #endif
 }
+
+} // arangodb

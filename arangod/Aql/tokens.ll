@@ -20,39 +20,41 @@
 %{
 #include "Basics/Common.h"
 #include "Basics/conversions.h"
-#include "Basics/StringUtils.h"
+#include "Basics/NumberUtils.h"
 
-// introduce the namespace here, otherwise following references to 
+// introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
 
 namespace arangodb {
-  namespace aql {
-    class Query;
-    class Parser;
-  }
+namespace aql {
+class Query;
+class Parser;
 }
-
+}
 
 #include "Aql/AstNode.h"
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
 
+#include <algorithm>
+
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
-#define YY_USER_ACTION yylloc->first_line = (int) yylineno; yylloc->first_column = (int) yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->increaseOffset(yyleng);
+#define YY_USER_ACTION                                                   \
+  yylloc->first_line = static_cast<int>(yylineno);                       \
+  yylloc->first_column = static_cast<int>(yycolumn);                     \
+  yylloc->last_column = static_cast<int>(yycolumn + yyleng - 1);         \
+  yycolumn += static_cast<int>(yyleng);                                  \
+  yyextra->increaseOffset(yyleng);
 
 #define YY_NO_INPUT 1
 
 #define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
-  size_t length = yyextra->remainingLength();                            \
-  if (length > static_cast<size_t>(maxBytesToRead)) {                    \
-    length = static_cast<size_t>(maxBytesToRead);                        \
-  }                                                                      \
+  size_t length = std::min(yyextra->remainingLength(), static_cast<size_t>(maxBytesToRead));  \
   if (length > 0) {                                                      \
     yyextra->fillBuffer(resultBuffer, length);                           \
     resultState = length;                                                \
-  }                                                                      \
-  else {                                                                 \
+  } else {                                                               \
     resultState = YY_NULL;                                               \
   }                                                                      \
 }
@@ -88,7 +90,7 @@ namespace arangodb {
   return T_SORT;
 }
 
-(?i:LIMIT) { 
+(?i:LIMIT) {
   return T_LIMIT;
 }
 
@@ -199,7 +201,7 @@ namespace arangodb {
 (?i:FALSE) {
   return T_FALSE;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * operators
   * --------------------------------------------------------------------------- */
@@ -285,9 +287,9 @@ namespace arangodb {
 }
 
 ".." {
-  return T_RANGE; 
+  return T_RANGE;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * punctuation
   * --------------------------------------------------------------------------- */
@@ -319,16 +321,16 @@ namespace arangodb {
 "]" {
   return T_ARRAY_CLOSE;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * identifiers
   * --------------------------------------------------------------------------- */
 
-($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
+($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) {
   /* unquoted string */
   yylval->strval.value = yyextra->query()->registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
-  return T_STRING; 
+  return T_STRING;
 }
 
 <INITIAL>` {
@@ -435,7 +437,7 @@ namespace arangodb {
 }
 
 <SINGLE_QUOTE>\n {
-  /* newline character inside quote */ 
+  /* newline character inside quote */
 }
 
 <SINGLE_QUOTE>. {
@@ -446,15 +448,17 @@ namespace arangodb {
   * number literals
   * --------------------------------------------------------------------------- */
 
-(0|[1-9][0-9]*) {  
+(0|[1-9][0-9]*) {
   /* a numeric integer value */
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
 
-  try {
-    int64_t value1 = arangodb::basics::StringUtils::int64_check(std::string(yytext, yyleng));
+  bool valid;
+  int64_t value1 = arangodb::NumberUtils::atoi<int64_t>(yytext, yytext + yyleng, valid);
+
+  if (valid) {
     node = parser->ast()->createNodeValueInt(value1);
-  } catch (...) {
+  } else {
     try {
       double value2 = TRI_DoubleString(yytext);
       node = parser->ast()->createNodeValueDouble(value2);
@@ -472,9 +476,9 @@ namespace arangodb {
   return T_INTEGER;
 }
 
-(0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) { 
+(0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) {
   /* a numeric double value */
-      
+
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
   double value = TRI_DoubleString(yytext);
@@ -484,11 +488,11 @@ namespace arangodb {
     node = parser->ast()->createNodeValueNull();
   }
   else {
-    node = parser->ast()->createNodeValueDouble(value); 
+    node = parser->ast()->createNodeValueDouble(value);
   }
 
   yylval->node = node;
-  
+
   return T_DOUBLE;
 }
 
@@ -496,12 +500,24 @@ namespace arangodb {
   * bind parameters
   * --------------------------------------------------------------------------- */
 
-@@?(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
+@(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
-     if followed by another @, this is a collection name parameter */
-  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1); 
+     if followed by another @, this is a collection name or a view name parameter */
+  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
+}
+
+ /* ---------------------------------------------------------------------------
+  * bind data source parameters
+  * --------------------------------------------------------------------------- */
+
+@@(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
+  /* bind parameters must start with a @
+     if followed by another @, this is a collection name or a view name parameter */
+  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
+  yylval->strval.length = yyleng - 1;
+  return T_DATA_SOURCE_PARAMETER;
 }
 
  /* ---------------------------------------------------------------------------
@@ -509,13 +525,13 @@ namespace arangodb {
   * --------------------------------------------------------------------------- */
 
 [ \t\r]+ {
-  /* whitespace is ignored */ 
+  /* whitespace is ignored */
 }
 
 [\n] {
   yycolumn = 0;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * comments
   * --------------------------------------------------------------------------- */
@@ -530,7 +546,7 @@ namespace arangodb {
   BEGIN(INITIAL);
 }
 
-<COMMENT_SINGLE>[^\n]+ { 
+<COMMENT_SINGLE>[^\n]+ {
   /* everything else */
 }
 
@@ -542,7 +558,7 @@ namespace arangodb {
   BEGIN(INITIAL);
 }
 
-<COMMENT_MULTI>[^*\n]+ { 
+<COMMENT_MULTI>[^*\n]+ {
   // eat comment in chunks
 }
 
@@ -592,4 +608,3 @@ namespace arangodb {
 }
 
 %%
-

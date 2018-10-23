@@ -25,25 +25,19 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/Mutex.h"
-
 namespace arangodb {
-class AqlFeature final : public application_features::ApplicationFeature {
-  static AqlFeature* _AQL;
-  static Mutex _aqlFeatureMutex;
- public:
-  explicit AqlFeature(application_features::ApplicationServer*);
 
+class AqlFeature final : public application_features::ApplicationFeature {
  public:
-  static AqlFeature* lease();
-  static void unlease();
+  explicit AqlFeature(application_features::ApplicationServer& server);
+  ~AqlFeature();
+
+  static bool lease() noexcept;
+  static void unlease() noexcept;
   void start() override final;
   void stop() override final;
- 
- private:
-  uint64_t _numberLeases;
-  bool _isStopped;
 };
+
 }
 
 #endif

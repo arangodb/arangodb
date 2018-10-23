@@ -164,20 +164,20 @@ void MMFilesRestWalHandler::flush() {
   
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 60.0;
+  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body
     VPackSlice value = slice.get("waitForSync");
     if (value.isString()) {
-      waitForSync = (value.copyString() == "true");
+      waitForSync = basics::StringUtils::boolean(value.copyString());
     } else if (value.isBoolean()) {
       waitForSync = value.getBoolean();
     }
     
     value = slice.get("waitForCollector");
     if (value.isString()) {
-      waitForCollector = (value.copyString() == "true");
+      waitForCollector = basics::StringUtils::boolean(value.copyString());
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
@@ -192,13 +192,13 @@ void MMFilesRestWalHandler::flush() {
     {
       std::string const& v = _request->value("waitForSync", found);
       if (found) {
-        waitForSync = (v == "1" || v == "true");
+        waitForSync = basics::StringUtils::boolean(v);
       }
     }
     {
       std::string const& v = _request->value("waitForCollector", found);
       if (found) {
-        waitForCollector = (v == "1" || v == "true");
+        waitForCollector = basics::StringUtils::boolean(v);
       }
     }
     {
@@ -214,14 +214,14 @@ void MMFilesRestWalHandler::flush() {
     res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
   } else {
     res = MMFilesLogfileManager::instance()->flush(
-        waitForSync, waitForCollector, false, maxWaitTime);
+        waitForSync, waitForCollector, false, maxWaitTime, true);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  generateResult(rest::ResponseCode::OK, basics::VelocyPackHelper::EmptyObjectValue());
+  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void MMFilesRestWalHandler::transactions() {

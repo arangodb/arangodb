@@ -37,7 +37,6 @@ namespace aql {
 class Ast;
 class EnumerateCollectionNode;
 class ExecutionPlan;
-struct Index;
 class SortCondition;
 struct Variable;
 
@@ -184,9 +183,9 @@ class Condition {
   ~Condition();
 
  public:
-  static void CollectOverlappingMembers(
+  static void collectOverlappingMembers(
       ExecutionPlan const* plan, Variable const* variable, AstNode* andNode,
-      AstNode* otherAndNode, std::unordered_set<size_t>& toRemove,
+      AstNode* otherAndNode, std::unordered_set<size_t>& toRemove, bool isSparse,
                                         bool isFromTraverser);
 
   /// @brief return the condition root
@@ -229,8 +228,8 @@ class Condition {
   void normalize();
 
   /// @brief removes condition parts from another
-  AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
-  
+  AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode const*, bool isSparse);
+
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
@@ -274,7 +273,7 @@ class Condition {
 
   /// @brief deduplicate IN condition values
   /// this may modify the node in place
-  void deduplicateInOperation(AstNode*);
+  AstNode* deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
   AstNode* mergeInOperations(transaction::Methods* trx, AstNode const*, AstNode const*);
@@ -282,8 +281,12 @@ class Condition {
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);
 
-  /// @brief converts binary logical operators into n-ary operators
-  AstNode* transformNode(AstNode*);
+  /// @brief converts binary to n-ary, comparision normal and negation normal
+  ///        form
+  AstNode* transformNodePreorder(AstNode*);
+
+  /// @brief converts from negation normal to disjunctive normal form
+  AstNode* transformNodePostorder(AstNode*);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step

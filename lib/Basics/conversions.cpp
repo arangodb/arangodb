@@ -22,11 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "conversions.h"
-
-//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//YYY #warning FRANK this files should be replaces by StringUtils and Co
-//YYY #endif
-
 #include "Basics/tri-strings.h"
 
 static char const* const HEX = "0123456789ABCDEF";
@@ -52,9 +47,9 @@ int TRI_IntHex(char ch, int errorValue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_DoubleString(char const* str) {
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
   char* endptr;
+  errno = TRI_ERROR_NO_ERROR;
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
   while (isspace(*endptr)) {
@@ -85,6 +80,7 @@ int32_t TRI_Int32String(char const* str) {
   struct reent buffer;
 #endif
 
+  errno = TRI_ERROR_NO_ERROR;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOL_R)
@@ -142,6 +138,7 @@ uint32_t TRI_UInt32String(char const* str) {
   struct reent buffer;
 #endif
 
+  errno = TRI_ERROR_NO_ERROR;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOUL_R)
@@ -574,28 +571,6 @@ size_t TRI_StringUInt64InPlace(uint64_t attr, char* buffer) {
   *p = '\0';
 
   return (p - buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from uint32
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_StringUInt32(uint32_t attr) {
-  char buffer[11];
-  size_t len = TRI_StringUInt32InPlace(attr, (char*)&buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from uint64
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_StringUInt64(uint64_t attr) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace(attr, (char*)&buffer);
-
-  return TRI_DuplicateString(buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

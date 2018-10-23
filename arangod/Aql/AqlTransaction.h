@@ -66,12 +66,6 @@ class AqlTransaction : public transaction::Methods {
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);
 
-  /// @brief add a coordinator collection to the transaction
-  Result processCollectionCoordinator(aql::Collection*);
-
-  /// @brief add a regular collection to the transaction
-  Result processCollectionNormal(aql::Collection* collection);
-
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
@@ -91,7 +85,9 @@ class AqlTransaction : public transaction::Methods {
   AqlTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext,
       transaction::Options const& options)
-      : transaction::Methods(transactionContext, options) {}
+      : transaction::Methods(transactionContext, options) {
+        addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      }
 
   /// protected so we can create different subclasses
   AqlTransaction(
@@ -105,6 +101,7 @@ class AqlTransaction : public transaction::Methods {
     } else {
       addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
     }
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
     for (auto it : *collections) {
       if (!processCollection(it.second).ok()) {

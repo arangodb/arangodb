@@ -11,4 +11,12 @@ This chapter describes AQL features related to query executions and query perfor
 
 * [The AQL query optimizer](Optimizer.md): AQL queries are sent through an optimizer before execution. The task of the optimizer is to create an initial execution plan for the query, look for optimization opportunities and apply them.
 
-* [The AQL query result cache](QueryCache.md): an optional query result cache is used to avoid repeated calculation of the same query results.
+* [Query Profiling](QueryProfiler.md): Sometimes a query does not perform, but it is unclear which 
+parts of the plan are responsible. The query-profiler can show you execution statistics for every
+stage of the query execution.
+
+* [The AQL query result cache](QueryCache.md): an optional query results cache can be used to avoid repeated calculation of the same query results.
+
+Be sure to check out the
+[ArangoDB Performance Course](https://www.arangodb.com/arangodb-performance-course/)
+for freshers as well.

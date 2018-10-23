@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,67 +25,81 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
-#include "Utils/SingleCollectionTransaction.h"
+#include "Replication/utilities.h"
 
 #include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class InitialSyncer : public Syncer {
 
+struct InitialSyncerDumpStats {
+  // total number of requests to /_api/replication/dump
+  uint64_t numDumpRequests = 0;
+  // total time spent waiting for responses to /_api/replication/dump
+  double waitedForDump = 0.0;
+  // total time spent for locally applying dump markers
+  double waitedForApply = 0.0;
+};
+
+struct InitialSyncerIncrementalSyncStats {
+  // total number of requests to /_api/replication/keys?type=keys
+  uint64_t numKeysRequests = 0;
+  // total number of requests to /_api/replication/keys?type=docs
+  uint64_t numDocsRequests = 0;
+  // total number of documents that for which document data were requested
+  uint64_t numDocsRequested = 0;
+  // total number of insert operations performed during sync
+  uint64_t numDocsInserted = 0;
+  // total number of remove operations performed during sync
+  uint64_t numDocsRemoved = 0;
+  // total time spent waiting on response for initial call to /_api/replication/keys
+  double waitedForInitial = 0.0;
+  // total time spent waiting for responses to /_api/replication/keys?type=keys
+  double waitedForKeys = 0.0;
+  // total time spent waiting for responses to /_api/replication/keys?type=docs
+  double waitedForDocs = 0.0;
+};
+
+class InitialSyncer : public Syncer {
  public:
-  explicit InitialSyncer(ReplicationApplierConfiguration const&);
+  explicit InitialSyncer(ReplicationApplierConfiguration const&,
+                         replutils::ProgressInfo::Setter s =
+                             [](std::string const&) -> void {});
 
   ~InitialSyncer();
 
  public:
-  
   virtual Result run(bool incremental) = 0;
-  
+
   /// @brief return the last log tick of the master at start
-  TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
+  TRI_voc_tick_t getLastLogTick() const { return _state.master.lastLogTick; }
+
+  /// @brief return the last uncommitted log tick of the master at start
+  TRI_voc_tick_t getLastUncommittedLogTick() const { return _state.master.lastUncommittedLogTick; }
 
   /// @brief return the collections that were synced
   std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections() const {
-    return _processedCollections;
+    return _progress.processedCollections;
   }
 
-  std::string progress() const { return _progress; }
+  std::string progress() const { return _progress.message; }
   
  protected:
   
-  /// @brief set a progress message
-  virtual void setProgress(std::string const& msg) {}
-
-  /// @brief send a "start batch" command
-  Result sendStartBatch();
-
-  /// @brief send an "extend batch" command
-  Result sendExtendBatch();
-
-  /// @brief send a "finish batch" command
-  Result sendFinishBatch();
+  /// @brief start a recurring task to extend the batch
+  void startRecurringBatchExtension();
 
  protected:
-  /// @brief progress message
-  std::string _progress;
-
-  /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> _processedCollections;
-
-  /// @brief dump batch id
-  uint64_t _batchId;
-
-  /// @brief dump batch last update time
-  double _batchUpdateTime;
-
-  /// @brief ttl for batches
-  int _batchTtl;
-
+  replutils::BatchInfo _batch;
+  replutils::ProgressInfo _progress;
+  /// recurring task to keep the batch alive
+  std::unique_ptr<asio_ns::steady_timer> _batchPingTimer;
 };
-}
+}  // namespace arangodb
 
 #endif

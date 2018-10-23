@@ -1,6 +1,7 @@
 {
   "gitbook": "^3.2.2",
   "title": "ArangoDB VERSION_NUMBER HTTP API Documentation",
+  "version": "VERSION_NUMBER",
   "author": "ArangoDB GmbH",
   "description": "Official HTTP API manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
@@ -15,6 +16,7 @@
     "ga",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
     "edit-link",
+    "page-toc@git+https://github.com/Simran-B/gitbook-plugin-page-toc.git",
     "localized-footer"
   ],
   "pdf": {
@@ -37,8 +39,8 @@
     },
     "sitemap-general": {
       "prefix": "https://docs.arangodb.com/devel/HTTP/",
-      "changefreq": "daily",
-      "priority": 0.3
+      "changefreq": "@GCHANGE_FREQ@",
+      "priority": @GPRIORITY@
     },
     "ga": {
       "token": "UA-81053435-2"

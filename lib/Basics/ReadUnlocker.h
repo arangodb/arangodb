@@ -52,7 +52,7 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocker
 ///
-/// A ReadUnlocker unlocks a read-write lock during its lifetime and reaquires
+/// A ReadUnlocker unlocks a read-write lock during its lifetime and reacquires
 /// the read-lock again when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -64,21 +64,21 @@ class ReadUnlocker {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ///
-/// The constructor unlocks the lock, the destructors aquires a read-lock.
+/// The constructor unlocks the lock, the destructors acquires a read-lock.
 //////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_SHOW_LOCK_TIME
 
   ReadUnlocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
-    _readWriteLock->unlock();
+    _readWriteLock->unlockRead();
   }
 
 #else
 
   explicit ReadUnlocker(ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock) {
-        _readWriteLock->unlock();
+        _readWriteLock->unlockRead();
       }
 
 #endif
@@ -86,12 +86,12 @@ class ReadUnlocker {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the lock
   ///
-  /// The constructor unlocks the lock, the destructors aquires a
+  /// The constructor unlocks the lock, the destructors acquires a
   /// read-lock.
   ////////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief aquires the read-lock
+  /// @brief acquires the read-lock
   ////////////////////////////////////////////////////////////////////////////////
 
   ~ReadUnlocker() { _readWriteLock->readLock(); }

@@ -30,6 +30,9 @@ using namespace arangodb;
   
 std::string LdapUrlParseResult::toString() const {
   std::string result("ldap://");
+  if (protocol.set) {
+    result = protocol.value + "://";
+  }
   if (host.set) {
     result.append(host.value);
     if (port.set) {
@@ -63,6 +66,12 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   if (view.substr(0, 7).compare("ldap://") == 0) {
     // skip over initial "ldap://"
     view = StringRef(view.begin() + 7);
+    result.protocol.populate(std::string("ldap"));
+  } else if (view.substr(0, 8).compare("ldaps://") == 0) {
+    view = StringRef(view.begin() + 8);
+    result.protocol.populate(std::string("ldaps"));
+  } else {
+    result.protocol.populate(std::string("ldap"));
   }
 
   if (!view.empty() && view[0] != '/') {

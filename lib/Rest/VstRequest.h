@@ -54,53 +54,40 @@ using rest::VstInputMessage;
 class VstRequest final : public GeneralRequest {
   friend class rest::VstCommTask;
   friend class rest::GeneralCommTask;
-  friend class RestBatchHandler;  // TODO must be removed
-
- private:
+  
+public:
+  
   VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
-             uint64_t messageId, bool isFake = false);
+             uint64_t messageId);
 
- public:
   ~VstRequest() {}
 
  public:
   uint64_t messageId() const override { return _messageId; }
+  
+  size_t contentLength() const override { return _message.payloadSize(); }
+  arangodb::StringRef rawPayload() const override { return _message.payload(); }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
-
-  int64_t contentLength() const override {
-    return _message.payload().byteSize();  // Fixme for MultiPayload message
-  }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
-
-  std::unordered_map<std::string, std::string> const& headers() const override;
-  // get value from headers map. The key must be lowercase.
-  std::string const& header(std::string const& key) const override;
-  std::string const& header(std::string const& key, bool& found) const override;
-
-  // values are query paramteres
-  std::unordered_map<std::string, std::string> values() const override {
-    return _values;
-  }
-  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
-      const override {
-    return _arrayValues;
-  }
-  std::string const& value(std::string const& key) const override;
-  std::string const& value(std::string const& key, bool& found) const override;
+  
+private:
+  
+  void setHeader(VPackSlice key, VPackSlice content);
+  
+  void parseHeaderInformation();
 
  private:
-  VstInputMessage _message;
-  mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
-      _headers;
-  // values are query parameters
-  std::unordered_map<std::string, std::string> _values;
-  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
+  
   uint64_t _messageId;
-
-  void parseHeaderInformation();
+  VstInputMessage _message;
+  
+  /// @brief was VPack payload validated
+  bool _validatedPayload;
+  /// @brief if payload was not VPack this will store parsed result
+  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
 }
 #endif

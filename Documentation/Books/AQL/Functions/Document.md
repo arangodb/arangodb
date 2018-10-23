@@ -5,7 +5,8 @@ AQL provides below listed functions to operate on objects / document values.
 Also see [object access](../Fundamentals/DataTypes.md#objects--documents) for
 additional language constructs.
 
-### ATTRIBUTES()
+ATTRIBUTES()
+------------
 
 `ATTRIBUTES(document, removeInternal, sort) → strArray`
 
@@ -46,11 +47,13 @@ FOR attributeArray IN attributesPerDocument
         RETURN {attr, count}
 ```
 
-### COUNT()
+COUNT()
+-------
 
 This is an alias for [LENGTH()](#length).
 
-### HAS()
+HAS()
+-----
 
 `HAS(document, attributeName) → isPresent`
 
@@ -93,7 +96,8 @@ FILTER IS_NULL(doc, "name") // can not use indexes
 FILTER doc.name == null     // can utilize non-sparse indexes
 ```
 
-### IS_SAME_COLLECTION()
+IS_SAME_COLLECTION()
+--------------------
 
 `IS_SAME_COLLECTION(collectionName, documentHandle) → bool`
 
@@ -122,7 +126,8 @@ IS_SAME_COLLECTION( "_users", "foobar/baz")
 IS_SAME_COLLECTION( "_users", { _id: "something/else" } )
 ```
 
-### KEEP()
+KEEP()
+------
 
 `KEEP(document, attributeName1, attributeName2, ... attributeNameN) → doc`
 
@@ -150,7 +155,8 @@ KEEP(doc, "firstname", "name", "likes")
 KEEP(doc, [ "firstname", "name", "likes" ])
 ```
 
-### LENGTH()
+LENGTH()
+--------
 
 `LENGTH(doc) → attrCount`
 
@@ -164,7 +170,8 @@ Determine the number of attribute keys of an object / document.
 the [amount of documents](Miscellaneous.md#length) in a collection and
 the [character length](String.md#length) of a string.
 
-### MATCHES()
+MATCHES()
+---------
 
 `MATCHES(document, examples, returnIndex) → match`
 
@@ -212,7 +219,8 @@ RETURN MATCHES(
 This will return *2*, because the third example matches, and because the
 *returnIndex* flag is set to *true*.
 
-### MERGE()
+MERGE()
+-------
 
 `MERGE(document1, document2, ... documentN) → mergedDocument`
 
@@ -278,7 +286,8 @@ This will now return:
 }
 ```
 
-### MERGE_RECURSIVE()
+MERGE_RECURSIVE()
+-----------------
 
 `MERGE_RECURSIVE(document1, document2, ... documentN) → mergedDocument`
 
@@ -302,12 +311,13 @@ MERGE_RECURSIVE(
 
 *MERGE_RECURSIVE()* does not support the single array parameter variant that *MERGE* offers.
 
-### PARSE_IDENTIFIER()
+PARSE_IDENTIFIER()
+------------------
 
 `PARSE_IDENTIFIER(documentHandle) → parts`
 
 Parse a [document handle](../../Manual/Appendix/Glossary.html#document-handle) and return its
-individual parts a separate attributes.
+individual parts as separate attributes.
 
 This function can be used to easily determine the
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) and key of a given document.
@@ -325,7 +335,8 @@ PARSE_IDENTIFIER( { "_id": "mycollection/mykey", "value": "some value" } )
 // { "collection": "mycollection", "key": "mykey" }
 ```
 
-### TRANSLATE()
+TRANSLATE()
+-----------
 
 `TRANSLATE(value, lookupDocument, defaultValue) → mappedValue`
 
@@ -351,7 +362,8 @@ TRANSLATE(42, { foo: "bar", bar: "baz" }, "not found!")
 // "not found!"
 ```
 
-### UNSET()
+UNSET()
+-------
 
 `UNSET(document, attributeName1, attributeName2, ... attributeNameN) → doc`
 
@@ -379,7 +391,8 @@ UNSET( doc, "_id", "_key", "foo", "bar" )
 UNSET( doc, [ "_id", "_key", "foo", "bar" ] )
 ```
 
-### UNSET_RECURSIVE()
+UNSET_RECURSIVE()
+-----------------
 
 `UNSET_RECURSIVE(document, attributeName1, attributeName2, ... attributeNameN) → doc`
 
@@ -407,7 +420,8 @@ UNSET_RECURSIVE( doc, "_id", "_key", "foo", "bar" )
 UNSET_RECURSIVE( doc, [ "_id", "_key", "foo", "bar" ] )
 ```
 
-### VALUES()
+VALUES()
+--------
 
 `VALUES(document, removeInternal) → anyArray`
 
@@ -427,7 +441,8 @@ VALUES( { "_key": "users/jane", "name": "Jane", "age": 35 }, true )
 // [ "Jane", 35 ]
 ```
 
-### ZIP()
+ZIP()
+-----
 
 `ZIP(keys, values) → doc`
 

@@ -54,8 +54,8 @@
     </div>
 
     <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body">
-      <% _.each(coords, function(node, name) { %>
-        <% var id = name + "-node"; %>
+      <% _.each(coords, function(node, key) { %>
+        <% var id = node.id + "-node"; %>
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
@@ -134,8 +134,8 @@
   <% } %>
 
     <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body">
-      <% _.each(dbs, function(node, name) { %>
-        <% var id = name + "-node"; %>
+      <% _.each(dbs, function(node, key) { %>
+        <% var id = node.id + "-node"; %>
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 

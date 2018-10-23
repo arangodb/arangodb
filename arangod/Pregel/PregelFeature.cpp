@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
+
 #include <atomic>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
@@ -34,32 +36,179 @@
 #include "Pregel/Worker.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
+
+namespace {
+bool authorized(std::string const& user) {
+  auto context = arangodb::ExecContext::CURRENT;
+  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+    return true;
+  }
+
+  if (context->isSuperuser()) {
+    return true;
+  }
+
+  return (user == context->user());
+}
+
+bool authorized(
+    std::pair<std::string, std::shared_ptr<arangodb::pregel::Conductor>> const&
+        conductor) {
+  return ::authorized(conductor.first);
+}
+
+bool authorized(
+    std::pair<std::string, std::shared_ptr<arangodb::pregel::IWorker>> const&
+        worker) {
+  return ::authorized(worker.first);
+}
+}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance = nullptr;
-static std::atomic<uint64_t> _uniqueId;
 
-uint64_t PregelFeature::createExecutionNumber() {
-  if (ServerState::instance()->isRunningInCluster()) {
-    return ClusterInfo::instance()->uniqid();
-  } else {
-    return ++_uniqueId;
+std::pair<Result, uint64_t> PregelFeature::startExecution(
+    TRI_vocbase_t& vocbase, std::string algorithm,
+    std::vector<std::string> const& vertexCollections,
+    std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
+  if (nullptr == Instance) {
+    return std::make_pair(
+        Result{TRI_ERROR_INTERNAL, "pregel system not yet ready"}, 0);
   }
+  ServerState* ss = ServerState::instance();
+
+  // check the access rights to collections
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    TRI_ASSERT(params.isObject());
+    VPackSlice storeSlice = params.get("store");
+    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+    for (std::string const& vc : vertexCollections) {
+      bool canWrite = exec->canUseCollection(vc, auth::Level::RW);
+      bool canRead = exec->canUseCollection(vc, auth::Level::RO);
+      if ((storeResults && !canWrite) || !canRead) {
+        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
+      }
+    }
+    for (std::string const& ec : edgeCollections) {
+      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
+      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
+      if ((storeResults && !canWrite) || !canRead) {
+        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
+      }
+    }
+  }
+
+  for (std::string const& name : vertexCollections) {
+    if (ss->isCoordinator()) {
+      try {
+        auto coll =
+            ClusterInfo::instance()->getCollection(vocbase.name(), name);
+
+        if (coll->system()) {
+          return std::make_pair(
+              Result{TRI_ERROR_BAD_PARAMETER,
+                     "Cannot use pregel on system collection"},
+              0);
+        }
+
+        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+          return std::make_pair(
+              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        }
+      } catch (...) {
+        return std::make_pair(
+            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+      }
+    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
+      auto coll = vocbase.lookupCollection(name);
+
+      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
+          coll->deleted()) {
+        return std::make_pair(
+            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+      }
+    } else {
+      return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
+    }
+  }
+
+  std::vector<CollectionID> edgeColls;
+
+  // load edge collection
+  for (std::string const& name : edgeCollections) {
+    if (ss->isCoordinator()) {
+      try {
+        auto coll =
+            ClusterInfo::instance()->getCollection(vocbase.name(), name);
+
+        if (coll->system()) {
+          return std::make_pair(
+              Result{TRI_ERROR_BAD_PARAMETER,
+                     "Cannot use pregel on system collection"},
+              0);
+        }
+
+        if (!coll->isSmart()) {
+          std::vector<std::string> eKeys = coll->shardKeys();
+          if (eKeys.size() != 1 || eKeys[0] != "vertex") {
+            return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
+                                         "Edge collection needs to be sharded "
+                                         "after 'vertex', or use smart graphs"},
+                                  0);
+          }
+        }
+
+        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+          return std::make_pair(
+              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        }
+
+        // smart edge collections contain multiple actual collections
+        std::vector<std::string> actual = coll->realNamesForRead();
+
+        edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
+      } catch (...) {
+        return std::make_pair(
+            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+      }
+    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
+      auto coll = vocbase.lookupCollection(name);
+
+      if (coll == nullptr || coll->deleted()) {
+        return std::make_pair(
+            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+      }
+      std::vector<std::string> actual = coll->realNamesForRead();
+      edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
+    } else {
+      return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
+    }
+  }
+
+  uint64_t en = Instance->createExecutionNumber();
+  auto c = std::make_unique<pregel::Conductor>(en, vocbase, vertexCollections,
+                                               edgeColls, algorithm, params);
+  Instance->addConductor(std::move(c), en);
+  TRI_ASSERT(Instance->conductor(en));
+  Instance->conductor(en)->start();
+
+  return std::make_pair(Result{}, en);
 }
 
-PregelFeature::PregelFeature(application_features::ApplicationServer* server)
+uint64_t PregelFeature::createExecutionNumber() {
+  return TRI_NewServerSpecificTick();
+}
+
+PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("WorkMonitor");
-  startsAfter("Logger");
-  startsAfter("Database");
-  startsAfter("Endpoint");
-  startsAfter("Cluster");
-  startsAfter("Server");
-  startsAfter("V8Dealer");
+  startsAfter("V8Phase");
 }
 
 PregelFeature::~PregelFeature() {
@@ -69,9 +218,7 @@ PregelFeature::~PregelFeature() {
   cleanupAll();
 }
 
-PregelFeature* PregelFeature::instance() {
-  return Instance;
-}
+PregelFeature* PregelFeature::instance() { return Instance; }
 
 size_t PregelFeature::availableParallelism() {
   const size_t procNum = TRI_numberProcessors();
@@ -84,23 +231,8 @@ void PregelFeature::start() {
     return;
   }
 
-  // const size_t threadNum = PregelFeature::availableParallelism();
-  // LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << "
-  // threads";
-  //_threadPool.reset(new ThreadPool(threadNum, "Pregel"));
-
   if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
-    //    ClusterFeature* cluster =
-    //    application_features::ApplicationServer::getFeature<ClusterFeature>(
-    //                                                                        "Cluster");
-    //    if (cluster != nullptr) {
-    //      AgencyCallbackRegistry* registry =
-    //      cluster->agencyCallbackRegistry();
-    //      if (registry != nullptr) {
-    //        _recoveryManager.reset(new RecoveryManager(registry));
-    //      }
-    //    }
   }
 }
 
@@ -109,27 +241,38 @@ void PregelFeature::beginShutdown() {
   Instance = nullptr;
 }
 
-void PregelFeature::addConductor(Conductor* const c, uint64_t executionNumber) {
+void PregelFeature::addConductor(std::unique_ptr<Conductor>&& c,
+                                 uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
-  //_executions.
-  _conductors.emplace(executionNumber, std::shared_ptr<Conductor>(c));
+  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  _conductors.emplace(
+      executionNumber,
+      std::make_pair(user, std::shared_ptr<Conductor>(c.get())));
+  c.release();
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
-  return it != _conductors.end() ? it->second : nullptr;
+  return (it != _conductors.end() && ::authorized(it->second))
+             ? it->second.second
+             : nullptr;
 }
 
-void PregelFeature::addWorker(IWorker* const w, uint64_t executionNumber) {
+void PregelFeature::addWorker(std::unique_ptr<IWorker>&& w,
+                              uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
-  _workers.emplace(executionNumber, std::shared_ptr<IWorker>(w));
+  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  _workers.emplace(executionNumber,
+                   std::make_pair(user, std::shared_ptr<IWorker>(w.get())));
+  w.release();
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
-  return it != _workers.end() ? it->second : nullptr;
+  return (it != _workers.end() && ::authorized(it->second)) ? it->second.second
+                                                            : nullptr;
 }
 
 void PregelFeature::cleanupConductor(uint64_t executionNumber) {
@@ -151,22 +294,27 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
     if (wit != _workers.end()) {
       _workers.erase(executionNumber);
     }
-  });
+  }, false);
 }
 
 void PregelFeature::cleanupAll() {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.clear();
   for (auto it : _workers) {
-    it.second->cancelGlobalStep(VPackSlice());
+    it.second.second->cancelGlobalStep(VPackSlice());
   }
-  usleep(1000 * 100);  // 100ms to send out cancel calls
+  std::this_thread::sleep_for(
+      std::chrono::microseconds(1000 * 100));  // 100ms to send out cancel calls
   _workers.clear();
 }
 
 void PregelFeature::handleConductorRequest(std::string const& path,
                                            VPackSlice const& body,
                                            VPackBuilder& outBuilder) {
+  if (SchedulerFeature::SCHEDULER->isStopping()) {
+    return;  // shutdown ongoing
+  }
+
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
@@ -187,35 +335,48 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   }
 }
 
-void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
-                                        std::string const& path,
-                                        VPackSlice const& body,
-                                        VPackBuilder& outBuilder) {
+/*static*/ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
+                                                   std::string const& path,
+                                                   VPackSlice const& body,
+                                                   VPackBuilder& outBuilder) {
+  if (SchedulerFeature::SCHEDULER->isStopping()) {
+    return;  // shutdown ongoing
+  }
+
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+
   if (!sExecutionNum.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
+
   uint64_t exeNum = sExecutionNum.getUInt();
+  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
 
   // create a new worker instance if necessary
-  if (path == Utils::startExecutionPath || path == Utils::startRecoveryPath) {
-    std::shared_ptr<IWorker> w = Instance->worker(exeNum);
-    if (!w) {
-      Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
-    } else if (path == Utils::startExecutionPath) {
+  if (path == Utils::startExecutionPath) {
+    if (w) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
-    if (path == Utils::startRecoveryPath) {
-      w->startRecovery(body);
+
+    Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
+    Instance->worker(exeNum)->setupWorker();  // will call conductor
+
+    return;
+  } else if (path == Utils::startRecoveryPath) {
+    if (!w) {
+      Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
     }
-  }
-  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
-  if (!w) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Handling " << path << "worker "
-                                    << exeNum << " does not exist";
+
+    Instance->worker(exeNum)->startRecovery(body);
+
+    return;
+  } else if (!w) {
+    // any other call should have a working worker instance
+    LOG_TOPIC(WARN, Logger::PREGEL)
+        << "Handling " << path << "worker " << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_INTERNAL,
         "Handling request %s, but worker %lld does not exist.", path.c_str(),
@@ -241,6 +402,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(&outBuilder);
+    w->aqlResult(outBuilder);
   }
 }

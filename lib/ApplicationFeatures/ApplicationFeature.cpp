@@ -26,11 +26,15 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-ApplicationFeature::ApplicationFeature(ApplicationServer* server,
-                                       std::string const& name)
+namespace arangodb {
+namespace application_features {
+
+ApplicationFeature::ApplicationFeature(
+    ApplicationServer& server,
+    std::string const& name
+)
     : _server(server),
       _name(name),
       _state(ApplicationServer::FeatureState::UNINITIALIZED),
@@ -48,7 +52,7 @@ void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
 // load options from somewhere. this method will only be called for enabled
 // features
 void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>,
-                                     char const* binaryPath) {}
+                                     char const* /*binaryPath*/) {}
 
 // validate the feature's options. this method will only be called for active
 // features, after the ApplicationServer has determined which features should be
@@ -87,13 +91,15 @@ std::unordered_set<std::string> ApplicationFeature::ancestors() const {
 
 // whether the feature starts before another
 bool ApplicationFeature::doesStartBefore(std::string const& other) const {
-  auto otherAncestors = _server->feature(other)->ancestors();
+  auto otherAncestors = _server.feature(other)->ancestors();
+
   if (otherAncestors.find(_name) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
 
   auto ourAncestors = ancestors();
+
   if (ourAncestors.find(other) != ourAncestors.end()) {
     // the other feature is an ancestor of us
     return false;
@@ -141,3 +147,5 @@ void ApplicationFeature::determineAncestors() {
   _ancestorsDetermined = true;
 }
 
+} // application_features
+} // arangodb

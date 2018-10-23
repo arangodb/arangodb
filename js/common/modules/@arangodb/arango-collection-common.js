@@ -229,7 +229,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
     for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
 
-      if (index.type === 'geo1') {
+      if (index.type === 'geo1' || (index.type === 'geo' && index.fields.length === 1)) {
         if (index.fields[0] === loc && index.geoJson === order) {
           return index;
         }
@@ -246,7 +246,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
     for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
 
-      if (index.type === 'geo2') {
+      if (index.type === 'geo2' || (index.type === 'geo' && index.fields.length === 2)) {
         if (index.fields[0] === lat && index.fields[1] === lon) {
           return index;
         }
@@ -513,7 +513,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   'use strict';
 
   if (typeof lat !== 'string') {
-    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])';
+    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>[, <pointsOnly>]])';
   }
 
   if (typeof lon === 'boolean') {

@@ -52,7 +52,7 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocker
 ///
-/// A WriteUnlocker unlocks a read-write lock during its lifetime and reaquires
+/// A WriteUnlocker unlocks a read-write lock during its lifetime and reacquires
 /// the write lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -64,7 +64,7 @@ class WriteUnlocker {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
 ///
-/// The constructor unlocks the lock, the destructors aquires a write-lock.
+/// The constructor unlocks the lock, the destructors acquires a write-lock.
 //////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_SHOW_LOCK_TIME
@@ -72,25 +72,25 @@ class WriteUnlocker {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the lock
   ///
-  /// The constructor unlocks the lock, the destructors aquires a write-lock.
+  /// The constructor unlocks the lock, the destructors acquires a write-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-  WriteUnlocker(ReadWriteLocker* readWriteLock, char const* file, int line)
+  WriteUnlocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
-    _readWriteLock->unlock();
+    _readWriteLock->unlockWrite();
   }
 
 #else
 
   explicit WriteUnlocker(ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock) {
-      _readWriteLock->unlock();
+      _readWriteLock->unlockWrite();
     }
 
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief aquires the write-lock
+  /// @brief acquires the write-lock
   ////////////////////////////////////////////////////////////////////////////////
 
   ~WriteUnlocker() { _readWriteLock->writeLock(); }

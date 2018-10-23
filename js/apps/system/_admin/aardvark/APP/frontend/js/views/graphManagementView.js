@@ -184,12 +184,24 @@
       $('#' + clicked).click();
     },
 
+    checkVisibility: function () {
+      if ($('#graphManagementDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#graphManagementDropdown');
+    },
+
     toggleGraphDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#graphManagementToggle').toggleClass('activated');
-      $('#graphManagementDropdown2').slideToggle(200);
+      $('#graphManagementDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     sorting: function () {
@@ -199,12 +211,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#graphManagementDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -655,7 +662,7 @@
         } else {
           newCollectionObject.isSmart = true;
           newCollectionObject.options = {
-            numberOfShards: $('#new-numberOfShards').val(),
+            numberOfShards: parseInt($('#new-numberOfShards').val()),
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
             replicationFactor: parseInt($('#new-replicationFactor').val())
           };
@@ -664,15 +671,15 @@
         if (frontendConfig.isCluster) {
           if ($('#general-numberOfShards').val().length > 0) {
             newCollectionObject.options = {
-              numberOfShards: $('#general-numberOfShards').val()
+              numberOfShards: parseInt($('#general-numberOfShards').val())
             };
           }
           if ($('#general-replicationFactor').val().length > 0) {
             if (newCollectionObject.options) {
-              newCollectionObject.options.replicationFactor = $('#general-replicationFactor').val();
+              newCollectionObject.options.replicationFactor = parseInt($('#general-replicationFactor').val());
             } else {
               newCollectionObject.options = {
-                replicationFactor: $('#general-replicationFactor').val()
+                replicationFactor: parseInt($('#general-replicationFactor').val())
               };
             }
           }
@@ -1041,10 +1048,11 @@
       var collList = []; var collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
+        if (!c.get('isSystem')) {
+          if (c.get('type') !== 'edge') {
+            collList.push(c.id);
+          }
         }
-        collList.push(c.id);
       });
       e.stopPropagation();
       var id = $(e.currentTarget).attr('id'); var number;
@@ -1078,6 +1086,8 @@
         });
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
+
+        arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
 
         var i;
         $('.modal-body .spacer').remove();

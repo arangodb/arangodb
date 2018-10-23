@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
@@ -43,18 +44,16 @@ struct EdgeDocumentToken {
     : _data(0, LocalDocumentId()) {}
 #endif
   
-  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept {
+  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept : _data(edtkn._data) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;
 #endif
-    memmove(&(this->_data), &(edtkn._data), sizeof(TokenData));
   }
   
-  EdgeDocumentToken(EdgeDocumentToken const& edtkn) noexcept {
+  EdgeDocumentToken(EdgeDocumentToken const& edtkn) noexcept : _data(edtkn._data) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;
 #endif
-    memcpy(&(this->_data), &(edtkn._data), sizeof(TokenData));
   }
   
   EdgeDocumentToken(TRI_voc_cid_t const cid,
@@ -74,7 +73,7 @@ struct EdgeDocumentToken {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;
 #endif
-    memcpy(&(this->_data), &(edtkn._data), sizeof(TokenData));
+    _data = edtkn._data; 
     return *this;
   }
   
@@ -118,8 +117,15 @@ struct EdgeDocumentToken {
     return _data.document.cid == other.cid() &&
            _data.document.localDocumentId == other.localDocumentId();
   }
+
+  bool equals(EdgeDocumentToken const& other) const {
+    if (ServerState::instance()->isCoordinator()) {
+      return equalsCoordinator(other);
+    }
+    return equalsLocal(other);
+  }
   
-private:
+ private:
   
   /// Identifying information for an edge documents valid on one server
   /// only used on a dbserver or single server
@@ -135,18 +141,26 @@ private:
     EdgeDocumentToken::LocalDocument document;
     uint8_t const* vpack;
     
-    TokenData() {
+    TokenData() noexcept {
       vpack = nullptr;
     }
-    TokenData(velocypack::Slice const& edge) : vpack(edge.begin()) {
+    TokenData(velocypack::Slice const& edge) noexcept : vpack(edge.begin()) {
       TRI_ASSERT(!velocypack::Slice(vpack).isExternal());
     }
-    TokenData(TRI_voc_cid_t cid, LocalDocumentId tk) {
+    TokenData(TRI_voc_cid_t cid, LocalDocumentId tk) noexcept {
       document.cid = cid;
       document.localDocumentId = tk;
     }
+    TokenData(TokenData const& other) noexcept : document(other.document) {}
+    TokenData& operator=(TokenData const& other) noexcept {
+      document = other.document;
+      return *this;
+    }
+
     ~TokenData() {}
   };
+
+  static_assert(sizeof(TokenData::document) >= sizeof(TokenData::vpack), "invalid TokenData struct");
   
   TokenData _data;
   

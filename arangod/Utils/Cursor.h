@@ -24,7 +24,7 @@
 #ifndef ARANGOD_UTILS_CURSOR_H
 #define ARANGOD_UTILS_CURSOR_H 1
 
-#include "Aql/QueryResult.h"
+#include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
@@ -32,6 +32,11 @@
 #include <velocypack/Iterator.h>
 
 namespace arangodb {
+
+namespace transaction {
+class Context;
+}
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -41,38 +46,36 @@ typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
-  enum CursorType {
-    CURSOR_VPACK,
-    CURSOR_EXPORT
-  };
+  enum CursorType { CURSOR_VPACK, CURSOR_EXPORT };
 
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
-         double, bool);
+  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
+      : _id(id),
+        _batchSize(batchSize),
+        _ttl(ttl),
+        _expires(TRI_microtime() + _ttl),
+        _hasCount(hasCount),
+        _isDeleted(false),
+        _isUsed(false) {}
 
-  virtual ~Cursor();
+  virtual ~Cursor() {}
 
  public:
   CursorId id() const { return _id; }
 
-  size_t batchSize() const { return _batchSize; }
+  inline size_t batchSize() const { return _batchSize; }
 
-  /// @brief Returns a slice to read the extra values.
-  /// Make sure the Cursor Object is not destroyed while reading this slice.
-  /// If no extras are set this will return a NONE slice.
-  arangodb::velocypack::Slice extra() const;
+  inline bool hasCount() const { return _hasCount; }
 
-  bool hasCount() const { return _hasCount; }
+  inline double ttl() const { return _ttl; }
 
-  double ttl() const { return _ttl; }
+  inline double expires() const { return _expires; }
 
-  double expires() const { return _expires; }
+  inline bool isUsed() const { return _isUsed; }
 
-  bool isUsed() const { return _isUsed; }
-
-  bool isDeleted() const { return _isDeleted; }
+  inline bool isDeleted() const { return _isDeleted; }
 
   void deleted() { _isDeleted = true; }
 
@@ -90,55 +93,43 @@ class Cursor {
   }
 
   virtual CursorType type() const = 0;
-
-  virtual bool hasNext() = 0;
-
-  virtual arangodb::velocypack::Slice next() = 0;
+  
+  virtual void kill() {}
 
   virtual size_t count() const = 0;
 
-  virtual void dump(velocypack::Builder&) = 0;
+  virtual std::shared_ptr<transaction::Context> context() const = 0;
+
+  /**
+   * @brief Dump the cursor result, async version. The caller needs to be contiueable
+   *
+   * @param result The Builder to write the result to
+   * @param continueHandler The function that is posted on scheduler to contiue this execution.
+   *
+   * @return First: ExecutionState either DONE or WAITING. On Waiting we need to free this thread on DONE we have a result.
+   *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
+   */
+  virtual std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result, std::function<void()> const&) = 0;
+
+  /**
+   * @brief Dump the cursor result. This is guaranteed to return the result in this thread.
+   *
+   * @param result the Builder to write the result to
+   *
+   * @return ErrorResult, if something goes wrong
+   */
+  virtual Result dumpSync(velocypack::Builder& result) = 0;
 
  protected:
   CursorId const _id;
   size_t const _batchSize;
-  size_t _position;
-  std::shared_ptr<arangodb::velocypack::Builder> const _extra;
   double _ttl;
   double _expires;
   bool const _hasCount;
   bool _isDeleted;
   bool _isUsed;
 };
-
-class VelocyPackCursor final : public Cursor {
- public:
-  VelocyPackCursor(TRI_vocbase_t*, CursorId, aql::QueryResult&&, size_t,
-                   std::shared_ptr<arangodb::velocypack::Builder>, double,
-                   bool);
-
-  ~VelocyPackCursor() = default;
-
- public:
-  aql::QueryResult const* result() const { return &_result; }
-  
-  CursorType type() const override final { return CURSOR_VPACK; }
-
-  bool hasNext() override final;
-
-  arangodb::velocypack::Slice next() override final;
-
-  size_t count() const override final;
-
-  void dump(velocypack::Builder&) override final;
-
- private:
-  DatabaseGuard _guard;
-  aql::QueryResult _result;
-  arangodb::velocypack::ArrayIterator _iterator;
-  bool _cached;
-};
-
 }
 
 #endif

@@ -26,15 +26,16 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class ShellColorsFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ShellColorsFeature(application_features::ApplicationServer* server);
+  explicit ShellColorsFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
 
  private:
   bool useColors();
+  bool prepareConsole(); 
 
  public:
   static char const* SHELL_COLOR_RED;
@@ -56,7 +57,11 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
   static char const* SHELL_COLOR_BLINK;
   static char const* SHELL_COLOR_BRIGHT;
   static char const* SHELL_COLOR_RESET;
+
+ private:
+  bool _initialized;
 };
+
 }
 
 #endif

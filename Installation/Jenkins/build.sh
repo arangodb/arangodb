@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -167,6 +167,8 @@ VERBOSE=0
 MSVC=
 ENTERPRISE_GIT_URL=
 
+ARCH="-DTARGET_ARCHITECTURE=nehalem"
+
 case "$1" in
     standard)
         CFLAGS="${CFLAGS} -O3"
@@ -179,10 +181,17 @@ case "$1" in
 
     debug)
         BUILD_CONFIG=Debug
+        MAINTAINER_MODE=''
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS+=('-DV8_TARGET_ARCHS=Debug' "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}")
-
+        CONFIGURE_OPTIONS+=(
+            '-DUSE_MAINTAINER_MODE=On'
+            '-DUSE_FAILURE_TESTS=On'
+            '-DOPTDBG=On'
+            '-DUSE_BACKTRACE=On'
+            "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
+        )
+        
         echo "using debug compile configuration"
         shift
         ;;
@@ -241,11 +250,12 @@ while [ $# -gt 0 ];  do
         --sanitize)
             TAR_SUFFIX="-sanitize"
             SANITIZE=1
+	    USE_JEMALLOC=0
             shift
             ;;
 
         --noopt)
-            CONFIGURE_OPTIONS+=(-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off)
+            ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
             shift
             ;;
 
@@ -262,10 +272,14 @@ while [ $# -gt 0 ];  do
              CXX=""
              PAR=""
              PARALLEL_BUILDS=""
-             GENERATOR="Visual Studio 14 Win64"
+             GENERATOR="Visual Studio 15 Win64"
+             CONFIGURE_OPTIONS+=("-T")
+             CONFIGURE_OPTIONS+=("v141,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
-             CONFIGURE_OPTIONS+=(-DV8_TARGET_ARCHS=Release)
+             CONFIGURE_OPTIONS+=("-DOPENSSL_USE_STATIC_LIBS=TRUE")
+             # MSVC doesn't know howto do our assembler in first place.
+             ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
              export _IsNativeEnvironment=true
              ;;
 
@@ -406,12 +420,21 @@ while [ $# -gt 0 ];  do
 
         --maintainer)
             shift
+            MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
             ;;
 
+        --debugV8)
+            shift
+            CONFIGURE_OPTIONS+=(-DUSE_DEBUG_V8=ON)
+            ;;
         --retryPackages)
             shift
             RETRY_N_TIMES=$1
             shift
+            ;;
+        --forceVersionNightly)
+            shift
+            CONFIGURE_OPTIONS+=(-DARANGODB_VERSION_REVISION=nightly)
             ;;
         *)
             echo "Unknown option: $1"
@@ -449,7 +472,7 @@ elif [ "$CLANG36" == 1 ]; then
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
-    
+    ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
     BUILD_DIR="${BUILD_DIR}-$(basename "${TOOL_PREFIX}")"
 
     # tell cmake we're cross compiling:
@@ -479,6 +502,8 @@ fi
 
 if [ "${USE_JEMALLOC}" = 1 ]; then
     CONFIGURE_OPTIONS+=(-DUSE_JEMALLOC=On)
+else
+    CONFIGURE_OPTIONS+=(-DUSE_JEMALLOC=Off)
 fi
 
 if [ "$SANITIZE" == 1 ]; then
@@ -517,9 +542,7 @@ if [ -n "$CXX" ]; then
     CONFIGURE_OPTIONS+=("-DCMAKE_CXX_COMPILER=${CXX}")
 fi
 
-if [ -z "${MSVC}" ]; then
-    # MSVC doesn't know howto do assembler in first place.
-    CONFIGURE_OPTIONS+=(-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off)
+if [ "${MSVC}" != "1" ]; then
     # on all other system cmake tends to be sluggish on finding strip.
     # workaround by presetting it:
     if test -z "${STRIP}"; then
@@ -555,6 +578,7 @@ if [ -z "${MSVC}" ]; then
 fi
 
 CONFIGURE_OPTIONS+=("${MAINTAINER_MODE}")
+CONFIGURE_OPTIONS+=("${ARCH}")
 
 if [ "${VERBOSE}" == 1 ];  then
     CONFIGURE_OPTIONS+=(-DVERBOSE=ON)
@@ -675,9 +699,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
     # shellcheck disable=SC2064
     trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
 
-    if test -f "${SRC}/SYNCER_REV"; then
-        SYNCER_REV=$(cat "${SRC}/SYNCER_REV")
-    else
+    SYNCER_REV=$(grep "SYNCER_REV" "${SRC}/VERSIONS" |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
+    if test "${SYNCER_REV}" == "latest"; then
         SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
                              grep tag_name | \
                              head -n 1 | \
@@ -716,7 +739,11 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
             curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
-                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+                "${SRC}/Installation/Jenkins/curl_time_machine.sh" "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+            if ! test -s "${FN}" ; then
+                echo "failed to download syncer binary - aborting!"
+                exit 1
+            fi
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
             OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
@@ -725,6 +752,9 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         else
             echo "using already downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: ${OLD_MD5}"
         fi
+    else
+        echo "failed to find download URL for arangosync - aborting!"
+        exit 1
     fi
     # Log out again:
 
@@ -732,9 +762,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
 fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
-    if test -f "${SRC}/STARTER_REV"; then
-        STARTER_REV=$(cat "${SRC}/STARTER_REV")
-    else
+    STARTER_REV=$(grep "STARTER_REV"  "${SRC}/VERSIONS" |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
+    if test "${STARTER_REV}" == "latest"; then
         # we utilize https://developer.github.com/v3/repos/ to get the newest release:
         STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
                              grep tag_name | \
@@ -771,6 +800,10 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
             rm -f "${FN}"
             curl -LO "${STARTER_URL}"
+            if ! test -s "${FN}" ; then
+                echo "failed to download starter binary - aborting!"
+                exit 1
+            fi
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${STARTER_REV}"
             chmod a+x "${BUILD_DIR}/${TN}"
@@ -779,6 +812,9 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         else
             echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: ${OLD_MD5}"
         fi
+    else
+        echo "failed to find download URL for arangodb starter - aborting!"
+        exit 1
     fi
     THIRDPARTY_BIN=("${THIRDPARTY_BIN}${BUILD_DIR}/${TN}")
 fi
@@ -821,7 +857,7 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
 fi
 
 mkdir -p "${DST}/lib/Basics/"
-cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
+sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" "${SOURCE_DIR}/lib/Basics/build-date.h.in" > "${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do
@@ -910,6 +946,9 @@ if test -n "${TARGET_DIR}";  then
          touch arangosh/.keepme
                                
          tar -u -f "${TARFILE_TMP}" \
+             tests/js \
+             tests/rb \
+             tests/arangodbRspecLib \
              VERSION \
              utils \
              scripts \
@@ -929,15 +968,7 @@ if test -n "${TARGET_DIR}";  then
         fi
 
         if test "${isCygwin}" == 1; then
-            SSLDIR=$(grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | \
-                            ${SED} 's/\r//' | \
-                            ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
-                  )
-            DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
-            # shellcheck disable=SC2086
-            cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
-            cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi
         tar -u -f "${TARFILE_TMP}" \
             bin etc tests

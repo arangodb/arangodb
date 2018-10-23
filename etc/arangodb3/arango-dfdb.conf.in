@@ -13,13 +13,11 @@ authentication = true
 @DEFINEUID@uid = arangodb
 
 statistics = false
-# set number of threads to 1 so we don't have concurrency
-threads = 1
 
 [javascript]
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
-script = @PKGDATADIR@/js/server/arango-dfdb.js
+script = @PKGDATADIR@/js/@ARANGODB_PLAIN_VERSION@/server/arango-dfdb.js
 v8-contexts = 1
 
 [foxx]

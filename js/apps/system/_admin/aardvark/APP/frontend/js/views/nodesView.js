@@ -25,6 +25,7 @@
     },
 
     remove: function () {
+      clearInterval(this.intervalFunction);
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
       this.unbind();
@@ -187,17 +188,20 @@
     },
 
     continueRender: function (nodes, scaling) {
-      var coords = {};
-      var dbs = {};
+      var coords = [];
+      var dbs = [];
       var scale = false;
 
       _.each(nodes, function (node, name) {
+        node.id = name;
         if (node.Role === 'Coordinator') {
-          coords[name] = node;
+          coords.push(node);
         } else if (node.Role === 'DBServer') {
-          dbs[name] = node;
+          dbs.push(node);
         }
       });
+      coords = _.sortBy(coords, function (o) { return o.ShortName; });
+      dbs = _.sortBy(dbs, function (o) { return o.ShortName; });
 
       if (scaling.numberOfDBServers !== null && scaling.numberOfCoordinators !== null) {
         scale = true;

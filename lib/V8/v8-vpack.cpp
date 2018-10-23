@@ -140,16 +140,17 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
                                               VPackOptions const* options,
                                               VPackSlice const* base) {
   TRI_ASSERT(slice.isArray());
+  
+  VPackArrayIterator it(slice);
+  
   v8::Handle<v8::Array> object =
-      v8::Array::New(isolate, static_cast<int>(slice.length()));
+      v8::Array::New(isolate, static_cast<int>(it.size()));
 
   if (object.IsEmpty()) {
     return v8::Undefined(isolate);
   }
 
   uint32_t j = 0;
-  VPackArrayIterator it(slice);
-
   while (it.valid()) {
     v8::Handle<v8::Value> val =
         TRI_VPackToV8(isolate, it.value(), options, &slice);
@@ -269,7 +270,7 @@ static inline void AddValue(BuilderContext& context,
                             arangodb::StringRef const& attributeName,
                             T const& value) {
   if (inObject) {
-    context.builder.add(attributeName.begin(), attributeName.size(), value);
+    context.builder.addUnchecked(attributeName.begin(), attributeName.size(), value);
   } else {
     context.builder.add(value);
   }
@@ -282,8 +283,10 @@ static inline void AddValue(BuilderContext& context,
 template <bool performAllChecks, bool inObject>
 static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
-                     arangodb::StringRef const& attributeName) {
-  if (parameter->IsNull() || parameter->IsUndefined()) {
+                     arangodb::StringRef const& attributeName,
+                     bool convertFunctionsToNull) {
+  if (parameter->IsNullOrUndefined() || 
+      (convertFunctionsToNull && parameter->IsFunction())) {
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Null));
     return TRI_ERROR_NO_ERROR;
@@ -346,7 +349,7 @@ static int V8ToVPack(BuilderContext& context,
       }
 
       int res = V8ToVPack<performAllChecks, false>(context, value,
-                                                   arangodb::StringRef());
+                                                   arangodb::StringRef(), convertFunctionsToNull);
 
       --context.level;
 
@@ -416,7 +419,7 @@ static int V8ToVPack(BuilderContext& context,
 
           if (!converted.IsEmpty()) {
             // return whatever toJSON returned
-            return V8ToVPack<performAllChecks, inObject>(context, converted, attributeName);
+            return V8ToVPack<performAllChecks, inObject>(context, converted, attributeName, convertFunctionsToNull);
           }
         }
 
@@ -451,7 +454,7 @@ static int V8ToVPack(BuilderContext& context,
       }
 
       int res = V8ToVPack<performAllChecks, true>(
-          context, value, arangodb::StringRef(*str, str.length()));
+          context, value, arangodb::StringRef(*str, str.length()), convertFunctionsToNull);
 
       --context.level;
 
@@ -474,13 +477,14 @@ static int V8ToVPack(BuilderContext& context,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
-                  v8::Handle<v8::Value> const value, bool keepTopLevelOpen) {
+                  v8::Local<v8::Value> const value, bool keepTopLevelOpen,
+                  bool convertFunctionsToNull) {
   v8::HandleScope scope(isolate);
   BuilderContext context(isolate, builder, keepTopLevelOpen);
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(ToJsonKey);
   context.toJsonKey = ToJsonKey;
-  return V8ToVPack<true, false>(context, value, arangodb::StringRef());
+  return V8ToVPack<true, false>(context, value, arangodb::StringRef(), convertFunctionsToNull);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,5 +498,5 @@ int TRI_V8ToVPackSimple(v8::Isolate* isolate,
                         v8::Handle<v8::Value> const value) {
   // a HandleScope must have been created by the caller already
   BuilderContext context(isolate, builder, false);
-  return V8ToVPack<false, false>(context, value, arangodb::StringRef());
+  return V8ToVPack<false, false>(context, value, arangodb::StringRef(), false);
 }

@@ -26,30 +26,24 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class MaxMapCountFeature final : public application_features::ApplicationFeature {
  public:
-  explicit MaxMapCountFeature(application_features::ApplicationServer* server);
-  ~MaxMapCountFeature();
+  explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 
- public:
-  void prepare() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  static constexpr bool needsChecking() {
-#ifdef __linux__
-    return true;
-#else
-    return false;
-#endif
+  
+  static bool needsChecking() {
+    return _doCheck;
   }
- 
-  static uint64_t minimumExpectedMaxMappings();
-  static uint64_t actualMaxMappings(); 
-  static bool isNearMaxMappings();
 
+  static uint64_t actualMaxMappings();
+  static uint64_t minimumExpectedMaxMappings();
+  
  private:
-  static bool isNearMaxMappingsInternal(double& suggestedCacheTime) noexcept;
+  static bool _doCheck;
 };
+
 }
 
 #endif

@@ -276,12 +276,14 @@
     },
 
     killCurrentGraph: function () {
-      for (var i in this.currentGraph.renderers) {
-        try {
-          this.currentGraph.renderers[i].clear();
-          this.currentGraph.kill(i);
-        } catch (ignore) {
-          // no need to cleanup
+      if (this.currentGraph && this.currentGraph.renderers) {
+        for (var i in this.currentGraph.renderers) {
+          try {
+            this.currentGraph.renderers[i].clear();
+            this.currentGraph.kill(i);
+          } catch (ignore) {
+            // no need to cleanup
+          }
         }
       }
     },
@@ -678,6 +680,7 @@
                   userConfig: self.userConfig,
                   saveCallback: self.render
                 });
+                self.graphSettingsView.render();
               }
             } catch (ignore) {
               // continue without config
@@ -1213,8 +1216,8 @@
       this.openNodesDate = new Date();
     },
 
-      // click nodes context menu
-      /*
+    // click nodes context menu
+    /*
       createNodesContextMenu: function () {
         var self = this;
         var e = self.nodesContextEventState;
@@ -1593,7 +1596,9 @@
           if (found === false) {
             if (newNode.id === existingNode.id) {
               if (existingNode.id === origin) {
-                existingNode.label = existingNode.label + ' (expanded)';
+                if (existingNode.label.indexOf(' (expanded)') === -1) {
+                  existingNode.label = existingNode.label + ' (expanded)';
+                }
               }
               found = true;
             } else {
@@ -1727,14 +1732,51 @@
     },
 
     editNode: function (id) {
-      var callback = function (a, b) {
-      };
+      var callback = function (data) {
+        this.updateNodeLabel(data);
+      }.bind(this);
       arangoHelper.openDocEditor(id, 'doc', callback);
     },
 
+    updateNodeLabel: function (data) {
+      var id = data[0]._id;
+
+      if (this.graphConfig.nodeLabel) {
+        var oldLabel = this.currentGraph.graph.nodes(id).label;
+        if (oldLabel !== data[0][this.graphConfig.nodeLabel]) {
+          var newLabel = data[0]['new'][this.graphConfig.nodeLabel];
+          if (typeof newLabel === 'string') {
+            this.currentGraph.graph.nodes(id).label = newLabel;
+          } else {
+            this.currentGraph.graph.nodes(id).label = JSON.stringify(newLabel);
+          }
+          this.currentGraph.refresh({ skipIndexation: true });
+        }
+      }
+    },
+
     editEdge: function (id) {
-      var callback = function () {};
+      var callback = function (data) {
+        this.updateEdgeLabel(data);
+      }.bind(this);
       arangoHelper.openDocEditor(id, 'edge', callback);
+    },
+
+    updateEdgeLabel: function (data) {
+      var id = data[0]._id;
+
+      if (this.graphConfig.edgeLabel) {
+        var oldLabel = this.currentGraph.graph.edges(id).label;
+        if (oldLabel !== data[0][this.graphConfig.edgeLabel]) {
+          var newLabel = data[0]['new'][this.graphConfig.edgeLabel];
+          if (typeof newLabel === 'string') {
+            this.currentGraph.graph.edges(id).label = newLabel;
+          } else {
+            this.currentGraph.graph.edges(id).label = JSON.stringify(newLabel);
+          }
+          this.currentGraph.refresh({ skipIndexation: true });
+        }
+      }
     },
 
     reloadGraph: function () {

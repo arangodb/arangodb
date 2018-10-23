@@ -8,21 +8,28 @@ set(PACKAGING_HANDLE_CONFIG_FILES true)
 ################################################################################
 
 FILE(READ "${PROJECT_SOURCE_DIR}/Installation/debian/packagedesc.txt" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
+
+set(CPACK_GENERATOR "DEB")
+
 set(CPACK_DEBIAN_PACKAGE_SECTION "database")
-set(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb, ${CPACKG_PACKAGE_CONFLICTS}, ${CPACKG_PACKAGE_CONFLICTS}-client, ${CPACK_PACKAGE_NAME}-client")
+set(CPACK_DEBIAN_PACKAGE_CONFLICTS
+  "arangodb, ${CPACKG_PACKAGE_CONFLICTS}, ${CPACKG_PACKAGE_CONFLICTS}-client, ${CPACK_PACKAGE_NAME}-client")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
 if(NOT DISABLE_XZ_DEB)
   set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 endif()
+
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
 set(CPACK_COMPONENTS_ALL debian-extras)
-set(CPACK_GENERATOR "DEB")
 
 if (SYSTEMD_FOUND)
   set(CPACK_SYSTEMD_FOUND "1")
 else()
   set(CPACK_SYSTEMD_FOUND "0")
 endif()
+
+set(LOGROTATE_GROUP "adm")
 
 # substitute the package name so debconf works:
 configure_file (
@@ -59,7 +66,8 @@ list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
 
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
 
-set(ARANGODB_DBG_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-dbg-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+set(ARANGODB_DBG_PACKAGE_FILE_NAME
+  "${CPACK_PACKAGE_NAME}-dbg-${ARANGODB_DEBIAN_UPSTREAM}-${ARANGODB_DEBIAN_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 set(conffiles_list "")
 if ("${INSTALL_CONFIGFILES_LIST}" STREQUAL "")
@@ -118,23 +126,25 @@ endif()
 ################################################################################
 # hook to build the server package
 ################################################################################
-add_custom_target(package-arongodb-server
+add_custom_target(package-arangodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-server)
+list(APPEND PACKAGES_LIST package-arangodb-server)
 
 ################################################################################
 # hook to build the client package
 ################################################################################
+
 set(CPACK_CLIENT_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
 
-set(ARANGODB_CLIENT_PACKAGE_FILE_NAME "${CPACK_CLIENT_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+set(ARANGODB_CLIENT_PACKAGE_FILE_NAME
+  "${CPACK_CLIENT_PACKAGE_NAME}-${ARANGODB_DEBIAN_UPSTREAM}-${ARANGODB_DEBIAN_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
 configure_file(cmake/packages/client/deb.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(package-arongodb-client
+add_custom_target(package-arangodb-client
   COMMAND ${CMAKE_COMMAND} .
   COMMENT "configuring client package environment"
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
@@ -143,7 +153,7 @@ add_custom_target(package-arongodb-client
   COMMENT "uploading client packages"
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-client)
+list(APPEND PACKAGES_LIST package-arangodb-client)
 
 
 add_custom_target(copy_deb_packages
@@ -175,10 +185,10 @@ list(APPEND CLEAN_PACKAGES_LIST remove_packages)
 set(DEBUG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb3-dbg)
 configure_file(cmake/packages/dbg/deb.txt ${DEBUG_BUILD_DIR}/CMakeLists.txt @ONLY)
 
-add_custom_target(package-arongodb-dbg
+add_custom_target(package-arangodb-dbg
   COMMAND ${CMAKE_COMMAND} . -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY}
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${DEBUG_BUILD_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-dbg)
+list(APPEND PACKAGES_LIST package-arangodb-dbg)

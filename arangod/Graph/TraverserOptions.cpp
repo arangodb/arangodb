@@ -306,7 +306,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, false, false);
+      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
     }
   }
   builder.close();
@@ -318,7 +318,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        it3.getIndex()->toVelocyPack(builder, false, false);
+        it3.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       }
     }
     builder.close();
@@ -532,7 +532,7 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   size_t baseCreateItems = 0;
   double baseCost = costForLookupInfoList(_baseLookupInfos, baseCreateItems);
 
-  for (uint64_t depth = 0; depth < maxDepth; ++depth) {
+  for (uint64_t depth = 0; depth < maxDepth && depth < 10; ++depth) {
     auto liList = _depthLookupInfo.find(depth);
     if (liList == _depthLookupInfo.end()) {
       // No LookupInfo for this depth use base
@@ -544,6 +544,12 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
       cost += depthCost * count;
       count *= createItems;
     }
+  }
+
+  if (maxDepth > 10) {
+    // We have a too high depth this cost will be pruned anyway
+    cost *= (maxDepth - 10) * 10;
+    count *= (maxDepth - 10) * 10;
   }
   nrItems = count;
   return cost;

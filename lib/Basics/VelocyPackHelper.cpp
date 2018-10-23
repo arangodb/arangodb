@@ -23,6 +23,7 @@
 
 #include "VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -164,9 +165,12 @@ void VelocyPackHelper::initialize() {
   CustomTypeHandler.reset(new DefaultCustomTypeHandler);
 
   VPackOptions::Defaults.customTypeHandler = CustomTypeHandler.get();
-  VPackOptions::Defaults.escapeUnicode = false;  // false here, but will be set
-                                                 // when converting to JSON for
-                                                 // HTTP xfer
+
+  // false here, but will be set when converting to JSON for HTTP xfer
+  VPackOptions::Defaults.escapeUnicode = false;  
+  
+  // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted order)
+  VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(
@@ -445,6 +449,21 @@ bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
   return defaultValue;
 }
 
+bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
+                                       std::string const& name, bool defaultValue) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
+  VPackSlice const& sub = slice.get(name);
+
+  if (sub.isBoolean()) {
+    return sub.getBool();
+  }
+
+  return defaultValue;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string
@@ -499,6 +518,35 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice,
     std::string msg = "The attribute '" + name + "' is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
+}
+
+/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
+  arangodb::velocypack::Slice slice,
+  arangodb::velocypack::StringRef const& defaultValue
+) noexcept {
+  return slice.isString()
+    ? arangodb::velocypack::StringRef(slice) : defaultValue
+    ;
+}
+
+/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
+  arangodb::velocypack::Slice slice,
+  std::string const& key,
+  arangodb::velocypack::StringRef const& defaultValue
+) noexcept {
+  if (slice.isExternal()) {
+    slice = arangodb::velocypack::Slice(slice.getExternal());
+  }
+
+  if (!slice.isObject() || !slice.hasKey(key)) {
+    return defaultValue;
+  }
+
+  auto value = slice.get(key);
+
+  return value.isString()
+    ? arangodb::velocypack::StringRef(value) : defaultValue
+    ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -572,21 +620,17 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
 /// @brief parses a json file to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder VelocyPackHelper::velocyPackFromFile(
-    std::string const& path) {
+VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
+    auto guard = scopeGuard([&content]() {
+      TRI_Free(content);
+    });
     // The Parser might throw;
     VPackBuilder builder;
-    try {
-      VPackParser parser(builder);
-      parser.parse(reinterpret_cast<uint8_t const*>(content), length);
-      TRI_Free(content);
-    } catch (...) {
-      TRI_Free(content);
-      throw;
-    }
+    VPackParser parser(builder);
+    parser.parse(reinterpret_cast<uint8_t const*>(content), length);
     return builder;
   }
   THROW_ARANGO_EXCEPTION(TRI_errno());
@@ -744,14 +788,17 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::Null:
       return 0;
     case VPackValueType::Bool: {
-      bool left = lhs.getBoolean();
-      bool right = rhs.getBoolean();
-      if (left == right) {
+      TRI_ASSERT(lhs.isBoolean());
+      TRI_ASSERT(rhs.isBoolean());
+      bool left = lhs.isTrue();
+      if (left == rhs.isTrue()) {
         return 0;
       }
       if (!left) {
+        TRI_ASSERT(rhs.isTrue());
         return -1;
       }
+      TRI_ASSERT(rhs.isFalse());
       return 1;
     }
     case VPackValueType::Double:
@@ -760,32 +807,40 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::SmallInt: {
       return compareNumberValues(lhsType, lhs, rhs);
     }
-    case VPackValueType::String: {
-      VPackValueLength nl;
-      char const* left = lhs.getString(nl);
-      TRI_ASSERT(left != nullptr);
-
-      VPackValueLength nr;
-      char const* right = rhs.getString(nr);
-      TRI_ASSERT(right != nullptr);
-
-      return compareStringValues(left, nl, right, nr, useUTF8);
-    }
+    case VPackValueType::String: 
     case VPackValueType::Custom: {
-      if (lhsBase == nullptr || rhsBase == nullptr || 
-          options == nullptr ||
-          options->customTypeHandler == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Could not extract custom attribute.");
-      }
-      std::string lhsString(options->customTypeHandler->toString(lhs, options, *lhsBase));
-      char const* left = lhsString.data();
-      VPackValueLength nl = lhsString.size();
-      TRI_ASSERT(left != nullptr);
+      VPackValueLength nl;
+      VPackValueLength nr;
+      char const* left;
+      char const* right;
+      std::string lhsString;
+      std::string rhsString;
 
-      std::string rhsString(options->customTypeHandler->toString(rhs, options, *rhsBase));
-      char const* right = rhsString.data();
-      VPackValueLength nr = rhsString.size();
+      if (lhs.isCustom()) {
+        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        lhsString = options->customTypeHandler->toString(lhs, options, *lhsBase);
+        left = lhsString.data();
+        nl = lhsString.size();
+      } else {
+        left = lhs.getString(nl);
+      }
+      
+      if (rhs.isCustom()) {
+        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        rhsString = options->customTypeHandler->toString(rhs, options, *rhsBase);
+        right = rhsString.data();
+        nr = rhsString.size();
+      } else {
+        right = rhs.getString(nr);
+      }
+
+      TRI_ASSERT(left != nullptr);
       TRI_ASSERT(right != nullptr);
 
       return compareStringValues(left, nl, right, nr, useUTF8);
@@ -964,50 +1019,6 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
 #endif  
 }
 
-#ifndef USE_ENTERPRISE
-uint64_t VelocyPackHelper::hashByAttributes(
-    VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, std::string const& key) {
-  uint64_t hash = TRI_FnvHashBlockInitial();
-  error = TRI_ERROR_NO_ERROR;
-  slice = slice.resolveExternal();
-  if (slice.isObject()) {
-    for (auto const& attr : attributes) {
-      VPackSlice sub = slice.get(attr).resolveExternal();
-      VPackBuilder temporaryBuilder;
-      if (sub.isNone()) {
-        if (attr == StaticStrings::KeyString && !key.empty()) {
-          temporaryBuilder.add(VPackValue(key));
-          sub = temporaryBuilder.slice();
-        } else {
-          if (!docComplete) {
-            error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-          }
-          // Null is equal to None/not present
-          sub = VPackSlice::nullSlice();
-        }
-      }
-      hash = sub.normalizedHash(hash);
-    }
-  } else if (slice.isString() && attributes.size() == 1 &&
-             attributes[0] == StaticStrings::KeyString) {
-    arangodb::StringRef subKey(slice);
-    size_t pos = subKey.find('/');
-    if (pos != std::string::npos) {
-      // We have an _id. Split it.
-      subKey = subKey.substr(pos + 1);
-      VPackBuilder temporaryBuilder;
-      temporaryBuilder.add(VPackValuePair(subKey.data(), subKey.length(), VPackValueType::String));
-      VPackSlice tmp = temporaryBuilder.slice();
-      hash = tmp.normalizedHash(hash);
-    } else {
-      hash = slice.normalizedHash(hash);
-    }
-  }
-  return hash;
-}
-#endif
-
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {
   if (input.isExternal()) {
     return checkExternals;
@@ -1029,56 +1040,44 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, 
   return false;
 }
 
+
 void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
                                               VPackSlice base,
                                               VPackBuilder& output,
                                               VPackOptions const* options,
                                               bool sanitizeExternals,
-                                              bool sanitizeCustom) {
+                                              bool sanitizeCustom,
+                                              bool allowUnindexed) {
   if (sanitizeExternals && input.isExternal()) {
     // recursively resolve externals
-    sanitizeNonClientTypes(input.resolveExternal(), base, output, options, sanitizeExternals, sanitizeCustom);
+    sanitizeNonClientTypes(input.resolveExternal(), base, output, options,
+                           sanitizeExternals, sanitizeCustom, allowUnindexed);
   } else if (sanitizeCustom && input.isCustom()) {
     if (options == nullptr || options->customTypeHandler == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot sanitize vpack without custom type handler"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot sanitize vpack without custom type handler");
     }
     std::string custom = options->customTypeHandler->toString(input, options, base);
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
-    output.openObject();
-    for (auto const& it : VPackObjectIterator(input)) {
+    output.openObject(allowUnindexed);
+    for (auto const& it : VPackObjectIterator(input, true)) {
       VPackValueLength l;
       char const* p = it.key.getString(l);
       output.add(VPackValuePair(p, l, VPackValueType::String));
-      sanitizeNonClientTypes(it.value, input, output, options, sanitizeExternals, sanitizeCustom);
+      sanitizeNonClientTypes(it.value, input, output, options,
+                             sanitizeExternals, sanitizeCustom, allowUnindexed);
     }
     output.close();
   } else if (input.isArray()) {
-    output.openArray();
+    output.openArray(allowUnindexed);
     for (auto const& it : VPackArrayIterator(input)) {
-      sanitizeNonClientTypes(it, input, output, options, sanitizeExternals, sanitizeCustom);
+      sanitizeNonClientTypes(it, input, output, options,
+                             sanitizeExternals, sanitizeCustom, allowUnindexed);
     }
     output.close();
   } else {
     output.add(input);
   }
-}
-
-VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
-    VPackSlice input, VPackOptions const* options, bool sanitizeExternals, bool sanitizeCustom) {
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer, options);
-  bool resolveExt = true;
-  if (sanitizeExternals) {
-    resolveExt = hasNonClientTypes(input, sanitizeExternals, sanitizeCustom);
-  }
-  if (resolveExt) {  // resolve
-    buffer.reserve(input.byteSize()); // reserve space already
-    sanitizeNonClientTypes(input, VPackSlice::noneSlice(), builder, options, sanitizeExternals, sanitizeCustom);
-  } else {
-    builder.add(input);
-  }
-  return buffer;  // elided
 }
 
 /// @brief extract the collection id from VelocyPack
@@ -1094,7 +1093,9 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
 
   if (id.isString()) {
     // string cid, e.g. "9988488"
-    return StringUtils::uint64(id.copyString());
+    VPackValueLength l;
+    char const* p = id.getString(l);
+    return NumberUtils::atoi_zero<uint64_t>(p, p + l);
   } else if (id.isNumber()) {
     // numeric cid, e.g. 9988488
     return id.getNumericValue<uint64_t>();

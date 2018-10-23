@@ -25,8 +25,10 @@
 #define ARANGOD_REST_HANDLER_REST_COLLECTION_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/Methods/Collections.h"
 
 namespace arangodb {
+
 class LogicalCollection;
 
 class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
@@ -35,21 +37,39 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestCollectionHandler"; }
-  bool isDirect() const override { return false; }
-  RestStatus execute() override;
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override final;
+  
+ protected:
+  
+  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
+                                bool showProperties, bool showFigures,
+                                bool showCount, bool detailedCount);
 
+  void collectionRepresentation(
+    arangodb::velocypack::Builder& builder,
+    LogicalCollection& coll,
+    bool showProperties,
+    bool showFigures,
+    bool showCount,
+    bool detailedCount
+  );
+
+  void collectionRepresentation(VPackBuilder& builder,
+                                methods::Collections::Context& ctxt,
+                                bool showProperties, bool showFigures,
+                                bool showCount, bool detailedCount);
+  
+  virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                                       velocypack::Builder& builder) = 0;
+  
  private:
   void handleCommandGet();
   void handleCommandPost();
   void handleCommandPut();
   void handleCommandDelete();
-  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool aggregateCount);
-  void collectionRepresentation(VPackBuilder& builder, LogicalCollection* coll,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool aggregateCount);
 };
+
 }
 
 #endif

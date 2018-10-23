@@ -45,11 +45,12 @@ var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
 
 function getReadableName (name) {
-  return name.charAt(0).toUpperCase() + name.substr(1)
+  const readable = name
   .replace(/([-_]|\s)+/g, ' ')
-  .replace(/([a-z])([A-Z])/g, (m) => `${m[0]} ${m[1]}`)
-  .replace(/([A-Z])([A-Z][a-z])/g, (m) => `${m[0]} ${m[1]}`)
-  .replace(/\s([a-z])/g, (m) => ` ${m[0].toUpperCase()}`);
+  .replace(/[a-z][A-Z]/g, (str) => `${str.charAt(0)} ${str.slice(1)}`)
+  .replace(/[A-Z][A-Z][a-z]/g, (str) => `${str.charAt(0)} ${str.slice(1)}`)
+  .replace(/\s[a-z]/g, (str) => `${str.toUpperCase()}`);
+  return readable.charAt(0).toUpperCase() + readable.substr(1);
 }
 
 function getStorage () {
@@ -172,7 +173,7 @@ function validateMount (mount, internal) {
   if (mount[0] !== '/') {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-      errorMessage: 'Mountpoint has to start with /.'
+      errorMessage: 'Mount point has to start with /.'
     });
   }
   if (!mountRegEx.test(mount)) {
@@ -180,7 +181,7 @@ function validateMount (mount, internal) {
     if (!internal || mount.length !== 1) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-        errorMessage: 'Mountpoint can only contain a-z, A-Z, 0-9 or _.'
+        errorMessage: 'Mount point can only contain a-z, A-Z, 0-9 or _.'
       });
     }
   }
@@ -197,13 +198,13 @@ function validateMount (mount, internal) {
     if (mountNumberRegEx.test(mount)) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-        errorMessage: 'Mointpoints are not allowed to start with a number, - or %.'
+        errorMessage: 'Mount points are not allowed to start with a number, - or %.'
       });
     }
     if (mountAppRegEx.test(mount)) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-        errorMessage: 'Mountpoint is not allowed to contain /app/.'
+        errorMessage: 'Mount point is not allowed to contain /app/.'
       });
     }
   }
@@ -219,7 +220,7 @@ function getServiceDefinition (mount) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Update the app installed at this mountpoint with the new app
+// / @brief Update the app installed at this mount point with the new app
 // //////////////////////////////////////////////////////////////////////////////
 
 function updateService (mount, update) {
@@ -248,7 +249,7 @@ function joinLastPath (tempPath) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a zip archive of a foxx app. Returns the absolute path
+// / @brief creates a zip archive of a Foxx app. Returns the absolute path
 // //////////////////////////////////////////////////////////////////////////////
 function zipDirectory (directory, zipFilename) {
   if (!fs.isDirectory(directory)) {

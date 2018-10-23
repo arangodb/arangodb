@@ -51,7 +51,10 @@ We can now check which ports they occupied:
 
 ### Configuring IPTables / ferm
 
-Since the usual solution using shell scripts calling iptables brings the [DRY principle](http://en.wikipedia.org/wiki/Don%27t_repeat_yourself) to a grinding hold, we need something better. Here [ferm](http://ferm.foo-projects.org/download/2.2/ferm.html#basic_iptables_match_keywords) comes to the rescue - It enables you to produce very compact and well readable firewall configurations.
+Since the usual solution using shell scripts calling iptables
+brings the [DRY principle](http://en.wikipedia.org/wiki/Don%27t_repeat_yourself) to a grinding hold,
+we need something better. Here [ferm](http://ferm.foo-projects.org/download/2.2/ferm.html#basic_iptables_match_keywords) comes to the rescue -
+It enables you to produce very compact and well readable firewall configurations.
 
 According to the ports we found in the last section, we will configure our firewall in `/etc/ferm/ferm.conf`, and put the identities into the comments so we have a persistent naming scheme:
 
@@ -167,7 +170,8 @@ We now use the iptables command line utility directly to review the status our c
 You can see nicely the Accounting sub-chain with our comments. These should be pretty straight forward to match.
 We also see the **pkts** and **bytes** columns. They contain the current value of these counters of your system.
 
-Read more about [linux firewalling](http://lartc.org) and [ferm configuration](http://ferm.foo-projects.org/download/2.2/ferm.html) to be sure you do the right thing.
+Read more about [linux firewalling](http://lartc.org) and
+[ferm configuration](http://ferm.foo-projects.org/download/2.2/ferm.html) to be sure you do the right thing.
 
 ### Configuring Collectd to pick up these values
 
@@ -195,7 +199,7 @@ Now we restart collectd with `/etc/init.d/collectd restart`, watch the syslog fo
 
 We can inspect our values with kcollectd:
 
-![Kcollectd screenshot](/assets/MonitoringWithCollectd/KCollectdIPtablesAccounting.png)
+![Kcollectd screenshot](../assets/MonitoringWithCollectd/KCollectdIPtablesAccounting.png)
 
 **Author:** [Wilfried Goesgens](https://github.com/dothebart)
 

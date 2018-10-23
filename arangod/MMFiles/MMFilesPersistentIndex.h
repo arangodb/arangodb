@@ -63,7 +63,6 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
  public:
   MMFilesPersistentIndexIterator(LogicalCollection* collection,
                                  transaction::Methods* trx,
-                                 ManagedDocumentResult* mmdr,
                                  arangodb::MMFilesPersistentIndex const* index,
                                  arangodb::MMFilesPrimaryIndex* primaryIndex,
                                  rocksdb::OptimisticTransactionDB* db,
@@ -78,6 +77,7 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
 
   /// @brief Get the next limit many element in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -92,6 +92,7 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
       _rightEndpoint;  // Interval right border
   bool const _reverse;
   bool _probe;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
@@ -100,19 +101,18 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesPersistentIndex() = delete;
 
-  MMFilesPersistentIndex(TRI_idx_iid_t, LogicalCollection*,
-                         arangodb::velocypack::Slice const&);
+  MMFilesPersistentIndex(
+    TRI_idx_iid_t iid, LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesPersistentIndex();
 
- public:
   IndexType type() const override {
     return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
 
   char const* typeName() const override { return "persistent"; }
-
-  bool allowExpansion() const override { return true; }
 
   bool isPersistent() const override { return true; }
   bool canBeDropped() const override { return true; }
@@ -178,11 +178,11 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the MMFilesPersistentIndexIterator* results
   MMFilesPersistentIndexIterator* lookup(transaction::Methods*,
-                                         ManagedDocumentResult* mmdr,
                                          arangodb::velocypack::Slice const,
                                          bool reverse) const;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
@@ -194,26 +194,10 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-
- private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
-
-  void matchAttributes(
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
 };
 }
 

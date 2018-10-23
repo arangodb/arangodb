@@ -35,16 +35,44 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::vector<std::pair<int, std::string>> LogAppenderFile::_fds = {};
+std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fds = {};
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
-    : LogAppender(filter), _bufferSize(0), _fd(fd), _useColors(false) {}
+    : LogAppender(filter), _bufferSize(0), _fd(fd), _useColors(false), _escape(Logger::getUseEscaped()) {}
+  
+size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) const {
+  if (_escape) {
+    return TRI_MaxLengthEscapeControlsCString(message.size());
+  }
+  return message.size() + 2;
+}
+  
+size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
+  if (_escape) {
+    size_t escapedLength;
+    // this is guaranteed to succeed given that we already have a buffer
+    TRI_EscapeControlsCString(message.data(), message.size(), _buffer.get(), &escapedLength, true);
+    return escapedLength;
+  }
+
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(message.data());
+  unsigned char const* e = p + message.size();
+  char* s = _buffer.get();
+  char* q = s;
+  while (p < e) {
+    unsigned char c = *p++;
+    *q++ = c < 0x20 ? ' ' : c;
+  }
+  *q++ = '\n';
+  *q = '\0';
+  return q - s;
+}
   
 void LogAppenderStream::logMessage(LogLevel level, std::string const& message,
                                    size_t offset) {
   // check max. required output length
-  size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
+  size_t const neededBufferSize = determineOutputBufferSize(message);
   
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
@@ -66,12 +94,10 @@ void LogAppenderStream::logMessage(LogLevel level, std::string const& message,
   
   TRI_ASSERT(_buffer != nullptr);
   
-  size_t escapedLength;
-  // this is guaranteed to succeed given that we already have a buffer
-  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer.get(), &escapedLength, true);
-  TRI_ASSERT(escapedLength <= neededBufferSize);
+  size_t length = writeIntoOutputBuffer(message);
+  TRI_ASSERT(length <= neededBufferSize);
 
-  this->writeLogMessage(level, _buffer.get(), escapedLength);
+  this->writeLogMessage(level, _buffer.get(), length);
 
   if (_bufferSize > maxBufferSize) {
     // free the buffer so the Logger is not hogging so much memory
@@ -87,9 +113,9 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
     // logging to an actual file
     size_t pos = 0;
     for (auto& it : _fds) {
-      if (it.second == _filename) {
+      if (std::get<1>(it) == _filename) {
         // already have an appender for the same file
-        _fd = it.first;
+        _fd = std::get<0>(it);
         break;
       }
       ++pos;
@@ -109,7 +135,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
       }
 
-      _fds.emplace_back(std::make_pair(fd, _filename));
+      _fds.emplace_back(std::make_tuple(fd, _filename, this));
       _fd = fd;
     }
   }
@@ -160,8 +186,8 @@ std::string LogAppenderFile::details() {
 
 void LogAppenderFile::reopenAll() {
   for (auto& it : _fds) {
-    int old = it.first;
-    std::string const& filename = it.second;
+    int old = std::get<0>(it);
+    std::string const& filename = std::get<1>(it);
 
     if (filename.empty()) {
       continue;
@@ -176,7 +202,7 @@ void LogAppenderFile::reopenAll() {
     backup.append(".old");
 
     FileUtils::remove(backup);
-    FileUtils::rename(filename, backup);
+    TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
     int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
@@ -184,7 +210,7 @@ void LogAppenderFile::reopenAll() {
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
-      FileUtils::rename(backup, filename);
+      TRI_RenameFile(backup.c_str(), filename.c_str());
       continue;
     }
 
@@ -192,7 +218,10 @@ void LogAppenderFile::reopenAll() {
       FileUtils::remove(backup);
     }
 
-    it.first = fd;
+    // update the file descriptor in the map
+    std::get<0>(it) = fd;
+    // and also tell the appender of the file descriptor change
+    std::get<2>(it)->updateFd(fd);
 
     if (old > STDERR_FILENO) {
       TRI_TRACKED_CLOSE_FILE(old);
@@ -202,8 +231,11 @@ void LogAppenderFile::reopenAll() {
 
 void LogAppenderFile::closeAll() {
   for (auto& it : _fds) {
-    int fd = it.first;
-    it.first = -1;
+    int fd = std::get<0>(it);
+    // set the fd to "disabled"
+    std::get<0>(it) = -1;
+    // and also tell the appender of the file descriptor change
+    std::get<2>(it)->updateFd(-1);
 
     if (fd > STDERR_FILENO) {
       fsync(fd);
@@ -211,7 +243,12 @@ void LogAppenderFile::closeAll() {
     }
   }
 }
-  
+
+void LogAppenderFile::clear() {
+  closeAll();
+  _fds.clear();
+}
+
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::string const& filter, int fd)
     : LogAppenderStream(filename, filter, fd) {
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());

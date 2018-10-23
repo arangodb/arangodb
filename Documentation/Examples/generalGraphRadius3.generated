@@ -1,8 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
-arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
-arangosh&gt; db._query(<span class="hljs-string">"RETURN GRAPH_RADIUS("</span>
-........&gt; + <span class="hljs-string">"'routeplanner', {direction: 'outbound', weight: 'distance'})"</span>
-........&gt; ).toArray();
-[ 
-  <span class="hljs-number">550</span> 
-]

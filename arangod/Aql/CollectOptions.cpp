@@ -30,7 +30,7 @@ using namespace arangodb::aql;
 
 /// @brief constructor
 CollectOptions::CollectOptions(VPackSlice const& slice) 
-    : method(COLLECT_METHOD_UNDEFINED) {
+    : method(CollectMethod::UNDEFINED) {
   VPackSlice v = slice.get("collectOptions");
   if (v.isObject()) {
     v = v.get("method");
@@ -40,16 +40,15 @@ CollectOptions::CollectOptions(VPackSlice const& slice)
   }
 }
 
-/// @brief whether or not the hash method can be used
-bool CollectOptions::canUseHashMethod() const {
-  if (method == CollectMethod::COLLECT_METHOD_SORTED) {
-    return false;
-  }
-  if (method == CollectMethod::COLLECT_METHOD_DISTINCT) {
-    return false;
-  }
+/// @brief whether or not the method can be used
+bool CollectOptions::canUseMethod(CollectMethod method) const {
+  return (this->method == method || 
+          this->method == CollectMethod::UNDEFINED);
+}
 
-  return true;
+/// @brief whether or not the method should be used (i.e. is preferred)
+bool CollectOptions::shouldUseMethod(CollectMethod method) const {
+  return (this->method == method);
 }
 
 /// @brief convert the options to VelocyPack
@@ -62,29 +61,35 @@ void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
 CollectOptions::CollectMethod CollectOptions::methodFromString(
     std::string const& method) {
   if (method == "hash") {
-    return CollectMethod::COLLECT_METHOD_HASH;
+    return CollectMethod::HASH;
   }
   if (method == "sorted") {
-    return CollectMethod::COLLECT_METHOD_SORTED;
+    return CollectMethod::SORTED;
   }
   if (method == "distinct") {
-    return CollectMethod::COLLECT_METHOD_DISTINCT;
+    return CollectMethod::DISTINCT;
+  }
+  if (method == "count") {
+    return CollectMethod::COUNT;
   }
 
-  return CollectMethod::COLLECT_METHOD_UNDEFINED;
+  return CollectMethod::UNDEFINED;
 }
 
 /// @brief stringify the aggregation method
 std::string CollectOptions::methodToString(
     CollectOptions::CollectMethod method) {
-  if (method == CollectMethod::COLLECT_METHOD_HASH) {
+  if (method == CollectMethod::HASH) {
     return std::string("hash");
   }
-  if (method == CollectMethod::COLLECT_METHOD_SORTED) {
+  if (method == CollectMethod::SORTED) {
     return std::string("sorted");
   }
-  if (method == CollectMethod::COLLECT_METHOD_DISTINCT) {
+  if (method == CollectMethod::DISTINCT) {
     return std::string("distinct");
+  }
+  if (method == CollectMethod::COUNT) {
+    return std::string("count");
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

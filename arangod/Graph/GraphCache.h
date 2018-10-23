@@ -1,0 +1,58 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Tobias Gödderz
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGOD_GRAPH_GRAPHCACHE_H
+#define ARANGOD_GRAPH_GRAPHCACHE_H
+
+#include <velocypack/Buffer.h>
+#include <chrono>
+#include <utility>
+
+#include "Aql/Query.h"
+#include "Aql/VariableGenerator.h"
+#include "Basics/ReadWriteLock.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+
+namespace arangodb {
+namespace graph {
+class GraphCache {
+ public:
+  // save now() along with the graph
+  using EntryType = std::pair<std::chrono::steady_clock::time_point,
+                              std::shared_ptr<const Graph>>;
+  using CacheType = std::unordered_map<std::string, EntryType>;
+
+  // TODO The cache saves the graph names globally, not per database!
+  // This must be addressed as soon as it is activated.
+  const std::shared_ptr<const Graph> getGraph(
+      std::shared_ptr<transaction::Context> ctx, std::string const& name,
+      std::chrono::seconds maxAge = std::chrono::seconds(60));
+
+ private:
+  basics::ReadWriteLock _lock;
+  CacheType _cache;
+};
+}  // namespace graph
+}  // namespace arangodb
+
+#endif  // ARANGOD_GRAPH_GRAPHCACHE_H

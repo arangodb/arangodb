@@ -1,0 +1,5 @@
+ ignored line starting with whitespace
+
+a this is a comment after the first whitespace
+i
+o

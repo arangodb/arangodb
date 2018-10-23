@@ -28,7 +28,6 @@
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedAtomic.h"
 #include "Basics/SharedCounter.h"
-#include "Basics/asio-helper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
@@ -157,7 +156,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Signal the end of a transaction. Deletes the passed Transaction.
   //////////////////////////////////////////////////////////////////////////////
-  void endTransaction(Transaction* tx);
+  void endTransaction(Transaction* tx) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Post a function to the scheduler
@@ -177,7 +176,7 @@ class Manager {
   static constexpr uint64_t triesSlow = 1000;
 
   // simple state variables
-  basics::ReadWriteSpinLock<64> _lock;
+  basics::ReadWriteSpinLock _lock;
   bool _shutdown;
   bool _shuttingDown;
   bool _resizing;

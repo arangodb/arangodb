@@ -1,0 +1,2059 @@
+{
+  "agency.activate" : {
+    "default" : false,
+    "description" : "Activate agency",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "boolean"
+  },
+  "agency.compaction-keep-size" : {
+    "default" : 50000,
+    "description" : "keep as many indices before compaction point",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "uint64"
+  },
+  "agency.compaction-step-size" : {
+    "default" : 1000,
+    "description" : "step size between state machine compactions",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "agency",
+    "type" : "uint64"
+  },
+  "agency.disaster-recovery-id" : {
+    "default" : "",
+    "description" : "allows for specification of the id for this agent; dangerous option for disaster recover only!",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "agency",
+    "type" : "string"
+  },
+  "agency.election-timeout-max" : {
+    "default" : 5,
+    "description" : "maximum timeout before an agent calls for new election [s]",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "double"
+  },
+  "agency.election-timeout-min" : {
+    "default" : 1,
+    "description" : "minimum timeout before an agent calls for new election [s]",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "double"
+  },
+  "agency.endpoint" : {
+    "default" : [
+    ],
+    "description" : "agency endpoints",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "string..."
+  },
+  "agency.max-append-size" : {
+    "default" : 250,
+    "description" : "maximum size of appendEntries document (# log entries)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "agency",
+    "type" : "uint64"
+  },
+  "agency.my-address" : {
+    "default" : "",
+    "description" : "which address to advertise to the outside",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "string"
+  },
+  "agency.pool-size" : {
+    "default" : 1,
+    "description" : "number of agent pool",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "uint64"
+  },
+  "agency.size" : {
+    "default" : 1,
+    "description" : "number of agents",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "uint64"
+  },
+  "agency.supervision" : {
+    "default" : false,
+    "description" : "perform arangodb cluster supervision",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "boolean"
+  },
+  "agency.supervision-frequency" : {
+    "default" : 1,
+    "description" : "arangodb cluster supervision frequency [s]",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "double"
+  },
+  "agency.supervision-grace-period" : {
+    "default" : 10,
+    "description" : "supervision time, after which a server is considered to have failed [s]",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "agency",
+    "type" : "double"
+  },
+  "agency.wait-for-sync" : {
+    "default" : true,
+    "description" : "wait for hard disk syncs on every persistence call (required in production)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "agency",
+    "type" : "boolean"
+  },
+  "arangosearch.threads" : {
+    "default" : 0,
+    "description" : "the exact number of threads to use for asynchronous tasks (0 == autodetect)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "arangosearch",
+    "type" : "uint64"
+  },
+  "arangosearch.threads-limit" : {
+    "default" : 0,
+    "description" : "upper limit to the autodetected number of threads to use for asynchronous tasks (0 == use default)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "arangosearch",
+    "type" : "uint64"
+  },
+  "audit.hostname" : {
+    "default" : "",
+    "description" : "hostname to use",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "audit",
+    "type" : "string"
+  },
+  "audit.output" : {
+    "default" : [
+    ],
+    "description" : "audit destination(s)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "audit",
+    "type" : "string..."
+  },
+  "cache.rebalancing-interval" : {
+    "default" : 2000000,
+    "description" : "microseconds between rebalancing attempts",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cache",
+    "type" : "uint64"
+  },
+  "cache.size" : {
+    "default" : 4364868403,
+    "description" : "size of cache in bytes",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cache",
+    "type" : "uint64"
+  },
+  "check-configuration" : {
+    "default" : false,
+    "description" : "check the configuration and exit",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "cluster.agency-endpoint" : {
+    "default" : [
+    ],
+    "description" : "agency endpoint to connect to",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "string..."
+  },
+  "cluster.agency-prefix" : {
+    "default" : "",
+    "description" : "agency prefix",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "cluster",
+    "type" : "string"
+  },
+  "cluster.create-waits-for-sync-replication" : {
+    "default" : true,
+    "description" : "active coordinator will wait for all replicas to create collection",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "cluster",
+    "type" : "boolean"
+  },
+  "cluster.index-create-timeout" : {
+    "default" : 3600,
+    "description" : "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "cluster",
+    "type" : "double"
+  },
+  "cluster.my-address" : {
+    "default" : "",
+    "description" : "this server's endpoint (cluster internal)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "string"
+  },
+  "cluster.my-advertised-endpoint" : {
+    "default" : "",
+    "description" : "this server's advertised endpoint (e.g. external IP address or load balancer, optional)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "string"
+  },
+  "cluster.my-role" : {
+    "default" : "",
+    "description" : "this server's role",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "string"
+  },
+  "cluster.require-persisted-id" : {
+    "default" : false,
+    "description" : "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "boolean"
+  },
+  "cluster.synchronous-replication-timeout-factor" : {
+    "default" : 1,
+    "description" : "all synchronous replication timeouts are multiplied by this factor",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "double"
+  },
+  "cluster.synchronous-replication-timeout-per-4k" : {
+    "default" : 0.1,
+    "description" : "all synchronous replication timeouts are increased by this amount per 4096 bytes (in seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "cluster",
+    "type" : "double"
+  },
+  "cluster.system-replication-factor" : {
+    "default" : 2,
+    "description" : "replication factor for system collections",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "cluster",
+    "type" : "uint32"
+  },
+  "compaction.db-sleep-time" : {
+    "default" : 1,
+    "description" : "sleep interval between two compaction runs (in s)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "double"
+  },
+  "compaction.dead-documents-threshold" : {
+    "default" : 16384,
+    "description" : "minimum unused count of documents in a datafile",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "uint64"
+  },
+  "compaction.dead-size-percent-threshold" : {
+    "default" : 0.1,
+    "description" : "how many percent of the source datafile should be unused at least",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "double"
+  },
+  "compaction.dead-size-threshold" : {
+    "default" : 131072,
+    "description" : "how many bytes of the source data file are allowed to be unused at most",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "uint64"
+  },
+  "compaction.max-file-size-factor" : {
+    "default" : 3,
+    "description" : "how large the resulting file may be in comparison to the collections '--database.maximal-journal-size' setting",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "uint64"
+  },
+  "compaction.max-files" : {
+    "default" : 3,
+    "description" : "Maximum number of files to merge to one file",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "uint64"
+  },
+  "compaction.max-result-file-size" : {
+    "default" : 134217728,
+    "description" : "how large may the compaction result file become (in bytes)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "uint64"
+  },
+  "compaction.min-interval" : {
+    "default" : 10,
+    "description" : "minimum sleep time between two compaction runs (in s)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "double"
+  },
+  "compaction.min-small-data-file-size" : {
+    "default" : 131072,
+    "description" : "minimal filesize threshhold original data files have to be below for a compaction",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "compaction",
+    "type" : "uint64"
+  },
+  "config" : {
+    "default" : "",
+    "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "configuration" : {
+    "default" : "",
+    "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "string"
+  },
+  "console" : {
+    "default" : false,
+    "description" : "start a JavaScript emergency console",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "daemon" : {
+    "default" : false,
+    "description" : "background the server, running it as daemon",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "database.auto-upgrade" : {
+    "default" : false,
+    "description" : "perform a database upgrade if necessary",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.check-version" : {
+    "default" : false,
+    "description" : "checks the versions of the database and exit",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.directory" : {
+    "default" : "",
+    "description" : "path to the database directory",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "database",
+    "type" : "string"
+  },
+  "database.force-sync-properties" : {
+    "default" : true,
+    "description" : "force syncing of collection properties to disk, will use waitForSync value of collection when turned off",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.ignore-datafile-errors" : {
+    "default" : false,
+    "description" : "load collections even if datafiles may contain errors",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.init-database" : {
+    "default" : false,
+    "description" : "initializes an empty database",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.maximal-journal-size" : {
+    "default" : 33554432,
+    "description" : "default maximal journal size, can be overwritten when creating a collection",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "database",
+    "type" : "uint64"
+  },
+  "database.password" : {
+    "default" : "",
+    "description" : "initial password of root user",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "string"
+  },
+  "database.required-directory-state" : {
+    "default" : "any",
+    "description" : "required state of database directory at startup (non-existing: database directory must not exist, existing: database directory must exist, empty: database directory must exist but be empty, populated: database directory must exist and contain specific files already, any: any state allowed)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "database",
+    "type" : "string",
+    "values" : "Possible values: \"any\", \"empty\", \"existing\", \"non-existing\", \"populated\""
+  },
+  "database.restore-admin" : {
+    "default" : false,
+    "description" : "resets the admin users and sets a new password",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.throw-collection-not-loaded-error" : {
+    "default" : false,
+    "description" : "throw an error when accessing a collection that is still loading",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.upgrade-check" : {
+    "default" : true,
+    "description" : "skip a database upgrade",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "database.wait-for-sync" : {
+    "default" : false,
+    "description" : "default wait-for-sync behavior, can be overwritten when creating a collection",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "database",
+    "type" : "boolean"
+  },
+  "default-language" : {
+    "default" : "",
+    "description" : "ISO-639 language code",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "define" : {
+    "default" : [
+    ],
+    "description" : "define key=value for a @key@ entry in config file",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string..."
+  },
+  "dump-dependencies" : {
+    "default" : false,
+    "description" : "dump dependency graph",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "dump-options" : {
+    "default" : true,
+    "description" : "dump configuration options in JSON format",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "fortune" : {
+    "default" : false,
+    "description" : "show fortune cookie on startup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "foxx.queues" : {
+    "default" : true,
+    "description" : "enable Foxx queues",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "foxx",
+    "type" : "boolean"
+  },
+  "foxx.queues-poll-interval" : {
+    "default" : 1,
+    "description" : "poll interval (in seconds) for Foxx queue manager",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "foxx",
+    "type" : "double"
+  },
+  "frontend.proxy-request-check" : {
+    "default" : true,
+    "description" : "enable proxy request checking",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "frontend",
+    "type" : "boolean"
+  },
+  "frontend.trusted-proxy" : {
+    "default" : [
+    ],
+    "description" : "list of proxies to trust (may be IP or network). Make sure --frontend.proxy-request-check is enabled",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "frontend",
+    "type" : "string..."
+  },
+  "frontend.version-check" : {
+    "default" : true,
+    "description" : "alert the user if new versions are available",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "frontend",
+    "type" : "boolean"
+  },
+  "gid" : {
+    "default" : "",
+    "description" : "switch to group-id after reading config files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "http.allow-method-override" : {
+    "default" : false,
+    "description" : "allow HTTP method override using special headers",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "http",
+    "type" : "boolean"
+  },
+  "http.hide-product-header" : {
+    "default" : false,
+    "description" : "do not expose \"Server: ArangoDB\" header in HTTP responses",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "http",
+    "type" : "boolean"
+  },
+  "http.keep-alive-timeout" : {
+    "default" : 300,
+    "description" : "keep-alive timeout in seconds",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "http",
+    "type" : "double"
+  },
+  "http.trusted-origin" : {
+    "default" : [
+    ],
+    "description" : "trusted origin URLs for CORS requests with credentials",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "http",
+    "type" : "string..."
+  },
+  "hund" : {
+    "default" : false,
+    "description" : "make ArangoDB bark on startup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "javascript.allow-admin-execute" : {
+    "default" : false,
+    "description" : "for testing purposes allow '_admin/execute', NEVER enable on production",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.app-path" : {
+    "default" : "./js/apps",
+    "description" : "directory for Foxx applications",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.copy-installation" : {
+    "default" : false,
+    "description" : "copy contents of 'javascript.startup-directory' on first start",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.enabled" : {
+    "default" : true,
+    "description" : "enable the V8 JavaScript engine",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
+  "javascript.gc-frequency" : {
+    "default" : 60,
+    "description" : "JavaScript time-based garbage collection frequency (each x seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "double"
+  },
+  "javascript.gc-interval" : {
+    "default" : 2000,
+    "description" : "JavaScript request-based garbage collection interval (each x requests)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.module-directory" : {
+    "default" : [
+      "./enterprise/js"
+    ],
+    "description" : "additional paths containing JavaScript modules",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.script" : {
+    "default" : [
+    ],
+    "description" : "run scripts and exit",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.script-parameter" : {
+    "default" : [
+    ],
+    "description" : "script parameter",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "javascript.startup-directory" : {
+    "default" : "./js",
+    "description" : "path to the directory containing JavaScript startup scripts",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string"
+  },
+  "javascript.v8-contexts" : {
+    "default" : 0,
+    "description" : "maximum number of V8 contexts that are created for executing JavaScript actions",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.v8-contexts-max-age" : {
+    "default" : 60,
+    "description" : "maximum age for each V8 context (in seconds) before it is disposed",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "double"
+  },
+  "javascript.v8-contexts-max-invocations" : {
+    "default" : 0,
+    "description" : "maximum number of invocations for each V8 context before it is disposed",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.v8-contexts-minimum" : {
+    "default" : 0,
+    "description" : "minimum number of V8 contexts that keep available for executing JavaScript actions",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.v8-max-heap" : {
+    "default" : 3072,
+    "description" : "maximal heap size (in MB)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "uint64"
+  },
+  "javascript.v8-options" : {
+    "default" : [
+    ],
+    "description" : "options to pass to v8",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string..."
+  },
+  "ldap.async-connect" : {
+    "default" : false,
+    "description" : "Whether or not the connection to the LDAP library will be done asynchronously",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.basedn" : {
+    "default" : "",
+    "description" : "ldap basedn, eg. dc=example,dc=com",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.binddn" : {
+    "default" : "",
+    "description" : "ldap binddn, eg. cn=admin,dc=example,dc=com",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.bindpasswd" : {
+    "default" : "",
+    "description" : "ldap bindpassword, eg. admin",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.enabled" : {
+    "default" : false,
+    "description" : "enable LDAP",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.network-timeout" : {
+    "default" : 0,
+    "description" : "Timeout value (in seconds) after which network operations following the initial connection return in case of no activity (a value of 0 means default timeout)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "double"
+  },
+  "ldap.port" : {
+    "default" : 389,
+    "description" : "port to use",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "uint16"
+  },
+  "ldap.prefix" : {
+    "default" : "",
+    "description" : "ldap prefix, eg. uid= xor dn= xor cn=",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.referrals" : {
+    "default" : false,
+    "description" : "Whether or not the LDAP library should implicitly chase referrals",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.refresh-rate" : {
+    "default" : 300,
+    "description" : "Refresh user settings after this time (in seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "double"
+  },
+  "ldap.restart" : {
+    "default" : false,
+    "description" : "Whether or not the LDAP library should implicitly restart connections",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.retries" : {
+    "default" : 1,
+    "description" : "Number of tries to attempt a connection",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "uint32"
+  },
+  "ldap.roles-attribute-name" : {
+    "default" : "",
+    "description" : "ldap attributename where the role are located.",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-exclude" : {
+    "default" : "",
+    "description" : "Regexp to exclude groups. Leave empty to exclude none.",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-include" : {
+    "default" : "",
+    "description" : "Regexp to include groups. Leave empty to include all.",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-search" : {
+    "default" : "",
+    "description" : "ldap search for roles; '{USER}' is replaced by the 'dn' of the user.",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-transformation" : {
+    "default" : [
+    ],
+    "description" : "Regexp to normalizer role name, e.g. '/^ *(.*[^ ]])*/$2/'",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string..."
+  },
+  "ldap.search-attribute" : {
+    "default" : "uid",
+    "description" : "ldap search attribute, eg. uid",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.search-filter" : {
+    "default" : "objectClass=*",
+    "description" : "ldap search filter, eg. (objectClass=simpleSecurityObject)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.search-scope" : {
+    "default" : "sub",
+    "description" : "ldap search scope, one of base, one, sub",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.server" : {
+    "default" : "",
+    "description" : "server to use",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.suffix" : {
+    "default" : "",
+    "description" : "ldap suffix, eg. ,dc=example,dc=com",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.superuser-role" : {
+    "default" : "",
+    "description" : "Role mapping to the super-users",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.timeout" : {
+    "default" : 0,
+    "description" : "Timeout value (in seconds) for synchronous LDAP API calls (a value of 0 means default timeout)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "double"
+  },
+  "ldap.tls" : {
+    "default" : false,
+    "description" : "enable TLS",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.tls-cacert-dir" : {
+    "default" : "",
+    "description" : "ldap tls cacert dir",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls-cacert-file" : {
+    "default" : "",
+    "description" : "ldap tls cacert file",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls-cert-check-strategy" : {
+    "default" : "hard",
+    "description" : "ldap tls cert check strategy, one of never, hard, demand, allow, try",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls-version" : {
+    "default" : "1.2",
+    "description" : "ldap tls version, one of 1.0, 1.1, 1.2",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.url" : {
+    "default" : "",
+    "description" : "ldap url, eg. ldap://example.com:389/dc=example,dc=com?uid?sub",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "log" : {
+    "default" : [
+      "info",
+      "info"
+    ],
+    "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string..."
+  },
+  "log.color" : {
+    "default" : true,
+    "description" : "use colors for TTY logging",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.file" : {
+    "default" : "",
+    "description" : "shortcut for '--log.output file://<filename>'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.force-direct" : {
+    "default" : false,
+    "description" : "do not start a seperate thread for logging",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.foreground-tty" : {
+    "default" : false,
+    "description" : "also log to tty if backgrounded",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.keep-logrotate" : {
+    "default" : false,
+    "description" : "keep the old log file after receiving a sighup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.level" : {
+    "default" : [
+      "info",
+      "info"
+    ],
+    "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "string..."
+  },
+  "log.line-number" : {
+    "default" : false,
+    "description" : "append line number and file name",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.output" : {
+    "default" : [
+    ],
+    "description" : "log destination(s)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "string..."
+  },
+  "log.performance" : {
+    "default" : false,
+    "description" : "shortcut for '--log.level performance=trace'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.prefix" : {
+    "default" : "",
+    "description" : "prefix log message with this string",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.role" : {
+    "default" : false,
+    "description" : "log server role",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.shorten-filenames" : {
+    "default" : true,
+    "description" : "shorten filenames in log output (use with --log.line-number)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.thread" : {
+    "default" : false,
+    "description" : "show thread identifier in log message",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.thread-name" : {
+    "default" : false,
+    "description" : "show thread name in log message",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.use-local-time" : {
+    "default" : false,
+    "description" : "use local timezone instead of UTC",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.use-microtime" : {
+    "default" : false,
+    "description" : "use microtime instead",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "nonce.size" : {
+    "default" : 4194304,
+    "description" : "the size of the hash array for nonces",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "nonce",
+    "type" : "uint64"
+  },
+  "pid-file" : {
+    "default" : "",
+    "description" : "pid-file in daemon mode",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "query.cache-entries" : {
+    "default" : 128,
+    "description" : "maximum number of results in query result cache per database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-entries-max-size" : {
+    "default" : 268435456,
+    "description" : "maximum cumulated size of results in query result cache per database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-entry-max-size" : {
+    "default" : 16777216,
+    "description" : "maximum size of an invidiual result entry in query result cache",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.cache-include-system-collections" : {
+    "default" : false,
+    "description" : "whether or not to include system collection queries in the query result cache",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
+  "query.cache-mode" : {
+    "default" : "off",
+    "description" : "mode for the AQL query result cache (on, off, demand)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "string"
+  },
+  "query.fail-on-warning" : {
+    "default" : false,
+    "description" : "whether AQL queries should fail with errors even for recoverable warnings",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
+  "query.memory-limit" : {
+    "default" : 0,
+    "description" : "memory threshold for AQL queries (in bytes)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.optimizer-max-plans" : {
+    "default" : 128,
+    "description" : "maximum number of query plans to create for a query",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
+  "query.registry-ttl" : {
+    "default" : 600,
+    "description" : "default time-to-live of query snippets (in seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "query",
+    "type" : "double"
+  },
+  "query.slow-threshold" : {
+    "default" : 10,
+    "description" : "threshold for slow AQL queries (in seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "double"
+  },
+  "query.tracking" : {
+    "default" : true,
+    "description" : "whether to track slow AQL queries",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
+  "query.tracking-with-bindvars" : {
+    "default" : true,
+    "description" : "whether to track bind vars with AQL queries",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "boolean"
+  },
+  "random.generator" : {
+    "default" : 1,
+    "description" : "random number generator to use (1 = MERSENNE, 2 = RANDOM, 3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "random",
+    "type" : "uint32",
+    "values" : "Possible values: 1, 2, 3, 4"
+  },
+  "replication.active-failover" : {
+    "default" : false,
+    "description" : "Enable active-failover during asynchronous replication",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "replication",
+    "type" : "boolean"
+  },
+  "replication.auto-start" : {
+    "default" : true,
+    "description" : "switch to enable or disable the automatic start of replication appliers",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "replication",
+    "type" : "boolean"
+  },
+  "replication.automatic-failover" : {
+    "default" : false,
+    "description" : "Please use `--replication.active-failover` instead",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "replication",
+    "type" : "boolean"
+  },
+  "rocksdb.block-align-data-blocks" : {
+    "default" : false,
+    "description" : "if true, aligns data blocks on lesser of page size and block size",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.block-cache-shard-bits" : {
+    "default" : -1,
+    "description" : "number of shard bits to use for block cache (use -1 for default value)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "int64"
+  },
+  "rocksdb.block-cache-size" : {
+    "default" : 4364868403,
+    "description" : "size of block cache in bytes",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.compaction-read-ahead-size" : {
+    "default" : 2097152,
+    "description" : "if non-zero, we perform bigger reads when doing compaction. If you're running RocksDB on spinning disks, you should set this to at least 2MB. that way RocksDB's compaction is doing sequential instead of random reads.",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.debug-logging" : {
+    "default" : false,
+    "description" : "true to enable rocksdb debug logging",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.delayed_write_rate" : {
+    "default" : 0,
+    "description" : "limited write rate to DB (in bytes per second) if we are writing to the last mem-table allowed and we allow more than 3 mem-tables, or if we have surpassed a certain number of level-0 files and need to slowdown writes",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.dynamic-level-bytes" : {
+    "default" : true,
+    "description" : "if true, determine the number of bytes for each level dynamically to minimize space amplification",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.enable-pipelined-write" : {
+    "default" : false,
+    "description" : "if true, use a two stage write queue for WAL writes and memtable writes",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.enable-statistics" : {
+    "default" : false,
+    "description" : "whether or not RocksDB statistics should be turned on",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.encryption-key-generator" : {
+    "default" : "",
+    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "string"
+  },
+  "rocksdb.encryption-keyfile" : {
+    "default" : "",
+    "description" : "file containing encryption key. If set, encryption will be enabled.",
+    "enterpriseOnly" : true,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "string"
+  },
+  "rocksdb.intermediate-commit-count" : {
+    "default" : 1000000,
+    "description" : "an intermediate commit will be performed automatically when this number of operations is reached in a transaction",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.intermediate-commit-size" : {
+    "default" : 536870912,
+    "description" : "an intermediate commit will be performed automatically when a transaction has accumulated operations of this size (in bytes)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.level0-compaction-trigger" : {
+    "default" : 2,
+    "description" : "number of level-0 files that triggers a compaction",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "int64"
+  },
+  "rocksdb.level0-slowdown-trigger" : {
+    "default" : 20,
+    "description" : "number of level-0 files that triggers a write slowdown",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "int64"
+  },
+  "rocksdb.level0-stop-trigger" : {
+    "default" : 36,
+    "description" : "number of level-0 files that triggers a full write stall",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "int64"
+  },
+  "rocksdb.max-background-jobs" : {
+    "default" : 8,
+    "description" : "Maximum number of concurrent background jobs (compactions and flushes)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "int32"
+  },
+  "rocksdb.max-bytes-for-level-base" : {
+    "default" : 268435456,
+    "description" : "if not using dynamic level sizes, this controls the maximum total data size for level-1",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.max-bytes-for-level-multiplier" : {
+    "default" : 10,
+    "description" : "if not using dynamic level sizes, the maximum number of bytes for level L can be calculated as  max-bytes-for-level-base * (max-bytes-for-level-multiplier ^ (L-1))",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "double"
+  },
+  "rocksdb.max-subcompactions" : {
+    "default" : 1,
+    "description" : "maximum number of concurrent subjobs for a background compaction",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.max-total-wal-size" : {
+    "default" : 83886080,
+    "description" : "maximum total size of WAL files that will force flush stale column families",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.max-transaction-size" : {
+    "default" : 18446744073709551615,
+    "description" : "transaction size limit (in bytes)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.max-write-buffer-number" : {
+    "default" : 2,
+    "description" : "maximum number of write buffers that built up in memory",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.min-write-buffer-number-to-merge" : {
+    "default" : 1,
+    "description" : "minimum number of write buffers that will be merged together before writing to storage",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.num-levels" : {
+    "default" : 7,
+    "description" : "number of levels for the database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.num-threads-priority-high" : {
+    "default" : 0,
+    "description" : "number of threads for high priority operations (e.g. flush)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint32"
+  },
+  "rocksdb.num-threads-priority-low" : {
+    "default" : 0,
+    "description" : "number of threads for low priority operations (e.g. compaction)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint32"
+  },
+  "rocksdb.num-uncompressed-levels" : {
+    "default" : 2,
+    "description" : "number of uncompressed levels for the database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.optimize-filters-for-hits" : {
+    "default" : false,
+    "description" : "this flag specifies that the implementation should optimize the filters mainly for cases where keys are found rather than also optimize for keys missed. This would be used in cases where the application knows that there are very few misses or the performance in the case of misses is not important",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.recycle-log-file-num" : {
+    "default" : 0,
+    "description" : "number of log files to keep around for recycling",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.sync-interval" : {
+    "default" : 100,
+    "description" : "interval for automatic, non-requested disk syncs (in milliseconds, use 0 to turn automatic syncing off)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.table-block-size" : {
+    "default" : 16384,
+    "description" : "approximate size (in bytes) of user data packed per block",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "rocksdb.throttle" : {
+    "default" : true,
+    "description" : "enable write-throttling",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.transaction-lock-timeout" : {
+    "default" : 1000,
+    "description" : "If positive, specifies the wait timeout in milliseconds when  a transaction attempts to lock a document. A negative value is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "int64"
+  },
+  "rocksdb.use-direct-io-for-flush-and-compaction" : {
+    "default" : false,
+    "description" : "use O_DIRECT for flush and compaction",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.use-direct-reads" : {
+    "default" : false,
+    "description" : "use O_DIRECT for reading files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.use-file-logging" : {
+    "default" : false,
+    "description" : "use a file-base logger for RocksDB's own logs",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.use-fsync" : {
+    "default" : false,
+    "description" : "issue an fsync when writing to disk (set to true for issuing fdatasync only)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.wal-directory" : {
+    "default" : "",
+    "description" : "optional path to the RocksDB WAL directory. If not set, the WAL directory will be located inside the regular data directory",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "string"
+  },
+  "rocksdb.wal-file-timeout" : {
+    "default" : 10,
+    "description" : "timeout after which unused WAL files are deleted",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "double"
+  },
+  "rocksdb.wal-file-timeout-initial" : {
+    "default" : 180,
+    "description" : "initial timeout after which unused WAL files deletion kicks in after server start",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "double"
+  },
+  "rocksdb.wal-recovery-skip-corrupted" : {
+    "default" : false,
+    "description" : "skip corrupted records in WAL recovery",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.write-buffer-size" : {
+    "default" : 67108864,
+    "description" : "amount of data to build up in memory before converting to a sorted on-disk file (0 = disabled)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
+  "server.allow-use-database" : {
+    "default" : false,
+    "description" : "allow change of database in REST actions, only needed for unittests",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.authentication" : {
+    "default" : true,
+    "description" : "enable authentication for ALL client requests",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.authentication-system-only" : {
+    "default" : true,
+    "description" : "use HTTP authentication only for requests to /_api and /_admin",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.authentication-timeout" : {
+    "default" : 0,
+    "description" : "timeout for the authentication cache in seconds (0 = indefinitely)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "double"
+  },
+  "server.authentication-unix-sockets" : {
+    "default" : true,
+    "description" : "authentication for requests via UNIX domain sockets",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.check-max-memory-mappings" : {
+    "default" : true,
+    "description" : "check the maximum number of memory mappings at runtime",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.descriptors-minimum" : {
+    "default" : 0,
+    "description" : "minimum number of file descriptors needed to start",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.endpoint" : {
+    "default" : [
+      "tcp://0.0.0.0:8529"
+    ],
+    "description" : "endpoint for client requests (e.g. 'http+tcp://127.0.0.1:8529', or 'vst+ssl://192.168.1.1:8529')",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string..."
+  },
+  "server.flush-interval" : {
+    "default" : 1000000,
+    "description" : "interval (in microseconds) for flushing data",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.gid" : {
+    "default" : "",
+    "description" : "switch to group-id after reading config files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.jwt-secret" : {
+    "default" : "",
+    "description" : "secret to use when doing jwt authentication",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.local-authentication" : {
+    "default" : true,
+    "description" : "enable authentication using the local user database",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.maintenance-actions-block" : {
+    "default" : 2,
+    "description" : "minimum number of seconds finished Actions block duplicates",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "int32"
+  },
+  "server.maintenance-actions-linger" : {
+    "default" : 3600,
+    "description" : "minimum number of seconds finished Actions remain in deque",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "int32"
+  },
+  "server.maintenance-threads" : {
+    "default" : 3,
+    "description" : "maximum number of threads available for maintenance actions",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint32"
+  },
+  "server.maximal-queue-size" : {
+    "default" : 4096,
+    "description" : "size of the priority 2 fifo",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.maximal-threads" : {
+    "default" : 0,
+    "description" : "maximum number of request handling threads to run (0 = use system-specific default of 64)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.minimal-threads" : {
+    "default" : 2,
+    "description" : "minimum number of request handling threads to run",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.prio1-size" : {
+    "default" : 1048576,
+    "description" : "size of the priority 1 fifo",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.rest-server" : {
+    "default" : true,
+    "description" : "start a rest-server",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.scheduler-queue-size" : {
+    "default" : 128,
+    "description" : "number of simultaneously queued requests inside the scheduler",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.statistics" : {
+    "default" : true,
+    "description" : "turn statistics gathering on or off",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.storage-engine" : {
+    "default" : "auto",
+    "description" : "storage engine type",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string",
+    "values" : "Possible values: \"auto\", \"mmfiles\", \"rocksdb\""
+  },
+  "server.uid" : {
+    "default" : "",
+    "description" : "switch to user-id after reading config files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "string"
+  },
+  "ssl.cafile" : {
+    "default" : "",
+    "description" : "ca file used for secure connections",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "string"
+  },
+  "ssl.cipher-list" : {
+    "default" : "HIGH:!EXPORT:!aNULL@STRENGTH",
+    "description" : "ssl ciphers to use, see OpenSSL documentation",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "string"
+  },
+  "ssl.ecdh-curve" : {
+    "default" : "prime256v1",
+    "description" : "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "string"
+  },
+  "ssl.keyfile" : {
+    "default" : "",
+    "description" : "key-file used for secure connections",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "string"
+  },
+  "ssl.options" : {
+    "default" : 2147485780,
+    "description" : "ssl connection options, see OpenSSL documentation",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "ssl",
+    "type" : "uint64"
+  },
+  "ssl.protocol" : {
+    "default" : 5,
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "uint64",
+    "values" : "Possible values: 1, 2, 3, 4, 5"
+  },
+  "ssl.require-peer-certificate" : {
+    "default" : false,
+    "description" : "require a peer certificate when connecting",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "boolean"
+  },
+  "ssl.session-cache" : {
+    "default" : false,
+    "description" : "enable the session cache for connections",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "boolean"
+  },
+  "supervisor" : {
+    "default" : false,
+    "description" : "background the server, starts a supervisor",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "tcp.backlog-size" : {
+    "default" : 64,
+    "description" : "listen backlog size",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "tcp",
+    "type" : "uint64"
+  },
+  "tcp.reuse-address" : {
+    "default" : true,
+    "description" : "try to reuse TCP port(s)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "tcp",
+    "type" : "boolean"
+  },
+  "temp.path" : {
+    "default" : "",
+    "description" : "path for temporary files",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "temp",
+    "type" : "string"
+  },
+  "uid" : {
+    "default" : "",
+    "description" : "switch to user-id after reading config files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "version" : {
+    "default" : false,
+    "description" : "reports the version and exits",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "vst.maxsize" : {
+    "default" : 30720,
+    "description" : "maximal size (in bytes) for a VelocyPack chunk",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "vst",
+    "type" : "uint32"
+  },
+  "wal.allow-oversize-entries" : {
+    "default" : true,
+    "description" : "allow entries that are bigger than '--wal.logfile-size'",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "wal",
+    "type" : "boolean"
+  },
+  "wal.directory" : {
+    "default" : "",
+    "description" : "logfile directory",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "string"
+  },
+  "wal.flush-timeout" : {
+    "default" : 15000,
+    "description" : "flush timeout (in milliseconds)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "wal",
+    "type" : "uint64"
+  },
+  "wal.historic-logfiles" : {
+    "default" : 10,
+    "description" : "maximum number of historic logfiles to keep after collection",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "uint32"
+  },
+  "wal.ignore-logfile-errors" : {
+    "default" : false,
+    "description" : "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "boolean"
+  },
+  "wal.ignore-recovery-errors" : {
+    "default" : false,
+    "description" : "continue recovery even if re-applying operations fails",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "boolean"
+  },
+  "wal.logfile-size" : {
+    "default" : 33554432,
+    "description" : "size of each logfile (in bytes)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "uint32"
+  },
+  "wal.open-logfiles" : {
+    "default" : 0,
+    "description" : "maximum number of parallel open logfiles",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "uint32"
+  },
+  "wal.reserve-logfiles" : {
+    "default" : 3,
+    "description" : "maximum number of reserve logfiles to maintain",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "uint32"
+  },
+  "wal.slots" : {
+    "default" : 1048576,
+    "description" : "number of logfile slots to use",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "wal",
+    "type" : "uint32"
+  },
+  "wal.sync-interval" : {
+    "default" : 100,
+    "description" : "interval for automatic, non-requested disk syncs (in milliseconds)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "wal",
+    "type" : "uint64"
+  },
+  "wal.throttle-wait" : {
+    "default" : 15000,
+    "description" : "maximum wait time per operation when write-throttled (in milliseconds)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "wal",
+    "type" : "uint64"
+  },
+  "wal.throttle-when-pending" : {
+    "default" : 0,
+    "description" : "throttle writes when at least this many operations are waiting for collection (set to 0 to deactivate write-throttling)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "wal",
+    "type" : "uint64"
+  },
+  "wal.use-mlock" : {
+    "default" : false,
+    "description" : "mlock WAL logfiles in memory (may require elevated privileges or limits)",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "wal",
+    "type" : "boolean"
+  },
+  "working-directory" : {
+    "default" : "/var/tmp",
+    "description" : "working directory in daemon mode",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  }
+}

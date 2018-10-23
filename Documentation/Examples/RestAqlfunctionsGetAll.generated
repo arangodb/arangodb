@@ -1,12 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/aqlfunction
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/aqlfunction/<span class="hljs-built_in">test</span></span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
-[ 
-  { 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"myfunctions::temperature::celsiustofahrenheit"</span>, 
-    <span class="hljs-string">"code"</span> : <span class="hljs-string">"function (celsius) { return celsius * 1.8 + 32; }"</span> 
-  } 
-]
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"result"</span> : [ ] 
+}

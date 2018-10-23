@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CONSENSUS_STORE_H
 #define ARANGOD_CONSENSUS_STORE_H 1
 
+#include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Node.h"
 
@@ -89,7 +90,9 @@ class Store {
   /// @brief Apply entry in query, query must be an array of individual
   /// transactions that are in turn arrays with 1, 2 or 3 entries as described
   /// in the next method.
-  std::vector<bool> applyTransactions(query_t const& query);
+  std::vector<apply_ret_t> applyTransactions(
+    query_t const& query,
+    AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
 
   /// @brief Apply single transaction in query, here query is an array and the
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3), 

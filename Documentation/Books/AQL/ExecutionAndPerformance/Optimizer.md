@@ -13,7 +13,8 @@ meaning that an optimization should not modify the result of a query. A notable 
 to this is that the optimizer is allowed to change the order of results for queries that
 do not explicitly specify how results should be sorted.
 
-### Execution plans
+Execution plans
+---------------
 
 The `explain` command can be used to query the optimal executed plan or even all plans
 the optimizer has generated. Additionally, `explain` can reveal some more information
@@ -134,7 +135,7 @@ Here is the meaning of these rules in context of this query:
 * `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
-* `remove-filter-covered-by-index`: remove an unnessary filter whose functionality
+* `remove-filter-covered-by-index`: remove an unnecessary filter whose functionality
   is already covered by an index. In this case the index only returns documents 
   matching the filter.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by
@@ -211,7 +212,8 @@ Note that some optimizations are already done at parse time (i.e. evaluate simpl
 calculation as `1 + 1`)
 
 
-### Turning specific optimizer rules off
+Turning specific optimizer rules off
+------------------------------------
 
 Optimizer rules can also be turned on or off individually, using the `rules` attribute.
 This can be used to enable or disable one or multiple rules. Rules that shall be enabled
@@ -248,7 +250,8 @@ The maximum number of plans created by the optimizer can also be limited using t
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_09_explainMaxNumberOfPlans
 
-### Optimizer statistics
+Optimizer statistics
+--------------------
 
 The optimizer will return statistics as a part of an `explain` result.
 
@@ -259,7 +262,8 @@ The following attributes will be returned in the `stats` attribute of an `explai
   indicate a plan was actually modified by a rule)
 - `rulesSkipped`: number of rules skipped by the optimizer
 
-### Warnings
+Warnings
+--------
 
 For some queries, the optimizer may produce warnings. These will be returned in
 the `warnings` attribute of the `explain` result:
@@ -277,38 +281,13 @@ There is an upper bound on the number of warning a query may produce. If that
 bound is reached, no further warnings will be returned.
 
 
-### Things to consider for optimizing queries
-While the optimizer can fix some things in queries, its not allowed to take some assumptions,
-that you, the user, knowing what queries are intended to do can take. It may pull calculations
-to the front of the execution, but it may not cross certain borders.
-
-So in certain cases you may want to move calculations in your query, so they're cheaper.
-Even more expensive is if you have calculacions that are executed in javascript:
-
-    @startDocuBlockInline AQLEXP_11_explainjs
-    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_11_explainjs}
-    db._explain('FOR x IN 1..10 LET then=DATE_NOW() FOR y IN 1..10 LET now=DATE_NOW() LET nowstr=CONCAT(now, x, y, then) RETURN nowstr', {}, {colors: false})
-    db._explain('LET now=DATE_NOW() FOR x IN 1..10 FOR y IN 1..10 LET nowstr=CONCAT(now, x, y, now) RETURN nowstr', {}, {colors: false})
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock AQLEXP_11_explainjs
-
-You can see, that the optimizer found `1..10` is specified twice, but can be done first one time.
-
-While you may see time passing by during the execution of the query and its calls to `DATE_NOW()`
-this may not be the desired thing in first place. The queries V8 Expressions will however also use
-significant resources, since its executed 10 x 10 times => 100 times. Now if we don't care
-for the time ticking by during the query execution, we may fetch the time once at the startup
-of the query, which will then only give us one V8 expression at the very start of the query.
-
-Next to bringing better performance, this also obeys the [DRY principle](https://en.wikipedia.org/wiki/Don't_repeat_yourself).
-
-### Optimization in a cluster
+Optimization in a cluster
+-------------------------
 
 When you're running AQL in the cluster, the parsing of the query is done on the
 coordinator. The coordinator then chops the query into snipets, which are to
 remain on the coordinator, and others that are to be distributed over the network
-to the shards. The cutting sites are interconnected
-via *Scatter-*, *Gather-* and *RemoteNodes*.
+to the shards. The cutting sites are interconnected via *Scatter-*, *Gather-* and *RemoteNodes*.
 
 These nodes mark the network borders of the snippets. The optimizer strives to reduce the amount
 of data transfered via these network interfaces by pushing `FILTER`s out to the shards,
@@ -323,7 +302,8 @@ If in doubt, you should modify your query to reduce the number interconnections 
 
 When optimizing your query you may want to look at simpler parts of it first.
 
-### List of execution nodes
+List of execution nodes
+-----------------------
 
 The following execution node types will appear in the output of `explain`:
 
@@ -363,6 +343,8 @@ The following execution node types will appear in the output of `explain`:
 
 For queries in the cluster, the following nodes may appear in execution plans:
 
+* *SingleRemoteOperationNode*: used on a coordinator to directly work with a single
+  document on a DB-Server that was referenced by its `_key`.
 * *ScatterNode*: used on a coordinator to fan-out data to one or multiple shards.
 * *GatherNode*: used on a coordinator to aggregate results from one or many shards
   into a combined stream of results.
@@ -376,7 +358,8 @@ For queries in the cluster, the following nodes may appear in execution plans:
   So, all of the above cluster relevant nodes will be accompanied by a *RemoteNode*.
 
 
-### List of optimizer rules
+List of optimizer rules
+-----------------------
 
 The following optimizer rules may appear in the `rules` attribute of a plan:
 
@@ -431,10 +414,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed
   as late as possible and not before their results are required.
-* `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
-  its input completely, but to process it in smaller batches. The rule will fire for an
-  *UPDATE* query that is fed by a full collection scan, and that does not use any other
-  indexes and subqueries.
+* `patch-update-statements`: will appear if an *UpdateNode* or *ReplaceNode* was patched 
+  to not buffer its input completely, but to process it in smaller batches. The rule will 
+  fire for an *UPDATE* or *REPLACE* query that is fed by a full collection scan or an index
+  scan only, and that does not use any other collections, indexes, subqueries or traversals.
 * `optimize-traversals`: will appear if either the edge or path output variable in an
   AQL traversal was optimized away, or if a *FILTER* condition from the query was moved
   in the *TraversalNode* for early pruning of results.
@@ -442,15 +425,32 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
   would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
 * `geo-index-optimizer`: will appear when a geo index is utilized.
+* `replace-function-with-index`: will appear when a deprecated index function such as
+   `FULLTEXT`, `NEAR`, `WITHIN` or `WITHIN_RECTANGLE` is replaced with a regular
+   subquery.
+* `fuse-filters`: will appear if the optimizer merges adjacent FILTER nodes together into
+   a single FILTER node
+* `simplify-conditions`: will appear if the optimizer replaces parts in a CalculationNode's
+   expression with simpler expressions 
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.
-* `reduce-extraction-to-projection`: will appear when an *EnumerationCollectionNode* that
-  would have extracted an entire document was modified to return only a projection of each
-  document. This optimizer rule is specific for the RocksDB storage engine.
+* `reduce-extraction-to-projection`: will appear when an *EnumerationCollectionNode* or
+  an *IndexNode* that would have extracted an entire document was modified to return 
+  only a projection of each document. Projections are limited to at most 5 different
+  document attributes. This optimizer rule is specific for the RocksDB storage engine.
+* `optimize-subqueries`: will appear when optimizations are applied to a subquery. The
+  optimizer rule will add a *LIMIT* statement to qualifying subqueries to make them 
+  return less data. Another optimization performed by this rule is to modify the result 
+  value of subqueries in case only the number of subquery results is checked later. 
+  This saves copying the document data from the subquery to the outer scope and may
+  enable follow-up optimizations.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
+* `optimize-cluster-single-document-operations`: it may appear if you directly reference
+  a document by its `_key`; in this case no AQL will be executed on the DB-Servers, instead
+  the coordinator will directly work with the documents on the DB-Servers.
 * `distribute-in-cluster`: will appear when query parts get distributed in a cluster.
   This is not an optimization rule, and it cannot be turned off.
 * `scatter-in-cluster`: will appear when scatter, gather, and remote nodes are inserted
@@ -468,7 +468,51 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
 * `undistribute-remove-after-enum-coll`: will appear if a RemoveNode can be pushed into
   the same query part that enumerates over the documents of a collection. This saves
   inter-cluster roundtrips between the EnumerateCollectionNode and the RemoveNode.
+* `collect-in-cluster`: will appear when a *CollectNode* on a coordinator is accompanied
+  by extra *CollectNode*s on the database servers, which will do the heavy processing and
+  allow the *CollectNode* on the coordinator to a light-weight aggregation only.
+* `restrict-to-single-shard`: will appear if a collection operation (IndexNode or a
+  data-modification node) will only affect a single shard, and the operation can be
+  restricted to the single shard and is not applied for all shards. This optimization
+  can be applied for queries that access a collection only once in the query, and that
+  do not use traversals, shortest path queries and that do not access collection data
+  dynamically using the `DOCUMENT`, `FULLTEXT`, `NEAR` or `WITHIN` AQL functions.
+  Additionally, the optimizer will only pull off this optimization if can safely 
+  determine the values of all the collection's shard keys from the query, and when the
+  shard keys are covered by a single index (this is always true if the shard key is
+  the default `_key`).
 
 Note that some rules may appear multiple times in the list, with number suffixes.
 This is due to the same rule being applied multiple times, at different positions
 in the optimizer pipeline.
+
+### Additional optimizations applied
+
+If a query iterates over a collection (for filtering or counting) but does not need
+the actual document values later, the optimizer can apply a "scan-only" optimization 
+for *EnumerateCollectionNode*s and *IndexNode*s. In this case, it will not build up
+a result with the document data at all, which may reduce work significantly especially
+with the RocksDB storage engine. In case the document data is actually not needed
+later on, it may be sensible to remove it from query strings so the optimizer can
+apply the optimization.
+
+If the optimization is applied, it will show up as "scan only" in an AQL
+query's execution plan for an *EnumerateCollectionNode* or an *IndexNode*.
+  
+
+Additionally, the optimizer can apply an "index-only" optimization for AQL queries that 
+can satisfy the retrieval of all required document attributes directly from an index.
+
+This optimization will be triggered for the RocksDB engine if an index is used
+that covers all required attributes of the document used later on in the query.
+If applied, it will save retrieving the actual document data (which would require
+an extra lookup in RocksDB), but will instead build the document data solely 
+from the index values found. It will only be applied when using up to 5 attributes
+from the document, and only if the rest of the document data is not used later
+on in the query.
+
+The optimization is currently available for the RocksDB engine for the index types
+primary, edge, hash, skiplist and persistent.
+
+If the optimization is applied, it will show up as "index only" in an AQL
+query's execution plan for an *IndexNode*.

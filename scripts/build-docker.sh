@@ -49,6 +49,12 @@ else
     (cd ${BUILDDIR}/.arangodb-docker && git pull)
 fi 
 
+# Clean build tag
+(
+    cd ${BUILDDIR}/.arangodb-docker
+    rm -f .docker-tag
+)
+
 # Build stretch package
 docker run -i \
     -e GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
@@ -63,6 +69,8 @@ docker run -i \
 cp -a ${ROOTDIR}/build-tmp/${DEBIMAGE_NAME}.deb ${BUILDDIR}/.arangodb-docker/arangodb.deb
 
 # Build docker image
-cd ${BUILDDIR}/.arangodb-docker
-docker build -f ${DOCKERFILENAME} -t arangodb:${DOCKERTAG} .
-cd ${ROOTDIR}
+(
+    cd ${BUILDDIR}/.arangodb-docker
+    docker build -f ${DOCKERFILENAME} -t arangodb:${DOCKERTAG} .
+    echo "${DOCKERTAG}" > .docker-tag
+)

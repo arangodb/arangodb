@@ -83,7 +83,7 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
 static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, AstNode* tmpVar) {
   AstNodeType type = BuildSingleComparatorType(condition);
 
-  auto replaceReference = [&tmpVar](AstNode* node, void*) -> AstNode* {
+  auto replaceReference = [&tmpVar](AstNode* node) -> AstNode* {
     if (node->type == NODE_TYPE_REFERENCE) {
       return tmpVar;
     }
@@ -91,8 +91,6 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
   };
 
   // Now we need to traverse down and replace the reference
-  void* unused = nullptr;
-
   auto lhs = condition->getMemberUnchecked(0);
   auto rhs = condition->getMemberUnchecked(1);
   // We can only optimize if path.edges[*] is on the left hand side
@@ -103,7 +101,7 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
 
   // We have to take the return-value if LHS already is the refence.
   // otherwise the point will not be relocated.
-  lhs = Ast::traverseAndModify(lhs, replaceReference, unused);
+  lhs = Ast::traverseAndModify(lhs, replaceReference);
   return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
@@ -127,14 +125,14 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN: {
       // the following types of expressions are not supported
-      //   p.edges[0]._from  op  whatever attribute access 
+      //   p.edges[0]._from  op  whatever attribute access
       //   whatever attribute access  op  p.edges[0]._from
       AstNode const* lhs = node->getMember(0);
       AstNode const* rhs = node->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever
-        if (rhs->type != NODE_TYPE_VALUE && 
+        if (rhs->type != NODE_TYPE_VALUE &&
             rhs->type != NODE_TYPE_ARRAY &&
             rhs->type != NODE_TYPE_OBJECT &&
             rhs->type != NODE_TYPE_REFERENCE) {
@@ -142,7 +140,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
         }
       } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
         // whatever  op  p.xxx
-        if (lhs->type != NODE_TYPE_VALUE && 
+        if (lhs->type != NODE_TYPE_VALUE &&
             lhs->type != NODE_TYPE_ARRAY &&
             lhs->type != NODE_TYPE_OBJECT &&
             lhs->type != NODE_TYPE_REFERENCE) {
@@ -188,7 +186,6 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OBJECT:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_REFERENCE:
-    case NODE_TYPE_PARAMETER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -212,7 +209,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal Optimizer encountered node: " << node->getTypeString();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
   }
@@ -235,13 +232,12 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   //   A) var.vertices[n] (.*)
   //   B) var.edges[n] (.*)
   //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
-  //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
+  //   D) var.edges[*] (.*) (ALL|NONE) (.*)
 
-  auto unusedWalker = [](AstNode const* n, void*) {};
+  auto unusedWalker = [](AstNode const* n) {};
   bool isEdge = false;
   // We define that depth == UINT64_MAX is "ALL depths"
   uint64_t depth = UINT64_MAX;
-  void* unused = nullptr;
   AstNode* parentOfReplace = nullptr;
   size_t replaceIdx = 0;
   bool notSupported = false;
@@ -249,7 +245,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   // We define that patternStep >= 6 is complete Match.
   unsigned char patternStep = 0;
 
-  auto supportedGuard = [&notSupported, pathVar](AstNode const* n, void*) -> bool {
+  auto supportedGuard = [&notSupported, pathVar](AstNode const* n) -> bool {
     if (notSupported) {
       return false;
     }
@@ -262,7 +258,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
 
   auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
                         &parentOfReplace, &replaceIdx,
-                        &indexedAccessDepth](AstNode* node, void* unused) -> AstNode* {
+                        &indexedAccessDepth](AstNode* node) -> AstNode* {
     if (notSupported) {
       // Short circuit, this condition cannot be fulfilled.
       return node;
@@ -315,7 +311,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         patternStep++;
         break;
       }
-      case 3: 
+      case 3:
         if (depth != UINT64_MAX) {
           // We are in depth pattern.
           // The first Node we encount HAS to be indexed Access
@@ -327,7 +323,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
-          
+
           // we need to know the depth at which a filter condition will
           // access a path. Otherwise there are too many results
           TRI_ASSERT(node->numMembers() == 2);
@@ -340,6 +336,18 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
+
+          // Check that the expansion [*] contains no inline expression;
+          // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
+          // respectively.
+          TRI_ASSERT(node->numMembers() == 5);
+          if (node->getMemberUnchecked(2)->type != NODE_TYPE_NOP
+          || node->getMemberUnchecked(3)->type != NODE_TYPE_NOP
+          || node->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
+            notSupported = true;
+            return node;
+          }
+
           // We continue in this pattern, all good
           patternStep++;
           parentOfReplace = node;
@@ -380,7 +388,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
             }
             parentOfReplace = node;
             replaceIdx = idx;
-            // Ok finally done. 
+            // Ok finally done.
             patternStep++;
             break;
           }
@@ -411,7 +419,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   size_t numMembers = node->numMembers();
   for (size_t i = 0; i < numMembers; ++i) {
     Ast::traverseAndModify(node->getMemberUnchecked(i), supportedGuard,
-                           searchPattern, unusedWalker, unused);
+                           searchPattern, unusedWalker);
     if (notSupported) {
       return false;
     }
@@ -471,6 +479,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
     if (conditionIsImpossible) {
       return false;
     }
+    // edit in-place; TODO replace instead?
+    TEMPORARILY_UNLOCK_NODE(parentOfReplace);
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
     // NOTE: We have to reload the NODE here, because we may have replaced
@@ -487,9 +497,9 @@ TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
       _planAltered(planAltered) {}
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
-  if (!_condition->isEmpty() && en->canThrow()) {
+  if (!_condition->isEmpty() && !en->isDeterministic()) {
     // we already found a FILTER and
-    // something that can throw is not safe to optimize
+    // something that is not deterministic is not safe to optimize
 
     _filterVariables.clear();
     // What about _condition?
@@ -505,28 +515,40 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
+#ifdef USE_IRESEARCH
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
+    {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
+    }
+
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::UPSERT: {
+      // modification invalidates the filter expression we already found
+      _condition = std::make_unique<Condition>(_plan->getAst());
+      _filterVariables.clear();
+      break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
-      std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
+      std::vector<Variable const*> invars = en->getVariablesUsedHere();
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
       _filterVariables.emplace(invars[0]->id);
@@ -534,7 +556,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      auto calcNode = static_cast<CalculationNode const*>(en);
+      auto calcNode = ExecutionNode::castTo<CalculationNode const*>(en);
       Variable const* outVar = calcNode->outVariable();
       if (_filterVariables.find(outVar->id) != _filterVariables.end()) {
         // This calculationNode is directly part of a filter condition
@@ -548,7 +570,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::TRAVERSAL: {
-      auto node = static_cast<TraversalNode*>(en);
+      auto node = ExecutionNode::castTo<TraversalNode*>(en);
       if (_condition->isEmpty()) {
         // No condition, no optimize
         break;
@@ -585,9 +607,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
       auto andNode = orNode->getMemberUnchecked(0);
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
+      // edit in-place; TODO: replace node instead
+      TEMPORARILY_UNLOCK_NODE(andNode);
       std::unordered_set<Variable const*> varsUsedByCondition;
-      
+
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
@@ -602,7 +625,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           // For now we only! optimize filter conditions on the path
           // So we skip all FILTERS not referencing the path
           andNode->removeMemberUnchecked(i - 1);
-          continue; 
+          continue;
         }
 
         // now we validate that there is no illegal variable used.
@@ -628,7 +651,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
         int64_t indexedAccessDepth = -1;
-        
+
         size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
@@ -646,7 +669,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         } else {
           TRI_ASSERT(!conditionIsImpossible);
-          
+
           // remember the original filter conditions if we can remove them later
           if (indexedAccessDepth == -1) {
             originalFilterConditions->andCombine(cloned);
@@ -655,7 +678,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // is in [0..maxDepth], if the depth is not a concrete value
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            
+
             if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.
@@ -709,6 +732,11 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
       break;
     }
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
   return false;
 }
@@ -739,9 +767,9 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   auto trx = _plan->getAst()->query()->trx();
   TRI_ASSERT(trx != nullptr);
 
-  auto ctxt = std::make_unique<FixedVarExpressionContext>();
-  ctxt->setVariableValue(pathVar, {});
-  AqlValue res = tmpExp.execute(trx, ctxt.get(), mustDestroy);
+  FixedVarExpressionContext ctxt(_plan->getAst()->query());
+  ctxt.setVariableValue(pathVar, {});
+  AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());
 
   if (mustDestroy) {

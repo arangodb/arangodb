@@ -33,19 +33,27 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
  public:
   RocksDBHashIndex() = delete;
 
-  RocksDBHashIndex(TRI_idx_iid_t iid, LogicalCollection* coll,
-                   arangodb::velocypack::Slice const& info)
+  RocksDBHashIndex(
+      TRI_idx_iid_t iid,
+      LogicalCollection& coll,
+      arangodb::velocypack::Slice const& info
+  )
       : RocksDBVPackIndex(iid, coll, info) {}
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
 
   char const* typeName() const override { return "rocksdb-hash"; }
 
   bool isSorted() const override { return true; }
 
+  /// @brief Test if this index matches the definition
+  /// different to the Index::matchesDefinition because the ordering can
+  /// be arbitrary
+  /// an index on ["a", "b"] is considered identical to an index on ["b", "a"]
+  /// this is to ensure compatibility with the MMFiles engine's hash index
   bool matchesDefinition(VPackSlice const& info) const override;
 };
+
 }
 
 #endif

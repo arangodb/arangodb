@@ -44,6 +44,8 @@ namespace cluster_traverser_cache_test {
 TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
 
   auto ss = ServerState::instance();
+  auto oldRole = ss->getRole();
+  TRI_DEFER(ss->setRole(oldRole));
   ss->setRole(ServerState::ROLE_COORDINATOR);
 
   SECTION("it should return a NULL AQLValue if vertex not cached") {

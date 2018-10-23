@@ -24,6 +24,15 @@
 #include <errno.h>
 
 #include <io.h>
+#include <locale>
+#include <iomanip>
+#include <codecvt>
+#include <sys/stat.h>
+#include <wchar.h>
+#include <unicode/locid.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+#include <sys/types.h>
 
 #include "win-utils.h"
 
@@ -31,6 +40,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <crtdbg.h>
+#include <atlstr.h>
 #include <VersionHelpers.h>
 
 #include "Logger/Logger.h"
@@ -38,6 +48,13 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/directories.h"
+#include "Basics/Common.h"
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+#include "dbghelp.h"
+#endif
+#endif
 
 using namespace arangodb::basics;
 
@@ -69,74 +86,46 @@ int getpagesize(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Calls the windows Sleep function which always sleeps for milliseconds
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_sleep(unsigned long waitTime) { Sleep(waitTime * 1000); }
-
-////////////////////////////////////////////////////////////////////////////////
-// Calls a timer which waits for a signal after the elapsed time in 
-// microseconds. The timer is accurate to 100nanoseconds.
-// This is only a Windows workaround, use usleep, which is mapped to 
-// TRI_usleep on Windows!
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_usleep(unsigned long waitTime) {
-  int result;
-  HANDLE hTimer = NULL;            // stores the handle of the timer object
-  LARGE_INTEGER wTime;             // essentially a 64bit number
-  wTime.QuadPart = waitTime * 10;  // *10 to change to microseconds
-  wTime.QuadPart =
-      -wTime.QuadPart;  // negative indicates relative time elapsed,
-
-  // Create an unnamed waitable timer.
-  hTimer = CreateWaitableTimer(NULL, 1, NULL);
-
-  if (hTimer == NULL) {
-    // not much we can do at this low level
-    return;
-  }
-
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "internal error in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Set timer to wait for indicated micro seconds.
-  if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
-    // not much we can do at this low level
-    CloseHandle(hTimer);
-    return;
-  }
-
-  // Wait for the timer
-  result = WaitForSingleObject(hTimer, INFINITE);
-
-  if (result != WAIT_OBJECT_0) {
-    CloseHandle(hTimer);
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "couldn't wait for timer in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  CloseHandle(hTimer);
-  // todo: go through what the result is e.g. WAIT_OBJECT_0
-  return;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Sets up a handler when invalid (win) handles are passed to a windows
 // function.
 // This is not of much use since no values can be returned. All we can do
 // for now is to ignore error and hope it goes away!
 ////////////////////////////////////////////////////////////////////////////////
-
 static void InvalidParameterHandler(
     const wchar_t* expression,  // expression sent to function - NULL
     const wchar_t* function,    // name of function - NULL
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed";
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::string exp;
+  std::string func;
+  std::string fileName;
+  
+  UnicodeString uStr;
+  uStr = expression;
+  uStr.toUTF8String(exp);
+  uStr = function;
+  uStr.toUTF8String(func);
+  uStr = file;
+  uStr.toUTF8String(fileName);
+  
+  std::string bt;
+  TRI_GetBacktrace(bt);
+#endif
+
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+    "Invalid handle parameter passed"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+                                          <<
+    " Expression: " << exp <<
+    " Function: " << func <<
+    " File: " << fileName <<
+    " Line: " << std::to_string(line) <<
+    " Backtrace: " << bt
+#endif
+  ;
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat,
@@ -158,6 +147,22 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     // ...........................................................................
 
     case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+      DWORD  error;
+      HANDLE hProcess;
+
+      SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+
+      hProcess = GetCurrentProcess();
+
+      if (!SymInitialize(hProcess, NULL, true)) {
+        // SymInitialize failed
+        error = GetLastError();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "SymInitialize returned error :" << error;
+      }
+#endif
+#endif
       newInvalidHandleHandler = InvalidParameterHandler;
       oldInvalidHandleHandler =
           _set_invalid_parameter_handler(newInvalidHandleHandler);
@@ -206,11 +211,16 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
 int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int fileDescriptor;
-
+  UnicodeString fn(filename);
+  
   fileHandle =
-      CreateFileA(filename, GENERIC_READ | GENERIC_WRITE,
-                  FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-                  (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
+    CreateFileW(fn.getTerminatedBuffer(),
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                NULL,
+                (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW,
+                0,
+                NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
@@ -253,8 +263,12 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
       break;
   }
 
-  fileHandle = CreateFileA(
-      filename, mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+  UnicodeString fn(filename);
+  fileHandle = CreateFileW(fn.getTerminatedBuffer(),
+                           mode,
+                           FILE_SHARE_DELETE |
+                           FILE_SHARE_READ |
+                           FILE_SHARE_WRITE,
       NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -264,6 +278,64 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   fileDescriptor = _open_osfhandle((intptr_t)(fileHandle),
                                    (openFlags & O_ACCMODE) | _O_BINARY);
   return fileDescriptor;
+}
+
+
+FILE* TRI_FOPEN(char const* filename, char const* mode) {
+  UnicodeString fn(filename);
+  UnicodeString umod(mode);
+  return _wfopen(fn.getTerminatedBuffer(), umod.getTerminatedBuffer());
+}
+
+
+int TRI_CHDIR(char const* dirname) {
+  UnicodeString dn(dirname);
+  return ::_wchdir(dn.getTerminatedBuffer());
+}
+
+int TRI_STAT(char const* path, TRI_stat_t* buffer) {
+  UnicodeString p(path);
+  auto rc =  ::_wstat64(p.getTerminatedBuffer(), buffer);
+  return rc;
+}
+
+char *TRI_GETCWD(char* buffer, int maxlen){
+  char* rc = nullptr;
+  wchar_t* rcw;
+  int wBufLen = maxlen;
+  wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
+
+  if (wbuf == nullptr) {
+    return nullptr;
+  }
+  rcw = ::_wgetcwd(wbuf, wBufLen);
+
+  if (rcw != nullptr) {
+    std::string rcs;
+    
+    UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
+    d.toUTF8String<std::string>(rcs);
+    if (rcs.length() + 1 < maxlen) {
+      memcpy(buffer, rcs.c_str(), rcs.length() + 1);
+      rc = buffer;
+    }
+  }
+  free(wbuf);
+  return rc;
+}
+
+int TRI_MKDIR_WIN32(char const* dirname) {
+  UnicodeString dir(dirname);
+  return ::_wmkdir(dir.getTerminatedBuffer());
+}
+  
+int TRI_RMDIR(char const* dirname) {
+  UnicodeString dir(dirname);
+  return ::_wrmdir(dir.getTerminatedBuffer());
+}
+int TRI_UNLINK(char const* filename) {
+  UnicodeString fn(filename);
+  return ::_wunlink(fn.getTerminatedBuffer());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,7 +508,7 @@ int TRI_MapSystemError(DWORD error) {
 static HANDLE hEventLog = INVALID_HANDLE_VALUE;
 
 bool TRI_InitWindowsEventLog(void) {
-  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  hEventLog = RegisterEventSourceW(NULL, L"ArangoDB");
   if (NULL == hEventLog) {
     // well, fail then.
     return false;
@@ -449,13 +521,6 @@ void TRI_CloseWindowsEventlog(void) {
   hEventLog = INVALID_HANDLE_VALUE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message to the windows event log.
-/// we rather are keen on logging something at all then on being able to work
-/// with fancy dynamic buffers; thus we work with a static buffer.
-/// the arango internal logging will handle that usually.
-////////////////////////////////////////////////////////////////////////////////
-
 // No clue why there is no header for these...
 #define MSG_INVALID_COMMAND ((DWORD)0xC0020100L)
 #define UI_CATEGORY ((WORD)0x00000003L)
@@ -463,7 +528,6 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             std::string const& message) {
   char buf[1024];
   char linebuf[32];
-  LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
   TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
@@ -472,10 +536,27 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
+  UnicodeString ubufs[]{
+    UnicodeString(buf, len),
+      UnicodeString(file),
+      UnicodeString(func),
+      UnicodeString(linebuf)
+      };
+  LPCWSTR buffers[] = {
+    ubufs[0].getTerminatedBuffer(),
+    ubufs[1].getTerminatedBuffer(),
+    ubufs[2].getTerminatedBuffer(),
+    ubufs[3].getTerminatedBuffer(), 
+    nullptr
+  };
   // Try to get messages through to windows syslog...
-  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-                   MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
-                   NULL)) {
+  if (!ReportEventW(hEventLog,
+                    EVENTLOG_ERROR_TYPE,
+                    UI_CATEGORY,
+                    MSG_INVALID_COMMAND,
+                    NULL,
+                    4, 0,
+                    buffers, NULL)) {
     // well, fail then...
   }
 }
@@ -484,7 +565,6 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap) {
   char buf[1024];
   char linebuf[32];
-  LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
   TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
@@ -493,10 +573,27 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
+  UnicodeString ubufs[]{
+    UnicodeString(buf, len),
+      UnicodeString(file),
+      UnicodeString(func),
+      UnicodeString(linebuf)
+      };
+  LPCWSTR buffers[] = {
+    ubufs[0].getTerminatedBuffer(),
+    ubufs[1].getTerminatedBuffer(),
+    ubufs[2].getTerminatedBuffer(),
+    ubufs[3].getTerminatedBuffer(), 
+    nullptr
+  };
   // Try to get messages through to windows syslog...
-  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-                   MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
-                   NULL)) {
+  if (!ReportEventW(hEventLog,
+                    EVENTLOG_ERROR_TYPE,
+                    UI_CATEGORY,
+                    MSG_INVALID_COMMAND,
+                    NULL,
+                    4, 0,
+                    buffers, NULL)) {
     // well, fail then...
   }
 }
@@ -551,22 +648,21 @@ void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t f) {
 
 void ADB_WindowsExitFunction(int exitCode, void* data) {
   if (serviceAbort != nullptr) {
-    serviceAbort();
+    serviceAbort(exitCode);
   }
 
   exit(exitCode);
 }
 
 // Detect cygwin ssh / terminals
-int _cyg_isatty(int fd)
-{
+int _cyg_isatty(int fd) {
   // detect standard windows ttys:
   if (_isatty (fd)) {
     return 1;
   }
 
   // stupid hack to allow forcing a tty..need to understand this better
-  // and create a thorugh fix..without this the logging stuff will not
+  // and create a thorough fix..without this the logging stuff will not
   // log to the foreground which is super annoying for debugging the
   // resilience tests
   char* forcetty = getenv("FORCE_WINDOWS_TTY");
@@ -660,8 +756,7 @@ int _is_cyg_tty(int fd)
   return 0;
 }
 
-bool terminalKnowsANSIColors()
-{
+bool terminalKnowsANSIColors() {
   if (_is_cyg_tty (STDOUT_FILENO)) {
     // Its a cygwin shell, expected to understand ANSI color codes.
     return true;
@@ -671,7 +766,6 @@ bool terminalKnowsANSIColors()
   return IsWindows8OrGreater();
 }
 
-#include <atlstr.h>
 std::string getFileNameFromHandle(HANDLE fileHandle) {
   char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
   FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
@@ -683,4 +777,30 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
     return std::string();
   }
   return std::string((LPCTSTR)CString(FileInformation->FileName));
+}
+
+static std::vector<std::string> argVec;
+
+void TRI_GET_ARGV_WIN(int& argc, char** argv) {
+  auto wargStr = GetCommandLineW();
+
+  // if you want your argc in unicode, all you gonna do 
+  // is ask: 
+  auto wargv = CommandLineToArgvW(wargStr, &argc);
+
+  argVec.reserve(argc);
+
+  UnicodeString buf;
+  std::string uBuf;
+  for (int i = 0; i < argc; i++) {
+    uBuf.clear();
+    // convert one UTF16 argument to utf8:
+    buf = wargv[i];
+    buf.toUTF8String<std::string>(uBuf);
+    // memorize the utf8 value to keep the instance:
+    argVec.push_back(uBuf);
+
+    // Now overwrite our original argc entry with the utf8 one:
+    argv[i] = (char*) argVec[i].c_str();
+  }
 }

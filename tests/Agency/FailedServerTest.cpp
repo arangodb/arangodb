@@ -65,23 +65,6 @@ const char *agency =
 #include "FailedServerTest.json"
 ;
 
-VPackBuilder createJob() {
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder a(&builder);
-    builder.add("creator", VPackValue("1"));
-    builder.add("type", VPackValue("failedServer"));
-    builder.add("database", VPackValue("database"));
-    builder.add("collection", VPackValue("collection"));
-    builder.add("shard", VPackValue("shard"));
-    builder.add("fromServer", VPackValue("follower1"));
-    builder.add("jobId", VPackValue("1"));
-    builder.add("timeCreated",
-                VPackValue(timepointToString(std::chrono::system_clock::now())));
-  }
-  return builder;
-}
-
 Node createNodeFromBuilder(VPackBuilder const& builder) {
 
   VPackBuilder opBuilder;
@@ -129,14 +112,14 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     
   auto agency = createRootNode();
   write_ret_t fakeWriteResult {
-    true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   trans_ret_t fakeTransResult {true, "", 1, 0, transBuilder};
   
   SECTION("creating a job should create a job in todo") {
     Mock<AgentInterface> mockAgent;
     
     std::string jobId = "1";
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         auto expectedJobKey = PREFIX + toDoPrefix + jobId;
         REQUIRE(typeName(q->slice()) == "array");
@@ -202,7 +185,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -268,7 +251,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -335,7 +318,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -361,8 +344,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     
   } // SECTION
 
-
-    SECTION("The state is still 'FAILED' and 'Target/FailedServers' is PART 2") {
+  SECTION("The state is still 'FAILED' and 'Target/FailedServers' is PART 2") {
 
     TestStructureType createTestStructure = [&](
       Slice const& s, std::string const& path) {
@@ -403,7 +385,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);

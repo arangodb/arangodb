@@ -38,7 +38,7 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread : public Thread {
+class ConsoleThread final : public Thread {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 

@@ -40,12 +40,18 @@ const toArgv = require('internal').toArgv;
 
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
+const BLUE = require('internal').COLORS.COLOR_BLUE;
+
+const testPaths = {
+  'recovery': [tu.pathForTesting('server/recovery')]
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (instanceInfo, options, script, setup, count) {
+  let tmpDir;
   if (!instanceInfo.recoveryArgs) {
     let tempDir = fs.getTempPath();
     let td = fs.join(tempDir, `${count}`);
@@ -58,15 +64,17 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
 
     let appDir = fs.join(td, 'app');
     fs.makeDirectoryRecursive(appDir);
-    let tmpDir = fs.join(td, 'tmp');
+    tmpDir = fs.join(td, 'tmp');
     fs.makeDirectoryRecursive(tmpDir);
 
     let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
-    args['server.threads'] = 1;
     args['wal.reserve-logfiles'] = 1;
+    args['rocksdb.wal-file-timeout-initial'] = 10;
     args['database.directory'] = instanceInfo.tmpDataDir + '/db';
 
-    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false']);
+    args = Object.assign(args, options.extraArgs);
+
+    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false', '--replication.auto-start', 'true']);
   }
 
   let argv = instanceInfo.recoveryArgv;
@@ -94,12 +102,23 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
   ]);
 
   let binary = pu.ARANGOD_BIN;
-  if (setup) {
-    binary = pu.TOP_DIR + '/scripts/disable-cores.sh';
-    argv.unshift(pu.ARANGOD_BIN);
-  }
 
-  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup);
+  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
+  if (!setup) {
+    let jsonFN = fs.join(tmpDir, 'testresult.json');
+    try {
+      let result = JSON.parse(fs.read(jsonFN));
+      fs.remove(jsonFN);
+      return result;
+    } catch (x) {
+      print(RED + 'failed to read ' + jsonFN + RESET);
+      return {
+        status: false,
+        message: 'failed to read ' + jsonFN + x,
+        duration: -1
+      };
+    }
+  }
 }
 
 function recovery (options) {
@@ -116,7 +135,7 @@ function recovery (options) {
 
   let status = true;
 
-  let recoveryTests = tu.scanTestPath('js/server/tests/recovery');
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
@@ -132,21 +151,27 @@ function recovery (options) {
     let test = recoveryTests[i];
     let filtered = {};
     let localOptions = _.cloneDeep(options);
+    let disableMonitor = localOptions.disableMonitor;
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
-      let instanceInfo = {};
+      let instanceInfo = {
+        rootDir: pu.UNITTESTS_DIR
+      };
       count += 1;
 
+      print(BLUE + "running setup of " + test + RESET);
+      localOptions.disableMonitor = true;
       runArangodRecovery(instanceInfo, localOptions, test, true, count);
+      localOptions.disableMonitor = disableMonitor;
 
-      runArangodRecovery(instanceInfo, localOptions, test, false, count);
-
-      pu.cleanupLastDirectory(localOptions);
-
-      results[test] = instanceInfo.pid;
+      print(BLUE + "running recovery of " + test + RESET);
+      results[test] = runArangodRecovery(instanceInfo, localOptions, test, false, count);
 
       if (!results[test].status) {
         status = false;
+      }
+      else {
+        pu.cleanupLastDirectory(localOptions);
       }
     } else {
       if (options.extremeVerbosity) {
@@ -165,15 +190,12 @@ function recovery (options) {
   }
   results.status = status;
 
-  return {
-    recovery: results
-  };
+  return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

@@ -28,22 +28,23 @@
 #include "Shell/ClientFeature.h"
 #include "Shell/V8ShellFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ShellFeature::ShellFeature(
-    application_features::ApplicationServer* server, int* result)
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
-      _runMode(RunMode::INTERACTIVE) {
+      _runMode(RunMode::INTERACTIVE),
+      _unitTestFilter("") {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Config");
-  startsAfter("Language");
-  startsAfter("Logger");
-  startsAfter("V8Shell");
+  startsAfter("V8ShellPhase");
 }
 
 void ShellFeature::collectOptions(
@@ -68,6 +69,10 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.unit-tests",
                      "do not start as shell, run unit tests instead",
                      new VectorParameter<StringParameter>(&_unitTests));
+
+  options->addOption("--javascript.unit-test-filter",
+                     "filter testcases in suite",
+                     new StringParameter(&_unitTestFilter));
 }
 
 void ShellFeature::validateOptions(
@@ -123,18 +128,18 @@ void ShellFeature::validateOptions(
   }
 
   if (1 < n) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "you cannot specify more than one type ("
-             << "jslint, execute, execute-string, check-syntax, unit-tests)";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "you cannot specify more than one type ("
+        << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
 }
 
 void ShellFeature::start() {
   *_result = EXIT_FAILURE;
 
-  V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
-
-  // turn off memory allocation failures before we move into V8 code
-  TRI_DisallowMemoryFailures();
+  V8ShellFeature* shell =
+      application_features::ApplicationServer::getFeature<V8ShellFeature>(
+          "V8Shell");
 
   bool ok = false;
 
@@ -157,25 +162,22 @@ void ShellFeature::start() {
         break;
 
       case RunMode::UNIT_TESTS:
-        ok = shell->runUnitTests(_unitTests, _positionals);
+        ok = shell->runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
 
       case RunMode::JSLINT:
         ok = shell->jslint(_jslint);
         break;
     }
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
-    ok = false;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
     ok = false;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
     ok = false;
   }
 
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
   *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+} // arangodb

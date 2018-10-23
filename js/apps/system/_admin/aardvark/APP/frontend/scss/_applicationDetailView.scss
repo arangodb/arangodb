@@ -1,5 +1,9 @@
 .application-detail-view {
 
+  h1, h2, h3, h4 {
+    font-weight: 100;
+  }
+
   .headerBar {
     .subMenuEntries {
       margin-left: 5px;
@@ -12,9 +16,147 @@
     }
   }
 
+  .foxx-left {
+    font-size: 14px;
+    font-weight: 100;
+
+    > p {
+      margin: 15px;
+    }
+
+    .app-warning {
+      @include border-radius(3px);
+      background: $c-negative;
+      color: $c-white;
+      margin: 15px;
+      padding: 6px 8px;
+
+      h4,
+      p {
+        font-size: 1em;
+        margin: 0;
+      }
+    }
+  }
+
+  .foxx-right {
+    font-size: 12px;
+  }
+
+  .readme {
+    background: $c-white;
+    padding: 1em 1em;
+    padding-top: 0;
+
+    .buttons {
+
+      background: $c-white;
+      height: 30px;
+      position: relative;
+      right: -15px;
+      width: 100%;
+
+      button {
+        float: right;
+      }
+    }
+
+    .modal-body {
+      border: {
+        bottom: 1px solid $c-content-border;
+        left: 0;
+        right: 0;
+        top: 0;
+      }
+      padding-bottom: 15px;
+    }
+
+    .modal-footer {
+      border: {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: 1px solid $c-content-border;
+      }
+      padding-right: 0;
+    }
+
+    h1 {
+      float: left;
+      text-align: left;
+      width: 100%;
+    }
+  }
+
   section.info {
+    background: $c-white;
     float: left;
     padding: 13px 0 0;
+
+    .foxx-icon-container {
+      margin-bottom: 15px;
+      margin-left: 15px;
+      width: 100px;
+
+      img {
+        float: right;
+        width: 100%;
+      }
+    }
+
+    .foxx-label-container {
+      font-weight: 100;
+      margin-bottom: 20px;
+      margin-left: 10px;
+      margin-top: -10px;
+      width: 100%;
+
+      .production {
+        color: $c-positive;
+      }
+
+      .development {
+        color: $c-warning;
+      }
+
+      p {
+        width: 100%;
+        clear: both;
+
+        span {
+          display: block;
+          max-width: 55%;
+          float: left;
+          height: 17px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+
+          &:first-child {
+            min-width: 75px;
+            max-width: 20%;
+          }
+        }
+
+        span {
+          text-overflow: inherit;
+          white-space: normal;
+          word-wrap: break-word;
+          word-break: normal;
+          overflow: visible;
+          height: auto;
+        }
+      }
+    }
+
+    .header_right {
+      margin-right: 20px;
+
+      .button-success {
+        height: 40px;
+        width: 100%;
+      }
+    }
 
     .header {
       height: 200px;
@@ -128,14 +270,6 @@
             top: -3px;
           }
 
-          .production {
-            color: $c-positive;
-          }
-
-          .development {
-            color: $c-warning;
-          }
-
           &:after {
             clear: both;
             content: '';
@@ -167,18 +301,6 @@
         }
       }
 
-      .app-warning {
-        @include border-radius(3px);
-        background: $c-negative;
-        color: $c-white;
-        padding: 6px 8px;
-
-        h4,
-        p {
-          font-size: 1em;
-          margin: 0;
-        }
-      }
     }
 
   }
@@ -234,49 +356,6 @@ main {
     }
   }
 
-  .readme {
-    background: $c-white;
-    padding: 1em 2em;
-
-    .buttons {
-
-      background: $c-white;
-      height: 30px;
-      position: relative;
-      right: -15px;
-      width: 100%;
-
-      button {
-        float: right;
-      }
-    }
-
-    .modal-body {
-      border: {
-        bottom: 1px solid $c-content-border;
-        left: 0;
-        right: 0;
-        top: 0;
-      }
-      padding-bottom: 15px;
-    }
-
-    .modal-footer {
-      border: {
-        bottom: 0;
-        left: 0;
-        right: 0;
-        top: 1px solid $c-content-border;
-      }
-      padding-right: 0;
-    }
-
-    h1 {
-      float: left;
-      text-align: left;
-      width: 100%;
-    }
-  }
 
 }
 
@@ -346,15 +425,17 @@ main {
   .pending {
     color: $c-darker-grey;
   }
-
 }
 
 #swagger {
   #jsonLink {
     @extend %animated;
+    background: $c-white;
+    border-radius: 3px;
     color: $c-bluegrey-light;
     font-weight: 500;
-    opacity: .5;
+    opacity: .8;
+    padding: 5px;
     position: absolute;
     right: 33px;
     z-index: 99;

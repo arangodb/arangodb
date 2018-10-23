@@ -228,30 +228,57 @@
           var tableContent = [];
 
           if (!isCoordinator) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'change-collection-name',
-                'Name',
-                this.model.get('name'),
-                false,
-                '',
-                true,
-                [
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z]/),
-                    msg: 'Collection name must always start with a letter.'
-                  },
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                    msg: 'Only Symbols "_" and "-" are allowed.'
-                  },
-                  {
-                    rule: Joi.string().required(),
-                    msg: 'No collection name given.'
-                  }
-                ]
-              )
-            );
+            if (this.model.get('name').substr(0, 1) === '_') {
+              tableContent.push(
+                window.modalView.createReadOnlyEntry(
+                  'change-collection-name',
+                  'Name',
+                  this.model.get('name'),
+                  false,
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z]/),
+                      msg: 'Collection name must always start with a letter.'
+                    },
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                      msg: 'Only Symbols "_" and "-" are allowed.'
+                    },
+                    {
+                      rule: Joi.string().required(),
+                      msg: 'No collection name given.'
+                    }
+                  ]
+                )
+              );
+            } else {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'change-collection-name',
+                  'Name',
+                  this.model.get('name'),
+                  false,
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z]/),
+                      msg: 'Collection name must always start with a letter.'
+                    },
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                      msg: 'Only Symbols "_" and "-" are allowed.'
+                    },
+                    {
+                      rule: Joi.string().required(),
+                      msg: 'No collection name given.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           var after = function () {
@@ -332,10 +359,10 @@
               if (error) {
                 arangoHelper.arangoError('Collection', 'Could not fetch properties');
               } else {
+                var wfs = data.waitForSync;
                 if (data.journalSize) {
                   var journalSize = data.journalSize / (1024 * 1024);
                   var indexBuckets = data.indexBuckets;
-                  var wfs = data.waitForSync;
 
                   tableContent.push(
                     window.modalView.createTextEntry(
@@ -374,22 +401,35 @@
                   );
                 }
                 if (data.replicationFactor && frontendConfig.isCluster) {
-                  tableContent.push(
-                    window.modalView.createTextEntry(
-                      'change-replication-factor',
-                      'Replication factor',
-                      data.replicationFactor,
-                      'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
-                      '',
-                      true,
-                      [
-                        {
-                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                          msg: 'Must be a number.'
-                        }
-                      ]
-                    )
-                  );
+                  if (data.replicationFactor === 'satellite') {
+                    tableContent.push(
+                      window.modalView.createReadOnlyEntry(
+                        'change-replication-factor',
+                        'Replication factor',
+                        data.replicationFactor,
+                        'This collection is a satellite collection. The replicationFactor is not changeable.',
+                        '',
+                        true
+                      )
+                    );
+                  } else {
+                    tableContent.push(
+                      window.modalView.createTextEntry(
+                        'change-replication-factor',
+                        'Replication factor',
+                        data.replicationFactor,
+                        'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
+                        '',
+                        true,
+                        [
+                          {
+                            rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                            msg: 'Must be a number.'
+                          }
+                        ]
+                      )
+                    );
+                  }
                 }
 
                 // prevent "unexpected sync method error"

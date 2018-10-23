@@ -35,17 +35,18 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 PrivilegeFeature::PrivilegeFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Privilege"),
       _numericUid(0), _numericGid(0) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -87,7 +88,7 @@ void PrivilegeFeature::extractPrivileges() {
 #ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
-      if (g == 0) {
+      if (g == nullptr) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
       }
@@ -97,11 +98,12 @@ void PrivilegeFeature::extractPrivileges() {
       std::string name = _gid;
       group* g = getgrnam(name.c_str());
 
-      if (g != 0) {
+      if (g != nullptr) {
         gidNumber = g->gr_gid;
       } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert groupname '" << _gid
-                   << "' to numeric gid";
+                   << "' to numeric gid: " << TRI_last_error();
         FATAL_ERROR_EXIT();
       }
 #else
@@ -124,7 +126,7 @@ void PrivilegeFeature::extractPrivileges() {
 #ifdef ARANGODB_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
-      if (p == 0) {
+      if (p == nullptr) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
       }
@@ -134,7 +136,7 @@ void PrivilegeFeature::extractPrivileges() {
       std::string name = _uid;
       passwd* p = getpwnam(name.c_str());
 
-      if (p != 0) {
+      if (p != nullptr) {
         uidNumber = p->pw_uid;
       } else {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert username '" << _uid << "' to numeric uid";
@@ -192,3 +194,5 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
   }
 #endif
 }
+
+} // arangodb

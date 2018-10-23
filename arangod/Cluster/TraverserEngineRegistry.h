@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace transaction {
+  class Context;
+}
+
 namespace traverser {
 
 class BaseEngine;
@@ -43,14 +47,19 @@ class TraverserEngineRegistry {
  public:
   TraverserEngineRegistry() {}
 
-  ~TraverserEngineRegistry();
+  TEST_VIRTUAL ~TraverserEngineRegistry();
 
   /// @brief Create a new Engine in the registry.
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice,
-                              double ttl = 600.0);
+  TEST_VIRTUAL TraverserEngineID createNew(
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
+    arangodb::velocypack::Slice engineInfo,
+    double ttl,
+    bool needToLock
+  );
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
@@ -89,7 +98,12 @@ class TraverserEngineRegistry {
     double _timeToLive;                            // in seconds
     double _expires;                               // UNIX UTC timestamp for expiration
 
-    EngineInfo(TRI_vocbase_t*, arangodb::velocypack::Slice);
+    EngineInfo(
+      TRI_vocbase_t& vocbase,
+      std::shared_ptr<transaction::Context> const& ctx,
+      arangodb::velocypack::Slice info,
+      bool needToLock
+    );
     ~EngineInfo();
   };
 

@@ -24,18 +24,19 @@
 
 #include "ProgramOptions/ProgramOptions.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 FoxxQueuesFeature::FoxxQueuesFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
       _enabled(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("V8Platform");
+  startsAfter("ServerPhase");
 }
 
 void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -46,7 +47,7 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 
   options->addOption(
       "--foxx.queues", 
-      "enable or disable Foxx queues",
+      "enable Foxx queues",
       new BooleanParameter(&_enabled));
 
   options->addOption(
@@ -62,3 +63,4 @@ void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 }
 
+} // arangodb

@@ -42,5 +42,5 @@ returned.
 
 
 
-@startDocuBlock JSF_import_document
-@startDocuBlock JSF_import_json
+@startDocuBlock import_document
+@startDocuBlock import_json

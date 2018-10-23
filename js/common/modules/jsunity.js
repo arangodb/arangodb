@@ -40,9 +40,14 @@ var COMPLETE = {};
 
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
+var testFilter = "undefined";
+
+function setTestFilter(filter) {
+  testFilter = filter;
+}
 
 jsUnity.results.begin = function (total, suiteName) {
-  print('Running ' + (suiteName || 'unnamed test suite'));
+  print(Date() + ' Running ' + (suiteName || 'unnamed test suite'));
   print(' ' + total + ' test(s) found');
   print();
   RESULTS = {};
@@ -57,8 +62,8 @@ jsUnity.results.pass = function (index, testName) {
   RESULTS[testName].status = true;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_GREEN + ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s');
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
+    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's');
 
   STARTTEST = newtime;
 };
@@ -71,8 +76,8 @@ jsUnity.results.fail = function (index, testName, message) {
   RESULTS[testName].message = message;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s: ' +
+  print(newtime.toISOString() + internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
+    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's: ' +
     internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
@@ -125,6 +130,10 @@ function Run (testsuite) {
   scope.tearDownAll = tearDownAll;
 
   for (var key in definition) {
+    if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
+      // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+      continue;
+    }
     if (key.indexOf('test') === 0) {
       var test = { name: key, fn: definition[key]};
 
@@ -132,6 +141,23 @@ function Run (testsuite) {
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll') {
       console.error('unknown function: %s', key);
     }
+  }
+  if (tests.length === 0) {
+    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`;
+    print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
+    let res = {
+      suiteName: suite.suiteName,
+      message: err,
+      duration: 0,
+      passed: 0,
+      status: false,
+      failed: 1,
+      total: 1,
+    };
+    TOTAL += 1;
+    FAILED += 2;
+    COMPLETE[suite.suiteName] = res;
+    return res;
   }
 
   suite = new jsUnity.TestSuite(suite.suiteName, scope);
@@ -148,12 +174,19 @@ function Run (testsuite) {
   FAILED += result.failed;
   DURATION += result.duration;
 
+  let duplicates = [];
   for (var attrname in RESULTS) {
     if (RESULTS.hasOwnProperty(attrname)) {
+      if (COMPLETE.hasOwnProperty(attrname)) {
+        print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
+        duplicates.push(attrname);
+      }
       COMPLETE[attrname] = RESULTS[attrname];
     }
   }
-
+  if (duplicates.length !== 0) {
+    throw("Duplicate testsuite '" + duplicates + "'");
+  }
   return result;
 }
 
@@ -184,16 +217,28 @@ function Done (suiteName) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief done with all tests
+// //////////////////////////////////////////////////////////////////////////////
+
+function WriteDone (suiteName) {
+  var ret = Done(suiteName);
+  let outPath = fs.join(require("internal").options()['temp.path'], 'testresult.json');
+  fs.write(outPath, JSON.stringify(ret));
+  return ret;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a JSUnity test file
 // //////////////////////////////////////////////////////////////////////////////
 
-function RunTest (path, outputReply) {
+function RunTest (path, outputReply, filter) {
   var content;
   var f;
 
   content = fs.read(path);
 
-  content = "(function(){require('jsunity').jsUnity.attachAssertions(); return (function() {" + content + '}());\n})';
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)});  ${content} }());
+});`;
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {
@@ -208,7 +253,9 @@ function RunTest (path, outputReply) {
   }
 }
 
+exports.setTestFilter = setTestFilter;
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;
+exports.writeDone = WriteDone;
 exports.runTest = RunTest;

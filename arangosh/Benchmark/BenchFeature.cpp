@@ -53,8 +53,10 @@ using namespace arangodb::rest;
 BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
-BenchFeature::BenchFeature(application_features::ApplicationServer* server,
-                           int* result)
+BenchFeature::BenchFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Bench"),
       _async(false),
       _concurreny(1),
@@ -76,17 +78,14 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Random");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--async", "send asynchronous requests",
                      new BooleanParameter(&_async));
 
-  options->addOption("--concurrency", "number of parallel connections",
+  options->addOption("--concurrency", "number of parallel threads and connections",
                      new UInt64Parameter(&_concurreny));
 
   options->addOption("--requests", "total number of operations",
@@ -99,15 +98,15 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--keep-alive", "use HTTP keep-alive",
                      new BooleanParameter(&_keepAlive));
 
-  options->addOption("--collection", "collection name to use in tests",
+  options->addOption("--collection", "collection name to use in tests (if they involve collections)",
                      new StringParameter(&_collection));
 
   options->addOption("--replication-factor",
-                     "replication factor of created collections",
+                     "replication factor of created collections (cluster only)",
                      new UInt64Parameter(&_replicationFactor));
 
   options->addOption("--number-of-shards",
-                     "number of shards of created collections",
+                     "number of shards of created collections (cluster only)",
                      new UInt64Parameter(&_numberOfShards));
 
   options->addOption("--wait-for-sync",
@@ -115,6 +114,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_waitForSync));
 
   std::unordered_set<std::string> cases = {"version",
+                                           "stream-cursor",
                                            "document",
                                            "collection",
                                            "import-document",
@@ -138,7 +138,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--test-case", "test case to use",
       new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 
-  options->addOption("--complexity", "complexity parameter for the test",
+  options->addOption("--complexity", "complexity parameter for the test (meaning depends on test case)",
                      new UInt64Parameter(&_complexity));
 
   options->addOption("--delay",
@@ -153,14 +153,14 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--runs", "run test n times (and calculate statistics based on median)",
       new UInt64Parameter(&_runs));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "log intermediate progress",
                      new BooleanParameter(&_progress));
 
   options->addOption("--verbose",
-                     "print out replies if the http-header indicates db-errors",
+                     "print out replies if the HTTP header indicates DB errors",
                      new BooleanParameter(&_verbose));
 
-  options->addOption("--quiet", "supress status messages",
+  options->addOption("--quiet", "suppress status messages",
                      new BooleanParameter(&_quiet));
 }
 
@@ -234,12 +234,12 @@ void BenchFeature::start() {
 
     // give all threads a chance to start so they will not miss the broadcast
     while (getStartCounter() < (int)_concurreny) {
-      usleep(5000);
+      std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 
     if (_delay) {
       status("sleeping (startup delay)...");
-      sleep(10);
+      std::this_thread::sleep_for(std::chrono::seconds(10));
     }
 
     status("executing tests...");
@@ -270,7 +270,7 @@ void BenchFeature::start() {
         nextReportValue += stepValue;
       }
 
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     double time = TRI_microtime() - start;

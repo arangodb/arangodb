@@ -26,14 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/files.h"
+#include "Random/RandomGenerator.h"
 
 #include "catch.hpp"
 #include <string>
-
-#include "Basics/StringBuffer.h"
-#include "Basics/files.h"
-#include "Basics/json.h"
-#include "Random/RandomGenerator.h"
+#include <iostream>
 
 using namespace arangodb::basics;
 
@@ -65,7 +65,7 @@ struct CFilesSetup {
 
   ~CFilesSetup () {
     // let's be sure we delete the right stuff
-    assert(_directory.length() > 10);
+    TRI_ASSERT(_directory.length() > 10);
 
     TRI_RemoveDirectory(_directory.c_str());
   }
@@ -105,6 +105,57 @@ struct CFilesSetup {
 
 TEST_CASE("CFilesTest", "[files]") {
   CFilesSetup s;
+
+SECTION("tst_copyfile") {
+  std::ostringstream out;
+  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter;
+  
+  std::string source = out.str();
+  out << "-dest";
+  std::string dest = out.str();
+
+  // non-existing file
+  std::string error;
+  CHECK(false == TRI_CopyFile(source, dest, error));
+
+  // empty file
+  FileUtils::spit(source, std::string(""), false);
+  CHECK(true == TRI_CopyFile(source, dest, error));
+  CHECK("" == FileUtils::slurp(dest));
+
+  // copy over an existing target file
+  FileUtils::remove(source);
+  FileUtils::spit(source, std::string("foobar"), false);
+  CHECK(false == TRI_CopyFile(source, dest, error));
+  
+  FileUtils::remove(source);
+  FileUtils::remove(dest);
+  FileUtils::spit(source, std::string("foobar"), false);
+  CHECK(true == TRI_CopyFile(source, dest, error));
+  CHECK("foobar" == FileUtils::slurp(dest));
+
+  // copy larger file
+  std::string value("the quick brown fox");
+  for (size_t i = 0; i < 10; ++i) {
+    value += value;
+  }
+ 
+  FileUtils::remove(source);
+  FileUtils::remove(dest);
+  FileUtils::spit(source, value, false);
+  CHECK(true == TRI_CopyFile(source, dest, error));
+  CHECK(value == FileUtils::slurp(dest));
+  CHECK(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
+
+  // copy file slightly larger than copy buffer
+  std::string value2(128 * 1024 + 1, 'x');
+  FileUtils::remove(source);
+  FileUtils::remove(dest);
+  FileUtils::spit(source, value2, false);
+  CHECK(true == TRI_CopyFile(source, dest, error));
+  CHECK(value2 == FileUtils::slurp(dest));
+  CHECK(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
+}
 
 SECTION("tst_createdirectory") {
   std::ostringstream out;

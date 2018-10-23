@@ -101,7 +101,8 @@ start vertex (i.e. *v/world* in our example):
 achieved this by setting the *maxDepth* attribute to *1*. Not setting it would return the
 full array of vertices.
 
-### Traversal Direction
+Traversal Direction
+-------------------
 
 For the examples contained in this manual, we'll be starting the traversals at vertex
 *v/world*. Vertices in our graph are connected like this:
@@ -181,9 +182,10 @@ The result is:
 
 which confirms that now we're going outbound.
 
-### Traversal Strategy
+Traversal Strategy
+------------------
 
-#### Depth-first traversals
+### Depth-first traversals
 
 The visitation order of vertices is determined by the *strategy* and *order* attributes set
 in the configuration. We chose *depthfirst* and *preorder*, meaning the traverser will 
@@ -268,7 +270,7 @@ vertices will be emitted first):
 ]
 ```
 
-#### Breadth-first traversals
+### Breadth-first traversals
 
 If we go back to *preorder*, but change the strategy to *breadth-first* and re-run the 
 traversal, we'll see that the return order changes, and items on the same level will be 
@@ -335,7 +337,7 @@ This will traverse edges of the same vertex in backward *_key* order:
 If you are using custom expanders
 you have to organize the sorting within the specified expander.
 
-#### Writing Custom Visitors
+### Writing Custom Visitors
 
 So far we have used much of the traverser's default functions. The traverser is very
 configurable and many of the default functions can be overridden with custom functionality.
@@ -456,9 +458,10 @@ config.visitor = function (config, result, vertex, path, connected) {
 Note that for this visitor to work, the traversal *order* attribute needs to be
 set to the value *preorder-expander*.
 
-### Filtering Vertices and Edges
+Filtering Vertices and Edges
+----------------------------
 
-#### Filtering Vertices
+### Filtering Vertices
 
 So far we have printed or returned all vertices that were visited during the traversal. 
 This is not always required. If the result shall be restrict to just specific vertices, 
@@ -523,7 +526,8 @@ values:
 return [ 'exclude', 'prune' ];
 ```
 
-### Filtering Edges
+Filtering Edges
+---------------
 
 It is possible to exclude certain edges from the traversal. To filter on edges, a
 filter function can be defined via the *expandFilter* attribute. The *expandFilter*
@@ -550,7 +554,8 @@ var config = {
 };
 ```
 
-### Writing Custom Expanders
+Writing Custom Expanders
+------------------------
 
 The edges connected to a vertex are determined by the expander. So far we have used a 
 default expander (the default inbound expander to be precise). The default inbound 
@@ -686,7 +691,8 @@ var config = {
 ```
 
 
-### Handling Uniqueness
+Handling Uniqueness
+-------------------
 
 Graphs may contain cycles. To be on top of what happens when a traversal encounters a vertex
 or an edge it has already visited, there are configuration options.
@@ -732,7 +738,8 @@ but it is only safe for graphs that do not contain cycles. When uniqueness check
 with cycles, the traversal might not abort in a sensible amount of time.
 
 
-### Optimizations
+Optimizations
+-------------
 
 There are a few options for making a traversal run faster.
 
@@ -768,7 +775,8 @@ option can be set to *false*. If visitor, filter or expandFilter functions need 
 attributes, the option should not be changed.
 
 
-### Configuration Overview
+Configuration Overview
+----------------------
 
 This section summarizes the configuration attributes for the traversal object. The
 configuration can consist of the following attributes:

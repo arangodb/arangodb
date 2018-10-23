@@ -1,0 +1,27 @@
+Authors
+=======
+
+Martin Porter
+-------------
+
+ - Designed the snowball language.
+ - Implemented the snowball to C compiler.
+ - Implemented the stemming algorithms in C.
+ - Wrote the documentation.
+
+Richard Boulton
+---------------
+
+ - Implemented Java backend of the snowball compiler.
+ - Developed build system.
+ - Assisted with website maintenance.
+
+
+Assistance from
+---------------
+
+Olivier Bornet - fixes to java packaging and build system.
+Andreas Jung - useful bug reports on the libstemmer library.
+Olly Betts - several patches, bug reports, and performance improvements.
+Sebastiano Vigna and Oerd Cukalla - patches for the Java stemming algorithms.
+Ralf Junker - fix a potential memory leak in sb_stemmer_new().

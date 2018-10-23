@@ -7,10 +7,19 @@ The implementation tries to follow the CommonJS
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0)
 specification where possible.
 
+Working Directory
+-----------------
+The directory functions below shouldn't use the current working directory of the server like `.` or `./test`.
+You will not be able to tell whether the environment the server is running in will permit directory listing,
+reading or writing of files.
+
+You should either base your directories with `getTempPath()`, or as a Foxx service use the
+[module.context.basePath](../../Foxx/Reference/Context.md).
+
 Single File Directory Manipulation
 ----------------------------------
 
-#### exists
+### exists
 
 
 checks if a file of any type or directory exists
@@ -20,7 +29,7 @@ Returns true if a file (of any type) or a directory exists at a given
 path. If the file is a broken symbolic link, returns false.
 
 
-#### isFile
+### isFile
 
 
 tests if path is a file
@@ -29,7 +38,7 @@ tests if path is a file
 Returns true if the *path* points to a file.
 
 
-#### isDirectory
+### isDirectory
 
 
 tests if path is a directory
@@ -38,7 +47,7 @@ tests if path is a directory
 Returns true if the *path* points to a directory.
 
 
-#### size
+### size
 
 
 gets the size of a file
@@ -47,7 +56,7 @@ gets the size of a file
 Returns the size of the file specified by *path*.
 
 
-#### mtime
+### mtime
 
 
 gets the last modification time of a file
@@ -57,17 +66,17 @@ Returns the last modification date of the specified file. The date is
 returned as a Unix timestamp (number of seconds elapsed since January 1 1970).
 
 
-#### pathSeparator
+### pathSeparator
 `fs.pathSeparator`
 
 If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
 
-#### join
+### join
 `fs.join(path, filename)`
 
 The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
 
-#### getTempFile
+### getTempFile
 
 
 returns the name for a (new) temporary file
@@ -80,7 +89,7 @@ process can create a file of the same name.
 **Note**: The directory *directory* must exist.
 
 
-#### getTempPath
+### getTempPath
 
 
 returns the temporary directory
@@ -90,7 +99,7 @@ Returns the absolute path of the temporary directory
 
 
 
-#### makeAbsolute
+### makeAbsolute
 
 
 makes a given path absolute
@@ -100,7 +109,7 @@ Returns the given string if it is an absolute path, otherwise an
 absolute path to the same location is returned.
 
 
-#### chmod
+### chmod
 
 
 sets file permissions of specified files (non windows only)
@@ -109,7 +118,7 @@ sets file permissions of specified files (non windows only)
 Returns true on success.
 
 
-#### list
+### list
 
 
 returns the directory listing
@@ -123,7 +132,7 @@ traversed (or path is not a directory).
 return ["a", "b"], not ["x/a", "x/b"].
 
 
-#### listTree
+### listTree
 
 
 returns the directory tree
@@ -136,7 +145,7 @@ symbolic links to directories. The first path is always *""*, the path
 relative to itself.
 
 
-#### makeDirectory
+### makeDirectory
 
 
 creates a directory
@@ -145,7 +154,7 @@ creates a directory
 Creates the directory specified by *path*.
 
 
-#### makeDirectoryRecursive
+### makeDirectoryRecursive
 
 
 creates a directory
@@ -154,7 +163,7 @@ creates a directory
 Creates the directory hierarchy specified by *path*.
 
 
-#### remove
+### remove
 
 
 removes a file
@@ -165,7 +174,7 @@ path corresponds to anything that is not a file or a symbolic link. If
 "path" refers to a symbolic link, removes the symbolic link.
 
 
-#### removeDirectory
+### removeDirectory
 
 
 removes an empty directory
@@ -176,7 +185,7 @@ an empty directory.
 
 
 
-#### removeDirectoryRecursive
+### removeDirectoryRecursive
 
 
 removes a directory
@@ -189,7 +198,7 @@ is not a directory.
 File IO
 -------
 
-#### read
+### read
 
 
 reads in a file
@@ -199,7 +208,7 @@ Reads in a file and returns the content as string. Please note that the
 file content must be encoded in UTF-8.
 
 
-#### read64
+### read64
 
 
 reads in a file as base64
@@ -209,7 +218,7 @@ Reads in a file and returns the content as string. The file content is
 Base64 encoded.
 
 
-#### readBuffer
+### readBuffer
 
 
 reads in a file
@@ -218,7 +227,7 @@ reads in a file
 Reads in a file and returns its content in a Buffer object.
 
 
-#### readFileSync
+### readFileSync
 `fs.readFileSync(filename, encoding)`
 
 Reads the contents of the file specified in `filename`. If `encoding` is specified,
@@ -233,18 +242,18 @@ the file contents will be returned as a string. Supported encodings are:
 If no `encoding` is specified, the file contents will be returned in a Buffer
 object.
 
-#### write
+### write
 `fs.write(filename, content)`
 
 Writes the content into a file. Content can be a string or a Buffer
 object.  If the file already exists, it is truncated.
 
-#### writeFileSync
+### writeFileSync
 `fs.writeFileSync(filename, content)`
 
 This is an alias for `fs.write(filename, content)`.
 
-#### append
+### append
 `fs.append(filename, content)`
 
 Writes the content into a file. Content can be a string or a Buffer
@@ -254,7 +263,7 @@ end.
 Recursive Manipulation
 ----------------------
 
-#### copyRecursive
+### copyRecursive
 
 
 copies a directory structure
@@ -267,7 +276,7 @@ Exceptions will be thrown on:
  - specifying a directory as source and destination
 
 
-#### CopyFile
+### CopyFile
 
 
 copies a file into a target file
@@ -279,7 +288,7 @@ the
 specified filename.
 
 
-#### move
+### move
 
 
 renames a file
@@ -294,7 +303,7 @@ fail.
 ZIP
 ---
 
-#### unzipFile
+### unzipFile
 
 
 unzips a file
@@ -307,7 +316,7 @@ to *true*.
 Returns *true* if the file was unzipped successfully.
 
 
-#### zipFile
+### zipFile
 
 
 zips a file

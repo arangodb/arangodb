@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,20 +24,25 @@
 #include "DBServerAgencySync.h"
 
 #include "Basics/MutexLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/HeartbeatThread.h"
+#include "Cluster/Maintenance.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/MaintenanceStrings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::methods;
 using namespace arangodb::rest;
 
 DBServerAgencySync::DBServerAgencySync(HeartbeatThread* heartbeat)
@@ -52,127 +57,202 @@ void DBServerAgencySync::work() {
   _heartbeat->dispatchedJobResult(result);
 }
 
+Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+
+  using namespace arangodb::basics;
+  Result result;
+  DatabaseFeature* dbfeature = nullptr;
+
+  try {
+    dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  } catch (...) {}
+
+  if (dbfeature == nullptr) {
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to get feature database";
+    return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
+  }
+
+  VPackObjectBuilder c(&collections);
+  for (auto const& database : Databases::list()) {
+
+    try {
+      DatabaseGuard guard(database);
+      auto vocbase = &guard.database();
+
+      collections.add(VPackValue(database));
+      VPackObjectBuilder db(&collections);
+      auto cols = vocbase->collections(false);
+
+      for (auto const& collection : cols) {
+        if (!collection->system()) {
+          std::string const colname = collection->name();
+          collections.add(VPackValue(colname));
+          VPackObjectBuilder col(&collections);
+          collection->toVelocyPack(collections,true,false);
+          auto const& folls = collection->followers();
+          auto const theLeader = folls->getLeader();
+          collections.add("theLeader", VPackValue(theLeader));
+          if (theLeader.empty()) {  // we are the leader ourselves
+            // In this case we report our in-sync followers here in the format
+            // of the agency: [ leader, follower1, follower2, ... ]
+            collections.add(VPackValue("servers"));
+            { VPackArrayBuilder guard(&collections);
+              collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
+              for (auto const& s : *folls->get()) {
+                collections.add(VPackValue(s));
+              }
+            }
+          }
+        }
+      }
+    } catch (std::exception const& e) {
+      return Result(
+        TRI_ERROR_INTERNAL,
+        std::string("Failed to guard database ") +  database + ": " + e.what());
+    }
+
+  }
+
+  return Result();
+
+}
+
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "DBServerAgencySync::execute starting";
-  DatabaseFeature* database = 
-    ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(AgencyCommManager::isEnabled());
+  AgencyComm comm;
 
-  TRI_vocbase_t* const vocbase = database->systemDatabase();
+  using namespace std::chrono;
+  using clock = std::chrono::steady_clock;
 
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::execute starting";
+
+  auto* sysDbFeature = application_features::ApplicationServer::lookupFeature<
+    SystemDatabaseFeature
+  >();
+  MaintenanceFeature* mfeature =
+    ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  arangodb::SystemDatabaseFeature::ptr vocbase =
+      sysDbFeature ? sysDbFeature->use() : nullptr;
   DBServerAgencySyncResult result;
+
   if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no vocbase";
     return result;
   }
-  
+
+  Result tmp;
+  VPackBuilder rb;
   auto clusterInfo = ClusterInfo::instance();
   auto plan = clusterInfo->getPlan();
-  auto current = clusterInfo->getCurrent();
-  
-  DatabaseGuard guard(vocbase);
+  auto serverId = arangodb::ServerState::instance()->getId();
 
-  double startTime = TRI_microtime();
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, V8DealerFeature::ANY_CONTEXT_OR_PRIORITY);
-
-  if (context == nullptr) {
-    LOG_TOPIC(WARN, arangodb::Logger::HEARTBEAT) << "DBServerAgencySync::execute: no V8 context";
+  VPackBuilder local;
+  Result glc = getLocalCollections(local);
+  if (!glc.ok()) {
+    // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
+    // intended? I also notice that there is another Result object "tmp"
+    // that is going to eat bad results in few lines later. Again, is
+    // that the correct action? If so, how about supporting comments in
+    // the code for both.
     return result;
   }
-  
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
-  double now = TRI_microtime();
-  if (now - startTime > 5.0) {
-    LOG_TOPIC(WARN, arangodb::Logger::HEARTBEAT) << "DBServerAgencySync::execute took " << Logger::FIXED(now - startTime) << " to get free V8 context, starting handlePlanChange now";
-  }
-
-  auto isolate = context->_isolate;
-  
+  auto start = clock::now();
   try {
-    v8::HandleScope scope(isolate);
+    // in previous life handlePlanChange
 
-    // execute script inside the context
-    auto file = TRI_V8_ASCII_STRING(isolate, "handlePlanChange");
-    auto content =
-        TRI_V8_ASCII_STRING(isolate, "require('@arangodb/cluster').handlePlanChange");
-    
-    v8::TryCatch tryCatch;
-    v8::Handle<v8::Value> handlePlanChange = TRI_ExecuteJavaScriptString(
-        isolate, isolate->GetCurrentContext(), content, file, false);
-    
-    if (tryCatch.HasCaught()) {
-      TRI_LogV8Exception(isolate, &tryCatch);
+    VPackObjectBuilder o(&rb);
+
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
+    tmp = arangodb::maintenance::phaseOne(
+      plan->slice(), local.slice(), serverId, *mfeature, rb);
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne done";
+
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    local.clear();
+    glc = getLocalCollections(local);
+    // We intentionally refetch local collections here, such that phase 2
+    // can already see potential changes introduced by phase 1. The two
+    // phases are sufficiently independent that this is OK.
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
+    if (!glc.ok()) {
       return result;
     }
 
-    if (!handlePlanChange->IsFunction()) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "handlePlanChange is not a function";
-      return result;
-    }
+    auto current = clusterInfo->getCurrent();
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
-    v8::Handle<v8::Function> func =
-      v8::Handle<v8::Function>::Cast(handlePlanChange);
-    v8::Handle<v8::Value> args[2];
-    // Keep the shared_ptr to the builder while we run TRI_VPackToV8 on the
-    // slice(), just to be on the safe side:
-    auto builder = clusterInfo->getPlan();
-    args[0] = TRI_VPackToV8(isolate, builder->slice());
-    builder = clusterInfo->getCurrent();
-    args[1] = TRI_VPackToV8(isolate, builder->slice());
-    
-    v8::Handle<v8::Value> res =
-      func->Call(isolate->GetCurrentContext()->Global(), 2, args);
-    
-    if (tryCatch.HasCaught()) {
-      TRI_LogV8Exception(isolate, &tryCatch);
-      return result;
-    }
-    
-    result.success = true;  // unless overwritten by actual result
+    tmp = arangodb::maintenance::phaseTwo(
+      plan->slice(), current->slice(), local.slice(), serverId, *mfeature, rb);
 
-    if (res->IsObject()) {
-      v8::Handle<v8::Object> o = res->ToObject();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo done";
 
-      v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
-      uint32_t const n = names->Length();
-      
-      for (uint32_t i = 0; i < n; ++i) {
-        v8::Handle<v8::Value> key = names->Get(i);
-        v8::String::Utf8Value str(key);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "Failed to handle plan change: " << e.what();
+  }
 
-        v8::Handle<v8::Value> value = o->Get(key);
+  if (rb.isClosed()) {
+
+    auto report = rb.slice();
+    if (report.isObject()) {
+
+      std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
+      if (report.hasKey(path) && report.get(path).isObject()) {
         
-        if (value->IsNumber()) {
-          if (strcmp(*str, "plan") == 0) {
-            result.planVersion =
-              static_cast<uint64_t>(value->ToInteger()->Value());
-          } else if (strcmp(*str, "current") == 0) {
-            result.currentVersion =
-              static_cast<uint64_t>(value->ToInteger()->Value());
+        auto agency = report.get(path);
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync reporting to Current: " << agency.toJson();
+
+        // Report to current
+        if (!agency.isEmptyObject()) {
+          
+          std::vector<AgencyOperation> operations;
+          for (auto const& ao : VPackObjectIterator(agency)) {
+            auto const key = ao.key.copyString();
+            auto const op = ao.value.get("op").copyString();
+            if (op == "set") {
+              auto const value = ao.value.get("payload");
+              operations.push_back(
+                AgencyOperation(key, AgencyValueOperationType::SET, value));
+            } else if (op == "delete") {
+              operations.push_back(
+                AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
+            }
           }
-        } else if (value->IsBoolean() && strcmp(*str, "success")) {
-          result.success = TRI_ObjectToBoolean(value);
+          operations.push_back(
+            AgencyOperation(
+              "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
+          AgencyWriteTransaction currentTransaction(operations);
+          AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
+          if (!r.successful()) {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
+          } else {
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Invalidating current in ClusterInfo";
+            clusterInfo->invalidateCurrent();
+          }
         }
+
       }
-    } else {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT)
-        << "handlePlanChange returned a non-object";
-      return result;
+            
+      result = DBServerAgencySyncResult(
+        tmp.ok(),
+        report.hasKey("Plan") ?
+        report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+        report.hasKey("Current") ?
+        report.get("Current").get("Version").getNumber<uint64_t>() : 0);
+
     }
-    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-      << "DBServerAgencySync::execute back from JS";
-    // invalidate our local cache, even if an error occurred
-    clusterInfo->flush();
-  } catch (...) {
   }
 
-  now = TRI_microtime();
-  if (now - startTime > 30.0) {
-    LOG_TOPIC(WARN, Logger::HEARTBEAT) << "DBServerAgencySync::execute "
-      "took " << Logger::FIXED(now - startTime) << " s to execute handlePlanChange";
+  auto took = duration<double>(clock::now() - start).count();
+  if (took > 30.0) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
+      "took " << took << " s to execute handlePlanChange";
   }
+
   return result;
 }

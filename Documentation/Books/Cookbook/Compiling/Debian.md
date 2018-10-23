@@ -58,7 +58,7 @@ sudo aptitude -y install git-core \
     libjemalloc-dev \
     cmake \
     python2.7 \
-sudo aptitude -y install libldap2-dev # Enterprise version only
+sudo aptitude -y install libldap2-dev # Enterprise Edition only
 ```
 
 ### 
@@ -220,11 +220,11 @@ The server will by default be installed in
 
 The configuration file will be installed in
 
-    /usr/local/etc/arangodb/arangod.conf
+    /usr/local/etc/arangodb3/arangod.conf
 
 The database will be installed in
 
-    /usr/local/var/lib/arangodb
+    /usr/local/var/lib/arangodb3
 
 The ArangoShell will be installed in
 

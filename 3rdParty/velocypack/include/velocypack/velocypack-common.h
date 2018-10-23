@@ -30,6 +30,15 @@
 #include <cstdint>
 // for size_t:
 #include <cstring>
+#include <type_traits>
+
+#if defined(__GNUC__) || defined(__GNUG__)
+#define VELOCYPACK_LIKELY(v) __builtin_expect(!!(v), 1)
+#define VELOCYPACK_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#else
+#define VELOCYPACK_LIKELY(v) v
+#define VELOCYPACK_UNLIKELY(v) v
+#endif
 
 // debug mode
 #ifndef NDEBUG
@@ -69,6 +78,26 @@
 #define VELOCYPACK_UNUSED /* unused */
 #endif
 
+#ifndef VELOCYPACK_XXHASH
+#ifndef VELOCYPACK_FASTHASH
+#define VELOCYPACK_XXHASH
+#endif
+#endif
+
+#ifdef VELOCYPACK_XXHASH
+// forward for XXH64 function declared elsewhere
+extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
+
+#define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
+#endif
+
+#ifdef VELOCYPACK_FASTHASH
+// forward for fasthash64 function declared elsewhere
+uint64_t fasthash64(void const*, size_t, uint64_t);
+
+#define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
+#endif
+
 namespace arangodb {
 namespace velocypack {
 
@@ -89,7 +118,7 @@ bool assemblerFunctionsDisabled();
 std::size_t checkOverflow(ValueLength);
 #else
 // on a 64 bit platform, the following function is probably a no-op
-static constexpr std::size_t checkOverflow(ValueLength length) {
+static inline constexpr std::size_t checkOverflow(ValueLength length) noexcept {
   return static_cast<std::size_t>(length);
 }
 #endif
@@ -106,7 +135,7 @@ static inline ValueLength getVariableValueLength(ValueLength value) noexcept {
 
 // read a variable length integer in unsigned LEB128 format
 template <bool reverse>
-static inline ValueLength readVariableValueLength(uint8_t const* source) {
+static inline ValueLength readVariableValueLength(uint8_t const* source) noexcept {
   ValueLength len = 0;
   uint8_t v;
   ValueLength p = 0;
@@ -125,7 +154,7 @@ static inline ValueLength readVariableValueLength(uint8_t const* source) {
 
 // store a variable length integer in unsigned LEB128 format
 template <bool reverse>
-static inline void storeVariableValueLength(uint8_t* dst, ValueLength value) {
+static inline void storeVariableValueLength(uint8_t* dst, ValueLength value) noexcept {
   VELOCYPACK_ASSERT(value > 0);
 
   if (reverse) {
@@ -169,10 +198,12 @@ static inline int64_t toInt64(uint64_t v) noexcept {
 // specified length, starting at the specified byte offset
 template <typename T, ValueLength length>
 static inline T readIntegerFixed(uint8_t const* start) noexcept {
+  static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   static_assert(length > 0, "length must be > 0");
+  static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
   uint64_t x = 8;
   uint8_t const* end = start + length;
-  uint64_t value = static_cast<T>(*start++);
+  T value = static_cast<T>(*start++);
   while (start < end) {
     value += static_cast<T>(*start++) << x;
     x += 8;
@@ -181,13 +212,15 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
 }
 
 // read an unsigned little endian integer value of the
-// specified length, starting at the specified byte offset
+// specified, non-0 length, starting at the specified byte offset
 template <typename T>
 static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) noexcept {
+  static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   VELOCYPACK_ASSERT(length > 0);
+  VELOCYPACK_ASSERT(length <= sizeof(T));
   uint64_t x = 8;
   uint8_t const* end = start + length;
-  uint64_t value = static_cast<T>(*start++);
+  T value = static_cast<T>(*start++);
   while (start < end) {
     value += static_cast<T>(*start++) << x;
     x += 8;

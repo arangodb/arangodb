@@ -97,11 +97,11 @@ SECTION("tst_unique_forward") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   // check start node
-  CHECK((void*) 0 == skiplist.startNode()->nextNode());
-  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK((void*) nullptr == skiplist.startNode()->nextNode());
+  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) 0 == skiplist.endNode());
+  CHECK((void*) nullptr == skiplist.endNode());
   
   CHECK(0 == (int) skiplist.getNrUsed());
 
@@ -119,11 +119,11 @@ SECTION("tst_unique_forward") {
   CHECK(100 == (int) skiplist.getNrUsed());
 
   // check start node
-  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
   CHECK(values[0] == skiplist.startNode()->nextNode()->document());
 
   // check end node
-  CHECK((void*) 0 == skiplist.endNode());
+  CHECK((void*) nullptr == skiplist.endNode());
 
   arangodb::MMFilesSkiplistNode<void, void>* current;
 
@@ -177,11 +177,11 @@ SECTION("tst_unique_reverse") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   // check start node
-  CHECK((void*) 0 == skiplist.startNode()->nextNode());
-  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK((void*) nullptr == skiplist.startNode()->nextNode());
+  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) 0 == skiplist.endNode());
+  CHECK((void*) nullptr == skiplist.endNode());
   
   CHECK(0 == (int) skiplist.getNrUsed());
 
@@ -199,11 +199,11 @@ SECTION("tst_unique_reverse") {
   CHECK(100 == (int) skiplist.getNrUsed());
 
   // check start node
-  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
   CHECK(values[0] == skiplist.startNode()->nextNode()->document());
 
   // check end node
-  CHECK((void*) 0 == skiplist.endNode());
+  CHECK((void*) nullptr == skiplist.endNode());
 
   arangodb::MMFilesSkiplistNode<void, void>* current;
 
@@ -275,16 +275,16 @@ SECTION("tst_unique_lookup") {
   int value;
 
   value = -1;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
 
   value = 100;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   
   value = 101;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
 
   value = 1000;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
 
   // clean up
   for (auto i : values) {
@@ -335,10 +335,10 @@ SECTION("tst_unique_remove") {
 
   // check start node
   CHECK(values[2] == skiplist.startNode()->nextNode()->document());
-  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) 0 == skiplist.endNode());
+  CHECK((void*) nullptr == skiplist.endNode());
   
   CHECK(93 == (int) skiplist.getNrUsed());
 
@@ -373,23 +373,23 @@ SECTION("tst_unique_remove") {
 
   CHECK(values[97] == skiplist.lookup(nullptr, values[97])->document());
   CHECK(values[96] == skiplist.lookup(nullptr, values[97])->prevNode()->document());
-  CHECK((void*) 0 == skiplist.lookup(nullptr, values[97])->nextNode());
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[97])->nextNode());
   
   // lookup non-existing values
   value = 0;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   value = 1;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   value = 7;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   value = 12;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   value = 23;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   value = 98;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   value = 99;
-  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
   
   // clean up
   for (auto i : values) {
@@ -423,18 +423,18 @@ SECTION("tst_unique_remove_all") {
   }
   
   // check start node
-  CHECK((void*) 0 == skiplist.startNode()->nextNode());
-  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK((void*) nullptr == skiplist.startNode()->nextNode());
+  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) 0 == skiplist.endNode());
+  CHECK((void*) nullptr == skiplist.endNode());
   
   CHECK(0 == (int) skiplist.getNrUsed());
 
   // lookup non-existing values
-  CHECK((void*) 0 == skiplist.lookup(nullptr, values[0]));
-  CHECK((void*) 0 == skiplist.lookup(nullptr, values[12]));
-  CHECK((void*) 0 == skiplist.lookup(nullptr, values[99]));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[0]));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[12]));
+  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[99]));
   
   // clean up
   for (auto i : values) {

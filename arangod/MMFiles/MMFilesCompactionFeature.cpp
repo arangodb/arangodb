@@ -37,7 +37,9 @@ using namespace arangodb::options;
 
 MMFilesCompactionFeature* MMFilesCompactionFeature::COMPACTOR = nullptr;
 
-MMFilesCompactionFeature::MMFilesCompactionFeature(ApplicationServer* server)
+MMFilesCompactionFeature::MMFilesCompactionFeature(
+    application_features::ApplicationServer& server
+)
   : ApplicationFeature(server, "MMFilesCompaction"),
     _compactionSleepTime(1.0),
     _compactionCollectionInterval(10.0), 
@@ -49,8 +51,10 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(ApplicationServer* server)
     _deadSizeThreshold(128 * 1024),
     _deadShare(0.1) { 
   setOptional(true);
-  requiresElevatedPrivileges(false);
   onlyEnabledWith("MMFilesEngine");
+
+  startsAfter("BasicsPhase");
+
   MMFilesCompactionFeature::COMPACTOR = this;
 }
 

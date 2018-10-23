@@ -31,41 +31,47 @@
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <iostream>
 #include <regex>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ImportFeature::ImportFeature(application_features::ApplicationServer* server,
-                             int* result)
+namespace arangodb {
+
+ImportFeature::ImportFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
       _convert(true),
-      _chunkSize(1024 * 1024 * 16),
+      _autoChunkSize(true),
+      _chunkSize(1024 * 1024 * 1),
       _threadCount(2),
       _collectionName(""),
       _fromCollectionPrefix(""),
       _toCollectionPrefix(""),
       _createCollection(false),
+      _createDatabase(false),
       _createCollectionType("document"),
       _typeImport("json"),
       _overwrite(false),
       _quote("\""),
       _separator(""),
       _progress(true),
+      _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
-      _result(result) {
+      _result(result),
+      _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void ImportFeature::collectOptions(
@@ -104,6 +110,10 @@ void ImportFeature::collectOptions(
                      "create collection if it does not yet exist",
                      new BooleanParameter(&_createCollection));
 
+  options->addOption("--create-database",
+                     "create the target database if it does not exist",
+                     new BooleanParameter(&_createDatabase));
+
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
                      new UInt64Parameter(&_rowsToSkip));
@@ -118,7 +128,7 @@ void ImportFeature::collectOptions(
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
-  
+
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting an attribute"
                      " into a collection (for csv and tsv only)",
@@ -156,6 +166,9 @@ void ImportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
+  options->addOption("--ignore-missing", "ignore missing columns in csv input",
+                     new BooleanParameter(&_ignoreMissing));
+
   std::unordered_set<std::string> actions = {"error", "update", "replace",
                                              "ignore"};
   std::vector<std::string> actionsVector(actions.begin(), actions.end());
@@ -167,6 +180,9 @@ void ImportFeature::collectOptions(
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(
                          &_onDuplicateAction, actions));
+
+  options->addOption("--latency", "show 10 second latency statistics (values in microseconds)",
+                     new BooleanParameter(&_latencyStats));
 }
 
 void ImportFeature::validateOptions(
@@ -187,15 +203,16 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  static unsigned const MaxBatchSize = 768 * 1024 * 1024;
+  // _chunkSize is dynamic ... unless user explicitly sets it
+  _autoChunkSize = !options->processingResult().touched("--batch-size");
 
-  if (_chunkSize > MaxBatchSize) {
+  if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to "
-                                             << MaxBatchSize;
-    _chunkSize = MaxBatchSize;
+                                             << arangodb::import::ImportHelper::MaxBatchSize;
+    _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
   }
 
   if (_threadCount < 1) {
@@ -204,11 +221,12 @@ void ImportFeature::validateOptions(
                                              << 1;
     _threadCount = 1;
   }
-  if (_threadCount > TRI_numberProcessors()) {
-    // it's not sensible to use just one thread
+  if (_threadCount > TRI_numberProcessors()*2) {
+    // it's not sensible to use just one thread ...
+    //  and import's CPU usage is negligible, real limit is cluster cores
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
-                                             << TRI_numberProcessors();
-    _threadCount = (uint32_t)TRI_numberProcessors();
+                                             << TRI_numberProcessors()*2;
+    _threadCount = (uint32_t)TRI_numberProcessors()*2;
   }
 
   for (auto const& it : _translations) {
@@ -265,75 +283,111 @@ void ImportFeature::start() {
     }
   }
 
-  std::unique_ptr<SimpleHttpClient> httpClient;
-
   try {
-    httpClient = client->createHttpClient();
+    _httpClient = client->createHttpClient();
   } catch (...) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->params().setLocationRewriter(static_cast<void*>(client),
+  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
+
                                            &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client->username(),
+  _httpClient->params().setUserNamePassword("/", client->username(),
                                            client->password());
 
   // must stay here in order to establish the connection
-  httpClient->getServerVersion();
 
-  if (!httpClient->isConnected()) {
+  int err = TRI_ERROR_NO_ERROR;
+  auto versionString = _httpClient->getServerVersion(&err);
+  auto dbName = client->databaseName();
+  bool createdDatabase = false;
+
+  auto successfulConnection = [&](){
+    std::cout << "Connected to ArangoDB '"
+              << _httpClient->getEndpointSpecification() << "', version "
+              << versionString << ", database: '"
+              << client->databaseName() << "', username: '" << client->username()
+              << "'" << std::endl;
+
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << "database:               " << client->databaseName()
+              << std::endl;
+    std::cout << "collection:             " << _collectionName << std::endl;
+    if (!_fromCollectionPrefix.empty()) {
+      std::cout << "from collection prefix: " << _fromCollectionPrefix
+                << std::endl;
+    }
+    if (!_toCollectionPrefix.empty()) {
+      std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
+    }
+    std::cout << "create:                 " << (_createCollection ? "yes" : "no")
+              << std::endl;
+    std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
+              << std::endl;
+    std::cout << "source filename:        " << _filename << std::endl;
+    std::cout << "file type:              " << _typeImport << std::endl;
+
+    if (_typeImport == "csv") {
+      std::cout << "quote:                  " << _quote << std::endl;
+    }
+    if (_typeImport == "csv" || _typeImport == "tsv") {
+      std::cout << "separator:              " << _separator << std::endl;
+    }
+    std::cout << "threads:                " << _threadCount << std::endl;
+
+    std::cout << "connect timeout:        " << client->connectionTimeout()
+              << std::endl;
+    std::cout << "request timeout:        " << client->requestTimeout()
+              << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+  };
+
+  if (_createDatabase && err == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+    // database not found, but database creation requested
+    std::cout << "Creating database '" << dbName << "'" << std::endl;
+
+    client->setDatabaseName("_system");
+
+    int res = tryCreateDatabase(client, dbName);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
+                                              << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << _httpClient->getErrorMessage() << "'";
+      FATAL_ERROR_EXIT();
+    }
+
+    successfulConnection();
+
+    // restore old database name
+    client->setDatabaseName(dbName);
+    versionString = _httpClient->getServerVersion(nullptr);
+    createdDatabase = true;
+  }
+
+
+  if (!_httpClient->isConnected()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Could not connect to endpoint '" << client->endpoint()
         << "', database: '" << client->databaseName() << "', username: '"
         << client->username() << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage()
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
                                               << "'";
     FATAL_ERROR_EXIT();
   }
 
   // successfully connected
-  std::cout << "Connected to ArangoDB '"
-            << httpClient->getEndpointSpecification() << "', version "
-            << httpClient->getServerVersion() << ", database: '"
-            << client->databaseName() << "', username: '" << client->username()
-            << "'" << std::endl;
-
-  std::cout << "----------------------------------------" << std::endl;
-  std::cout << "database:               " << client->databaseName()
-            << std::endl;
-  std::cout << "collection:             " << _collectionName << std::endl;
-  if (!_fromCollectionPrefix.empty()) {
-    std::cout << "from collection prefix: " << _fromCollectionPrefix
-              << std::endl;
+  if(!createdDatabase) {
+    successfulConnection();
   }
-  if (!_toCollectionPrefix.empty()) {
-    std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
-  }
-  std::cout << "create:                 " << (_createCollection ? "yes" : "no")
-            << std::endl;
-  std::cout << "source filename:        " << _filename << std::endl;
-  std::cout << "file type:              " << _typeImport << std::endl;
+  _httpClient->disconnect();  // we do not reuse this anymore
 
-  if (_typeImport == "csv") {
-    std::cout << "quote:                  " << _quote << std::endl;
-  }
-  if (_typeImport == "csv" || _typeImport == "tsv") {
-    std::cout << "separator:              " << _separator << std::endl;
-  }
-  std::cout << "threads:                " << _threadCount << std::endl;
-
-  std::cout << "connect timeout:        " << client->connectionTimeout()
-            << std::endl;
-  std::cout << "request timeout:        " << client->requestTimeout()
-            << std::endl;
-  std::cout << "----------------------------------------" << std::endl;
-  httpClient->disconnect();  // we do not reuse this anymore
-
-  SimpleHttpClientParams params = httpClient->params();
+  SimpleHttpClientParams params = _httpClient->params();
   arangodb::import::ImportHelper ih(client, client->endpoint(), params,
-                                    _chunkSize, _threadCount);
+                                    _chunkSize, _threadCount, _autoChunkSize);
 
   // create colletion
   if (_createCollection) {
@@ -348,6 +402,7 @@ void ImportFeature::start() {
   ih.setRowsToSkip(static_cast<size_t>(_rowsToSkip));
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
+  ih.ignoreMissing(_ignoreMissing);
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
@@ -421,6 +476,11 @@ void ImportFeature::start() {
     ih.setProgress(true);
   }
 
+  // progress
+  if (_latencyStats) {
+    ih.startHistogram();
+  }
+
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&
       _onDuplicateAction != "replace" && _onDuplicateAction != "ignore") {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -476,18 +536,65 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
-      for (std::string const& msg : ih.getErrorMessages()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+      auto const& msgs = ih.getErrorMessages();
+      if (!msgs.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+        for (std::string const& msg : msgs) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        }
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what()
-                                            << " during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Got an unknown exception during import";
+        << "caught unknown exception";
   }
 
   *_result = ret;
 }
+
+int ImportFeature::tryCreateDatabase(ClientFeature* client,
+                                      std::string const& name) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("name", VPackValue(name));
+  builder.add("users", VPackValue(VPackValueType::Array));
+  builder.openObject();
+  builder.add("username", VPackValue(client->username()));
+  builder.add("passwd", VPackValue(client->password()));
+  builder.close();
+  builder.close();
+  builder.close();
+
+  std::string const body = builder.slice().toJson();
+
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  auto returnCode = response->getHttpReturnCode();
+
+  if (returnCode == static_cast<int>(rest::ResponseCode::OK) ||
+      returnCode == static_cast<int>(rest::ResponseCode::CREATED)) {
+    // all ok
+    return TRI_ERROR_NO_ERROR;
+  }
+  if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
+      returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
+    // invalid authorization
+    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
+                                 false);
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  // any other error
+  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
+                               false);
+  return TRI_ERROR_INTERNAL;
+}
+
+} // arangodb

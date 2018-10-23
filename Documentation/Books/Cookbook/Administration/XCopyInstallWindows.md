@@ -4,7 +4,9 @@ XCopy install ArangoDB on Windows
 Problem
 -------
 
-Even if there is a nice guided installer for windows users, not all users prefer this kind of installation. In order to have a [portable application](http://en.wikipedia.org/wiki/Portable_application) [XCOPY deployment](http://en.wikipedia.org/wiki/XCOPY_deployment) is necessary.
+Even if there is a nice guided installer for windows users, not all users prefer this kind of installation.
+In order to have a [portable application](http://en.wikipedia.org/wiki/Portable_application)
+[XCOPY deployment](http://en.wikipedia.org/wiki/XCOPY_deployment) is necessary.
 
 Solution
 --------
@@ -23,9 +25,9 @@ Open an explorer, choose a place where you want ArangoDB to be and unzip the fil
 Edit `etc\arangodb3\arangod.conf` if the default values don't suit your needs 
 like:
 
-- [the location of the database files](../..//Manual/Administration/Configuration/Wal.html)
-- [ports to bind](../../Manual/Administration/Configuration/Endpoint.html)
-- [storage engine](../../Manual/Administration/Configuration/GeneralArangod.html#storage-engine)
+- [the location of the database files](../../Manual/Programs/Arangod/Wal.html)
+- [ports to bind](../../Manual/Programs/Arangod/Server.html#managing-endpoints)
+- [storage engine](../../Manual/Programs/Arangod/Server.html#storage-engine)
 
 and so on.
 

@@ -41,11 +41,13 @@ using namespace arangodb::aql;
   
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string&& queryString, 
-                               std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                               std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                                double started,
-                               double runTime, QueryExecutionState::ValueType state)
+                               double runTime, 
+                               QueryExecutionState::ValueType state,
+                               bool stream)
     : id(id), queryString(std::move(queryString)), bindParameters(bindParameters), 
-      started(started), runTime(runTime), state(state) {}
+      started(started), runTime(runTime), state(state), stream(stream) {}
 
 /// @brief create a query list
 QueryList::QueryList(TRI_vocbase_t*)
@@ -118,7 +120,7 @@ void QueryList::remove(Query* query) {
 
   try {
     // check if we need to push the query into the list of slow queries
-    if (now - started >= _slowQueryThreshold) {
+    if (now - started >= _slowQueryThreshold && !query->killed()) {
       // yes.
 
       TRI_IF_FAILURE("QueryList::remove") {
@@ -131,7 +133,7 @@ void QueryList::remove(Query* query) {
       double loadTime = 0.0;
 
       if (profile != nullptr) {
-        loadTime = profile->timers[QueryExecutionState::toNumber(QueryExecutionState::ValueType::LOADING_COLLECTIONS)];
+        loadTime = profile->timer(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
       }
 
       std::string bindParameters;
@@ -153,12 +155,14 @@ void QueryList::remove(Query* query) {
         LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
       }
 
-      _slow.emplace_back(QueryEntryCopy(
+      _slow.emplace_back(
           query->id(),
           std::move(q),
           _trackBindVars ? query->bindParameters() : nullptr,
           started, now - started,
-          QueryExecutionState::ValueType::FINISHED));
+          QueryExecutionState::ValueType::FINISHED,
+          query->queryOptions().stream
+      );
 
       if (++_slowCount > _maxSlowQueries) {
         // free first element
@@ -183,7 +187,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   Query* query = (*it).second;
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << query->queryString() << "'";
 
-  query->killed(true);
+  query->kill();
   return TRI_ERROR_NO_ERROR;
 }
   
@@ -202,7 +206,7 @@ uint64_t QueryList::killAll(bool silent) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     }
     
-    query->killed(true);
+    query->kill();
     ++killed;
   }
 
@@ -235,11 +239,14 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       double const started = query->startTime();
        
       result.emplace_back(
-          QueryEntryCopy(query->id(),
-                         extractQueryString(query, maxLength),
-                         _trackBindVars ? query->bindParameters() : nullptr,
-                         started, now - started,
-                         query->state()));
+          query->id(),
+          extractQueryString(query, maxLength),
+          _trackBindVars ? query->bindParameters() : nullptr,
+          started, 
+          now - started,
+          query->state(),
+          query->queryOptions().stream
+      );
     }
   }
 

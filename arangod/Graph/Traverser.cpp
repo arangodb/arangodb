@@ -44,10 +44,10 @@ bool Traverser::VertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>&
     if (result.back() == StringRef(res)) {
       res = transaction::helpers::extractToFromDocument(edge);
     }
-    TRI_ASSERT(res.isString());
   }
+  TRI_ASSERT(res.isString());
 
-  if (!_traverser->vertexMatchesConditions(res, result.size())) {
+  if (!_traverser->vertexMatchesConditions(StringRef(res), result.size())) {
     return false;
   }
   result.emplace_back(_traverser->traverserCache()->persistString(StringRef(res)));
@@ -67,7 +67,7 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, 
     TRI_ASSERT(resSlice.isString());
   }
   result = _traverser->traverserCache()->persistString(StringRef(resSlice));
-  return _traverser->vertexMatchesConditions(resSlice, depth);
+  return _traverser->vertexMatchesConditions(result, depth);
 }
 
 void Traverser::VertexGetter::reset(StringRef const&) {
@@ -92,11 +92,10 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<Strin
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
+    if (!_traverser->vertexMatchesConditions(toAddStr, result.size())) {
+      return false;
+    }
     _returnedVertices.emplace(toAddStr);
-  }
-
-  if (!_traverser->vertexMatchesConditions(toAdd, result.size())) {
-    return false;
   }
 
   result.emplace_back(toAddStr);
@@ -120,10 +119,14 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
-  } else {
-    _returnedVertices.emplace(result);
   }
-  return _traverser->vertexMatchesConditions(resSlice, depth);
+
+  if (!_traverser->vertexMatchesConditions(result, depth)) {
+    return false;
+  }
+
+  _returnedVertices.emplace(result);
+  return true;
 }
 
 void Traverser::UniqueVertexGetter::reset(arangodb::StringRef const& startVertex) {
@@ -159,11 +162,10 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
   return true;
 }
 
-bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, uint64_t depth) {
-  TRI_ASSERT(v.isString());
+bool arangodb::traverser::Traverser::vertexMatchesConditions(StringRef v, uint64_t depth) {
   if (_opts->vertexHasFilter(depth)) {
     // We always need to destroy this vertex
-    aql::AqlValue vertex = fetchVertexData(StringRef(v));
+    aql::AqlValue vertex = fetchVertexData(v);
     if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
       vertex.destroy();
       return false;

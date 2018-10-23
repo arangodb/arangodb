@@ -49,14 +49,13 @@ class ShortestPathNode : public GraphNode {
  public:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start, AstNode const* target,
-                AstNode const* graph, std::unique_ptr<graph::BaseOptions>& options);
+                AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
   ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
- private:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                    std::vector<std::unique_ptr<Collection>> const& edgeColls,
                    std::vector<std::unique_ptr<Collection>> const& vertexColls,
@@ -65,7 +64,7 @@ class ShortestPathNode : public GraphNode {
                    std::string const& startVertexId,
                    Variable const* inTargetVariable,
                    std::string const& targetVertexId,
-                   std::unique_ptr<graph::BaseOptions>& options);
+                   std::unique_ptr<graph::BaseOptions> options);
 
  public:
   /// @brief return the type of the node
@@ -73,14 +72,17 @@ class ShortestPathNode : public GraphNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-
-  /// @brief the cost of a traversal node
-  double estimateCost(size_t&) const override final;
 
   /// @brief Test if this node uses an in variable or constant for start
   bool usesStartInVariable() const {

@@ -26,14 +26,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class EnvironmentFeature final : public application_features::ApplicationFeature {
  public:
-  explicit EnvironmentFeature(application_features::ApplicationServer* server);
+  explicit EnvironmentFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
   void start() override final;
 };
+
 }
 
 #endif

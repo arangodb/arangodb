@@ -22,39 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexIterator.h"
-#include "Basics/StringUtils.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
+
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
   
 IndexIterator::IndexIterator(LogicalCollection* collection, 
-                             transaction::Methods* trx, 
-                             ManagedDocumentResult* mmdr, 
-                             arangodb::Index const* index)
+                             transaction::Methods* trx)
       : _collection(collection), 
-        _trx(trx), 
-        _mmdr(mmdr ? mmdr : new ManagedDocumentResult), 
-        _context(trx, collection, _mmdr, index->fields().size()),
-        _responsible(mmdr == nullptr) {
+        _trx(trx) { 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
-  TRI_ASSERT(_mmdr != nullptr);
-}
-
-/// @brief default destructor. Does not free anything
-IndexIterator::~IndexIterator() {
-  if (_responsible) {
-    delete _mmdr;
-  }
-}
-
-bool IndexIterator::hasExtra() const {
-  // The default index has no extra information
-  return false;
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
@@ -63,7 +43,20 @@ bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   }, limit);
 }
 
-/// @brief default implementation for next
+/// @brief default implementation for nextCovering
+/// specialized index iterators can implement this method with some
+/// sensible behavior
+bool IndexIterator::nextCovering(DocumentCallback const&, size_t) {
+  TRI_ASSERT(!hasCovering());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Requested covering values from an index that "
+                                 "does not support it. This seems to be a bug "
+                                 "in ArangoDB. Please report the query you are "
+                                 "using + the indexes you have defined on the "
+                                 "relevant collections to arangodb.com");
+}
+
+/// @brief default implementation for nextExtra
 bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
   TRI_ASSERT(!hasExtra());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -113,10 +106,37 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
   return true;
 }
 
+/// @brief Get the next elements
+///        If one iterator is exhausted, the next one is used.
+///        If callback is called less than limit many times
+///        all iterators are exhausted
+bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t limit) {
+  TRI_ASSERT(hasCovering());
+  auto cb = [&limit, &callback] (LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
+    --limit;
+    callback(token, slice);
+  };
+  while (limit > 0) {
+    if (_current == nullptr) {
+      return false;
+    }
+    if (!_current->nextCovering(cb, limit)) {
+      _currentIdx++;
+      if (_currentIdx >= _iterators.size()) {
+        _current = nullptr;
+        return false;
+      } else {
+        _current = _iterators.at(_currentIdx);
+      }
+    }
+  }
+  return true;
+}
+
 /// @brief Reset the cursor
 ///        This will reset ALL internal iterators and start all over again
 void MultiIndexIterator::reset() {
-  _current = _iterators.at(0);
+  _current = _iterators[0];
   _currentIdx = 0;
   for (auto& it : _iterators) {
     it->reset();

@@ -975,7 +975,7 @@ function flattenRoutingTree (tree) {
 }
 
 //
-// @brief creates the foxx routing actions
+// @brief creates the Foxx routing actions
 //
 
 function foxxRouting (req, res, options, next) {
@@ -1051,7 +1051,7 @@ function buildRouting (dbname) {
   // allow the collection to unload
   routing = null;
 
-  // install the foxx routes
+  // install the Foxx routes
   var mountPoints = FoxxManager._mountPoints();
 
   for (let i = 0; i < mountPoints.length; i++) {
@@ -1665,7 +1665,7 @@ function resultCursor (req, res, cursor, code, options) {
   var extra;
 
   if (Array.isArray(cursor)) {
-    // performance optimisation: if the value passed in is an array, we can
+    // performance optimization: if the value passed in is an array, we can
     // use it as it is
     hasCount = ((options && options.countRequested) ? true : false);
     count = cursor.length;
@@ -1673,7 +1673,7 @@ function resultCursor (req, res, cursor, code, options) {
     hasNext = false;
     cursorId = null;
   } else if (typeof cursor === 'object' && cursor.hasOwnProperty('json')) {
-    // cursor is a regular JS object (performance optimisation)
+    // cursor is a regular JS object (performance optimization)
     hasCount = Boolean(options && options.countRequested);
     count = cursor.json.length;
     rows = cursor.json;
@@ -1740,7 +1740,7 @@ function collectionNotFound (req, res, collection, headers) {
       headers);
   } else {
     resultError(req, res,
-      exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
       "unknown collection '" + collection + "'", headers);
   }
 }
@@ -1785,7 +1785,7 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE:
       return exports.HTTP_FORBIDDEN;
 
-    case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
     case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
@@ -2130,3 +2130,4 @@ exports.HTTP_SERVER_ERROR = 500;
 exports.HTTP_NOT_IMPLEMENTED = 501;
 exports.HTTP_BAD_GATEWAY = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
+exports.HTTP_GATEWAY_TIMEOUT = 504;

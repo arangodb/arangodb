@@ -32,39 +32,42 @@
 namespace arangodb {
 namespace aql {
 
+/// View on a query string, does no memory management
 class QueryString {
  public:
   QueryString(QueryString const& other) = default;
   QueryString& operator=(QueryString const& other) = default;
 
   QueryString(char const* data, size_t length) 
-      : _data(data), _length(length), _hash(0), _hashed(false) {}
-
+      : _queryString(data, length), _hash(0), _hashed(false) {}
+  
   explicit QueryString(arangodb::StringRef const& ref) 
       : QueryString(ref.data(), ref.size()) {}
-
+  
   explicit QueryString(std::string const& val) 
       : QueryString(val.data(), val.size()) {}
   
-  QueryString() : QueryString(nullptr, 0) {}
+  explicit QueryString(std::string&& val) 
+      : _queryString(std::move(val)), _hash(0), _hashed(false) {}
+
+  QueryString() : QueryString("", 0) {}
 
   ~QueryString() = default;
 
  public:
-  char const* data() const { return _data; }
-  size_t size() const { return _length; }
-  size_t length() const { return _length; }
-  bool empty() const { return (_data == nullptr || _length == 0 || *_data == '\0'); }
+  char const* data() const { return _queryString.data(); }
+  size_t size() const { return _queryString.size(); }
+  size_t length() const { return _queryString.size(); }
+  bool empty() const { return (_queryString.empty() || _queryString[0] == '\0'); }
   void append(std::string& out) const;
-  uint64_t hash();
+  uint64_t hash() const;
   std::string extract(size_t maxLength) const;
   std::string extractRegion(int line, int column) const;
 
  private:
-  char const* _data;
-  size_t _length;
-  uint64_t _hash;
-  bool _hashed;
+  std::string const _queryString;
+  mutable uint64_t _hash;
+  mutable bool _hashed;
 };
 
 std::ostream& operator<<(std::ostream&, QueryString const&);

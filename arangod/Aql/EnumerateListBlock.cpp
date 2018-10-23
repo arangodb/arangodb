@@ -35,7 +35,8 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
     : ExecutionBlock(engine, en),
       _index(0),
       _docVecSize(0),
-      _inVarRegId(ExecutionNode::MaxRegisterId) {
+      _inVarRegId(ExecutionNode::MaxRegisterId),
+      _inflight(0) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
 
   if (it == en->getRegisterPlan()->varInfo.end()) {
@@ -48,46 +49,54 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
 
 EnumerateListBlock::~EnumerateListBlock() {}
 
-int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
-  int res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   // handle local data (if any)
   _index = 0;      // index in _inVariable for next run
+  _inflight = 0;
 
-  return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();  
+  return res;
 }
 
-AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
-  traceGetSomeBegin();
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+EnumerateListBlock::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
   std::unique_ptr<AqlItemBlock> res;
 
-  do {
+  while (res == nullptr) {
     // repeatedly try to get more stuff from upstream
     // note that the value of the variable we have to loop over
     // can contain zero entries, in which case we have to
     // try again!
 
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-        _done = true;
-        traceGetSomeEnd(nullptr);
-        return nullptr;
-      }
-      _pos = 0;  // this is in the first block
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+    if (bufferState == BufferState::WAITING) {
+      TRI_ASSERT(res == nullptr);
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return {ExecutionState::WAITING, nullptr};
     }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
+    TRI_ASSERT(!_buffer.empty());
 
     // if we make it here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
@@ -118,7 +127,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(requestBlock(toSend, getNrOutputRegisters()));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -136,7 +145,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
         }
         res->setValue(j, cur->getNrRegs(), a);
         guard.steal(); // itemblock is now responsible for value
-        
+
         if (j > 0) {
           // re-use already copied AqlValues
           res->copyValuesFromFirstRow(j, cur->getNrRegs());
@@ -146,42 +155,45 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
 
     if (_index == sizeInVar) {
       _index = 0;
-      // advance read position in the current block . . .
-      if (++_pos == cur->size()) {
-        returnBlock(cur);
-        _buffer.pop_front();  // does not throw
-        _pos = 0;
-      }
+
+      AqlItemBlock* removedBlock = advanceCursor(1, cur->size());
+      returnBlockUnlessNull(removedBlock);
     }
-  } while (res.get() == nullptr);
-
-  // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
-  DEBUG_END_BLOCK();  
-}
-
-size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
-  if (_done) {
-    return 0;
   }
 
-  size_t skipped = 0;
+  // Clear out registers no longer needed later:
+  _inflight = 0;
+  clearRegisters(res.get());
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
+}
 
-  while (skipped < atLeast) {
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-        _done = true;
-        return skipped;
-      }
-      _pos = 0;  // this is in the first block
+std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
+  if (_done) {
+    size_t skipped = _inflight;
+    _inflight = 0;
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
+    return {ExecutionState::DONE, skipped};
+  }
+  while (_inflight < atMost) {
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+    if (bufferState == BufferState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
+      return {ExecutionState::WAITING, 0};
     }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
+    TRI_ASSERT(!_buffer.empty());
 
     // if we make it here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
 
     // get the thing we are looping over
     AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
@@ -206,10 +218,11 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     if (atMost < sizeInVar - _index) {
       // eat just enough of inVariable . . .
       _index += atMost;
-      skipped += atMost;
+      _inflight += atMost;
     } else {
       // eat the whole of the current inVariable and proceed . . .
-      skipped += (sizeInVar - _index);
+      atMost -= (sizeInVar - _index);
+      _inflight += (sizeInVar - _index);
       _index = 0;
       if (++_pos == cur->size()) {
         returnBlock(cur);
@@ -218,19 +231,21 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
       }
     }
   }
-  return skipped;
-  DEBUG_END_BLOCK();  
+
+  size_t skipped = _inflight;
+  _inflight = 0;
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index
 AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
-  DEBUG_BEGIN_BLOCK();  
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   return inVarReg.at(_trx, _index++, mustDestroy, true);
-  DEBUG_END_BLOCK();  
 }
 
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {

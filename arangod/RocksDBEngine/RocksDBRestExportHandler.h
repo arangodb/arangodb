@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,49 +19,40 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_REST_EXPORT_HANDLER_H
-#define ARANGOD_MMFILES_MMFILES_REST_EXPORT_HANDLER_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_EXPORT_HANDLER_H
+#define ARANGOD_ROCKSDB_ROCKSDB_REST_EXPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RestHandler/RestCursorHandler.h"
 #include "Utils/CollectionExport.h"
 
 namespace arangodb {
-class RocksDBRestExportHandler : public RestVocbaseBaseHandler {
+namespace aql {
+  class QueryRegistry;
+}
+  
+class RocksDBRestExportHandler : public RestCursorHandler {
  public:
-  RocksDBRestExportHandler(GeneralRequest*, GeneralResponse*);
+  RocksDBRestExportHandler(GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
 
  public:
   RestStatus execute() override;
-  char const* name() const override final { return "RocksDBRestExportHandler"; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  VPackBuilder buildOptions(VPackSlice const&);
+  VPackBuilder buildQueryOptions(std::string const& cname, VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an export cursor and return the first results
   //////////////////////////////////////////////////////////////////////////////
 
-  void createCursor();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the next results from an existing cursor
-  //////////////////////////////////////////////////////////////////////////////
-
-  void modifyCursor();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief dispose an existing cursor
-  //////////////////////////////////////////////////////////////////////////////
-
-  void deleteCursor();
+  RestStatus createCursor();
 
  private:
   //////////////////////////////////////////////////////////////////////////////

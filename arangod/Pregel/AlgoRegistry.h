@@ -28,18 +28,28 @@
 #include "Worker.h"
 
 struct TRI_vocbase_t;
+
 namespace arangodb {
 namespace pregel {
+
 struct AlgoRegistry {
   static IAlgorithm* createAlgorithm(std::string const& algorithm,
                                      VPackSlice userParams);
-  static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice body);
+  static std::unique_ptr<IWorker> createWorker(
+    TRI_vocbase_t& vocbase,
+    VPackSlice body
+  );
 
  private:
   template <typename V, typename E, typename M>
-  static IWorker* createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                               VPackSlice body);
+  static std::unique_ptr<IWorker> createWorker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algo,
+    VPackSlice body
+  );
 };
+
 }
 }
+
 #endif

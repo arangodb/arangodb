@@ -15,7 +15,9 @@ fulltext index.
 
 When a fulltext index exists, it can be queried using a fulltext query.
 
-### Fulltext
+Fulltext
+--------
+
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -55,7 +57,8 @@ way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
     @endDocuBlock collectionFulltext
 
 
-### Fulltext Syntax:
+Syntax
+------
 
 In the simplest form, a fulltext query contains just the sought word. If
 multiple search words are given in a query, they should be separated by commas.

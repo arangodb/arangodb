@@ -111,7 +111,7 @@ function deleteQueue (key) {
     internal.deleteQueue(key);
     result = true;
   } catch (e) {
-    internal.print('Deleting queue failed: ' + e.message);
+    console.warn('Deleting queue \'' + key + '\' failed: ' + e.message);
   }
   return result;
 }
@@ -252,6 +252,7 @@ Object.assign(Queue.prototype, {
       opts = {};
     }
 
+    job.type.preprocess = typeof job.type.preprocess === 'function' ? job.type.preprocess.toString() : job.type.preprocess;
     job.delayUntil = asNumber(opts.delayUntil) || now;
     job.delayUntil += asNumber(opts.delay);
 

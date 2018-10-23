@@ -64,14 +64,14 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
       caches.emplace_back(manager.createCache(CacheType::Plain));
     }
 
-    bool doneRebalancing = false;
+    std::atomic<bool> doneRebalancing(false);
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
         int status = rebalancer.rebalance();
         if (status != TRI_ERROR_ARANGO_BUSY) {
-          usleep(500 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
         } else {
-          usleep(10 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
         }
       }
     };
@@ -195,9 +195,9 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
       while (!doneRebalancing) {
         int status = rebalancer.rebalance();
         if (status != TRI_ERROR_ARANGO_BUSY) {
-          usleep(500 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
         } else {
-          usleep(10 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
         }
       }
     };

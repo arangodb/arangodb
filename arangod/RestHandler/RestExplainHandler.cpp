@@ -64,19 +64,11 @@ void RestExplainHandler::explainQuery() {
     return;
   }
 
-  if (_vocbase == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return;
-  }
-
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   auto badParamError = [&](std::string const& msg) -> void {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, msg);
@@ -114,17 +106,21 @@ void RestExplainHandler::explainQuery() {
   auto optionsBuilder = std::make_shared<VPackBuilder>();
   optionsBuilder->add(optionsSlice);
 
-  arangodb::aql::Query query(false, _vocbase, aql::QueryString(queryString),
-                             bindBuilder, optionsBuilder,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    false,
+    _vocbase,
+    aql::QueryString(queryString),
+    bindBuilder,
+    optionsBuilder,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.explain();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     auto code = rest::ResponseCode::BAD;
 
     switch (queryResult.code) {
-      case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+      case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
         code = rest::ResponseCode::NOT_FOUND;
         break;
     }
@@ -142,26 +138,19 @@ void RestExplainHandler::explainQuery() {
     result.add("plan", queryResult.result->slice());
     result.add("cacheable", VPackValue(queryResult.cached));
   }
-
-  if (queryResult.warnings == nullptr) {
+  
+  VPackSlice extras = queryResult.extra->slice();
+  if (extras.hasKey("warnings")) {
+    result.add("warnings", extras.get("warnings"));
+  } else {
     result.add("warnings", VPackSlice::emptyArraySlice());
-  } else {
-    result.add("warnings", queryResult.warnings->slice());
   }
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-    if (stats.isNone()) {
-      result.add("stats", VPackSlice::noneSlice());
-    } else {
-      result.add("stats", stats);
-    }
-  } else {
-    result.add("stats", VPackSlice::noneSlice());
+  if (extras.hasKey("stats")) {
+    result.add("stats", extras.get("stats"));
   }
 
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
-
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());

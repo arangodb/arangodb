@@ -23,7 +23,12 @@
 
 #include "SortCondition.h"
 #include "Aql/AstNode.h"
-#include "Logger/Logger.h"
+#include "Aql/ExecutionPlan.h"
+#include "Basics/Exceptions.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -45,7 +50,8 @@ static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>
 
 /// @brief create an empty condition
 SortCondition::SortCondition()
-    : _fields(),
+    : _plan(nullptr),
+      _fields(),
       _constAttributes(),
       _unidirectional(false),
       _onlyAttributeAccess(false),
@@ -53,14 +59,18 @@ SortCondition::SortCondition()
 
 /// @brief create the sort condition
 SortCondition::SortCondition(
-    std::vector<std::pair<VariableId, bool>> const& sorts,
+    ExecutionPlan* plan,
+    std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
-    : _fields(),
+    : _plan(plan),
+      _fields(),
       _constAttributes(constAttributes),
       _unidirectional(true),
       _onlyAttributeAccess(true),
       _ascending(true) {
+
+  // note: _plan may be a nullptr during testing!
 
   bool foundDirection = false;
 
@@ -70,16 +80,20 @@ SortCondition::SortCondition(
   for (size_t i = 0; i < n; ++i) {
     bool isConst = false; // const attribute?
     bool handled = false;
-    auto variableId = sorts[i].first;
+    Variable const* variable = sorts[i].first;
+    TRI_ASSERT(variable != nullptr);
+    auto variableId = variable->id;
 
+    AstNode const* rootNode = nullptr;
     auto it = variableDefinitions.find(variableId);
 
     if (it != variableDefinitions.end()) {
-      auto node = (*it).second;
+      AstNode const* node = (*it).second;
+      rootNode = node;
 
       if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         fieldNames.clear();
-        
+
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
               arangodb::basics::AttributeName(node->getString(), false));
@@ -93,8 +107,12 @@ SortCondition::SortCondition(
             std::reverse(fieldNames.begin(), fieldNames.end());
           }
 
-          _fields.emplace_back(std::make_pair(
-              static_cast<Variable const*>(node->getData()), fieldNames));
+          _fields.emplace_back(SortField{
+            static_cast<Variable const*>(node->getData()),
+            fieldNames,
+            rootNode,
+            sorts[i].second
+          });
 
           for (auto const& it2 : constAttributes) {
             if (it2 == fieldNames) {
@@ -102,7 +120,15 @@ SortCondition::SortCondition(
               isConst = true;
               break;
             }
-          } 
+          }
+        }
+      }
+    } else if (_plan != nullptr) {
+      ExecutionNode const* n = _plan->getVarSetBy(variableId);
+      if (n != nullptr && n->getType() == ExecutionNode::CALCULATION) {
+        Expression const* exp = ExecutionNode::castTo<CalculationNode const*>(n)->expression();
+        if (exp != nullptr) {
+          rootNode = exp->node();
         }
       }
     }
@@ -120,9 +146,12 @@ SortCondition::SortCondition(
     }
 
     if (!handled) {
-      _fields.emplace_back(
-          std::pair<Variable const*,
-                    std::vector<arangodb::basics::AttributeName>>());
+      _fields.emplace_back(SortField{
+        variable,
+        std::vector<arangodb::basics::AttributeName>(),
+        rootNode,
+        sorts[i].second
+      });
       _onlyAttributeAccess = false;
     }
   }
@@ -143,21 +172,21 @@ size_t SortCondition::coveredAttributes(
         indexAttributes) const {
   size_t numCovered = 0;
   size_t fieldsPosition = 0;
-  
+
   // iterate over all fields of the index definition
   size_t const n = indexAttributes.size();
 
   for (size_t i = 0; i < n; /* no hoisting */) {
-    if (fieldsPosition >= _fields.size()) { 
+    if (fieldsPosition >= _fields.size()) {
       // done
       break;
     }
-    
+
     auto const& field = _fields[fieldsPosition];
-      
+
     // ...and check if the field is present in the index definition too
-    if (reference == field.first &&
-        arangodb::basics::AttributeName::isIdentical(field.second, indexAttributes[i], false)) {
+    if (reference == field.variable &&
+        arangodb::basics::AttributeName::isIdentical(field.attributes, indexAttributes[i], false)) {
       // field match
       ++fieldsPosition;
       ++numCovered;
@@ -168,14 +197,14 @@ size_t SortCondition::coveredAttributes(
     // no match
     bool isConstant = false;
 
-    if (isContained(indexAttributes, field.second) &&
-        isContained(_constAttributes, field.second)) {
+    if (isContained(indexAttributes, field.attributes) &&
+        isContained(_constAttributes, field.attributes)) {
       // no field match, but a constant attribute
       isConstant = true;
       ++fieldsPosition;
       ++numCovered;
     }
-    
+
     if (!isConstant &&
         isContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
@@ -183,7 +212,7 @@ size_t SortCondition::coveredAttributes(
       ++i; // next index field
     }
 
-          
+
     if (!isConstant) {
       break;
     }
@@ -191,4 +220,30 @@ size_t SortCondition::coveredAttributes(
 
   TRI_ASSERT(numCovered <= _fields.size());
   return numCovered;
+}
+
+std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
+    size_t position) const {
+
+  if (isEmpty() || position > numAttributes()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "out of range access to SortCondition");
+  }
+
+  TRI_ASSERT(position < _fields.size());
+
+  SortField const& field = _fields[position];
+  return std::make_tuple(field.variable, field.node, field.order);
+}
+
+/// @brief toVelocyPack
+void SortCondition::toVelocyPackHelper(VPackBuilder& nodes, 
+                                       bool verbose) const {
+  // TODO FIXME implement
+}
+
+std::shared_ptr<SortCondition> SortCondition::fromVelocyPack(
+    ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
+    std::string const& name) {
+  // TODO FIXME implement
+  return nullptr;
 }

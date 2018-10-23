@@ -4,15 +4,15 @@ arangosh&gt; <span class="hljs-keyword">var</span> options = { <span class="hljs
 arangosh&gt; graph._countCommonNeighbors(<span class="hljs-string">'germanCity/Hamburg'</span>, {}, options, options);
 [ 
   { 
-    <span class="hljs-string">"[object Object]"</span> : [ 
+    <span class="hljs-string">"germanCity/Hamburg"</span> : [ 
       { 
-        <span class="hljs-string">"[object Object]"</span> : <span class="hljs-number">2</span> 
+        <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">1</span> 
       }, 
       { 
-        <span class="hljs-string">"[object Object]"</span> : <span class="hljs-number">3</span> 
+        <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">2</span> 
       }, 
       { 
-        <span class="hljs-string">"[object Object]"</span> : <span class="hljs-number">1</span> 
+        <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">3</span> 
       } 
     ] 
   } 

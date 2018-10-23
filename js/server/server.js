@@ -39,13 +39,6 @@
 (function () {
   var internal = require('internal');
 
-  // in the cluster we run the startup scripts from elsewhere!
-
-  // statistics can be turned off
-  if (internal.enableStatistics && internal.threadNumber === 0) {
-    require('@arangodb/statistics').startup();
-  }
-
   // check if --server.rest-server is disabled
   // in this case we do not (and should not) initialize and start Foxx
   var options = internal.options();

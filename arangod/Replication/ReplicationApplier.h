@@ -26,12 +26,14 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/Thread.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
+class InitialSyncer;
 class TailingSyncer;
-class Thread;
 
 namespace velocypack {
 class Builder;
@@ -40,6 +42,7 @@ class Builder;
 /// @brief replication applier interface
 class ReplicationApplier {
   friend class TailingSyncer;
+  
  public:
   ReplicationApplier(ReplicationApplierConfiguration const& configuration, std::string&& databaseName);
 
@@ -60,13 +63,28 @@ class ReplicationApplier {
   virtual void forget() = 0;
   
   /// @brief test if the replication applier is running
-  bool isRunning() const;
-
+  bool isActive() const;
+  
+  /// @brief test if the repication applier is performing initial sync
+  bool isInitializing() const;
+  
+  /// @brief test if the replication applier is shutting down
+  bool isShuttingDown() const;
+  
+  /// @brief set the applier state to tailing
+  void markThreadTailing();
+  
   /// @brief set the applier state to stopped
   void markThreadStopped();
   
-  /// @brief start the replication applier
-  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  /// @brief perform a complete replication dump and then tail continiously
+  void startReplication();
+  
+  /// @brief switch to tailing mode, DO NOT USE EXTERNALLY
+  void continueTailing(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  
+  /// @brief start the replication applier in tailing
+  void startTailing(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
   
   /// @brief stop the replication applier, resets the error message
   void stop();
@@ -107,9 +125,12 @@ class ReplicationApplier {
   
   /// @brief return the current endpoint
   std::string endpoint() const;
+  
+  /// @brief return last persisted tick
+  TRI_voc_tick_t lastTick() const;
 
   /// @brief block the replication applier from starting
-  int preventStart();
+  Result preventStart();
   
   /// @brief whether or not autostart option was set
   bool autoStart() const;
@@ -120,11 +141,8 @@ class ReplicationApplier {
   /// @brief check whether the initial synchronization should be stopped
   bool stopInitialSynchronization() const;
 
-  /// @brief stop the initial synchronization
-  void stopInitialSynchronization(bool value);
-
   /// @brief unblock the replication applier from starting
-  int allowStart();
+  void allowStart();
 
   /// @brief register an applier error
   void setError(arangodb::Result const&);
@@ -135,22 +153,30 @@ class ReplicationApplier {
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
 
- private:
-  /// @brief stop the replication applier and join the apply thread
-  void doStop(Result const& r, bool joinThread);
-
-  static void readTick(arangodb::velocypack::Slice const& slice, 
-                       char const* attributeName,
-                       TRI_voc_tick_t& dst, bool allowNull);
-
- protected:
-  virtual std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+  virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
+  virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                            bool useTick, 
+                                                            TRI_voc_tick_t barrierId) const = 0;
   
+protected:
+
   virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error
   void setErrorNoLock(arangodb::Result const&);
   void setProgressNoLock(std::string const& msg);
+  
+private:
+  /// Perform some common ops for startReplication / startTailing
+  void doStart(std::function<void()>&&,
+               ReplicationApplierState::ActivityPhase);
+  
+  /// @brief stop the replication applier and join the apply thread
+  void doStop(Result const& r, bool joinThread);
+  
+  static void readTick(arangodb::velocypack::Slice const& slice,
+                       char const* attributeName,
+                       TRI_voc_tick_t& dst, bool allowNull);
 
  protected:
   ReplicationApplierConfiguration _configuration;

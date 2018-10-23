@@ -4,10 +4,10 @@ Managing Users
 The user management in ArangoDB 3 is similar to the ones found in MySQL,
 PostgreSQL, or other database systems.
 
-User management is possible in the [web interface](../WebInterface/Users.md)
+User management is possible in the [web interface](../../Programs/WebInterface/Users.md)
 and in [arangosh](InArangosh.md) while logged on to the *\_system* database.
 
-Note that the only usernames *must* not start with `:role:`.
+Note that usernames *must* not start with `:role:`.
 
 Actions and Access Levels
 -------------------------
@@ -132,7 +132,8 @@ collection *data* nor create new collections in the database *example*.
 Granting Access Levels
 ----------------------
 
-Access levels can be managed via the [web interface](../WebInterface/Users.md) or in [arangosh](InArangosh.md).
+Access levels can be managed via the [web interface](../../Programs/WebInterface/Users.md)
+or in [arangosh](InArangosh.md).
 
 In order to grant an access level to a user, you can assign one of
 three access levels for each database and one of three levels for each
@@ -242,18 +243,37 @@ Database `somehing`, collection `else` does not match a defined access
 level. The database `something` also does have a direct matches.
 Therefore the wildcard is selected. The level is *Read/Write*.
 
+### Permission Resolution
+
+The access levels for databases and collections are resolved in the following way:
+
+For a database "*foo*":
+1. Check if there is a specific database grant for *foo*, if yes use the granted access level
+2. Choose the higher access level of::
+    * A wildcard database grant ( for example `grantDatabase('user', '*', 'rw'`)
+    * A database grant on the `_system` database
+  
+For a collection named "*bar*":
+1. Check if there is a specific database grant for *bar*, if yes use the granted access level
+2. Choose the higher access level of::
+    * Any wildcard access grant in the same database, or on "*/*" (in this example `grantCollection('user', 'foo', '*', 'rw')`) 
+    * The access level for the current database (in this example `grantDatabase('user', 'foo', 'rw'`)
+    * The access level for the `_system` database
+    
+An exception to this are system collections, here only the access level for the database is used.
+
 ### System Collections
 
 The access level for system collections cannot be changed. They follow
 different rules than user defined collections and may change without further
 notice. Currently the system collections follow these rules:
 
-| collection            | access level |
-|-----------------------|--------------|
+| collection                    | access level |
+|--------------------------|--------------|
 | `_users` (in _system) | No Access    |
-| `_queues`             | Read-Only    |
-| `_frontend`           | Read/Write   |
-| `*`                   | *same as db* |
+| `_queues`                   | Read-Only    |
+| `_frontend`               | Read/Write   |
+| `*`                               | *same as db* |
 
 All other system collections have access level *Read/Write* if the
 user has *Administrate* access to the database. They have access level
@@ -264,4 +284,27 @@ specialized APIs provided by ArangoDB. For example
 no user has access to the *\_users* collection in the *\_system*
 database. All changes to the access levels must be done using the
 *@arangodb/users* module, the `/_users/` API or the web interface.
+
+
+### LDAP Users
+
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
+ArangoDB supports LDAP as an external authentication system. For detailed
+information please have look into the
+[LDAP configuration guide](../../Programs/Arangod/Ldap.md).
+
+There are a few differences to *normal* ArangoDB users:
+- ArangoDB does not "*know*" LDAP users before they first authenticate, calls to various API's using endpoints in `_api/users/*` will **fail** until the user first logs-in
+- Access levels of each user are periodically updated, this will happen by default every *5 minutes*
+- It is not possible to change permissions on LDAP users directly, only on **roles**
+- LDAP users cannot store configuration data per user (affects for example custom settings in the graph viewer)
+
+To grant access for an LDAP user you will need to create *roles* within the ArangoDB server. A role
+is just a user with the __":role:"__ prefix in its name. Role users cannot login as database users, the ":role:" prefix ensures this.
+Your LDAP users will need to have at least one role, once the user logs in he will be automatically granted the union of
+all access rights of all his roles. Note that a lower right grant in one role will be overwritten by a higher access grant in a different role.
 

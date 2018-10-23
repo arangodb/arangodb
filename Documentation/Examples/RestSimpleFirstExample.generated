@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/first-example</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"example"</span> : { 
@@ -7,15 +7,15 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/f
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"document"</span> : { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11973"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11973"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VvTR1Ny--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104690"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104690"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zdC--_"</span>, 
     <span class="hljs-string">"a"</span> : { 
       <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
     }, 

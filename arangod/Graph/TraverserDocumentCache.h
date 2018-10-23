@@ -34,7 +34,7 @@ class Finding;
 
 namespace graph {
 
-class TraverserDocumentCache : public TraverserCache {
+class TraverserDocumentCache final : public TraverserCache {
 
   public:
    explicit TraverserDocumentCache(aql::Query* query);

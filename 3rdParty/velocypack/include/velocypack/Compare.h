@@ -40,8 +40,8 @@ namespace arangodb {
 namespace velocypack {
 struct NormalizedCompare {
 
-static bool equalsNumbers(ValueType lhsType,
-                          Slice lhs, Slice rhs) {
+static bool equalsNumbers(Slice lhs, Slice rhs) {
+  auto lhsType = lhs.type();
   if (lhsType == rhs.type()) {
     // both types are equal
     if (lhsType == ValueType::Int || lhsType == ValueType::SmallInt) {
@@ -96,7 +96,7 @@ static bool equals(Slice lhs, Slice rhs) {
     case ValueType::Int:
     case ValueType::UInt:
     case ValueType::SmallInt: {
-      return equalsNumbers(lhsType, lhs, rhs);
+      return equalsNumbers(lhs, rhs);
     }
     case ValueType::String: {
       return equalsStrings(lhs, rhs);

@@ -29,6 +29,7 @@
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
@@ -42,11 +43,12 @@ namespace basics {
 class LocalTaskQueue;
 }
 
+class ManagedDocumentResult;
 class MMFilesEdgeIndex;
 
 struct MMFilesEdgeIndexHelper {
   /// @brief hashes an edge key
-  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+  static inline uint64_t HashKey(VPackSlice const* key) {
     TRI_ASSERT(key != nullptr);
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
@@ -54,7 +56,7 @@ struct MMFilesEdgeIndexHelper {
   }
 
   /// @brief hashes an edge
-  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element,
+  static inline uint64_t HashElement(MMFilesSimpleIndexElement const& element,
                                      bool byKey) {
     if (byKey) {
       return element.hash();
@@ -116,38 +118,39 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
                            ManagedDocumentResult* mmdr,
                            arangodb::MMFilesEdgeIndex const* index,
                            TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-                           std::unique_ptr<VPackBuilder>& keys);
+                           std::unique_ptr<VPackBuilder> keys);
 
   ~MMFilesEdgeIndexIterator();
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
  private:
   TRI_MMFilesEdgeIndexHash_t const* _index;
+  IndexLookupContext _context;
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
   std::vector<MMFilesSimpleIndexElement> _buffer;
   size_t _posInBuffer;
   size_t _batchSize;
   MMFilesSimpleIndexElement _lastElement;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
   MMFilesEdgeIndex() = delete;
 
-  MMFilesEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
+  MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
 
   char const* typeName() const override { return "edge"; }
-
-  bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return false; }
 
@@ -155,12 +158,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
@@ -181,11 +184,12 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   bool hasBatchInsert() const override { return true; }
 
-  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom.get(); }
+  TRI_MMFilesEdgeIndexHash_t* from() const { return _edgesFrom.get(); }
 
-  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo.get(); }
+  TRI_MMFilesEdgeIndexHash_t* to() const { return _edgesTo.get(); }
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
@@ -193,16 +197,10 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-
-  /// @brief Transform the list of search slices to search values.
-  ///        This will multiply all IN entries and simply return all other
-  ///        entries.
-  void expandInSearchValues(arangodb::velocypack::Slice const,
-                            arangodb::velocypack::Builder&) const override;
 
  private:
   /// @brief create the iterator

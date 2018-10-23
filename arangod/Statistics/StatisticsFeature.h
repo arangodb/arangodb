@@ -23,30 +23,45 @@
 #ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
 #define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
+#include <array>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Rest/CommonDefines.h"
 #include "Statistics/figures.h"
 
 namespace arangodb {
 namespace basics {
+
+extern Mutex TRI_RequestsStatisticsMutex;
+
+extern std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics;
+extern std::vector<double> const TRI_BytesSentDistributionVectorStatistics;
+extern std::vector<double> const TRI_ConnectionTimeDistributionVectorStatistics;
+extern std::vector<double> const TRI_RequestTimeDistributionVectorStatistics;
+
 extern StatisticsCounter TRI_AsyncRequestsStatistics;
 extern StatisticsCounter TRI_HttpConnectionsStatistics;
 extern StatisticsCounter TRI_TotalRequestsStatistics;
-extern StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
-extern StatisticsDistribution* TRI_BytesSentDistributionStatistics;
-extern StatisticsDistribution* TRI_ConnectionTimeDistributionStatistics;
-extern StatisticsDistribution* TRI_IoTimeDistributionStatistics;
-extern StatisticsDistribution* TRI_QueueTimeDistributionStatistics;
-extern StatisticsDistribution* TRI_RequestTimeDistributionStatistics;
-extern StatisticsDistribution* TRI_TotalTimeDistributionStatistics;
-extern StatisticsVector TRI_BytesReceivedDistributionVectorStatistics;
-extern StatisticsVector TRI_BytesSentDistributionVectorStatistics;
-extern StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
-extern StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
-extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
+
+constexpr size_t MethodRequestsStatisticsSize = ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
+extern std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
+
+extern StatisticsDistribution TRI_BytesReceivedDistributionStatistics;
+extern StatisticsDistribution TRI_BytesSentDistributionStatistics;
+extern StatisticsDistribution TRI_ConnectionTimeDistributionStatistics;
+extern StatisticsDistribution TRI_IoTimeDistributionStatistics;
+extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
+extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
+extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
+}
+namespace stats{
+  class Descriptions;
 }
 
 class StatisticsThread;
+class StatisticsWorker;
 
 class StatisticsFeature final
     : public application_features::ApplicationFeature {
@@ -61,22 +76,29 @@ class StatisticsFeature final
   static StatisticsFeature* STATISTICS;
 
  public:
-  explicit StatisticsFeature(application_features::ApplicationServer* server);
+  explicit StatisticsFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
- public:
-  void disableStatistics() { _statistics = false; }
+  static stats::Descriptions const* descriptions() {
+    if (STATISTICS != nullptr) {
+      return STATISTICS->_descriptions.get();
+    }
+    return nullptr;
+  }
 
  private:
   bool _statistics;
 
+  std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<StatisticsThread> _statisticsThread;
+  std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
+
 }
 
 #endif

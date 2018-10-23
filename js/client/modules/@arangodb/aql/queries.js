@@ -37,7 +37,7 @@ var arangosh = require('@arangodb/arangosh');
 exports.clearSlow = function () {
   var db = internal.db;
 
-  var requestResult = db._connection.DELETE('/_api/query/slow', '');
+  var requestResult = db._connection.DELETE('/_api/query/slow');
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -80,8 +80,7 @@ exports.properties = function (config) {
   if (config === undefined) {
     requestResult = db._connection.GET('/_api/query/properties');
   } else {
-    requestResult = db._connection.PUT('/_api/query/properties',
-      JSON.stringify(config));
+    requestResult = db._connection.PUT('/_api/query/properties', config);
   }
 
   arangosh.checkRequestResult(requestResult);
@@ -101,7 +100,7 @@ exports.kill = function (id) {
 
   var db = internal.db;
 
-  var requestResult = db._connection.DELETE('/_api/query/' + encodeURIComponent(id), '');
+  var requestResult = db._connection.DELETE('/_api/query/' + encodeURIComponent(id));
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;

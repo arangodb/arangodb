@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
 #include "Basics/Common.h"
+#include <velocypack/StringRef.h>
 
 #include <unicode/coll.h>
 #include <unicode/regex.h>
@@ -69,8 +70,6 @@ class Utf8Helper {
   ///  0 : left == right
   ///  1 : left > right
   //////////////////////////////////////////////////////////////////////////////
-
-  int compareUtf8(char const* left, char const* right) const;
 
   int compareUtf8(char const* left, size_t leftLength, char const* right,
                   size_t rightLength) const;
@@ -136,7 +135,7 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words, std::string const& text,
+  bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
                 size_t minimalWordLength, size_t maximalWordLength,
                 bool lowerCase);
 
@@ -195,20 +194,8 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_compare_utf8(char const* left, char const* right) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
 static inline int TRI_compare_utf8(char const* left, size_t leftLength, 
                                    char const* right, size_t rightLength) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
   return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, 
                                                                      right, rightLength);
 }

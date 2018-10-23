@@ -191,14 +191,22 @@ FOR u IN users
     INSERT u IN backup
 ```
 
-As a final example, let's find some documents in collection *users* and
-remove them from collection *backup*. The link between the documents in both
-collections is established via the documents' keys:
+Subsequently, let's find some documents in collection *users* and remove them
+from collection *backup*.  The link between the documents in both collections is
+established via the documents' keys:
 
 ```js
 FOR u IN users
     FILTER u.status == "deleted"
     REMOVE u IN backup
+```
+
+The following example will remove all documents from both *users* and *backup*:
+
+```js
+LET r1 = (FOR u IN users  REMOVE u IN users)
+LET r2 = (FOR u IN backup REMOVE u IN backup)
+RETURN true
 ```
 
 ### Returning documents
@@ -286,26 +294,37 @@ must be known to the AQL executor at query-compile time and cannot change at
 runtime. Using a bind parameter to specify the
 [collection name](../Manual/Appendix/Glossary.html#collection-name) is allowed.
 
-Data-modification queries are restricted to a single modify operation per collection.
-That means you may not place several `REMOVE` or `UPDATE` statements for one collection 
-in one query. In case you have several places in a query providing you lists of documents
-to delete, collect them in an array so you can remove them all at once.
+It is not possible to use multiple data-modification operations for the same
+collection in the same query, or follow up a data-modification operation for a
+specific collection with a read operation for the same collection.  Neither is
+it possible to follow up any data-modification operation with a traversal query
+(which may read from arbitrary collections not necessarily known at the start of
+the traversal).
 
-Only a single data-modification operation can be used per AQL query. Data-modification
-queries cannot be used inside subqueries. Data-modification operations can optionally
-be followed by `LET` operations and a single `RETURN` operation to return data. If
-expressions are used within these operations, they cannot contain subqueries or 
-access data in collections using AQL functions.
+That means you may not place several `REMOVE` or `UPDATE` statements for the same 
+collection into the same query. It is however possible to modify different collections
+by using multiple data-modification operations for different collections in the
+same query.
+In case you have a query with several places that need to remove documents from the
+same collection, it is recommended to collect these documents or their keys in an array 
+and have the documents from that array removed using a single `REMOVE` operation.
 
-Finally, data-modification operations can optionally be followed by `LET` and `RETURN`,
-but not by other statements such as `SORT`, `COLLECT` etc.
+Data-modification operations can optionally be followed by `LET` operations to 
+perform further calculations and a `RETURN` operation to return data.
 
 
 ### Transactional Execution
   
 On a single server, data-modification operations are executed transactionally.
 If a data-modification operation fails, any changes made by it will be rolled 
-back automatically as if they never happened.
+back automatically as if they never happened. 
+
+If the RocksDB engine is used and intermediate commits are enabled, a query may 
+execute intermediate transaction commits in case the running transaction (AQL
+query) hits the specified size thresholds. In this case, the query's operations 
+carried out so far will be committed and not rolled back in case of a later abort/rollback. 
+That behavior can be controlled by adjusting the intermediate commit settings for 
+the RocksDB engine. 
 
 In a cluster, AQL data-modification queries are currently not executed transactionally.
 Additionally, *update*, *replace*, *upsert* and *remove* AQL queries currently 

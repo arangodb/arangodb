@@ -70,21 +70,6 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags);
 
 int TRI_OPEN_WIN32(char const* filename, int openFlags);
 
-// .............................................................................
-// the sleep function in windows is for milliseconds, on linux it is for seconds
-// this provides a translation
-// .............................................................................
-
-void TRI_sleep(unsigned long);
-
-// .............................................................................
-// there is no usleep (micro sleep) in windows, so we create one here
-// This is only a Windows workaround, use usleep, which is mapped to 
-// TRI_usleep on Windows!
-// .............................................................................
-
-void TRI_usleep(unsigned long);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +83,7 @@ int TRI_MapSystemError(DWORD);
 bool TRI_InitWindowsEventLog(void);
 void TRI_CloseWindowsEventlog(void);
 
-typedef void (*TRI_serviceAbort_t)(void);
+typedef void (*TRI_serviceAbort_t)(uint16_t exitCode);
 
 void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 

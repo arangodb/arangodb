@@ -59,13 +59,25 @@ bool NeighborsEnumerator::next() {
         // We are finished.
         return false;
       }
-      TRI_ASSERT(!_opts->vertexHasFilter(_searchDepth));
 
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](EdgeDocumentToken&&,
+        auto callback = [&](EdgeDocumentToken&& eid,
                             VPackSlice other, size_t cursorId) {
+          if (_opts->hasEdgeFilter(_searchDepth, cursorId)) {
+            // execute edge filter
+            VPackSlice edge = other;
+            if (edge.isString()) {
+              edge = _opts->cache()->lookupToken(eid);
+            }
+            if (!_traverser->edgeMatchesConditions(edge, nextVertex, _searchDepth,
+                                                   cursorId)) {
+              // edge does not qualify
+              return;
+            }
+          }
+
           // Counting should be done in readAll
           StringRef v;
           if (other.isString()) {
@@ -81,8 +93,10 @@ bool NeighborsEnumerator::next() {
           }
 
           if (_allFound.find(v) == _allFound.end()) {
-            _currentDepth.emplace(v);
-            _allFound.emplace(v);
+            if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
+              _currentDepth.emplace(v);
+              _allFound.emplace(v);
+            }
           } else {
             _opts->cache()->increaseFilterCounter();
           }

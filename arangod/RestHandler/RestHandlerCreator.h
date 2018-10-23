@@ -27,8 +27,6 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-class HttpRequest;
-
 namespace rest {
 class RestHandler;
 }
@@ -36,11 +34,6 @@ class RestHandler;
 template <typename H>
 class RestHandlerCreator : public H {
  public:
-  static rest::RestHandler* create(GeneralRequest* request,
-                                   GeneralResponse* response, void* data) {
-    return new H(request, response, data);
-  }
-
   template <typename D>
   static rest::RestHandler* createData(GeneralRequest* request,
                                        GeneralResponse* response, void* data) {

@@ -62,20 +62,23 @@ LogicalCollection* RestIndexHandler::collection(
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
-        coll = ClusterInfo::instance()->getCollection(_vocbase->name(), cName);
+        coll = ClusterInfo::instance()->getCollection(_vocbase.name(), cName);
+
         return coll.get();
       } catch (...) {
       }
     } else {
-      return _vocbase->lookupCollection(cName);
+      return _vocbase.lookupCollection(cName).get();
     }
   }
+
   return nullptr;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief get database infos
+// / @brief get index infos
 // //////////////////////////////////////////////////////////////////////////////
+
 RestStatus RestIndexHandler::getIndexes() {
   std::shared_ptr<LogicalCollection> tmpColl;
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -89,18 +92,18 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
-    bool withFigures = false;
-    std::string t = _request->value("withStats", found);
-    if (found) {
-      withFigures = StringUtils::tolower(t) == "true";
+    auto flags = Index::makeFlags(Index::Serialize::Estimates);
+    if (_request->parsedValue("withStats", false)) {
+      flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
     }
-
+    bool withLinks = _request->parsedValue("withLinks", false);
+    
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(coll, withFigures, indexes);
+    Result res = methods::Indexes::getAll(coll, flags, withLinks, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -110,8 +113,8 @@ RestStatus RestIndexHandler::getIndexes() {
     TRI_ASSERT(indexes.slice().isArray());
     VPackBuilder tmp;
     tmp.openObject();
-    tmp.add("error", VPackValue(false));
-    tmp.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    tmp.add(StaticStrings::Error, VPackValue(false));
+    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
     tmp.add("indexes", indexes.slice());
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
     for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
@@ -132,7 +135,7 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -145,8 +148,8 @@ RestStatus RestIndexHandler::getIndexes() {
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
-      b.add("error", VPackValue(false));
-      b.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      b.add(StaticStrings::Error, VPackValue(false));
+      b.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
       b.close();
       output = VPackCollection::merge(output.slice(), b.slice(), false);
       generateResult(rest::ResponseCode::OK, output.slice());
@@ -164,8 +167,8 @@ RestStatus RestIndexHandler::getIndexes() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+   bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /" + _request->requestPath() +
@@ -177,7 +180,7 @@ RestStatus RestIndexHandler::createIndex() {
   std::string cName = _request->value("collection", found);
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -185,12 +188,11 @@ RestStatus RestIndexHandler::createIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   VPackBuilder copy;
-  VPackSlice body = parsedBody->slice();
   if (body.get("collection").isNone()) {
     copy.openObject();
     copy.add("collection", VPackValue(cName));
@@ -208,8 +210,8 @@ RestStatus RestIndexHandler::createIndex() {
 
     VPackBuilder b;
     b.openObject();
-    b.add("error", VPackValue(false));
-    b.add("code", VPackValue(static_cast<int>(r)));
+    b.add(StaticStrings::Error, VPackValue(false));
+    b.add(StaticStrings::Code, VPackValue(static_cast<int>(r)));
     b.close();
     output = VPackCollection::merge(output.slice(), b.slice(), false);
 
@@ -242,7 +244,7 @@ RestStatus RestIndexHandler::dropIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -255,8 +257,8 @@ RestStatus RestIndexHandler::dropIndex() {
     VPackBuilder b;
     b.openObject();
     b.add("id", idBuilder.slice());
-    b.add("error", VPackValue(false));
-    b.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    b.add(StaticStrings::Error, VPackValue(false));
+    b.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
   } else {

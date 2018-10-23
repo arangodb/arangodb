@@ -33,12 +33,14 @@ namespace communicator {
 class Destination {
  public:
   explicit Destination(std::string const& url) : _url(url) {}
+  Destination(Destination const&) = default;
+  Destination(Destination&&) = default;
 
  public:
   std::string const& url() const { return _url; }
 
  private:
-  std::string const _url;
+  std::string _url;
 };
 }
 }

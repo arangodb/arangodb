@@ -28,22 +28,27 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
 class ServerIdFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ServerIdFeature(application_features::ApplicationServer* server);
+  explicit ServerIdFeature(application_features::ApplicationServer& server);
 
- public:
   void start() override final;
 
   static TRI_server_id_t getId() {
     TRI_ASSERT(SERVERID != 0);
     return SERVERID;
   }
+  
+  // fake the server id from the outside. used for testing only
+  static void setId(TRI_server_id_t serverId) {
+    SERVERID = serverId;
+  }
 
  private:
   /// @brief generates a new server id
   void generateId();
-  
+
   /// @brief reads server id from file
   int readId();
 
@@ -52,12 +57,12 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 
   /// @brief read / create the server id on startup
   int determineId(bool checkVersion);
-  
- private:
+
   std::string _idFilename;
 
   static TRI_server_id_t SERVERID;
 };
+
 }
 
 #endif

@@ -38,18 +38,18 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+  VstCommTask(GeneralServer &server, GeneralServer::IoContext &context,
+              std::unique_ptr<Socket> socket,
               ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
               bool skipSocketInit = false);
-
-  // convert from GeneralResponse to VstResponse ad dispatch request to class
-  // internal addResponse
-  void addResponse(GeneralResponse*, RequestStatistics*) override;
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   }
 
+  // whether or not this task can mix sync and async I/O
+  bool canUseMixedIO() const override; 
+  
  protected:
   // read data check if chunk and message are complete
   // if message is complete execute a request
@@ -58,22 +58,19 @@ class VstCommTask final : public GeneralCommTask {
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
 
-  void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
+  // @brief send simple response including response body
+  void addSimpleResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId,
+                         velocypack::Buffer<uint8_t>&&) override;
 
-  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req,
-                         uint64_t mid) override {
-    VstResponse response(code, mid);
-    response.setContentType(req.contentTypeResponse());
-    addResponse(&response, nullptr);
-  }
-
-  void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
-                         std::string const& errorMessage,
-                         uint64_t messageId) override;
-
-  bool allowDirectHandling() const override final { return false; }
+  // convert from GeneralResponse to VstResponse ad dispatch request to class
+  // internal addResponse
+  void addResponse(GeneralResponse&, RequestStatistics*) override;
 
  private:
+  // process the VST 1000 request type
+  void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
+
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
@@ -124,20 +121,20 @@ class VstCommTask final : public GeneralCommTask {
 
   // Returns true if and only if there was no error, if false is returned,
   // the connection is closed
-  bool getMessageFromSingleChunk(
-      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-      char const* vpackBegin, char const* chunkEnd);
+  bool getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
+                                 VstInputMessage& message, bool& doExecute,
+                                 char const* vpackBegin, char const* chunkEnd);
 
   // Returns true if and only if there was no error, if false is returned,
   // the connection is closed
-  bool getMessageFromMultiChunks(
-      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-      char const* vpackBegin, char const* chunkEnd);
-  
-private:
+  bool getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
+                                 VstInputMessage& message, bool& doExecute,
+                                 char const* vpackBegin, char const* chunkEnd);
 
+ private:
   /// Is the current user authorized
   bool _authorized;
+  rest::AuthenticationMethod _authMethod;
   std::string _authenticatedUser;
   ProtocolVersion _protocolVersion;
   uint32_t _maxChunkSize;

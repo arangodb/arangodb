@@ -44,29 +44,26 @@ void AcceptorUnixDomain::open() {
     }
   }
 
-  boost::asio::local::stream_protocol::stream_protocol::endpoint endpoint(path);
-  _acceptor.open(endpoint.protocol());
-  _acceptor.bind(endpoint);
-  _acceptor.listen();
+  asio_ns::local::stream_protocol::stream_protocol::endpoint endpoint(path);
+  _acceptor->open(endpoint.protocol());
+  _acceptor->bind(endpoint);
+  _acceptor->listen();
 }
 
 void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
-  createPeer();
+  TRI_ASSERT(!_peer);
+  auto &context = _server.selectIoContext();
+
+  _peer.reset(new SocketUnixDomain(context));
   auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
   if (peer == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
   }
-  _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
-}
-
-void AcceptorUnixDomain::createPeer() {
-  _peer.reset(new SocketUnixDomain(
-        _ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23)));
+  _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
 }
 
 void AcceptorUnixDomain::close() {
-  _acceptor.close();
+  _acceptor->close();
   int error = 0;
   std::string path = ((EndpointUnixDomain*) _endpoint)->path();
   if (!basics::FileUtils::remove(path, &error)) {

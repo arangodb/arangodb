@@ -222,7 +222,7 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   var url = '/_api/edges/' + encodeURIComponent(this.name())
   + (direction ? '?direction=' + direction : '');
 
-  var requestResult = this._database._connection.POST(this._prefixurl(url), JSON.stringify(vertex));
+  var requestResult = this._database._connection.POST(this._prefixurl(url), vertex);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -230,7 +230,7 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
 };
 
 ArangoCollection.prototype.shards = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('shards'), '');
+  var requestResult = this._database._connection.GET(this._baseurl('shards'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -258,14 +258,15 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  name()                                collection name                   ' + '\n' +
   '  status()                              status of the collection          ' + '\n' +
   '  type()                                type of the collection            ' + '\n' +
-  '  truncate()                            delete all documents              ' + '\n' +
+  '  truncate()                            remove all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +
+  '  properties(<data>)                    change collection properties      ' + '\n' +
   '  drop()                                delete a collection               ' + '\n' +
   '  load()                                load a collection                 ' + '\n' +
   '  unload()                              unload a collection               ' + '\n' +
   '  rename(<new-name>)                    renames a collection              ' + '\n' +
   '  getIndexes()                          return defined indexes            ' + '\n' +
-  '  refresh()                             refreshes the status and name     ' + '\n' +
+  '  refresh()                             refresh the status and name       ' + '\n' +
   '  _help()                               this help                         ' + '\n' +
   '                                                                          ' + '\n' +
   'Document Functions:                                                       ' + '\n' +
@@ -275,8 +276,8 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  replace(<id>, <data>, <overwrite>)    overwrite document                ' + '\n' +
   '  update(<id>, <data>, <overwrite>,     partially update document         ' + '\n' +
   '         <keepNull>)                                                      ' + '\n' +
-  '  remove(<id>)                          delete document                   ' + '\n' +
-  '  exists(<id>)                          checks whether a document exists  ' + '\n' +
+  '  remove(<id>)                          remove document                   ' + '\n' +
+  '  exists(<id>)                          check whether a document exists   ' + '\n' +
   '                                                                          ' + '\n' +
   'Attributes:                                                               ' + '\n' +
   '  _database                             database object                   ' + '\n' +
@@ -343,15 +344,18 @@ ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
     'doCompact': true,
     'journalSize': true,
+    'isSmart': false,
     'isSystem': false,
     'isVolatile': false,
     'waitForSync': true,
     'shardKeys': false,
+    'smartGraphAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
     'replicationFactor': true,
     'distributeShardsLike': false,
+    'shardingStrategy': false,
     'cacheEnabled': true
   };
   var a;
@@ -372,8 +376,7 @@ ArangoCollection.prototype.properties = function (properties) {
       }
     }
 
-    requestResult = this._database._connection.PUT(this._baseurl('properties'),
-      JSON.stringify(body));
+    requestResult = this._database._connection.PUT(this._baseurl('properties'), body);
 
     arangosh.checkRequestResult(requestResult);
   }
@@ -395,7 +398,20 @@ ArangoCollection.prototype.properties = function (properties) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.rotate = function () {
-  var requestResult = this._database._connection.PUT(this._baseurl('rotate'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('rotate'), null);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief recalculate counts of a acollection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.recalculateCount = function () {
+  var requestResult = this._database._connection.PUT(this._baseurl('recalculateCount'), null);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -460,9 +476,10 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null
+  if (requestResult !== null 
+    && requestResult !== undefined
     && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "collection not found"
     arangosh.checkRequestResult(requestResult);
   }
@@ -497,7 +514,7 @@ ArangoCollection.prototype.truncate = function (options) {
   }
 
   var append = (options.waitForSync ? '&waitForSync=true' : '');
-  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, '');
+  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null);
 
   arangosh.checkRequestResult(requestResult);
   this._status = null;
@@ -513,11 +530,11 @@ ArangoCollection.prototype.truncate = function (options) {
     try {  
       // after we are done with the truncation, we flush the WAL to move out all
       // remove operations
-      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), '');
+      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), null);
       try {
         // after the WAL flush, we rotate the collection's active journals, so they can be
         // compacted
-        this._database._connection.PUT(this._baseurl('rotate'), '');
+        this._database._connection.PUT(this._baseurl('rotate'), null);
       } catch (err) {
         // this operation is invisible to the user, so we will intentionally ignore all errors here
       }
@@ -539,7 +556,7 @@ ArangoCollection.prototype.load = function (count) {
     data.count = count;
   }
 
-  var requestResult = this._database._connection.PUT(this._baseurl('load'), JSON.stringify(data));
+  var requestResult = this._database._connection.PUT(this._baseurl('load'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -552,7 +569,7 @@ ArangoCollection.prototype.load = function (count) {
 
 ArangoCollection.prototype.unload = function () {
   this._status = null;
-  var requestResult = this._database._connection.PUT(this._baseurl('unload'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('unload'), null);
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);
@@ -564,7 +581,7 @@ ArangoCollection.prototype.unload = function () {
 
 ArangoCollection.prototype.rename = function (name) {
   var body = { name: name };
-  var requestResult = this._database._connection.PUT(this._baseurl('rename'), JSON.stringify(body));
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -594,9 +611,12 @@ ArangoCollection.prototype.refresh = function () {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = function (withStats) {
-  var requestResult = this._database._connection.GET(this._indexurl() +
-    '&withStats=' + (withStats || false));
+ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withLinks) {
+  let url = this._indexurl() + '&withStats=' + (withStats || false);
+  if (withLinks) {
+    url += '&withLinks=true';
+  }
+  var requestResult = this._database._connection.GET(url);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -651,7 +671,7 @@ ArangoCollection.prototype.ensureIndex = function (data) {
     throw 'usage: ensureIndex(<description>)';
   }
 
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(data));
+  var requestResult = this._database._connection.POST(this._indexurl(), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -691,8 +711,7 @@ ArangoCollection.prototype.document = function (id) {
 
   if (Array.isArray(id)) {
     var url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
-    var body = JSON.stringify(id);
-    requestResult = this._database._connection.PUT(url, body);
+    requestResult = this._database._connection.PUT(url, id);
   } else {
     if (typeof id === 'object') {
       if (id.hasOwnProperty('_rev')) {
@@ -778,7 +797,7 @@ ArangoCollection.prototype.exists = function (id) {
 ArangoCollection.prototype.any = function () {
   var requestResult = this._database._connection.PUT(
     this._prefixurl('/_api/simple/any'),
-    JSON.stringify({ collection: this._name }));
+    { collection: this._name });
 
   arangosh.checkRequestResult(requestResult);
 
@@ -814,7 +833,7 @@ ArangoCollection.prototype.firstExample = function (example) {
 
   var requestResult = this._database._connection.PUT(
     this._prefixurl('/_api/simple/first-example'),
-    JSON.stringify(data)
+    data
   );
 
   if (requestResult !== null
@@ -887,8 +906,17 @@ ArangoCollection.prototype.save =
     if (options.returnNew) {
       url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
     }
+
+    if (options.returnOld) {
+      url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    }
+
     if (options.silent) {
       url = this._appendBoolParameter(url, 'silent', options.silent);
+    }
+
+    if (options.overwrite) {
+      url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
     }
 
     if (data === undefined || typeof data !== 'object') {
@@ -899,7 +927,7 @@ ArangoCollection.prototype.save =
     }
 
     var requestResult = this._database._connection.POST(
-      url, JSON.stringify(data)
+      url, data
     );
 
     arangosh.checkRequestResult(requestResult);
@@ -955,11 +983,11 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   var url;
-  var body = '';
+  var body = null;
 
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
-    body = JSON.stringify(id);
+    body = id;
   } else {
     if (typeof id === 'object') {
       if (id.hasOwnProperty('_rev')) {
@@ -984,10 +1012,10 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.DELETE(url, {}, body);
-  }else {
-    requestResult = this._database._connection.DELETE(url,
-      {'if-match': JSON.stringify(rev)}, body);
+    requestResult = this._database._connection.DELETE(url, body);
+  } else {
+    requestResult = this._database._connection.DELETE(url, body,
+      {'if-match': JSON.stringify(rev)});
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -1131,10 +1159,9 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   }
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PUT(url, JSON.stringify(data));
+    requestResult = this._database._connection.PUT(url, data);
   }else {
-    requestResult = this._database._connection.PUT(url, JSON.stringify(data),
-      {'if-match': JSON.stringify(rev) });
+    requestResult = this._database._connection.PUT(url, data, {'if-match': JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -1248,9 +1275,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   }
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PATCH(url, JSON.stringify(data));
+    requestResult = this._database._connection.PATCH(url, data);
   }else {
-    requestResult = this._database._connection.PATCH(url, JSON.stringify(data),
+    requestResult = this._database._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -1315,8 +1342,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   }
 
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/remove-by-example'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/remove-by-example'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1351,8 +1377,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     };
   }
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/replace-by-example'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/replace-by-example'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1389,8 +1414,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     };
   }
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/update-by-example'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/update-by-example'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1408,8 +1432,7 @@ ArangoCollection.prototype.documents = function (keys) {
   };
 
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/lookup-by-keys'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/lookup-by-keys'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1432,8 +1455,7 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
   };
 
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/remove-by-keys'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/remove-by-keys'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1449,7 +1471,7 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
 
 ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   this._status = null;
-  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), null);
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);

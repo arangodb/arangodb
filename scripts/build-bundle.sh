@@ -4,25 +4,28 @@ set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-cd ${DIR}/..
+cd "${DIR}/.."
 EP=""
-for i in $@; do
+for i in "$@"; do
     if test "$i" == "--enterprise"; then
         EP="EP"
     fi
 done
 
+if ! test -d 3rdParty/arangodb-starter; then
+    MOREOPTS+=("--downloadStarter")
+fi
+
 ./Installation/Jenkins/build.sh \
     standard \
-    --rpath \
-    --parallel 5 \
+    --parallel 8 \
     --package Bundle \
     --buildDir build-${EP}bundle \
-    --prefix "/opt/arangodb" \
     --targetDir /var/tmp/ \
-    --downloadStarter \
+    --prefix "/opt/arangodb" \
     --clang \
     --staticOpenSSL \
-    $@
+    "${MOREOPTS[@]}" \
+    "$@"
 
-cd ${DIR}/..
+cd "${DIR}/.."

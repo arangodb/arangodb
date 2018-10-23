@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
@@ -41,7 +42,7 @@ namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBCounterManager;
+class RocksDBSettingsManager;
 class RocksDBMethods;
 
 class RocksDBIndex : public Index {
@@ -52,36 +53,23 @@ class RocksDBIndex : public Index {
   // memory == ESTIMATOR_SIZE * 6 bytes
   static uint64_t const ESTIMATOR_SIZE;
 
- protected:
-  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const&
-                   attributes,
-               bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId, bool useCache);
-
-  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&,
-               rocksdb::ColumnFamilyHandle* cf, bool useCache);
-
  public:
   ~RocksDBIndex();
   void toVelocyPackFigures(VPackBuilder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder, bool withFigures,
-                    bool forPersistence) const override;
+  void toVelocyPack(velocypack::Builder& builder,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
 
   int drop() override;
-  int afterTruncate() override;
+  virtual void afterTruncate() override;
 
   void load() override;
   void unload() override;
-
-  virtual void truncate(transaction::Methods*);
 
   size_t memory() const override;
 
@@ -113,9 +101,10 @@ class RocksDBIndex : public Index {
   void createCache();
   void destroyCache();
 
-  virtual void serializeEstimate(std::string& output) const;
+  virtual rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const;
 
-  virtual bool deserializeEstimate(RocksDBCounterManager* mgr);
+  virtual bool deserializeEstimate(RocksDBSettingsManager* mgr);
 
   virtual void recalculateEstimates();
 
@@ -149,18 +138,33 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
 
+  virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
+  virtual bool needToPersistEstimate() const;
+
  protected:
-  // Will be called during truncate to allow the index to update selectivity
-  // estimates, blacklist keys, etc.
-  virtual Result postprocessRemove(transaction::Methods* trx,
-                                   rocksdb::Slice const& key,
-                                   rocksdb::Slice const& value);
+  RocksDBIndex(
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+    bool unique,
+    bool sparse,
+    rocksdb::ColumnFamilyHandle* cf,
+    uint64_t objectId,
+    bool useCache
+  );
+
+  RocksDBIndex(
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    rocksdb::ColumnFamilyHandle* cf,
+    bool useCache
+  );
 
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
 
- protected:
   uint64_t _objectId;
   rocksdb::ColumnFamilyHandle* _cf;
 

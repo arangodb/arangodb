@@ -26,13 +26,19 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let functionsDocumentation = {
-  'all': 'run all tests (marked with [x])'
+  'all': 'run all tests (marked with [x])',
+  'find': 'searches all testcases, and eventually filters them by `--test`, ' +
+    'will dump testcases associated to testsuites.',
+  'auto': 'uses find; if the testsuite for the testcase is located, ' +
+    'runs the suite with the filter applied'
 };
 
 let optionsDocumentation = [
   '',
+
   ' The following properties of `options` are defined:',
   '',
+  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
   '   - `jsonReply`: if set a json is returned which the caller has to ',
   '        present the user',
   '   - `force`: if set to true the tests are continued even if one fails',
@@ -51,13 +57,16 @@ let optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `mmfiles`',
+  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
+  '   - `minPort`: minimum port number to use',
+  '   - `maxPort`: maximum port number to use',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -67,19 +76,28 @@ let optionsDocumentation = [
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '',
+  '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
-  '   - `writeXml`:  Write junit xml report files',
+  '   - `writeXmlReport`:  Write junit xml report files',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
+  '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
   '   - `rr`: if set to true arangod instances are run with rr',
+  '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
+  '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
+  '                        or a coma separated list for multiple exceptions; ',
+  '                        filtering by asterisk is possible',
+  '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
+  '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
+  '                  produce a backtrace in the event of a crash',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
   '',
-  '   - `resilientsingle` starts resilient single server setup (active/passive)',
+  '   - `activefailover` starts active failover single server setup (active/passive)',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -95,6 +113,7 @@ let optionsDocumentation = [
   '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
+  '   - `testCase`: filter a jsunity testsuite for one special test case',
   ''
 ];
 
@@ -109,12 +128,14 @@ const optionsDefaults = {
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
+  'coreCheck': false,
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
   'duration': 10,
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
@@ -124,16 +145,19 @@ const optionsDefaults = {
   'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
+  'protocol': 'tcp',
   'replication': false,
   'rr': false,
+  'exceptionFilter': null,
+  'exceptionCount': 1,
   'sanitizer': false,
-  'resilientsingle': false,
+  'activefailover': false,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipTimeCritical': false,
-  'storageEngine': 'mmfiles',
+  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'useReconnect': true,
@@ -145,7 +169,9 @@ const optionsDefaults = {
   'verbose': false,
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
-  'testFailureText': 'testfailures.txt'
+  'testFailureText': 'testfailures.txt',
+  'testCase': undefined,
+  'disableMonitor': false
 };
 
 const _ = require('lodash');
@@ -154,6 +180,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/process-utils');
 const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
 
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -166,6 +193,8 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 // / @brief test functions for all
 // //////////////////////////////////////////////////////////////////////////////
 
+let failedRuns = {
+};
 let allTests = [
 ];
 
@@ -206,7 +235,7 @@ function testCaseMessage (test) {
   }
 }
 
-function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
+function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
@@ -222,12 +251,12 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
   let SuccessMessages = '';
   try {
     /* jshint forin: false */
-    for (let testrunName in r) {
-      if (skipInternalMember(r, testrunName)) {
+    for (let testrunName in res) {
+      if (skipInternalMember(res, testrunName)) {
         continue;
       }
 
-      let testrun = r[testrunName];
+      let testrun = res[testrunName];
 
       let successCases = {};
       let failedCases = {};
@@ -337,27 +366,30 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
     print(failedMessages);
     /* jshint forin: true */
 
-    let color = (!r.crashed && r.status === true) ? GREEN : RED;
+    let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '';
-    if (r.crashed === true) {
-      crashedText = ' BUT! - We had at least one unclean shutdown or crash during the testrun.';
+    let crashedText = '\n';
+    if (res.crashed === true) {
+      for (let failed in failedRuns) {
+        crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
+      }
+      crashedText += "\nMarking crashy!";
       crashText = RED + crashedText + RESET;
     }
-    print('\n' + color + '* Overall state: ' + ((r.status === true) ? 'Success' : 'Fail') + RESET + crashText);
+    print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
 
     let failText = '';
-    if (r.status !== true) {
+    if (res.status !== true) {
       failText = '   Suites failed: ' + failedSuite + ' Tests Failed: ' + failedTests;
       print(color + failText + RESET);
     }
 
-    failedMessages = onlyFailedMessages + crashedText + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages + crashedText + '\n\n' + cu.GDB_OUTPUT + failText + '\n';
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');
     print(x.message);
-    print(JSON.stringify(r));
+    print(JSON.stringify(res));
   }
 }
 
@@ -400,6 +432,110 @@ function printUsage () {
   }
 }
 
+let allTestPaths = {};
+
+function findTestCases(options) {
+  let filterTestcases = (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined'));
+  let found = !filterTestcases;
+  let allTestFiles = {};
+  for (let testSuiteName in allTestPaths) {
+    var myList = [];
+    let files =  tu.scanTestPaths(allTestPaths[testSuiteName]);
+    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+      for (let j = 0; j < files.length; j++) {
+        let foo = {};
+        if (tu.filterTestcaseByOptions(files[j], options, foo)) {
+          myList.push(files[j]);
+          found = true;
+        }
+      }
+    } else {
+      myList = myList.concat(files);
+    }
+    if (!filterTestcases || (myList.length > 0)) {
+      allTestFiles[testSuiteName] = myList;
+    }
+  }
+  // print(allTestPaths)
+  return [found, allTestFiles];
+}
+
+function findTest(options) {
+  let rc = findTestCases(options);
+  if (rc[0]) {
+    print(rc[1]);
+    return {
+      findTest: {
+        status: true,
+        total: 1,
+        message: 'we have found a test. see above.',
+        duration: 0,
+        failed: [],
+        found: {
+          status: true,
+          duration: 0,
+          message: 'we have found a test.'
+        }
+      }
+    };
+  } else {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'we haven\'t found a test.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'we haven\'t found a test.'
+        }
+      }
+    };
+  }
+}
+
+
+function autoTest(options) {
+  if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'you must specify a --test filter.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'you must specify a --test filter.'
+        }
+      }
+    };
+  }
+  let rc = findTestCases(options);
+  if (rc[0]) {
+    let testSuites = Object.keys(rc[1]);
+    return iterateTests(testSuites, options, true);
+  } else {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'we haven\'t found a test.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'we haven\'t found a test.'
+        }
+      }
+    };
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief load the available testsuites
 // //////////////////////////////////////////////////////////////////////////////
@@ -407,10 +543,7 @@ function loadTestSuites () {
   let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
                             function (p) {
                               return (p.substr(-3) === '.js');
-                            })
-      .map(function (x) {
-        return x;
-      }).sort();
+                            }).sort();
 
   for (let j = 0; j < testSuites.length; j++) {
     try {
@@ -418,12 +551,133 @@ function loadTestSuites () {
                                                              allTests,
                                                              optionsDefaults,
                                                              functionsDocumentation,
-                                                             optionsDocumentation);
+                                                             optionsDocumentation,
+                                                             allTestPaths);
     } catch (x) {
       print('failed to load module ' + testSuites[j]);
       throw x;
     }
   }
+  testFuncs['find'] = findTest;
+  testFuncs['auto'] = autoTest;
+}
+
+let globalStatus = true;
+
+function iterateTests(cases, options, jsonReply) {
+  // tests to run
+  let caselist = [];
+
+  const expandWildcard = ( name ) => {
+    if (!name.endsWith('*')) {
+      return name;
+    }
+    const prefix = name.substring(0, name.length - 1);
+    return allTests.filter( ( s ) => s.startsWith(prefix) ).join(',');
+  };
+
+  for (let n = 0; n < cases.length; ++n) {
+    let splitted = expandWildcard(cases[n]).split(/[,;|]/);
+
+    for (let m = 0; m < splitted.length; ++m) {
+      let which = splitted[m];
+
+      if (which === 'all') {
+        caselist = caselist.concat(allTests);
+      } else if (testFuncs.hasOwnProperty(which)) {
+        caselist.push(which);
+      } else {
+        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
+
+        return {
+          status: false
+        };
+      }
+    }
+  }
+
+  let results = {};
+  let cleanup = true;
+
+  // real ugly hack. there are some suites which are just placeholders
+  // for other suites
+  caselist = (function() {
+    let flattened = [];
+    for (let n = 0; n < caselist.length; ++n) {
+      let w = testFuncs[caselist[n]];
+      if (Array.isArray(w)) {
+        w.forEach(function(sub) { flattened.push(sub); });
+      } else {
+        flattened.push(caselist[n]);
+      }
+    }
+    return flattened;
+  })();
+
+  // running all tests
+  for (let n = 0; n < caselist.length; ++n) {
+    const currentTest = caselist[n];
+    var localOptions = _.cloneDeep(options);
+
+    print(BLUE + '================================================================================');
+    print('Executing test', currentTest);
+    print('================================================================================\n' + RESET);
+
+    if (localOptions.verbose) {
+      print(CYAN + 'with options:', localOptions, RESET);
+    }
+
+    let result = testFuncs[currentTest](localOptions);
+    // grrr...normalize structure
+    delete result.status;
+    delete result.failed;
+    delete result.crashed;
+
+    let status = Object.values(result).every(testCase => testCase.status === true);
+    let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
+    if (!status) {
+      globalStatus = false;
+    }
+    result.failed = failed;
+    result.status = status;
+    results[currentTest] = result;
+
+    if (status && localOptions.cleanup) {
+      pu.cleanupLastDirectory(localOptions);
+    } else {
+      cleanup = false;
+    }
+    if (pu.serverCrashed) {
+      failedRuns[currentTest] = pu.serverFailMessages;
+      pu.serverFailMessages = "";
+    }
+  }
+
+  results.status = globalStatus;
+  results.crashed = pu.serverCrashed;
+
+  if (options.server === undefined) {
+    if (cleanup && globalStatus && !pu.serverCrashed) {
+      pu.cleanupDBDirectories(options);
+    } else {
+      print('not cleaning up as some tests weren\'t successful:\n' +
+            pu.getCleanupDBDirectories() +
+           cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed);
+    }
+  } else {
+    print("not cleaning up since we didn't start the server ourselves\n");
+  }
+
+  if (options.extremeVerbosity === true) {
+    try {
+      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
+    } catch (err) {
+      print(RED + 'cannot dump results: ' + String(err) + RESET);
+      print(RED + require('internal').inspect(results) + RESET);
+    }
+  }
+
+  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -457,105 +711,7 @@ function unitTest (cases, options) {
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 
-  // tests to run
-  let caselist = [];
-
-  const expandWildcard = ( name ) => {
-    if (!name.endsWith('*')) {
-      return name;
-    }
-    const prefix = name.substring(0, name.length - 1);
-    return allTests.filter( ( s ) => s.startsWith(prefix) ).join(',');
-  };
-
-  for (let n = 0; n < cases.length; ++n) {
-    let splitted = expandWildcard(cases[n]).split(/[,;|]/);
-
-    for (let m = 0; m < splitted.length; ++m) {
-      let which = splitted[m];
-
-      if (which === 'all') {
-        caselist = caselist.concat(allTests);
-      } else if (testFuncs.hasOwnProperty(which)) {
-        caselist.push(which);
-      } else {
-        let line = 'Unknown test "' + which + '"\nKnown tests are: ';
-        let sep = '';
-
-        Object.keys(testFuncs).map(function (key) {
-          line += sep + key;
-          sep = ', ';
-        });
-
-        print(line);
-
-        return {
-          status: false
-        };
-      }
-    }
-  }
-
-  let globalStatus = true;
-  let results = {};
-  let cleanup = true;
-
-  // running all tests
-  for (let n = 0; n < caselist.length; ++n) {
-    const currentTest = caselist[n];
-    var localOptions = _.cloneDeep(options);
-
-    print(BLUE + '================================================================================');
-    print('Executing test', currentTest);
-    print('================================================================================\n' + RESET);
-
-    if (localOptions.verbose) {
-      print(CYAN + 'with options:', localOptions, RESET);
-    }
-
-    let result = testFuncs[currentTest](localOptions);
-    // grrr...normalize structure
-    delete result.status;
-    delete result.failed;
-
-    let status = Object.values(result).every(testCase => testCase.status === true);
-    let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
-    if (!status) {
-      globalStatus = false;
-    }
-    result.failed = failed;
-    result.status = status;
-    results[currentTest] = result;
-
-    if (status && localOptions.cleanup) {
-      pu.cleanupLastDirectory(localOptions);
-    } else {
-      cleanup = false;
-    }
-  }
-
-  results.status = globalStatus;
-  results.crashed = pu.serverCrashed;
-
-  if (options.server === undefined) {
-    if (cleanup && globalStatus && !pu.serverCrashed) {
-      pu.cleanupDBDirectories(options);
-    } else {
-      print('not cleaning up as some tests weren\'t successful:\n' +
-            pu.getCleanupDBDirectories());
-    }
-  } else {
-    print("not cleaning up since we didn't start the server ourselves\n");
-  }
-
-  if (options.extremeVerbosity === true) {
-    try {
-      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
-    } catch (err) {
-      print(RED + 'cannot dump results: ' + String(err) + RESET);
-      print(RED + require('internal').inspect(results) + RESET);
-    }
-  }
+  let results = iterateTests(cases, options, jsonReply);
 
   if (jsonReply === true) {
     return results;

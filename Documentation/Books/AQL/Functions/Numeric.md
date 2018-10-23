@@ -4,7 +4,8 @@ Numeric functions
 AQL offers some numeric functions for calculations. The following functions are
 supported:
 
-### ABS()
+ABS()
+-----
 
 `ABS(value) → unsignedValue`
 
@@ -19,7 +20,8 @@ ABS(+5) // 5
 ABS(3.5) // 3.5
 ```
 
-### ACOS()
+ACOS()
+------
 
 `ACOS(value) → num`
 
@@ -36,7 +38,8 @@ ACOS(1) // 0
 ACOS(2) // null
 ```
 
-### ASIN()
+ASIN()
+------
 
 `ASIN(value) → num`
 
@@ -53,7 +56,8 @@ ASIN(-1) // -1.5707963267948966
 ASIN(2) // null
 ```
 
-### ATAN()
+ATAN()
+------
 
 `ATAN(value) → num`
 
@@ -68,7 +72,8 @@ ATAN(0) // 0
 ATAN(10) // 1.4711276743037347
 ```
 
-### ATAN2()
+ATAN2()
+-------
 
 `ATAN2(y, x) → num`
 
@@ -81,7 +86,8 @@ ATAN2(1, 1) // 0.7853981633974483
 ATAN2(-10, 20) // -0.4636476090008061
 ```
 
-### AVERAGE()
+AVERAGE()
+---------
 
 `AVERAGE(numArray) → mean`
 
@@ -97,7 +103,12 @@ AVERAGE( [ -3, -5, 2 ] ) // -2
 AVERAGE( [ 999, 80, 4, 4, 4, 3, 3, 3 ] ) // 137.5
 ```
 
-### CEIL()
+## AVG()
+
+This is an alias for [AVERAGE()](#average).
+
+CEIL()
+------
 
 `CEIL(value) → roundedValue`
 
@@ -113,7 +124,8 @@ CEIL(-2.50) // -2
 CEIL(-2.51) // -2
 ```
 
-### COS()
+COS()
+-----
 
 `COS(value) → num`
 
@@ -129,7 +141,8 @@ COS(-3.141592653589783) // -1
 COS(RADIANS(45)) // 0.7071067811865476
 ```
 
-### DEGREES()
+DEGREES()
+---------
 
 `DEGREES(rad) → num`
 
@@ -144,7 +157,8 @@ DEGREES(0) // 0
 DEGREES(3.141592653589793) // 180
 ```
 
-### EXP()
+EXP()
+-----
 
 `EXP(value) → num`
 
@@ -159,7 +173,8 @@ EXP(10) // 22026.46579480671
 EXP(0) // 1
 ```
 
-### EXP2()
+EXP2()
+------
 
 `EXP2(value) → num`
 
@@ -174,7 +189,8 @@ EXP2(1) // 2
 EXP2(0) // 1
 ```
 
-### FLOOR()
+FLOOR()
+-------
 
 `FLOOR(value) → roundedValue`
 
@@ -190,7 +206,8 @@ FLOOR(-2.50) // -3
 FLOOR(-2.51) // -3
 ```
 
-### LOG()
+LOG()
+-----
 
 `LOG(value) → num`
 
@@ -207,7 +224,8 @@ LOG(10) // 2.302585092994046
 LOG(0) // null
 ```
 
-### LOG2()
+LOG2()
+------
 
 `LOG2(value) → num`
 
@@ -223,7 +241,8 @@ LOG2(8) // 3
 LOG2(0) // null
 ```
 
-### LOG10()
+LOG10()
+-------
 
 `LOG10(value) → num`
 
@@ -238,7 +257,8 @@ LOG10(10000) // 10
 LOG10(10) // 1
 LOG10(0) // null
 ```
-### MAX()
+MAX()
+-----
 
 `MAX(anyArray) → max`
 
@@ -254,7 +274,8 @@ MAX( [5, 9, -2, null, 1] ) // 9
 MAX( [ null, null ] ) // null
 ```
 
-### MEDIAN()
+MEDIAN()
+--------
 
 `MEDIAN(numArray) → median`
 
@@ -275,7 +296,8 @@ MEDIAN( [ 4, 2, 3, 1 ] ) // 2.5
 MEDIAN( [ 999, 80, 4, 4, 4, 3, 3, 3 ] ) // 4
 ```
 
-### MIN()
+MIN()
+-----
 
 `MIN(anyArray) → min`
 
@@ -291,7 +313,8 @@ MIN( [5, 9, -2, null, 1] ) // -2
 MIN( [ null, null ] ) // null
 ```
 
-### PERCENTILE()
+PERCENTILE()
+------------
 
 `PERCENTILE(numArray, n, method) → percentile`
 
@@ -310,7 +333,8 @@ PERCENTILE( [1, 2, 3, 4], 50, "rank" ) // 2
 PERCENTILE( [1, 2, 3, 4], 50, "interpolation" ) // 2.5
 ```
 
-### PI()
+PI()
+----
 
 `PI() → pi`
 
@@ -322,7 +346,8 @@ Return pi.
 PI() // 3.141592653589793
 ```
 
-### POW()
+POW()
+-----
 
 `POW(base, exp) → num`
 
@@ -338,7 +363,8 @@ POW( 5, -1 ) // 0.2
 POW( 5, 0 ) // 1
 ```
 
-### RADIANS()
+RADIANS()
+---------
 
 `RADIANS(deg) → num`
 
@@ -353,7 +379,8 @@ RADIANS(90) // 1.5707963267948966
 RADIANS(0) // 0
 ```
 
-### RAND()
+RAND()
+------
 
 `RAND() → randomNumber`
 
@@ -391,7 +418,8 @@ Result:
 ]
 ```
 
-### RANGE()
+RANGE()
+-------
 
 `RANGE(start, stop, step) → numArray`
 
@@ -416,7 +444,8 @@ RANGE(1.5, 2.5, 0.5) // [ 1.5, 2, 2.5 ]
 RANGE(-0.75, 1.1, 0.5) // [ -0.75, -0.25, 0.25, 0.75 ]
 ```
 
-### ROUND()
+ROUND()
+-------
 
 `ROUND(value) → roundedValue`
 
@@ -434,13 +463,15 @@ ROUND(-2.51) // -3
 
 Rounding towards zero, also known as *trunc()* in C/C++, can be achieved with
 a combination of the [ternary operator](../Operators.md#ternary-operator),
-[CEIL()](#ceil) and [FLOOR()](#floor):
+[CEIL()](#ceil)
+and [FLOOR()](#floor):
 
 ```js
 LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
 ```
 
-### SIN()
+SIN()
+-----
 
 `SIN(value) → num`
 
@@ -456,7 +487,8 @@ SIN(-3.141592653589783 / 2) // -1
 SIN(RADIANS(270)) // -1
 ```
 
-### SQRT()
+SQRT()
+------
 
 `SQRT(value) → squareRoot`
 
@@ -483,7 +515,8 @@ POW(27, 1/3) // 3
 POW(9, 1/2) // 3
 ```
 
-### STDDEV_POPULATION()
+STDDEV_POPULATION()
+-------------------
 
 `STDDEV_POPULATION(numArray) → num`
 
@@ -498,7 +531,8 @@ Return the population standard deviation of the values in *array*.
 STDDEV_POPULATION( [ 1, 3, 6, 5, 2 ] ) // 1.854723699099141
 ```
 
-### STDDEV_SAMPLE()
+STDDEV_SAMPLE()
+---------------
 
 `STDDEV_SAMPLE(numArray) → num`
 
@@ -513,7 +547,12 @@ Return the sample standard deviation of the values in *array*.
 STDDEV_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 2.0736441353327724
 ```
 
-### SUM()
+## STDDEV()
+
+This is an alias for [STDDEV_POPULATION()](#stddevpopulation).
+
+SUM()
+-----
 
 `SUM(numArray) → sum`
 
@@ -529,7 +568,8 @@ SUM( [null, -5, 6] ) // 1
 SUM( [ ] ) // 0
 ```
 
-### TAN()
+TAN()
+-----
 
 `TAN(value) → num`
 
@@ -544,7 +584,8 @@ TAN(5) // -3.380515006246586
 TAN(0) // 0
 ```
 
-### VARIANCE_POPULATION()
+VARIANCE_POPULATION()
+---------------------
 
 `VARIANCE_POPULATION(numArray) → num`
 
@@ -559,7 +600,8 @@ Return the population variance of the values in *array*.
 VARIANCE_POPULATION( [ 1, 3, 6, 5, 2 ] ) // 3.4400000000000004
 ```
 
-### VARIANCE_SAMPLE()
+VARIANCE_SAMPLE()
+-----------------
 
 `VARIANCE_SAMPLE(array) → num`
 
@@ -573,3 +615,7 @@ Return the sample variance of the values in *array*.
 ```js
 VARIANCE_SAMPLE( [ 1, 3, 6, 5, 2 ] ) // 4.300000000000001
 ```
+
+## VARIANCE()
+
+This is an alias for [VARIANCE_POPULATION()](#variancepopulation).

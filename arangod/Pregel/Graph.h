@@ -175,7 +175,7 @@ class VertexEntry {
 namespace std {
 template <>
 struct hash<arangodb::pregel::PregelID> {
-  std::size_t operator()(const arangodb::pregel::PregelID& k) const {
+  std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
     using std::size_t;
     using std::hash;
     using std::string;

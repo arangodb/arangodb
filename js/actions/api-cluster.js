@@ -1,6 +1,5 @@
 /* jshint strict: false, unused: false */
-/* global AQL_EXECUTE, SYS_CLUSTER_TEST
-  ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
+/* global AQL_EXECUTE, ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief cluster actions
@@ -27,16 +26,15 @@
 // /
 // / @author Max Neunhoeffer
 // / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 // / @author Copyright 2013-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
+var wait = require("internal").wait;
+
 // var internal = require('internal');
 var _ = require('lodash');
-
-var fetchKey = cluster.fetchKey;
 
 actions.defineHttp({
   url: '_admin/cluster/removeServer',
@@ -131,92 +129,96 @@ actions.defineHttp({
   }
 });
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_cluster_node_version_GET
+// //////////////////////////////////////////////////////////////////////////////
+
 actions.defineHttp({
-  url: '_admin/cluster-test',
-  prefix: true,
+  url: '_admin/cluster/maintenance',
+  allowUseDatabase: true,
+  prefix: false,
 
   callback: function (req, res) {
-    var path;
-    if (req.hasOwnProperty('suffix') && req.suffix.length !== 0) {
-      path = '/' + req.suffix.join('/');
+    if (req.requestType !== actions.PUT) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET and PUT requests are allowed');
+      return;
+    }
+
+    let role = global.ArangoServerState.role();
+    if (role !== 'COORDINATOR' && role !== 'SINGLE') {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET requests are allowed and only to coordinators or singles');
+      return;
+    }
+
+    var body = JSON.parse(req.requestBody);
+    if (body === undefined) {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'empty body'
+      });
+      return;
+    }
+
+    let operations = {};
+    if (body === "on") {
+      operations['/arango/Supervision/Maintenance'] =
+        {"op":"set","new":true,"ttl":3600};
+    } else if (body === "off") {
+      operations['/arango/Supervision/Maintenance'] = {"op":"delete"};
     } else {
-      path = '/_admin/version';
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'state string must be "on" or "off"'
+      });
+      return;
     }
-    var params = '';
-    var shard = '';
-    var p;
+    let preconditions = {};
+    try {
+      global.ArangoAgency.write([[operations, preconditions]]);
+    } catch (e) {
+      throw e;
+    }
 
-    for (p in req.parameters) {
-      if (req.parameters.hasOwnProperty(p)) {
-        if (params === '') {
-          params = '?';
-        } else {
-          params += '&';
-        }
-        params += p + '=' + encodeURIComponent(String(req.parameters[p]));
+    // Wait 2 min for supervision to go to maintenance mode
+    var waitUntil = new Date().getTime() + 120.0*1000;
+    while (true) {
+      var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
+          arango.Supervision.State.Mode;
+      
+      if (body === "on" && mode === "Maintenance") {
+        res.body = JSON.stringify({
+          error: false,
+          warning: 'Cluster supervision deactivated. It will be reactivated automatically in 60 minutes unless this call is repeated until then.'});
+        break;
+      } else if (body === "off" && mode === "Normal") {
+        res.body = JSON.stringify({
+          error: false,
+          warning: 'Cluster supervision reactivated.'});
+        break;
       }
-    }
-    if (params !== '') {
-      path += params;
-    }
-    var headers = {};
-    var transID = '';
-    var timeout = 24 * 3600.0;
-    var asyncMode = true;
 
-    for (p in req.headers) {
-      if (req.headers.hasOwnProperty(p)) {
-        if (p === 'x-client-transaction-id') {
-          transID = req.headers[p];
-        } else if (p === 'x-timeout') {
-          timeout = parseFloat(req.headers[p]);
-          if (isNaN(timeout)) {
-            timeout = 24 * 3600.0;
-          }
-        } else if (p === 'x-synchronous-mode') {
-          asyncMode = false;
-        } else if (p === 'x-shard-id') {
-          shard = req.headers[p];
-        } else {
-          headers[p] = req.headers[p];
-        }
+      wait(0.1);
+      
+      if (new Date().getTime() > waitUntil) {
+        res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
+        res.body = JSON.stringify({
+          'error': true,
+          'errorMessage':
+          'timed out while waiting for supervision to go into maintenance mode'
+        });
+        return;
       }
+      
     }
 
-    var body;
-    if (req.requestBody === undefined || typeof req.requestBody !== 'string') {
-      body = '';
-    } else {
-      body = req.requestBody;
-    }
+    return ; 
 
-    var r;
-    if (typeof SYS_CLUSTER_TEST === 'undefined') {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND,
-        'Not compiled for cluster operation');
-    } else {
-      try {
-        r = SYS_CLUSTER_TEST(req, res, shard, path, transID,
-          headers, body, timeout, asyncMode);
-        if (r.timeout || typeof r.errorMessage === 'string') {
-          res.responseCode = actions.HTTP_OK;
-          res.contentType = 'application/json; charset=utf-8';
-          var s = JSON.stringify(r);
-          res.body = s;
-        } else {
-          res.responseCode = actions.HTTP_OK;
-          res.contentType = r.headers.contentType;
-          res.headers = r.headers;
-          res.body = r.body;
-        }
-      } catch (err) {
-        actions.resultError(req, res, actions.HTTP_FORBIDDEN, String(err));
-      }
-    }
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
+  }});
+  // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_node_version_GET
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -225,9 +227,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.GET) {
+    if (req.requestType !== actions.GET ||
+      !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed');
+        'only GET requests are allowed and only on coordinator');
       return;
     }
 
@@ -283,9 +286,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.GET) {
+    if (req.requestType !== actions.GET ||
+      !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed');
+        'only GET requests are allowed and only on coordinator');
       return;
     }
 
@@ -341,9 +345,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.GET) {
+    if (req.requestType !== actions.GET ||
+      !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed');
+        'only GET requests are allowed and only on coordinator');
       return;
     }
 
@@ -454,21 +459,20 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
+    let role = global.ArangoServerState.role();
     if (req.requestType !== actions.GET ||
-      !require('@arangodb/cluster').isCoordinator()) {
+        (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only to coordinators');
+        'only GET requests are allowed and only to coordinators or singles');
       return;
     }
 
-    /* remove? timeout not used
     var timeout = 60.0;
     try {
       if (req.parameters.hasOwnProperty('timeout')) {
         timeout = Number(req.parameters.timeout);
       }
     } catch (e) {}
-    */
 
     var clusterId;
     try {
@@ -481,13 +485,26 @@ actions.defineHttp({
 
     let agency = ArangoAgency.agency();
 
-    var Health;
-    try {
-      Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
-    } catch (e1) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-        'Failed to retrieve supervision node from agency!');
-      return;
+    var Health = {};
+    var startTime = new Date();
+    while (true) {
+      try {
+        Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
+      } catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+          'Failed to retrieve supervision node from agency!');
+        return;
+      }
+      if (Object.keys(Health).length !== 0) {
+        break;
+      }
+      if (new Date() - startTime > timeout * 1000) {   // milliseconds
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+          'Failed to get health status from agency in ' + timeout + ' seconds.');
+        return;
+      }
+      console.warn("/_api/cluster/health not ready yet, retrying...");
+      require("internal").wait(0.5);
     }
 
     Health = Object.entries(Health).reduce((Health, [serverId, struct]) => {
@@ -531,103 +548,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief allows to query the historic statistics of a DBserver in the cluster
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/history',
-  prefix: false,
-
-  callback: function (req, res) {
-    if (req.requestType !== actions.POST) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only POST requests are allowed');
-      return;
-    }
-    var body = actions.getJsonBody(req, res);
-    if (body === undefined) {
-      return;
-    }
-    var DBserver = req.parameters.DBserver;
-
-    // build query
-    var figures = body.figures;
-    var filterString = ' filter u.time > @startDate';
-    var bind = {
-      startDate: (new Date().getTime() / 1000) - 20 * 60
-    };
-
-    if (cluster.isCoordinator() && !req.parameters.hasOwnProperty('DBserver')) {
-      filterString += ' filter u.clusterId == @serverId';
-      bind.serverId = cluster.coordinatorId();
-    }
-
-    var returnValue = ' return u';
-    if (figures) {
-      returnValue = ' return { time : u.time, server : {uptime : u.server.uptime} ';
-
-      var groups = {};
-      figures.forEach(function (f) {
-        var g = f.split('.')[0];
-        if (!groups[g]) {
-          groups[g] = [];
-        }
-        groups[g].push(f.split('.')[1] + ' : u.' + f);
-      });
-      Object.keys(groups).forEach(function (key) {
-        returnValue += ', ' + key + ' : {' + groups[key] + '}';
-      });
-      returnValue += '}';
-    }
-    // allow at most ((60 / 10) * 20) * 2 documents to prevent total chaos
-    var myQueryVal = 'FOR u in _statistics ' + filterString + ' LIMIT 240 SORT u.time' + returnValue;
-
-    if (!req.parameters.hasOwnProperty('DBserver')) {
-      // query the local statistics collection
-      var cursor = AQL_EXECUTE(myQueryVal, bind);
-      res.contentType = 'application/json; charset=utf-8';
-      if (cursor instanceof Error) {
-        res.responseCode = actions.HTTP_BAD;
-        res.body = JSON.stringify({
-          'error': true,
-          'errorMessage': 'an error occurred'
-        });
-      }
-      res.responseCode = actions.HTTP_OK;
-      res.body = JSON.stringify({result: cursor.docs});
-    } else {
-      // query a remote statistics collection
-      var options = { timeout: 10 };
-      var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, req.database,
-        '/_api/cursor', JSON.stringify({query: myQueryVal, bindVars: bind}), {}, options);
-      var r = ArangoClusterComm.wait(op);
-      res.contentType = 'application/json; charset=utf-8';
-      if (r.status === 'RECEIVED') {
-        res.responseCode = actions.HTTP_OK;
-        res.body = r.body;
-      } else if (r.status === 'TIMEOUT') {
-        res.responseCode = actions.HTTP_BAD;
-        res.body = JSON.stringify({
-          'error': true,
-          'errorMessage': 'operation timed out'
-        });
-      } else {
-        res.responseCode = actions.HTTP_BAD;
-        var bodyobj;
-        try {
-          bodyobj = JSON.parse(r.body);
-        } catch (err) {}
-        res.body = JSON.stringify({
-          'error': true,
-          'errorMessage': 'error from DBserver, possibly DBserver unknown',
-          'body': bodyobj
-        });
-      }
-    }
-  }
-});
-
 function reducePlanServers (reducer, data) {
   var databases = ArangoAgency.get('Plan/Collections');
   databases = databases.arango.Plan.Collections;
@@ -666,30 +586,6 @@ function reduceCurrentServers (reducer, data) {
       }, data);
     }, data);
   }, data);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief changes responsibility for all shards from oldServer to newServer.
-// / This needs to be done atomically!
-// //////////////////////////////////////////////////////////////////////////////
-
-function changeAllShardReponsibilities (oldServer, newServer) {
-  return reducePlanServers(function (data, key, servers) {
-    var oldServers = _.cloneDeep(servers);
-    servers = servers.map(function (server) {
-      if (server === oldServer) {
-        return newServer;
-      } else {
-        return server;
-      }
-    });
-    data.operations[key] = servers;
-    data.preconditions[key] = {'old': oldServers};
-    return data;
-  }, {
-    operations: {},
-    preconditions: {}
-  });
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -937,6 +833,83 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_getqueryAgencyJob
+// / (intentionally not in manual)
+// / @brief asks about progress on an agency job by id
+// /
+// / @ RESTHEADER{GET /_admin/cluster/queryAgencyJob, Ask about an agency job by its id.}
+// /
+// / @ RESTQUERYPARAMETERS `id` must be a string with the ID of the agency
+// / job being queried.
+// /
+// / @ RESTDESCRIPTION Returns information (if known) about the job with ID
+// / `id`. This can either be a cleanOurServer or a moveShard job at this
+// / stage.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well and the
+// / information about the job is returned. It might be that the job is
+// / not found.
+// /
+// / @ RESTRETURNCODE{400} id parameter is not given or not a string.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+// /
+// / @ RESTRETURNCODE{503} the agency operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/queryAgencyJob',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the GET method is allowed');
+      return;
+    }
+
+    // Now get to work:
+    let id;
+    try {
+      if (req.parameters.id) {
+        id = req.parameters.id;
+      }
+    } catch(e) {
+    }
+
+    if (typeof id !== 'string' || id.length === 0) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter id was not given');
+      return;
+    }
+
+    var ok = true;
+    var job;
+    try {
+      job = require('@arangodb/cluster').queryAgencyJob(id);
+    } catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+        {error: true, errorMsg: 'Cannot read from agency.'});
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_OK, job);
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_postMoveShard
 // / (intentionally not in manual)
 // / @brief triggers activities to move a shard
@@ -1014,6 +987,78 @@ actions.defineHttp({
       return;
     }
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, r);
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_collectionShardDistribution
+// / (intentionally not in manual)
+// / @brief returns information about all collections and their shard
+// / distribution
+// /
+// / @ RESTHEADER{PUT /_admin/cluster/collectionShardDistribution,
+// / Get shard distribution for a specific collections.}
+// /
+// / @ RESTDESCRIPTION Returns an object with an attribute for a specific collection.
+// / The attribute name is the collection name. Each value is an object
+// / of the following form:
+// /
+// /     { "collection1": { "Plan": { "s100001": ["DBServer001", "DBServer002"],
+// /                                  "s100002": ["DBServer003", "DBServer004"] },
+// /                        "Current": { "s100001": ["DBServer001", "DBServer002"],
+// /                                     "s100002": ["DBServer003"] } },
+// /       "collection2": ...
+// /     }
+//
+// / The body must be a JSON document with the following attributes:
+// /   - `"collection"`: a string with the name of the collection
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well and the
+// / job is scheduled.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/collectionShardDistribution',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.PUT) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the PUT method is allowed');
+      return;
+    }
+
+    var body = actions.getJsonBody(req, res);
+    if (typeof body !== 'object') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'body must be an object.');
+      return;
+    }
+    if (!body.collection) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'body missing. expected collection name.');
+      return;
+    }
+    if (typeof body.collection !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'collection name must be a string.');
+      return;
+    }
+
+    var result = require('@arangodb/cluster').collectionShardDistribution(body.collection);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });
 

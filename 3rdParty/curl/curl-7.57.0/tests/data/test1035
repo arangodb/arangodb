@@ -1,0 +1,52 @@
+<testcase>
+<info>
+<keywords>
+HTTP
+HTTP GET
+HTTP proxy
+IDN
+FAILURE
+</keywords>
+</info>
+
+#
+# Server-side
+<reply>
+</reply>
+
+#
+# Client-side
+<client>
+<server>
+none
+</server>
+<features>
+idn
+http
+</features>
+<setenv>
+LC_ALL=
+LC_CTYPE=en_US.UTF-8
+</setenv>
+<precheck>
+perl -MI18N::Langinfo=langinfo,CODESET -e 'die "Needs a UTF-8 locale" if (lc(langinfo(CODESET())) ne "utf-8");'
+</precheck>
+ <name>
+HTTP over proxy with too long IDN host name
+ </name>
+ <command>
+http://too-long-IDN-name-cürl-rüles-la-la-la-dee-da-flooby-nooby.local/page/1035 -x %HOSTIP:%HTTPPORT
+</command>
+</client>
+
+#
+# Verify data after the test has been "shot"
+<verify>
+<strip>
+^User-Agent:.*
+</strip>
+<errorcode>
+3
+</errorcode>
+</verify>
+</testcase>

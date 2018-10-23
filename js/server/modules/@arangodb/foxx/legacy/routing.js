@@ -250,7 +250,7 @@ function transformControllerToRoute (routeInfo, route, isDevel) {
       }
       // Default Error Handler
       if (!e.statusCode) {
-        console.errorLines(`Error in foxx route "${route}": ${e.stack}`);
+        console.errorLines(`Error in Foxx route "${route}": ${e.stack}`);
       }
       actions.resultException(req, res, e, undefined, isDevel);
     }

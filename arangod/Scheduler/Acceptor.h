@@ -23,6 +23,8 @@
 #ifndef ARANGOD_SCHEDULER_ACCEPTOR_H
 #define ARANGOD_SCHEDULER_ACCEPTOR_H 1
 
+#include "Basics/Common.h"
+
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Scheduler/Socket.h"
@@ -30,28 +32,30 @@
 
 namespace arangodb {
 class Acceptor {
-  public:
-    typedef std::function<void(boost::system::error_code const&)> AcceptHandler;
+ public:
+  typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
-    Acceptor(boost::asio::io_service& ioService, Endpoint* endpoint);
-    virtual ~Acceptor() {}
+ public:
+  Acceptor(rest::GeneralServer &server,
+    rest::GeneralServer::IoContext &context, Endpoint* endpoint);
+  virtual ~Acceptor() {}
 
-    virtual void open() = 0;
-    virtual void close() = 0;
-    virtual void asyncAccept(AcceptHandler const& handler) = 0;
-    std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
-  
-  public:
-    static std::unique_ptr<Acceptor> factory(
-        boost::asio::io_service& _ioService, Endpoint* endpoint);
-  
-  protected:
-    virtual void createPeer() = 0;
-  
-  protected:
-    boost::asio::io_service& _ioService;
-    Endpoint* _endpoint;
-    std::unique_ptr<Socket> _peer;
+ public:
+  virtual void open() = 0;
+  virtual void close() = 0;
+  virtual void asyncAccept(AcceptHandler const& handler) = 0;
+  std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
+
+ public:
+  static std::unique_ptr<Acceptor> factory(rest::GeneralServer &server,
+    rest::GeneralServer::IoContext &context, Endpoint*);
+
+ protected:
+
+  rest::GeneralServer &_server;
+  rest::GeneralServer::IoContext &_context;
+  Endpoint* _endpoint;
+  std::unique_ptr<Socket> _peer;
 };
 }
 #endif

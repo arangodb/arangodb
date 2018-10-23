@@ -209,9 +209,12 @@ class MMFilesUnloadCollectionDitch final : public MMFilesDitch {
 class MMFilesDropCollectionDitch final : public MMFilesDitch {
  public:
   MMFilesDropCollectionDitch(
-      arangodb::MMFilesDitches* ditches, arangodb::LogicalCollection* collection,
-      std::function<bool(arangodb::LogicalCollection*)> callback,
-      char const* filename, int line);
+    arangodb::MMFilesDitches* ditches,
+    arangodb::LogicalCollection& collection,
+    std::function<bool(arangodb::LogicalCollection&)> const& callback,
+    char const* filename,
+    int line
+  );
 
   ~MMFilesDropCollectionDitch();
 
@@ -222,8 +225,8 @@ class MMFilesDropCollectionDitch final : public MMFilesDitch {
   bool executeCallback() { return _callback(_collection); }
 
  private:
-  arangodb::LogicalCollection* _collection;
-  std::function<bool(arangodb::LogicalCollection*)> _callback;
+  arangodb::LogicalCollection& _collection;
+  std::function<bool(arangodb::LogicalCollection&)> _callback;
 };
 
 /// @brief doubly linked list of ditches
@@ -299,9 +302,11 @@ class MMFilesDitches {
 
   /// @brief creates a new collection drop ditch
   MMFilesDropCollectionDitch* createMMFilesDropCollectionDitch(
-      arangodb::LogicalCollection* collection, 
-      std::function<bool(arangodb::LogicalCollection*)> callback,
-      char const* filename, int line);
+    arangodb::LogicalCollection& collection,
+    std::function<bool(arangodb::LogicalCollection&)> const& callback,
+    char const* filename,
+    int line
+  );
 
  private:
   /// @brief inserts the ditch into the linked list of ditches

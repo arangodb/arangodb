@@ -38,6 +38,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -213,10 +214,10 @@ void MMFilesHashIndexLookupBuilder::buildNextSearchValue() {
 
 MMFilesHashIndexIterator::MMFilesHashIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
+    MMFilesHashIndex const* index,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _lookups(trx, node, reference, index->fields()),
       _buffer(),
@@ -249,69 +250,44 @@ bool MMFilesHashIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
-void MMFilesHashIndexIterator::reset() {
-  _buffer.clear();
-  _posInBuffer = 0;
-  _lookups.reset();
-  _index->lookup(_trx, _lookups.lookup(), _buffer);
-}
+bool MMFilesHashIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
 
-MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
-    std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
-    : IndexIterator(collection, trx, mmdr, index),
-      _index(index),
-      _searchValues(searchValues.get()),
-      _iterator(_searchValues->slice()),
-      _buffer(),
-      _posInBuffer(0) {
-  searchValues.release();  // now we have ownership for searchValues
-}
-
-MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
-  if (_searchValues != nullptr) {
-    // return the VPackBuilder to the transaction context
-    _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
-  }
-}
-
-bool MMFilesHashIndexIteratorVPack::next(LocalDocumentIdCallback const& cb,
-                                         size_t limit) {
+  bool done = false;
   while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
-      if (!_iterator.valid()) {
+      if (!_lookups.hasAndGetNext()) {
         // we're at the end of the lookup values
-        return false;
+        done = true;
+        break;
       }
 
       // We have to refill the buffer
       _buffer.clear();
       _posInBuffer = 0;
 
-      int res = TRI_ERROR_NO_ERROR;
-      _index->lookup(_trx, _iterator.value(), _buffer);
-      _iterator.next();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
     }
 
     if (!_buffer.empty()) {
       // found something
       TRI_ASSERT(_posInBuffer < _buffer.size());
-      cb(_buffer[_posInBuffer++]->localDocumentId());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++]->localDocumentId(), nullptr));
       --limit;
     }
   }
-  return true;
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
-void MMFilesHashIndexIteratorVPack::reset() {
+void MMFilesHashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;
-  _iterator.reset();
+  _lookups.reset();
+  _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
 /// @brief create the unique array
@@ -330,23 +306,22 @@ MMFilesHashIndex::MultiArray::MultiArray(
   TRI_ASSERT(_hashArray != nullptr);
 }
 
-MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
-                                   LogicalCollection* collection,
-                                   VPackSlice const& info)
+MMFilesHashIndex::MMFilesHashIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : MMFilesPathBasedIndex(iid, collection, info,
                             sizeof(LocalDocumentId) + sizeof(uint32_t), false),
       _uniqueArray(nullptr) {
-  size_t indexBuckets = 1;
+  auto physical = static_cast<MMFilesCollection*>(collection.getPhysical());
 
-  if (collection != nullptr) {
-    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
-    TRI_ASSERT(physical != nullptr);
-    indexBuckets = static_cast<size_t>(physical->indexBuckets());
-    
-    if (collection->isAStub()) {
-      // in order to reduce memory usage
-      indexBuckets = 1;
-    }
+  TRI_ASSERT(physical != nullptr);
+  size_t indexBuckets = static_cast<size_t>(physical->indexBuckets());
+
+  if (collection.isAStub()) {
+    // in order to reduce memory usage
+    indexBuckets = 1;
   }
 
   if (_unique) {
@@ -378,7 +353,11 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimateLocal(StringRef const*) const {
+double MMFilesHashIndex::selectivityEstimate(StringRef const&) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
+    return 1.0;
+  }
   if (_multiArray == nullptr) {
     return 0.1;
   }
@@ -411,12 +390,13 @@ void MMFilesHashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
@@ -428,7 +408,8 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid);
   }
 
-  value = info.get("fields");
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
@@ -437,12 +418,18 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
+
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique, false
+                 )
+     ) {
     return false;
   }
+
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", false)) {
+                   info, arangodb::StaticStrings::IndexSparse, false
+                 )
+     ) {
     return false;
   }
 
@@ -549,7 +536,7 @@ int MMFilesHashIndex::sizeHint(transaction::Methods* trx, size_t size) {
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
 
   if (_unique) {
     return _uniqueArray->_hashArray->resize(&context, size);
@@ -567,7 +554,7 @@ int MMFilesHashIndex::lookup(
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
 
   if (_unique) {
     MMFilesHashIndexElement* found =
@@ -609,7 +596,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
 
   auto work = [this, &context](MMFilesHashIndexElement* element,
                                OperationMode) -> int {
@@ -627,10 +614,12 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
       IndexResult error(res, this);
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         LocalDocumentId rev(_uniqueArray->_hashArray->find(&context, hashElement)->localDocumentId());
-        ManagedDocumentResult mmdr;
-        _collection->getPhysical()->readDocument(trx, rev, mmdr);
-        std::string existingId(
-          VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
+        std::string existingId;
+
+        _collection.getPhysical()->readDocumentWithCallback(trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
+          existingId = doc.get(StaticStrings::KeyString).copyString();
+        });
+
         if (mode == OperationMode::internal) {
           error = IndexResult(res, std::move(existingId));
         } else {
@@ -642,6 +631,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
         // Free all elements that are not yet in the index
         _allocator->deallocate(elements[j]);
       }
+
       // Already indexed elements will be removed by the rollback
       return error;
     }
@@ -682,7 +672,8 @@ void MMFilesHashIndex::batchInsertUnique(
   // functions that will be called for each thread
   auto creator = [&trx, this]() -> void* {
     ManagedDocumentResult* result = new ManagedDocumentResult;
-    return new IndexLookupContext(trx, _collection, result, numPaths());
+
+    return new IndexLookupContext(trx, &_collection, result, numPaths());
   };
   auto destroyer = [](void* userData) {
     IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
@@ -718,12 +709,12 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
     for (auto& hashElement : elements) {
       _allocator->deallocate(hashElement);
     }
+
     return res;
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
-
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
   auto work = [this, &context](MMFilesHashIndexElement*& element,
                                OperationMode) {
     TRI_IF_FAILURE("InsertHashIndex") {
@@ -805,7 +796,7 @@ void MMFilesHashIndex::batchInsertMulti(
   // functions that will be called for each thread
   auto creator = [&trx, this]() -> void* {
     ManagedDocumentResult* result = new ManagedDocumentResult;
-    return new IndexLookupContext(trx, _collection, result, numPaths());
+    return new IndexLookupContext(trx, &_collection, result, numPaths());
   };
   auto destroyer = [](void* userData) {
     IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
@@ -836,7 +827,7 @@ int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
                                           OperationMode mode) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
   MMFilesHashIndexElement* old =
       _uniqueArray->_hashArray->remove(&context, element);
 
@@ -846,8 +837,10 @@ int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
                                             // can happen
       return TRI_ERROR_NO_ERROR;
     }
+
     return TRI_ERROR_INTERNAL;
   }
+
   _allocator->deallocate(old);
 
   return TRI_ERROR_NO_ERROR;
@@ -858,7 +851,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
                                          OperationMode mode) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
   MMFilesHashIndexElement* old =
       _multiArray->_hashArray->remove(&context, element);
 
@@ -868,8 +861,10 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
                                             // can happen
       return TRI_ERROR_NO_ERROR;
     }
+
     return TRI_ERROR_INTERNAL;
   }
+
   _allocator->deallocate(old);
 
   return TRI_ERROR_NO_ERROR;
@@ -877,6 +872,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
 
 /// @brief checks whether the index supports the condition
 bool MMFilesHashIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
@@ -887,14 +883,15 @@ bool MMFilesHashIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesHashIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new MMFilesHashIndexIterator(_collection, trx, mmdr, this, node,
-                                      reference);
+  return new MMFilesHashIndexIterator(&_collection, trx, this, node, reference);
 }
 
 /// @brief specializes the condition for use with the index

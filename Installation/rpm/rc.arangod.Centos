@@ -32,6 +32,9 @@ start() {
   ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on /var/lib/arangodb3-apps"
   ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on $PIDDIR"
 
+  local current=/var/tmp/arangod
+  ( mkdir -p $current && chown -R arangodb:arangodb $current ) || { echo "could not create or set permissions for $current"; exit 1; }
+
   ulimit -H -n 131072 || true
   ulimit -S -n 131072 || true
 

@@ -31,28 +31,29 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/process-utils.h"
-#include "Basics/WorkMonitor.h"
-#include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::cache;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 Manager* CacheManagerFeature::MANAGER = nullptr;
 const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
 CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
@@ -61,8 +62,7 @@ CacheManagerFeature::CacheManagerFeature(
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Scheduler");
+  startsAfter("BasicsPhase");
 }
 
 CacheManagerFeature::~CacheManagerFeature() {}
@@ -88,7 +88,7 @@ void CacheManagerFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_cacheSize < (CacheManagerFeature::minRebalancingInterval)) {
+  if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.rebalancing-interval', need at least "
         << (CacheManagerFeature::minRebalancingInterval);
@@ -97,9 +97,15 @@ void CacheManagerFeature::validateOptions(
 }
 
 void CacheManagerFeature::start() {
+  if (ServerState::instance()->isAgent()) {
+    // we intentionally do not activate the cache on an agency node, as it
+    // is not needed there
+    return;
+  }
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->post(fn);
+    scheduler->post(fn, false);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));
@@ -124,3 +130,5 @@ void CacheManagerFeature::stop() {
 }
 
 void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
+
+} // arangodb

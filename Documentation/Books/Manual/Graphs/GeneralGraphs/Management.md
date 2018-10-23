@@ -71,7 +71,7 @@ this function can be used to add more definitions to the initial list.
 
 
 
-#### Relation
+### Relation
 
 Define a directed relation.
 
@@ -177,7 +177,7 @@ Create a graph with edge definitions and orphan collections:
 
 
 
-#### Complete Example to create a graph
+### Complete Example to create a graph
 
 Example Call:
 
@@ -227,7 +227,8 @@ alternative call:
 
 
 
-### List available graphs
+List available graphs
+---------------------
 
 
 
@@ -249,7 +250,8 @@ Lists all graph names stored in this database.
     @endDocuBlock generalGraphList
 
 
-### Load a graph
+Load a graph
+------------
 
 
 
@@ -282,8 +284,8 @@ Get a graph:
 
 
 
-### Remove a graph
-
+Remove a graph
+--------------
 
 
 Remove a graph
@@ -334,8 +336,8 @@ Drop a graph and keep collections:
 
 
 
-Modify a graph definition during runtime
-----------------------------------------
+Modify a graph definition at runtime
+------------------------------------
 
 After you have created an graph its definition is not immutable.
 You can still add, delete or modify edge definitions and vertex collections.
@@ -382,7 +384,7 @@ graph with different *from* and/or *to* collections an error is thrown.
 
 Modify an relation definition
 
-`graph_module._editEdgeDefinition(edgeDefinition)`
+`graph_module._editEdgeDefinitions(edgeDefinition)`
 
 Edits one relation definition of a graph. The edge definition used as argument will
 replace the existing edge definition of the graph which has the same collection.
@@ -581,7 +583,7 @@ Optionally the collection can be deleted, if it is not used in any other graph.
 
 
 
-Maniuplating Vertices
+Manipulating Vertices
 ---------------------
 
 ### Save a vertex

@@ -25,6 +25,8 @@
 #define ARANGODB_BASICS_DATA_PROTECTOR_H 1
 
 #include "Basics/Common.h"
+#include <thread>
+#include <chrono>
 
 namespace arangodb {
 namespace basics {
@@ -140,7 +142,7 @@ class DataProtector {
     for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
       while (reinterpret_cast<Entry*>(_list + i)->_count > 0) {
         // let other threads do some work while we're waiting
-        usleep(250);
+        std::this_thread::sleep_for(std::chrono::microseconds(250));
       }
     }
   }

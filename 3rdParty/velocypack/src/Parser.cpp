@@ -26,6 +26,8 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Value.h"
+#include "velocypack/ValueType.h"
 #include "asm-functions.h"
 
 #include <cstdlib>
@@ -34,7 +36,7 @@ using namespace arangodb::velocypack;
 
 // The following function does the actual parse. It gets bytes
 // via peek, consume and reset appends the result to the Builder
-// in *_b. Errors are reported via an exception.
+// in *_builderPtr. Errors are reported via an exception.
 // Behind the scenes it runs two parses, one to collect sizes and
 // check for parse errors (scan phase) and then one to actually
 // build the result (build phase).
@@ -50,18 +52,18 @@ ValueLength Parser::parseInternal(bool multi) {
   ValueLength nr = 0;
   do {
     bool haveReported = false;
-    if (!_b->_stack.empty()) {
-      ValueLength const tos = _b->_stack.back();
-      if (_b->_start[tos] == 0x0b || _b->_start[tos] == 0x14) {
-        if (! _b->_keyWritten) {
+    if (!_builderPtr->_stack.empty()) {
+      ValueLength const tos = _builderPtr->_stack.back();
+      if (_builderPtr->_start[tos] == 0x0b || _builderPtr->_start[tos] == 0x14) {
+        if (!_builderPtr->_keyWritten) {
           throw Exception(Exception::BuilderKeyMustBeString);
         }
         else {
-          _b->_keyWritten = false;
+          _builderPtr->_keyWritten = false;
         }
       }
       else {
-        _b->reportAdd();
+        _builderPtr->reportAdd();
         haveReported = true;
       }
     }
@@ -70,7 +72,7 @@ ValueLength Parser::parseInternal(bool multi) {
     }
     catch (...) {
       if (haveReported) {
-        _b->cleanupAdd();
+        _builderPtr->cleanupAdd();
       }
       throw;
     }
@@ -89,7 +91,7 @@ ValueLength Parser::parseInternal(bool multi) {
 // skips over all following whitespace tokens but does not consume the
 // byte following the whitespace
 int Parser::skipWhiteSpace(char const* err) {
-  if (_pos >= _size) {
+  if (VELOCYPACK_UNLIKELY(_pos >= _size)) {
     throw Exception(Exception::ParseError, err);
   }
   uint8_t c = _start[_pos];
@@ -148,20 +150,20 @@ void Parser::parseNumber() {
     }
     if (!numberValue.isInteger) {
       if (negative) {
-        _b->addDouble(-numberValue.doubleValue);
+        _builderPtr->addDouble(-numberValue.doubleValue);
       } else {
-        _b->addDouble(numberValue.doubleValue);
+        _builderPtr->addDouble(numberValue.doubleValue);
       }
     } else if (negative) {
       if (numberValue.intValue <= static_cast<uint64_t>(INT64_MAX)) {
-        _b->addInt(-static_cast<int64_t>(numberValue.intValue));
+        _builderPtr->addInt(-static_cast<int64_t>(numberValue.intValue));
       } else if (numberValue.intValue == toUInt64(INT64_MIN)) {
-        _b->addInt(INT64_MIN);
+        _builderPtr->addInt(INT64_MIN);
       } else {
-        _b->addDouble(-static_cast<double>(numberValue.intValue));
+        _builderPtr->addDouble(-static_cast<double>(numberValue.intValue));
       }
     } else {
-      _b->addUInt(numberValue.intValue);
+      _builderPtr->addUInt(numberValue.intValue);
     }
     return;
   }
@@ -182,7 +184,7 @@ void Parser::parseNumber() {
     }
     i = consume();
     if (i < 0) {
-      _b->addDouble(fractionalPart);
+      _builderPtr->addDouble(fractionalPart);
       return;
     }
   } else {
@@ -196,8 +198,8 @@ void Parser::parseNumber() {
     unconsume();
     // use conventional atof() conversion here, to avoid precision loss
     // when interpreting and multiplying the single digits of the input stream
-    // _b->addDouble(fractionalPart);
-    _b->addDouble(atof(reinterpret_cast<char const*>(_start) + startPos));
+    // _builderPtr->addDouble(fractionalPart);
+    _builderPtr->addDouble(atof(reinterpret_cast<char const*>(_start) + startPos));
     return;
   }
   i = getOneOrThrow("Incomplete number");
@@ -222,8 +224,8 @@ void Parser::parseNumber() {
   }
   // use conventional atof() conversion here, to avoid precision loss
   // when interpreting and multiplying the single digits of the input stream
-  // _b->addDouble(fractionalPart);
-  _b->addDouble(atof(reinterpret_cast<char const*>(_start) + startPos));
+  // _builderPtr->addDouble(fractionalPart);
+  _builderPtr->addDouble(atof(reinterpret_cast<char const*>(_start) + startPos));
 }
 
 void Parser::parseString() {
@@ -232,16 +234,8 @@ void Parser::parseString() {
   // VPack representation. We assume that the string is short and
   // insert 8 bytes for the length as soon as we reach 127 bytes
   // in the VPack representation.
-
-  // copy builder pointer into local variable
-  // this avoids accessing the shared pointer repeatedly, which has
-  // a small but non-negligible cost
-  Builder* builder = _b.get();
-  VELOCYPACK_ASSERT(builder != nullptr);
-
-  ValueLength const base = builder->_pos;
-  builder->reserveSpace(1);
-  builder->_start[builder->_pos++] = 0x40;  // correct this later
+  ValueLength const base = _builderPtr->_pos;
+  _builderPtr->appendByte(0x40); // correct this later
 
   bool large = false;          // set to true when we reach 128 bytes
   uint32_t highSurrogate = 0;  // non-zero if high-surrogate was seen
@@ -249,42 +243,42 @@ void Parser::parseString() {
   while (true) {
     size_t remainder = _size - _pos;
     if (remainder >= 16) {
-      builder->reserveSpace(remainder);
+      _builderPtr->reserve(remainder);
       size_t count;
       // Note that the SSE4.2 accelerated string copying functions might
       // peek up to 15 bytes over the given end, because they use 128bit
       // registers. Therefore, we have to subtract 15 from remainder
       // to be on the safe side. Further bytes will be processed below.
       if (options->validateUtf8Strings) {
-        count = JSONStringCopyCheckUtf8(builder->_start + builder->_pos, _start + _pos,
+        count = JSONStringCopyCheckUtf8(_builderPtr->_start + _builderPtr->_pos, _start + _pos,
                                         remainder - 15);
       } else {
-        count = JSONStringCopy(builder->_start + builder->_pos, _start + _pos,
+        count = JSONStringCopy(_builderPtr->_start + _builderPtr->_pos, _start + _pos,
                                remainder - 15);
       }
       _pos += count;
-      builder->_pos += count;
+      _builderPtr->advance(count);
     }
     int i = getOneOrThrow("Unfinished string");
-    if (!large && builder->_pos - (base + 1) > 126) {
+    if (!large && _builderPtr->_pos - (base + 1) > 126) {
       large = true;
-      builder->reserveSpace(8);
-      ValueLength len = builder->_pos - (base + 1);
-      memmove(builder->_start + base + 9, builder->_start + base + 1, checkOverflow(len));
-      builder->_pos += 8;
+      _builderPtr->reserve(8);
+      ValueLength len = _builderPtr->_pos - (base + 1);
+      memmove(_builderPtr->_start + base + 9, _builderPtr->_start + base + 1, checkOverflow(len));
+      _builderPtr->advance(8);
     }
     switch (i) {
       case '"':
         ValueLength len;
         if (!large) {
-          len = builder->_pos - (base + 1);
-          builder->_start[base] = 0x40 + static_cast<uint8_t>(len);
+          len = _builderPtr->_pos - (base + 1);
+          _builderPtr->_start[base] = 0x40 + static_cast<uint8_t>(len);
           // String is ready
         } else {
-          len = builder->_pos - (base + 9);
-          builder->_start[base] = 0xbf;
+          len = _builderPtr->_pos - (base + 9);
+          _builderPtr->_start[base] = 0xbf;
           for (ValueLength i = 1; i <= 8; i++) {
-            builder->_start[base + i] = len & 0xff;
+            _builderPtr->_start[base + i] = len & 0xff;
             len >>= 8;
           }
         }
@@ -292,40 +286,34 @@ void Parser::parseString() {
       case '\\':
         // Handle cases or throw error
         i = consume();
-        if (i < 0) {
+        if (VELOCYPACK_UNLIKELY(i < 0)) {
           throw Exception(Exception::ParseError, "Invalid escape sequence");
         }
         switch (i) {
           case '"':
           case '/':
           case '\\':
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = static_cast<uint8_t>(i);
+            _builderPtr->appendByte(static_cast<uint8_t>(i));
             highSurrogate = 0;
             break;
           case 'b':
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = '\b';
+            _builderPtr->appendByte('\b');
             highSurrogate = 0;
             break;
           case 'f':
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = '\f';
+            _builderPtr->appendByte('\f');
             highSurrogate = 0;
             break;
           case 'n':
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = '\n';
+            _builderPtr->appendByte('\n');
             highSurrogate = 0;
             break;
           case 'r':
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = '\r';
+            _builderPtr->appendByte('\r');
             highSurrogate = 0;
             break;
           case 't':
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = '\t';
+            _builderPtr->appendByte('\t');
             highSurrogate = 0;
             break;
           case 'u': {
@@ -348,23 +336,22 @@ void Parser::parseString() {
               }
             }
             if (v < 0x80) {
-              builder->reserveSpace(1);
-              builder->_start[builder->_pos++] = static_cast<uint8_t>(v);
+              _builderPtr->appendByte(static_cast<uint8_t>(v));
               highSurrogate = 0;
             } else if (v < 0x800) {
-              builder->reserveSpace(2);
-              builder->_start[builder->_pos++] = 0xc0 + (v >> 6);
-              builder->_start[builder->_pos++] = 0x80 + (v & 0x3f);
+              _builderPtr->reserve(2);
+              _builderPtr->appendByteUnchecked(0xc0 + (v >> 6));
+              _builderPtr->appendByteUnchecked(0x80 + (v & 0x3f));
               highSurrogate = 0;
             } else if (v >= 0xdc00 && v < 0xe000 && highSurrogate != 0) {
               // Low surrogate, put the two together:
               v = 0x10000 + ((highSurrogate - 0xd800) << 10) + v - 0xdc00;
-              builder->_pos -= 3;
-              builder->reserveSpace(4);
-              builder->_start[builder->_pos++] = 0xf0 + (v >> 18);
-              builder->_start[builder->_pos++] = 0x80 + ((v >> 12) & 0x3f);
-              builder->_start[builder->_pos++] = 0x80 + ((v >> 6) & 0x3f);
-              builder->_start[builder->_pos++] = 0x80 + (v & 0x3f);
+              _builderPtr->rollback(3);
+              _builderPtr->reserve(4);
+              _builderPtr->appendByteUnchecked(0xf0 + (v >> 18));
+              _builderPtr->appendByteUnchecked(0x80 + ((v >> 12) & 0x3f));
+              _builderPtr->appendByteUnchecked(0x80 + ((v >> 6) & 0x3f));
+              _builderPtr->appendByteUnchecked(0x80 + (v & 0x3f));
               highSurrogate = 0;
             } else {
               if (v >= 0xd800 && v < 0xdc00) {
@@ -373,10 +360,10 @@ void Parser::parseString() {
               } else {
                 highSurrogate = 0;
               }
-              builder->reserveSpace(3);
-              builder->_start[builder->_pos++] = 0xe0 + (v >> 12);
-              builder->_start[builder->_pos++] = 0x80 + ((v >> 6) & 0x3f);
-              builder->_start[builder->_pos++] = 0x80 + (v & 0x3f);
+              _builderPtr->reserve(3);
+              _builderPtr->appendByteUnchecked(0xe0 + (v >> 12));
+              _builderPtr->appendByteUnchecked(0x80 + ((v >> 6) & 0x3f));
+              _builderPtr->appendByteUnchecked(0x80 + (v & 0x3f));
             }
             break;
           }
@@ -387,18 +374,16 @@ void Parser::parseString() {
       default:
         if ((i & 0x80) == 0) {
           // non-UTF-8 sequence
-          if (i < 0x20) {
+          if (VELOCYPACK_UNLIKELY(i < 0x20)) {
             // control character
             throw Exception(Exception::UnexpectedControlCharacter);
           }
           highSurrogate = 0;
-          builder->reserveSpace(1);
-          builder->_start[builder->_pos++] = static_cast<uint8_t>(i);
+          _builderPtr->appendByte(static_cast<uint8_t>(i));
         } else {
           if (!options->validateUtf8Strings) {
             highSurrogate = 0;
-            builder->reserveSpace(1);
-            builder->_start[builder->_pos++] = static_cast<uint8_t>(i);
+            _builderPtr->appendByte(static_cast<uint8_t>(i));
           } else {
             // multi-byte UTF-8 sequence!
             int follow = 0;
@@ -418,14 +403,14 @@ void Parser::parseString() {
             }
 
             // validate follow up characters
-            builder->reserveSpace(1 + follow);
-            builder->_start[builder->_pos++] = static_cast<uint8_t>(i);
+            _builderPtr->reserve(1 + follow);
+            _builderPtr->appendByteUnchecked(static_cast<uint8_t>(i));
             for (int j = 0; j < follow; ++j) {
               i = getOneOrThrow("scanString: truncated UTF-8 sequence");
               if ((i & 0xc0) != 0x80) {
                 throw Exception(Exception::InvalidUtf8Sequence);
               }
-              builder->_start[builder->_pos++] = static_cast<uint8_t>(i);
+              _builderPtr->appendByteUnchecked(static_cast<uint8_t>(i));
             }
             highSurrogate = 0;
           }
@@ -436,19 +421,13 @@ void Parser::parseString() {
 }
 
 void Parser::parseArray() {
-  // copy builder pointer into local variable
-  // this avoids accessing the shared pointer repeatedly, which has
-  // a small but non-negligible cost
-  Builder* builder = _b.get();
-  VELOCYPACK_ASSERT(builder != nullptr);
-
-  builder->addArray();
+  _builderPtr->addArray();
 
   int i = skipWhiteSpace("Expecting item or ']'");
   if (i == ']') {
     // empty array
     ++_pos;  // the closing ']'
-    builder->close();
+    _builderPtr->close();
     return;
   }
 
@@ -456,18 +435,18 @@ void Parser::parseArray() {
 
   while (true) {
     // parse array element itself
-    builder->reportAdd();
+    _builderPtr->reportAdd();
     parseJson();
     i = skipWhiteSpace("Expecting ',' or ']'");
     if (i == ']') {
       // end of array
       ++_pos;  // the closing ']'
-      builder->close();
+      _builderPtr->close();
       decreaseNesting();
       return;
     }
     // skip over ','
-    if (i != ',') {
+    if (VELOCYPACK_UNLIKELY(i != ',')) {
       throw Exception(Exception::ParseError, "Expecting ',' or ']'");
     }
     ++_pos;  // the ','
@@ -478,13 +457,7 @@ void Parser::parseArray() {
 }
 
 void Parser::parseObject() {
-  // copy builder pointer into local variable
-  // this avoids accessing the shared pointer repeatedly, which has
-  // a small but non-negligible cost
-  Builder* builder = _b.get();
-  VELOCYPACK_ASSERT(builder != nullptr);
- 
-  builder->addObject();
+  _builderPtr->addObject();
 
   int i = skipWhiteSpace("Expecting item or '}'");
   if (i == '}') {
@@ -493,7 +466,7 @@ void Parser::parseObject() {
 
     if (_nesting != 0 || !options->keepTopLevelOpen) {
       // only close if we've not been asked to keep top level open
-      builder->close();
+      _builderPtr->close();
     }
     return;
   }
@@ -502,28 +475,28 @@ void Parser::parseObject() {
 
   while (true) {
     // always expecting a string attribute name here
-    if (i != '"') {
+    if (VELOCYPACK_UNLIKELY(i != '"')) {
       throw Exception(Exception::ParseError, "Expecting '\"' or '}'");
     }
     // get past the initial '"'
     ++_pos;
 
-    builder->reportAdd();
+    _builderPtr->reportAdd();
     bool excludeAttribute = false;
-    auto const lastPos = builder->_pos;
+    auto const lastPos = _builderPtr->_pos;
     if (options->attributeExcludeHandler == nullptr) {
       parseString();
     } else {
       parseString();
       if (options->attributeExcludeHandler->shouldExclude(
-              Slice(builder->_start + lastPos), _nesting)) {
+              Slice(_builderPtr->_start + lastPos), _nesting)) {
         excludeAttribute = true;
       }
     }
 
     if (!excludeAttribute && options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
-      Slice key(builder->_start + lastPos);
+      Slice key(_builderPtr->_start + lastPos);
 
       if (key.isString()) {
         ValueLength keyLength;
@@ -535,15 +508,15 @@ void Parser::parseObject() {
           // found translation... now reset position to old key position
           // and simply overwrite the existing key with the numeric translation
           // id
-          builder->_pos = lastPos;
-          builder->addUInt(Slice(translated).getUInt());
+          _builderPtr->resetTo(lastPos);
+          _builderPtr->addUInt(Slice(translated).getUInt());
         }
       }
     }
 
     i = skipWhiteSpace("Expecting ':'");
     // always expecting the ':' here
-    if (i != ':') {
+    if (VELOCYPACK_UNLIKELY(i != ':')) {
       throw Exception(Exception::ParseError, "Expecting ':'");
     }
     ++_pos;  // skip over the colon
@@ -551,7 +524,7 @@ void Parser::parseObject() {
     parseJson();
 
     if (excludeAttribute) {
-      builder->removeLast();
+      _builderPtr->removeLast();
     }
 
     i = skipWhiteSpace("Expecting ',' or '}'");
@@ -560,12 +533,12 @@ void Parser::parseObject() {
       ++_pos;  // the closing '}'
       if (_nesting != 1 || !options->keepTopLevelOpen) {
         // only close if we've not been asked to keep top level open
-        builder->close();
+        _builderPtr->close();
       }
       decreaseNesting();
       return;
     }
-    if (i != ',') {
+    if (VELOCYPACK_UNLIKELY(i != ',')) {
       throw Exception(Exception::ParseError, "Expecting ',' or '}'");
     }
     // skip over ','

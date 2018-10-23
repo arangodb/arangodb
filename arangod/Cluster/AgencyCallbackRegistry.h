@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CLUSTER_AGENCYCALLACKREGISTRY_H
-#define CLUSTER_AGENCYCALLACKREGISTRY_H 1
+#ifndef CLUSTER_AGENCY_CALLBACK_REGISTRY_H
+#define CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
 
 #include "Cluster/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"

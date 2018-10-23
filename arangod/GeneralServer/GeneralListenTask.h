@@ -25,11 +25,13 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTP_LISTEN_TASK_H
 #define ARANGOD_HTTP_SERVER_HTTP_LISTEN_TASK_H 1
 
-#include "Scheduler/ListenTask.h"
-
 #include <openssl/ssl.h>
 
 #include "GeneralServer/GeneralDefinitions.h"
+#include "GeneralServer/GeneralServer.h"
+
+#include "Scheduler/ListenTask.h"
+
 
 namespace arangodb {
 class Endpoint;
@@ -37,12 +39,12 @@ class Endpoint;
 namespace rest {
 class GeneralServer;
 
-class GeneralListenTask : public ListenTask {
+class GeneralListenTask final : public ListenTask {
   GeneralListenTask(GeneralListenTask const&) = delete;
   GeneralListenTask& operator=(GeneralListenTask const&) = delete;
 
  public:
-  GeneralListenTask(EventLoop, GeneralServer*, Endpoint*,
+  GeneralListenTask(GeneralServer &server, GeneralServer::IoContext&, Endpoint*,
                     ProtocolType connectionType);
 
  protected:
@@ -50,7 +52,6 @@ class GeneralListenTask : public ListenTask {
                        ConnectionInfo&&) override;
 
  private:
-  GeneralServer* _server;
   ProtocolType const _connectionType;
   double _keepAliveTimeout = 300.0;
 };

@@ -37,7 +37,7 @@ using namespace arangodb::basics;
 
 static size_t const MinReserveValue = 32;
 
-void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
+void VelocyPackDumper::handleUnsupportedType(VPackSlice const* /*slice*/) {
   TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
 
   if (options->unsupportedTypeBehavior == VPackOptions::NullifyUnsupportedType) {

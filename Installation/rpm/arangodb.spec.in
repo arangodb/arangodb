@@ -45,7 +45,7 @@
 
 Name:           @CPACK_PACKAGE_NAME@
 Version:        @CPACK_PACKAGE_VERSION@
-Release:        @ARANGODB_PACKAGE_REVISION@
+Release:        @ARANGODB_RPM_REVISION@
 Summary:        The open-source, multi-model NoSQL database
 License:        Apache-2.0
 Group:          Productivity/Databases/Servers
@@ -97,7 +97,7 @@ It is written in C/C++.
 
 
 %description client
-The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimp (import).
+The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimport (import).
 
 %description debuginfo
 Debug symbols for the arangodb database
@@ -170,13 +170,13 @@ mkdir -p %{buildroot}%{_piddir}
 #%doc LICENSES-OTHER-COMPONENTS.md
 
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangosh.conf
-%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangoimp.conf
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangoimport.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangodump.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangorestore.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangobench.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/foxx-manager.conf
 %{_bindir}/arangosh
-%{_bindir}/arangoimp
+%{_bindir}/arangoimport
 %{_bindir}/arangodump
 %{_bindir}/arangorestore
 %{_bindir}/arangobench
@@ -185,10 +185,10 @@ mkdir -p %{buildroot}%{_piddir}
 %{_mandir}/*/arangorestore*
 %{_mandir}/*/arangobench*
 %{_mandir}/*/arangodump*
-%{_mandir}/*/arangoimp*
-%{_datadir}/arangodb3/js/common
-%{_datadir}/arangodb3/js/client
-%{_datadir}/arangodb3/js/node
+%{_mandir}/*/arangoimport*
+%{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/common
+%{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/client
+%{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/node
 
 %files debuginfo
 @CPACK_DEBUG_DIRECTORY_PATTERN@

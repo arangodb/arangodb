@@ -35,6 +35,7 @@ const toArgv = require('internal').toArgv;
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
+const pathForTesting = require('internal').pathForTesting;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -100,6 +101,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let env = {};
   let customInstanceInfos = {};
+  let healthCheck = function () {return true;};
+
+  if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
+    healthCheck = startStopHandlers.healthCheck;
+  }
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStart')) {
     customInstanceInfos['preStart'] = startStopHandlers.preStart(options,
@@ -117,7 +123,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     _.defaults(env, customInstanceInfos.preStart.env);
   }
 
-  let instanceInfo = pu.startInstance('tcp', options, serverOptions, testname);
+  let instanceInfo = pu.startInstance(options.protocol, options, serverOptions, testname);
 
   if (instanceInfo === false) {
     if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('startFailed')) {
@@ -154,6 +160,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let results = {};
   let continueTesting = true;
+  let serverDead = false;
   let count = 0;
   let forceTerminate = false;
   let graphCount = 0;
@@ -168,9 +175,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       count += 1;
 
       let collectionsBefore = [];
-      db._collections().forEach(collection => {
-        collectionsBefore.push(collection._name);
-      });
+      if (!serverDead) {
+        db._collections().forEach(collection => {
+          collectionsBefore.push(collection._name);
+        });
+      }
       while (first || options.loopEternal) {
         if (!continueTesting) {
           print('oops! Skipping, ' + te + ' server is gone.');
@@ -213,39 +222,50 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           }
         }
 
-        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
+            healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
+          continueTesting = true; 
 
-        // Check whether some collections were left behind, and if mark test as failed.
-        let collectionsAfter = [];
-        db._collections().forEach(collection => {
-          collectionsAfter.push(collection._name);
-        });
-        let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
-          return (name[0] !== '_'); // exclude system collections from the comparison
-        });
-	print(delta);
-        if (delta.length !== 0) {
-          results[te] = {
-            status: false,
-            message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
-          };
-          collectionsBefore = [];
+          // Check whether some collections were left behind, and if mark test as failed.
+          let collectionsAfter = [];
           db._collections().forEach(collection => {
-            collectionsBefore.push(collection._name);
+            collectionsAfter.push(collection._name);
           });
-        }
+          let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+            return (name[0] !== '_'); // exclude system collections from the comparison
+          });
 
-        if (db._graphs.count() !== graphCount) {
+          if (delta.length !== 0) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
+            };
+            collectionsBefore = [];
+            db._collections().forEach(collection => {
+              collectionsBefore.push(collection._name);
+            });
+          }
+
+          let graphs = db._collection('_graphs');
+          if (graphs && graphs.count() !== graphCount) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+                JSON.stringify(graphs.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+            graphCount = graphs.count();
+          }
+        } else {
+          serverDead = true;
+          continueTesting = false;
           results[te] = {
             status: false,
-            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-              JSON.stringify(db._graphs.toArray()) +
-              ' ] - Original test status: ' +
-              JSON.stringify(results[te])
+            message: 'server is dead.'
           };
-          graphCount = db._graphs.count();
         }
-
+        
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
           customInstanceInfos['alive'] = startStopHandlers.alive(options,
                                                                  serverOptions,
@@ -283,14 +303,14 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (count === 0) {
     results['ALLTESTS'] = {
-      status: false,
+      status: true,
       skipped: true
     };
-    results.status = false;
+    results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 
-  print('Shutting down...');
+  print(Date() + ' Shutting down...');
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
                                                                serverOptions,
@@ -344,7 +364,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (options.replication) {
     whichFilter.filter = 'replication';
-
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       whichFilter.filter = 'testcase';
       return ((testname.search(options.test) >= 0) &&
@@ -353,6 +372,7 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
       return testname.indexOf('replication') !== -1;
     }
   } else if (testname.indexOf('replication') !== -1) {
+
     whichFilter.filter = 'replication';
     return false;
   }
@@ -364,6 +384,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf('-noncluster') !== -1 && options.cluster) {
     whichFilter.filter = 'cluster';
+    return false;
+  }
+
+  if (testname.indexOf('-arangosearch') !== -1 && !options.arangosearch) {
+    whichFilter.filter = 'arangosearch';
     return false;
   }
 
@@ -463,20 +488,26 @@ function splitBuckets (options, cases) {
 function doOnePathInner (path) {
   return _.filter(fs.list(makePathUnix(path)),
                   function (p) {
-                    return (p.substr(-3) === '.js');
+                    return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');;
                   })
     .map(function (x) {
       return fs.join(makePathUnix(path), x);
     }).sort();
 }
 
-function scanTestPath (path) {
-  var community = doOnePathInner(path);
+function scanTestPaths (paths) {
+  // add enterprise tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
-    return community.concat(doOnePathInner('enterprise/' + path));
-  } else {
-    return community;
+    paths = paths.concat(paths.map(function(p) {
+      return 'enterprise/' + p;
+    }));
   }
+
+  let allTestCases = [];
+  paths.forEach(function(p) {
+    allTestCases = allTestCases.concat(doOnePathInner(p));
+  });
+  return allTestCases;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -488,8 +519,12 @@ function runThere (options, instanceInfo, file) {
     let testCode;
     let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
+      let testCase = JSON.stringify(options.testCase);
+      if (options.testCase === undefined) {
+        testCase = '"undefined"';
+      }
       testCode = 'const runTest = require("jsunity").runTest; ' +
-        'return runTest(' + JSON.stringify(file) + ', true);';
+        'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
@@ -554,6 +589,8 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
+  args['javascript.unit-test-filter'] = options.testFilter;
+
   if (!options.verbose) {
     args['log.level'] = 'warning';
   }
@@ -562,15 +599,16 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = Object.assign(args, addArgs);
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir);
+  const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
   let result;
   try {
-    result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
+    result = JSON.parse(fs.read(jsonFN));
 
-    fs.remove(instanceInfo.rootDir + '/testresult.json');
+    fs.remove(jsonFN);
   } catch (x) {
     if (options.extremeVerbosity) {
-      print('failed to read ' + instanceInfo.rootDir + '/testresult.json');
+      print('failed to read ' + jsonFN);
     }
     return rc;
   }
@@ -584,6 +622,138 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
 }
 runInArangosh.info = 'arangosh';
+
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs a unittest file using rspec
+// //////////////////////////////////////////////////////////////////////////////
+function camelize (str) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (letter, index) {
+    return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
+  }).replace(/\s+/g, '');
+}
+
+const parseRspecJson = function (testCase, res, totalDuration) {
+  let tName = camelize(testCase.description);
+  let status = (testCase.status === 'passed');
+
+  res[tName] = {
+    status: status,
+    message: testCase.full_description,
+    duration: totalDuration // RSpec doesn't offer per testcase time...
+  };
+
+  res.total++;
+
+  if (!status) {
+    const msg = yaml.safeDump(testCase)
+          .replace(/.*rspec\/core.*\n/gm, '')
+          .replace(/.*rspec\\core.*\n/gm, '')
+          .replace(/.*lib\/ruby.*\n/, '')
+          .replace(/.*- >-.*\n/gm, '')
+          .replace(/\n *`/gm, ' `');
+    print('RSpec test case falied: \n' + msg);
+    res[tName].message += '\n' + msg;
+  }
+  return status ? 0 : 1;
+};
+function runInRSpec (options, instanceInfo, file, addArgs) {
+  const tmpname = fs.join(instanceInfo.rootDir, 'testconfig.rb');
+  const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
+
+  let command;
+  let args;
+  let rspec;
+  let ssl = "0";
+  if (instanceInfo.protocol === 'ssl') {
+    ssl = "1";
+  }
+  let rspecConfig = 'RSpec.configure do |c|\n' +
+                    '  c.add_setting :ARANGO_SERVER\n' +
+      '  c.ARANGO_SERVER = "' +
+      instanceInfo.endpoint.substr(6) + '"\n' +
+      '  c.add_setting :ARANGO_SSL\n' +
+      '  c.ARANGO_SSL = "' + ssl + '"\n' +
+      '  c.add_setting :ARANGO_USER\n' +
+      '  c.ARANGO_USER = "' + options.username + '"\n' +
+      '  c.add_setting :ARANGO_PASSWORD\n' +
+      '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
+      '  c.add_setting :SKIP_TIMECRITICAL\n' +
+      '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
+      'end\n';
+
+  fs.write(tmpname, rspecConfig);
+
+  if (options.extremeVerbosity === true) {
+    print('rspecConfig: \n' + rspecConfig);
+  }
+
+  try {
+    fs.makeDirectory(pu.LOGS_DIR);
+  } catch (err) {}
+
+  if (options.ruby === '') {
+    command = options.rspec;
+    rspec = undefined;
+  } else {
+    command = options.ruby;
+    rspec = options.rspec;
+  }
+
+  args = ['--color',
+          '-I', fs.join('tests', 'arangodbRspecLib'),
+          '--format', 'd',
+          '--format', 'j',
+          '--out', jsonFN,
+          '--require', tmpname,
+          file
+         ];
+
+  if (rspec !== undefined) {
+    args = [rspec].concat(args);
+  }
+
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
+
+  let result = {
+    total: 0,
+    failed: 0,
+    status: res.status
+  };
+
+  try {
+    const jsonResult = JSON.parse(fs.read(jsonFN));
+
+    if (options.extremeVerbosity) {
+      print(yaml.safeDump(jsonResult));
+    }
+
+    for (let j = 0; j < jsonResult.examples.length; ++j) {
+      result.failed += parseRspecJson(
+        jsonResult.examples[j], result,
+        jsonResult.summary.duration);
+    }
+
+    result.duration = jsonResult.summary.duration;
+  } catch (x) {
+    result.failed = 1;
+    result.message = 'Failed to parse rspec results for: ' + file;
+
+    if (res.status === false) {
+      options.cleanup = false;
+    }
+  }
+
+  if (fs.exists(jsonFN)) fs.remove(jsonFN);
+  fs.remove(tmpname);
+  return result;
+}
+runInRSpec.info = 'runInRSpec';
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief
+// //////////////////////////////////////////////////////////////////////////////
 
 function makeResults (testname, instanceInfo) {
   const startTime = time();
@@ -631,6 +801,7 @@ function makeResults (testname, instanceInfo) {
 
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
+exports.runInRSpec = runInRSpec;
 
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
@@ -638,6 +809,7 @@ exports.performTests = performTests;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;
-exports.scanTestPath = scanTestPath;
+exports.scanTestPaths = scanTestPaths;
 exports.makeResults = makeResults;
 exports.diffArray = diffArray;
+exports.pathForTesting = pathForTesting;

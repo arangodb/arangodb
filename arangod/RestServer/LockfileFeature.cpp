@@ -28,15 +28,16 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabasePathFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace arangodb {
+
 LockfileFeature::LockfileFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Lockfile") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void LockfileFeature::start() {
@@ -80,8 +81,16 @@ void LockfileFeature::start() {
       << _lockFilename << "': " << TRI_errno_string(res);
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_LOCK);
   }
+
+  auto cleanup = std::make_unique<CleanupFunctions::CleanupFunction>(
+  [&] (int code, void* data) {
+    TRI_DestroyLockFile(_lockFilename.c_str());
+  });
+  CleanupFunctions::registerFunction(std::move(cleanup));
 }
 
 void LockfileFeature::unprepare() {
   TRI_DestroyLockFile(_lockFilename.c_str());
 }
+
+} // arangodb

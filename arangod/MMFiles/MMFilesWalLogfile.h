@@ -64,12 +64,12 @@ class MMFilesWalLogfile {
   static MMFilesWalLogfile* createNew(std::string const&, MMFilesWalLogfile::IdType, uint32_t);
 
   /// @brief open an existing logfile
-  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType, bool, bool);
+  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType, bool wasCollected, bool ignoreErrors);
 
   int lockInMemory() {
     return _df->lockInMemory();
   }
-  
+
   int unlockFromMemory() {
     return _df->unlockFromMemory();
   }
@@ -84,11 +84,11 @@ class MMFilesWalLogfile {
 
   /// @brief return the datafile pointer
   inline MMFilesDatafile* df() const { return _df; }
-  
+
   /// @brief return the pointer to the logfile contents
-  inline char const* data() const { 
+  inline char const* data() const {
     TRI_ASSERT(_df != nullptr);
-    return _df->data(); 
+    return _df->data();
   }
 
   /// @brief return the file descriptor
@@ -144,9 +144,18 @@ class MMFilesWalLogfile {
   }
 
   /// @brief whether or not the logfile can be collected
-  inline bool canBeCollected() const {
+  inline bool canBeCollected(TRI_voc_tick_t releasedTick) const {
+    if (releasedTick < df()->maxTick()) {
+      return false;
+    }
+
     return (_status == StatusType::SEALED ||
             _status == StatusType::COLLECTION_REQUESTED);
+  }
+
+  /// @brief whether or not the logfile can be collected
+  inline bool hasBeenReleased(TRI_voc_tick_t releasedTick) const {
+    return (releasedTick >= df()->maxTick());
   }
 
   /// @brief whether or not the logfile can be removed
@@ -211,7 +220,9 @@ class MMFilesWalLogfile {
         break;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "changing logfile status from " << statusText(_status) << " to " << statusText(status) << " for logfile " << id();
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      << "changing logfile status from " << statusText(_status) << " to "
+      << statusText(status) << " for logfile " << id();
     _status = status;
   }
 

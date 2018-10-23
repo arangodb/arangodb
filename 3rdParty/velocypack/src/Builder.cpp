@@ -24,6 +24,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <array>
 #include <unordered_set>
 
 #include "velocypack/velocypack-common.h"
@@ -34,41 +35,13 @@
 #include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
-  
-std::string Builder::toString() const {
-  Options options;
-  options.prettyPrint = true;
 
-  std::string buffer;
-  StringSink sink(&buffer);
-  Dumper::dump(slice(), &sink, &options);
-  return buffer;
-}
-
-std::string Builder::toJson() const {
-  std::string buffer;
-  StringSink sink(&buffer);
-  Dumper::dump(slice(), &sink);
-  return buffer;
-}
-
-void Builder::doActualSort(std::vector<SortEntry>& entries) {
-  VELOCYPACK_ASSERT(entries.size() > 1);
-  std::sort(entries.begin(), entries.end(),
-            [](SortEntry const& a, SortEntry const& b) {
-    // return true iff a < b:
-    uint8_t const* pa = a.nameStart;
-    uint64_t sizea = a.nameSize;
-    uint8_t const* pb = b.nameStart;
-    uint64_t sizeb = b.nameSize;
-    size_t const compareLength = checkOverflow((std::min)(sizea, sizeb));
-    int res = memcmp(pa, pb, compareLength);
-
-    return (res < 0 || (res == 0 && sizea < sizeb));
-  });
-};
-
-uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
+namespace {
+// Find the actual bytes of the attribute name of the VPack value
+// at position base, also determine the length len of the attribute.
+// This takes into account the different possibilities for the format
+// of attribute names:
+static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len) {
   uint8_t const b = *base;
   if (b >= 0x40 && b <= 0xbe) {
     // short UTF-8 string
@@ -86,12 +59,33 @@ uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
   }
 
   // translate attribute name
-  return findAttrName(Slice(base).makeKey().start(), len);
+  return findAttrName(arangodb::velocypack::Slice(base).makeKey().start(), len);
 }
 
+} // namespace
+
+  
+std::string Builder::toString() const {
+  Options options;
+  options.prettyPrint = true;
+
+  std::string buffer;
+  StringSink sink(&buffer);
+  Dumper::dump(slice(), &sink, &options);
+  return buffer;
+}
+
+std::string Builder::toJson() const {
+  std::string buffer;
+  StringSink sink(&buffer);
+  Dumper::dump(slice(), &sink);
+  return buffer;
+}
+  
 void Builder::sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets) {
-  auto cmp = [&](ValueLength a, ValueLength b) -> bool {
+                                   std::vector<ValueLength>& offsets) const {
+  std::sort(offsets.begin(), offsets.end(), [objBase](ValueLength const& a, 
+                                                      ValueLength const& b) {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
     if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
@@ -108,48 +102,39 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
       int c = memcmp(aa, bb, checkOverflow(m));
       return (c < 0 || (c == 0 && lena < lenb));
     }
-  };
-  std::sort(offsets.begin(), offsets.end(), cmp);
+  });
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
-// on some platforms we can use a thread-local vector
-#if __llvm__ == 1
-  // nono thread local
-  std::vector<Builder::SortEntry> entries;
-#elif defined(_WIN32) && defined(_MSC_VER)
-  std::vector<Builder::SortEntry> entries;
-#else
-  // thread local vector for sorting large object attributes
-  thread_local std::vector<Builder::SortEntry> entries;
-  entries.clear();
-#endif
+  _sortEntries.clear();
 
   size_t const n = offsets.size();
-  entries.reserve(n);
+  VELOCYPACK_ASSERT(n > 1);
+  _sortEntries.reserve(n);
   for (size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
-    e.nameStart = findAttrName(objBase + e.offset, e.nameSize);
-    entries.push_back(e);
+    e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
+    _sortEntries.push_back(e);
   }
-  VELOCYPACK_ASSERT(entries.size() == n);
-  doActualSort(entries);
+  VELOCYPACK_ASSERT(_sortEntries.size() == n);
+  std::sort(_sortEntries.begin(), _sortEntries.end(), [](SortEntry const& a, 
+                                                         SortEntry const& b) noexcept(checkOverflow(UINT64_MAX)) {
+    // return true iff a < b:
+    uint64_t sizea = a.nameSize;
+    uint64_t sizeb = b.nameSize;
+    size_t const compareLength = checkOverflow((std::min)(sizea, sizeb));
+    int res = memcmp(a.nameStart, b.nameStart, compareLength);
+
+    return (res < 0 || (res == 0 && sizea < sizeb));
+  });
 
   // copy back the sorted offsets
   for (size_t i = 0; i < n; i++) {
-    offsets[i] = entries[i].offset;
+    offsets[i] = _sortEntries[i].offset;
   }
-}
-
-void Builder::sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets) {
-  if (offsets.size() > 32) {
-    sortObjectIndexLong(objBase, offsets);
-  } else {
-    sortObjectIndexShort(objBase, offsets);
-  }
+  _sortEntries.clear();
 }
 
 void Builder::removeLast() {
@@ -161,7 +146,7 @@ void Builder::removeLast() {
   if (index.empty()) {
     throw Exception(Exception::BuilderNeedSubvalue);
   }
-  _pos = tos + index.back();
+  resetTo(tos + index.back());
   index.pop_back();
 }
 
@@ -169,7 +154,7 @@ Builder& Builder::closeEmptyArrayOrObject(ValueLength tos, bool isArray) {
   // empty Array or Object
   _start[tos] = (isArray ? 0x01 : 0x0a);
   VELOCYPACK_ASSERT(_pos == tos + 9);
-  _pos -= 8;  // no bytelength and number subvalues needed
+  rollback(8); // no bytelength and number subvalues needed
   _stack.pop_back();
   // Intentionally leave _index[depth] intact to avoid future allocs!
   return *this;
@@ -208,13 +193,13 @@ bool Builder::closeCompactArrayOrObject(ValueLength tos, bool isArray,
 
     // need additional memory for storing the number of values
     if (nLen > 8 - bLen) {
-      reserveSpace(nLen);
+      reserve(nLen);
     }
     storeVariableValueLength<true>(_start + tos + byteSize - 1,
                                    static_cast<ValueLength>(index.size()));
 
-    _pos -= 8;
-    _pos += nLen + bLen;
+    rollback(8);
+    advance(nLen + bLen);
 
     _stack.pop_back();
     return true;
@@ -301,7 +286,7 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
         memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
       }
       ValueLength const diff = 9 - targetPos;
-      _pos -= diff;
+      rollback(diff);
       if (needIndexTable) {
         size_t const n = index.size();
         for (size_t i = 0; i < n; i++) {
@@ -317,9 +302,9 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
   // Now build the table:
   if (needIndexTable) {
     ValueLength tableBase;
-    reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
+    reserve(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
     tableBase = _pos;
-    _pos += offsetSize * index.size();
+    advance(offsetSize * index.size());
     for (size_t i = 0; i < index.size(); i++) {
       uint64_t x = index[i];
       for (size_t j = 0; j < offsetSize; j++) {
@@ -367,7 +352,7 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
 }
 
 Builder& Builder::close() {
-  if (isClosed()) {
+  if (VELOCYPACK_UNLIKELY(isClosed())) {
     throw Exception(Exception::BuilderNeedOpenCompound);
   }
   ValueLength tos = _stack.back();
@@ -402,6 +387,8 @@ Builder& Builder::close() {
     return *this;
   }
 
+  // from here on we are sure that we are dealing with Object types only.
+
   // fix head byte in case a compact Array / Object was originally requested
   _start[tos] = 0x0b;
 
@@ -423,7 +410,7 @@ Builder& Builder::close() {
       memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
     }
     ValueLength const diff = 9 - targetPos;
-    _pos -= diff;
+    rollback(diff);
     size_t const n = index.size();
     for (size_t i = 0; i < n; i++) {
       index[i] -= diff;
@@ -439,16 +426,16 @@ Builder& Builder::close() {
   }
 
   // Now build the table:
-  reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
+  reserve(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
   ValueLength tableBase = _pos;
-  _pos += offsetSize * index.size();
+  advance(offsetSize * index.size());
   // Object
   if (index.size() >= 2) {
     sortObjectIndex(_start + tos, index);
   }
-  for (size_t i = 0; i < index.size(); i++) {
+  for (size_t i = 0; i < index.size(); ++i) {
     uint64_t x = index[i];
-    for (size_t j = 0; j < offsetSize; j++) {
+    for (size_t j = 0; j < offsetSize; ++j) {
       _start[tableBase + offsetSize * i + j] = x & 0xff;
       x >>= 8;
     }
@@ -481,9 +468,11 @@ Builder& Builder::close() {
   }
 
   // And, if desired, check attribute uniqueness:
-  if (options->checkAttributeUniqueness && index.size() > 1) {
-    // check uniqueness of attribute names
-    checkAttributeUniqueness(Slice(_start + tos));
+  if (options->checkAttributeUniqueness && 
+      index.size() > 1 &&
+      !checkAttributeUniqueness(Slice(_start + tos))) {
+    // duplicate attribute name!
+    throw Exception(Exception::DuplicateAttributeName);
   }
 
   // Now the array or object is complete, we pop a ValueLength
@@ -495,7 +484,7 @@ Builder& Builder::close() {
 
 // checks whether an Object value has a specific key attribute
 bool Builder::hasKey(std::string const& key) const {
-  if (_stack.empty()) {
+  if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
   ValueLength const& tos = _stack.back();
@@ -517,7 +506,7 @@ bool Builder::hasKey(std::string const& key) const {
 
 // return the value for a specific key of an Object value
 Slice Builder::getKey(std::string const& key) const {
-  if (_stack.empty()) {
+  if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
   ValueLength const tos = _stack.back();
@@ -547,25 +536,19 @@ uint8_t* Builder::set(Value const& item) {
   // append position. If this is an array or object, then an index
   // table is created and a new ValueLength is pushed onto the stack.
   switch (item.valueType()) {
-    case ValueType::None: {
-      throw Exception(Exception::BuilderUnexpectedType,
-                      "Cannot set a ValueType::None");
-    }
     case ValueType::Null: {
-      reserveSpace(1);
-      _start[_pos++] = 0x18;
+      appendByte(0x18);
       break;
     }
     case ValueType::Bool: {
-      if (ctype != Value::CType::Bool) {
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::Bool)) {
         throw Exception(Exception::BuilderUnexpectedValue,
                         "Must give bool for ValueType::Bool");
       }
-      reserveSpace(1);
       if (item.getBool()) {
-        _start[_pos++] = 0x1a;
+        appendByte(0x1a);
       } else {
-        _start[_pos++] = 0x19;
+        appendByte(0x19);
       }
       break;
     }
@@ -588,10 +571,10 @@ uint8_t* Builder::set(Value const& item) {
           throw Exception(Exception::BuilderUnexpectedValue,
                           "Must give number for ValueType::Double");
       }
-      reserveSpace(1 + sizeof(double));
-      _start[_pos++] = 0x1b;
+      reserve(1 + sizeof(double));
+      appendByteUnchecked(0x1b);
       memcpy(&x, &v, sizeof(double));
-      appendLength<sizeof(double)>(x);
+      appendLengthUnchecked<sizeof(double)>(x);
       break;
     }
     case ValueType::External: {
@@ -600,16 +583,16 @@ uint8_t* Builder::set(Value const& item) {
         // precaution
         throw Exception(Exception::BuilderExternalsDisallowed);
       }
-      if (ctype != Value::CType::VoidPtr) {
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::VoidPtr)) {
         throw Exception(Exception::BuilderUnexpectedValue,
                         "Must give void pointer for ValueType::External");
       }
-      reserveSpace(1 + sizeof(void*));
+      reserve(1 + sizeof(void*));
       // store pointer. this doesn't need to be portable
-      _start[_pos++] = 0x1d;
+      appendByteUnchecked(0x1d);
       void const* value = item.getExternal();
       memcpy(_start + _pos, &value, sizeof(void*));
-      _pos += sizeof(void*);
+      advance(sizeof(void*));
       break;
     }
     case ValueType::SmallInt: {
@@ -628,15 +611,14 @@ uint8_t* Builder::set(Value const& item) {
           throw Exception(Exception::BuilderUnexpectedValue,
                           "Must give number for ValueType::SmallInt");
       }
-      if (vv < -6 || vv > 9) {
+      if (VELOCYPACK_UNLIKELY(vv < -6 || vv > 9)) {
         throw Exception(Exception::NumberOutOfRange,
                         "Number out of range of ValueType::SmallInt");
       }
-      reserveSpace(1);
       if (vv >= 0) {
-        _start[_pos++] = static_cast<uint8_t>(vv + 0x30);
+        appendByte(static_cast<uint8_t>(vv + 0x30));
       } else {
-        _start[_pos++] = static_cast<uint8_t>(vv + 0x40);
+        appendByte(static_cast<uint8_t>(vv + 0x40));
       }
       break;
     }
@@ -663,7 +645,7 @@ uint8_t* Builder::set(Value const& item) {
       uint64_t v = 0;
       switch (ctype) {
         case Value::CType::Double:
-          if (item.getDouble() < 0.0) {
+          if (VELOCYPACK_UNLIKELY(item.getDouble() < 0.0)) {
             throw Exception(
                 Exception::BuilderUnexpectedValue,
                 "Must give non-negative number for ValueType::UInt");
@@ -671,7 +653,7 @@ uint8_t* Builder::set(Value const& item) {
           v = static_cast<uint64_t>(item.getDouble());
           break;
         case Value::CType::Int64:
-          if (item.getInt64() < 0) {
+          if (VELOCYPACK_UNLIKELY(item.getInt64() < 0)) {
             throw Exception(
                 Exception::BuilderUnexpectedValue,
                 "Must give non-negative number for ValueType::UInt");
@@ -686,6 +668,53 @@ uint8_t* Builder::set(Value const& item) {
                           "Must give number for ValueType::UInt");
       }
       addUInt(v);
+      break;
+    }
+    case ValueType::String: {
+      if (ctype == Value::CType::String) {
+        std::string const* s = item.getString();
+        size_t const size = s->size();
+        if (size <= 126) {
+          // short string
+          reserve(1 + size);
+          appendByteUnchecked(static_cast<uint8_t>(0x40 + size));
+          memcpy(_start + _pos, s->data(), size);
+        } else {
+          // long string
+          reserve(1 + 8 + size);
+          appendByteUnchecked(0xbf);
+          appendLengthUnchecked<8>(size);
+          memcpy(_start + _pos, s->data(), size);
+        }
+        advance(size);
+      } else if (ctype == Value::CType::CharPtr) {
+        char const* p = item.getCharPtr();
+        size_t const size = strlen(p);
+        if (size <= 126) {
+          // short string
+          reserve(1 + size);
+          appendByteUnchecked(static_cast<uint8_t>(0x40 + size));
+        } else {
+          // long string
+          reserve(1 + 8 + size);
+          appendByteUnchecked(0xbf);
+          appendLengthUnchecked<8>(size);
+        }
+        memcpy(_start + _pos, p, size);
+        advance(size);
+      } else {
+        throw Exception(
+            Exception::BuilderUnexpectedValue,
+            "Must give a string or char const* for ValueType::String");
+      }
+      break;
+    }
+    case ValueType::Array: {
+      addArray(item._unindexed);
+      break;
+    }
+    case ValueType::Object: {
+      addObject(item._unindexed);
       break;
     }
     case ValueType::UTCDate: {
@@ -707,87 +736,37 @@ uint8_t* Builder::set(Value const& item) {
       addUTCDate(v);
       break;
     }
-    case ValueType::String: {
-      if (ctype == Value::CType::String) {
-        std::string const* s = item.getString();
-        size_t const size = s->size();
-        if (size <= 126) {
-          // short string
-          reserveSpace(1 + size);
-          _start[_pos++] = static_cast<uint8_t>(0x40 + size);
-          memcpy(_start + _pos, s->c_str(), size);
-        } else {
-          // long string
-          reserveSpace(1 + 8 + size);
-          _start[_pos++] = 0xbf;
-          appendLength<8>(size);
-          memcpy(_start + _pos, s->c_str(), size);
-        }
-        _pos += size;
-      } else if (ctype == Value::CType::CharPtr) {
-        char const* p = item.getCharPtr();
-        size_t const size = strlen(p);
-        if (size <= 126) {
-          // short string
-          reserveSpace(1 + size);
-          _start[_pos++] = static_cast<uint8_t>(0x40 + size);
-          memcpy(_start + _pos, p, size);
-        } else {
-          // long string
-          reserveSpace(1 + 8 + size);
-          _start[_pos++] = 0xbf;
-          appendLength<8>(size);
-          memcpy(_start + _pos, p, size);
-        }
-        _pos += size;
-      } else {
-        throw Exception(
-            Exception::BuilderUnexpectedValue,
-            "Must give a string or char const* for ValueType::String");
-      }
-      break;
-    }
-    case ValueType::Array: {
-      addArray(item._unindexed);
-      break;
-    }
-    case ValueType::Object: {
-      addObject(item._unindexed);
-      break;
-    }
     case ValueType::Binary: {
-      if (ctype != Value::CType::String && ctype != Value::CType::CharPtr) {
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::String && ctype != Value::CType::CharPtr)) {
         throw Exception(
             Exception::BuilderUnexpectedValue,
             "Must provide std::string or char const* for ValueType::Binary");
       }
-      std::string const* s;
-      std::string value;
+      char const* p;
+      ValueLength size;
       if (ctype == Value::CType::String) {
-        s = item.getString();
+        p = item.getString()->data();
+        size = item.getString()->size();
       } else {
-        value = item.getCharPtr();
-        s = &value;
+        p = item.getCharPtr();
+        size = strlen(p);
       }
-      ValueLength v = s->size();
-      appendUInt(v, 0xbf);
-      memcpy(_start + _pos, s->c_str(), checkOverflow(v));
-      _pos += v;
+      appendUInt(size, 0xbf);
+      reserve(size);
+      memcpy(_start + _pos, p, checkOverflow(size));
+      advance(size);
       break;
     }
     case ValueType::Illegal: {
-      reserveSpace(1);
-      _start[_pos++] = 0x17;
+      appendByte(0x17);
       break;
     }
     case ValueType::MinKey: {
-      reserveSpace(1);
-      _start[_pos++] = 0x1e;
+      appendByte(0x1e);
       break;
     }
     case ValueType::MaxKey: {
-      reserveSpace(1);
-      _start[_pos++] = 0x1f;
+      appendByte(0x1f);
       break;
     }
     case ValueType::BCD: {
@@ -797,6 +776,10 @@ uint8_t* Builder::set(Value const& item) {
       throw Exception(Exception::BuilderUnexpectedType,
                       "Cannot set a ValueType::Custom with this method");
     }
+    case ValueType::None: {
+      throw Exception(Exception::BuilderUnexpectedType,
+                      "Cannot set a ValueType::None");
+    }
   }
   return _start + oldPos;
 }
@@ -805,9 +788,9 @@ uint8_t* Builder::set(Slice const& item) {
   checkKeyIsString(item.isString());
 
   ValueLength const l = item.byteSize();
-  reserveSpace(l);
+  reserve(l);
   memcpy(_start + _pos, item.start(), checkOverflow(l));
-  _pos += l;
+  advance(l);
   return _start + _pos - l;
 }
 
@@ -823,37 +806,37 @@ uint8_t* Builder::set(ValuePair const& pair) {
 
   if (pair.valueType() == ValueType::Binary) {
     uint64_t v = pair.getSize();
-    reserveSpace(9 + v);
+    reserve(9 + v);
     appendUInt(v, 0xbf);
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
-    _pos += v;
+    advance(v);
     return _start + oldPos;
   } else if (pair.valueType() == ValueType::String) {
     uint64_t size = pair.getSize();
     if (size > 126) {
       // long string
-      reserveSpace(1 + 8 + size);
-      _start[_pos++] = 0xbf;
-      appendLength<8>(size);
-      memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
-      _pos += size;
+      reserve(1 + 8 + size);
+      appendByteUnchecked(0xbf);
+      appendLengthUnchecked<8>(size);
     } else {
       // short string
-      reserveSpace(1 + size);
-      _start[_pos++] = static_cast<uint8_t>(0x40 + size);
-      memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
-      _pos += size;
+      reserve(1 + size);
+      appendByteUnchecked(static_cast<uint8_t>(0x40 + size));
     }
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
+    memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
+    advance(size);
     return _start + oldPos;
   } else if (pair.valueType() == ValueType::Custom) {
     // We only reserve space here, the caller has to fill in the custom type
     uint64_t size = pair.getSize();
-    reserveSpace(size);
+    reserve(size);
     uint8_t const* p = pair.getStart();
     if (p != nullptr) {
       memcpy(_start + _pos, p, checkOverflow(size));
     }
-    _pos += size;
+    advance(size);
     return _start + _pos - size;
   }
   throw Exception(Exception::BuilderUnexpectedType,
@@ -861,86 +844,97 @@ uint8_t* Builder::set(ValuePair const& pair) {
                   "ValueType::Custom are valid for ValuePair argument");
 }
 
-void Builder::checkAttributeUniqueness(Slice const& obj) const {
+bool Builder::checkAttributeUniqueness(Slice obj) const {
   VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
+  VELOCYPACK_ASSERT(obj.isObject());
+  VELOCYPACK_ASSERT(obj.length() >= 2);
 
   if (obj.isSorted()) {
     // object attributes are sorted
-    Slice previous = obj.keyAt(0);
-    ValueLength len;
-    char const* p = previous.getString(len);
+    return checkAttributeUniquenessSorted(obj);
+  }
+
+  return checkAttributeUniquenessUnsorted(obj);
+}
+
+bool Builder::checkAttributeUniquenessSorted(Slice obj) const {
+  ObjectIterator it(obj, false);
+
+  // fetch initial key
+  Slice previous = it.key(true);
+  ValueLength len;
+  char const* p = previous.getString(len);
   
-    ValueLength const n = obj.length();
+  // advance to next key already  
+  it.next();
 
-    // compare each two adjacent attribute names
-    for (ValueLength i = 1; i < n; ++i) {
-      Slice current = obj.keyAt(i);
-      // keyAt() guarantees a string as returned type
-      VELOCYPACK_ASSERT(current.isString());
+  do {
+    Slice const current = it.key(true);
+    VELOCYPACK_ASSERT(current.isString());
+    
+    ValueLength len2;
+    char const* q = current.getStringUnchecked(len2);
 
-      ValueLength len2;
-      char const* q = current.getString(len2);
-
-      if (len == len2 && memcmp(p, q, checkOverflow(len2)) == 0) {
-        // identical key
-        throw Exception(Exception::DuplicateAttributeName);
-      }
-      // re-use already calculated values for next round
-      len = len2;
-      p = q;
+    if (len == len2 && memcmp(p, q, checkOverflow(len2)) == 0) {
+      // identical key
+      return false;
     }
+    // re-use already calculated values for next round
+    len = len2;
+    p = q;
+    it.next();
+  } while (it.valid());
+
+  // all keys unique
+  return true;
+}
+
+bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
+  // cutoff value for linear attribute uniqueness scan
+  // unsorted objects with this amount of attributes (or less) will
+  // be validated using a non-allocating scan over the attributes
+  // objects with more attributes will use a validation routine that
+  // will use an std::unordered_set for O(1) lookups but with heap
+  // allocations
+  constexpr ValueLength LinearAttributeUniquenessCutoff = 4;
+
+  ObjectIterator it(obj, true);
+
+  if (it.size() <= LinearAttributeUniquenessCutoff) {
+    std::array<StringRef, LinearAttributeUniquenessCutoff> keys;
+    do {
+      // key() guarantees a String as returned type
+      StringRef key = it.key(true).stringRef();
+      ValueLength index = it.index();
+      if (index > 0) {
+        // compare with all other already looked-at keys
+        for (ValueLength i = 0; i < index; ++i) {
+          if (keys[i].equals(key)) {
+            return false;
+          }
+        }
+      }
+      keys[index] = key;
+      it.next();
+    } while (it.valid());
   } else {
     std::unordered_set<StringRef> keys;
-    ObjectIterator it(obj, true);
-
-    while (it.valid()) {
+    do {
       Slice const key = it.key(true);
-      // key() guarantees a string as returned type
+      // key() guarantees a String as returned type
       VELOCYPACK_ASSERT(key.isString());
-      if (!keys.emplace(StringRef(key)).second) {
-        throw Exception(Exception::DuplicateAttributeName);
+      if (!keys.emplace(key).second) {
+        // identical key
+        return false;
       }
       it.next();
-    }
+    } while (it.valid());
   }
-}
-
-uint8_t* Builder::add(std::string const& attrName, Value const& sub) {
-  return addInternal<Value>(attrName, sub);
-}
-
-uint8_t* Builder::add(char const* attrName, Value const& sub) {
-  return addInternal<Value>(attrName, sub);
-}
-
-uint8_t* Builder::add(char const* attrName, size_t attrLength, Value const& sub) {
-  return addInternal<Value>(attrName, attrLength, sub);
-}
-
-uint8_t* Builder::add(std::string const& attrName, ValuePair const& sub) {
-  return addInternal<ValuePair>(attrName, sub);
-}
-
-uint8_t* Builder::add(char const* attrName, ValuePair const& sub) {
-  return addInternal<ValuePair>(attrName, sub);
-}
-
-uint8_t* Builder::add(char const* attrName, size_t attrLength, ValuePair const& sub) {
-  return addInternal<ValuePair>(attrName, attrLength, sub);
-}
-
-uint8_t* Builder::add(std::string const& attrName, Slice const& sub) {
-  return addInternal<Slice>(attrName, sub);
-}
-
-uint8_t* Builder::add(char const* attrName, Slice const& sub) {
-  return addInternal<Slice>(attrName, sub);
-}
-
-uint8_t* Builder::add(char const* attrName, size_t attrLength, Slice const& sub) {
-  return addInternal<Slice>(attrName, attrLength, sub);
-}
   
+  // all keys unique
+  return true;
+}
+
 // Add all subkeys and subvalues into an object from an ObjectIterator
 // and leaves open the object intentionally
 uint8_t* Builder::add(ObjectIterator& sub) {
@@ -966,14 +960,6 @@ uint8_t* Builder::add(ObjectIterator&& sub) {
   }
   return _start + oldPos;
 }
-
-uint8_t* Builder::add(Value const& sub) { return addInternal<Value>(sub); }
-
-uint8_t* Builder::add(ValuePair const& sub) {
-  return addInternal<ValuePair>(sub);
-}
-
-uint8_t* Builder::add(Slice const& sub) { return addInternal<Slice>(sub); }
 
 // Add all subkeys and subvalues into an object from an ArrayIterator
 // and leaves open the array intentionally

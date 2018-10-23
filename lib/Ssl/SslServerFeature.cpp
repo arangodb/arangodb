@@ -23,7 +23,6 @@
 #include "SslServerFeature.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -36,19 +35,18 @@ using namespace arangodb::options;
 SslServerFeature* SslServerFeature::SSL = nullptr;
 
 SslServerFeature::SslServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_V12),
-      _sslOptions(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use),
+      _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Ssl");
-  startsAfter("Logger");
+  startsAfter("AQLPhase");
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -75,11 +73,10 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "ssl ciphers to use, see OpenSSL documentation",
                      new StringParameter(&_cipherList));
 
-  std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
+  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSv1.2)",
+                     availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 
@@ -91,6 +88,14 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--ssl.ecdh-curve",
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new StringParameter(&_ecdhCurve));
+}
+
+void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // check for SSLv2
+  if (_sslProtocol == SslProtocol::SSL_V2) {
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void SslServerFeature::prepare() {
@@ -159,13 +164,13 @@ class BIOGuard {
 };
 }
 
-boost::asio::ssl::context SslServerFeature::createSslContext() const {
+asio::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
-    boost::asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
     
     // and use this native handle
-    boost::asio::ssl::context::native_handle_type nativeContext =
+    asio::ssl::context::native_handle_type nativeContext =
         sslContext.native_handle();
 
     // set cache mode
@@ -237,7 +242,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
       LOG_TOPIC(TRACE, arangodb::Logger::SSL)
           << "trying to load CA certificates from '" << _cafile << "'";
 
-      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
+      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), nullptr);
 
       if (res == 0) {
         LOG_TOPIC(ERR, arangodb::Logger::SSL)

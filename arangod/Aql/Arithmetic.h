@@ -29,20 +29,22 @@
 namespace arangodb {
 namespace aql {
 
+double stringToNumber(std::string const& value, bool& failed) noexcept;
+
 template <typename T>
-bool IsUnsafeAddition(T l, T r) {
+bool isUnsafeAddition(T l, T r) {
   return ((r > 0 && l > (std::numeric_limits<T>::max)() - r) ||
           (r < 0 && l < (std::numeric_limits<T>::min)() - r));
 }
 
 template <typename T>
-bool IsUnsafeSubtraction(T l, T r) {
+bool isUnsafeSubtraction(T l, T r) {
   return ((r > 0 && l < (std::numeric_limits<T>::min)() + r) ||
           (r < 0 && l > (std::numeric_limits<T>::max)() + r));
 }
 
 template <typename T>
-bool IsUnsafeMultiplication(T l, T r) {
+bool isUnsafeMultiplication(T l, T r) {
   if (l > 0) {
     if (r > 0) {
       if (l > ((std::numeric_limits<T>::max)() / r)) {
@@ -69,10 +71,11 @@ bool IsUnsafeMultiplication(T l, T r) {
 }
 
 template <typename T>
-bool IsUnsafeDivision(T l, T r) {
+bool isUnsafeDivision(T l, T r) {
   // note: the caller still has to check whether r is zero (division by zero)
   return (l == (std::numeric_limits<T>::min)() && r == -1);
 }
+
 }
 }
 

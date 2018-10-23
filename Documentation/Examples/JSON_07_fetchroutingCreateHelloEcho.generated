@@ -1,37 +1,13 @@
-arangosh&gt; arango.GET(<span class="hljs-string">"/hello/echo"</span>)
+arangosh&gt; arango.GET_RAW(<span class="hljs-string">"/hello/echo"</span>, { <span class="hljs-string">"accept"</span> : <span class="hljs-string">"application/json"</span> })
 { 
-  <span class="hljs-string">"request"</span> : { 
-    <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
-    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
-    <span class="hljs-string">"url"</span> : <span class="hljs-string">"/hello/echo"</span>, 
-    <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
-    <span class="hljs-string">"server"</span> : { 
-      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">4247</span> 
-    }, 
-    <span class="hljs-string">"client"</span> : { 
-      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">38026</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"150789124760515"</span> 
-    }, 
-    <span class="hljs-string">"internals"</span> : { 
-    }, 
-    <span class="hljs-string">"headers"</span> : { 
-      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
-      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span> 
-    }, 
-    <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
-    <span class="hljs-string">"parameters"</span> : { 
-    }, 
-    <span class="hljs-string">"cookies"</span> : { 
-    }, 
-    <span class="hljs-string">"urlParameters"</span> : { 
-    } 
-  }, 
-  <span class="hljs-string">"options"</span> : { 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"body"</span> : <span class="hljs-string">"{\"request\":{\"authorized\":true,\"user\":\"root\",\"database\":\"_system\",\"url\":\"/hello/echo\",\"protocol\":\"http\",\"server\":{\"address\":\"127.0.0.1\",\"port\":15674},\"client\":{\"address\":\"127.0.0.1\",\"port\":49765,\"id\":\"153563925279595\"},\"internals\":{},\"headers\":{\"host\":\"127...."</span>, 
+  <span class="hljs-string">"headers"</span> : { 
+    <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
+    <span class="hljs-string">"content-length"</span> : <span class="hljs-string">"467"</span>, 
+    <span class="hljs-string">"content-type"</span> : <span class="hljs-string">"application/json; charset=utf-8"</span>, 
+    <span class="hljs-string">"server"</span> : <span class="hljs-string">"ArangoDB"</span>, 
+    <span class="hljs-string">"x-content-type-options"</span> : <span class="hljs-string">"nosniff"</span> 
   } 
 }

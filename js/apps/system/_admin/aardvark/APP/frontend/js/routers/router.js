@@ -1,6 +1,6 @@
 /* jshint unused: false */
 /* global window, $, Backbone, document, d3 */
-/* global $, arangoHelper, btoa, _, frontendConfig */
+/* global $, arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -14,6 +14,8 @@
     routes: {
       '': 'cluster',
       'dashboard': 'dashboard',
+      'replication': 'replication',
+      'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'new': 'newCollection',
       'login': 'login',
@@ -24,11 +26,16 @@
       'collection/:colid/:docid': 'document',
       'shell': 'shell',
       'queries': 'query',
-      'workMonitor': 'workMonitor',
       'databases': 'databases',
       'settings': 'databases',
       'services': 'applications',
+      'services/install': 'installService',
+      'services/install/new': 'installNewService',
+      'services/install/github': 'installGitHubService',
+      'services/install/upload': 'installUploadService',
+      'services/install/remote': 'installUrlService',
       'service/:mount': 'applicationDetail',
+      'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
       'users': 'userManagement',
@@ -42,6 +49,8 @@
       'nodeInfo/:id': 'nodeInfo',
       'logs': 'logger',
       'helpus': 'helpUs',
+      'views': 'views',
+      'view/:name': 'view',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -58,6 +67,22 @@
       }
 
       if (this.lastRoute) {
+        // service replace logic
+        var replaceUrlFirst = this.lastRoute.split('/')[0];
+        var replaceUrlSecond = this.lastRoute.split('/')[1];
+        var replaceUrlThird = this.lastRoute.split('/')[2];
+        if (replaceUrlFirst !== '#service') {
+          if (window.App.replaceApp) {
+            if (replaceUrlSecond !== 'install' && replaceUrlThird) {
+              window.App.replaceApp = false;
+              // console.log('set replace to false!');
+            }
+          } else {
+            // console.log('set replace to false!');
+            window.App.replaceApp = false;
+          }
+        }
+
         if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split('/').length === 3) {
           this.documentView.cleanupEditor();
         }
@@ -85,6 +110,11 @@
       $('#content').show();
       if (callback) {
         callback.apply(this, args);
+      }
+
+      if (this.lastRoute === '#services') {
+        window.App.replaceApp = false;
+        // console.log('set replace to false!');
       }
 
       if (this.graphViewer) {
@@ -189,10 +219,22 @@
       // This should be the only global object
       window.modalView = new window.ModalView();
 
+      // foxxes
       this.foxxList = new window.FoxxCollection();
       window.foxxInstallView = new window.FoxxInstallView({
         collection: this.foxxList
       });
+
+      // foxx repository
+      this.foxxRepo = new window.FoxxRepository();
+      this.foxxRepo.fetch({
+        success: function () {
+          if (self.serviceInstallView) {
+            self.serviceInstallView.collection = self.foxxRepo;
+          }
+        }
+      });
+
       window.progressView = new window.ProgressView();
 
       var self = this;
@@ -266,7 +308,9 @@
 
         window.checkVersion();
 
-        this.userConfig = new window.UserConfig();
+        this.userConfig = new window.UserConfig({
+          ldapEnabled: frontendConfig.ldapEnabled
+        });
         this.userConfig.fetch();
 
         this.documentsView = new window.DocumentsView({
@@ -535,6 +579,37 @@
       }
     },
 
+    storeDetail: function (mount, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.storeDetail.bind(this), mount);
+        return;
+      }
+      var callback = function () {
+        if (this.hasOwnProperty('storeDetailView')) {
+          this.storeDetailView.remove();
+        }
+        this.storeDetailView = new window.StoreDetailView({
+          model: this.foxxRepo.get(decodeURIComponent(mount)),
+          collection: this.foxxList
+        });
+
+        this.storeDetailView.model = this.foxxRepo.get(decodeURIComponent(mount));
+        this.storeDetailView.render();
+      }.bind(this);
+
+      if (this.foxxRepo.length === 0) {
+        this.foxxRepo.fetch({
+          cache: false,
+          success: function () {
+            callback();
+          }
+        });
+      } else {
+        callback();
+      }
+    },
+
     login: function () {
       var callback = function (error, user) {
         if (!this.loginView) {
@@ -584,6 +659,9 @@
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
+          if (self.indicesView) {
+            self.indicesView.remove();
+          }
           self.indicesView = new window.IndicesView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({
@@ -782,34 +860,18 @@
       this.supportView.render();
     },
 
-    workMonitor: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.workMonitor.bind(this));
-        return;
-      }
-      if (!this.workMonitorCollection) {
-        this.workMonitorCollection = new window.WorkMonitorCollection();
-      }
-      if (!this.workMonitorView) {
-        this.workMonitorView = new window.WorkMonitorView({
-          collection: this.workMonitorCollection
-        });
-      }
-      this.workMonitorView.render();
-    },
-
     queryManagement: function (initialized) {
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.queryManagement.bind(this));
         return;
       }
-      if (!this.queryManagementView) {
-        this.queryManagementView = new window.QueryManagementView({
-          collection: undefined
-        });
+      if (this.queryManagementView) {
+        this.queryManagementView.remove();
       }
+      this.queryManagementView = new window.QueryManagementView({
+        collection: undefined
+      });
       this.queryManagementView.render();
     },
 
@@ -858,6 +920,36 @@
       this.dashboardView.render();
     },
 
+    replication: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.replication.bind(this));
+        return;
+      }
+
+      if (!this.replicationView) {
+        // this.replicationView.remove();
+        this.replicationView = new window.ReplicationView({});
+      }
+      this.replicationView.render();
+    },
+
+    applier: function (endpoint, database, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.applier.bind(this), endpoint, database);
+        return;
+      }
+
+      if (this.applierView === undefined) {
+        this.applierView = new window.ApplierView({
+        });
+      }
+      this.applierView.endpoint = atob(endpoint);
+      this.applierView.database = atob(database);
+      this.applierView.render();
+    },
+
     graphManagement: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -873,7 +965,7 @@
             collection: new window.GraphCollection(),
             collectionCollection: this.arangoCollectionsStore
           }
-      );
+        );
       this.graphManagementView.render();
     },
 
@@ -890,7 +982,7 @@
               collection: new window.GraphCollection(),
               collectionCollection: this.arangoCollectionsStore
             }
-        );
+          );
         this.graphManagementView.render(name, true);
       } else {
         this.graphManagementView.loadGraphViewer(name);
@@ -909,6 +1001,87 @@
         });
       }
       this.applicationsView.reload();
+    },
+
+    installService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installService.bind(this));
+        return;
+      }
+      window.modalView.clearValidators();
+      if (this.serviceInstallView) {
+        this.serviceInstallView.remove();
+      }
+      this.serviceInstallView = new window.ServiceInstallView({
+        collection: this.foxxRepo,
+        functionsCollection: this.foxxList
+      });
+      this.serviceInstallView.render();
+    },
+
+    installNewService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installNewService.bind(this));
+        return;
+      }
+      window.modalView.clearValidators();
+      if (this.serviceNewView) {
+        this.serviceNewView.remove();
+      }
+      this.serviceNewView = new window.ServiceInstallNewView({
+        collection: this.foxxList
+      });
+      this.serviceNewView.render();
+    },
+
+    installGitHubService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installGitHubService.bind(this));
+        return;
+      }
+      window.modalView.clearValidators();
+      if (this.serviceGitHubView) {
+        this.serviceGitHubView.remove();
+      }
+      this.serviceGitHubView = new window.ServiceInstallGitHubView({
+        collection: this.foxxList
+      });
+      this.serviceGitHubView.render();
+    },
+
+    installUrlService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installUrlService.bind(this));
+        return;
+      }
+      window.modalView.clearValidators();
+      if (this.serviceUrlView) {
+        this.serviceUrlView.remove();
+      }
+      this.serviceUrlView = new window.ServiceInstallUrlView({
+        collection: this.foxxList
+      });
+      this.serviceUrlView.render();
+    },
+
+    installUploadService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installUploadService.bind(this));
+        return;
+      }
+      window.modalView.clearValidators();
+      if (this.serviceUploadView) {
+        this.serviceUploadView.remove();
+      }
+      this.serviceUploadView = new window.ServiceInstallUploadView({
+        collection: this.foxxList
+      });
+      this.serviceUploadView.render();
     },
 
     handleSelectDatabase: function (initialized) {
@@ -960,7 +1133,6 @@
         this.userPermissionView.render();
       } else if (initialized === false) {
         this.waitForInit(this.userPermissionView.bind(this), name);
-        return;
       }
     },
 
@@ -1005,6 +1177,36 @@
         });
       }
       this.userManagementView.render(true);
+    },
+
+    view: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.view.bind(this), name);
+        return;
+      }
+      if (this.viewView) {
+        this.viewView.remove();
+      }
+
+      this.viewView = new window.ViewView({
+        name: name
+      });
+      this.viewView.render();
+    },
+
+    views: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.views.bind(this));
+        return;
+      }
+      if (this.viewsView) {
+        this.viewsView.remove();
+      }
+
+      this.viewsView = new window.ViewsView({});
+      this.viewsView.render();
     },
 
     fetchDBS: function (callback) {

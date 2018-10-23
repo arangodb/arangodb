@@ -58,13 +58,19 @@ class TransactionCollection {
   AccessMode::Type accessType() const { return _accessType; }
 
   /// @brief request a main-level lock for a collection
-  virtual int lock() = 0;
+  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+  /// returns any other error code otherwise
+  virtual int lockRecursive() = 0;
  
   /// @brief request a lock for a collection
-  virtual int lock(AccessMode::Type, int nestingLevel) = 0;
+  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+  /// returns any other error code otherwise
+  virtual int lockRecursive(AccessMode::Type, int nestingLevel) = 0;
 
   /// @brief request an unlock for a collection
-  virtual int unlock(AccessMode::Type, int nestingLevel) = 0;
+  virtual int unlockRecursive(AccessMode::Type, int nestingLevel) = 0;
 
   /// @brief check whether a collection is locked in a specific mode in a transaction
   virtual bool isLocked(AccessMode::Type, int nestingLevel) const = 0;

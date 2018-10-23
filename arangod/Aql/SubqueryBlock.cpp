@@ -24,9 +24,11 @@
 #include "SubqueryBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
@@ -34,139 +36,240 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
     : ExecutionBlock(engine, en),
       _outReg(ExecutionNode::MaxRegisterId),
       _subquery(subquery),
-      _subqueryIsConst(const_cast<SubqueryNode*>(en)->isConst()) {
+      _subqueryIsConst(const_cast<SubqueryNode*>(en)->isConst()),
+      _subqueryReturnsData(_subquery->getPlanNode()->getType() == ExecutionNode::RETURN),
+      _result(nullptr),
+      _subqueryResults(nullptr),
+      _subqueryPos(0),
+      _subqueryInitialized(false),
+      _subqueryCompleted(false),
+      _hasShutdownMainQuery(false) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
 
-/// @brief initialize, tell dependency and the subquery
-int SubqueryBlock::initialize() {
-  int res = ExecutionBlock::initialize();
+ExecutionState SubqueryBlock::initSubquery(size_t position) {
+  TRI_ASSERT(!_subqueryInitialized);
+  auto ret = _subquery->initializeCursor(_result.get(), position);
+  if (ret.first == ExecutionState::WAITING) {
+    // Position is captured, we can continue from here again
+    return ret.first;
+  }
+  _subqueryInitialized = true;
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (!ret.second.ok()) {
+    THROW_ARANGO_EXCEPTION(ret.second);
+  }
+  return ExecutionState::DONE;
+}
+
+ExecutionState SubqueryBlock::getSomeConstSubquery(size_t atMost) {
+  if (_result->size() == 0) {
+    // NOTHING to loop
+    return ExecutionState::DONE;
+  }
+  if (!_subqueryInitialized) {
+    auto state = initSubquery(0);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!_subqueryInitialized);
+      return state;
+    }
+    TRI_ASSERT(state == ExecutionState::DONE);
+  }
+  if (!_subqueryCompleted) {
+    auto state = executeSubquery();
+    if (state == ExecutionState::WAITING) {
+      // If this assert is violated we will not end up in executeSubQuery again.
+      TRI_ASSERT(!_subqueryCompleted);
+      // We need to wait
+      return state;
+    }
+    // Subquery does not allow to HASMORE!
+    TRI_ASSERT(state == ExecutionState::DONE);
   }
 
-  return getSubquery()->initialize();
+  // We have exactly one constant result just reuse it.
+  TRI_ASSERT(_subqueryCompleted);
+  TRI_ASSERT(_subqueryResults != nullptr);
+  auto subResult = _subqueryResults.get();
+
+  for (; _subqueryPos < _result->size(); _subqueryPos++) {
+    TRI_IF_FAILURE("SubqueryBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    _result->emplaceValue(_subqueryPos, _outReg, subResult);
+    // From now on we need to forget this query as only this one block
+    // is responsible. Unfortunately we need to recompute the subquery
+    // next time again, otherwise the memory management is broken
+    // and creates double-free or even worse use-after-free.
+    _subqueryResults.release();
+    throwIfKilled();
+  }
+
+  // We are done for this _result. Fetch next _result from upstream
+  // to determine if we are DONE or HASMORE
+  return ExecutionState::DONE;
+}
+
+ExecutionState SubqueryBlock::getSomeNonConstSubquery(size_t atMost) {
+  if (_result->size() == 0) {
+    // NOTHING to loop
+    return ExecutionState::DONE;
+  }
+  for (; _subqueryPos < _result->size(); _subqueryPos++) {
+    if (!_subqueryInitialized) {
+      auto state = initSubquery(_subqueryPos);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!_subqueryInitialized);
+        return state;
+      }
+      TRI_ASSERT(state == ExecutionState::DONE);
+    }
+    if (!_subqueryCompleted) {
+      auto state = executeSubquery();
+      if (state == ExecutionState::WAITING) {
+        // If this assert is violated we will not end up in executeSubQuery again.
+        TRI_ASSERT(!_subqueryCompleted);
+        // We need to wait
+        return state;
+      }
+      // Subquery does not allow to HASMORE!
+      TRI_ASSERT(state == ExecutionState::DONE);
+    }
+
+    // We have exactly one constant result just reuse it.
+    TRI_ASSERT(_subqueryCompleted);
+    TRI_ASSERT(_subqueryResults != nullptr);
+
+    TRI_IF_FAILURE("SubqueryBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    _result->emplaceValue(_subqueryPos, _outReg, _subqueryResults.get());
+    // Responsibility is handed over
+    _subqueryResults.release();
+    TRI_ASSERT(_subqueryResults == nullptr);
+    _subqueryCompleted = false;
+    _subqueryInitialized = false;
+    throwIfKilled();
+  }
+
+  // We are done for this _result. Fetch next _result from upstream
+  // to determine if we are DONE or HASMORE
+  return ExecutionState::DONE;
 }
 
 /// @brief getSome
-AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
-  std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
-
-  if (res.get() == nullptr) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
-  }
-
-  bool const subqueryReturnsData =
-      (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
-  
-  std::vector<AqlItemBlock*>* subqueryResults = nullptr;
-
-  for (size_t i = 0; i < res->size(); i++) {
-    int ret = _subquery->initializeCursor(res.get(), i);
-
-    if (ret != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(ret);
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
+  if (_result == nullptr) {
+    auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      // NOTE: _result stays a nullptr! We end up in here again!
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return res;
     }
 
-    if (i > 0 && _subqueryIsConst) {
-      // re-use already calculated subquery result
-      TRI_ASSERT(subqueryResults != nullptr);
-      res->emplaceValue(i, _outReg, subqueryResults);
-    } else {
-      // initial subquery execution or subquery is not constant
+    _result.swap(res.second);
+    _upstreamState = res.first;
 
-      // execute the subquery
-      subqueryResults = executeSubquery();
-
-      TRI_ASSERT(subqueryResults != nullptr);
-
-      if (!subqueryReturnsData) {
-        // remove all data from subquery result so only an
-        // empty array remains
-        for (auto& x : *subqueryResults) {
-          delete x;
-        }
-        subqueryResults->clear();
-        res->emplaceValue(i, _outReg, subqueryResults);
-        continue;
-      }
-
-      try {
-        TRI_IF_FAILURE("SubqueryBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        res->emplaceValue(i, _outReg, subqueryResults);
-      } catch (...) {
-        destroySubqueryResults(subqueryResults);
-        throw;
-      }
+    if (_result == nullptr) {
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
+      return {ExecutionState::DONE, nullptr};
     }
-
-    throwIfKilled();  // check if we were aborted
   }
+
+  ExecutionState state;
+  if (_subqueryIsConst) {
+    state = getSomeConstSubquery(atMost);
+  } else {
+    state = getSomeNonConstSubquery(atMost);
+  }
+
+  if (state == ExecutionState::WAITING) {
+    // We need to wait, please call again
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+    return {state, nullptr};
+  }
+
+  // Need to reset to position zero here
+  _subqueryPos = 0;
 
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
+  clearRegisters(_result.get());
+  // If we get here, we have handed over responsibilty for all subquery results
+  // computed here to this specific result. We cannot reuse them in the next
+  // getSome call, hence we need to reset it.
+  _subqueryInitialized = false;
+  _subqueryCompleted = false;
+  _subqueryResults.release();
 
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  traceGetSomeEnd(_result.get(), getHasMoreState());
+
+  // Resets _result to nullptr
+  return {getHasMoreState(), std::move(_result)};
 }
 
 /// @brief shutdown, tell dependency and the subquery
-int SubqueryBlock::shutdown(int errorCode) {
-  int res = ExecutionBlock::shutdown(errorCode);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+std::pair<ExecutionState, Result> SubqueryBlock::shutdown(int errorCode) {
+  if (!_hasShutdownMainQuery) {
+    ExecutionState state;
+    Result res;
+    std::tie(state, res) = ExecutionBlock::shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(res.ok());
+      return {state, res};
+    }
+    TRI_ASSERT(state == ExecutionState::DONE);
+    _hasShutdownMainQuery = true;
+    _mainQueryShutdownResult = res;
   }
 
-  return getSubquery()->shutdown(errorCode);
+  ExecutionState state;
+  Result res;
+  std::tie(state, res) = getSubquery()->shutdown(errorCode);
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(res.ok());
+    return {state, res};
+  }
+  TRI_ASSERT(state == ExecutionState::DONE);
+
+  if (_mainQueryShutdownResult.fail()) {
+    return {state, _mainQueryShutdownResult};
+  }
+
+  return {state, res};
 }
 
-/// @brief execute the subquery and return its results
-std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
-  DEBUG_BEGIN_BLOCK();
-  auto results = new std::vector<AqlItemBlock*>;
+/// @brief execute the subquery and store it's results in _subqueryResults
+ExecutionState SubqueryBlock::executeSubquery() {
+  TRI_ASSERT(!_subqueryCompleted);
+  if (_subqueryResults == nullptr) {
+    _subqueryResults = std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
+  }
 
-  try {
-    do {
-      std::unique_ptr<AqlItemBlock> tmp(
-          _subquery->getSome(DefaultBatchSize(), DefaultBatchSize()));
-
-      if (tmp.get() == nullptr) {
-        break;
-      }
-
+  TRI_ASSERT(_subqueryResults != nullptr);
+  do {
+    auto res = _subquery->getSome(DefaultBatchSize());
+    if (res.first == ExecutionState::WAITING) {
+      TRI_ASSERT(res.second == nullptr);
+      return res.first;
+    }
+    if (res.second != nullptr) {
       TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-
-      results->emplace_back(tmp.get());
-      tmp.release();
-    } while (true);
-    return results;
-  } catch (...) {
-    destroySubqueryResults(results);
-    throw;
-  }
-  DEBUG_END_BLOCK();
-}
-
-/// @brief destroy the results of a subquery
-void SubqueryBlock::destroySubqueryResults(
-    std::vector<AqlItemBlock*>* results) {
-  for (auto& x : *results) {
-    delete x;
-  }
-  delete results;
+      TRI_ASSERT(_subqueryResults != nullptr);
+      if (_subqueryReturnsData) {
+        _subqueryResults->emplace_back(std::move(res.second));
+      }
+    }
+    if (res.first == ExecutionState::DONE) {
+      _subqueryCompleted = true;
+      return ExecutionState::DONE;
+    }
+  } while (true);
 }

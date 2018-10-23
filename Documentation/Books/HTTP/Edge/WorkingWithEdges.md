@@ -13,4 +13,4 @@ Use the general document
 for create/read/update/delete.
 
 <!-- Rest/Graph edges -->
-@startDocuBlock API_EDGE_READINOUTBOUND
+@startDocuBlock get_read_in_out_edges

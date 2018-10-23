@@ -27,13 +27,9 @@
 #include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
+#include "Aql/SortRegister.h"
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
-;
-
 namespace aql {
 
 class AqlItemBlock;
@@ -46,36 +42,20 @@ class SortBlock final : public ExecutionBlock {
 
   ~SortBlock();
 
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+  /// @brief initializeCursor, could be called multiple times
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping, AqlItemBlock*&, size_t& skipped) override final;
+  std::pair<ExecutionState, Result> getOrSkipSome(
+      size_t atMost, bool skipping, AqlItemBlock*&,
+      size_t& skipped) override final;
 
   /// @brief dosorting
  private:
   void doSorting();
 
-  /// @brief OurLessThan
-  class OurLessThan {
-   public:
-    OurLessThan(transaction::Methods* trx,
-                std::deque<AqlItemBlock*>& buffer,
-                std::vector<std::pair<RegisterId, bool>>& sortRegisters)
-        : _trx(trx),
-          _buffer(buffer),
-          _sortRegisters(sortRegisters) {}
-
-    bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b) const;
-
-   private:
-    transaction::Methods* _trx;
-    std::deque<AqlItemBlock*>& _buffer;
-    std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
-  };
-
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
-  std::vector<std::pair<RegisterId, bool>> _sortRegisters;
+  std::vector<SortRegister> _sortRegisters;
 
   /// @brief whether or not the sort should be stable
   bool _stable;

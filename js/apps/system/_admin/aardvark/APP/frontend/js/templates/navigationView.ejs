@@ -9,13 +9,16 @@
     <li class="navbar-spacer big"></li>
     <!-- <li id="dbSelect" class="dropdown databases-menu disabled"></li> -->
     <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
+    <li class="views-menu"><a id="views" class="tab" href="#views"><i class="fa fa-eye"></i>Views</a></li>
     <li class="queries-menu"><a id="queries" class="tab" href="#queries"><i class="fa fa-bolt"></i>Queries</a></li>
     <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-area-chart"></i>Graphs</a></li>
     <li class="services-menu">
       <a id="services" class="tab" href="#services"><i class="fa fa-cogs"></i>Services</a>
     </li>
     <% if (currentDB.get('isSystem')) { %>
-      <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li>
+      <% if (!readOnly) { %>
+        <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li>
+      <% } %>
     <% } %>
     <!--
     <% if (currentDB.get('isSystem')) { %>
@@ -28,6 +31,9 @@
     <% } %>
     <% if (currentDB.get('isSystem')) { %>
       <li class="databases-menu"><a id="databases" class="tab" href="#databases"><i class="fa fa-database"></i>Databases</a></li>
+    <% } %>
+    <% if (currentDB.get('isSystem') && !isCluster) { %>
+      <li class="replication-menu"><a id="replication" class="tab" href="#replication"><i class="fa fa-server"></i>Replication</a></li>
     <% } %>
     <% if (!isCluster) { %>
       <li class="logs-menu"><a id="logs" class="tab" href="#logs"><i class="fa fa-file-text"></i>Logs</a></li>

@@ -1,5 +1,5 @@
 name: @CPACK_PACKAGE_NAME@
-version: @CPACK_PACKAGE_VERSION@-@ARANGODB_PACKAGE_REVISION@
+version: @CPACK_PACKAGE_VERSION@-@ARANGODB_SNAP_REVISION@
 description: "ArangoDB is a native multi-model database with flexible data models for
   documents, graphs, and key-values. Build high performance applications using a convenient
   SQL-like query language or JavaScript extensions. https://www.arangodb.com"
@@ -60,8 +60,8 @@ apps:
     plugs:               # enable interfaces
       - network
 
-  arangoimp:
-    command: arangoimp  \
+  arangoimport:
+    command: arangoimport  \
       --server.endpoint=tcp://127.0.0.1:@SNAP_PORT@ \
       --temp.path=${SNAP_DATA}
     plugs:               # enable interfaces

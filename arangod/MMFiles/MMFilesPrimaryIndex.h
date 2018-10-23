@@ -46,11 +46,11 @@ class Methods;
 }
 
 struct MMFilesPrimaryIndexHelper {
-  static inline uint64_t HashKey(void*, uint8_t const* key) {
+  static inline uint64_t HashKey(uint8_t const* key) {
     return MMFilesSimpleIndexElement::hash(VPackSlice(key));
   }
 
-  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element, bool) {
+  static inline uint64_t HashElement(MMFilesSimpleIndexElement const& element, bool) {
     return element.hash();
   }
 
@@ -70,9 +70,19 @@ struct MMFilesPrimaryIndexHelper {
   }
 
   /// @brief determines if two elements are equal
-  inline bool IsEqualElementElement(void* userData,
+  inline bool IsEqualElementElement(void*,
                                     MMFilesSimpleIndexElement const& left,
                                     MMFilesSimpleIndexElement const& right) const {
+    return (left.localDocumentId() == right.localDocumentId());
+  }
+
+  inline bool IsEqualElementElementByKey(void* userData,
+                                         MMFilesSimpleIndexElement const& left,
+                                         MMFilesSimpleIndexElement const& right) const {
+    if (left.hash() != right.hash()) {
+      // TODO: check if we have many collisions here
+      return false;
+    }
     IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
@@ -81,12 +91,6 @@ struct MMFilesPrimaryIndexHelper {
     TRI_ASSERT(l.isString());
     TRI_ASSERT(r.isString());
     return l.equals(r);
-  }
-
-  inline bool IsEqualElementElementByKey(void* userData,
-                                         MMFilesSimpleIndexElement const& left,
-                                         MMFilesSimpleIndexElement const& right) const {
-    return IsEqualElementElement(userData, left, right);
   }
 };
 
@@ -97,9 +101,8 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
  public:
   MMFilesPrimaryIndexIterator(LogicalCollection* collection,
                               transaction::Methods* trx,
-                              ManagedDocumentResult* mmdr,
                               MMFilesPrimaryIndex const* index,
-                              std::unique_ptr<VPackBuilder>& keys);
+                              std::unique_ptr<VPackBuilder> keys);
 
   ~MMFilesPrimaryIndexIterator();
 
@@ -119,10 +122,8 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  public:
   MMFilesAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl,
-                          bool reverse);
+                          MMFilesPrimaryIndexImpl const* indexImpl);
 
   ~MMFilesAllIndexIterator() {}
 
@@ -139,7 +140,6 @@ class MMFilesAllIndexIterator final : public IndexIterator {
   MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _position;
   std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
-  bool const _reverse;
   uint64_t _total;
 };
 
@@ -147,7 +147,6 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
   MMFilesAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
@@ -173,14 +172,11 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
  public:
   MMFilesPrimaryIndex() = delete;
 
-  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection*);
+  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection& collection);
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
 
   char const* typeName() const override { return "primary"; }
-
-  bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return false; }
 
@@ -188,8 +184,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const& = StringRef()) const override {
     return 1.0;
   }
 
@@ -197,7 +192,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
@@ -232,14 +228,12 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
-                             bool reverse) const;
+  IndexIterator* allIterator(transaction::Methods*) const;
 
   /// @brief request an iterator over all elements in the index in
   ///        a random order. It is guaranteed that each element is found
   ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*,
-                             ManagedDocumentResult*) const;
+  IndexIterator* anyIterator(transaction::Methods*) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.
@@ -267,7 +261,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   void invokeOnAllElementsForRemoval(
       std::function<bool(MMFilesSimpleIndexElement const&)>);
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
@@ -275,19 +270,19 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
