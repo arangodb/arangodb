@@ -2,8 +2,8 @@ HTTP Interface for Traversals
 =============================
 
 {% hint 'warning' %}
-The API endpoint `/_api/traversal` is deprecated. The preferred way to
-traverse graphs is with AQL.
+The API endpoint `/_api/traversal` is deprecated from version 3.4.0 on.
+The preferred way to traverse graphs is with AQL.
 {% endhint %}
 
 ArangoDB's graph traversals are executed on the server. Traversals can be 
