@@ -197,6 +197,10 @@ class TailingSyncer : public Syncer {
   /// @brief whether or not master & slave can work in parallel
   bool _workInParallel;
 
+  /// @brief max parallel open transactions
+  /// this will be set to false for RocksDB, and to true for MMFiles
+  bool _supportsMultipleOpenTransactions;
+
   /// @brief which transactions were open and need to be treated specially
   std::unordered_map<TRI_voc_tid_t, std::unique_ptr<ReplicationTransaction>>
       _ongoingTransactions;

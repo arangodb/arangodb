@@ -230,7 +230,8 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm()
-    : _logConnectionErrors(false),
+    : _roundRobin(0),
+      _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -246,7 +247,8 @@ ClusterComm::ClusterComm()
 
 /// @brief Unit test constructor
 ClusterComm::ClusterComm(bool ignored)
-    : _logConnectionErrors(false),
+    : _roundRobin(0),
+      _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
 
@@ -257,11 +259,7 @@ ClusterComm::ClusterComm(bool ignored)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm() {
-  for (ClusterCommThread * thread: _backgroundThreads) {
-    thread->beginShutdown();
-    delete thread;
-  }
-
+  stopBackgroundThreads();
   cleanupAllQueues();
 }
 
@@ -309,7 +307,7 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
 
 void ClusterComm::initialize() {
   auto i = instance();   // this will create the static instance
-  i->startBackgroundThread();
+  i->startBackgroundThreads();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,16 +315,19 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
+  if (!_theInstance) {
+    return ;
+  }
+
   _theInstance.reset();    // no more operations will be started, but running
                            // ones have their copy of the shared_ptr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the communication background thread
+/// @brief start the communication background threads
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::startBackgroundThread() {
-  _roundRobin = 0;
+void ClusterComm::startBackgroundThreads() {
 
   for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
     ClusterCommThread * thread = new ClusterCommThread();
@@ -340,6 +341,16 @@ void ClusterComm::startBackgroundThread() {
     } // else
   } // for
 }
+
+void ClusterComm::stopBackgroundThreads() {
+  for (ClusterCommThread * thread: _backgroundThreads) {
+    thread->beginShutdown();
+    delete thread;
+  }
+
+  _backgroundThreads.clear();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief choose next communicator via round robin
@@ -1277,7 +1288,7 @@ void ClusterCommThread::run() {
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
 }
-        
+
 /// @brief logs a connection error (backend unavailable)
 void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result, double timeout, int /*line*/) {
   std::string msg = "cannot create connection to server";
@@ -1285,7 +1296,7 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
     msg += ": '" + result->serverID + '\'';
   }
   msg += " at endpoint " + result->endpoint + "', timeout: " + std::to_string(timeout);
-  
+
   if (useErrorLogLevel) {
     LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
   } else {

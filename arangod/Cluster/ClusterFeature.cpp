@@ -255,14 +255,7 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-#ifdef DEBUG_SYNC_REPLICATION
-  bool startClusterComm = true;
-#else
-  bool startClusterComm = false;
-#endif
-
   if (ServerState::instance()->isAgent() || _enableCluster) {
-    startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
@@ -270,11 +263,6 @@ void ClusterFeature::prepare() {
                                                   << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (startClusterComm) {
-    // initialize ClusterComm library, must call initialize only once
-    ClusterComm::initialize();
   }
 
   // return if cluster is disabled
@@ -361,6 +349,11 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
+
+  if (ServerState::instance()->isAgent() || _enableCluster) {
+    ClusterComm::initialize();
+  }
+
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -440,6 +433,8 @@ void ClusterFeature::stop() {
       }
     }
   }
+
+  ClusterComm::instance()->stopBackgroundThreads();
 }
 
 
@@ -448,7 +443,7 @@ void ClusterFeature::unprepare() {
     ClusterComm::cleanup();
     return;
   }
-  
+
   if (_heartbeatThread != nullptr) {
     _heartbeatThread->beginShutdown();
   }
@@ -479,7 +474,6 @@ void ClusterFeature::unprepare() {
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
 
-
   // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string alk = ServerState::roleToAgencyListKey(role);
@@ -501,7 +495,6 @@ void ClusterFeature::unprepare() {
   }
 
   AgencyCommManager::MANAGER->stop();
-  ClusterComm::cleanup();
 
   ClusterInfo::cleanup();
 }

@@ -291,6 +291,12 @@ void RocksDBEngine::validateOptions(
         << "supported on this platform";
   }
 #endif
+  
+  if (_pruneWaitTimeInitial < 10) {
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    << "consider increasing the value for --rocksdb.wal-file-timeout-initial. "
+    << "Replication clients might have trouble to get in sync";
+  }
 }
 
 // preparation phase for storage engine. can be used for internal setup.

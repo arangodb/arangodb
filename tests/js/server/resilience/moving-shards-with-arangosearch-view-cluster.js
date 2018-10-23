@@ -428,7 +428,6 @@ function MovingShardsWithViewSuite (options) {
   function GETAndParseOrThrow (url) {
     let res;
     try {
-      console.warn(`GET ${url}`);
       const envelope = { method: "GET", url };
       res = request(envelope);
     } catch (err) {
@@ -448,8 +447,6 @@ function MovingShardsWithViewSuite (options) {
       error.errorMessage = `GET ${url} returned error: ${error.errorMessage}`;
       throw new arangodb.ArangoError(error);
     }
-
-    console.info(parsedBody);
 
     return parsedBody;
   }
@@ -489,7 +486,7 @@ function MovingShardsWithViewSuite (options) {
           // server.
 
           if (e instanceof arangodb.ArangoError
-            && e.errorNum === internal.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+            && e.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
             console.info(`Exception during getViewServersPerShard(): ${e}`);
 
             return;
@@ -564,6 +561,8 @@ function MovingShardsWithViewSuite (options) {
             db._view(vname).drop();
           } catch (ignored) {}
           var view = db._createView(vname, "arangosearch", {});
+          assertTrue(view !== undefined, "_createView failed");
+          assertTrue(view instanceof internal.ArangoView, "_createView didn't return an ArangoView object");
           view.properties(
             {links:
               {[name]:

@@ -2720,49 +2720,6 @@ OperationResult transaction::Methods::truncateLocal(
   return OperationResult(res);
 }
 
-/// @brief rotate all active journals of a collection
-OperationResult transaction::Methods::rotateActiveJournal(
-    std::string const& collectionName, OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  OperationResult result;
-
-  if (_state->isCoordinator()) {
-    result = rotateActiveJournalCoordinator(collectionName, options);
-  } else {
-    result = rotateActiveJournalLocal(collectionName, options);
-  }
-
-  return result;
-}
-
-/// @brief rotate the journal of a collection
-OperationResult transaction::Methods::rotateActiveJournalCoordinator(
-    std::string const& collectionName, OperationOptions const& options) {
-  return OperationResult(
-    rotateActiveJournalOnAllDBServers(vocbase().name(), collectionName)
-  );
-}
-
-/// @brief rotate the journal of a collection
-OperationResult transaction::Methods::rotateActiveJournalLocal(
-    std::string const& collectionName, OperationOptions const& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
-
-  Result res;
-  try {
-    res.reset(collection->getPhysical()->rotateActiveJournal());
-  } catch (basics::Exception const& ex) {
-    return OperationResult(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
-  }
-
-  return OperationResult(res);
-}
-
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::count(std::string const& collectionName,
                                             transaction::CountType type) {

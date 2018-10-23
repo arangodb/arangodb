@@ -93,6 +93,7 @@ class Scheduler {
     uint64_t _queued;
     uint64_t _fifo1;
     uint64_t _fifo2;
+    uint64_t _fifo3;
   };
 
   bool queue(RequestPriority prio, std::function<void()> const&);
@@ -184,15 +185,17 @@ class Scheduler {
   bool pushToFifo(int64_t fifo, std::function<void()> const& callback);
   bool popFifo(int64_t fifo);
 
-  static constexpr int64_t NUMBER_FIFOS = 2;
+  static constexpr int64_t NUMBER_FIFOS = 3;
   static constexpr int64_t FIFO1 = 0;
   static constexpr int64_t FIFO2 = 1;
+  static constexpr int64_t FIFO3 = 2;
 
   uint64_t const _maxFifoSize[NUMBER_FIFOS];
   std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
 
   boost::lockfree::queue<FifoJob*> _fifo1;
   boost::lockfree::queue<FifoJob*> _fifo2;
+  boost::lockfree::queue<FifoJob*> _fifo3;
   boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
 
   // the following methds create tasks in the `io_context`.
