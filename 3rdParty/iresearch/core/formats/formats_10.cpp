@@ -215,11 +215,10 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "failed to create file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to create file, path: %s",
+      str.c_str()
+    ));
   }
 
   format_utils::write_header(*out, format, version);
@@ -239,11 +238,10 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "failed to open file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      str.c_str()
+    ));
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -652,9 +650,10 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
   }
 
   if (id < doc.last) {
-    throw index_error(
-      std::string("while beginning doc in postings_writer, error: docs out of order '") + std::to_string(id) + "' < '" + std::to_string(doc.last) + "'"
-    );
+    throw index_error(string_utils::to_string(
+      "while beginning doc in postings_writer, error: docs out of order '%d' < '%d'",
+      id, doc.last
+    ));
   }
 
   doc.doc(id - doc.last);
@@ -1534,7 +1533,7 @@ class offs_pay_iterator final: public pos_iterator {
         if (pay_lengths_[i]) {
           const auto size = pay_lengths_[i]; // length of current payload
 
-          oversize(pay_data_, pos + size);
+          string_utils::oversize(pay_data_, pos + size);
 
           #ifdef IRESEARCH_DEBUG
             const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
@@ -1561,7 +1560,7 @@ class offs_pay_iterator final: public pos_iterator {
       const uint32_t size = pay_in_->read_vint();
       if (size) {
         format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
-        oversize(pay_data_, size);
+        string_utils::oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
           const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
@@ -1789,7 +1788,7 @@ class pay_iterator final : public pos_iterator {
         if (pay_lengths_[i]) {
           const auto size = pay_lengths_[i]; // current payload length
 
-          oversize(pay_data_, pos + size);
+          string_utils::oversize(pay_data_, pos + size);
 
           #ifdef IRESEARCH_DEBUG
             const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
@@ -1817,7 +1816,7 @@ class pay_iterator final : public pos_iterator {
       const uint32_t size = pay_in_->read_vint();
       if (size) {
         format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
-        oversize(pay_data_, size);
+        string_utils::oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
           const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
@@ -2041,11 +2040,10 @@ void index_meta_writer::commit() {
     auto clear_pending = make_finally([this]{ meta_ = nullptr; });
 
     if (!dir_->rename(src, dst)) {
-      std::stringstream ss;
-
-      ss << "failed to rename file, src path: " << src << " dst path: " << dst;
-
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error(string_utils::to_string(
+        "failed to rename file, src path: '%s' dst path: '%s'",
+        src.c_str(), dst.c_str()
+      ));
     }
 
     complete(*meta_);
@@ -2117,11 +2115,10 @@ void index_meta_reader::read(
   );
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "failed to open file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      meta_file.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2195,7 +2192,10 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
-    throw detailed_io_error("failed to create file, path: " + meta_file);
+    throw detailed_io_error(string_utils::to_string(
+      "failed to create file, path: %s",
+      meta_file.c_str()
+    ));
   }
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -2235,11 +2235,10 @@ void segment_meta_reader::read(
   );
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "failed to open file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      meta_file.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2338,7 +2337,10 @@ void document_mask_writer::write(
   auto out = dir.create(filename);
 
   if (!out) {
-    throw detailed_io_error("Failed to create file, path: " + filename);
+    throw detailed_io_error(string_utils::to_string(
+      "Failed to create file, path: %s",
+      filename.c_str()
+    ));
   }
 
   // segment can't have more than integer_traits<uint32_t>::const_max documents
@@ -2664,7 +2666,7 @@ void read_compact(
     return;
   }
 
-  irs::oversize(encode_buf, buf_size);
+  irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
@@ -2685,9 +2687,10 @@ void read_compact(
   );
 
   if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
-    throw index_error(
-      std::string("while reading compact, error: invalid buffer size '") + std::to_string(buf_size) + "'"
-    );
+    throw irs::index_error(string_utils::to_string(
+      "while reading compact, error: invalid buffer size '" IR_SIZE_T_SPECIFIER "'",
+      buf_size
+    ));
   }
 }
 
@@ -5004,10 +5007,10 @@ bool postings_reader::prepare(
   const uint64_t block_size = in.read_vint();
 
   if (block_size != postings_writer::BLOCK_SIZE) {
-    throw index_error(
-      std::string("while preparing postings_reader in segment '") + state.meta->name
-      + "', error: invalid block size '" + std::to_string(block_size) + "'"
-    );
+    throw index_error(string_utils::to_string(
+      "while preparing postings_reader, error: invalid block size '" IR_UINT64_T_SPECIFIER "'",
+      block_size
+    ));
   }
 
   return true;
