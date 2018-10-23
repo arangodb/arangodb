@@ -301,7 +301,7 @@ def Typography(txt):
     r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
     txt = r.sub("the manual", txt)
     txt = re.sub(r"@endDocuBlock", "", txt)
-    txt = BACKSLASH(txt);
+    txt = BACKSLASH(txt)
     return txt
 
 ################################################################################
@@ -373,6 +373,7 @@ class Regexen:
         self.DESCRIPTION_BL = re.compile('^\s*$')
         self.EMPTY_LINE = re.compile('^\s*$')
         self.START_DOCUBLOCK = re.compile('.*@startDocuBlock ')
+        self.HINTS = re.compile('.*@HINTS')
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
         self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
@@ -412,6 +413,7 @@ def next_step(fp, line, r):
     if not line:                              return eof, (fp, line)
     elif check_end_of_comment(line, r):       return skip_code, (fp, line)
     elif r.START_DOCUBLOCK.match(line):       return start_docublock, (fp, line)
+    elif r.HINTS.match(line):                 return hints, (fp, line)
     elif r.EXAMPLE_ARANGOSH_RUN.match(line):  return example_arangosh_run, (fp, line)
     elif r.RESTBODYPARAM.match(line):         return restbodyparam, (fp, line)
     elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
@@ -571,6 +573,7 @@ def restheader(cargo, r=Regexen()):
 
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
+        'x-hints': '',
         'x-examples': [],
         'tags': [currentTag],
         'summary': summary.strip(),
@@ -880,6 +883,23 @@ def restqueryparam(cargo, r=Regexen()):
     return generic_handler_desc(cargo, r, "restqueryparam", None, para, 'description')
 
 ################################################################################
+### @brief hints
+################################################################################
+
+def hints(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
+
+    ret = generic_handler_desc(cargo, r, "hints", None,
+                               swagger['paths'][httpPath][method], 'x-hints')
+
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
+        (fp, last) = cargo
+        print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
+        exit(1)
+
+    return ret
+
+################################################################################
 ### @brief restdescription
 ################################################################################
 
@@ -888,8 +908,8 @@ def restdescription(cargo, r=Regexen()):
     swagger['paths'][httpPath][method]['description'] += '\n\n'
 
     ret = generic_handler_desc(cargo, r, "restdescription", None,
-                                swagger['paths'][httpPath][method],
-                                'description')
+                               swagger['paths'][httpPath][method],
+                               'description')
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, last) = cargo
@@ -1165,6 +1185,7 @@ automat.add_state(comment)
 automat.add_state(eof, end_state=1)
 automat.add_state(error, end_state=1)
 automat.add_state(start_docublock)
+automat.add_state(hints)
 automat.add_state(example_arangosh_run)
 automat.add_state(examples)
 automat.add_state(skip_code)
@@ -1314,7 +1335,7 @@ for version in f:
 f.close()
 
 
-paths = {};
+paths = {}
 
 topdir = sys.argv[4]
 files = {}
@@ -1352,7 +1373,7 @@ def descOffsetGet(value):
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
-        offsetPlus = 0;
+        offsetPlus = 0
         thisVerb = swagger['paths'][route][verb]
         if len(thisVerb['description']) == 0:
             print >> sys.stderr, "Description of Route empty; @RESTDESCRIPTION missing?"
@@ -1423,6 +1444,18 @@ for route in swagger['paths'].keys():
 
             #print '-'*80
             #print thisVerb['description']
+
+        # Simplify hint box code to something that works in Swagger UI
+        # Append the result to the description field
+        # Place invisible markers, so that hints can be removed again
+        if 'x-hints' in thisVerb and len(thisVerb['x-hints']) > 0:
+            thisVerb['description'] += '\n<!-- Hints Start -->'
+            tmp = re.sub("{% hint '([^']+?)' %}",
+                         lambda match: "\n\n**{}:**  ".format(match.group(1).title()),
+                         thisVerb['x-hints'])
+            tmp = re.sub('{%[^%]*?%}', '', tmp)
+            thisVerb['description'] += tmp
+            thisVerb['description'] += '\n<!-- Hints End -->'
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
