@@ -151,13 +151,18 @@ function recovery (options) {
     let test = recoveryTests[i];
     let filtered = {};
     let localOptions = _.cloneDeep(options);
+    let disableMonitor = localOptions.disableMonitor;
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
-      let instanceInfo = {};
+      let instanceInfo = {
+        rootDir: pu.UNITTESTS_DIR
+      };
       count += 1;
 
       print(BLUE + "running setup of " + test + RESET);
+      localOptions.disableMonitor = true;
       runArangodRecovery(instanceInfo, localOptions, test, true, count);
+      localOptions.disableMonitor = disableMonitor;
 
       print(BLUE + "running recovery of " + test + RESET);
       results[test] = runArangodRecovery(instanceInfo, localOptions, test, false, count);
