@@ -343,16 +343,19 @@ index_input::ptr tracking_directory::open(
 }
 
 bool tracking_directory::remove(const std::string& name) NOEXCEPT {
-  bool result = impl_.remove(name);
+  if (!impl_.remove(name)) {
+    return false;
+  }
 
   try {
     files_.erase(name);
+    return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
-  return result;
+  return false;
 }
 
 bool tracking_directory::rename(
@@ -363,9 +366,8 @@ bool tracking_directory::rename(
   }
 
   try {
-    if (files_.emplace(dst).second) {
-      files_.erase(src);
-    }
+    files_.emplace(dst);
+    files_.erase(src);
 
     return true;
   } catch (...) {
@@ -510,18 +512,23 @@ index_input::ptr ref_tracking_directory::open(
 }
 
 bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
-  bool result = impl_.remove(name);
+  if (!impl_.remove(name)) {
+    return false;
+  }
 
   try {
+    attribute_->remove(name);
+
     SCOPED_LOCK(mutex_);
 
     refs_.erase(name);
+    return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
-  return result;
+  return false;
 }
 
 bool ref_tracking_directory::rename(
@@ -532,15 +539,19 @@ bool ref_tracking_directory::rename(
   }
 
   try {
-    SCOPED_LOCK(mutex_);
+    auto ref = attribute_->add(dst);
 
-    refs_.emplace(dst, attribute_->add(dst));
-    refs_.erase(src);
+    {
+      SCOPED_LOCK(mutex_);
 
+      refs_.emplace(dst, ref);
+      refs_.erase(src);
+    }
+
+    attribute_->remove(src);
     return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
-    impl_.rename(dst, src); // revert
   }
 
   return false;

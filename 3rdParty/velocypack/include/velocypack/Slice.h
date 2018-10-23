@@ -39,6 +39,7 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
+#include "velocypack/SliceStaticData.h"
 #include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
@@ -48,18 +49,12 @@ namespace velocypack {
 
 class SliceScope;
 
-struct SliceStaticData {
-  static uint8_t const FixedTypeLengths[256];
-  static ValueType const TypeMap[256];
-  static unsigned int const WidthMap[32];
-  static unsigned int const FirstSubMap[32];
-  static uint64_t const PrecalculatedHashesForDefaultSeed[256];
-};
-
 class Slice {
   // This class provides read only access to a VPack value, it is
   // intentionally light-weight (only one pointer value), such that
   // it can easily be used to traverse larger VPack values.
+
+  // A Slice does not own the VPack data it points to!
 
   friend class Builder;
   friend class ArrayIterator;
@@ -72,6 +67,16 @@ class Slice {
 
   // constructor for an empty Value of type None
   constexpr Slice() noexcept : Slice("\x00") {}
+  
+  // creates a Slice from a pointer to a uint8_t array
+  explicit constexpr Slice(uint8_t const* start) noexcept
+      : _start(start) {}
+
+  // creates a Slice from a pointer to a char array
+  explicit constexpr Slice(char const* start) noexcept
+    : _start((uint8_t const*)(start)) {} // reinterpret_cast does not work C++ 11 5.19.2
+  
+  // No destructor, does not take part in memory management
 
   // creates a slice of type None
   static constexpr Slice noneSlice() noexcept { return Slice("\x00"); }
@@ -106,17 +111,21 @@ class Slice {
   // creates a slice of type MaxKey
   static constexpr Slice maxKeySlice() noexcept { return Slice("\x1f"); }
 
-  // creates a Slice from a pointer to a uint8_t array
-  explicit constexpr Slice(uint8_t const* start) noexcept
-      : _start(start) {}
-
-  // creates a Slice from a pointer to a char array
-  explicit constexpr Slice(char const* start) noexcept
-    : _start((uint8_t const*)(start)) {} // reinterpret_cast does not work C++ 11 5.19.2
-  
   // creates a Slice from Json and adds it to a scope
   static Slice fromJson(SliceScope& scope, std::string const& json,
                         Options const* options = &Options::Defaults);
+  
+  // pointer to the head byte
+  constexpr uint8_t const* start() const noexcept { return _start; }
+  
+  // pointer to the head byte
+  template <typename T>
+  T const* startAs() const {
+    return reinterpret_cast<T const*>(_start);
+  }
+
+  // value of the head byte
+  constexpr inline uint8_t head() const noexcept { return *_start; }
   
   uint8_t const* begin() noexcept { return _start; }
 
@@ -126,34 +135,20 @@ class Slice {
 
   uint8_t const* end() const { return _start + byteSize(); }
 
-  // No destructor, does not take part in memory management,
-
   // get the type for the slice
-  inline ValueType type() const noexcept {
+  constexpr inline ValueType type() const noexcept {
     return SliceStaticData::TypeMap[head()];
   }
   
   // get the type for the slice
-  inline ValueType type(uint8_t h) const noexcept {
+  constexpr inline ValueType type(uint8_t h) const noexcept {
     return SliceStaticData::TypeMap[h];
   }
 
   char const* typeName() const { return valueTypeName(type()); }
 
-  // pointer to the head byte
-  uint8_t const* start() const noexcept { return _start; }
-
   // Set new memory position
   void set(uint8_t const* s) { _start = s; }
-
-  // pointer to the head byte
-  template <typename T>
-  T const* startAs() const {
-    return reinterpret_cast<T const*>(_start);
-  }
-
-  // value of the head byte
-  inline uint8_t head() const noexcept { return *_start; }
 
   // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = defaultSeed) const {
@@ -185,80 +180,80 @@ class Slice {
   }
 
   // check if slice is of the specified type
-  inline bool isType(ValueType t) const noexcept {
+  constexpr inline bool isType(ValueType t) const noexcept {
     return SliceStaticData::TypeMap[*_start] == t;
   }
 
   // check if slice is a None object
-  bool isNone() const noexcept { return isType(ValueType::None); }
+  constexpr bool isNone() const noexcept { return isType(ValueType::None); }
   
   // check if slice is an Illegal object
-  bool isIllegal() const noexcept { return isType(ValueType::Illegal); }
+  constexpr bool isIllegal() const noexcept { return isType(ValueType::Illegal); }
 
   // check if slice is a Null object
-  bool isNull() const noexcept { return isType(ValueType::Null); }
+  constexpr bool isNull() const noexcept { return isType(ValueType::Null); }
 
   // check if slice is a Bool object
-  bool isBool() const noexcept { return isType(ValueType::Bool); }
+  constexpr bool isBool() const noexcept { return isType(ValueType::Bool); }
 
   // check if slice is a Bool object - this is an alias for isBool()
-  bool isBoolean() const noexcept { return isBool(); }
+  constexpr bool isBoolean() const noexcept { return isBool(); }
 
   // check if slice is the Boolean value true
-  bool isTrue() const noexcept { return head() == 0x1a; }
+  constexpr bool isTrue() const noexcept { return head() == 0x1a; }
 
   // check if slice is the Boolean value false
-  bool isFalse() const noexcept { return head() == 0x19; }
+  constexpr bool isFalse() const noexcept { return head() == 0x19; }
 
   // check if slice is an Array object
-  bool isArray() const noexcept { return isType(ValueType::Array); }
+  constexpr bool isArray() const noexcept { return isType(ValueType::Array); }
 
   // check if slice is an Object object
-  bool isObject() const noexcept { return isType(ValueType::Object); }
+  constexpr bool isObject() const noexcept { return isType(ValueType::Object); }
 
   // check if slice is a Double object
-  bool isDouble() const noexcept { return isType(ValueType::Double); }
+  constexpr bool isDouble() const noexcept { return isType(ValueType::Double); }
 
   // check if slice is a UTCDate object
-  bool isUTCDate() const noexcept { return isType(ValueType::UTCDate); }
+  constexpr bool isUTCDate() const noexcept { return isType(ValueType::UTCDate); }
 
   // check if slice is an External object
-  bool isExternal() const noexcept { return isType(ValueType::External); }
+  constexpr bool isExternal() const noexcept { return isType(ValueType::External); }
 
   // check if slice is a MinKey object
-  bool isMinKey() const noexcept { return isType(ValueType::MinKey); }
+  constexpr bool isMinKey() const noexcept { return isType(ValueType::MinKey); }
 
   // check if slice is a MaxKey object
-  bool isMaxKey() const noexcept { return isType(ValueType::MaxKey); }
+  constexpr bool isMaxKey() const noexcept { return isType(ValueType::MaxKey); }
 
   // check if slice is an Int object
-  bool isInt() const noexcept { return isType(ValueType::Int); }
+  constexpr bool isInt() const noexcept { return isType(ValueType::Int); }
 
   // check if slice is a UInt object
-  bool isUInt() const noexcept { return isType(ValueType::UInt); }
+  constexpr bool isUInt() const noexcept { return isType(ValueType::UInt); }
 
   // check if slice is a SmallInt object
-  bool isSmallInt() const noexcept { return isType(ValueType::SmallInt); }
+  constexpr bool isSmallInt() const noexcept { return isType(ValueType::SmallInt); }
 
   // check if slice is a String object
-  bool isString() const noexcept { return isType(ValueType::String); }
+  constexpr bool isString() const noexcept { return isType(ValueType::String); }
 
   // check if slice is a Binary object
-  bool isBinary() const noexcept { return isType(ValueType::Binary); }
+  constexpr bool isBinary() const noexcept { return isType(ValueType::Binary); }
 
   // check if slice is a BCD
-  bool isBCD() const noexcept { return isType(ValueType::BCD); }
+  constexpr bool isBCD() const noexcept { return isType(ValueType::BCD); }
 
   // check if slice is a Custom type
-  bool isCustom() const noexcept { return isType(ValueType::Custom); }
+  constexpr bool isCustom() const noexcept { return isType(ValueType::Custom); }
 
   // check if a slice is any number type
-  bool isInteger() const noexcept {
+  constexpr bool isInteger() const noexcept {
     return (isInt() || isUInt() || isSmallInt());
   }
 
   // check if slice is any Number-type object
-  bool isNumber() const noexcept { return isInteger() || isDouble(); }
+  constexpr bool isNumber() const noexcept { return isInteger() || isDouble(); }
  
   // check if slice is convertible to a variable of a certain
   // number type 
@@ -299,10 +294,8 @@ class Slice {
     }
   }
 
-
-  bool isSorted() const noexcept {
-    auto const h = head();
-    return (h >= 0x0b && h <= 0x0e);
+  constexpr bool isSorted() const noexcept {
+    return (head() >= 0x0b && head() <= 0x0e);
   }
 
   // return the value for a Bool object
@@ -539,10 +532,10 @@ class Slice {
   }
 
   // tests whether the Slice is an empty array
-  bool isEmptyArray() const noexcept { return head() == 0x01; }
+  constexpr bool isEmptyArray() const noexcept { return head() == 0x01; }
 
   // tests whether the Slice is an empty object
-  bool isEmptyObject() const noexcept { return head() == 0x0a; }
+  constexpr bool isEmptyObject() const noexcept { return head() == 0x0a; }
 
   // translates an integer key into a string
   Slice translate() const;
@@ -991,8 +984,7 @@ class Slice {
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
 
-  inline ValueLength indexEntrySize(uint8_t head) const noexcept {
-    VELOCYPACK_ASSERT(head > 0x00 && head <= 0x12);
+  constexpr inline ValueLength indexEntrySize(uint8_t head) const noexcept {
     return static_cast<ValueLength>(SliceStaticData::WidthMap[head]);
   }
 
@@ -1003,16 +995,6 @@ class Slice {
   // perform a binary search for the specified attribute inside an Object
   template<ValueLength offsetSize>
   Slice searchObjectKeyBinary(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
-
-// assert that the slice is of a specific type
-// can be used for debugging and removed in production
-#ifdef VELOCYPACK_ASSERT
-  inline void assertType(ValueType) const {}
-#else
-  inline void assertType(ValueType type) const {
-    VELOCYPACK_ASSERT(this->type() == type);
-  }
-#endif
 
   // extracts a pointer from the slice and converts it into a
   // built-in pointer type

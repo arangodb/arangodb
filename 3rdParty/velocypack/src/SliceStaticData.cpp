@@ -24,47 +24,13 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "velocypack/AttributeTranslator.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Value.h"
+#include "velocypack/SliceStaticData.h"
 
 using namespace arangodb::velocypack;
 
-AttributeTranslator::AttributeTranslator()
-    : _count(0) {}
+constexpr uint8_t SliceStaticData::FixedTypeLengths[256];
+constexpr ValueType SliceStaticData::TypeMap[256];
+constexpr unsigned int SliceStaticData::WidthMap[32];
+constexpr unsigned int SliceStaticData::FirstSubMap[32];
+constexpr uint64_t SliceStaticData::PrecalculatedHashesForDefaultSeed[256];
 
-AttributeTranslator::~AttributeTranslator() {}
-
-void AttributeTranslator::add(std::string const& key, uint64_t id) {
-  if (_builder == nullptr) {
-    _builder.reset(new Builder());
-    _builder->add(Value(ValueType::Object));
-  }
-
-  _builder->add(key, Value(id));
-  _count++;
-}
-
-void AttributeTranslator::seal() {
-  if (_builder == nullptr) {
-    return;
-  }
-
-  _builder->close();
-
-  Slice s(_builder->slice());
-
-  ObjectIterator it(s);
-
-  while (it.valid()) {
-    Slice const key(it.key(false));
-    VELOCYPACK_ASSERT(key.isString());
-
-    // insert into string and char lookup maps
-    _keyToId.emplace(key.stringRef(), it.value().begin());
-    // insert into id to slice lookup map
-    _idToKey.emplace(it.value().getUInt(), key.begin());
-    it.next();
-  }
-}

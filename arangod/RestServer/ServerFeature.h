@@ -71,8 +71,10 @@ class ServerFeature final : public application_features::ApplicationFeature {
   int* _result;
   OperationMode _operationMode;
   bool _isStopping = false;
+ #if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;
+#endif
 };
 
 }

@@ -695,6 +695,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
                                                      /*numRemoves*/numDocs, /*revision*/0);
     engine->settingsManager()->updateCounter(_objectId, update);
+
     if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();
