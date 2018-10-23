@@ -24,6 +24,7 @@
 #include "composite_reader_impl.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "store/store_utils.hpp"
+#include "utils/string_utils.hpp"
 
 #include "transaction_store.hpp"
 
@@ -1066,7 +1067,7 @@ store_reader store_reader::reopen() const {
 
 void store_writer::bstring_output::ensure(size_t pos) {
   if (pos >= buf_.size()) {
-    oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
+    irs::string_utils::oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
   }
 }
 

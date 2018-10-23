@@ -25,6 +25,7 @@
 #define IRESEARCH_FORMATS_UTILS_H
 
 #include "store/store_utils.hpp"
+#include "utils/string_utils.hpp"
 #include "index/field_meta.hpp"
 
 NS_ROOT
@@ -81,9 +82,10 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
   validate_footer(in);
 
   if (checksum != in.read_long()) {
-    throw index_error(
-      std::string("while checking footer, error: invalid checksum '") + std::to_string(checksum) + "'"
-    );
+    throw index_error(string_utils::to_string(
+      "while checking footer, error: invalid checksum '" IR_UINT64_T_SPECIFIER "'",
+      checksum
+    ));
   }
 
   return checksum;
