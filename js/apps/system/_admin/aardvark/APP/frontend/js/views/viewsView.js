@@ -242,6 +242,7 @@
         data: options,
         success: function (data) {
           window.modalView.hide();
+          arangoHelper.arangoNotification('View', 'Creation in progress. This may take a while.');
           self.getViews();
         },
         error: function (error) {

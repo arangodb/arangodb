@@ -376,7 +376,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
     }
 
     case ValueType::Object: {
-      ObjectIterator it(*slice);
+      ObjectIterator it(*slice, !options->dumpAttributesInIndexOrder);
       _sink->push_back('{');
       if (options->prettyPrint) {
         _sink->push_back('\n');

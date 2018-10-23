@@ -128,8 +128,9 @@ bool string_token_stream::next() {
 bytes_ref numeric_token_stream::numeric_term::value(
     bstring& buf,
     NumericType type,
-    decltype(numeric_token_stream::numeric_term::val_) val,
-    uint32_t shift) {
+    value_t val,
+    uint32_t shift
+) {
   switch (type) {
     case NT_LONG: {
       typedef numeric_utils::numeric_traits<int64_t> traits_t;

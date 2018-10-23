@@ -88,7 +88,6 @@ void EngineSelectorFeature::prepare() {
   TRI_ASSERT(_engine != "auto");
   
   if (ServerState::instance()->isCoordinator()) {
-    
     ClusterEngine* ce = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
     ENGINE = ce;
 

@@ -434,6 +434,7 @@ bool consolidateCleanupStore(
     irs::directory& directory,
     irs::index_writer& writer,
     arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& policy,
+    irs::merge_writer::flush_progress_t const& progress,
     bool runCleanupAfterConsolidation,
     arangodb::iresearch::IResearchView const& view,
     const char* storeName
@@ -450,7 +451,7 @@ bool consolidateCleanupStore(
       << "registering consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
     try {
-      writer.consolidate(policy.policy());
+      writer.consolidate(policy.policy(), nullptr, progress);
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "caught exception during registration of consolidation policy '" << policy.properties().toString() << "' for store '" << storeName << "' with arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();
@@ -697,13 +698,13 @@ IResearchView::IResearchView(
 
       if (viewPtr->_storePersisted) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "starting persisted-sync sync for arangosearch view '" << viewPtr->id() << "'";
+          << "starting persisted-sync sync for arangosearch view '" << viewPtr->name() << "'";
 
         try {
           viewPtr->_storePersisted.sync();
         } catch (arangodb::basics::Exception& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id()
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->name()
             << "': " << e.code() << " " << e.what();
           IR_LOG_EXCEPTION();
 
@@ -713,7 +714,7 @@ IResearchView::IResearchView(
           );
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id()
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->name()
             << "': " << e.what();
           IR_LOG_EXCEPTION();
 
@@ -723,7 +724,7 @@ IResearchView::IResearchView(
           );
         } catch (...) {
           LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->id() << "'";
+            << "caught exception while committing persisted store for arangosearch view '" << viewPtr->name() << "'";
           IR_LOG_EXCEPTION();
 
           return arangodb::Result(
@@ -733,7 +734,7 @@ IResearchView::IResearchView(
         }
 
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "finished persisted-sync sync for arangosearch view '" << viewPtr->id() << "'";
+          << "finished persisted-sync sync for arangosearch view '" << viewPtr->name() << "'";
       }
 
       viewPtr->_inRecovery = false;
@@ -751,8 +752,10 @@ IResearchView::IResearchView(
     struct State : public IResearchViewMeta {
       size_t _cleanupIntervalCount{ 0 };
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
+      irs::merge_writer::flush_progress_t _progress;
     } state;
 
+    state._progress = [this]()->bool { return !_asyncTerminate.load(); };
     _asyncFeature->async(
       self(),
       [this, state](size_t& timeoutMsec, bool) mutable ->bool {
@@ -797,6 +800,7 @@ IResearchView::IResearchView(
                  *_storePersisted._directory,
                  *_storePersisted._writer,
                  state._consolidationPolicy,
+                 state._progress,
                  runCleanupAfterConsolidation,
                  *this,
                  "persistent store")
@@ -1531,23 +1535,24 @@ int IResearchView::insert(
     new IResearchView(vocbase, info, *feature, planVersion)
   );
   auto& impl = reinterpret_cast<IResearchView&>(*view);
+  auto meta = std::make_shared<AsyncMeta>();
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  {
-    WriteMutex mutex(impl._mutex); // '_meta' can be asynchronously read by async jobs started in constructor
-    SCOPED_LOCK(mutex);
+  if (!meta->init(properties, error)
+      || !impl.updateProperties(meta).ok() // update separately since per-instance async jobs already started
+      || !impl._metaState.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
-    if (!impl._meta->init(properties, error)
-        || !impl._metaState.init(properties, error)) {
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    if (error.empty()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to initialize arangosearch view from definition, error: " << error;
-
-      return nullptr;
+        << "failed to initialize arangosearch view '" << impl.name() << "' from definition";
+    } else {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to initialize arangosearch view '" << impl.name() << "' from definition, error in attribute: " << error;
     }
 
-    impl.updateProperties(impl._meta); // trigger reload of settings for async jobs
+    return nullptr;
   }
 
   auto links = properties.hasKey(StaticStrings::LinksField)
@@ -1929,7 +1934,12 @@ arangodb::Result IResearchView::updateProperties(
     auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
 
     if (!meta.init(slice, error, initialMeta)) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to update arangosearch view '") + name() + "' from definition")
+        : (std::string("failed to update arangosearch view '") + name() + "' from definition, error in attribute: " + error)
+      );
     }
 
     // reset non-updatable values to match current meta
@@ -2037,11 +2047,33 @@ void IResearchView::registerFlushCallback() {
     return;
   }
 
-  flush->registerCallback(this, [this]() noexcept {
-    return IResearchView::FlushTransactionPtr(
-      this,
-      [](arangodb::FlushTransaction*){} // empty deleter
+  auto viewSelf = self();
+
+  flush->registerCallback(this, [viewSelf]() {
+    static struct NoopFlushTransaction: arangodb::FlushTransaction {
+      NoopFlushTransaction(): FlushTransaction("ArangoSearchNoop") {}
+      virtual arangodb::Result commit() override {
+        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
+    } noopFlushTransaction;
+    SCOPED_LOCK_NAMED(viewSelf->mutex(), lock);
+
+    if (!*viewSelf) {
+      return arangodb::FlushFeature::FlushTransactionPtr(
+        &noopFlushTransaction, [](arangodb::FlushTransaction*)->void {}
+      );
+    }
+
+    auto trx = arangodb::FlushFeature::FlushTransactionPtr(
+      viewSelf->get(),
+      [](arangodb::FlushTransaction* trx)->void {
+        ADOPT_SCOPED_LOCK_NAMED(static_cast<IResearchView*>(trx)->self()->mutex(), lock);
+      }
     );
+
+    lock.release(); // unlocked in distructor above
+
+    return trx;
   });
 
   // noexcept

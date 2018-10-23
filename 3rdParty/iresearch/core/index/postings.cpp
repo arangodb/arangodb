@@ -50,9 +50,9 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   }
 
   const auto slice_end = writer_.pool_offset() + max_term_len;
-  const auto next_block_start = writer_.pool_offset() < parent.size()
+  const auto next_block_start = writer_.pool_offset() < parent.value_count()
                         ? writer_.position().block_offset() + writer_t::container::block_type::SIZE
-                        : writer_t::container::block_type::SIZE * parent.count();
+                        : writer_t::container::block_type::SIZE * parent.block_count();
 
   // do not span slice over 2 blocks, start slice at the start of the next block
   if (slice_end > next_block_start) {

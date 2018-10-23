@@ -130,17 +130,6 @@ struct consolidation {
   double_t score{ -1. }; // how good this permutation is
 };
 
-//void print_segment(const segment_stat& stat) {
-//#ifdef IRESEARCH_DEBUG
-//  IR_FRMT_TRACE(
-//    "Name='%s', docs_count='" IR_SIZE_T_SPECIFIER "', live_docs_count='" IR_SIZE_T_SPECIFIER "', size='" IR_SIZE_T_SPECIFIER "'",
-//    stat.meta->name.c_str(), stat.meta->docs_count, stat.meta->live_docs_count, stat.size
-//  );
-//#else
-//  UNUSED(stat);
-//#endif
-//}
-
 /// @returns score of the consolidation bucket
 double_t consolidation_score(
     const consolidation_candidate& consolidation,
@@ -197,21 +186,15 @@ index_writer::consolidation_policy_t consolidation_policy(
 ) {
   return [options](
       std::set<const segment_meta*>& candidates,
-      const directory& dir,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
-    uint64_t length;
 
     for (auto& segment : meta) {
-      for (auto& file : segment.meta.files) {
-        if (dir.length(length, file)) {
-          all_segment_bytes_size += length;
-        }
-      }
+      all_segment_bytes_size += segment.meta.size;
     }
 
     auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
@@ -219,14 +202,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
     for (auto& segment: meta) {
-      size_t segment_bytes_size = 0;
-      uint64_t length;
-
-      for (auto& file: segment.meta.files) {
-        if (dir.length(length, file)) {
-          segment_bytes_size += length;
-        }
-      }
+      const size_t segment_bytes_size = segment.meta.size;
 
       if (threshold_bytes_avg >= segment_bytes_size) {
         candidates.insert(&segment.meta);
@@ -240,29 +216,19 @@ index_writer::consolidation_policy_t consolidation_policy(
 ) {
   return [options](
       std::set<const segment_meta*>& candidates,
-      const directory& dir,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
-    uint64_t length;
     typedef std::pair<size_t, const segment_meta*> entry_t;
     std::vector<entry_t> segments;
 
     segments.reserve(meta.size());
 
     for (auto& segment: meta) {
-      segments.emplace_back(0, &(segment.meta));
-
-      auto& bytes_size = segments.back().first;
-
-      for (auto& file: segment.meta.files) {
-        if (dir.length(length, file)) {
-          bytes_size += length;
-          all_segment_bytes_size += length;
-        }
-      }
+      segments.emplace_back(size_without_removals(segment.meta), &(segment.meta));
+      all_segment_bytes_size += segments.back().first;
     }
 
     size_t cumulative_size = 0;
@@ -277,7 +243,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 
     // merge segment if: {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
     for (auto& entry: segments) {
-      auto segment_bytes_size = entry.first;
+      const auto segment_bytes_size = entry.first;
 
       if (cumulative_size + segment_bytes_size <= threshold_size) {
         cumulative_size += segment_bytes_size;
@@ -292,7 +258,6 @@ index_writer::consolidation_policy_t consolidation_policy(
 ) {
   return [options](
       std::set<const segment_meta*>& candidates,
-      const directory& /*dir*/,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
    )->void {
@@ -310,7 +275,6 @@ index_writer::consolidation_policy_t consolidation_policy(
 ) {
   return [options](
       std::set<const segment_meta*>& candidates,
-      const directory& /*dir*/,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
@@ -332,7 +296,6 @@ index_writer::consolidation_policy_t consolidation_policy(
 ) {
   return [options](
       std::set<const segment_meta*>& candidates,
-      const directory& /*dir*/,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
@@ -340,7 +303,6 @@ index_writer::consolidation_policy_t consolidation_policy(
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
 
-    //for (uint32_t i = 0; i < segment_count; ++i) {
     for (auto& segment : meta) {
       all_segment_docs_count += segment.meta.live_docs_count;
     }
@@ -371,7 +333,6 @@ index_writer::consolidation_policy_t consolidation_policy(
 
   return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes, max_segments_bytes, lookahead, options](
       std::set<const segment_meta*>& candidates,
-      const directory& /*dir*/,
       const index_meta& meta,
       const index_writer::consolidating_segments_t& consolidating_segments
   )->void {
@@ -529,9 +490,12 @@ void write_index_segment(directory& dir, index_meta::index_segment_t& segment) {
   for (auto& filename: segment.meta.files) {
     uint64_t size;
 
-    if (dir.length(size, filename)) {
-      segment.meta.size += size;
+    if (!dir.length(size, filename)) {
+      IR_FRMT_WARN("Failed to get length of the file '%s'", filename.c_str());
+      continue;
     }
+
+    segment.meta.size += size;
   }
 
   auto writer = segment.meta.codec->get_segment_meta_writer();

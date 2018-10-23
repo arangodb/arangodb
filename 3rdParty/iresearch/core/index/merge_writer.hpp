@@ -76,10 +76,16 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
     readers_.emplace_back(reader);
   }
 
-  // return merge successful
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief flush all of the added readers into a single segment
+  /// @param segment the segment that was flushed
+  /// @param progress report flush progress (abort if 'progress' returns false)
+  /// @return merge successful
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::function<bool()> flush_progress_t;
   bool flush(
     index_meta::index_segment_t& segment,
-    bool persist_segment_meta = true
+    const flush_progress_t& progress = {}
   );
 
   const reader_ctx& operator[](size_t i) const NOEXCEPT {
