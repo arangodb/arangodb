@@ -1,3 +1,9 @@
+v3.4.0-rc.4 (XXXX-XX-XX)
+------------------------
+
+* fix internal issue #2786: improved confirmation dialog when clicking the
+Truncate button in the Web UI
+
 v3.4.0-rc.3 (2018-10-23)
 ------------------------
 
