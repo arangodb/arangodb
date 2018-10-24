@@ -4323,41 +4323,26 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
   builder->openArray();
 
   auto& vocbase = query->vocbase();
-  std::vector<LogicalCollection*> colls;
+  auto colls = GetCollections(vocbase);
 
   // clean memory
   std::function<void()> cleanup;
 
-  // if we are a coordinator, we need to fetch the collection info from the
-  // agency
-  if (ServerState::instance()->isCoordinator()) {
-    cleanup = [&colls]() {
-      for (auto& it : colls) {
-        if (it != nullptr) {
-          delete it;
-        }
-      }
-    };
-
-    colls = GetCollectionsCluster(&vocbase);
-  } else {
-    colls = vocbase.collections(false);
-    cleanup = []() {};
-  }
-
-  // make sure memory is cleaned up
-  TRI_DEFER(cleanup());
-
-  std::sort(colls.begin(), colls.end(),
-            [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
-              return basics::StringUtils::tolower(lhs->name()) <
-                     basics::StringUtils::tolower(rhs->name());
-            });
+  std::sort(
+    colls.begin(),
+    colls.end(),
+    [](
+      std::shared_ptr<LogicalCollection> const& lhs,
+      std::shared_ptr<LogicalCollection> const& rhs
+    )->bool {
+      return arangodb::basics::StringUtils::tolower(lhs->name()) < arangodb::basics::StringUtils::tolower(rhs->name());
+    }
+  );
 
   size_t const n = colls.size();
 
   for (size_t i = 0; i < n; ++i) {
-    LogicalCollection* coll = colls[i];
+    auto& coll = colls[i];
 
     if (ExecContext::CURRENT != nullptr &&
         !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {

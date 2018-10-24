@@ -1022,14 +1022,14 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
     s.slice(),
     false,
     true,
-    [&](LogicalCollection&) {}
+    [](std::shared_ptr<LogicalCollection> const&)->void {}
   );
 
   if (r.is(TRI_ERROR_SHUTTING_DOWN)) {
     // this is somewhat an expected error
     return;
   }
-    
+
   // check if the collection already existed. this is acceptable too
   if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     LOG_TOPIC(WARN, Logger::STATISTICS)
@@ -1041,7 +1041,9 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
   r = methods::Collections::lookup(
     &_vocbase, 
     collection, 
-    [&](LogicalCollection& coll) {
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+
       VPackBuilder t;
 
       t.openObject();
@@ -1057,7 +1059,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
       VPackBuilder output;
       Result idxRes =
-        methods::Indexes::ensureIndex(&coll, t.slice(), true, output);
+        methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
 
       if (!idxRes.ok()) {
         LOG_TOPIC(WARN, Logger::STATISTICS)

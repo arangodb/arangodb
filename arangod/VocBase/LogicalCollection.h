@@ -85,27 +85,16 @@ class LogicalCollection: public LogicalDataSource {
     bool isAStub,
     uint64_t planVersion = 0
   );
-
-  virtual ~LogicalCollection();
-
-  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
-
- protected:  // If you need a copy outside the class, use clone below.
-  explicit LogicalCollection(LogicalCollection const&);
-
- private:
+  LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-
- public:
+  virtual ~LogicalCollection();
+  
+  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
-
-  virtual std::unique_ptr<LogicalCollection> clone() {
-    return std::unique_ptr<LogicalCollection>(new LogicalCollection(*this));
-  }
 
   /// @brief hard-coded minimum version number for collections
   static constexpr uint32_t minimumVersion() { return VERSION_30; }
@@ -339,7 +328,7 @@ class LogicalCollection: public LogicalDataSource {
   transaction::CountCache& countCache() { return _countCache; }
 
   ChecksumResult checksum(bool, bool) const;
-
+  
   std::unique_ptr<FollowerInfo> const& followers() const;
 
  protected:

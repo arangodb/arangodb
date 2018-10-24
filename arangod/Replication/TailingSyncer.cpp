@@ -640,7 +640,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
         << "Renaming system collection " << col->name();
   }
 
-  return Result(vocbase->renameCollection(col, name, true));
+  return vocbase->renameCollection(col->id(), name, true);
 }
 
 /// @brief changes the properties of a collection,
@@ -776,16 +776,17 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  
-  
+
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
+
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    int res = vocbase->renameView(view, nameSlice.copyString());
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = vocbase->renameView(view->id(), nameSlice.copyString());
+
+    if (!res.ok()) {
       return res;
     }
   }
-  
+
   VPackSlice properties = data.get("properties");
   if (properties.isObject()) {
     bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
