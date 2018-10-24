@@ -1,6 +1,9 @@
 v3.3.20 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #2786: improved confirmation dialog when clicking the
+  Truncate button in the Web UI
+
 * Fixed an AQL bug where the optimize-traversals rule was falsely applied to
   extensions with inline expressions and thereby ignoring them
 
