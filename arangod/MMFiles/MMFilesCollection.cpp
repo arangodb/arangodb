@@ -3096,7 +3096,7 @@ Result persistLocalDocumentIdIterator(
       MMFilesCrudMarker updatedMarker(TRI_DF_MARKER_VPACK_DOCUMENT,
                                       transactionId, localDocumentId, slice);
 
-      std::unique_ptr<char> buffer(new char[updatedMarker.size()]);
+      std::unique_ptr<char[]> buffer(new char[updatedMarker.size()]);
       MMFilesMarker* outputMarker =
           reinterpret_cast<MMFilesMarker*>(buffer.get());
       MMFilesDatafileHelper::InitMarker(outputMarker, updatedMarker.type(),
