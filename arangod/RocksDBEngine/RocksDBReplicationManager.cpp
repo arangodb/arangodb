@@ -168,9 +168,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::find(
-    RocksDBReplicationId id, bool& busy, bool exclusive, double ttl) {
+    RocksDBReplicationId id, double ttl) {
   RocksDBReplicationContext* context = nullptr;
-  busy = false;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -188,12 +187,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
       // already deleted
       return nullptr;
     }
-
-    bool acquired = context->use(ttl, exclusive);
-    if (!acquired) {
-      busy = true;
-      return nullptr;
-    }
+    context->use(ttl);
   }
 
   return context;
@@ -285,9 +279,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto& context : _contexts) {
-      if (context.second->vocbase() == vocbase) {
-        context.second->setDeleted();
-      }
+      context.second->removeVocbase(*vocbase); // will set deleted flag
     }
   }
 

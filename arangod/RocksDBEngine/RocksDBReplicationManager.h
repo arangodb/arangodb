@@ -72,7 +72,7 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   RocksDBReplicationContext* find(
-      RocksDBReplicationId, bool& isBusy, bool exclusive = true,
+      RocksDBReplicationId,
       double ttl = replutils::BatchInfo::DefaultTimeout);
   
   //////////////////////////////////////////////////////////////////////////////
