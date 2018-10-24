@@ -42,6 +42,13 @@ var throwBadParameter = arangodb.throwBadParameter;
 var utils = require('@arangodb/foxx/manager-utils');
 var store = require('@arangodb/foxx/store');
 
+let options = {
+};
+
+if (require('internal').db._version(true)['full-version-string'].search('maintainer')) {
+  options.timeout = 300;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief extracts command-line options
 // //////////////////////////////////////////////////////////////////////////////
@@ -211,7 +218,7 @@ var runScript = function (mount, name, options) {
     mount: mount,
     options: options
   };
-  res = arango.POST('/_admin/foxx/script', req);
+  res = arango.POST('/_admin/foxx/script', req, options);
   arangosh.checkRequestResult(res);
   return res;
 };
@@ -236,7 +243,7 @@ var moveAppToServer = function (serviceInfo) {
   if (!filePath) {
     throwBadParameter('Invalid file: ' + serviceInfo + '. Has to be a direcotry or zip archive');
   }
-  var response = arango.SEND_FILE('/_api/upload', filePath);
+  var response = arango.SEND_FILE('/_api/upload', filePath, options);
   if (shouldDelete) {
     try {
       fs.remove(filePath);
@@ -278,7 +285,7 @@ var install = function (serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST('/_admin/foxx/install', req);
+  res = arango.POST('/_admin/foxx/install', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -304,7 +311,7 @@ var uninstall = function (mount, options) {
     options: options || {}
   };
   utils.validateMount(mount);
-  res = arango.POST('/_admin/foxx/uninstall', req);
+  res = arango.POST('/_admin/foxx/uninstall', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -337,7 +344,7 @@ var replace = function (serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST('/_admin/foxx/replace', req);
+  res = arango.POST('/_admin/foxx/replace', req, options);
   arangodb.db._flushCache();
   arangosh.checkRequestResult(res);
   return {
@@ -370,7 +377,7 @@ var upgrade = function (serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST('/_admin/foxx/upgrade', req);
+  res = arango.POST('/_admin/foxx/upgrade', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -394,7 +401,7 @@ var development = function (mount) {
     mount: mount,
     activate: true
   };
-  res = arango.POST('/_admin/foxx/development', req);
+  res = arango.POST('/_admin/foxx/development', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -418,7 +425,7 @@ var production = function (mount) {
     mount: mount,
     activate: false
   };
-  res = arango.POST('/_admin/foxx/development', req);
+  res = arango.POST('/_admin/foxx/development', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -441,7 +448,7 @@ var configure = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/configure', req);
+  var res = arango.POST('/_admin/foxx/configure', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -463,7 +470,7 @@ var configuration = function (mount) {
   var req = {
     mount: mount
   };
-  var res = arango.POST('/_admin/foxx/configuration', req);
+  var res = arango.POST('/_admin/foxx/configuration', req, options);
   arangosh.checkRequestResult(res);
   return res;
 };
@@ -481,7 +488,7 @@ var updateDeps = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/updateDeps', req);
+  var res = arango.POST('/_admin/foxx/updateDeps', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -503,7 +510,7 @@ var setDependencies = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/set-dependencies', req);
+  var res = arango.POST('/_admin/foxx/set-dependencies', req, options);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -525,7 +532,7 @@ var dependencies = function (mount) {
   var req = {
     mount: mount
   };
-  var res = arango.POST('/_admin/foxx/dependencies', req);
+  var res = arango.POST('/_admin/foxx/dependencies', req, options);
   arangosh.checkRequestResult(res);
   return res;
 };
@@ -545,7 +552,7 @@ var tests = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/tests', req);
+  var res = arango.POST('/_admin/foxx/tests', req, options);
   arangosh.checkRequestResult(res);
   return res;
 };
