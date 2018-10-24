@@ -37,7 +37,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
  public:
   
   static aql::QueryRegistry* registry() {
-    return QUERY_REGISTRY.load(std::memory_order_relaxed);
+    return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
   static constexpr double DefaultQueryTTL = 600.0;
 

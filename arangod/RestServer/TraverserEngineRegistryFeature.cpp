@@ -49,13 +49,13 @@ void TraverserEngineRegistryFeature::validateOptions(
 void TraverserEngineRegistryFeature::prepare() {
   // create the engine registery
   _engineRegistry.reset(new traverser::TraverserEngineRegistry());
-  TRAVERSER_ENGINE_REGISTRY.store(_engineRegistry.get(), std::memory_order_relaxed);
+  TRAVERSER_ENGINE_REGISTRY.store(_engineRegistry.get(), std::memory_order_release);
 }
 void TraverserEngineRegistryFeature::start() {
 }
 
 void TraverserEngineRegistryFeature::unprepare() {
-  TRAVERSER_ENGINE_REGISTRY.store(nullptr, std::memory_order_relaxed);
+  TRAVERSER_ENGINE_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
 } // arangodb

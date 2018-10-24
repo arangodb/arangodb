@@ -38,7 +38,7 @@ class TraverserEngineRegistryFeature final
  public:
       
   static traverser::TraverserEngineRegistry* registry() {
-    return TRAVERSER_ENGINE_REGISTRY.load(std::memory_order_relaxed);
+    return TRAVERSER_ENGINE_REGISTRY.load(std::memory_order_acquire);
   }
 
   explicit TraverserEngineRegistryFeature(

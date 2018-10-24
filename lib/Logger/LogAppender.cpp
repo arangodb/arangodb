@@ -47,7 +47,7 @@ std::vector<std::function<void(LogMessage*)>> LogAppender::_loggers;
 bool LogAppender::_allowStdLogging = true;
 
 void LogAppender::addLogger(std::function<void(LogMessage*)> func) {
-  MUTEX_LOCKER(guard, _appendersLock); // to slince TSan
+  MUTEX_LOCKER(guard, _appendersLock); // to silence TSan
   _loggers.emplace_back(func);
 }
 
