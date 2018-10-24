@@ -1,6 +1,8 @@
 v3.2.17 (2018-10-24)
 --------------------
 
+* upgraded arangodb starter version to 0.13.7
+
 * when returning memory to the OS, use the same memory protection flags as 
   when initializing the memory
 
