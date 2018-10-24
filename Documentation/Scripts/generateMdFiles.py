@@ -552,7 +552,7 @@ def findStartCode(inFileFull, outFileFull, baseInPath):
             shutil.copy(inf, outf)
         return str('![' + m.groups()[0] + '](' + imageLink + ')')
 
-    textFile = re.sub(RXIMAGES,analyzeImages, textFile)
+    #textFile = re.sub(RXIMAGES,analyzeImages, textFile)
     outFD = io.open(outFileFull, "w", encoding="utf-8", newline="")
     outFD.write(textFile)
     outFD.close()
