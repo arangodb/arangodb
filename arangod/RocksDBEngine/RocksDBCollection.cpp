@@ -672,7 +672,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
-        idx->afterTruncate(); // clears caches / clears links (if applicable)
       }
     }
     
@@ -688,6 +687,14 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
+    }
+    
+    
+    {// only truncate indexes after a successful commit
+      READ_LOCKER(guard, _indexesLock);
+      for (std::shared_ptr<Index> const& idx : _indexes) {
+        idx->afterTruncate(); // clears caches / clears links (if applicable)
+      }
     }
     
     rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();

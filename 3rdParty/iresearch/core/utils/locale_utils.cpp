@@ -2676,7 +2676,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::detailed_io_error(
+      "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
+    );
   }
 
   static_assert(sizeof(int64_t) == sizeof(long long), "sizeof(int64_t) != sizeof(long long)");

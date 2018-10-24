@@ -44,9 +44,12 @@ set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 set(CMAKE_TEST_DIRECTORY "tests")
 
 include(InstallMacros)
+
 # install ----------------------------------------------------------------------
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
+if(UNIX)
+install(DIRECTORY ${ARANGO_MAN_DIR}
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR})
+endif()
 
 install_readme(README README.txt)
 install_readme(README.md README.md)
