@@ -566,7 +566,8 @@ class AgencyCommManager {
                        std::string& url);
 
   void addEndpoint(std::string const&);
-  void removeEndpoint(std::string const&);
+  /// removes old endpoints, adds new ones
+  void updateEndpoints(std::vector<std::string> const& endpoints);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
   std::shared_ptr<VPackBuilder> summery() const;
@@ -675,8 +676,6 @@ class AgencyComm {
 
   AgencyCommResult unregisterCallback(
     std::string const& key, std::string const& endpoint);
-
-  void updateEndpoints(arangodb::velocypack::Slice const&);
 
   bool lockRead(std::string const&, double, double);
 
