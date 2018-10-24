@@ -1,8 +1,15 @@
+v3.4.0-rc.4 (XXXX-XX-XX)
+------------------------
+
+* fix internal issue #2786: improved confirmation dialog when clicking the
+  Truncate button in the Web UI
+
 v3.4.0-rc.3 (2018-10-23)
 ------------------------
 
 * The order of JSON object attribute keys in JSON return values will now be 
-  "random" in more cases. In JSON, there is no defined order for object attribute
+  "random" in more cases. In JTotal 3 (delta 2), reused 0 (delta 0)
+SON, there is no defined order for object attribute
   keys anyway, so ArangoDB is taking the freedom to return the attribute keys in
   a non-deterministic, seemingly unordered way.
 
