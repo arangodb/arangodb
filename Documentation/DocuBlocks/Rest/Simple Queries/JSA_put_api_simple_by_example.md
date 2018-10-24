@@ -3,6 +3,14 @@
 
 @RESTHEADER{PUT /_api/simple/by-example, Simple query by-example}
 
+@HINTS
+{% hint 'warning' %}
+Till ArangoDB versions 3.2.13 and 3.3.7 this API is quite expensive.
+A more lightweight alternative is to use the [HTTP Cursor API](../AqlQueryCursor/README.md).
+Starting from versions 3.2.14 and 3.3.8 this performance impact is not
+an issue anymore, as the internal implementation of the API has changed.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.
 
@@ -27,12 +35,6 @@ not set, a server-controlled default value will be used. A *batchSize* value of
 This will find all documents matching a given example.
 
 Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
-
-@HINT
-Till ArangoDB versions 3.2.13 and 3.3.7 this API is quite expensive.
-A more lightweight alternative is to use the [HTTP Cursor API](../AqlQueryCursor/README.md).
-Starting from versions 3.2.14 and 3.3.8 this performance impact is not
-an issue anymore, as the internal implementation of the API has changed.
 
 @RESTRETURNCODES
 
