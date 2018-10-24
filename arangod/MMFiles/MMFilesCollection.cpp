@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ReadUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -3152,8 +3153,11 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
 
   size_t outputSizeLimit = file.currentSize() +
                            (numDocuments * sizeof(LocalDocumentId));
-  MMFilesDatafile* outputFile =
-      collection.createCompactor(file.fid(), outputSizeLimit);
+  MMFilesDatafile* outputFile = nullptr;
+  {
+    READ_UNLOCKER(unlocker, collection._filesLock);
+    outputFile = collection.createCompactor(file.fid(), outputSizeLimit);
+  }
   if (nullptr == outputFile) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -3164,14 +3168,18 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     return res;
   }
 
-  res = collection.closeCompactor(outputFile);
-  if (res.fail()) {
-    return res;
-  }
+  {
+    READ_UNLOCKER(unlocker, collection._filesLock);
+    res = collection.closeCompactor(outputFile);
 
-  // TODO detect error in replacement?
-  MMFilesCompactorThread::RenameDatafileCallback(
-      &file, outputFile, &collection._logicalCollection);
+    if (res.fail()) {
+      return res;
+    }
+
+    // TODO detect error in replacement?
+    MMFilesCompactorThread::RenameDatafileCallback(
+        &file, outputFile, &collection._logicalCollection);
+  }
 
   return res;
 }
@@ -3181,20 +3189,24 @@ Result MMFilesCollection::persistLocalDocumentIds() {
   TRI_ASSERT(_compactors.empty());
 
   // convert journal to datafile first
-  if (!_journals.empty()) {
-    int res = rotateActiveJournal();
-    if (TRI_ERROR_NO_ERROR != res) {
-      return Result(res);
-    }
+  int res = rotateActiveJournal();
+  if (TRI_ERROR_NO_ERROR != res && TRI_ERROR_ARANGO_NO_JOURNAL != res) {
+    return Result(res);
   }
 
   // now handle datafiles
-  for (auto file : _datafiles) {
-    Result result = persistLocalDocumentIdsForDatafile(*this, *file);
-    if (result.fail()) {
-      return result;
+  {
+    READ_LOCKER(locker, _filesLock);
+    for (auto file : _datafiles) {
+      Result result = persistLocalDocumentIdsForDatafile(*this, *file);
+      if (result.fail()) {
+        return result;
+      }
     }
   }
+
+  TRI_ASSERT(_compactors.empty());
+  TRI_ASSERT(_journals.empty());
 
   return Result();
 }
