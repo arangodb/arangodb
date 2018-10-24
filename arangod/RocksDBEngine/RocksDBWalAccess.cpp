@@ -798,6 +798,10 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
     //LOG_TOPIC(INFO, Logger::ENGINES) << "found batch-seq: " << batch.sequence;
     lastScannedTick = batch.sequence;  // start of the batch
+    if (batch.sequence < since) {
+      iterator->Next();  // skip
+      continue;
+    }
 
     dumper.startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(&dumper);
