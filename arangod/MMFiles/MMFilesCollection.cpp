@@ -114,6 +114,88 @@ static MMFilesDatafileStatisticsContainer* FindDatafileStats(
   return stats.release();
 }
 
+bool countDocumentsIterator(MMFilesMarker const* marker,
+                            void* counter, MMFilesDatafile*) {
+  TRI_ASSERT(nullptr != counter);
+  if (marker->getType() == TRI_DF_MARKER_VPACK_DOCUMENT) {
+    (*static_cast<int*>(counter))++;
+  }
+  return true;
+}
+
+Result persistLocalDocumentIdIterator(
+    MMFilesMarker const* marker, void* data, MMFilesDatafile* inputFile) {
+  Result res;
+  auto outputFile = static_cast<MMFilesDatafile*>(data);
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
+      auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
+
+      VPackSlice const slice(
+          reinterpret_cast<char const*>(marker) +
+          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      uint8_t const* vpack = slice.begin();
+
+      LocalDocumentId localDocumentId;
+      if (marker->getSize() ==
+          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)
+          + slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
+        // we do have a LocalDocumentId stored at the end of the marker
+        uint8_t const* ptr = vpack + slice.byteSize();
+        localDocumentId = LocalDocumentId(
+            encoding::readNumber<LocalDocumentId::BaseType>(
+                ptr, sizeof(LocalDocumentId::BaseType)));
+      } else {
+        localDocumentId = LocalDocumentId::create();
+      }
+
+      MMFilesCrudMarker updatedMarker(TRI_DF_MARKER_VPACK_DOCUMENT,
+                                      transactionId, localDocumentId, slice);
+
+      std::unique_ptr<char[]> buffer(new char[updatedMarker.size()]);
+      MMFilesMarker* outputMarker =
+          reinterpret_cast<MMFilesMarker*>(buffer.get());
+      MMFilesDatafileHelper::InitMarker(outputMarker, updatedMarker.type(),
+                                        updatedMarker.size(),
+                                        marker->getTick());
+      updatedMarker.store(buffer.get());
+
+      MMFilesMarker* result;
+      res = outputFile->reserveElement(outputMarker->getSize(), &result, 0);
+      if (res.fail()) {
+        return res;
+      }
+      res = outputFile->writeCrcElement(result, outputMarker);
+      if (res.fail()) {
+        return res;
+      }
+      break;
+    }
+    case TRI_DF_MARKER_HEADER:
+    case TRI_DF_MARKER_COL_HEADER:
+    case TRI_DF_MARKER_FOOTER: {
+      // skip marker, either already written by createCompactor or will be
+      // written by closeCompactor
+      break;
+    }
+    default: {
+      // direct copy
+      MMFilesMarker* result;
+      res = outputFile->reserveElement(marker->getSize(), &result, 0);
+      if (res.fail()) {
+        return res;
+      }
+      res = outputFile->writeElement(result, marker);
+      if (res.fail()) {
+        return res;
+      }
+      break;
+    }
+  }
+
+  return res;
+}
+
 }  // namespace
 
 arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
@@ -3057,97 +3139,14 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
   }
 }
 
-namespace {
-Result countDocumentsIterator(MMFilesMarker const* marker,
-                              void* counter, MMFilesDatafile*) {
-  Result res;
-  TRI_ASSERT(nullptr != counter);
-  if (marker->getType() == TRI_DF_MARKER_VPACK_DOCUMENT) {
-    (*static_cast<int*>(counter))++;
-  }
-  return res;
-}
-
-Result persistLocalDocumentIdIterator(
-    MMFilesMarker const* marker, void* data, MMFilesDatafile* inputFile) {
-  Result res;
-  auto outputFile = static_cast<MMFilesDatafile*>(data);
-  switch (marker->getType()) {
-    case TRI_DF_MARKER_VPACK_DOCUMENT: {
-      auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
-
-      VPackSlice const slice(
-          reinterpret_cast<char const*>(marker) +
-          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-      uint8_t const* vpack = slice.begin();
-
-      LocalDocumentId localDocumentId;
-      if (marker->getSize() ==
-          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)
-          + slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
-        // we do have a LocalDocumentId stored at the end of the marker
-        uint8_t const* ptr = vpack + slice.byteSize();
-        localDocumentId = LocalDocumentId(
-            encoding::readNumber<LocalDocumentId::BaseType>(
-                ptr, sizeof(LocalDocumentId::BaseType)));
-      } else {
-        localDocumentId = LocalDocumentId::create();
-      }
-
-      MMFilesCrudMarker updatedMarker(TRI_DF_MARKER_VPACK_DOCUMENT,
-                                      transactionId, localDocumentId, slice);
-
-      std::unique_ptr<char[]> buffer(new char[updatedMarker.size()]);
-      MMFilesMarker* outputMarker =
-          reinterpret_cast<MMFilesMarker*>(buffer.get());
-      MMFilesDatafileHelper::InitMarker(outputMarker, updatedMarker.type(),
-                                        updatedMarker.size(),
-                                        marker->getTick());
-      updatedMarker.store(buffer.get());
-
-      MMFilesMarker* result;
-      res = outputFile->reserveElement(outputMarker->getSize(), &result, 0);
-      if (res.fail()) {
-        return res;
-      }
-      res = outputFile->writeCrcElement(result, outputMarker);
-      if (res.fail()) {
-        return res;
-      }
-      break;
-    }
-    case TRI_DF_MARKER_HEADER:
-    case TRI_DF_MARKER_COL_HEADER:
-    case TRI_DF_MARKER_FOOTER: {
-      // skip marker, either already written or will be written by other methods
-      break;
-    }
-    default: {
-      // direct copy
-      MMFilesMarker* result;
-      res = outputFile->reserveElement(marker->getSize(), &result, 0);
-      if (res.fail()) {
-        return res;
-      }
-      res = outputFile->writeElement(result, marker);
-      if (res.fail()) {
-        return res;
-      }
-      break;
-    }
-  }
-
-  return res;
-}
-}
-
 Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     MMFilesCollection& collection, MMFilesDatafile& file) {
   Result res;
   // make a first pass to count documents and determine output size
   size_t numDocuments = 0;
-  res = TRI_IterateDatafile(&file, ::countDocumentsIterator, &numDocuments);
-  if (res.fail()) {
+  bool ok = TRI_IterateDatafile(&file, ::countDocumentsIterator, &numDocuments);
+  if (!ok) {
+    res.reset(TRI_ERROR_INTERNAL, "could not count documents");
     return res;
   }
 
