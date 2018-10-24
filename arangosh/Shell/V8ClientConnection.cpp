@@ -63,8 +63,11 @@ V8ClientConnection::V8ClientConnection()
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
   _builder.onFailure([this](int error, std::string const& msg) {
-    _lastHttpReturnCode = 503;
-    _lastErrorMessage = msg;
+    std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+    if (guard) {
+      _lastHttpReturnCode = 503;
+      _lastErrorMessage = msg;
+    }
   });
 }
 
@@ -81,8 +84,8 @@ void V8ClientConnection::createConnection() {
   req->timeout(std::chrono::seconds(30));
   try {
     auto res = newConnection->sendRequest(std::move(req));
-    _lastHttpReturnCode = res->statusCode();
     
+    _lastHttpReturnCode = res->statusCode();
     if (_lastHttpReturnCode == 200) {
       _connection = std::move(newConnection);
       
@@ -117,7 +120,7 @@ void V8ClientConnection::createConnection() {
         if (version.first < 3) {
           // major version of server is too low
           //_client->disconnect();
-          shutdownConnection(); 
+          shutdownConnection();
           _lastErrorMessage = "Server version number ('" + versionString +
           "') is too low. Expecting 3.0 or higher";
           return;
@@ -131,6 +134,7 @@ void V8ClientConnection::createConnection() {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
+  std::lock_guard<std::mutex> guard(_lock);
   if (interrupted && _connection.get() != nullptr) {
     _connection->cancel();
     _connection.reset();
@@ -155,7 +159,8 @@ std::string V8ClientConnection::endpointSpecification() const {
 
 void V8ClientConnection::connect(ClientFeature* client) {
   TRI_ASSERT(client);
-  
+  std::lock_guard<std::mutex> guard(_lock);
+
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
@@ -170,6 +175,8 @@ void V8ClientConnection::connect(ClientFeature* client) {
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
+  std::lock_guard<std::mutex> guard(_lock);
+  
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());

@@ -966,8 +966,9 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
   
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  if (QueryRegistryFeature::QUERY_REGISTRY != nullptr) {
-    ttl = QueryRegistryFeature::QUERY_REGISTRY->defaultTTL();
+  auto* registry = QueryRegistryFeature::registry();
+  if (registry != nullptr) {
+    ttl = registry->defaultTTL();
   }
   TRI_ASSERT(ttl > 0);
 

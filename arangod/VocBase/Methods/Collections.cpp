@@ -628,7 +628,7 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
                                std::make_shared<VPackBuilder>(),
                                arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::registry();;
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 

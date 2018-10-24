@@ -1307,7 +1307,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
@@ -2625,7 +2625,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   // we want to allow to cancel this operation while waiting
   // for the lock.
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -2665,7 +2665,7 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   // The query is only hold for long during initial locking
   // there it should return false.
   // In all other cases it is released quickly.
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -2686,7 +2686,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
   // otherwise an unconditional destroy() would do.
   auto res = isLockHeld(id);
   if (res.ok()) {
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry == nullptr) {
       return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
     }
@@ -2702,7 +2702,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
 }
 
 ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::QueryId id, LogicalCollection* col) const {
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }
