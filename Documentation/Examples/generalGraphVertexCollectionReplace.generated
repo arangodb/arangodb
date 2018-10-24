@@ -4,12 +4,12 @@ arangosh&gt; graph.male.save({<span class="hljs-attr">neym</span>: <span class="
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/john"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XG44RP6--A"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xocrmm6---"</span> 
 }
 arangosh&gt; graph.male.replace(<span class="hljs-string">"male/john"</span>, {<span class="hljs-attr">name</span>: <span class="hljs-string">"John"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/john"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XG44RP6--B"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XG44RP6--A"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xocrmm6--_"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Xocrmm6---"</span> 
 }

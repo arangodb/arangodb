@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/9128 &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/9131 &lt;&lt;EOF
 { 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"divorced"</span>, 
   <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
@@ -9,15 +9,15 @@ EOF
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XG43p<span class="hljs-number">-6</span>---
+etag: _XocrK96---
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"edge"</span> : { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/9128"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9128"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XG43p-6---"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XG43p-u--A"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/9131"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9131"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XocrK96---"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XocrK9y--A"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

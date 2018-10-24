@@ -2,8 +2,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> rel = graph_module._relation(
 arangosh&gt; graph._extendEdgeDefinitions(rel);
 arangosh&gt; graph;
 {[Graph] 
-  <span class="hljs-string">"isCustomer"</span> : [ArangoCollection <span class="hljs-number">17978</span>, <span class="hljs-string">"isCustomer"</span> (type edge, status loaded)], 
-  <span class="hljs-string">"shop"</span> : [ArangoCollection <span class="hljs-number">17974</span>, <span class="hljs-string">"shop"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"customer"</span> : [ArangoCollection <span class="hljs-number">17976</span>, <span class="hljs-string">"customer"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"pet"</span> : [ArangoCollection <span class="hljs-number">17968</span>, <span class="hljs-string">"pet"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  <span class="hljs-string">"isCustomer"</span> : [ArangoCollection <span class="hljs-number">17962</span>, <span class="hljs-string">"isCustomer"</span> (type edge, status loaded)], 
+  <span class="hljs-string">"shop"</span> : [ArangoCollection <span class="hljs-number">17958</span>, <span class="hljs-string">"shop"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"customer"</span> : [ArangoCollection <span class="hljs-number">17960</span>, <span class="hljs-string">"customer"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"pet"</span> : [ArangoCollection <span class="hljs-number">17952</span>, <span class="hljs-string">"pet"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }

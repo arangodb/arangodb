@@ -6,4 +6,4 @@ content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
 x-arango-replication-lastincluded: 11632
 
-"{\"tick\":\"11626\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_XG43yOS--A\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11630\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_XG43yOW---\"}}\n{\"tick\":\"11632\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_XG43yOW--_\"}}\n"
+"{\"tick\":\"11626\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_XocrSdq--A\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11630\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_XocrSdu---\"}}\n{\"tick\":\"11632\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_XocrSdu--_\"}}\n"

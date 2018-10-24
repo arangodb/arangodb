@@ -3,8 +3,8 @@ arangosh&gt; graph = graph_module._create(<span class="hljs-string">"myGraph"</s
 ........&gt; [graph_module._relation(<span class="hljs-string">"myRelation"</span>, [<span class="hljs-string">"male"</span>, <span class="hljs-string">"female"</span>], [<span class="hljs-string">"male"</span>, <span class="hljs-string">"female"</span>])],
 ........&gt; [<span class="hljs-string">"sessions"</span>]);
 {[Graph] 
-  <span class="hljs-string">"myRelation"</span> : [ArangoCollection <span class="hljs-number">17776</span>, <span class="hljs-string">"myRelation"</span> (type edge, status loaded)], 
-  <span class="hljs-string">"female"</span> : [ArangoCollection <span class="hljs-number">17774</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"male"</span> : [ArangoCollection <span class="hljs-number">17772</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"sessions"</span> : [ArangoCollection <span class="hljs-number">17778</span>, <span class="hljs-string">"sessions"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  <span class="hljs-string">"myRelation"</span> : [ArangoCollection <span class="hljs-number">17760</span>, <span class="hljs-string">"myRelation"</span> (type edge, status loaded)], 
+  <span class="hljs-string">"female"</span> : [ArangoCollection <span class="hljs-number">17758</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"male"</span> : [ArangoCollection <span class="hljs-number">17756</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"sessions"</span> : [ArangoCollection <span class="hljs-number">17762</span>, <span class="hljs-string">"sessions"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }

@@ -6,7 +6,7 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.2.16"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.2.17"</span>, 
   <span class="hljs-string">"license"</span> : <span class="hljs-string">"community"</span>, 
   <span class="hljs-string">"details"</span> : { 
     <span class="hljs-string">"architecture"</span> : <span class="hljs-string">"64bit"</span>, 
@@ -15,8 +15,8 @@ x-content-type-options: nosniff
     <span class="hljs-string">"asm-crc32"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"assertions"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"boost-version"</span> : <span class="hljs-string">"1.62.0"</span>, 
-    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2018-07-12 14:56:08"</span>, 
-    <span class="hljs-string">"build-repository"</span> : <span class="hljs-string">"heads/3.2-0-gffee475405-dirty"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2018-10-24 21:20:19"</span>, 
+    <span class="hljs-string">"build-repository"</span> : <span class="hljs-string">"heads/3.2-0-g9a24425c25-dirty"</span>, 
     <span class="hljs-string">"compiler"</span> : <span class="hljs-string">"gcc [7.3.0]"</span>, 
     <span class="hljs-string">"cplusplus"</span> : <span class="hljs-string">"201103"</span>, 
     <span class="hljs-string">"debug"</span> : <span class="hljs-string">"false"</span>, 
@@ -24,7 +24,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"failure-tests"</span> : <span class="hljs-string">"false"</span>, 
     <span class="hljs-string">"fd-client-event-handler"</span> : <span class="hljs-string">"poll"</span>, 
     <span class="hljs-string">"fd-setsize"</span> : <span class="hljs-string">"1024"</span>, 
-    <span class="hljs-string">"full-version-string"</span> : <span class="hljs-string">"ArangoDB 3.2.16 [linux] 64bit maintainer mode, using jemalloc, VPack 0.1.30, RocksDB 5.6.0, ICU 58.1, V8 5.7.492.77, OpenSSL 1.1.0g  2 Nov 2017"</span>, 
+    <span class="hljs-string">"full-version-string"</span> : <span class="hljs-string">"ArangoDB 3.2.17 [linux] 64bit maintainer mode, using jemalloc, VPack 0.1.30, RocksDB 5.6.0, ICU 58.1, V8 5.7.492.77, OpenSSL 1.1.0g  2 Nov 2017"</span>, 
     <span class="hljs-string">"icu-version"</span> : <span class="hljs-string">"58.1"</span>, 
     <span class="hljs-string">"jemalloc"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"maintainer-mode"</span> : <span class="hljs-string">"true"</span>, 
@@ -32,7 +32,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"platform"</span> : <span class="hljs-string">"linux"</span>, 
     <span class="hljs-string">"reactor-type"</span> : <span class="hljs-string">"epoll"</span>, 
     <span class="hljs-string">"rocksdb-version"</span> : <span class="hljs-string">"5.6.0"</span>, 
-    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"3.2.16"</span>, 
+    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"3.2.17"</span>, 
     <span class="hljs-string">"sizeof int"</span> : <span class="hljs-string">"4"</span>, 
     <span class="hljs-string">"sizeof void*"</span> : <span class="hljs-string">"8"</span>, 
     <span class="hljs-string">"sse42"</span> : <span class="hljs-string">"false"</span>, 

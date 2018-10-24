@@ -1,13 +1,13 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=11692&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=11691&chunkSize=400
 
 HTTP/1.1 200 OK
 x-arango-replication-frompresent: true
-x-arango-replication-lastscanned: 11694
+x-arango-replication-lastscanned: 11693
 x-content-type-options: nosniff
-x-arango-replication-lastincluded: 11694
+x-arango-replication-lastincluded: 11693
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: true
-x-arango-replication-lasttick: 11711
+x-arango-replication-lasttick: 11710
 x-arango-replication-active: true
 
-"{\"tick\":\"11694\",\"type\":2000,\"database\":\"1\",\"cid\":\"11693\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"11693\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"11693\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"11693\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
+"{\"tick\":\"11693\",\"type\":2000,\"database\":\"1\",\"cid\":\"11692\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"11692\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"11692\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"11692\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
