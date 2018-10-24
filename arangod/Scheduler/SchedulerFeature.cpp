@@ -98,8 +98,8 @@ void SchedulerFeature::validateOptions(
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
   }
-  if (_nrMinimalThreads == 0) {
-    _nrMinimalThreads = _nrMaximalThreads / 2;
+  if (_nrMinimalThreads < 2) {
+    _nrMinimalThreads = 2;
   }
 
   if (_queueSize == 0) {
@@ -132,14 +132,14 @@ void SchedulerFeature::start() {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "--server.minimal-threads ("
                                                << _nrMinimalThreads
                                                << ") should be at least 2";
-    _nrMinimalThreads = _nrMaximalThreads / 2;
+    _nrMinimalThreads = 2;
   }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
         << "--server.threads (" << _nrMaximalThreads << ") should be at least "
         << (_nrMinimalThreads + 1) << ", raising it";
-    _nrMaximalThreads = _nrMinimalThreads * 2;
+    _nrMaximalThreads = _nrMinimalThreads;
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
