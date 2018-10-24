@@ -36,7 +36,10 @@ class TraverserEngineRegistry;
 class TraverserEngineRegistryFeature final
     : public application_features::ApplicationFeature {
  public:
-  static traverser::TraverserEngineRegistry* TRAVERSER_ENGINE_REGISTRY;
+      
+  static traverser::TraverserEngineRegistry* registry() {
+    return TRAVERSER_ENGINE_REGISTRY.load(std::memory_order_relaxed);
+  }
 
   explicit TraverserEngineRegistryFeature(
     application_features::ApplicationServer& server
@@ -54,6 +57,7 @@ class TraverserEngineRegistryFeature final
 
  private:
   std::unique_ptr<traverser::TraverserEngineRegistry> _engineRegistry;
+  static std::atomic<traverser::TraverserEngineRegistry*> TRAVERSER_ENGINE_REGISTRY;
 };
 
 }  // namespace arangodb

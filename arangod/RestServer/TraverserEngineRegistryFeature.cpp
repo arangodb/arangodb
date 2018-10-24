@@ -27,8 +27,8 @@ using namespace arangodb::application_features;
 
 namespace arangodb {
 
-traverser::TraverserEngineRegistry*
-    TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY = nullptr;
+std::atomic<traverser::TraverserEngineRegistry*>
+  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY{nullptr};
 
 TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
     application_features::ApplicationServer& server

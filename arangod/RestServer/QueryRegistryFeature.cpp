@@ -35,7 +35,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
+std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 QueryRegistryFeature::QueryRegistryFeature(
     application_features::ApplicationServer& server
@@ -148,14 +148,14 @@ void QueryRegistryFeature::prepare() {
 
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
-  QUERY_REGISTRY = _queryRegistry.get();
+  QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_relaxed);
 }
 
 void QueryRegistryFeature::start() {}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
-  QUERY_REGISTRY = nullptr;
+  QUERY_REGISTRY.store(nullptr, std::memory_order_relaxed);
 }
 
 } // arangodb

@@ -35,7 +35,10 @@ class QueryRegistry;
 
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:
-  static aql::QueryRegistry* QUERY_REGISTRY;
+  
+  static aql::QueryRegistry* registry() {
+    return QUERY_REGISTRY.load(std::memory_order_relaxed);
+  }
   static constexpr double DefaultQueryTTL = 600.0;
 
   explicit QueryRegistryFeature(
@@ -73,6 +76,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
 
  private:
+  static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
+
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 };
 

@@ -220,7 +220,7 @@ arangodb::aql::QueryResult executeQuery(
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
+    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
       ss->waitForAsyncResponse();
     } else {
