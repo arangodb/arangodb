@@ -140,7 +140,7 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
                      arangodb::ManagedDocumentResult* mmdr)
     : _trx(trx),
       _mmdr(mmdr),
-      _startIdBuilder(trx),
+      _startIdBuilder(),
       _pruneNext(false),
       _done(true),
       _opts(opts),

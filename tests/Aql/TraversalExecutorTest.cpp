@@ -30,24 +30,65 @@
 #include "Aql/TraversalExecutor.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Graph/Traverser.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::traverser;
 
 namespace arangodb {
 namespace tests {
+
 namespace aql {
+
+class TraverserHelper : public Traverser {
+
+  public:
+  TraverserHelper(TraverserOptions* opts, transaction::Methods* trx, ManagedDocumentResult* mdr) : Traverser(opts, trx, mdr) {
+  }
+
+  void setStartVertex(std::string const& value) override {
+    // IMPLEMENT
+  }
+
+  bool getVertex(VPackSlice edge, std::vector<arangodb::StringRef>& result) override {
+    // Implement
+    return false;
+  }
+
+  bool getSingleVertex(VPackSlice edge, arangodb::StringRef const sourceVertex,
+      uint64_t depth, arangodb::StringRef& targetVertex) override {
+    // Implement
+    return false;
+  }
+
+  AqlValue fetchVertexData(StringRef vid) override {
+    // IMPLEMENT
+    return AqlValue(AqlValueHintNull());
+  }
+
+  void addVertexToVelocyPack(StringRef vid, VPackBuilder& builder) override {
+    // IMPLEMENT
+    return;
+  }
+};
 
 SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   ExecutionState state;
+  //TrxContext:
+  //  ->getParentTransaction() != nullptr
+  //  ->isEmbeddable
 
   ResourceMonitor monitor;
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
-  TraversalExecutorInfos infos({0}, {1}, 1, 2, {});
+  arangodb::transaction..Methods* trx = nullptr;
+
+  auto traverser = std::make_unique<TraverserHelper>(trx, nullptr, nullptr);
+  TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverser));
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

@@ -49,9 +49,9 @@ ClusterTraverser::ClusterTraverser(
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
   _verticesToFetch.clear();
-  _startIdBuilder->clear();
-  _startIdBuilder->add(VPackValue(vid));
-  VPackSlice idSlice = _startIdBuilder->slice();
+  _startIdBuilder.clear();
+  _startIdBuilder.add(VPackValue(vid));
+  VPackSlice idSlice = _startIdBuilder.slice();
 
   auto it = _vertices.find(StringRef(vid));
   if (it == _vertices.end()) {

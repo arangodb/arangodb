@@ -21,8 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_H
-#define ARANGOD_VOC_BASE_TRAVERSER_H 1
+#ifndef ARANGOD_GRAPH_TRAVERSER_H
+#define ARANGOD_GRAPH_TRAVERSER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
@@ -307,7 +307,7 @@ class Traverser {
   std::unique_ptr<VertexGetter> _vertexGetter;
 
   /// @brief Builder for the start value slice. Leased from transaction
-  transaction::BuilderLeaser _startIdBuilder;
+  velocypack::Builder _startIdBuilder;
 
   /// @brief toggle if this path should be pruned on next step
   bool _pruneNext;

@@ -29,6 +29,11 @@
 #include "Aql/TraversalStats.h"
 
 namespace arangodb {
+
+namespace traverser {
+class Traverser;
+}
+
 namespace aql {
 
 class InputAqlItemRow;
@@ -41,14 +46,19 @@ class TraversalExecutorInfos : public ExecutorInfos {
   TraversalExecutorInfos(std::unordered_set<RegisterId> inputRegisters,
                          std::unordered_set<RegisterId> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                         std::unordered_set<RegisterId> registersToClear) :
-    ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters, registersToClear) {}
+                         std::unordered_set<RegisterId> registersToClear,
+                         std::unique_ptr<traverser::Traverser>&& traverser);
  
   TraversalExecutorInfos() = delete;
 
   TraversalExecutorInfos(TraversalExecutorInfos &&) = default;
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
   ~TraversalExecutorInfos() = default;
+
+  traverser::Traverser& traverser();
+
+  private:
+    std::unique_ptr<traverser::Traverser> _traverser;
 };
 
 /**
@@ -78,6 +88,7 @@ class TraversalExecutor {
   Fetcher& _fetcher;
   InputAqlItemRow _input;
   ExecutionState _rowState;
+  traverser::Traverser& _traverser;
 
 };
 

@@ -51,9 +51,9 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
-  _startIdBuilder->clear();
-  _startIdBuilder->add(VPackValue(vid));
-  VPackSlice idSlice = _startIdBuilder->slice();
+  _startIdBuilder.clear();
+  _startIdBuilder.add(VPackValue(vid));
+  VPackSlice idSlice = _startIdBuilder.slice();
 
   if (!vertexMatchesConditions(StringRef(vid), 0)) {
     // Start vertex invalid

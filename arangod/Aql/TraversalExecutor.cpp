@@ -22,12 +22,31 @@
 
 #include "TraversalExecutor.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Graph/Traverser.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::traverser;
+
+TraversalExecutorInfos::TraversalExecutorInfos(
+    std::unordered_set<RegisterId> inputRegisters,
+    std::unordered_set<RegisterId> outputRegisters, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters,
+    std::unordered_set<RegisterId> registersToClear,
+    std::unique_ptr<Traverser>&& traverser)
+    : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters,
+                    nrOutputRegisters, registersToClear),
+      _traverser(std::move(traverser)) {
+  TRI_ASSERT(_traverser != nullptr);
+}
+
+Traverser& TraversalExecutorInfos::traverser() {
+  TRI_ASSERT(_traverser != nullptr);
+  return *_traverser.get();
+}
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _input{CreateInvalidInputRowHint{}}, _rowState(ExecutionState::HASMORE) {}
+    : _infos(infos), _fetcher(fetcher), _input{CreateInvalidInputRowHint{}}, _rowState(ExecutionState::HASMORE), _traverser(infos.traverser()) {}
 TraversalExecutor::~TraversalExecutor() = default;
 
 std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAqlItemRow& output) {
@@ -40,11 +59,16 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(!_input.isInitialized());
         return {_rowState, s};
       }
-    }
-    if (!_input.isInitialized()) {
-      // We tried to fetch, but no upstream
-      TRI_ASSERT(_rowState == ExecutionState::DONE);
-      return {_rowState, s};
+
+      if (!_input.isInitialized()) {
+        // We tried to fetch, but no upstream
+        TRI_ASSERT(_rowState == ExecutionState::DONE);
+        return {_rowState, s};
+      }
+
+      // Now reset the traverser
+      std::string const vertex = "";
+      _traverser.setStartVertex(vertex);
     }
 
     // TODO Remove me! This will directly consume and dump the input.
@@ -52,7 +76,5 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
     _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
 
-
   return {ExecutionState::DONE, s};
 }
-
