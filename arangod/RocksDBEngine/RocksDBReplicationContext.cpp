@@ -218,12 +218,15 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
   
   TRI_ASSERT(_lastArangoTick != 0);
   TRI_ASSERT(_snapshot != nullptr);
+  // TODO is it technically correct to include newly created collections ?
+  // simon: I think no, but this has been the behaviour since 3.2
+  TRI_voc_tick_t tick = TRI_NewTickServer(); // = _lastArangoTick
   if (global) {
     // global inventory
-    DatabaseFeature::DATABASE->inventory(result, _lastArangoTick, nameFilter);
+    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
   } else {
     // database-specific inventory
-    vocbase.inventory(result, _lastArangoTick, nameFilter);
+    vocbase.inventory(result, tick, nameFilter);
   }
   return Result();
 }
@@ -501,7 +504,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         TRI_ASSERT(from >= chunkSize);
         uint64_t diff = from - cIter->lastSortedIteratorOffset;
         uint64_t to = cIter->skipKeys(diff); // = (chunk + 1) * chunkSize
-        TRI_ASSERT(to == diff);
+        TRI_ASSERT(to == diff || !cIter->hasMore());
         cIter->lastSortedIteratorOffset += to;
       }
 
@@ -615,7 +618,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         TRI_ASSERT(from >= chunkSize);
         uint64_t diff = from - cIter->lastSortedIteratorOffset;
         uint64_t to = cIter->skipKeys(diff); // = (chunk + 1) * chunkSize
-        TRI_ASSERT(to == diff);
+        TRI_ASSERT(to == diff || !cIter->hasMore());
         cIter->lastSortedIteratorOffset += to;
       }
       
@@ -653,7 +656,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     size_t newPos = from + it.getNumber<size_t>();
     if (newPos > oldPos) {
       uint64_t ignore = cIter->skipKeys(newPos - oldPos);
-      TRI_ASSERT(ignore == newPos - oldPos);
+      TRI_ASSERT(ignore == newPos - oldPos || !cIter->hasMore());
       cIter->lastSortedIteratorOffset += ignore;
     }
     
