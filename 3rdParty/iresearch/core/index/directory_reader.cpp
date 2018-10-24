@@ -24,6 +24,7 @@
 #include "composite_reader_impl.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/singleton.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
 #include "directory_reader.hpp"
@@ -321,9 +322,10 @@ directory_reader_impl::directory_reader_impl(
     }
 
     if (!ctx.reader) {
-      throw index_error(
-        std::string("while opening reader for segment '") + segment.name + "', error: failed to open reader"
-      );
+      throw index_error(string_utils::to_string(
+        "while opening reader for segment '%s', error: failed to open reader",
+        segment.name.c_str()
+      ));
     }
 
     ctx.base = static_cast<doc_id_t>(docs_max);

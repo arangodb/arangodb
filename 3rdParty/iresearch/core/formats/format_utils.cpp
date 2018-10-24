@@ -28,33 +28,34 @@
 
 #include "formats/formats.hpp"
 
-#include <sstream>
-
 NS_ROOT
 
 void validate_footer(iresearch::index_input& in) {
   const int64_t remain = in.length() - in.file_pointer();
 
   if (remain != format_utils::FOOTER_LEN) {
-    throw index_error(
-      std::string("while validating footer, error: invalid position '") + std::to_string(remain) + "'"
-    );
+    throw index_error(string_utils::to_string(
+      "while validating footer, error: invalid position '%ld'",
+      remain
+    ));
   }
 
   const int32_t magic = in.read_int();
 
   if (magic != format_utils::FOOTER_MAGIC) {
-    throw index_error(
-      std::string("while validating footer, error: invalid magic number '") + std::to_string(magic) + "'"
-    );
+    throw index_error(string_utils::to_string(
+      "while validating footer, error: invalid magic number '%d'",
+      magic
+    ));
   }
 
   const int32_t alg_id = in.read_int();
 
   if (alg_id != 0) {
-    throw index_error(
-      std::string("while validating footer, error: invalid algorithm '") + std::to_string(alg_id) + "'"
-    );
+    throw index_error(string_utils::to_string(
+      "while validating footer, error: invalid algorithm '%d'",
+      alg_id
+    ));
   }
 }
 
@@ -79,27 +80,28 @@ int32_t check_header(
   const int32_t magic = in.read_int();
 
   if (FORMAT_MAGIC != magic) {
-    throw irs::index_error(
-      std::string("while checking header, error: invalid magic '") + std::to_string(magic) + "'"
-    );
+    throw irs::index_error(string_utils::to_string(
+      "while checking header, error: invalid magic '%d'",
+      magic
+    ));
   }
 
   const auto format = read_string<std::string>(in);
 
   if (compare(req_format, format) != 0) {
-    std::stringstream ss;
-
-    ss << "while checking header, error: format mismatch '" << format << "' != '" << req_format << "'";
-
-    throw irs::index_error(ss.str());
+    throw irs::index_error(string_utils::to_string(
+      "while checking header, error: format mismatch '%s' != '%s'",
+      format.c_str(), req_format.c_str()
+    ));
   }
 
   const int32_t ver = in.read_int();
 
   if (ver < min_ver || ver > max_ver) {
-    throw irs::index_error(
-      std::string("while checking header, error: invalid version '") + std::to_string(ver) + "'"
-    );
+    throw irs::index_error(string_utils::to_string(
+      "while checking header, error: invalid version '%d'",
+      ver
+    ));
   }
 
   return ver;

@@ -345,7 +345,7 @@ namespace  {
       
       vocbase->release();
       // sleep
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return TRI_ERROR_NO_ERROR;
   }
