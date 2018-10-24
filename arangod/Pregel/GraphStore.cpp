@@ -160,7 +160,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         if (opResult.fail() || _destroyed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
-        info.numEdges += opResult.slice().getUInt();;
+        info.numEdges += opResult.slice().getUInt();
       }
       eCount += info.numEdges;
       
