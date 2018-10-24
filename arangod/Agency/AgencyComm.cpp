@@ -697,18 +697,15 @@ void AgencyCommManager::addEndpoint(std::string const& endpoint) {
 }
 
 void AgencyCommManager::updateEndpoints(std::vector<std::string> const& newEndpoints) {
-  MUTEX_LOCKER(locker, _lock);
-  
-  std::set<std::string> currentSet;
-  auto iter = _endpoints.begin();
-  for (; iter != _endpoints.end(); ++iter) {
-    currentSet.emplace(*iter);
-  }
-
   std::set<std::string> updatedSet;
   for (std::string const& endp : newEndpoints) {
     updatedSet.emplace(Endpoint::unifiedForm(endp));
   }
+  
+  MUTEX_LOCKER(locker, _lock);
+  
+  std::set<std::string> currentSet;
+  currentSet.insert(_endpoints.begin(), _endpoints.end());
   
   std::set<std::string> toRemove;
   std::set_difference(currentSet.begin(), currentSet.end(),
