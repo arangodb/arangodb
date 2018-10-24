@@ -11,12 +11,15 @@ if (typeof internal.printBrowser === 'function') {
   print = internal.printBrowser;
 }
 
+let uniqueValue = 0;
+
 const anonymize = function(doc) {
   if (Array.isArray(doc)) {
     return doc.map(anonymize);
   }
   if (typeof doc === 'string') {
-    return Array(doc.length + 1).join("X");
+    // make unique values because of unique indexes
+    return Array(doc.length + 1).join("X") + uniqueValue++;
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
@@ -1339,7 +1342,7 @@ function debug(query, bindVars, options) {
     collections: {}
   };
 
-  result.fancy = require("@arangodb/aql/explainer").explain(input, { colors: false }, false);
+  result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
 
   let stmt = db._createStatement(input);
   result.explain = stmt.explain(input.options);
@@ -1423,12 +1426,17 @@ function debug(query, bindVars, options) {
 
 function debugDump(filename, query, bindVars, options) {
   let result = debug(query, bindVars, options);
-  require("fs").write(filename, JSON.stringify(result));
-  require("console").log("stored query debug information in file '" + filename + "'");
+  require('fs').write(filename, JSON.stringify(result));
+  require('console').log("stored query debug information in file '" + filename + "'");
 }
 
-function inspectDump(filename) {
-  let data = JSON.parse(require("fs").read(filename));
+function inspectDump(filename, outfile) {
+  let internal = require('internal');
+  if (outfile !== undefined) {
+    internal.startCaptureMode();
+  }
+
+  let data = JSON.parse(require('fs').read(filename));
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
@@ -1499,6 +1507,12 @@ function inspectDump(filename) {
   }
   print("db._explain(" + JSON.stringify(data.query) + ");");
   print();
+
+  if (outfile !== undefined) {
+    require('fs').write(outfile, internal.stopCaptureMode());
+    require('console').log("stored query restore script in file '" + outfile + "'");
+    require('console').log("to run it, execute  require('internal').load('" + outfile + "');");
+  }
 }
 
 exports.explain = explain;

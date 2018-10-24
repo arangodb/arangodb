@@ -136,15 +136,25 @@ namespace import {
 double const ImportHelper::ProgressStep = 3.0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// the server has a built-in limit for the batch size
+///  and will reject bigger HTTP request bodies
+////////////////////////////////////////////////////////////////////////////////
+
+unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
+
+////////////////////////////////////////////////////////////////////////////////
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ImportHelper::ImportHelper(ClientFeature const* client,
                            std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
-                           uint64_t maxUploadSize, uint32_t threadCount)
+                           uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
     : _httpClient(client->createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
+      _periodByteCount(0),
+      _autoUploadSize(autoUploadSize),
+      _threadCount(threadCount),
       _separator(","),
       _quote("\""),
       _createCollectionType("document"),
@@ -175,8 +185,14 @@ ImportHelper::ImportHelper(ClientFeature const* client,
     }));
     _senderThreads.back()->start();
   }
- 
-  // wait until all sender threads are ready 
+
+  // should self tuning code activate?
+  if (_autoUploadSize) {
+    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread->start();
+  } // if
+
+  // wait until all sender threads are ready
   while (true) {
     uint32_t numReady = 0;
     for (auto const& t : _senderThreads) {
@@ -306,7 +322,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
-  
+
   _outputBuffer.clear();
   return !_hasError;
 }
@@ -432,7 +448,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
-  
+
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
@@ -540,11 +556,11 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
-  
+
   if (column > 0) {
     _lineBuffer.appendChar(',');
   }
-  
+
   if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 &&
       memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
@@ -742,7 +758,7 @@ bool ImportHelper::checkCreateCollection() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: " << result->getBody();
+        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
   }
   _hasError = true;
   return false;
@@ -805,7 +821,9 @@ void ImportHelper::sendCsvBuffer() {
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
+    uint64_t tmp_length = _outputBuffer.length();
     t->sendData(url, &_outputBuffer);
+    addPeriodByteCount(tmp_length + url.length());
   }
 
   _outputBuffer.reset();
@@ -848,12 +866,17 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     StringBuffer buff(len, false);
     buff.appendText(str, len);
     t->sendData(url, &buff);
+    addPeriodByteCount(len + url.length());
   }
 }
 
 /// Should return an idle sender, collect all errors
 /// and return nullptr, if there was an error
 SenderThread* ImportHelper::findIdleSender() {
+  if (_autoUploadSize) {
+    _autoTuneThread->paceSends();
+  } // if
+
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {
       if (t->hasError()) {

@@ -25,6 +25,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -41,6 +42,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _trackBindVars(true),
       _failOnWarning(false),
       _queryMemoryLimit(0),
+      _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheEntries(128),
@@ -82,9 +84,23 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.cache-entries",
                      "maximum number of results in query result cache per database",
                      new UInt64Parameter(&_queryCacheEntries));
+
+  options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
+                     new UInt64Parameter(&_maxQueryPlans));
   
   options->addHiddenOption("--query.registry-ttl", "Default time-to-live of query snippets (in seconds)",
                            new DoubleParameter(&_queryRegistryTTL));
+}
+
+void QueryRegistryFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  if (_maxQueryPlans == 0) {
+    LOG_TOPIC(FATAL, Logger::FIXME) << "invalid value for `--query.optimizer-max-plans`. expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+
+  // cap the value somehow. creating this many plans really does not make sense
+  _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
 }
 
 void QueryRegistryFeature::prepare() {

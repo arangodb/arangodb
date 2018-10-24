@@ -215,3 +215,35 @@ is committed automatically and a new transaction is started.
 If enabled, throttles the ingest rate of writes if necessary to reduce chances 
 of compactions getting too far behind and blocking incoming writes. This option
 is `true` by default.
+
+`--rocksdb.sync-interval`
+
+The interval (in milliseconds) that ArangoDB will use to automatically
+synchronize data in RocksDB's write-ahead logs to disk. Automatic syncs will
+only be performed for not-yet synchronized data, and only for operations that
+have been executed without the *waitForSync* attribute.
+
+The default sync interval in 3.3 is *0*, meaning that automatic background
+syncing is turned off. Automatic syncing was added in the middle of the ArangoDB
+3.3 release cycle, so it is opt-in. The default sync interval will change to *100*
+milliseconds in ArangoDB 3.4 however.
+
+Note: this option is not supported on Windows platforms. Setting the option to
+a value greater 0 will produce a startup warning.
+
+`--rocksdb.use-file-logging`
+
+When set to *true*, enables writing of RocksDB's own informational LOG files into 
+RocksDB's database directory.
+
+This option is turned off by default, but can be enabled for debugging RocksDB
+internals and performance.
+
+`--rocksdb.debug-logging`
+
+When set to *true*, enables verbose logging of RocksDB's actions into the logfile
+written by ArangoDB (if option `--rocksdb.use-file-logging` is off) or RocksDB's
+own log (if option `--rocksdb.use-file-logging` is on).
+
+This option is turned off by default, but can be enabled for debugging RocksDB
+internals and performance.

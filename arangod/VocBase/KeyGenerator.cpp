@@ -83,6 +83,14 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
   if (typeName == AutoIncrementKeyGenerator::name()) {
     return KeyGenerator::TYPE_AUTOINCREMENT;
   }
+  if ((typeName == "uuid") || (typeName == "padded")) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) <<
+      "key generator '" <<
+      typeName <<
+      "' not supported in 3.3 - falling back to " << 
+      TraditionalKeyGenerator::name();
+    return KeyGenerator::TYPE_TRADITIONAL;
+  }
 
   // error
   return KeyGenerator::TYPE_UNKNOWN;
@@ -284,6 +292,8 @@ void TraditionalKeyGenerator::track(char const* p, size_t length) {
 
 /// @brief create a VPack representation of the generator
 void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  MUTEX_LOCKER(mutexLocker, _lock);
+
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
@@ -391,6 +401,8 @@ void AutoIncrementKeyGenerator::track(char const* p, size_t length) {
 
 /// @brief create a VelocyPack representation of the generator
 void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  MUTEX_LOCKER(mutexLocker, _lock);
+
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));

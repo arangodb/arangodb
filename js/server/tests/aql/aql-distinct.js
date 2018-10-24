@@ -207,6 +207,17 @@ function ahuacatlDistinct () {
       assertEqual(100, integers.length);
       assertEqual(100, strings.length);
     },
+            
+    testDistinctInOptimizedAwaySubquery : function () {
+      let query = "LET values = (FOR i IN " + c.name() + " RETURN DISTINCT i.value1) FOR doc IN values RETURN 42";
+      containsDistinct(query);
+      let result = AQL_EXECUTE(query).json;
+
+      assertEqual(100, result.length);
+  
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf("inline-subqueries"));
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief distinct usage 

@@ -260,13 +260,13 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   Result r = syncer.parseResponse(builder, response.get());
 
   if (r.fail()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": invalid response is no array");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": invalid response is no array");
   }
 
   VPackSlice const slice = builder.slice();
 
   if (!slice.isArray()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response is no array");
   }
 
   OperationOptions options;
@@ -396,7 +396,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     VPackSlice chunk = slice.at(i);
 
     if (!chunk.isObject()) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunk is no object");
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": chunk is no object");
     }
 
     VPackSlice const lowSlice = chunk.get("low");
@@ -405,7 +405,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
     if (!lowSlice.isString() || !highSlice.isString() ||
         !hashSlice.isString()) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunks in response have an invalid format");
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": chunks in response have an invalid format");
     }
 
     std::string const lowString = lowSlice.copyString();
@@ -448,25 +448,25 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
 
       if (response == nullptr || !response->isComplete()) {
-        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
+        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + url + ": " + syncer._client->getErrorMessage());
       }
 
       TRI_ASSERT(response != nullptr);
 
       if (response->wasHttpError()) {
-        return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+        return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
       }
 
       VPackBuilder builder;
       Result r  = syncer.parseResponse(builder, response.get());
 
       if (r.fail()) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response is no array");
       }
 
       VPackSlice const slice = builder.slice();
       if (!slice.isArray()) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response is no array");
       }
 
       // delete all keys at start of the range
@@ -498,14 +498,14 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
         VPackSlice const pair = slice.at(i);
 
         if (!pair.isArray() || pair.length() != 2) {
-          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key pair is no valid array");
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response key pair is no valid array");
         }
 
         // key
         VPackSlice const keySlice = pair.at(0);
 
         if (!keySlice.isString()) {
-          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key is no string");
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response key is no string");
         }
 
         // rid
@@ -619,25 +619,25 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                                     keyJsonString.c_str(), keyJsonString.size()));
 
           if (response == nullptr || !response->isComplete()) {
-            return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
+            return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + url + ": " + syncer._client->getErrorMessage());
           }
 
           TRI_ASSERT(response != nullptr);
 
           if (response->wasHttpError()) {
-            return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+            return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
           }
 
           VPackBuilder builder;
           Result r = syncer.parseResponse(builder, response.get());
 
           if (r.fail()) {
-            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response is no array");
           }
 
           VPackSlice const slice = builder.slice();
           if (!slice.isArray()) {
-            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": response is no array");
           }
 
           size_t foundLength = slice.length();
@@ -648,19 +648,19 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             }
 
             if (!it.isObject()) {
-              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document is no object");
+              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": document is no object");
             }
 
             VPackSlice const keySlice = it.get(StaticStrings::KeyString);
 
             if (!keySlice.isString()) {
-              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document key is invalid");
+              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": document key is invalid");
             }
 
             VPackSlice const revSlice = it.get(StaticStrings::RevString);
 
             if (!revSlice.isString()) {
-              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document revision is invalid");
+              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + url + ": document revision is invalid");
             }
 
             MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);

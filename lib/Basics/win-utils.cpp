@@ -33,6 +33,8 @@
 #include <crtdbg.h>
 #include <atlstr.h>
 #include <VersionHelpers.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
 
 #include "Logger/Logger.h"
 #include "Basics/files.h"
@@ -130,14 +132,41 @@ void TRI_usleep(unsigned long waitTime) {
 // This is not of much use since no values can be returned. All we can do
 // for now is to ignore error and hope it goes away!
 ////////////////////////////////////////////////////////////////////////////////
-
 static void InvalidParameterHandler(
     const wchar_t* expression,  // expression sent to function - NULL
     const wchar_t* function,    // name of function - NULL
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed";
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::string exp;
+  std::string func;
+  std::string fileName;
+  
+  UnicodeString uStr;
+  uStr = expression;
+  uStr.toUTF8String(exp);
+  uStr = function;
+  uStr.toUTF8String(func);
+  uStr = file;
+  uStr.toUTF8String(fileName);
+  
+  std::string bt;
+  TRI_GetBacktrace(bt);
+#endif
+
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+    "Invalid handle parameter passed"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+                                          <<
+    " Expression: " << exp <<
+    " Function: " << func <<
+    " File: " << fileName <<
+    " Line: " << std::to_string(line) <<
+    " Backtrace: " << bt
+#endif
+  ;
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat,

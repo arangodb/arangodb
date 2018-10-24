@@ -104,7 +104,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
 
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the options
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.fill_cache = EdgeIndexFillBlockCache;
   _iterator = mthds->NewIterator(options, index->columnFamily());
 }
@@ -462,8 +462,8 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    LocalDocumentId const documentId = LocalDocumentId(RocksDBKey::revisionId(
-        RocksDBEntryType::EdgeIndexValue, _iterator->key()));
+    LocalDocumentId const documentId = RocksDBKey::indexDocumentId(
+        RocksDBEntryType::EdgeIndexValue, _iterator->key());
 
     // adding revision ID and _from or _to value
     _builder.add(VPackValue(documentId.id()));
@@ -798,7 +798,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   }
 
   // try to find the right bounds
-  rocksdb::ReadOptions ro = mthds->readOptions();
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   ro.prefix_same_as_start = false;
   ro.total_order_seek = true;
   ro.verify_checksums = false;
@@ -868,7 +868,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::Slice const end = upper;
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = false;
   options.total_order_seek = true;
@@ -951,9 +951,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      LocalDocumentId const documentId(RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key));
-      if (rocksColl->readDocument(trx, documentId, mmdr)) {
-        builder.add(VPackValue(documentId.id()));
+      LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      if (rocksColl->readDocument(trx, docId, mmdr)) {
+        builder.add(VPackValue(docId.id()));
 
         VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =

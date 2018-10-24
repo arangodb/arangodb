@@ -62,8 +62,8 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const IsSynchronousReplicationString;
- 
-  // database and collection names 
+
+  // database and collection names
   static std::string const SystemDatabase;
 
   // HTTP headers
@@ -106,6 +106,8 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const Queue;
+  static std::string const RequestForwardedTo;
+  static std::string const ResponseCode;
   static std::string const Server;
   static std::string const StartThread;
   static std::string const WwwAuthenticate;
@@ -115,6 +117,9 @@ class StaticStrings {
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
+  
+  // misc strings
+  static std::string const checksumFileJs;
 };
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,6 +51,7 @@ class RocksDBCounterManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBReplicationManager;
+class RocksDBSyncThread;
 class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
@@ -75,7 +76,7 @@ class RocksDBEngine final : public StorageEngine {
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -280,6 +281,10 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const EngineName;
   static std::string const FeatureName;
 
+  rocksdb::Options const& rocksDBOptions() const {
+    return _options;
+  }
+
   /// @brief recovery manager
   RocksDBCounterManager* counterManager() const {
     TRI_ASSERT(_counterManager);
@@ -290,6 +295,12 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBReplicationManager* replicationManager() const {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
+  }
+
+  /// @brief returns a pointer to the sync thread
+  /// note: returns a nullptr if automatic syncing is turned off!
+  RocksDBSyncThread* syncThread() const {
+    return _syncThread.get();
   }
 
  private:
@@ -330,14 +341,23 @@ class RocksDBEngine final : public StorageEngine {
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
 
+  /// Background thread handling WAL syncing
+  /// note: this is a nullptr if automatic syncing is turned off!
+  std::unique_ptr<RocksDBSyncThread> _syncThread;
+
+  // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally
+  uint64_t _syncInterval;
+
   // use write-throttling
   bool _useThrottle;
+
+  // activate rocksdb's debug logging
+  bool _debugLogging;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
-
 };
 }  // namespace arangodb
 #endif

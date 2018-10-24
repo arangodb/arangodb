@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,18 +43,25 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
                          JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
+
   // Get job details from agency:
-  try {
-    std::string path = pos[status] + _jobId + "/";
-    _database = _snapshot.get(path + "database").getString();
-    _collection = _snapshot.get(path + "collection").getString();
-    _shard = _snapshot.get(path + "shard").getString();
-    _creator = _snapshot.get(path + "creator").getString();
-  } catch (std::exception const& e) {
+  std::string path = pos[status] + _jobId + "/";
+  auto tmp_database = _snapshot.hasAsString(path + "database");
+  auto tmp_collection = _snapshot.hasAsString(path + "collection");
+  auto tmp_shard = _snapshot.hasAsString(path + "shard");
+  auto tmp_creator = _snapshot.hasAsString(path + "creator");
+
+  if (tmp_database.second && tmp_collection.second
+      && tmp_shard.second && tmp_creator.second) {
+    _database = tmp_database.first;
+    _collection = tmp_collection.first;
+    _shard = tmp_shard.first;
+    _creator = tmp_creator.first;
+  } else {
     std::stringstream err;
-    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
-    finish("", _shard, false, err.str());
+    finish("", tmp_shard.first, false, err.str());
     _status = FAILED;
   }
 }
@@ -127,24 +134,24 @@ bool RemoveFollower::start() {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection = _snapshot.get(planColPrefix + _database + "/" + _collection);
+  Node collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).first;
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
     return false;
   }
-  
+
   // Look at Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.get(planPath).slice();
+  Slice planned = _snapshot.hasAsSlice(planPath).first;
 
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too many followers for the current
   // `replicationFactor`:
-  size_t desiredReplFactor = collection.get("replicationFactor").getUInt();
+  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
   size_t actualReplFactor = planned.length();
   if (actualReplFactor <= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have few enough replicas");
@@ -229,7 +236,7 @@ bool RemoveFollower::start() {
   // We now know actualReplFactor >= inSyncCount + noGoodCount and
   //                  inSyncCount >= desiredReplFactor
   // Let notInSyncCount = actualReplFactor - (inSyncCount + noGoodCount)
-  // To reduce actualReplFactor down to desiredReplFactor we 
+  // To reduce actualReplFactor down to desiredReplFactor we
   // Randomly choose enough servers:
   std::unordered_set<std::string> chosenToRemove;
   size_t currentReplFactor = actualReplFactor;  // will be counted down
@@ -304,9 +311,8 @@ bool RemoveFollower::start() {
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
     if (_jb == nullptr) {
-      try {
-        _snapshot.get(toDoPrefix + _jobId).toBuilder(todo);
-      } catch (std::exception const&) {
+      auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
+      if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC(INFO, Logger::SUPERVISION)
@@ -325,7 +331,7 @@ bool RemoveFollower::start() {
       }
     }
   }
-  
+
   // Enter pending, remove todo, block toserver
   { VPackArrayBuilder listOfTransactions(&trx);
 
@@ -372,7 +378,7 @@ bool RemoveFollower::start() {
       << _collection;
     return true;
   }
-  
+
   LOG_TOPIC(INFO, Logger::SUPERVISION) << "Start precondition failed for RemoveFollower Job " + _jobId;
   return false;
 }
@@ -403,6 +409,5 @@ arangodb::Result RemoveFollower::abort() {
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
   return result;
-  
-}
 
+}

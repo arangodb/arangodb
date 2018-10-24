@@ -57,7 +57,7 @@ Function AddToPath
   StrLen $2 $1
   IntCmp $2 0 CheckPathLength_ShowPathWarning CheckPathLength_Done CheckPathLength_Done
   CheckPathLength_ShowPathWarning:
-    Messagebox MB_OK|MB_ICONEXCLAMATION "Warning! Your PATH environment is already to long; the installer unable to add ArangoDB to it."
+    Messagebox MB_OK|MB_ICONEXCLAMATION "Warning! Your PATH environment is already to long; the installer is unable to add ArangoDB to it."
     Goto AddToPath_done
   CheckPathLength_Done:
     Push "$1;"

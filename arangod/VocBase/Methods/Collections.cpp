@@ -485,40 +485,6 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   return res;
 }
 
-Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
-  ExecContext const* exec = ExecContext::CURRENT; // disallow expensive ops
-  if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                   "server is in read-only mode");
-  }
-  if (ServerState::instance()->isCoordinator()) {
-    std::string const cid = coll->cid_as_string();
-    return warmupOnCoordinator(vocbase->name(), cid);
-  }
-
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
-  Result res = trx.begin();
-  if (res.fail()) {
-    return res;
-  }
-
-  auto idxs = coll->getIndexes();
-  auto queue = std::make_shared<basics::LocalTaskQueue>();
-  for (auto& idx : idxs) {
-    idx->warmup(&trx, queue);
-  }
-
-  queue->dispatchAndWait();
-  if (queue->status() == TRI_ERROR_NO_ERROR) {
-    res = trx.commit();
-  } else {
-    return queue->status();
-  }
-
-  return res;
-}
-
 Result Collections::revisionId(TRI_vocbase_t* vocbase,
                                LogicalCollection* coll,
                                TRI_voc_rid_t& rid) {
@@ -545,3 +511,101 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
+
+Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
+  ExecContext const* exec = ExecContext::CURRENT; // disallow expensive ops
+  if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                   "server is in read-only mode");
+  }
+  if (ServerState::instance()->isCoordinator()) {
+    std::string const cid = coll->cid_as_string();
+    return warmupOnCoordinator(vocbase->name(), cid);
+  }
+  
+  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
+  SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
+  Result res = trx.begin();
+  if (res.fail()) {
+    return res;
+  }
+  
+  auto idxs = coll->getIndexes();
+  auto queue = std::make_shared<basics::LocalTaskQueue>();
+  for (auto& idx : idxs) {
+    idx->warmup(&trx, queue);
+  }
+  
+  queue->dispatchAndWait();
+  if (queue->status() == TRI_ERROR_NO_ERROR) {
+    res = trx.commit();
+  } else {
+    return queue->status();
+  }
+  
+  return res;
+}
+
+#include "Cluster/ClusterComm.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+
+// TOCO move to rocksdb only code
+Result Collections::recalculateCount(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
+  if (EngineSelectorFeature::ENGINE->typeName() != std::string("rocksdb")) {
+    return Result{};
+  }
+  
+  if (ExecContext::CURRENT != nullptr) {
+    if (!ExecContext::CURRENT->canUseCollection(coll->name(), auth::Level::RW)) {
+      return Result(TRI_ERROR_FORBIDDEN);
+    }
+  }
+  
+  if (ServerState::instance()->isCoordinator()) {
+    // Set a few variables needed for our work:
+    ClusterInfo* ci = ClusterInfo::instance();
+    auto cc = ClusterComm::instance();
+    if (cc == nullptr) {
+      // nullptr happens only during controlled shutdown
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+    
+    // First determine the collection ID from the name:
+    std::shared_ptr<LogicalCollection> collinfo;
+    try {
+      collinfo = ci->getCollection(vocbase->name(), coll->name());
+    } catch (...) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+    TRI_ASSERT(collinfo != nullptr);
+    
+    
+    std::string const baseUrl = "/_db/" + basics::StringUtils::urlEncode(vocbase->name())
+    + "/_api/collection/";
+    std::shared_ptr<std::string> body;
+    
+    // now we notify all leader and follower shards
+    std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+    std::vector<ClusterCommRequest> requests;
+    for (auto const& shard : *shardList) {
+      for (ServerID const& server : shard.second) {
+        std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) + "/recalculateCount";
+        requests.emplace_back("server:" + server, arangodb::rest::RequestType::PUT,
+                              std::move(uri), body);
+      }
+    }
+    
+    size_t nrDone = 0;
+    size_t nrGood = cc->performRequests(requests, 600.0, nrDone, Logger::ENGINES, false);
+    
+    if (nrGood < requests.size()) {
+      return TRI_ERROR_FAILED;
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  auto physical = toRocksDBCollection(coll->getPhysical());
+  physical->recalculateCounts();
+  return Result{};
+}

@@ -195,14 +195,15 @@ generator and the Mersenne Twister.
 
 `--server.jwt-secret secret`
 
-ArangoDB will use JWTs to authenticate requests. Using this option lets
-you specify a JWT.
+ArangoDB will use JWTs to authenticate requests. Using this option let's
+you specify a JWT. When specified, the JWT secret must be at most 64 bytes
+long.
 
 In single server setups and when not specifying this secret ArangoDB will
 generate a secret.
 
 In cluster deployments which have authentication enabled a secret must
-be set consistently across all cluster tasks so they can talk to each other.
+be set consistently across all cluster nodes so they can talk to each other.
 
 ### Enable/disable authentication for UNIX domain sockets
 
@@ -454,6 +455,26 @@ time will expire automatically and will be aborted. The value of this option
 normally only needs to be increased for queries that are running longer than the
 default timeout value (600 seconds) and that time out. The option has no effect
 in single-server mode.
+
+
+### Limiting the number of query execution plans created by the AQL optimizer
+
+`--query.optimizer-max-plans value`
+
+By setting *value* it can be controlled how many different query execution plans
+the AQL query optimizer will generate at most for any given AQL query. Normally
+the AQL query optimizer will generate a single execution plan per AQL query, but
+there are some cases in which it creates multiple competing plans. More plans
+can lead to better optimized queries, however, plan creation has its costs. The
+more plans are created and shipped through the optimization pipeline, the more
+time will be spent in the optimizer.
+Lowering *value* will make the optimizer stop creating additional plans when it
+has already created enough plans.
+Note that this setting controls the default maximum number of plans to create. The
+value can still be adjusted on a per-query basis by setting the *maxNumberOfPlans*
+attribute when running a query.
+
+The default value is *128*.
 
 
 ### Throw collection not loaded error

@@ -186,10 +186,8 @@ void RocksDBRestReplicationHandler::handleCommandBarrier() {
   if (type == rest::RequestType::POST) {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
-    // always return a non-0 barrier id
-    // it will be ignored by the client anyway for the RocksDB engine
-    std::string const idString = std::to_string(TRI_NewTickServer());
-    b.add("id", VPackValue(idString));
+    // always return a 0 barrier ID so clients will ignore it
+    b.add("id", VPackValue("0"));
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
   } else if (type == rest::RequestType::PUT ||
@@ -469,7 +467,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   //}
 
   // bind collection to context - will initialize iterator
-  int res = ctx->bindCollection(_vocbase, collection);
+  int res = ctx->bindCollection(_vocbase, collection, true);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

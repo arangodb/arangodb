@@ -349,10 +349,12 @@ VPackBuilder auth::UserManager::allUsers() {
   std::shared_ptr<VPackBuilder> users = QueryAllUsers(_queryRegistry);
 
   VPackBuilder result;
-  VPackArrayBuilder a(&result);
-  if (users && !users->isEmpty()) {
-    for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
-      ConvertLegacyFormat(doc, result);
+  {
+    VPackArrayBuilder a(&result);
+    if (users && !users->isEmpty()) {
+      for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
+        ConvertLegacyFormat(doc, result);
+      }
     }
   }
   return result;
@@ -524,6 +526,17 @@ Result auth::UserManager::accessUser(std::string const& user,
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
+bool auth::UserManager::userExists(std::string const& user) {
+  if (user.empty()) {
+    return false;
+  }
+  loadFromDB();
+  
+  READ_LOCKER(readGuard, _userCacheLock);
+  UserMap::iterator const& it = _userCache.find(user);
+  return it != _userCache.end();
+}
+
 VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   loadFromDB();
   
@@ -667,6 +680,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
       return user.checkPassword(password);
     }
   }
+    
 
 #ifdef USE_ENTERPRISE
   bool userCached = it != _userCache.end();
@@ -679,7 +693,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
     return checkPasswordExt(username, password, userCached, readGuard);
   }
 #endif
-
+  
   return false;
 }
 

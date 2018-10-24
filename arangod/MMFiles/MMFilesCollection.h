@@ -327,7 +327,7 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions& options) override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
                                     velocypack::Slice const& key) override;

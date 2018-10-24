@@ -81,7 +81,7 @@ class VstRequest final : public GeneralRequest {
   std::string const& header(std::string const& key, bool& found) const override;
 
   // values are query paramteres
-  std::unordered_map<std::string, std::string> values() const override {
+  std::unordered_map<std::string, std::string> const& values() const override {
     return _values;
   }
   std::unordered_map<std::string, std::vector<std::string>> arrayValues()

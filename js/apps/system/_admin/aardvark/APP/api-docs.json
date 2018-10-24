@@ -1276,16 +1276,6 @@
                     "description": "*collections* must be a JSON object that can have either or both sub-attributes\n*read* and *write*, each being an array of collection names or a single\ncollection name as string. Collections that will be written to in the\ntransaction must be declared with the *write* attribute or it will fail,\nwhereas non-declared collections from which is solely read will be added lazily.\nThe optional sub-attribute *allowImplicit* can be set to *false* to let\ntransactions fail in case of undeclared collections for reading. Collections\nfor reading should be fully declared if possible, to avoid deadlocks.\n\n", 
                     "type": "string"
                 }, 
-                "intermediateCommitCount": {
-                    "description": "Maximum number of operations after which an intermediate commit is performed \nautomatically. Honored by the RocksDB storage engine only.\n\n", 
-                    "format": "int64", 
-                    "type": "integer"
-                }, 
-                "intermediateCommitSize": {
-                    "description": "Maximum total size of operations after which an intermediate commit is performed \nautomatically. Honored by the RocksDB storage engine only.\n\n", 
-                    "format": "int64", 
-                    "type": "integer"
-                }, 
                 "lockTimeout": {
                     "description": "an optional numeric value that can be used to set a\ntimeout for waiting on collection locks. If not specified, a default\nvalue will be used. Setting *lockTimeout* to *0* will make ArangoDB\nnot time out waiting for a lock.\n\n", 
                     "format": "int64", 

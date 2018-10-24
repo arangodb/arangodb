@@ -70,6 +70,13 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
 
+// whether or not this task can mix sync and async I/O
+bool HttpCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
+}
+
 /// @brief send error response including response body
 void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
                                      uint64_t /*messageId*/, velocypack::Buffer<uint8_t>&& buffer) {
@@ -103,7 +110,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   finishExecution(baseResponse);
   resetKeepAlive();
-  
+
   // response has been queued, allow further requests
   _requestPending = false;
 
@@ -159,10 +166,15 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   if (!buffer._buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
+        << "\"http-request-response\",\"" << (void*)this << "\",\"" 
+        << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\",\""
-        << StringUtils::escapeUnicode(
-               std::string(buffer._buffer->c_str(), buffer._buffer->length()))
+        << (Logger::logRequestParameters()
+             ? StringUtils::escapeUnicode(
+                 std::string(buffer._buffer->c_str(), buffer._buffer->length()))
+	    : "--body--")
         << "\"";
   }
 
@@ -177,7 +189,10 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << HttpRequest::translateMethod(_requestType) << "\",\""
         << HttpRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response.responseCode()) << ","
-        << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+        << _originalBodyLength << "," << responseBodyLength << ",\"" 
+        << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\"," << stat->timingsCsv();
   }
   addWriteBuffer(std::move(buffer));
@@ -191,7 +206,10 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
       << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
-      << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+      << _originalBodyLength << "," << responseBodyLength << ",\"" 
+      << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
       << "\"," << Logger::FIXED(totalTime, 6);
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
@@ -202,7 +220,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 // caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
   TRI_ASSERT(_peer->strand.running_in_this_thread());
-  
+
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
@@ -272,7 +290,7 @@ bool HttpCommTask::processRead(double startTime) {
         (std::memcmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0 ||
          std::memcmp(_readBuffer.c_str(), "VST/1.1\r\n\r\n", 11) == 0)) {
       LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
-      ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0' 
+      ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0'
           ? ProtocolVersion::VST_1_0 : ProtocolVersion::VST_1_1;
 
       // mark task as abandoned, no more reads will happen on _peer
@@ -282,7 +300,7 @@ bool HttpCommTask::processRead(double startTime) {
 
       std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
-          GeneralServerFeature::keepAliveTimeout(), 
+          GeneralServerFeature::keepAliveTimeout(),
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
@@ -558,7 +576,7 @@ bool HttpCommTask::processRead(double startTime) {
   // .............................................................................
   // CORS
   // .............................................................................
-  
+
   // OPTIONS requests currently go unauthenticated
   if (isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
@@ -566,23 +584,23 @@ bool HttpCommTask::processRead(double startTime) {
     _incompleteRequest.reset(nullptr);
     return true;
   }
-  
+
   // .............................................................................
   // authenticate
   // .............................................................................
 
   // first scrape the auth headers and try to determine and authenticate the user
   rest::ResponseCode authResult = handleAuthHeader(_incompleteRequest.get());
-  
-  // authenticated 
+
+  // authenticated
   if (authResult != rest::ResponseCode::SERVER_ERROR) {
-    
+
     // prepare execution will send an error message
     RequestFlow cont = prepareExecution(*_incompleteRequest.get());
     if (cont == RequestFlow::Continue) {
       processRequest(std::move(_incompleteRequest));
     }
-    
+
   } else {
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
     HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
@@ -601,18 +619,22 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << _connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_requestType) << "\",\""
-        << HttpRequest::translateVersion(_protocolVersion) << "\",\"" << _fullUrl
+        << HttpRequest::translateVersion(_protocolVersion) << "\",\""
+        << (Logger::logRequestParameters() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\"";
 
     std::string const& body = request->body();
 
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)) {
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)
+          && Logger::logRequestParameters()) {
       LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
   }
-    
+
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                              leaseStringBuffer(1024));
@@ -763,22 +785,27 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;
   std::string const& authStr =
     request->header(StaticStrings::Authorization, found);
-  
+
   if (!found) {
     events::CredentialsMissing(request);
     return rest::ResponseCode::UNAUTHORIZED;
   }
-  
+
   size_t methodPos = authStr.find_first_of(' ');
-  
+
   if (methodPos != std::string::npos) {
     // skip over authentication method
     char const* auth = authStr.c_str() + methodPos;
     while (*auth == ' ') {
       ++auth;
     }
-    
-    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "Authorization header: " << authStr;
+
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) <<
+          "\"authorization-header\",\"" << (void*)this << "\",\""
+          << authStr << "\"";
+    }
+
     try {
       // note that these methods may throw in case of an error
       AuthenticationMethod authMethod = AuthenticationMethod::NONE;
@@ -787,7 +814,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       } else if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
         authMethod = AuthenticationMethod::JWT;
       }
-      
+
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
         if (_auth->isActive()) {
@@ -797,7 +824,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         } else {
           request->setAuthenticated(true);
         }
-        
+
         if (request->authenticated()) {
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
@@ -805,7 +832,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         events::CredentialsBad(request, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }
-      
+
       // intentionally falls through
     } catch (arangodb::basics::Exception const& ex) {
       // translate error
@@ -817,7 +844,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       return rest::ResponseCode::SERVER_ERROR;
     }
   }
-  
+
   events::UnknownAuthenticationMethod(request);
   return rest::ResponseCode::UNAUTHORIZED;
 }

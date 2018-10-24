@@ -144,6 +144,8 @@
     * [TLS](Deployment/Kubernetes/Tls.md)
     * [Troubleshooting](Deployment/Kubernetes/Troubleshooting.md)
 #
+* [Backup & Restore](BackupRestore/README.md)
+#
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [Dashboard](Administration/WebInterface/Dashboard.md)

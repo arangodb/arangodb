@@ -38,8 +38,10 @@
           }
         })();
       } else {
-        if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
-          this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+        if (frontendConfig.authenticationEnabled && window.App.currentUser) {
+          this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
+        } else {
+          this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/');
         }
         return Backbone.Collection.prototype.fetch.call(this, options);
       }

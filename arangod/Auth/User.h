@@ -55,6 +55,8 @@ class User {
  public:
   std::string const& key() const { return _key; }
   TRI_voc_rid_t rev() const { return _rev; }
+  // updates the user's _loaded attribute
+  void touch();
 
   std::string const& username() const { return _username; }
   std::string const& passwordMethod() const { return _passwordMethod; }

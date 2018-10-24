@@ -777,6 +777,15 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         var actual = getQueryResults(query[0]);
         assertEqual(query[1], actual, query);
       });
+    },
+
+    testLimitNestedLoops: function() {
+      let expected = [[1, 1], [1, 2], [1, 3], [1, 4], [2, 1], [2, 2], [2, 3], [2, 4]];
+      let query = "FOR i IN 1..2 FOR j IN 1..4 LIMIT @limit, 2 RETURN [i , j]";
+      for (let i = 0; i <= 8; ++i) {
+        let actual = getQueryResults(query, { limit: i });
+        assertEqual(expected.slice(i, i + 2), actual, i);
+      }
     }
 
   };

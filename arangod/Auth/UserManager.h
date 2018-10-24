@@ -94,6 +94,8 @@ class UserManager {
   Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it
   Result accessUser(std::string const& user, ConstUserCallback&&);
+  /// @brief does this user exists in the db
+  bool userExists(std::string const& user);
 
   /// Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);
@@ -104,10 +106,12 @@ class UserManager {
   bool checkPassword(std::string const& username, std::string const& password);
 
   /// Convenience method to refresh user rights
+  /// returns true if the user was actually refreshed and the caller may
+  /// need to update its own caches
 #ifdef USE_ENTERPRISE
-  void refreshUser(std::string const& username);
+  bool refreshUser(std::string const& username);
 #else
-  inline void refreshUser(std::string const& username) {}
+  inline bool refreshUser(std::string const& username) { return false; }
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,

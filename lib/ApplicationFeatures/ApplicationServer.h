@@ -133,6 +133,16 @@ class ApplicationServer {
     return server != nullptr && server->_stopping.load();
   }
 
+  // Today this static function is a duplicate of isStopping().  The
+  //  function name 'isStopping()' is defined in other classes and
+  //  can cause scope confusion.  It also causes confusion as to when
+  //  the application versus an individual feature or thread has begun
+  //  stopping.  This function is intended to be used within communication
+  //  retry loops where infinite retries have previously blocked clean "stopping".
+  static bool isRetryOK() {
+    return !isStopping();
+  }
+
   static bool isPrepared() {
     if (server != nullptr) {
       ServerState tmp = server->_state.load(std::memory_order_relaxed);
@@ -226,9 +236,9 @@ class ApplicationServer {
 
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
-  
+
   char const* getBinaryPath() { return _binaryPath;}
-  
+
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
   }
@@ -236,7 +246,7 @@ class ApplicationServer {
   void registerFailCallback(std::function<void(std::string const&)> const& callback) {
     fail = callback;
   }
-  
+
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
@@ -305,7 +315,7 @@ class ApplicationServer {
 
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
-  
+
   // will be signalled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;
 
@@ -317,7 +327,7 @@ class ApplicationServer {
 
   // whether or not to dump dependencies
   bool _dumpDependencies = false;
-  
+
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 

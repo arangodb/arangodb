@@ -253,51 +253,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSegfault
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_DEBUG_SEGFAULT) {
-    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-    delete global.SYS_DEBUG_SEGFAULT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSetFailAt
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_DEBUG_SET_FAILAT) {
-    exports.debugSetFailAt = global.SYS_DEBUG_SET_FAILAT;
-    delete global.SYS_DEBUG_SET_FAILAT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugRemoveFailAt
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_DEBUG_REMOVE_FAILAT) {
-    exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
-    delete global.SYS_DEBUG_REMOVE_FAILAT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugClearFailAt
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_DEBUG_CLEAR_FAILAT) {
-    exports.debugClearFailAt = global.SYS_DEBUG_CLEAR_FAILAT;
-    delete global.SYS_DEBUG_CLEAR_FAILAT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugCanUseFailAt
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_DEBUG_CAN_USE_FAILAT) {
-    exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
-    delete global.SYS_DEBUG_CAN_USE_FAILAT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief download
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -305,7 +260,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
   }
-  
+
   if (global.SYS_CLUSTER_DOWNLOAD) {
     exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
     delete global.SYS_CLUSTER_DOWNLOAD;
@@ -464,7 +419,7 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief input 
+  // / @brief input
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_POLLSTDIN) {
@@ -785,7 +740,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (structure[key] !== false) {
               if (structure[key] !== true) {
                 if (structure[key] !== null) {
-                  // The null case is for the case one wants to add an option 
+                  // The null case is for the case one wants to add an option
                   // with an equals sign all in the key, which is necessary if
                   // one wants to specify an option multiple times.
                   vec.push(structure[key]);
@@ -1258,7 +1213,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (context.level > 0 && !showFunction) {
               var a = s.split('\n');
               var f = a[0].replace(/^(.*?\)).*$/, '$1');
-              
+
               var m = funcRE.exec(f);
 
               if (m !== null) {
@@ -1756,7 +1711,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.authenticationEnabled = global.AUTHENTICATION_ENABLED;
     delete global.AUTHENTICATION_ENABLED;
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ldapEnabled
   // //////////////////////////////////////////////////////////////////////////////

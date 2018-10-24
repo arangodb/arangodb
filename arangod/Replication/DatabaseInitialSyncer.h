@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_DATABASE_INITIAL_SYNCER_H 1
 
 #include "Replication/InitialSyncer.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 
@@ -34,6 +35,27 @@ namespace arangodb {
 class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
+
+namespace httpclient {
+class SimpleHttpResult;
+}
+
+class DumpStatus {
+ public:
+  explicit DumpStatus(DatabaseInitialSyncer const* syncer); 
+  ~DumpStatus();
+
+  void gotResponse(arangodb::Result const& res, std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response);
+  arangodb::Result waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
+
+ private:
+  DatabaseInitialSyncer const* _syncer;
+  arangodb::basics::ConditionVariable _condition;
+  bool _gotResponse;
+  arangodb::Result _res;
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> _response;
+};
+
 
 /*
 arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
@@ -55,17 +77,20 @@ arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectio
                                   std::vector<std::pair<std::string, uint64_t>> const& markers);
   */
 class DatabaseInitialSyncer : public InitialSyncer {
-  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-                                                              std::string const& keysId);
+  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, 
+                                                  arangodb::LogicalCollection* col,
+                                                  std::string const& keysId);
   
-  friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-                                                              std::string const& keysId);
+  friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer, 
+                                                  arangodb::LogicalCollection* col,
+                                                  std::string const& keysId);
   
   friend ::arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                                           std::string const& keysId, uint64_t chunkId,
-                                           std::string const& lowString,
-                                           std::string const& highString,
-                                           std::vector<std::pair<std::string, uint64_t>> const& markers);
+                                             IncrementalSyncStats& stats,
+                                             std::string const& keysId, uint64_t chunkId,
+                                             std::string const& lowString,
+                                             std::string const& highString,
+                                             std::vector<std::pair<std::string, uint64_t>> const& markers);
 
  private:
   /// @brief apply phases
@@ -147,6 +172,15 @@ class DatabaseInitialSyncer : public InitialSyncer {
   
  private:
   
+  void orderDumpChunk(std::shared_ptr<DumpStatus>,
+                      std::string const& baseUrl, 
+                      arangodb::LogicalCollection* coll, 
+                      std::string const& leaderColl,
+                      DumpStats& stats,
+                      int batch, 
+                      TRI_voc_tick_t fromTick, 
+                      uint64_t batchSize);
+  
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
   
@@ -190,7 +224,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
                             arangodb::velocypack::Slice>> const&,
       bool incremental, sync_phase_e);
 
-  std::unordered_map<std::string, std::string> createHeaders() const;
+  static std::unordered_map<std::string, std::string> createHeaders();
 
  private:
   TRI_vocbase_t* _vocbase;

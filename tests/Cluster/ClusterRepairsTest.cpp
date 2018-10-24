@@ -525,7 +525,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                                 protoCollIdSlice},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice}},
+                    AgencyValueOperationType::SET, replicationFactorSlice},
+                AgencyOperation{
+                    "Plan/Version",
+                    AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{"Plan/Collections/myDbName/123456/"
                                    "repairingDistributeShardsLike",
@@ -597,7 +600,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
         AgencyWriteTransaction expectedTrx{
-            {},
+            {AgencyOperation{"Plan/Version",
+	                     AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
@@ -658,7 +662,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                                 protoCollIdSlice},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice}},
+                    AgencyValueOperationType::SET, replicationFactorSlice},
+                AgencyOperation{
+                    "Plan/Version",
+                    AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{"Plan/Collections/myDbName/123456/"
                                    "repairingDistributeShardsLike",
@@ -719,7 +726,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                                 AgencySimpleOperationType::DELETE_OP},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyValueOperationType::SET, protoIdSlice}},
+                    AgencyValueOperationType::SET, protoIdSlice},
+                AgencyOperation{
+                    "Plan/Version",
+                    AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",

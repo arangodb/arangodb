@@ -334,7 +334,7 @@ void RestCollectionHandler::handleCommandPut() {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
                                           AccessMode::Type::EXCLUSIVE);
-
+          trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
           res = trx.begin();
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
@@ -392,6 +392,10 @@ void RestCollectionHandler::handleCommandPut() {
           builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, coll);
+          VPackObjectBuilder obj(&builder, true);
+          obj->add("result", VPackValue(res.ok()));
+        } else if (sub == "recalculateCount") {
+          res = methods::Collections::recalculateCount(_vocbase, coll);
           VPackObjectBuilder obj(&builder, true);
           obj->add("result", VPackValue(res.ok()));
         } else {

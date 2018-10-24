@@ -179,10 +179,17 @@ case "$1" in
 
     debug)
         BUILD_CONFIG=Debug
+        MAINTAINER_MODE=''
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS+=('-DV8_TARGET_ARCHS=Debug' "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}")
-
+        CONFIGURE_OPTIONS+=(
+            '-DUSE_MAINTAINER_MODE=On'
+            '-DUSE_FAILURE_TESTS=On'
+            '-DOPTDBG=On'
+            '-DUSE_BACKTRACE=On'
+            "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
+        )
+        
         echo "using debug compile configuration"
         shift
         ;;
@@ -262,10 +269,14 @@ while [ $# -gt 0 ];  do
              CXX=""
              PAR=""
              PARALLEL_BUILDS=""
-             GENERATOR="Visual Studio 14 Win64"
+             GENERATOR="Visual Studio 15 Win64"
+             CONFIGURE_OPTIONS+=("-T")
+             CONFIGURE_OPTIONS+=("v141,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
-             CONFIGURE_OPTIONS+=(-DV8_TARGET_ARCHS=Release)
+             CONFIGURE_OPTIONS+=("-DOPENSSL_USE_STATIC_LIBS=TRUE")
+             # MSVC doesn't know howto do our assembler in first place.
+             ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
              export _IsNativeEnvironment=true
              ;;
 
@@ -951,7 +962,9 @@ if test -n "${TARGET_DIR}";  then
                   )
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
             # shellcheck disable=SC2086
-            cp ${DLLS} "bin/${BUILD_CONFIG}"
+            if test -n "${DLLS}"; then
+                cp ${DLLS} "bin/${BUILD_CONFIG}"
+            fi
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi

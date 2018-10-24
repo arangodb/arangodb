@@ -1486,6 +1486,9 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         TRI_ASSERT(graphNode->isStringValue());
         std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
+        if (graph == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        }
         TRI_ASSERT(graph != nullptr);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
@@ -1515,6 +1518,9 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         TRI_ASSERT(graphNode->isStringValue());
         std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
+        if (graph == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        }
         TRI_ASSERT(graph != nullptr);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
@@ -2613,6 +2619,11 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
       // if the IN list contains a considerable amount of items, we will sort
       // it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
+
+      // first copy the original node before sorting, as the node may be used
+      // somewhere else too
+      rhs = clone(rhs);
+      node->changeMember(1, rhs);
       rhs->sort();
       // remove the sortedness bit for IN/NIN operator node, as the operand is now sorted
       node->setBoolValue(false);

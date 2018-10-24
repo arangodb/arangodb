@@ -41,7 +41,35 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class GatherBlock : public ExecutionBlock {
+/// the cluster blocks in 3.3 derive from this trivial
+/// base class that makes sure initializeCursor will be
+/// called at least once per block.
+/// this is required for clusters running in mixed mode
+/// (e.g. 3.3 coordinator but a 3.4 DB server that will
+/// now send back requests to the 3.3 coordinator).
+/// A 3.4 DB server will likely buffer initializeCursor
+/// requests, but 3.3 requires them. 
+/// In order to not fall apart, this class keeps a
+/// state for the cluster blocks in 3.3 whether they
+/// have called their own initializeCursor method at
+/// least once
+class LazyInitializeBlock {
+ public:
+  LazyInitializeBlock() : _initialized(false) {}
+
+  void setInitialized() { _initialized = true; }
+
+  bool wasInitialized() { 
+    bool result = _initialized;
+    _initialized = true;
+    return result;
+  }
+
+ private:
+  bool _initialized;
+};
+
+class GatherBlock : public ExecutionBlock, public LazyInitializeBlock {
  public:
   GatherBlock(ExecutionEngine*, GatherNode const*);
 
@@ -120,7 +148,7 @@ class GatherBlock : public ExecutionBlock {
   std::unique_ptr<Heap> _heap;
 };
 
-class BlockWithClients : public ExecutionBlock {
+class BlockWithClients : public ExecutionBlock, public LazyInitializeBlock {
  public:
   BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
                    std::vector<std::string> const& shardIds);
@@ -293,7 +321,7 @@ class DistributeBlock : public BlockWithClients {
   bool _allowSpecifiedKeys;
 };
 
-class RemoteBlock : public ExecutionBlock {
+class RemoteBlock : public ExecutionBlock, public LazyInitializeBlock {
   /// @brief constructors/destructors
  public:
   RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,

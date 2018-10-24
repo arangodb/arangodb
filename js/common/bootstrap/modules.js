@@ -542,7 +542,7 @@
       Module._extensions[extension](this, filename);
     } catch (e) {
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}`;
+        let msg = `${internal.errors.ERROR_MODULE_FAILURE.message}\nReason: ${e}`;
 
         if (e.fileName !== undefined) {
           msg += `\nFile: ${e.fileName}`;
@@ -550,7 +550,7 @@
           msg += `\nFile: ${filename}`;
         }
         if (e.lineNumber !== undefined) {
-          msg += `\nLine: ${e.lineNumber-2}`;
+          msg += `\nLine: ${e.lineNumber}`;
         }
         if (e.columnNumber !== undefined) {
           msg += `\nColumn: ${e.columnNumber}`;

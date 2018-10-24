@@ -501,7 +501,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     // db or collection may be deleted already
     if (vocbase != nullptr && col != nullptr) {
       // FIXME: this revision is entirely meaningless
-      uint64_t rid = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+      LocalDocumentId docId = RocksDBKey::documentId(key);
       {
         VPackObjectBuilder marker(&_builder, true);
         marker->add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -511,7 +511,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
         VPackObjectBuilder data(&_builder, "data", true);
         data->add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-        data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+        data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(docId.id())));
       }
       _callback(loadVocbase(_currentDbId), _builder.slice());
       _responseSize += _builder.size();

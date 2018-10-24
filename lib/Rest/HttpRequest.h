@@ -85,7 +85,7 @@ class HttpRequest final : public GeneralRequest {
 
   std::string const& value(std::string const& key) const override;
   std::string const& value(std::string const& key, bool& found) const override;
-  std::unordered_map<std::string, std::string> values() const override {
+  std::unordered_map<std::string, std::string> const& values() const override {
     return _values;
   }
 

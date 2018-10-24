@@ -40,6 +40,7 @@
 #include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -89,7 +90,7 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
     rocksdb::Snapshot const* snap = nullptr;
     if (_trx) {
       auto state = RocksDBTransactionState::toState(_trx.get());
-      snap = state->stealSnapshot();
+      snap = state->stealReadSnapshot();
       _trx->abort();
       _trx.reset();
     }
@@ -122,7 +123,8 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
 
 int RocksDBReplicationContext::bindCollection(
     TRI_vocbase_t* vocbase,
-    std::string const& collectionIdentifier) {
+    std::string const& collectionIdentifier,
+    bool sorted) {
   bind(vocbase);
   
   if ((_collection == nullptr) ||
@@ -143,9 +145,13 @@ int RocksDBReplicationContext::bindCollection(
     TRI_DEFER(ExecContext::CURRENT = old);
 
     _trx->addCollectionAtRuntime(_collection->name());
-    _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())
-                ->getSortedAllIterator(_trx.get(),
-                                       &_mdr);  //_mdr is not used nor updated
+    if (sorted) {
+      auto iterator = createPrimaryIndexIterator(_trx.get(), _collection);
+      _iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
+    } else {
+      auto iterator = createDocumentIterator(_trx.get(), _collection);
+      _iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
+    }
     _currentTick = 1;
     _hasMore = true;
   }
@@ -207,7 +213,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (!_trx) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
-  int res = bindCollection(vocbase, collectionName);
+  int res = bindCollection(vocbase, collectionName, false);
   if (res != TRI_ERROR_NO_ERROR) {
     return RocksDBReplicationResult(res, _lastTick);
   }
@@ -215,38 +221,20 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized", _lastTick);
   }
 
-  // set type
-  int type = REPLICATION_MARKER_DOCUMENT;  // documents
+  // reserve chunkSize plus some overhead for JSON packaging
+  buff.reserve(std::min(size_t(chunkSize * 1.10), size_t(10 * 1000 * 1000)));
+
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
-  VPackBuilder builder(&_vpackOptions);
+  auto cb = [&adapter, &buff, this](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+    buff.appendText("{\"type\":");
+    buff.appendInteger(REPLICATION_MARKER_DOCUMENT); // set type
+    buff.appendText(",\"data\":");
 
-  auto cb = [this, &type, &buff, &adapter, &builder](LocalDocumentId const& documentId) {
-    builder.clear();
-
-    builder.openObject();
-    // set type
-    builder.add("type", VPackValue(type));
-
-    // set data
-    bool ok = _collection->readDocument(_trx.get(), documentId, _mdr);
-
-    if (!ok) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
-          << "could not get document with token: " << documentId.id();
-      throw RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
-    }
-
-    builder.add(VPackValue("data"));
-    _mdr.addToBuilder(builder, false);
-    builder.close();
-
-    // note: we need the CustomTypeHandler here
-    VPackDumper dumper( &adapter,
-        &_vpackOptions);
-    VPackSlice slice = builder.slice();
-    dumper.dump(slice);
-    buff.appendChar('\n');
+    // printing the data, note: we need the CustomTypeHandler here
+    VPackDumper dumper(&adapter, &_vpackOptions);
+    dumper.dump(velocypack::Slice(rocksValue.data()));
+    buff.appendText("}\n", 2);
   };
   
   TRI_ASSERT(_iter);
@@ -262,7 +250,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       return ex;
     }
   }
-  
+
   if (_hasMore) {
     _currentTick++;
   }
@@ -280,27 +268,39 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   }
 
   std::string lowKey;
-  VPackSlice highKey; // points into document owned by _mdr
+  std::string highKey;  // needs to be a string (not ref) as the rocksdb slice will not be valid outside the callback
+  VPackBuilder builder;
   uint64_t hash = 0x012345678;
-  auto cb = [&](LocalDocumentId const& documentId) {
-    bool ok = _collection->readDocument(_trx.get(), documentId, _mdr);
-    if (!ok) {
-      // TODO: do something here?
-      return;
+
+  auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+    highKey = RocksDBKey::primaryKey(rocksKey).toString();
+
+    TRI_voc_rid_t docRev;
+    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+      // for collections that do not have the revisionId in the value
+      auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+      if(_collection->readDocument(_trx.get(), documentId, _mdr) == false) {
+        TRI_ASSERT(false);
+        return;
+      }
+      VPackSlice doc(_mdr.vpack());
+      docRev = TRI_ExtractRevisionId(doc);
     }
 
-    VPackSlice doc(_mdr.vpack());
-    highKey = doc.get(StaticStrings::KeyString);
     // set type
     if (lowKey.empty()) {
-      lowKey = highKey.copyString();
+      lowKey = highKey;
     }
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(doc).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(doc).hash();
-  };
+    builder.clear();
+    builder.add(VPackValue(highKey));
+    hash ^= builder.slice().hashString();
+    builder.clear();
+    builder.add(VPackValue(TRI_RidToString(docRev)));
+    hash ^= builder.slice().hash();
+  }; //cb
 
   b.openArray();
   while (_hasMore) {
@@ -313,7 +313,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       }
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
-      b.add("high", highKey);
+      b.add("high", VPackValue(highKey));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
       lowKey.clear();  // reset string
@@ -343,8 +343,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   }
 
   TRI_ASSERT(_iter);
-  RocksDBSortedAllIterator* primary =
-      static_cast<RocksDBSortedAllIterator*>(_iter.get());
+  auto primary = _iter.get();
 
   // Position the iterator correctly
   if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
@@ -355,7 +354,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
   if (from != _lastIteratorOffset) {
     if (!lowKey.empty()) {
-      primary->seek(StringRef(lowKey));
+      RocksDBKeyLeaser val(_trx.get());
+      val->constructPrimaryIndexValue(primary->bounds().objectId(), StringRef(lowKey));
+      primary->seek(val->string());
       _lastIteratorOffset = from;
     } else {  // no low key supplied, we can not use seek
       if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
@@ -378,23 +379,30 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
-  auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
-    TRI_voc_rid_t revisionId = 0;
-    VPackSlice key;
-    transaction::helpers::extractKeyAndRevFromDocument(slice, key, revisionId);
-
-    TRI_ASSERT(key.isString());
-    
+ auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+    TRI_voc_rid_t docRev;
+    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+      // for collections that do not have the revisionId in the value
+      auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+      if(_collection->readDocument(_trx.get(), documentId, _mdr) == false) {
+        TRI_ASSERT(false);
+        return;
+      }
+      VPackSlice doc(_mdr.vpack());
+      docRev = TRI_ExtractRevisionId(doc);
+    }
+ 
+    StringRef docKey(RocksDBKey::primaryKey(rocksKey));
     b.openArray();
-    b.add(key);
-    b.add(VPackValue(TRI_RidToString(revisionId)));
+    b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
+    b.add(VPackValue(TRI_RidToString(docRev)));
     b.close();
   };
 
   b.openArray();
   // chunkSize is going to be ignored here
   try {
-    _hasMore = primary->nextDocument(cb, chunkSize);
+    _hasMore = primary->next(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
     return rv.reset(TRI_ERROR_INTERNAL);
@@ -416,8 +424,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   }
 
   TRI_ASSERT(_iter);
-  RocksDBSortedAllIterator* primary =
-      static_cast<RocksDBSortedAllIterator*>(_iter.get());
+  auto primary = _iter.get();
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
@@ -428,7 +435,9 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 
   if (from != _lastIteratorOffset) {
     if (!lowKey.empty()) {
-      primary->seek(StringRef(lowKey));
+      RocksDBKeyLeaser val(_trx.get());
+      val->constructPrimaryIndexValue(primary->bounds().objectId(), StringRef(lowKey));
+      primary->seek(val->string());
       _lastIteratorOffset = from;
     } else {  // no low key supplied, we can not use seek
       if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
@@ -450,8 +459,9 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
   }
 
-  auto cb = [&](LocalDocumentId const& token) {
-    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+  auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+    auto documentId = RocksDBValue::documentId(rocksValue);
+    bool ok = _collection->readDocument(_trx.get(), documentId, _mdr);
     if (!ok) {
       // TODO: do something here?
       return;
@@ -488,7 +498,8 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     bool full = false;
     if (offset < offsetInChunk) {
       // skip over the initial few documents
-      hasMore = _iter->next([&b](LocalDocumentId const&) {
+      hasMore = _iter->next(
+          [&b](rocksdb::Slice const&, rocksdb::Slice const&) {
         b.add(VPackValue(VPackValueType::Null));
       }, 1);
     } else {

@@ -144,11 +144,17 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
 
 bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
-    createCursor(_lat, _lon);
+    if (_lat < -90.0 || _lat > 90.0 || _lon < -180.0 || _lon > 180.0) {
+      // invalid coordinates
+      _done = true;
+      return false;
+    }
 
+    createCursor(_lat, _lon);
+   
     if (!_cursor) {
       // actually validate that we got a valid cursor
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create cursor");
     }
   }
 

@@ -72,7 +72,17 @@ arangodb::Result RocksDBMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   return Get(cf, key.string(), val);
 }
 
-rocksdb::ReadOptions const& RocksDBMethods::readOptions() {
+rocksdb::SequenceNumber RocksDBMethods::sequenceNumber() {
+  return _state->sequenceNumber();
+}
+
+rocksdb::ReadOptions RocksDBMethods::iteratorReadOptions() {
+  if (_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
+    rocksdb::ReadOptions ro = _state->_rocksReadOptions;
+    TRI_ASSERT(_state->_readSnapshot);
+    ro.snapshot = _state->_readSnapshot;
+    return ro;
+  }
   return _state->_rocksReadOptions;
 }
 
@@ -81,7 +91,7 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
   std::size_t count = 0;
   
   //iterator is from read only / trx / writebatch
-  std::unique_ptr<rocksdb::Iterator> iter = this->NewIterator(this->readOptions(), bounds.columnFamily());
+  std::unique_ptr<rocksdb::Iterator> iter = this->NewIterator(iteratorReadOptions(), bounds.columnFamily());
   iter->Seek(bounds.start());
   auto end = bounds.end();
   rocksdb::Comparator const * cmp = bounds.columnFamily()->GetComparator();

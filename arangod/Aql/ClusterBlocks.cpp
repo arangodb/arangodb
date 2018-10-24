@@ -58,7 +58,7 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
-    : ExecutionBlock(engine, en),
+    : ExecutionBlock(engine, en), LazyInitializeBlock(),
       _sortRegisters(),
       _isSimple(en->elements().empty()),
       _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
@@ -136,6 +136,8 @@ int GatherBlock::shutdown(int errorCode) {
 /// @brief initializeCursor
 int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
+
+  setInitialized();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -217,6 +219,10 @@ bool GatherBlock::hasMore() {
   if (_done || _dependencies.empty()) {
     return false;
   }
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   if (_isSimple) {
     for (size_t i = 0; i < _dependencies.size(); i++) {
@@ -253,6 +259,10 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
+  }
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
   }
 
   // the simple case . . .
@@ -408,6 +418,10 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
   if (_done) {
     return 0;
   }
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   // the simple case . . .
   if (_isSimple) {
@@ -544,7 +558,7 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
                                    ExecutionNode const* ep,
                                    std::vector<std::string> const& shardIds)
-    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()), _wasShutdown(false) {
+    : ExecutionBlock(engine, ep), LazyInitializeBlock(), _nrClients(shardIds.size()), _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -555,6 +569,7 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
 int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
+  setInitialized();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -597,7 +612,11 @@ AqlItemBlock* BlockWithClients::getSomeForShard(size_t atLeast, size_t atMost,
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
+  
   int out =
       getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
 
@@ -620,8 +639,14 @@ size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
+
   int out =
       getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
+
   TRI_ASSERT(result == nullptr);
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
@@ -674,7 +699,9 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
 int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
+  setInitialized();
   int res = BlockWithClients::initializeCursor(items, pos);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -713,9 +740,14 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   
   TRI_ASSERT(_nrClients != 0);
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -742,6 +774,7 @@ int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return 0;
   }
@@ -774,9 +807,14 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -837,7 +875,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
                                  DistributeNode const* ep,
                                  std::vector<std::string> const& shardIds,
                                  Collection const* collection)
-    : BlockWithClients(engine, ep, shardIds),
+    : BlockWithClients(engine, ep, shardIds), 
       _collection(collection),
       _index(0),
       _regId(ExecutionNode::MaxRegisterId),
@@ -870,6 +908,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
+  setInitialized();
   int res = BlockWithClients::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -910,8 +949,13 @@ int DistributeBlock::shutdown(int errorCode) {
 /// @brief hasMore: any more for any shard?
 bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -939,8 +983,13 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   traceGetSomeBegin();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
 
   if (_doneForClient.at(clientId)) {
     traceGetSomeEnd(result);
@@ -1015,9 +1064,13 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
     _index = 0;  // position in _buffer
     _pos = 0;    // position in _buffer.at(_index)
   }
+  
+  TRI_ASSERT(_doneForClient.size() > clientId);
 
   std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
+  
+  TRI_ASSERT(buf.size() > clientId);
 
   while (buf.at(clientId).size() < atLeast) {
     if (_index == _buffer.size()) {
@@ -1268,6 +1321,7 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
                          std::string const& server, std::string const& ownName,
                          std::string const& queryId)
     : ExecutionBlock(engine, en),
+      LazyInitializeBlock(),
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
@@ -1341,6 +1395,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
 
+  setInitialized();
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
@@ -1462,6 +1517,10 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   // For every call we simply forward via HTTP
   
   traceGetSomeBegin();
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -1498,6 +1557,10 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
 size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -1536,6 +1599,11 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
 /// @brief hasMore
 bool RemoteBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
+  
+  if (!wasInitialized()) {
+    initializeCursor(nullptr, 0);
+  }
+  
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res =
       sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());

@@ -42,6 +42,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -623,6 +624,47 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   return guard.collection()->updateProperties(data, doSync);
 }
 
+
+/// @brief truncate a collections. Assumes no trx are running
+Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slice) {
+  if (!slice.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "collection slice is no object");
+  }
+  
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  auto* col = resolveCollection(vocbase, slice);
+  if (col == nullptr) {
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (!_ongoingTransactions.empty()) {
+    const char* msg = "Encountered truncate but still have ongoing transactions";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << msg;
+    return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, msg);
+  }
+  
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                  col->cid(), AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return res;
+  }
+  
+  OperationOptions opts;
+  OperationResult opRes = trx.truncate(col->name(), opts);
+  
+  if (opRes.fail()) {
+    return opRes.result;
+  }
+  
+  return trx.finish(opRes.result);
+}
+
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
                                      TRI_voc_tick_t firstRegularTick) {
@@ -708,6 +750,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_COLLECTION_CHANGE) {
     return changeCollection(slice);
+  } else if (type == REPLICATION_COLLECTION_TRUNCATE) {
+    return truncateCollection(slice);
   }
 
   else if (type == REPLICATION_INDEX_CREATE) {
@@ -719,18 +763,22 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   }
 
   else if (type == REPLICATION_VIEW_CREATE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view create not yet implemented");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
   }
 
   else if (type == REPLICATION_VIEW_DROP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view drop not yet implemented");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
   }
 
   else if (type == REPLICATION_VIEW_CHANGE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view change not yet implemented");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
+  }
+  else if (type == REPLICATION_VIEW_RENAME) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
   }
   
   else if (type == REPLICATION_DATABASE_CREATE ||
@@ -952,10 +1000,17 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
-    {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << "stopping applier: " << res.errorMessage();
+    try {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalRequests++;
       getLocalState();
+    } catch (basics::Exception const& ex) {
+      res = Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      res = Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
     }
 
     _applier->stop(res);

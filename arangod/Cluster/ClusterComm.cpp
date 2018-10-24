@@ -636,7 +636,7 @@ ClusterCommResult const ClusterComm::wait(
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
   TRI_ASSERT(timeout >= 0.0);
-  
+
   // if we cannot find the sought operation, we will return the status
   // DROPPED. if we get into the timeout while waiting, we will still return
   // CL_COMM_TIMEOUT.
@@ -1214,8 +1214,9 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 }
 
 void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
-  if (_authenticationEnabled) {
-    headers->emplace("Authorization", _jwtAuthorization);
+  if (_authenticationEnabled &&
+      headers->find(StaticStrings::Authorization) == headers->end()) {
+    headers->emplace(StaticStrings::Authorization, _jwtAuthorization);
   }
 }
 

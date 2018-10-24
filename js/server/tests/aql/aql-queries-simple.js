@@ -54,6 +54,16 @@ function ahuacatlQuerySimpleTestSuite () {
 
     tearDown : function () {
     },
+    
+    testNoArraySorting1 : function () {
+      let query = "LET values = [9,16,8,15,7,14,6,13,5,12,4,11,3,10,2,1] RETURN values";
+      assertEqual([9, 16, 8, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 1], AQL_EXECUTE(query).json[0]);
+    },
+    
+    testNoArraySorting2 : function () {
+      let query = "LET values = [9,16,8,15,7,14,6,13,5,12,4,11,3,10,2,1] FOR v IN values FILTER v IN values LIMIT 1 RETURN values";
+      assertEqual([9, 16, 8, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 1], AQL_EXECUTE(query).json[0]);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filters with special characters

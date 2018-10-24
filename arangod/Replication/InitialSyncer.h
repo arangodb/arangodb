@@ -34,9 +34,34 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+struct DumpStats {
+  // number of requests to /dump
+  uint64_t numDumpRequests = 0;
+
+  double waitedForDump = 0.0;
+  double waitedForApply = 0.0;
+};
+
+struct IncrementalSyncStats {
+  // number of requests to /keys?type=keys
+  uint64_t numKeysRequests = 0;
+  // number of requests to /keys?type=docs
+  uint64_t numDocsRequests = 0;
+  // number of documents we want details for
+  uint64_t numDocsRequested = 0;
+
+  uint64_t numDocsInserted = 0;
+  uint64_t numDocsRemoved = 0;
+
+  double waitedForInitial = 0.0;
+  double waitedForKeys = 0.0;
+  double waitedForDocs = 0.0;
+};
+
 class InitialSyncer : public Syncer {
  public:
-  static constexpr double defaultBatchTimeout = 300.0;
+  static constexpr double defaultBatchTimeout = 7200.0; // two hours
 
  public:
   explicit InitialSyncer(ReplicationApplierConfiguration const&);

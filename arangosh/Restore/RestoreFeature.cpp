@@ -77,7 +77,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
 #ifdef USE_ENTERPRISE
       _encryption(nullptr),
 #endif
-      _stats{0, 0, 0} {
+      _stats{0, 0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -608,13 +608,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         if (TRI_ExistsFile(datafile.c_str())) {
+          int64_t dataSize = TRI_SizeFile(datafile.c_str());
           // found a datafile
-
-          if (_progress) {
-            std::cout << "# Loading data into " << collectionType
-                      << " collection '" << cname << "'..." << std::endl;
-          }
-
           int fd =
               TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
@@ -623,10 +618,17 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
             return TRI_ERROR_INTERNAL;
           }
+          
+          if (_progress) {
+            std::cout << "# Loading data into " << collectionType
+                      << " collection '" << cname << "', data size: " << dataSize << " byte(s)" << std::endl;
+          }
 
           beginDecryption(fd);
 
           buffer.clear();
+          int64_t numReadForThisCollection = 0;
+          int64_t numReadSinceLastReport = 0;
 
           while (true) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
@@ -652,6 +654,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             buffer.increaseLength(numRead);
 
             _stats._totalRead += (uint64_t)numRead;
+            numReadForThisCollection += numRead;
+            numReadSinceLastReport += numRead;
 
             if (buffer.length() < _chunkSize && numRead > 0) {
               // still continue reading
@@ -683,6 +687,14 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
               int res =
                   sendRestoreData(cname, buffer.begin(), length, errorMsg);
+              
+              _stats._totalSent += length;
+
+              if (_progress && dataSize > 0 && numReadSinceLastReport > 1024 * 1024 * 8) {
+                // report every 8MB of transferred data
+                std::cout << "# Progress: still processing collection '" << cname << "', " << numReadForThisCollection << " of " << dataSize << " byte(s) restored (" << int(100. * double(numReadForThisCollection) / double(dataSize)) << " %)" << std::endl;
+                numReadSinceLastReport = 0;
+              }
 
               if (res != TRI_ERROR_NO_ERROR) {
                 if (errorMsg.empty()) {
@@ -736,6 +748,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             return TRI_ERROR_INTERNAL;
           }
         }
+      }
+
+      if (_progress) {
+        std::cout << "# Progress: restored " << _stats._totalCollections << " of " << collections.size() 
+                  << " collection(s), read " << _stats._totalRead << " byte(s) from datafiles, "
+                  << "sent " << _stats._totalBatches << " data batch(es) of " << _stats._totalSent << " byte(s) total size" << std::endl;
       }
     }
   } catch (std::exception const& ex) {
@@ -885,7 +903,7 @@ void RestoreFeature::start() {
       std::cout << "Processed " << _stats._totalCollections
                 << " collection(s), "
                 << "read " << _stats._totalRead << " byte(s) from datafiles, "
-                << "sent " << _stats._totalBatches << " batch(es)" << std::endl;
+                << "sent " << _stats._totalBatches << " data batch(es)" << std::endl;
     } else if (_importStructure) {
       std::cout << "Processed " << _stats._totalCollections << " collection(s)"
                 << std::endl;

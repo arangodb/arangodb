@@ -28,7 +28,6 @@
 #define VELOCYPACK_EXCEPTION_H 1
 
 #include <exception>
-#include <string>
 #include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
@@ -76,17 +75,16 @@ struct Exception : std::exception {
 
  private:
   ExceptionType _type;
-  std::string _msg;
+  char const* _msg;
 
  public:
-  Exception(ExceptionType type, std::string const& msg)
-      : _type(type), _msg(msg) {}
+  Exception(ExceptionType type, char const* msg) noexcept : _type(type), _msg(msg) {}
 
-  Exception(ExceptionType type, char const* msg) : _type(type), _msg(msg) {}
+  explicit Exception(ExceptionType type) noexcept : Exception(type, message(type)) {}
+  
+  Exception(Exception const& other) noexcept : _type(other._type), _msg(other._msg) {}
 
-  explicit Exception(ExceptionType type) : Exception(type, message(type)) {}
-
-  char const* what() const noexcept { return _msg.c_str(); }
+  char const* what() const noexcept { return _msg; }
 
   ExceptionType errorCode() const noexcept { return _type; }
 

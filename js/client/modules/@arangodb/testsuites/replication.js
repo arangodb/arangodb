@@ -292,7 +292,7 @@ function replicationOngoing (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_ongoing', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_ongoing', tu.runInArangosh, {'server.authentication':'true'}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

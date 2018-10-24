@@ -27,6 +27,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -35,11 +36,14 @@
 namespace rocksdb {
 class Iterator;
 class Comparator;
+class TransactionDB;
 }
 
 namespace arangodb {
 class RocksDBCollection;
 class RocksDBPrimaryIndex;
+
+typedef std::function<void(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 
 /// @brief iterator over all documents in the collection
 /// basically sorted after revision ID
@@ -87,43 +91,54 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
-  static uint64_t newOffset(LogicalCollection* collection,
-                            transaction::Methods* trx);
+  bool checkIter();
 
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds const _bounds;
   uint64_t _total;
   uint64_t _returned;
+  bool _forward;
 };
 
-/// @brief iterates over the primary index and does lookups
-/// into the document store. E.g. used for incremental sync
-class RocksDBSortedAllIterator final : public IndexIterator {
+class RocksDBGenericIterator {
  public:
-  RocksDBSortedAllIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
-                           RocksDBPrimaryIndex const* index);
+  RocksDBGenericIterator(rocksdb::ReadOptions& options
+                        ,RocksDBKeyBounds const& bounds
+                        ,bool reverse=false);
+  RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
-  ~RocksDBSortedAllIterator() {}
+  ~RocksDBGenericIterator() {}
 
-  char const* typeName() const override { return "sorted-all-index-iterator"; }
+  // the following functions return if the iterator
+  // is valid and in bounds on return.
+  bool next(GenericCallback const& cb // void(rocksdb::Slice const& key,rocksd:Slice const& value)
+           , size_t count //number of documents the callback should be applied to
+           );
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  void reset() override;
+  bool skip(uint64_t count // documents to skip
+           ,uint64_t& skipped // skipped documents
+           );
+  bool seek(rocksdb::Slice const& key);
+  bool reset();
+  bool hasMore() const;
 
-  // engine specific optimizations
-  void seek(StringRef const& key);
+  //return bounds
+  RocksDBKeyBounds const& bounds() const { return _bounds; }
 
  private:
   bool outOfRange() const;
-
-  transaction::Methods* _trx;
+  bool _reverse;
   RocksDBKeyBounds const _bounds;
+  rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
 };
-}
+
+RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx, LogicalCollection* col);
+
+RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx, LogicalCollection* col);
+
+} //namespace arangodb
 
 #endif

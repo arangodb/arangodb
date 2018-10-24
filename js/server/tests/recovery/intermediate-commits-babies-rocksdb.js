@@ -40,21 +40,8 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery');
 
   try {
-    db._executeTransaction({
-      intermediateCommitCount: 1000,
-      collections: {
-        write: 'UnitTestsRecovery'
-      },
-      action: function () {
-        var db = require('@arangodb').db;
-        var docs = [];
-        for (var i = 0; i < 10000; ++i) {
-          docs.push({ value: i });
-        }
-        c.insert(docs);
-        fail();
-      }
-    });
+    db._query("FOR i IN 0..10000 FILTER i < 10000 OR FAIL('peng') INSERT {value:i} INTO UnitTestsRecovery",
+    {}, {intermediateCommitCount: 1000});
   } catch (err) {
     // intentionally fail
   }

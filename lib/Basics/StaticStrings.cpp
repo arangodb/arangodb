@@ -111,6 +111,9 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::Queue("x-arango-queue");
+std::string const StaticStrings::RequestForwardedTo(
+      "x-arango-request-forwarded-to");
+std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
@@ -121,3 +124,6 @@ std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
+
+// misc strings
+std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");

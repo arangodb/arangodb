@@ -590,7 +590,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     //          - databases
 
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      storeMaxHLC(RocksDBKey::revisionId(RocksDBEntryType::Document, key));
+      storeMaxHLC(RocksDBKey::documentId(key).id());
       storeLastKeyValue(RocksDBKey::objectId(key),
                         RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {

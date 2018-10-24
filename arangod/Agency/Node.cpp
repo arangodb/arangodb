@@ -58,7 +58,7 @@ inline static std::vector<std::string> split(const std::string& str,
 
   if (!key.empty() && key.front() == '/') { key.erase(0,1); }
   if (!key.empty() && key.back()  == '/') { key.pop_back(); }
-  
+
   std::string::size_type p = 0;
   std::string::size_type q;
   while ((q = key.find(separator, p)) != std::string::npos) {
@@ -115,11 +115,11 @@ Slice Node::slice() const {
   }
 
   // Empty object
-  return arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+  return arangodb::velocypack::Slice::emptyObjectSlice();
 }
 
 
-/// @brief Optimisation, which avoids recreating of Builder for output if
+/// @brief Optimization, which avoids recreating of Builder for output if
 /// changes have not happened since last call
 void Node::rebuildVecBuf() const {
   if (_vecBufDirty) {  // Dirty vector buffer
@@ -431,7 +431,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
       if (_children.find("op") == _children.end()) {
-        
+
         _children["op"] = std::make_shared<Node>("op", this);
       }
       *(_children["op"]) = val.get("op");
@@ -533,14 +533,15 @@ template <> bool Node::handle<ERASE>(VPackSlice const& slice) {
       << "Operator erase with non-positive integer position is illegal: "
       << slice.toJson();
   }
-  
+
   Builder tmp;
   { VPackArrayBuilder t(&tmp);
-    
+
     if (this->slice().isArray()) {
       if (haveVal) {
+        VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
-          if (old != slice.get("val")) {
+          if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/true) != 0) {
             tmp.add(old);
           }
         }
@@ -558,9 +559,9 @@ template <> bool Node::handle<ERASE>(VPackSlice const& slice) {
         }
       }
     }
-    
+
   }
-  
+
   *this = tmp.slice();
   return true;
 }
@@ -581,8 +582,13 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
   Builder tmp;
   { VPackArrayBuilder t(&tmp);
     if (this->slice().isArray()) {
+      VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
-        tmp.add(old == slice.get("val") ? slice.get("new") : old);
+        if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/true) == 0) {
+          tmp.add(slice.get("new"));
+        } else {
+          tmp.add(old);
+        }
       }
     }
   }
@@ -656,7 +662,7 @@ bool Node::handle<OBSERVE>(VPackSlice const& slice) {
   if (!slice.hasKey("url")) return false;
   if (!slice.get("url").isString()) return false;
   std::string url(slice.get("url").copyString()), uri(this->uri());
-  
+
   // check if such entry exists
   if (!observedBy(url)) {
     store().observerTable().emplace(
@@ -675,7 +681,7 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
   if (!slice.hasKey("url")) return false;
   if (!slice.get("url").isString()) return false;
   std::string url(slice.get("url").copyString()), uri(this->uri());
-  
+
   // delete in both cases a single entry (ensured above)
   // breaking the iterators is fine then
   auto ret = store().observerTable().equal_range(url);
@@ -918,6 +924,233 @@ double Node::getDouble() const {
   }
   return slice().getNumber<double>();
 }
+
+
+std::pair<Node const &, bool> Node::hasAsNode (
+  std::string const & url) const {
+
+  // *this is bogus initializer
+  std::pair<Node const &, bool> fail_pair={*this, false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    std::pair<Node const &, bool> good_pair={target, true};
+    return good_pair;
+  } catch (...) {
+    // do nothing, fail_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsNode had exception processing " << url;
+  } // catch
+
+  return fail_pair;
+} // hasAsNode
+
+
+std::pair<Node &, bool> Node::hasAsWritableNode (
+  std::string const & url) {
+
+  // *this is bogus initializer
+  std::pair<Node &, bool> fail_pair={*this, false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node & target(operator()(url));
+    std::pair<Node &, bool> good_pair={target, true};
+    return good_pair;
+  } catch (...) {
+    // do nothing, fail_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsWritableNode had exception processing " << url;
+  } // catch
+
+  return fail_pair;
+} // hasAsWritableNode
+
+
+std::pair<NodeType, bool> Node::hasAsType (
+  std::string const & url) const {
+
+  std::pair<NodeType, bool> ret_pair={NODE, false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first = target.type();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, fail_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsType had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsType
+
+
+std::pair<Slice, bool> Node::hasAsSlice(
+  std::string const & url) const {
+
+  // *this is bogus initializer
+  std::pair<Slice, bool> ret_pair =
+    {arangodb::velocypack::Slice::emptyObjectSlice(), false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first = target.slice();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsSlice had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsSlice
+
+
+std::pair<uint64_t, bool> Node::hasAsUInt (
+  std::string const & url) const {
+  std::pair<uint64_t, bool> ret_pair(0, false);
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first=target.getUInt();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsUInt had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsUInt
+
+
+std::pair<bool, bool> Node::hasAsBool (
+  std::string const & url) const {
+  std::pair<bool, bool> ret_pair(false, false);
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first=target.getBool();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsBool had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsBool
+
+
+std::pair<std::string, bool> Node::hasAsString (
+  std::string const & url) const {
+  std::pair<std::string, bool> ret_pair;
+
+  ret_pair.second=false;
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first=target.getString();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsString had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsString
+
+
+std::pair<Node::Children, bool> Node::hasAsChildren (
+  std::string const & url) const {
+  std::pair<Children, bool> ret_pair;
+
+  ret_pair.second=false;
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first=target.children();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsChildren had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsChildren
+
+
+std::pair<void *, bool> Node::hasAsBuilder (
+  std::string const & url, Builder & builder, bool showHidden) const {
+  std::pair<void *, bool> ret_pair(nullptr, false);
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    target.toBuilder(builder, showHidden);
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsBuilder(1) had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsBuilder
+
+
+std::pair<Builder, bool> Node::hasAsBuilder (
+  std::string const & url) const {
+  Builder builder;
+  std::pair<Builder, bool> ret_pair(builder, false);
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    target.toBuilder(builder);
+    ret_pair.first = builder;  // update
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsBuilder(2) had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsBuilder
+
+
+std::pair<Slice, bool> Node::hasAsArray(
+  std::string const & url) const {
+
+  // *this is bogus initializer
+  std::pair<Slice, bool> ret_pair =
+    {arangodb::velocypack::Slice::emptyObjectSlice(), false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first = target.getArray();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "hasAsArray had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsArray
+
 
 std::string Node::getString() const {
   if (type() == NODE) {

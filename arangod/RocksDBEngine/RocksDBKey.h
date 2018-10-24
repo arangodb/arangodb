@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/slice.h>
@@ -213,12 +214,18 @@ class RocksDBKey {
   static uint64_t objectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the revisionId from a key
+  /// @brief Extracts the LocalDocumentId from a key
   ///
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBKey const&);
-  static TRI_voc_rid_t revisionId(RocksDBEntryType type, rocksdb::Slice const&);
+  static LocalDocumentId documentId(rocksdb::Slice const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the LocalDocumentId from an index key
+  ///
+  /// May be called only on Index keys. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key
@@ -299,7 +306,6 @@ class RocksDBKey {
 
   // valid on data entries like document, edge, vpack
   static TRI_voc_cid_t objectId(char const* data, size_t size);
-  static TRI_voc_rid_t revisionId(RocksDBEntryType, char const*, size_t);
   static StringRef primaryKey(char const* data, size_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);

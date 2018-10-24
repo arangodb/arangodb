@@ -99,6 +99,13 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ServerFeature>("Server")
       ->vstMaxSize();
 }
+  
+// whether or not this task can mix sync and async I/O
+bool VstCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
+}
 
 /// @brief send simple response including response body
 void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
@@ -361,15 +368,15 @@ bool VstCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-header\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
-
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.payload().toJson()
-        << "\"";
-
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-payload\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.payload().toJson()
+          << "\"";
+    }
     // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {

@@ -112,9 +112,6 @@ class RocksDBCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
 
-  std::unique_ptr<IndexIterator> getSortedAllIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const;
-
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;
@@ -123,7 +120,7 @@ class RocksDBCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions& options) override;
 
   LocalDocumentId lookupKey(
       transaction::Methods* trx,

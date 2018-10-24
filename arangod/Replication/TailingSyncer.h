@@ -97,9 +97,12 @@ class TailingSyncer : public Syncer {
   /// @brief renames a collection, based on the VelocyPack provided
   Result renameCollection(arangodb::velocypack::Slice const&);
 
-  /// @brief changes the properties of a collection, based on the VelocyPack
-  /// provided
+  /// @brief changes the properties of a collection, based on
+  /// the VelocyPack provided
   Result changeCollection(arangodb::velocypack::Slice const&);
+  
+  /// @brief truncate a collections. Assumes no trx are running
+  Result truncateCollection(arangodb::velocypack::Slice const&);
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t);

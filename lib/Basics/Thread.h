@@ -82,12 +82,12 @@ class Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   static uint64_t currentThreadNumber();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the name of the current thread, if set
   /// note that this function may return a nullptr
   //////////////////////////////////////////////////////////////////////////////
-  
+
   static char const* currentThreadName();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -187,6 +187,10 @@ class Thread {
 
   virtual void addStatus(arangodb::velocypack::Builder* b);
 
+  /// @brief optional notification call when thread gets unplanned exception
+  virtual void crashNotification(std::exception const&) {}
+
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the thread program
@@ -208,6 +212,7 @@ class Thread {
 
  private:
   bool const _deleteOnExit;
+  bool _threadStructInitialized;
 
   // name of the thread
   std::string const _name;

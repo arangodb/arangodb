@@ -660,6 +660,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
       
     std::string key;
+    std::string rev;
 
     // loop over the complete block
     std::vector<bool> wasTaken;
@@ -678,7 +679,14 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (hasKeyVariable) {
           // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
-          errorCode = extractKey(k, key);
+          if (options.ignoreRevs) {
+            errorCode = extractKey(k, key);
+          } else {
+            rev.clear();
+            // does nothing to rev unless k is an object that contains _rev,
+            // and _rev is a string.
+            errorCode = extractKeyAndRev(k, key, rev);
+          }
         } else {
           errorCode = extractKey(a, key);
         }
@@ -697,9 +705,18 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
             keyBuilder.clear();
             keyBuilder.openObject();
             keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            if (!options.ignoreRevs && !rev.empty()) {
+              keyBuilder.add(StaticStrings::RevString, VPackValue(rev));
+            } else {
+              // we must never take _rev from the document if there is a key
+              // expression.
+              keyBuilder.add(StaticStrings::RevString,
+                             VPackValue(VPackValueType::Null));
+            }
             keyBuilder.close();
 
-            VPackCollection::merge(object, a.slice(), keyBuilder.slice(), false, false);
+            VPackCollection::merge(object, a.slice(), keyBuilder.slice(), false,
+                                   true);
           }
           else {
             // use original slice for updating
@@ -1128,6 +1145,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
       
     std::string key;
+    std::string rev;
 
     // loop over the complete block
     std::vector<bool> wasTaken;
@@ -1146,7 +1164,14 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (hasKeyVariable) {
           // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
-          errorCode = extractKey(k, key);
+          if (options.ignoreRevs) {
+            errorCode = extractKey(k, key);
+          } else {
+            rev.clear();
+            // does nothing to rev unless k is an object that contains _rev,
+            // and _rev is a string.
+            errorCode = extractKeyAndRev(k, key, rev);
+          }
         } else {
           errorCode = extractKey(a, key);
         }
@@ -1165,9 +1190,18 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
             keyBuilder.clear();
             keyBuilder.openObject();
             keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            if (!options.ignoreRevs && !rev.empty()) {
+              keyBuilder.add(StaticStrings::RevString, VPackValue(rev));
+            } else {
+              // we must never take _rev from the document if there is a key
+              // expression.
+              keyBuilder.add(StaticStrings::RevString,
+                             VPackValue(VPackValueType::Null));
+            }
             keyBuilder.close();
 
-            VPackCollection::merge(object, a.slice(), keyBuilder.slice(), false, false);
+            VPackCollection::merge(object, a.slice(), keyBuilder.slice(), false,
+                                   true);
           } else {
             // Use the original slice for updating
             object.add(a.slice());

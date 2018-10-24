@@ -10,7 +10,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"result"</span> : { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"1"</span>, 
-    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_3CWGAG/tmp-25777-2211645654/data/databases/database-1"</span>, 
+    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_Fqdn5s/tmp-8043-1455050571/data/databases/database-1"</span>, 
     <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span> 
   } 
 }

@@ -131,9 +131,15 @@ bool resolveRequestContext(GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
+  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(&req, vocbase));
+  if (!guard) {
+    return false;
+  }
+  
   // the vocbase context is now responsible for releasing the vocbase
-  req.setRequestContext(VocbaseContext::create(&req, vocbase), true);
-
+  req.setRequestContext(guard.get(), true);
+  guard.release();
+  
   // the "true" means the request is the owner of the context
   return true;
 }
@@ -228,6 +234,13 @@ void GeneralCommTask::executeRequest(
         << "no handler is known, giving up";
     addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
                       VPackBuffer<uint8_t>());
+    return;
+  }
+
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
     return;
   }
 
@@ -476,9 +489,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
-
+    
   std::string const& path = request.requestPath();
   std::string const& username = request.user();
+
   rest::ResponseCode result = request.authenticated()
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
@@ -490,6 +504,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     events::NotAuthorized(&request);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+
+    if (request.authenticated()) {
+      request.setAuthenticated(false);
+    }
   }
 
   // mop: inside the authenticateRequest() request->user will be populated

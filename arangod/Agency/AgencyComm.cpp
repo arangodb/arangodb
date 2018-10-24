@@ -732,7 +732,7 @@ AgencyCommManager::createNewConnection() {
   std::string const& spec = _endpoints.front();
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(spec));
   if (endpoint.get() == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for "
+    LOG_TOPIC(ERR, arangodb::Logger::AGENCYCOMM) << "invalid value for "
       << "--server.endpoint ('" << spec << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -1359,7 +1359,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
     auto serverFeature =
         application_features::ApplicationServer::getFeature<ServerFeature>(
         "Server");
-    if (serverFeature->isStopping()) {
+    if (serverFeature->isStopping()
+        || !application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Unsuccessful AgencyComm: Timeout because of shutdown "
         << "errorCode: " << result.errorCode()

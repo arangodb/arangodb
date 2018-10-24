@@ -31,12 +31,15 @@ const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
+const actions = require('@arangodb/actions');
 const errors = require('@arangodb').errors;
+const ArangoError = require('@arangodb').ArangoError;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
+const generalGraph = require('@arangodb/general-graph');
 const request = require('@arangodb/request');
 const isEnterprise = require('internal').isEnterprise();
 const explainer = require('@arangodb/aql/explainer');
@@ -311,8 +314,17 @@ authRouter.post('/graph-examples/create/:name', function (req, res) {
   if (['knows_graph', 'social', 'routeplanner'].indexOf(name) === -1) {
     res.throw('not found');
   }
-
-  const g = examples.loadGraph(name);
+  if (generalGraph._list().indexOf(name) !== -1) {
+    const error = new ArangoError({errorNum: errors.ERROR_GRAPH_DUPLICATE.code, errorMessage: errors.ERROR_GRAPH_DUPLICATE.message});
+    res.throw(409, error);
+  }
+  let g = false;
+  try {
+    g = examples.loadGraph(name);
+  } catch (e) {
+    const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+    res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
+  }
   res.json({error: !g});
 })
 .pathParam('name', joi.string().required(), 'Name of the example graph.')
@@ -322,7 +334,17 @@ authRouter.post('/graph-examples/create/:name', function (req, res) {
 `);
 
 authRouter.post('/job', function (req, res) {
-  db._frontend.save(Object.assign(req.body, {model: 'job'}));
+  let frontend = db._collection('_frontend');
+  if (!frontend) {
+    frontend = db._create('_frontend', { 
+      isSystem: true,
+      waitForSync: false,
+      journalSize: 1024 * 1024, 
+      replicationFactor: internal.DEFAULT_REPLICATION_FACTOR_SYSTEM,
+      distributeShardsLike: '_graphs' 
+    });
+  }
+  frontend.save(Object.assign(req.body, {model: 'job'}));
   res.json(true);
 })
 .body(joi.object({
@@ -355,8 +377,13 @@ authRouter.delete('/job/:id', function (req, res) {
 `);
 
 authRouter.get('/job', function (req, res) {
-  const result = db._frontend.all().toArray();
-  res.json(result);
+  try {
+    const result = db._frontend.all().toArray();
+    res.json(result);
+  } catch (err) {
+    // collection not (yet) available
+    res.json([]);
+  }
 })
 .summary('Return all job ids.')
 .description(dd`

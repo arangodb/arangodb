@@ -435,6 +435,9 @@ RepairOperationToTransactionVisitor::operator()(
         protoReplicationFactorSlice});
   }
 
+  operations.emplace_back(AgencyOperation("Plan/Version",
+      AgencySimpleOperationType::INCREMENT_OP));
+
   return {AgencyWriteTransaction{operations, preconditions}, boost::none};
 }
 
@@ -502,6 +505,9 @@ RepairOperationToTransactionVisitor::operator()(
       AgencyOperation{newAttrPath, AgencyValueOperationType::SET,
                       protoCollectionIdSlice},
       AgencyOperation{oldAttrPath, AgencySimpleOperationType::DELETE_OP}};
+
+  operations.emplace_back(AgencyOperation("Plan/Version",
+      AgencySimpleOperationType::INCREMENT_OP));
 
   return {AgencyWriteTransaction{operations, preconditions}, boost::none};
 }

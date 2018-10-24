@@ -47,7 +47,7 @@
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
-  
+
 /// @brief parse a version string into major, minor
 /// returns -1, -1 when the version string has an invalid format
 /// returns major, -1 when only the major version can be determined
@@ -75,7 +75,7 @@ std::pair<int, int> Version::parseVersionString(std::string const& str) {
         result.second = std::stoi(std::string(p, q - p));
       }
     }
-  } 
+  }
 
   return result;
 }
@@ -191,7 +191,7 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
-  
+
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }
@@ -220,7 +220,21 @@ int32_t Version::getNumericServerVersion() {
   TRI_ASSERT((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
   int32_t minor = TRI_Int32String(apiVersion, (p - apiVersion));
 
-  return (int32_t)(minor * 100L + major * 10000L);
+  int32_t patch = 0;
+  if (*p == '.') {
+    apiVersion = ++p;
+
+    // read minor version
+    while (*p >= '0' && *p <= '9') {
+      ++p;
+    }
+
+    if (p != apiVersion) {
+      patch = TRI_Int32String(apiVersion, (p - apiVersion));
+    }
+  }
+
+  return (int32_t)(patch + minor * 100L + major * 10000L);
 }
 
 /// @brief get server version
@@ -249,7 +263,7 @@ std::string Version::getBoostReactorType() {
   return std::string("select");
 #endif
 }
-  
+
 /// @brief get RocksDB version
 std::string Version::getRocksDBVersion() {
   return std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) + "." + std::to_string(ROCKSDB_PATCH);
@@ -321,7 +335,7 @@ std::string Version::getEndianness() {
   if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 && p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
     return "big";
   }
-  
+
   if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab && p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
     return "little";
   }
@@ -363,13 +377,13 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "
 #endif
-#ifdef HAVE_ARANGODB_BUILD_REPOSITORY 
-          << "build " << getBuildRepository() << ", " 
+#ifdef HAVE_ARANGODB_BUILD_REPOSITORY
+          << "build " << getBuildRepository() << ", "
 #endif
           << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " 
+          << "V8 " << getV8Version() << ", "
           << getOpenSSLVersion();
 
   return version.str();
@@ -409,4 +423,3 @@ void Version::getVPack(VPackBuilder& dst) {
     }
   }
 }
-

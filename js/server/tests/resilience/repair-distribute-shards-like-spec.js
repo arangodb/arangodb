@@ -354,6 +354,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
     `Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`,
     protoCollection._id
   );
+  global.ArangoAgency.increaseVersion("Plan/Version");
 
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
   return {collection, protoCollection, expectedCollections};
