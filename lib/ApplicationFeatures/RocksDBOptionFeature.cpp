@@ -46,7 +46,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 )
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
-      _totalWriteBufferSize(0),
+      _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
       _maxTotalWalSize(80 << 20),
