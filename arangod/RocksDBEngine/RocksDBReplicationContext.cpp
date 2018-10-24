@@ -110,7 +110,7 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
     }
   }
   if (_iterators.empty()) {
-    this->setDeleted();
+    _isDeleted = true; // setDeleted also gets the lock
   }
 }
 
