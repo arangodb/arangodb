@@ -1,6 +1,12 @@
 v3.2.17 (XXXX-XX-XX)
 --------------------
 
+* when returning memory to the OS, use the same memory protection flags as 
+  when initializing the memory
+
+  this prevents "hole punching" and keeps the OS from splitting one memory 
+  mapping into multiple mappings with different memory protection settings
+
 * disallow empty LDAP password
 
 * added missing virtual destructor for MMFiles transaction data context object
