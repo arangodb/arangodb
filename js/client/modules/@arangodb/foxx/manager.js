@@ -45,7 +45,7 @@ var store = require('@arangodb/foxx/store');
 let options = {
 };
 
-if (require('internal').db._version(true)['full-version-string'].search('maintainer')) {
+if (global.ARANGODB_CLIENT_VERSION(true)['full-version-string'].search('maintainer')) {
   options.timeout = 300;
 }
 
