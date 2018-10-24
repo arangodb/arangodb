@@ -583,9 +583,10 @@ void Scheduler::stopRebalancer() noexcept {
 
 
 //
-// This routine tries to keep only the mostly likely needed count of threads running:
+// This routine tries to keep only the most likely needed count of threads running:
 //  - asio io_context runs less efficiently if it has too many threads, but
 //  - there is a latency hit to starting a new thread.
+//
 void Scheduler::rebalanceThreads() {
   static uint64_t count = 0;
 
@@ -677,16 +678,9 @@ bool Scheduler::threadShouldStop(double now) {
     return false;
   }
 
-  // I reactivated the following at the last hour before 3.4.RC3 without
-  // being able to consult with Matthew. If this breaks things, we find
-  // out in due course. 12.10.2018 Max.
-#if 1
   // decrement nrRunning by one already in here while holding the lock
   decRunning();
   return true;
-#else
-  return false;
-#endif
 }
 
 void Scheduler::startNewThread() {
