@@ -1,5 +1,14 @@
+v3.4.0-rc.4 (XXXX-XX-XX)
+------------------------
+
+* added option `--rocksdb.total-write-buffer-size` to limit total memory usage
+  across all RocksDB in-memory write buffers
+
+
 v3.4.0-rc.3 (XXXX-XX-XX)
 ------------------------
+
+* fixed RocksDB index estimates after truncate operations and subsequent crashes
 
 * The order of JSON object attribute keys in JSON return values will now be 
   "random" in more cases. In JSON, there is no defined order for object attribute
