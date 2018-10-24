@@ -1523,9 +1523,6 @@ v3.2.7 (2017-11-13)
   In some cases breadth first search in combination with vertex filters
   yields wrong result, the filter was not applied correctly.
 
-* enable JEMalloc background thread for purging and returning unused memory
-  back to the operating system (Linux only)
-
 * fixed some undefined behavior in some internal value caches for AQL GatherNodes
   and SortNodes, which could have led to sorted results being effectively not
   correctly sorted.
