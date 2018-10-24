@@ -2,7 +2,8 @@ import sys
 import re
 import os
 import json
-
+import io
+import shutil
 
 RESET  = '\033[0m'
 def make_std_color(No):
@@ -146,21 +147,14 @@ def getRestBodyParam():
 def getRestDescription():
     #print >>sys.stderr, "RESTDESCRIPTION"
     if thisVerb['description']:
-        #print >> sys.stderr, thisVerb['description']
-        return RX3[0].sub(RX3[1], thisVerb['description'])
+        description = thisVerb['description']
+        #print >> sys.stderr, description
+        description = RX4[0].sub(RX4[1], description)
+        return RX3[0].sub(RX3[1], description)
     else:
         #print >> sys.stderr, "ELSE"
         return ""
 
-def getHint():
-    #print >>sys.stderr, "HINT"
-    if thisVerb['x-hint']:
-        #print >> sys.stderr, thisVerb['x-hint']
-        return RX4.sub(thisVerb['x-hint'], r'')
-    else:
-        #print >> sys.stderr, "ELSE"
-        return ""
-        
 def getRestReplyBodyParam(param):
     rc = "\n**Response Body**\n"
 
@@ -182,7 +176,7 @@ def validatePathParameters():
         if thisVerb['parameters'][nParam]['in'] == 'path':
             break
     else:
-        raise Exception("@RESTPATHPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTPATHPARAMETERS found in Swagger data without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateQueryParams():
     # print thisVerb
@@ -190,7 +184,7 @@ def validateQueryParams():
         if thisVerb['parameters'][nParam]['in'] == 'query':
             break
     else:
-        raise Exception("@RESTQUERYPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTQUERYPARAMETERS found in Swagger data without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateHeaderParams():
     # print thisVerb
@@ -198,7 +192,7 @@ def validateHeaderParams():
         if thisVerb['parameters'][nParam]['in'] == 'header':
             break
     else:
-        raise Exception("@RESTHEADERPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTHEADERPARAMETERS found in Swagger data without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateReturnCodes():
     # print thisVerb
@@ -206,7 +200,7 @@ def validateReturnCodes():
         if len(thisVerb['responses'].keys()) != 0:
             break
     else:
-        raise Exception("@RESTRETURNCODES found without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTRETURNCODES found in Swagger data without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateExamples():
     pass
@@ -222,8 +216,8 @@ SIMPL_REPL_VALIDATE_DICT = {
 }
 SIMPL_REPL_DICT = {
     "\\"                    : "\\\\",
+    "@HINTS"                : "",
     "@RESTDESCRIPTION"      : getRestDescription,
-    "@HINT"                 : getHint,
     "@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
     "@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
     "@RESTHEADERPARAMETERS" : "\n**Header Parameters**\n",
@@ -245,7 +239,7 @@ SIMPLE_RX = re.compile(
 r'''
 \\|                                 # the backslash...
 @RESTDESCRIPTION|                   # -> <empty>
-@HINT|                              # -> <inject hint box below headline>
+@HINTS|                             # -> <inject hints>
 @RESTURLPARAMETERS|                 # -> \n**Path Parameters**\n
 @RESTQUERYPARAMETERS|               # -> \n**Query Parameters**\n
 @RESTHEADERPARAMETERS|              # -> \n**Header Parameters**\n
@@ -348,7 +342,7 @@ RX2 = [
 
 RX3 = (re.compile(r'\*\*Example:\*\*((?:.|\n)*?)</code></pre>'), r"")
 
-RX4 = re.compile(r'@HINT')
+RX4 = (re.compile(r'<!-- Hints Start -->.*<!-- Hints End -->', re.DOTALL), r"")
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")
@@ -356,6 +350,8 @@ have_RESTBODYPARAM = re.compile(r"@RESTBODYPARAM|@RESTDESCRIPTION")
 have_RESTREPLYBODY = re.compile(r"@RESTREPLYBODY")
 have_RESTSTRUCT = re.compile(r"@RESTSTRUCT")
 remove_MULTICR = re.compile(r'\n\n\n*')
+
+RXIMAGES = re.compile(r".*\!\[([\d\s\w\/\. ()-]*)\]\(([\d\s\w\/\.-]*)\).*")
 
 def _mkdir_recursive(path):
     sub_path = os.path.dirname(path)
@@ -491,20 +487,20 @@ def walk_on_files(inDirPath, outDirPath):
         for file in files:
             if file.endswith(".md") and not file.endswith("SUMMARY.md"):
                 count += 1
-                inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, inFileFull)
+                nextInFileFull = os.path.join(root, file)
+                nextOutFileFull = os.path.join(outDirPath, nextInFileFull)
                 if fileFilter != None:
-                    if fileFilter.match(inFileFull) == None:
+                    if fileFilter.match(nextInFileFull) == None:
                         skipped += 1
                         # print "Skipping %s -> %s" % (inFileFull, outFileFull)
                         continue;
-                # print "%s -> %s" % (inFileFull, outFileFull)
+                #print "%s -> %s" % (nextInFileFull, nextOutFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
-                findStartCode(inFileFull, outFileFull)
+                findStartCode(nextInFileFull, nextOutFileFull, inDirPath)
     print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
 
-def findStartCode(inFileFull, outFileFull):
-    inFD = open(inFileFull, "r")
+def findStartCode(inFileFull, outFileFull, baseInPath):
+    inFD = io.open(inFileFull, "r", encoding="utf-8", newline=None)
     textFile = inFD.read()
     inFD.close()
     #print "-" * 80
@@ -532,7 +528,32 @@ def findStartCode(inFileFull, outFileFull):
         raise
     #print "9" * 80
     #print textFile
-    outFD = open(outFileFull, "w")
+    
+    def analyzeImages(m):
+        imageLink = m.groups()[1]
+        inf = os.path.realpath(os.path.join(os.path.dirname(inFileFull), imageLink))
+        outf = os.path.realpath(os.path.join(os.path.dirname(outFileFull), imageLink))
+        bookDir = os.path.realpath(baseInPath)
+        depth = len(inFileFull.split(os.sep)) - 1 # filename + book directory
+        assets = os.path.join((".." + os.sep)*depth, baseInPath, "assets")
+	# print(inf, outf, bookDir, depth, assets)
+        
+        outdir = os.path.dirname(outf)
+        if not os.path.exists(outdir):
+            _mkdir_recursive(outdir)
+        if os.path.commonprefix([inf, bookDir]) != bookDir:
+            assetDir = os.path.join(outdir, assets)
+            if not os.path.exists(assetDir):
+                os.mkdir(assetDir)
+            outf=os.path.join(assetDir, os.path.basename(imageLink))
+            imageLink = os.path.join((".." + os.sep)* (depth - 1), "assets",os.path.basename(imageLink))
+
+        if not os.path.exists(outf):
+            shutil.copy(inf, outf)
+        return str('![' + m.groups()[0] + '](' + imageLink + ')')
+
+    textFile = re.sub(RXIMAGES,analyzeImages, textFile)
+    outFD = io.open(outFileFull, "w", encoding="utf-8", newline="")
     outFD.write(textFile)
     outFD.close()
 #JSF_put_api_replication_synchronize
@@ -618,7 +639,7 @@ def readNextLine(line):
 
 def loadDokuBlocks():
     state = STATE_SEARCH_START
-    f=open("allComments.txt", 'rU')
+    f = io.open("allComments.txt", "r", encoding="utf-8", newline=None)
     count = 0
     for line in f.readlines():
         if state == STATE_SEARCH_START:
@@ -657,6 +678,115 @@ def loadDokuBlocks():
             print >>sys.stderr, WRN_COLOR + "while parsing :\n"  + oneBlock + RESET
             raise
 
+def loadProgramOptionBlocks():
+    from itertools import groupby, chain
+    from cgi import escape
+    from glob import glob
+
+    global dokuBlocks
+
+    # Allows to test if a group will be empty with hidden options ignored
+    def peekIterator(iterable, condition):
+        try:
+            while True:
+                first = next(iterable)
+                if condition(first):
+                    break
+        except StopIteration:
+            return None
+        return first, chain([first], iterable)
+
+    # Give options a the section name 'global' if they don't have one
+    def groupBySection(elem):
+        return elem[1]["section"] or 'global'
+
+    # Empty section string means global option, which should appear first
+    def sortBySection(elem):
+        section = elem[1]["section"]
+        if section:
+            return (1, section)
+        return (0, u'global')
+
+    # Format possible values as unordered list
+    def formatList(arr, text=''):
+        formatItem = lambda elem: '<li><code>{}</code></li>'.format(elem)
+        return '{}<ul>{}</ul>\n'.format(text, '\n'.join(map(formatItem, arr)))
+
+    for programOptionsDump in glob(os.path.normpath('../Examples/*.json')):
+
+        program = os.path.splitext(os.path.basename(programOptionsDump))[0]
+        output = []
+
+        # Load program options dump and convert to Python object
+        with io.open(programOptionsDump, 'r', encoding='utf-8', newline=None) as fp:
+            try:
+                optionsRaw = json.load(fp)
+            except ValueError as err:
+                # invalid JSON
+                print >>sys.stderr, ERR_COLOR + "Failed to parse program options json: '" + programOptionsDump + "' - to be used as: '" + program + "' - " + err.message + RESET
+                raise err
+
+        # Group and sort by section name, global section first
+        for groupName, group in groupby(
+                sorted(optionsRaw.items(), key=sortBySection),
+                key=groupBySection):
+
+            # Use some trickery to skip hidden options without consuming items from iterator
+            groupPeek = peekIterator(group, lambda elem: elem[1]["hidden"] is False)
+            if groupPeek is None:
+                # Skip empty section to avoid useless headline (all options are hidden)
+                continue
+
+            # Output table header with column labels (one table per section)
+            output.append('\n<h2>{} Options</h2>'.format(groupName.title()))
+            if program in ['arangod']:
+                output.append('\nAlso see <a href="{0}.html">{0} details</a>.'.format(groupName.title()))
+            output.append('\n<table class="program-options"><thead><tr>')
+            output.append('<th>{}</th><th>{}</th><th>{}</th>'.format('Name', 'Type', 'Description'))
+            output.append('</tr></thead><tbody>')
+
+            # Sort options by name and output table rows
+            for optionName, option in sorted(groupPeek[1], key=lambda elem: elem[0]):
+
+                # Skip options marked as hidden
+                if option["hidden"]:
+                    continue
+
+                # Recover JSON syntax, because the Python representation uses [u'this format']
+                default = json.dumps(option["default"])
+
+                # Parse and re-format the optional field for possible values
+                # (not fully safe, but ', ' is unlikely to occur in strings)
+                try:
+                    optionList = option["values"].partition('Possible values: ')[2].split(', ')
+                    values = formatList(optionList, '<br/>Possible values:\n')
+                except KeyError:
+                    values = ''
+
+                # Expected data type for argument
+                valueType = option["type"]
+
+                # Enterprise Edition has EE only options marked
+                enterprise = ""
+                if option.setdefault("enterpriseOnly", False):
+                    enterprise = "<em>Enterprise Edition only</em><br/>"
+
+                # Upper-case first letter, period at the end, HTML entities
+                description = option["description"].strip()
+                description = description[0].upper() + description[1:]
+                if description[-1] != '.':
+                    description += '.'
+                description = escape(description)
+
+                # Description, default value and possible values separated by line breaks
+                descriptionCombined = '\n'.join([enterprise, description, '<br/>Default: <code>{}</code>'.format(default), values])
+
+                output.append('<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>'.format(optionName, valueType, descriptionCombined))
+
+            output.append('</tbody></table>')
+
+        # Join output and register as docublock (like 'program_options_arangosh')
+        dokuBlocks[0]['program_options_' + program.lower()] = '\n'.join(output) + '\n\n'
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -671,10 +801,11 @@ if __name__ == '__main__':
     if len(sys.argv) > 5 and sys.argv[5].strip() != '':
         print STD_COLOR + "filtering Docublocks: " + sys.argv[5] + RESET
         blockFilter = re.compile(sys.argv[5])
-    f=open(swaggerJson, 'rU')
+    f = io.open(swaggerJson, 'r', encoding='utf-8', newline=None)
     swagger= json.load(f)
     f.close()
     loadDokuBlocks()
+    loadProgramOptionBlocks()
     print "%sloaded %d / %d docu blocks%s" % (STD_COLOR, len(dokuBlocks[0]), len(dokuBlocks[1]), RESET)
     #print dokuBlocks[0].keys()
     walk_on_files(inDir, outDir)
