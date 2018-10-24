@@ -2132,7 +2132,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
   aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
-  const std::string checksum = checksumSlice.copyString();
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum = computeCollectionChecksum(readLockId, col.get());
