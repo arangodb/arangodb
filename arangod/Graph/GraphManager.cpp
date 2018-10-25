@@ -97,10 +97,9 @@ OperationResult GraphManager::createCollection(std::string const& name,
                                                VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-
-  Result res = methods::Collections::create(&ctx()->vocbase(), name, colType,
-                                            options, waitForSync, true,
-                                            [&](LogicalCollection& coll) {});
+  Result res = methods::Collections::create(
+      &ctx()->vocbase(), name, colType, options, waitForSync, true,
+      [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
 }
@@ -435,7 +434,7 @@ Result GraphManager::applyOnAllGraphs(
                              arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"}, nullptr,
                              nullptr, aql::PART_MAIN);
   aql::QueryResult queryResult =
-      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+      query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -487,16 +486,20 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& edgeColl : graph->edgeCollections()) {
     bool found = false;
     Result res = methods::Collections::lookup(
-        vocbase, edgeColl, [&found, &innerRes, &graph](LogicalCollection& col) {
-          if (col.type() != TRI_COL_TYPE_EDGE) {
+        vocbase, edgeColl,
+        [&found, &innerRes,
+         &graph](std::shared_ptr<LogicalCollection> const& col) -> void {
+          TRI_ASSERT(col);
+          if (col->type() != TRI_COL_TYPE_EDGE) {
             innerRes.reset(
                 TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                "Collection: '" + col.name() + "' is not an EdgeCollection");
+                "Collection: '" + col->name() + "' is not an EdgeCollection");
           } else {
-            innerRes = graph->validateCollection(col);
+            innerRes = graph->validateCollection(*col);
             found = true;
           }
         });
+
     if (innerRes.fail()) {
       return innerRes;
     }
@@ -517,10 +520,13 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     bool found = false;
     Result res = methods::Collections::lookup(
         vocbase, vertexColl,
-        [&found, &innerRes, &graph](LogicalCollection& col) {
-          innerRes = graph->validateCollection(col);
+        [&found, &innerRes,
+         &graph](std::shared_ptr<LogicalCollection> const& col) -> void {
+          TRI_ASSERT(col);
+          innerRes = graph->validateCollection(*col);
           found = true;
         });
+
     if (innerRes.fail()) {
       return innerRes;
     }
@@ -557,7 +563,8 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& vertexColl : documentCollectionsToCreate) {
     Result res = methods::Collections::create(
         vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT, options, waitForSync, true,
-        [&](LogicalCollection& coll) {});
+        [](std::shared_ptr<LogicalCollection> const&) -> void {});
+
     if (res.fail()) {
       return res;
     }
@@ -565,9 +572,10 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    Result res = methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
-                                              options, waitForSync, true,
-                                              [&](LogicalCollection& coll) {});
+    Result res = methods::Collections::create(
+        vocbase, edgeColl, TRI_COL_TYPE_EDGE, options, waitForSync, true,
+        [](std::shared_ptr<LogicalCollection> const&) -> void {});
+
     if (res.fail()) {
       return res;
     }
@@ -597,7 +605,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   LOG_TOPIC(DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
   aql::QueryResult queryResult =
-      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+      query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -812,10 +820,13 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
          boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection& coll) {
-            dropResult = methods::Collections::drop(&ctx()->vocbase(), &coll,
-                                                    false, -1.0);
+          &ctx()->vocbase(), collection,
+          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+            TRI_ASSERT(coll);
+            dropResult = methods::Collections::drop(&ctx()->vocbase(),
+                                                    coll.get(), false, -1.0);
           });
+
       if (dropResult.fail()) {
         LOG_TOPIC(WARN, Logger::GRAPHS)
             << "While removing graph `" << graph.name() << "`: "
