@@ -1384,17 +1384,17 @@ Result RestReplicationHandler::processRestoreDataBatch(
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not delete documents for restore exception (1): "
+      << "Could not delete documents for restore exception: "
       << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not delete documents for restore exception (2): "
+      << "Could not delete documents for restore exception: "
       << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not delete documents for restore exception (3).";
+      << "Could not delete documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1466,17 +1466,17 @@ Result RestReplicationHandler::processRestoreDataBatch(
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not insert documents for restore exception (1): "
+      << "Could not insert documents for restore exception: "
       << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not insert documents for restore exception (2): "
+      << "Could not insert documents for restore exception: "
       << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not insert documents for restore exception (3).";
+      << "Could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1539,17 +1539,17 @@ Result RestReplicationHandler::processRestoreDataBatch(
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not replace documents for restore exception (1): "
+      << "Could not replace documents for restore exception: "
       << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not replace documents for restore exception (2): "
+      << "Could not replace documents for restore exception: "
       << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC(WARN, Logger::CLUSTER)
-      << "Could not replace documents for restore exception (3).";
+      << "Could not replace documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
