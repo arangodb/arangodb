@@ -289,7 +289,8 @@ RocksDBReplicationContext::DumpResult
 RocksDBReplicationContext::DumpResult
   RocksDBReplicationContext::dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
                                        VPackBuffer<uint8_t>& buffer, uint64_t chunkSize) {
-  TRI_ASSERT(_users > 0);
+  TRI_ASSERT(_users > 0 && chunkSize > 0);
+
   CollectionIterator* cIter{nullptr};
   bool hasMore = true;
   TRI_DEFER(if (cIter) {
@@ -337,7 +338,7 @@ RocksDBReplicationContext::DumpResult
 /// Dump all key chunks for the bound collection
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
                                                           VPackBuilder& b, uint64_t chunkSize) {
-  TRI_ASSERT(_users > 0);
+  TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
   TRI_DEFER(if (cIter) {
     MUTEX_LOCKER(locker, _contextLock);
@@ -372,19 +373,18 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   
   b.openArray(true);
   while (cIter->hasMore()) {
-    std::string lowKey;
-    std::string highKey;  // needs to be a string (not ref) as the rocksdb slice will not be valid outside the callback
+    // needs to be a strings because rocksdb::Slice gets invalidated
+    std::string lowKey, highKey;
     uint64_t hash = 0x012345678;
     
     uint64_t k = chunkSize;
     while (k-- > 0 && cIter->hasMore()) {
-      auto scope = scopeGuard([&]{
-        cIter->iter->Next();
-        snapNumDocs++;
-      });
+      snapNumDocs++;
       
       StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
-#warning TODO optimize string away here
+      if (lowKey.empty()) {
+        lowKey.assign(key.data(), key.size());
+      }
       highKey.assign(key.data(), key.size());
       
       TRI_voc_rid_t docRev;
@@ -408,11 +408,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       }
       TRI_ASSERT(docRev != 0);
       
-      // set type
-      if (lowKey.empty()) {
-        lowKey.assign(key.data(), key.size());
-      }
-      
       // we can get away with the fast hash function here, as key values are
       // restricted to strings
       tmpHashBuilder.clear();
@@ -421,12 +416,15 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       tmpHashBuilder.clear();
       tmpHashBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
       hash ^= tmpHashBuilder.slice().hashString();
-    }
+      
+      cIter->iter->Next();
+    };
     
     if (lowKey.empty()) { // no new documents were found
       TRI_ASSERT(k == chunkSize);
       break;
     }
+    TRI_ASSERT(!highKey.empty());
     b.add(VPackValue(VPackValueType::Object));
     b.add("low", VPackValue(lowKey));
     b.add("high", VPackValue(highKey));
@@ -458,7 +456,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     VPackBuilder& b, size_t chunk, size_t chunkSize,
     std::string const& lowKey) {
   
-  TRI_ASSERT(_users > 0);
+  TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
   TRI_DEFER(if (cIter) {
     MUTEX_LOCKER(locker, _contextLock);
@@ -648,7 +646,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
     
     if (!hasMore) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "Not enough data";
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Not enough data at " << oldPos;
       b.close();
       return rv.reset(TRI_ERROR_FAILED, "Not enough data");
     }
