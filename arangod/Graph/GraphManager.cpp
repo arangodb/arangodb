@@ -437,7 +437,7 @@ Result GraphManager::applyOnAllGraphs(
       false, _vocbase, arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
       nullptr, nullptr, aql::PART_MAIN);
   aql::QueryResult queryResult =
-      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY.load());
+      query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -614,7 +614,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   LOG_TOPIC(DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
   aql::QueryResult queryResult =
-      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY.load());
+      query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||

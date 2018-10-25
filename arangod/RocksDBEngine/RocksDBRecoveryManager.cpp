@@ -94,7 +94,8 @@ void RocksDBRecoveryManager::start() {
 
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
-  _inRecovery.store(false);
+  // synchronizes with acquire inRecovery()
+  _inRecovery.store(false, std::memory_order_release);
 
   // notify everyone that recovery is now done
   auto databaseFeature =
@@ -115,8 +116,6 @@ void RocksDBRecoveryManager::runRecovery() {
   
   // now restore collection counts into collections
 }
-
-bool RocksDBRecoveryManager::inRecovery() const { return _inRecovery.load(); }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
