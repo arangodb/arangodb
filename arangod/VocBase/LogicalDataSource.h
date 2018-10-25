@@ -135,13 +135,13 @@ class LogicalDataSource {
   bool deleted() const noexcept { return _deleted; }
   virtual Result drop() = 0;
   std::string const& guid() const noexcept { return _guid; }
-  TRI_voc_cid_t const& id() const noexcept { return _id; } // reference required for ShardDistributionReporterTest
+  TRI_voc_cid_t id() const noexcept { return _id; } 
   std::string const& name() const noexcept { return _name; }
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
   virtual Result rename(std::string&& newName, bool doSync) = 0;
   bool system() const noexcept { return _system; }
-
+ 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append a jSON definition of the data-source to the 'builder'
   /// @param the buffer to append to, must be an open object
