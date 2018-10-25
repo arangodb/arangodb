@@ -804,7 +804,7 @@ void Agent::load() {
   >();
   arangodb::SystemDatabaseFeature::ptr vocbase =
     sysDbFeature ? sysDbFeature->use() : nullptr;
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";

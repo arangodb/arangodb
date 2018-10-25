@@ -966,7 +966,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
 
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
     ttl = registry->defaultTTL();
   }
