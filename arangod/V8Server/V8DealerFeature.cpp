@@ -115,7 +115,6 @@ V8DealerFeature::V8DealerFeature(
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption(
@@ -282,7 +281,6 @@ void V8DealerFeature::start() {
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
 
-
       // create app directory if it does not exist
       if (!basics::FileUtils::isDirectory(_appPath)) {
         std::string systemErrorStr;
@@ -383,6 +381,7 @@ void V8DealerFeature::copyInstallationFiles() {
     // these do not need JavaScript support
     return;
   }
+
   // get base path from DatabasePathFeature
   auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>();
   const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
@@ -392,6 +391,8 @@ void V8DealerFeature::copyInstallationFiles() {
     FATAL_ERROR_EXIT();
   }
   TRI_ASSERT(!copyJSPath.empty());
+  
+  _nodeModulesDirectory = _startupDirectory;
   
   const std::string checksumFile = FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
   const std::string copyChecksumFile = FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
@@ -450,7 +451,6 @@ void V8DealerFeature::copyInstallationFiles() {
         if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
           // filter it out!
-          _nodeModulesDirectory = _startupDirectory;
           return true;
         }
       }
