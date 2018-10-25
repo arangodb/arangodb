@@ -311,9 +311,8 @@ void GeneralServerFeature::defineHandlers() {
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
+  auto traverserEngineRegistry =  TraverserEngineRegistryFeature::registry();
   if (_combinedRegistries == nullptr) {
     _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
   } else {
