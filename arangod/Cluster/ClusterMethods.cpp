@@ -53,7 +53,13 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+// Timeout for read operations:
 static double const CL_DEFAULT_TIMEOUT = 120.0;
+
+// Timeout for write operations, note that these are used for communication
+// with a shard leader and we always have to assume that some follower has
+// stopped writes for some time to get in sync:
+static double const CL_DEFAULT_LONG_TIMEOUT = 900.0;
 
 namespace {
 template<typename T>
@@ -233,7 +239,7 @@ static void mergeResults(
       int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
       VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
       if (msg.isString()) {
-        THROW_ARANGO_EXCEPTION(res, msg.copyString());
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
       } else {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -1191,7 +1197,7 @@ Result createDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1355,7 +1361,7 @@ int deleteDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1405,7 +1411,7 @@ int deleteDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -2364,7 +2370,7 @@ int modifyDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -2420,7 +2426,7 @@ int modifyDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
