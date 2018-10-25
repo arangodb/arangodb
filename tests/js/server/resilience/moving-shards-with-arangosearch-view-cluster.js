@@ -435,9 +435,11 @@ function MovingShardsWithViewSuite (options) {
       throw err;
     }
     const body = res.body;
-    if (typeof body !== "string") {
+    const type = typeof body;
+    if (type !== "string") {
+      const info = JSON.stringify(res);
       console.error(`Error after GET ${url}; body is not a string`);
-      throw new Error("body is not a string");
+      throw new Error(`Error after GET ${url}; body is not a string, but a ${type}: ${info}`);
     }
 
     const parsedBody = JSON.parse(body);
