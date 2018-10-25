@@ -231,7 +231,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
     // If this is non-hard, we employ some heuristics to stop early:
     if (!hard) {
-      if (clock.now() - startTime > std::chrono::hours(1)) {
+      if (clock.now() - startTime > std::chrono::seconds(1) && _ongoingTransactions.empty()) {
         checkMore = false;
       } else {
         TRI_voc_tick_t lastTick = 0;
@@ -239,7 +239,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
             StaticStrings::ReplicationHeaderLastTick, found);
         if (found) {
           lastTick = StringUtils::uint64(header);
-          if (lastTick > lastIncludedTick &&   // just to make sure!
+          if (_ongoingTransactions.empty() &&
+              lastTick > lastIncludedTick &&   // just to make sure!
               lastTick - lastIncludedTick < 1000) {
             checkMore = false;
           }

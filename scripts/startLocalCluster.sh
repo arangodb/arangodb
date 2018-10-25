@@ -201,6 +201,7 @@ start() {
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
+        --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
