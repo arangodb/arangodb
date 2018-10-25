@@ -25,6 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const accepts = require('accepts');
 const fs = require('fs');
 const ansiHtml = require('ansi-html');
 const dd = require('@arangodb/util').dedent;
@@ -62,7 +63,7 @@ function escapeHtml (raw) {
     .replace(/</g, '&lt;');
 }
 
-function createErrorRoute (service, body, title) {
+function createErrorRoute (service, error, body, title) {
   return {
     urlPrefix: '',
     name: `foxx("${service.mount}")`,
@@ -75,6 +76,21 @@ function createErrorRoute (service, body, title) {
       action: {
         callback (req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
+          if (accepts(req).type('json', 'html') !== 'html') {
+            const body = {
+              error: true,
+              errorNum: service.isDevelopment && error.errorNum || errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code,
+              errorMessage: service.isDevelopment && error.errorMessage || errors.ERROR_HTTP_SERVICE_UNAVAILABLE.message,
+              code: service.isDevelopment && error.statusCode || res.responseCode
+            };
+            if (service.isDevelopment) {
+              body.exception = String(error);
+              body.stacktrace = error.stack.replace(/\n+$/, '').split('\n');
+            }
+            res.contentType = 'application/json';
+            res.body = JSON.stringify(body);
+            return;
+          }
           res.contentType = 'text/html; charset=utf-8';
           res.body = dd`
             <!doctype html>
@@ -129,7 +145,10 @@ function createErrorRoute (service, body, title) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function createServiceNeedsConfigurationRoute (service) {
-  return createErrorRoute(service, dd`
+  return createErrorRoute(service, new ArangoError({
+    errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+    errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
+  }), dd`
     <h1>Service needs to be configured</h1>
     <p>
       This service requires configuration
@@ -195,9 +214,9 @@ function createBrokenServiceRoute (service, err) {
         </pre>
       `
     ].filter(Boolean).join('\n');
-    return createErrorRoute(service, body, title);
+    return createErrorRoute(service, err, body, title);
   }
-  return createErrorRoute(service, dd`
+  return createErrorRoute(service, err, dd`
     <h1>Failed to mount service</h1>
     <p>
       An error occured while mounting the service.<br>
@@ -276,6 +295,7 @@ exports.routeService = function (service, throwOnErrors) {
         if (throwOnErrors) {
           throw e;
         }
+        error = e;
       }
     }
     service.buildRoutes();

@@ -369,9 +369,11 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
     case RequestPriority::HIGH:
       return nrWorking + nrQueued < _maxThreads;
 
+    // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
+    //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
     case RequestPriority::MED:
     case RequestPriority::LOW:
-      return nrWorking + nrQueued < _maxThreads - _minThreads;
+      return nrWorking + nrQueued < _maxThreads / 2;
   }
 
   return false;
@@ -465,7 +467,7 @@ bool Scheduler::start() {
   TRI_ASSERT(0 < _minThreads);
   TRI_ASSERT(_minThreads <= _maxThreads);
 
-  for (uint64_t i = 0; i < _maxThreads; ++i) {
+  for (uint64_t i = 0; i < _minThreads; ++i) {
     {
       MUTEX_LOCKER(locker, _threadCreateLock);
       incRunning();
@@ -579,6 +581,12 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
+
+//
+// This routine tries to keep only the most likely needed count of threads running:
+//  - asio io_context runs less efficiently if it has too many threads, but
+//  - there is a latency hit to starting a new thread.
+//
 void Scheduler::rebalanceThreads() {
   static uint64_t count = 0;
 
@@ -670,16 +678,9 @@ bool Scheduler::threadShouldStop(double now) {
     return false;
   }
 
-  // I reactivated the following at the last hour before 3.4.RC3 without
-  // being able to consult with Matthew. If this breaks things, we find
-  // out in due course. 12.10.2018 Max.
-#if 0
   // decrement nrRunning by one already in here while holding the lock
   decRunning();
   return true;
-#else
-  return false;
-#endif
 }
 
 void Scheduler::startNewThread() {

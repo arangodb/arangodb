@@ -156,9 +156,11 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection& coll) {
-            resIn = methods::Collections::drop(&_vocbase, &coll, false,
-                                               -1.0);
+          &_vocbase, collection,
+          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+            TRI_ASSERT(coll);
+            resIn =
+                methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
           });
 
       if (found.fail()) {
@@ -410,9 +412,11 @@ OperationResult GraphOperations::eraseOrphanCollection(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection& coll) {
-            resIn = methods::Collections::drop(&_vocbase, &coll, false,
-                                               -1.0);
+          &_vocbase, collection,
+          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+            TRI_ASSERT(coll);
+            resIn =
+                methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
           });
 
       if (found.fail()) {
@@ -830,7 +834,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
                                  nullptr, arangodb::aql::PART_DEPENDENT);
       query.setTransactionContext(context);
 
-      auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+      auto queryResult = query.executeSync(QueryRegistryFeature::registry());
 
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
         return OperationResult(queryResult.code);

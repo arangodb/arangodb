@@ -2393,7 +2393,8 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     }
     if (parameters.size() > 2) {
       AqlValue replace = ExtractFunctionParameterValue(parameters, 2);
-      VPackSlice rslice = materializer.slice(replace, false);
+      AqlValueMaterializer materializer2(trx);
+      VPackSlice rslice = materializer2.slice(replace, false);
       if (replace.isArray()) {
         for (auto const& it : VPackArrayIterator(rslice)) {
           if (!it.isString()) {
@@ -2882,7 +2883,6 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
     }
   }
 
-  AqlValueMaterializer materializer(trx);
   AqlValue aqlValueToSplit = ExtractFunctionParameterValue(parameters, 0);
 
   if (parameters.size() == 1) {
@@ -2984,7 +2984,6 @@ AqlValue Functions::RegexMatches(arangodb::aql::Query* query,
                                 VPackFunctionParameters const& parameters) {
   static char const* AFN = "REGEX_MATCHES";
 
-  AqlValueMaterializer materializer(trx);
   AqlValue aqlValueToMatch = ExtractFunctionParameterValue(parameters, 0);
 
   if (parameters.size() == 1) {
@@ -3076,7 +3075,6 @@ AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
     }
   }
 
-  AqlValueMaterializer materializer(trx);
   AqlValue aqlValueToSplit = ExtractFunctionParameterValue(parameters, 0);
 
   if (parameters.size() == 1) {
@@ -4325,41 +4323,26 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
   builder->openArray();
 
   auto& vocbase = query->vocbase();
-  std::vector<LogicalCollection*> colls;
+  auto colls = GetCollections(vocbase);
 
   // clean memory
   std::function<void()> cleanup;
 
-  // if we are a coordinator, we need to fetch the collection info from the
-  // agency
-  if (ServerState::instance()->isCoordinator()) {
-    cleanup = [&colls]() {
-      for (auto& it : colls) {
-        if (it != nullptr) {
-          delete it;
-        }
-      }
-    };
-
-    colls = GetCollectionsCluster(&vocbase);
-  } else {
-    colls = vocbase.collections(false);
-    cleanup = []() {};
-  }
-
-  // make sure memory is cleaned up
-  TRI_DEFER(cleanup());
-
-  std::sort(colls.begin(), colls.end(),
-            [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
-              return basics::StringUtils::tolower(lhs->name()) <
-                     basics::StringUtils::tolower(rhs->name());
-            });
+  std::sort(
+    colls.begin(),
+    colls.end(),
+    [](
+      std::shared_ptr<LogicalCollection> const& lhs,
+      std::shared_ptr<LogicalCollection> const& rhs
+    )->bool {
+      return arangodb::basics::StringUtils::tolower(lhs->name()) < arangodb::basics::StringUtils::tolower(rhs->name());
+    }
+  );
 
   size_t const n = colls.size();
 
   for (size_t i = 0; i < n; ++i) {
-    LogicalCollection* coll = colls[i];
+    auto& coll = colls[i];
 
     if (ExecContext::CURRENT != nullptr &&
         !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
@@ -5897,10 +5880,13 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
   }
 
   AqlValueMaterializer materializer(trx);
-  VPackSlice docSlice = materializer.slice(docToFind, false);
+  VPackSlice const docSlice = materializer.slice(docToFind, true);
+
+  TRI_ASSERT(docSlice.isObject());
 
   transaction::BuilderLeaser builder(trx);
-  VPackSlice examples = materializer.slice(exampleDocs, false);
+  AqlValueMaterializer exampleMaterializer(trx);
+  VPackSlice examples = exampleMaterializer.slice(exampleDocs, false);
 
   if (!examples.isArray()) {
     builder->openArray();
@@ -5924,16 +5910,18 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
 
     foundMatch = true;
 
+    TRI_ASSERT(example.isObject());
+    TRI_ASSERT(docSlice.isObject());
     for (auto const& it : VPackObjectIterator(example, true)) {
-      std::string key = it.key.copyString();
-
-      if (it.value.isNull() && !docSlice.hasKey(key)) {
+      VPackSlice keySlice = docSlice.get(it.key.stringRef());
+      
+      if (it.value.isNull() && keySlice.isNone()) {
         continue;
       }
-
-      if (!docSlice.hasKey(key) ||
+      
+      if (keySlice.isNone() ||
           // compare inner content
-          basics::VelocyPackHelper::compare(docSlice.get(key), it.value, false,
+          basics::VelocyPackHelper::compare(keySlice, it.value, false,
                                             options, &docSlice,
                                             &example) != 0) {
         foundMatch = false;
@@ -6384,8 +6372,8 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
   builder->add(a);
 
   if (list.isArray()) {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice v = materializer.slice(list, false);
+    AqlValueMaterializer listMaterializer(trx);
+    VPackSlice v = listMaterializer.slice(list, false);
     for (auto const& it : VPackArrayIterator(v)) {
       builder->add(it);
     }

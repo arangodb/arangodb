@@ -66,12 +66,6 @@ class AqlTransaction : public transaction::Methods {
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);
 
-  /// @brief add a coordinator collection to the transaction
-  Result processCollectionCoordinator(aql::Collection*);
-
-  /// @brief add a regular collection to the transaction
-  Result processCollectionNormal(aql::Collection* collection);
-
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 

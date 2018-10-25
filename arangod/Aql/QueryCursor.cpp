@@ -159,7 +159,7 @@ QueryStreamCursor::QueryStreamCursor(
       _guard(vocbase),
       _exportCount(-1),
       _queryResultPos(0) {
-  TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
+  TRI_ASSERT(QueryRegistryFeature::registry() != nullptr);
 
   _query = std::make_unique<Query>(
     false,
@@ -169,7 +169,7 @@ QueryStreamCursor::QueryStreamCursor(
     std::move(opts),
     arangodb::aql::PART_MAIN
   );
-  _query->prepare(QueryRegistryFeature::QUERY_REGISTRY);
+  _query->prepare(QueryRegistryFeature::registry());
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query

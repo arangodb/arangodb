@@ -713,13 +713,13 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           }
         }
 
-        int res = vocbase->renameCollection(collection, name, true);
+        auto res = vocbase->renameCollection(collection->id(), name, true);
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "cannot rename collection " << collectionId << " in database "
               << databaseId << " to '" << name
-              << "': " << TRI_errno_string(res);
+              << "': " << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }
@@ -848,12 +848,14 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             }
             vocbase->dropView(other->id(), true);
           }
-          int res = vocbase->renameView(view, name);
-          if (res != TRI_ERROR_NO_ERROR) {
+
+          auto res = vocbase->renameView(view->id(), name);
+
+          if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
             << "cannot rename view " << viewId << " in database "
             << databaseId << " to '" << name
-            << "': " << TRI_errno_string(res);
+            << "': " << res.errorMessage();
             ++state->errorCount;
             return state->canContinue();
           }
@@ -1058,12 +1060,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // restore the old behavior afterwards
             TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
 
-            collection =
-                vocbase->createCollection(b2.slice());
+            collection = vocbase->createCollection(b2.slice()).get();
           } else {
             // collection will be kept
-            collection =
-                vocbase->createCollection(b2.slice());
+            collection = vocbase->createCollection(b2.slice()).get();
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {

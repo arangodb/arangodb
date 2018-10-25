@@ -108,7 +108,7 @@ struct IRESEARCH_API tracking_directory: public directory {
   typedef std::unordered_set<std::string> file_set;
 
   // @param track_open - track file refs for calls to open(...)
-  tracking_directory(directory& impl, bool track_open = false);
+  explicit tracking_directory(directory& impl, bool track_open = false);
   virtual ~tracking_directory();
   directory& operator*() NOEXCEPT;
   using directory::attributes;
@@ -155,7 +155,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
  public:
   DECLARE_UNIQUE_PTR(ref_tracking_directory);
   // @param track_open - track file refs for calls to open(...)
-  ref_tracking_directory(directory& impl, bool track_open = false);
+  explicit ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other) NOEXCEPT;
   virtual ~ref_tracking_directory();
   directory& operator*() NOEXCEPT;
@@ -185,11 +185,17 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const;
 
  private:
+  typedef std::unordered_set<
+    index_file_refs::ref_t,
+    index_file_refs::counter_t::hash,
+    index_file_refs::counter_t::equal_to
+  > refs_t;
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_file_refs::attribute_t& attribute_;
   directory& impl_;
   mutable std::mutex mutex_; // for use with refs_
-  mutable std::unordered_map<string_ref, index_file_refs::ref_t> refs_;
+  mutable refs_t refs_;
   bool track_open_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
