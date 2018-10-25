@@ -1378,7 +1378,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
       return opRes.result;
     }
     if (duration > 30) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE) << << "Restored/deleted "
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/deleted "
         << oldBuilder.slice().length() << " documents in time: " << duration
         << " seconds.";
     }
@@ -1460,7 +1460,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
       return opRes.result;
     }
     if (duration > 30) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE) << << "Restored/inserted "
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/inserted "
         << requestSlice.length() << " documents in time: " << duration
         << " seconds.";
     }
