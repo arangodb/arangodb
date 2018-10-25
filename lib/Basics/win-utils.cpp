@@ -643,7 +643,7 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
     serviceAbort(exitCode);
   }
 
-  exit(exitCode);
+  _exit(exitCode);
 }
 
 // Detect cygwin ssh / terminals
