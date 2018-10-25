@@ -88,11 +88,15 @@ class RocksDBReplicationContext {
     void setSorted(bool);
     
     void use() noexcept {
-      TRI_ASSERT(!_isUsed.load());
-      _isUsed = true;
+      TRI_ASSERT(!isUsed());
+      _isUsed.store(true, std::memory_order_release);
     }
-    bool isUsed() const { return _isUsed; }
-    void release() noexcept { _isUsed = false; }
+    bool isUsed() const {
+      return _isUsed.load(std::memory_order_acquire);
+    }
+    void release() noexcept {
+      _isUsed.store(false, std::memory_order_release);
+    }
 
     // iterator convenience functions
     bool hasMore() const;
@@ -130,19 +134,6 @@ class RocksDBReplicationContext {
   
   /// remove matching iterator
   void releaseIterators(TRI_vocbase_t&, TRI_voc_cid_t);
-  
-  //uint64_t count() const;
-  //TRI_vocbase_t* vocbase() const;
-
-  // creates new transaction/snapshot
- /*void bind(TRI_vocbase_t& vocbase);
-
-  /// Bind collection for incremental sync
-  int bindCollectionIncremental(
-    TRI_vocbase_t& vocbase,
-    std::string const& collectionIdentifier
-  );
-  int chooseDatabase(TRI_vocbase_t& vocbase);*/
   
   std::tuple<Result, TRI_voc_cid_t, uint64_t>
    bindCollectionIncremental(TRI_vocbase_t& vocbase, std::string const& cname);
@@ -211,17 +202,19 @@ class RocksDBReplicationContext {
   
   void lazyCreateSnapshot();
   
-  void releaseDumpingResources();
   CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase,
                                             TRI_voc_cid_t cid,
                                             bool sorted,
                                             bool allowCreate);
   
+  void releaseDumpIterator(CollectionIterator*);
+  
+ private:
+  
   mutable Mutex _contextLock;
   TRI_server_id_t const _serverId;
   TRI_voc_tick_t const _id; // batch id
   
-  uint64_t _lastArangoTick; // tick at time at which the snapshot was taken
   uint64_t _snapshotTick; // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
   std::map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;

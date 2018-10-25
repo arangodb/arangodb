@@ -72,7 +72,6 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl,
                                                      TRI_server_id_t serverId)
     : _serverId{serverId},
       _id{TRI_NewTickServer()},
-      _lastArangoTick{0},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
@@ -82,7 +81,11 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl,
 
 RocksDBReplicationContext::~RocksDBReplicationContext() {
   MUTEX_LOCKER(guard, _contextLock);
-  releaseDumpingResources();
+  _iterators.clear();
+  if (_snapshot != nullptr) {
+    globalRocksDB()->ReleaseSnapshot(_snapshot);
+    _snapshot = nullptr;
+  }
 }
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
@@ -217,9 +220,8 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
   };
   
   
-  TRI_ASSERT(_lastArangoTick != 0);
   TRI_ASSERT(_snapshot != nullptr);
-  // TODO is it technically correct to include newly created collections ?
+  // FIXME is it technically correct to include newly created collections ?
   // simon: I think no, but this has been the behaviour since 3.2
   TRI_voc_tick_t tick = TRI_NewTickServer(); // = _lastArangoTick
   if (global) {
@@ -240,14 +242,8 @@ RocksDBReplicationContext::DumpResult
     basics::StringBuffer& buff, uint64_t chunkSize) {
   TRI_ASSERT(_users > 0);
   CollectionIterator* cIter{nullptr};
-  bool hasMore = true;
-  TRI_DEFER(if (cIter) {
-    MUTEX_LOCKER(locker, _contextLock);
-    if (!hasMore) {
-      _iterators.erase(cIter->logical->id());
-    } else {
-      cIter->release();
-    }
+  auto guard = scopeGuard([&]{
+    releaseDumpIterator(cIter);
   });
 
   {
@@ -278,10 +274,10 @@ RocksDBReplicationContext::DumpResult
     cIter->iter->Next();
   }
 
-  if ((hasMore = cIter->hasMore())) {
+  bool hasMore = cIter->hasMore();
+  if (hasMore) {
     cIter->currentTick++;
   }
-
   return DumpResult(TRI_ERROR_NO_ERROR, hasMore, cIter->currentTick);
 }
 
@@ -293,14 +289,8 @@ RocksDBReplicationContext::DumpResult
   TRI_ASSERT(_users > 0 && chunkSize > 0);
 
   CollectionIterator* cIter{nullptr};
-  bool hasMore = true;
-  TRI_DEFER(if (cIter) {
-    MUTEX_LOCKER(locker, _contextLock);
-    if (!hasMore) {
-      _iterators.erase(cIter->logical->id());
-    } else {
-      cIter->release();
-    }
+  auto guard = scopeGuard([&]{
+    releaseDumpIterator(cIter);
   });
 
   {
@@ -329,10 +319,10 @@ RocksDBReplicationContext::DumpResult
     cIter->iter->Next();
   }
   
-  if ((hasMore = cIter->hasMore())) {
+  bool hasMore = cIter->hasMore();
+  if (hasMore) {
     cIter->currentTick++;
   }
-
   return DumpResult(TRI_ERROR_NO_ERROR, hasMore, cIter->currentTick);
 }
 
@@ -341,9 +331,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
                                                           VPackBuilder& b, uint64_t chunkSize) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
-  TRI_DEFER(if (cIter) {
-    MUTEX_LOCKER(locker, _contextLock);
-    cIter->release();
+  auto guard = scopeGuard([&cIter] {
+    if (cIter) {
+      cIter->release();
+    }
   });
   
   Result rv;
@@ -456,12 +447,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
     VPackBuilder& b, size_t chunk, size_t chunkSize,
     std::string const& lowKey) {
-  
   TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
-  TRI_DEFER(if (cIter) {
-    MUTEX_LOCKER(locker, _contextLock);
-    cIter->release();
+  auto guard = scopeGuard([&cIter] {
+    if (cIter) {
+      cIter->release();
+    }
   });
   
   Result rv;
@@ -567,12 +558,12 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
     VPackBuilder& b, size_t chunk, size_t chunkSize, size_t offsetInChunk,
     size_t maxChunkSize, std::string const& lowKey, VPackSlice const& ids) {
-  
-  TRI_ASSERT(_users > 0);
+  TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
-  TRI_DEFER(if (cIter) {
-    MUTEX_LOCKER(locker, _contextLock);
-    cIter->release();
+  auto guard = scopeGuard([&cIter] {
+    if (cIter) {
+      cIter->release();
+    }
   });
   
   Result rv;
@@ -772,23 +763,13 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
   _expires = TRI_microtime() + ttl;
 }
 
-/// create snapshot, locks mutex
+/// create rocksdb snapshot, must hold _contextLock
 void RocksDBReplicationContext::lazyCreateSnapshot() {
   _contextLock.assertLockedByCurrentThread();
   if (_snapshot == nullptr) {
     _snapshot = globalRocksDB()->GetSnapshot();
     TRI_ASSERT(_snapshot);
-    _lastArangoTick = TRI_NewTickServer();
     _snapshotTick = _snapshot->GetSequenceNumber();
-  }
-}
-
-void RocksDBReplicationContext::releaseDumpingResources() {
-  _contextLock.assertLockedByCurrentThread();
-  _iterators.clear();
-  if (_snapshot != nullptr) {
-    globalRocksDB()->ReleaseSnapshot(_snapshot);
-    _snapshot = nullptr;
   }
 }
 
@@ -933,4 +914,16 @@ RocksDBReplicationContext::getCollectionIterator(TRI_vocbase_t& vocbase,
   }
 
   return cIter;
+}
+
+void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
+  if (it) {
+    TRI_ASSERT(it->isUsed());
+    if (!it->hasMore()) {
+      MUTEX_LOCKER(locker, _contextLock);
+      _iterators.erase(it->logical->id());
+    } else {
+      it->release();
+    }
+  }
 }
