@@ -30,7 +30,7 @@
     events: {
       'click #createView': 'createView',
       'click #viewsToggle': 'toggleSettingsDropdown',
-      'click .tile': 'gotoView',
+      'click .tile-view': 'gotoView',
       'keyup #viewsSearchInput': 'search',
       'click #viewsSearchSubmit': 'search',
       'click #viewsSortDesc': 'sorting'
