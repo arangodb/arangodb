@@ -1,6 +1,7 @@
 devel
 -----
 
+* fixes a routing issue within the web ui after the use of views
 
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
   edges inside the graph viewer.
