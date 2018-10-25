@@ -1,6 +1,9 @@
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
 
+* in a cluster environment, the arangod process now exits if wrong credentials
+  are used during the startup process.
+
 * added option `--rocksdb.total-write-buffer-size` to limit total memory usage
   across all RocksDB in-memory write buffers
 
