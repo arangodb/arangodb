@@ -204,7 +204,7 @@ SECTION("test_defaults") {
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
     CHECK((true == link->canBeDropped()));
-    CHECK((logicalCollection == link->collection()));
+    CHECK((logicalCollection.get() == link->collection()));
     CHECK((link->fieldNames().empty()));
     CHECK((link->fields().empty()));
     CHECK((true == link->hasBatchInsert()));
@@ -256,7 +256,7 @@ SECTION("test_defaults") {
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
     CHECK((true == link->canBeDropped()));
-    CHECK((logicalCollection == link->collection()));
+    CHECK((logicalCollection.get() == link->collection()));
     CHECK((link->fieldNames().empty()));
     CHECK((link->fields().empty()));
     CHECK((true == link->hasBatchInsert()));

@@ -74,7 +74,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
     return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
   }
 
-  arangodb::LogicalCollection const* collection = getCollectionStruct(name);
+  auto collection = getCollectionStruct(name);
 
   if (collection != nullptr) {
     return collection->id();
@@ -146,7 +146,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCluster(
     std::string const& name) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
-    return std::shared_ptr<LogicalCollection>(const_cast<LogicalCollection*>(getCollectionStruct(name)), [](LogicalCollection*){});
+    return getCollectionStruct(name);
   }
 
   try {
@@ -183,8 +183,9 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionId(
 /// @brief look up a collection struct for a collection name
 //////////////////////////////////////////////////////////////////////////////
 
-arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
-    std::string const& name) const {
+std::shared_ptr<arangodb::LogicalCollection> CollectionNameResolver::getCollectionStruct(
+    std::string const& name
+) const {
   {
     READ_LOCKER(locker, _nameLock);
     auto it = _resolvedNames.find(name);
@@ -194,7 +195,7 @@ arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
     }
   }
 
-  auto* collection = _vocbase.lookupCollection(name).get();
+  auto collection = _vocbase.lookupCollection(name);
 
   if (collection != nullptr) {
     WRITE_LOCKER(locker, _nameLock);

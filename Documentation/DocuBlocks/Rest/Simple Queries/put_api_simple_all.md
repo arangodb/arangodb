@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/simple/all, Return all documents}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTALLBODYPARAM{query,string,required}
 Contains the query.
 

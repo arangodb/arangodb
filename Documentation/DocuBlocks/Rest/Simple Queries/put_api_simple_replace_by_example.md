@@ -3,6 +3,13 @@
 
 @RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to replace within.
 

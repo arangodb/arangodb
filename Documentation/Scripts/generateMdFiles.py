@@ -147,12 +147,14 @@ def getRestBodyParam():
 def getRestDescription():
     #print >>sys.stderr, "RESTDESCRIPTION"
     if thisVerb['description']:
-        #print >> sys.stderr, thisVerb['description']
-        return RX3[0].sub(RX3[1], thisVerb['description'])
+        description = thisVerb['description']
+        #print >> sys.stderr, description
+        description = RX4[0].sub(RX4[1], description)
+        return RX3[0].sub(RX3[1], description)
     else:
         #print >> sys.stderr, "ELSE"
         return ""
-        
+
 def getRestReplyBodyParam(param):
     rc = "\n**Response Body**\n"
 
@@ -214,6 +216,7 @@ SIMPL_REPL_VALIDATE_DICT = {
 }
 SIMPL_REPL_DICT = {
     "\\"                    : "\\\\",
+    "@HINTS"                : "",
     "@RESTDESCRIPTION"      : getRestDescription,
     "@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
     "@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
@@ -236,6 +239,7 @@ SIMPLE_RX = re.compile(
 r'''
 \\|                                 # the backslash...
 @RESTDESCRIPTION|                   # -> <empty>
+@HINTS|                             # -> <inject hints>
 @RESTURLPARAMETERS|                 # -> \n**Path Parameters**\n
 @RESTQUERYPARAMETERS|               # -> \n**Query Parameters**\n
 @RESTHEADERPARAMETERS|              # -> \n**Header Parameters**\n
@@ -337,6 +341,8 @@ RX2 = [
 ]
 
 RX3 = (re.compile(r'\*\*Example:\*\*((?:.|\n)*?)</code></pre>'), r"")
+
+RX4 = (re.compile(r'<!-- Hints Start -->.*<!-- Hints End -->', re.DOTALL), r"")
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")

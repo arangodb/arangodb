@@ -4,7 +4,7 @@ arangosh&gt; db.users.save({ <span class="hljs-attr">name</span>: <span class="h
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/110108"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110108"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xk1Kkbi--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XoI67UK--_"</span> 
 }
 arangosh&gt; db.users.save({ <span class="hljs-attr">name</span>: <span class="hljs-string">"user 2"</span>, <span class="hljs-attr">_key</span>: <span class="hljs-string">"myuser"</span> });
 [ArangoError <span class="hljs-number">1222</span>: unexpected <span class="hljs-built_in">document</span> key]
@@ -12,5 +12,5 @@ arangosh&gt; db.users.save({ <span class="hljs-attr">name</span>: <span class="h
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/110113"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110113"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xk1Kkbq--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XoI67UO--_"</span> 
 }

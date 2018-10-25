@@ -13,17 +13,17 @@ x-content-type-options: nosniff
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103505</span> 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103507</span> 
   }, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">100</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h704A1DD5AC21/103200"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hFF57C08BA671/103202"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103200"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103202"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span> 
 }

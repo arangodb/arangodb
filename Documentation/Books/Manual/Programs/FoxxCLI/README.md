@@ -8,3 +8,7 @@ can be installed via the package managers NPM and Yarn.
 It is the successor of `foxx-manager`, which is deprecated and will be
 removed eventually. Also see [Foxx Deployment](../../Foxx/Deployment.md)
 for additional deployment options.
+
+Related blog post:
+
+- [Foxx CLI – Managing Microservices](https://www.arangodb.com/2018/04/foxx-cli-managing-microservices)

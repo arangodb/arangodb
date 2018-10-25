@@ -177,11 +177,10 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "failed to create file, path: " << str;
-
-    throw detailed_io_error(ss.str()) ;
+    throw detailed_io_error(string_utils::to_string(
+      "failed to create file, path: %s",
+      str.c_str()
+    ));
   }
 
   format_utils::write_header(*out, format, version);
@@ -203,11 +202,10 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "failed to open file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      str.c_str()
+    ));
   }
 
   if (checksum) {
