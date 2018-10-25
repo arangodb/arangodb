@@ -65,15 +65,16 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::POST) {
     // create a new blocker
-    std::shared_ptr<VPackBuilder> input = _request->toVelocyPackBuilderPtr();
-
-    if (input == nullptr || !input->slice().isObject()) {
+    
+    bool parseSuccess = true;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess || !body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
-
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", 0);
+    std::string patchCount = VelocyPackHelper::getStringValue(body, "patchCount", "");
 
     bool found;
     std::string const& value = _request->value("serverId", found);
@@ -84,10 +85,17 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // create transaction+snapshot, ttl will be 300 if `ttl == 0``
-    auto* ctx = _manager->createContext(&_vocbase, ttl, serverId);
+    auto* ctx = _manager->createContext(ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     
-#warning ADD INCREMENTAL SYNC PARAMETER
+    if (!patchCount.empty()) {
+      auto triple = ctx->bindCollectionIncremental(_vocbase, patchCount);
+      Result res = std::get<0>(triple);
+      if (res.fail()) {
+        LOG_TOPIC(WARN, Logger::REPLICATION) << "Error during first phase of"
+        << " collection cound patching: " << res;
+      }
+    }
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));

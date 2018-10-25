@@ -95,10 +95,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(TRI_vocbase_t* vocbase,
-                                                                    double ttl,
-                                                                    TRI_server_id_t serverId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(vocbase, ttl, serverId);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, TRI_server_id_t serverId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl, serverId);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -184,6 +182,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
     TRI_ASSERT(context != nullptr);
 
     if (context->isDeleted()) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Trying to use delete "
+      << "replication context with id " << id;
       // already deleted
       return nullptr;
     }

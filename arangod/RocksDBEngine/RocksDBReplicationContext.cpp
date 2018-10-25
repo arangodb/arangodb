@@ -68,8 +68,7 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase,
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase,
-                                                     double ttl,
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl,
                                                      TRI_server_id_t serverId)
     : _serverId{serverId},
       _id{TRI_NewTickServer()},
@@ -146,15 +145,17 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   MUTEX_LOCKER(writeLocker, _contextLock);
   
   auto it = _iterators.find(cid);
-  if (it != _iterators.end()) {
-    LOG_TOPIC(WARN, Logger::REPLICATION) << "cannot create two iterator for collection";
-    return std::make_tuple(TRI_ERROR_BAD_PARAMETER, 0, 0);
+  if (it != _iterators.end()) { // nothing to do here
+    return std::make_tuple(Result{}, it->second->logical->id(),
+                           it->second->numberDocuments);
   }
   
   uint64_t numberDocuments;
   bool isNumberDocsExclusive = false;
   auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
-  if (_snapshot == nullptr) {   // fetch number docs and snapshot under exclusive lock
+  if (_snapshot == nullptr) {
+    // fetch number docs and snapshot under exclusive lock
+    // this should enable us to correct the count later
     auto lockGuard = scopeGuard([rcoll] { rcoll->unlockWrite(); });
     int res = rcoll->lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -171,7 +172,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     lazyCreateSnapshot();
   }
 
-  auto iter = std::make_unique<CollectionIterator>(vocbase, *logical, true, _snapshot);
+  auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
   auto result = _iterators.emplace(cid, std::move(iter));
   if (!result.second) {
     return std::make_tuple(TRI_ERROR_OUT_OF_MEMORY, 0, 0);
@@ -243,7 +244,7 @@ RocksDBReplicationContext::DumpResult
   TRI_DEFER(if (cIter) {
     MUTEX_LOCKER(locker, _contextLock);
     if (!hasMore) {
-      _iterators.erase(cIter->logical.id());
+      _iterators.erase(cIter->logical->id());
     } else {
       cIter->release();
     }
@@ -296,7 +297,7 @@ RocksDBReplicationContext::DumpResult
   TRI_DEFER(if (cIter) {
     MUTEX_LOCKER(locker, _contextLock);
     if (!hasMore) {
-      _iterators.erase(cIter->logical.id());
+      _iterators.erase(cIter->logical->id());
     } else {
       cIter->release();
     }
@@ -367,7 +368,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical.getPhysical());
+  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
   
@@ -442,7 +443,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     if (adjustment != 0) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "inconsistent collection count detected, "
       << "an offet of " << adjustment << " will be applied";
-      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical.getPhysical());
+      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
       rcoll->adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
     }
   }
@@ -519,7 +520,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   b.reserve(8192);
   char ridBuffer[21]; // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical.getPhysical());
+  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
   b.openArray(true);
@@ -631,7 +632,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical.getPhysical());
+  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   
   auto buffer = b.buffer();
@@ -792,10 +793,11 @@ void RocksDBReplicationContext::releaseDumpingResources() {
 }
 
 RocksDBReplicationContext::CollectionIterator::CollectionIterator(
-    TRI_vocbase_t& vocbase, LogicalCollection& collection,
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<LogicalCollection> const& coll,
     bool sorted, rocksdb::Snapshot const* snapshot)
     : dbGuard(vocbase),
-      logical{collection},
+      logical{coll},
       iter{nullptr},
       bounds{RocksDBKeyBounds::Empty()},
       currentTick{1},
@@ -826,12 +828,12 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     _sortedIterator = sorted;
     
     if (sorted) {
-      auto index = logical.getPhysical()->lookupIndex(0); //RocksDBCollection->primaryIndex() is private
+      auto index = logical->getPhysical()->lookupIndex(0); //RocksDBCollection->primaryIndex() is private
       TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
     } else {
-      auto* rcoll = static_cast<RocksDBCollection*>(logical.getPhysical());
+      auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
       bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
     }
     _upperLimit = bounds.end();
@@ -902,7 +904,7 @@ RocksDBReplicationContext::getCollectionIterator(TRI_vocbase_t& vocbase,
 
     if (nullptr != logical) {
       auto result = _iterators.emplace(cid,
-        std::make_unique<CollectionIterator>(vocbase, *logical, sorted, _snapshot));
+        std::make_unique<CollectionIterator>(vocbase, logical, sorted, _snapshot));
 
       if (result.second) {
         cIter = result.first->second.get();

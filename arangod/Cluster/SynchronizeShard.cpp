@@ -823,7 +823,7 @@ bool SynchronizeShard::first() {
       VPackBuilder config;
       { VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL, VPackValue(true));
+        config.add(INCREMENTAL, VPackValue(docCount > 0)); // use dump if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));

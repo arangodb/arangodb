@@ -59,11 +59,12 @@ class RocksDBReplicationContext {
   /// collection abstraction
   struct CollectionIterator {
     
-    CollectionIterator(TRI_vocbase_t&, LogicalCollection&,
+    CollectionIterator(TRI_vocbase_t&,
+                       std::shared_ptr<LogicalCollection> const&,
                        bool sorted, rocksdb::Snapshot const*);
     
     DatabaseGuard dbGuard;
-    LogicalCollection& logical;
+    std::shared_ptr<LogicalCollection> logical;
 
     /// Iterator over primary index or documents
     std::unique_ptr<rocksdb::Iterator> iter;
@@ -118,7 +119,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
