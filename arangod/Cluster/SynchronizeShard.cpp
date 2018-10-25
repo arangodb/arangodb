@@ -112,10 +112,9 @@ SynchronizeShard::SynchronizeShard(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
+class SynchronizeShardCallback : public arangodb::ClusterCommCallback {
 public:
   explicit SynchronizeShardCallback(SynchronizeShard* callie) {};
   virtual bool operator()(arangodb::ClusterCommResult*) override final {
@@ -123,8 +122,9 @@ public:
   }
 };
 
+SynchronizeShard::~SynchronizeShard() {}
 
-arangodb::Result getReadLockId (
+arangodb::Result getReadLockId(
   std::string const& endpoint, std::string const& database,
   std::string const& clientId, double timeout, uint64_t& id) {
 
@@ -161,9 +161,7 @@ arangodb::Result getReadLockId (
   }
 
   return arangodb::Result();
-
 }
-
 
 arangodb::Result collectionCount(
   std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
@@ -198,10 +196,10 @@ arangodb::Result collectionCount(
 
 }
 
-arangodb::Result addShardFollower (
+arangodb::Result addShardFollower(
   std::string const& endpoint, std::string const& database,
   std::string const& shard, uint64_t lockJobId,
-  std::string const& clientId, double timeout = 120.0 ) {
+  std::string const& clientId, double timeout = 120.0) {
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "addShardFollower: tell the leader to put us into the follower list...";
@@ -285,11 +283,9 @@ arangodb::Result addShardFollower (
   }
 }
 
-
-arangodb::Result removeShardFollower (
+arangodb::Result removeShardFollower(
   std::string const& endpoint, std::string const& database,
   std::string const& shard, std::string const& clientId, double timeout = 120.0) {
-
 
   LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
     "removeShardFollower: tell the leader to take us off the follower list...";
@@ -326,10 +322,9 @@ arangodb::Result removeShardFollower (
 
   LOG_TOPIC(WARN, Logger::MAINTENANCE) << "removeShardFollower: success" ;
   return arangodb::Result();
-
 }
 
-arangodb::Result cancelReadLockOnLeader (
+arangodb::Result cancelReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   uint64_t lockJobId, std::string const& clientId,
   double timeout = 10.0) {
@@ -364,9 +359,7 @@ arangodb::Result cancelReadLockOnLeader (
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
-
 }
-
 
 arangodb::Result cancelBarrier(
   std::string const& endpoint, std::string const& database,
@@ -406,9 +399,7 @@ arangodb::Result cancelBarrier(
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
   return arangodb::Result();
-
 }
-
 
 arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
@@ -510,7 +501,6 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
 
   return result;
-
 }
 
 enum ApplierType {
@@ -539,8 +529,6 @@ arangodb::Result replicationSynchronize(
   configuration.validate();
 
   std::shared_ptr<InitialSyncer> syncer;
-
-  config.toJson();
 
   if (applierType == APPLIER_DATABASE) {
     // database-specific synchronization
@@ -602,7 +590,6 @@ arangodb::Result replicationSynchronize(
 
 
 arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
-
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
   auto const leaderId = conf.get(LEADER_ID).copyString();
@@ -639,9 +626,7 @@ arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
   return r;
 }
 
-
 bool SynchronizeShard::first() {
-
   std::string database = _description.get(DATABASE);
   std::string planId = _description.get(COLLECTION);
   std::string shard = _description.get(SHARD);
@@ -663,7 +648,7 @@ bool SynchronizeShard::first() {
   while(true) {
 
     if (isStopping()) {
-      _result.reset(TRI_ERROR_INTERNAL, "shutting down");
+      _result.reset(TRI_ERROR_SHUTTING_DOWN);
       return false;
     }
 
@@ -984,5 +969,3 @@ bool SynchronizeShard::first() {
   return false;;
 
 }
-
-SynchronizeShard::~SynchronizeShard() {};
