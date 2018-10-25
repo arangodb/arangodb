@@ -93,7 +93,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       Result res = std::get<0>(triple);
       if (res.fail()) {
         LOG_TOPIC(WARN, Logger::REPLICATION) << "Error during first phase of"
-        << " collection cound patching: " << res;
+        << " collection cound patching: " << res.errorMessage();
       }
     }
 
