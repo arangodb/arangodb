@@ -1,3 +1,11 @@
+v3.4.0-rc.4 (XXXX-XX-XX)
+------------------------
+
+* suppress warnings from statistics background threads such as 
+  `WARNING caught exception during statistics processing: Expecting Object`
+  during version upgrade
+
+
 v3.4.0-rc.3 (2018-10-23)
 ------------------------
 
@@ -50,10 +58,6 @@ v3.4.0-rc.3 (2018-10-23)
 
 * Web UI now checks if server statistics are enabled before it sends its first
   request to the statistics API
-
-* suppress warnings from statistics background threads such as 
-  `WARNING caught exception during statistics processing: Expecting Object`
-  during version upgrade
 
 * fix internal issue #486: immediate deletion (right after creation) of
   a view with a link to one collection and indexed data reports failure
