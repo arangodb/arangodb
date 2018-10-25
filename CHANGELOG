@@ -1,6 +1,10 @@
 devel
 -----
 
+
+* fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
+  edges inside the graph viewer.
+
 * in a cluster environment, the arangod process now exits if wrong credentials
   are used during the startup process
 
