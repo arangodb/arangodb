@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
+  edges inside the graph viewer.
+
 * fixes validation of allowed or not allowed foxx service mount paths within
   the Web UI
 
