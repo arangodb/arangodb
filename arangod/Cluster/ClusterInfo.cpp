@@ -1321,7 +1321,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
   auto DBServers =
       std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
-  std::shared_ptr<int> dbServerResult = std::make_shared<volatile int>(-1);
+  auto dbServerResult = std::make_shared<volatile int>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
@@ -1457,7 +1457,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<volatile int>(-1);
+  auto dbServerResult = std::make_shared<volatile int>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         if (result.isNone() || (result.isObject() && result.length() == 0)) {
@@ -2633,7 +2633,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   }
 
   // will contain the error number and message
-  std::shared_ptr<int> dbServerResult = std::make_shared<volatile int>(-1);
+  auto dbServerResult = std::make_shared<volatile int>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](
