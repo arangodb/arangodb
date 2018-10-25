@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixes a routing issue within the web ui after the use of views
+
 * fixes validation of allowed or not allowed foxx service mount paths within
   the Web UI
 
