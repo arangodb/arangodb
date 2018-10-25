@@ -116,6 +116,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
   _ignoreRenameCreateDrop = true;
 
   TRI_voc_tick_t fromTick = _initialTick;
+  TRI_voc_tick_t lastScannedTick = fromTick;
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
       << fromTick;
@@ -129,6 +130,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&from=" + StringUtils::itoa(fromTick) +
+        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
         "&serverId=" + _state.localServerIdString +
         "&collection=" + StringUtils::urlEncode(collectionName);
     
@@ -156,6 +158,12 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
     }
 
     header = response->getHeaderField(
+        StaticStrings::ReplicationHeaderLastScanned, found);
+    if (found) {
+      lastScannedTick = StringUtils::uint64(header);
+    }
+
+    header = response->getHeaderField(
         StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -173,7 +181,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
-    if (!fromIncluded && fromTick > 0) {  // && _requireFromPresent
+    if (!fromIncluded && fromTick > 0) {  
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") +
@@ -196,6 +204,8 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
     // update the tick from which we will fetch in the next round
     if (lastIncludedTick > fromTick) {
       fromTick = lastIncludedTick;
+    } else if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fromTick) {
+      fromTick = lastScannedTick - 1;
     } else if (checkMore) {
       // we got the same tick again, this indicates we're at the end
       checkMore = false;
@@ -208,7 +218,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
       return Result();
     }
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "Fetching more data fromTick " << fromTick;
+        << "Fetching more data, fromTick: " << fromTick << ", lastScannedTick: " << lastScannedTick;
   }
 }
 

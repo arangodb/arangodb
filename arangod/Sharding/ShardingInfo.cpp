@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategy.h"
+#include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -175,9 +176,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       }
     }
   }
-
+  
   // set the sharding strategy
-  _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->fromVelocyPack(info, this);
+  if (!ServerState::instance()->isRunningInCluster()) {
+    // shortcut, so we do not need to set up the whole application server for testing
+    _shardingStrategy = std::make_unique<ShardingStrategyNone>();
+  } else {
+    _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->fromVelocyPack(info, this);
+  }
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
