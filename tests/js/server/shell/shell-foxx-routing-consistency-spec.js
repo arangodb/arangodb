@@ -16,7 +16,7 @@ let options = {
   json: true
 };
 
-if (require('internal').db._version(true)['full-version-string'].search('maintainer')) {
+if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
   options.timeout = 300;
 }
 
