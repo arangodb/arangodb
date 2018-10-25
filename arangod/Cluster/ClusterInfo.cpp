@@ -2013,8 +2013,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
               errorMsg = "Error during index creation: " + errorMsg;
 
               // Returns the specific error number if set, or the general
-              // error
-              // otherwise
+              // error otherwise
               *dbServerResult =
                   arangodb::basics::VelocyPackHelper::getNumericValue<int>(
                       v, "errorNum", TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
