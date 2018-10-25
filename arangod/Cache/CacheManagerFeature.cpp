@@ -105,7 +105,7 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->post(fn, false);
+    scheduler->queue(RequestPriority::LOW, fn);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));
