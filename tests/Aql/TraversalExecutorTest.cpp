@@ -85,9 +85,9 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   ResourceMonitor monitor;
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
-  arangodb::transaction..Methods* trx = nullptr;
+  arangodb::transaction::Methods* trx = nullptr;
 
-  auto traverser = std::make_unique<TraverserHelper>(trx, nullptr, nullptr);
+  auto traverser = std::make_unique<TraverserHelper>(nullptr, trx, nullptr);
   TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverser));
 
   GIVEN("there are no rows upstream") {
