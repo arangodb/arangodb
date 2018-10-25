@@ -24,14 +24,13 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = require('internal').db;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: upgrade with data from mmfiles instance
@@ -134,7 +133,6 @@ function UpgradeData () {
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites

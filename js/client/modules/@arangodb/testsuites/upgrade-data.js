@@ -40,14 +40,14 @@ const compareSemVer = (a, b) => {
     return 0;
   }
   let lex = false;
-  const partsA = a.split('.');
-  const partsB = b.split('.');
+  const partsA = a.split('-')[0].split('.');
+  const partsB = b.split('-')[0].split('.');
   if (partsA.length < 2 ||
-      partsA.length > 4 ||
-      partsB.length < 2 ||
-      partsB.length > 4 ||
-      !partsA.every( p => isNaN(Number(p))) ||
-      !partsB.every( p => isNaN(Number(b))) ) {
+    partsA.length > 4 ||
+    partsB.length < 2 ||
+    partsB.length > 4 ||
+    !partsA.every(p => isNaN(Number(p))) ||
+    !partsB.every(p => isNaN(Number(b)))) {
     return (a < b) ? -1 : 1;
   }
 
@@ -71,16 +71,16 @@ const compareSemVer = (a, b) => {
 };
 
 const byMinimumSuportedVersion = (version) => {
-  return ( testCase ) => {
+  return (testCase) => {
     let supported = true;
-    testCase.substring(0, testCase.length - 3).split('-').map( ( s ) => {
+    testCase.substring(0, testCase.length - 3).split('-').map((s) => {
       if (s.startsWith("msv")) {
         const msv = s.substring(3);
         if (compareSemVer(msv, version) > 0) {
           supported = false;
         }
       }
-    } );
+    });
     return supported;
   };
 };
@@ -91,8 +91,8 @@ const byMinimumSuportedVersion = (version) => {
 const unpackOldData = (engine, version, options, serverOptions) => {
   const archiveName = `upgrade-data-${engine}-${version}`;
   const dataFile = fs.join(options.upgradeDataPath,
-                           'data',
-                           `${archiveName}.tar.gz`);
+    'data',
+    `${archiveName}.tar.gz`);
   const tarOptions = [
     '--extract',
     '--gunzip',
@@ -122,8 +122,8 @@ const upgradeData = (engine, version) => {
   return (options) => {
     const testName = `upgrade_data_${engine}_${version}`;
     const dataFile = fs.join(options.upgradeDataPath,
-                             'data',
-                             `upgrade-data-${engine}-${version}.tar.gz`);
+      'data',
+      `upgrade-data-${engine}-${version}.tar.gz`);
     if (options.storageEngine !== engine) {
       // engine mismatch, skip!
       const res = {};
@@ -148,7 +148,7 @@ const upgradeData = (engine, version) => {
         res[testName] = {
           failed: 0,
           'status': true,
-          'message': 'skipped because of engine mismatch',
+          'message': `skipped due to missing data file ${dataFile}`,
           'skipped': true
         };
       }
@@ -196,7 +196,7 @@ const upgradeData = (engine, version) => {
     args['database.auto-upgrade'] = false;
 
     const testCases = tu.scanTestPath('js/server/tests/upgrade-data')
-                        .filter( byMinimumSuportedVersion(version) );
+      .filter(byMinimumSuportedVersion(version));
     require('internal').print('Checking results...');
     return tu.performTests(
       options,
@@ -207,32 +207,43 @@ const upgradeData = (engine, version) => {
   };
 };
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
   const configurations = fs.list('upgrade-data-tests/data').map(
     (filename) => {
       const re = /upgrade-data-(mmfiles|rocksdb)-(\d(?:\.\d)*)\.tar\.gz/;
-      const matches =  re.exec(filename);
-      return { engine: matches[1], version: matches[2] };
+      const matches = re.exec(filename);
+      return {
+        engine: matches[1],
+        version: matches[2]
+      };
     }
-  ).sort( ( a, b ) => {
+  ).sort((a, b) => {
     if (a.engine < b.engine) return -1;
     if (a.engine > b.engine) return 1;
     return compareSemVer(a.version, b.version);
-  } );
-  
+  });
+
   for (let i = 0; i < configurations.length; i++) {
-    const {engine, version} = configurations[i];
+    const {
+      engine,
+      version
+    } = configurations[i];
     const testName = `upgrade_data_${engine}_${version}`;
     testFns[testName] = upgradeData(engine, version);
     defaultFns.push(testName);
-    functionsDocumentation[testName] = `test upgrade from version ${version} using ${engine} engine`;
+    functionsDocumentation[testName] =
+      `test upgrade from version ${version} using ${engine} engine`;
   }
 
   opts['upgradeDataPath'] = 'upgrade-data-tests';
   opts['upgradeDataMissingShouldFail'] = false;
 
   /* jshint forin: false */
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+    fnDocs[attrname] = functionsDocumentation[attrname];
+  }
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+    optionsDoc.push(optionsDocumentation[i]);
+  }
 };
