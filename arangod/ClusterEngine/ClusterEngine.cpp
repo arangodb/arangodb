@@ -82,11 +82,11 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
 ClusterEngine::~ClusterEngine() { }
 
 bool ClusterEngine::isRocksDB() const {
-  return _actualEngine && _actualEngine->name() == RocksDBEngine::FeatureName;
+  return !ClusterEngine::Mocking && _actualEngine && _actualEngine->name() == RocksDBEngine::FeatureName;
 }
 
 bool ClusterEngine::isMMFiles() const {
-  return _actualEngine && _actualEngine->name() == MMFilesEngine::FeatureName;
+  return !ClusterEngine::Mocking && _actualEngine && _actualEngine->name() == MMFilesEngine::FeatureName;
 }
 
 bool ClusterEngine::isMock() const {
@@ -94,18 +94,19 @@ bool ClusterEngine::isMock() const {
 }
 
 ClusterEngineType ClusterEngine::engineType() const {
+  if (isMock()) {
+    return ClusterEngineType::MockEngine;
+  }
   TRI_ASSERT(_actualEngine != nullptr);
 
   if (isMMFiles()) {
     return ClusterEngineType::MMFilesEngine;
   } else if (isRocksDB()) {
     return ClusterEngineType::RocksDBEngine;
-  } else if (isMock()) {
-    return ClusterEngineType::MockEngine;
   }
 
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid engine type");
 }
 
 // inherited from ApplicationFeature
@@ -390,6 +391,7 @@ void ClusterEngine::addOptimizerRules() {
   } else if (engineType() == ClusterEngineType::RocksDBEngine) {
     RocksDBOptimizerRules::registerResources();
   } else if (engineType() != ClusterEngineType::MockEngine) {
+    // invalid engine type...
     TRI_ASSERT(false);
   }
 }
