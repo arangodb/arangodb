@@ -231,7 +231,12 @@ static void mergeResults(
         arr.get(StaticStrings::Error).isBoolean() && arr.get(StaticStrings::Error).getBoolean()) {
       // an error occurred, now rethrow the error
       int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
-      THROW_ARANGO_EXCEPTION(res);
+      VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
+      if (msg.isString()) {
+        THROW_ARANGO_EXCEPTION(res, msg.copyString());
+      } else {
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
     resultBody->add(arr.at(pair.second));
   }
