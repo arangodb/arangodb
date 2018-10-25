@@ -1221,6 +1221,12 @@ bool AgencyComm::ensureStructureInitialized() {
         LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "Found an initialized agency";
         break;
       }
+    } else {
+      if (result.httpCode() == 401) {
+        // unauthorized
+        LOG_TOPIC(FATAL, Logger::STARTUP) << "Unauthorized. Wrong credentials.";
+        FATAL_ERROR_EXIT();
+      }
     }
 
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
