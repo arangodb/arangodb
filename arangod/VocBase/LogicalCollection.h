@@ -74,7 +74,7 @@ class ChecksumResult : public Result {
   velocypack::Builder _builder;
 };
 
-class LogicalCollection: public LogicalDataSource {
+class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
