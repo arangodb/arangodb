@@ -261,10 +261,28 @@ void V8DealerFeature::prepare() {
 void V8DealerFeature::start() {
   if (_copyInstallation) {
     copyInstallationFiles(); // will exit process if it fails
+  } else {
+    // don't copy JS files on startup
+    // now check if we have a js directory inside the database directory, and if it looks good
+    auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>(DatabasePathFeature::name());
+    const std::string dbJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+    const std::string checksumFile = FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
+    const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
+    const std::string commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    if (FileUtils::isDirectory(dbJSPath) &&
+        FileUtils::exists(checksumFile) &&
+        FileUtils::isDirectory(serverPath) &&
+        FileUtils::isDirectory(commonPath)) {
+      // only load node modules from original startup path
+      _nodeModulesDirectory = _startupDirectory;
+      // js directory inside database directory looks good. now use it!
+      _startupDirectory = dbJSPath;
+    }
   }
 
-  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory <<
-                                  "', effective module-directories are " << _moduleDirectories;
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory: " << _startupDirectory <<
+                                  ", effective module-directories: " << _moduleDirectories << 
+                                  ", node-modules-directory: " << _nodeModulesDirectory;
   
   _startupLoader.setDirectory(_startupDirectory);
   ServerState::instance()->setJavaScriptPath(_startupDirectory);
@@ -1388,7 +1406,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       directories.insert(directories.end(), _moduleDirectories.begin(),
                          _moduleDirectories.end());
       directories.emplace_back(_startupDirectory);
-      if (!_nodeModulesDirectory.empty()) {
+      if (!_nodeModulesDirectory.empty() && _nodeModulesDirectory != _startupDirectory) {
         directories.emplace_back(_nodeModulesDirectory);
       }
 
