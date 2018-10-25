@@ -87,8 +87,8 @@ void AqlFeature::stop() {
   // Wait until all AQL queries are done
   while (true) {
     try {
-      QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
+      QueryRegistryFeature::registry()->destroyAll();
+      TraverserEngineRegistryFeature::registry()->destroyAll();
     } catch (...) {
       // ignore errors here. if it fails, we'll try again in next round
     }
@@ -96,10 +96,8 @@ void AqlFeature::stop() {
     uint64_t m = ::leases.load();
     TRI_ASSERT((m & ::readyBit) == 0);
 
-    size_t n = QueryRegistryFeature::QUERY_REGISTRY->numberRegisteredQueries();
-    size_t o = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY
-               ->numberRegisteredEngines();
-    
+    size_t n = QueryRegistryFeature::registry()->numberRegisteredQueries();
+    size_t o = TraverserEngineRegistryFeature::registry()->numberRegisteredEngines();
     if (n == 0 && m == 0 && o == 0) {
       break;
     }

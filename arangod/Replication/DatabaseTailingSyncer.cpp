@@ -117,6 +117,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   _ignoreRenameCreateDrop = true;
 
   TRI_voc_tick_t fromTick = _initialTick;
+  TRI_voc_tick_t lastScannedTick = fromTick;
+
   if (hard) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
@@ -139,6 +141,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&from=" + StringUtils::itoa(fromTick) +
+        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
         "&serverId=" + _state.localServerIdString +
         "&collection=" + StringUtils::urlEncode(collectionName);
     
@@ -168,6 +171,12 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     }
 
     header = response->getHeaderField(
+        StaticStrings::ReplicationHeaderLastScanned, found);
+    if (found) {
+      lastScannedTick = StringUtils::uint64(header);
+    }
+
+    header = response->getHeaderField(
         StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
       until = fromTick;
@@ -186,7 +195,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
-    if (!fromIncluded && fromTick > 0) {  // && _requireFromPresent
+    if (!fromIncluded && fromTick > 0) {  
       until = fromTick;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
@@ -211,6 +220,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     // update the tick from which we will fetch in the next round
     if (lastIncludedTick > fromTick) {
       fromTick = lastIncludedTick;
+    } else if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fromTick) {
+      fromTick = lastScannedTick - 1;
     } else if (checkMore) {
       // we got the same tick again, this indicates we're at the end
       checkMore = false;
@@ -242,7 +253,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       return Result();
     }
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "Fetching more data fromTick " << fromTick;
+        << "Fetching more data, fromTick: " << fromTick << ", lastScannedTick: " << lastScannedTick;
   }
 }
 

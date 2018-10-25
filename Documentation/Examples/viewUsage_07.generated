@@ -18,9 +18,9 @@ arangosh&gt; view.properties({<span class="hljs-attr">links</span>: {<span class
       <span class="hljs-string">"includeAllFields"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"trackListPositions"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"storeValues"</span> : <span class="hljs-string">"none"</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"132770"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"132768"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
-      <span class="hljs-string">"view"</span> : <span class="hljs-string">"h704A1DD5AC21/132742"</span> 
+      <span class="hljs-string">"view"</span> : <span class="hljs-string">"hFF57C08BA671/132740"</span> 
     } 
   } 
 }

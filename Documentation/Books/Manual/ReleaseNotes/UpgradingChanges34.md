@@ -365,8 +365,8 @@ The following APIs have been added or augmented:
   The old/new revisions can be accessed by passing the URL parameters `returnOld` and
   `returnNew` to the following endpoints:
 
-  * /_api/gharial/<graph>/vertex/<collection>
-  * /_api/gharial/<graph>/edge/<collection>
+  * `/_api/gharial/<graph>/vertex/<collection>`
+  * `/_api/gharial/<graph>/edge/<collection>`
 
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible.
@@ -456,7 +456,7 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   now always produce the same result, whereas in previous versions of ArangoDB the
   function may have generated different results.
   
-  Each AQL query that is run will still evalute the result value of the `DATE_NOW` 
+  Each AQL query that is run will still evaluate the result value of the `DATE_NOW` 
   function independently, but only once at the beginning of the query. This is most
   often what is desired anyway, but the change makes `DATE_NOW` useless to measure
   time differences inside a single query.
@@ -720,7 +720,7 @@ removed in future versions of ArangoDB:
   using the simple query API, because that is more flexible and allows greater 
   control of how the queries are executed.
 
-* the REST API for querying endpoints at `/_api/endpoints`:
+* the REST API for querying endpoints at `/_api/endpoint`:
 
   The API `/_api/endpoint` is deprecated since ArangoDB version 3.1. 
   For cluster mode there is `/_api/cluster/endpoints` to find all current 
@@ -758,6 +758,12 @@ removed in future versions of ArangoDB:
 
   The types `geo1` and `geo2` will still work in ArangoDB 3.4, but may be removed
   in future versions.
+
+* the persistent index type is marked for removal in 4.0.0 and is thus deprecated.
+
+  This index type was added when there was only the MMFiles storage engine as
+  kind of a stop gap. We recommend to switch to RocksDB engine, which persists
+  all index types with no difference between skiplist and persistent indexes.
 
 * the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
 

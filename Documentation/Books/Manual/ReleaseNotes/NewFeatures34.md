@@ -12,9 +12,9 @@ ArangoSearch is a sophisticated, integrated full-text search solution over
 a user-defined set of attributes and collections. It is the first type of
 view in ArangoDB.
 
-[ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
-[ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
+- [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
+- [ArangoSearch overview](../Views/ArangoSearch/README.md)
+- [ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation
