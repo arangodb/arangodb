@@ -1,6 +1,9 @@
 devel
 -----
 
+* in a cluster environment, the arangod process now exits if wrong credentials
+  are used during the startup process
+
 * fixes validation of allowed or not allowed foxx service mount paths within
   the Web UI
 
