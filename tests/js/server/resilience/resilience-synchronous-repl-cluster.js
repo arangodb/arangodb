@@ -99,6 +99,7 @@ function SynchronousReplicationSuite () {
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed follower", follower);
+    return pos;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -819,7 +820,7 @@ function SynchronousReplicationSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
 
       // Now we trigger failedFollower
-      failFollower();
+      const failedPos = failFollower();
       // We now continuously add more large transaction to trigger tailing
       for (let i = 0; i < 5; ++i) {
         // We trigger 5 more of these large transactions
@@ -833,8 +834,8 @@ function SynchronousReplicationSuite () {
       // Wait for it:
       assertTrue(waitForSynchronousReplication("_system"));
 
-
-      healFollower();
+      // Heal follower
+      assertTrue(continueExternal(global.instanceInfo.arangods[failedPos].pid));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
