@@ -51,6 +51,103 @@ function IResearchFeatureDDLTestSuite () {
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
 
+    testStressAddRemoveView : function() {
+      db._dropView("TestView");
+      for (let i = 0; i < 100; ++i) {
+        db._createView("TestView", "arangosearch", {});
+        assertTrue(null != db._view("TestView"));
+        db._dropView("TestView");
+        assertTrue(null == db._view("TestView"));
+      }
+    },
+
+    testStressAddRemoveViewWithDirectLinks : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      for (let i = 0; i < 100; ++i) {
+        db._createView("TestView", "arangosearch", {links:{"TestCollection0":{}}});
+        var view = db._view("TestView");
+        assertTrue(null != view);
+        assertEqual(Object.keys(view.properties().links).length, 1);
+        db._dropView("TestView");
+        assertTrue(null == db._view("TestView"));
+      }
+    },
+
+    testStressAddRemoveViewWithLink : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+
+      var addLink = { links: { "TestCollection0": {} } };
+
+      for (let i = 0; i < 100; ++i) {
+        var view = db._createView("TestView", "arangosearch", {});
+        view.properties(addLink, true); // partial update
+        let properties = view.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
+        var indexes = db.TestCollection0.getIndexes(false);
+        assertEqual(1, indexes.length);
+        assertEqual("primary", indexes[0].type);
+        indexes = db.TestCollection0.getIndexes(false, true);
+        assertEqual(2, indexes.length);
+        var link = indexes[1];
+        assertEqual("primary", indexes[0].type);
+        assertNotEqual(null, link);
+        assertEqual("arangosearch", link.type);
+        db._dropView("TestView");
+        assertEqual(null, db._view("TestView"));
+        assertEqual(1, db.TestCollection0.getIndexes(false, true).length);
+      }
+    },
+
+    testStressAddRemoveLink : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      var view = db._createView("TestView", "arangosearch", {});
+
+      var addLink = { links: { "TestCollection0": {} } };
+      var removeLink = { links: { "TestCollection0": null } };
+
+      for (let i = 0; i < 100; ++i) {
+        view.properties(addLink, true); // partial update
+        let properties = view.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
+        var indexes = db.TestCollection0.getIndexes(false, true);
+        assertEqual(2, indexes.length);
+        var link = indexes[1];
+        assertEqual("primary", indexes[0].type);
+        assertNotEqual(null, link);
+        assertEqual("arangosearch", link.type);
+        view.properties(removeLink, false);
+        properties = view.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(0, Object.keys(properties.links).length);
+        assertEqual(1, db.TestCollection0.getIndexes(false, true).length);
+      }
+    },
+
+    testRemoveLinkViaCollection : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+
+      var view = db._createView("TestView", "arangosearch", {});
+      db._create("TestCollection0");
+      var addLink = { links: { "TestCollection0": {} } };
+      view.properties(addLink, true); // partial update
+      let properties = view.properties();
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
+      db._drop("TestCollection0");
+      properties = view.properties();
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
+    },
+
     testViewDDL: function() {
       // collections
       db._drop("TestCollection0");

@@ -363,55 +363,81 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
   for (auto const& vs : VPackArrayIterator(result)) {
     VPackSlice const values = vs.resolveExternals();
 
+    if (!values.isObject()) {
+      // oops
+      continue;
+    }
+
     VPackSlice server = values.get("server");
 
     try {
       // in an environment that is mixing 3.4 and previous versions, the following
       // attributes may not be present. we don't want the statistics to give up
       // in this case, but simply ignore these errors
-      VPackSlice v8Contexts = server.get("v8Context");
-      serverV8available += extractNumber(v8Contexts, "availablePerSecond");
-      serverV8busy += extractNumber(v8Contexts, "busyPerSecond");
-      serverV8dirty += extractNumber(v8Contexts, "dirtyPerSecond");
-      serverV8free += extractNumber(v8Contexts, "freePerSecond");
-      serverV8max += extractNumber(v8Contexts, "maxPerSecond");
+      try {
+        VPackSlice v8Contexts = server.get("v8Context");
+        serverV8available += extractNumber(v8Contexts, "availablePerSecond");
+        serverV8busy += extractNumber(v8Contexts, "busyPerSecond");
+        serverV8dirty += extractNumber(v8Contexts, "dirtyPerSecond");
+        serverV8free += extractNumber(v8Contexts, "freePerSecond");
+        serverV8max += extractNumber(v8Contexts, "maxPerSecond");
+      } catch (...) {
+        // if attribute "v8Context" is not present, simply do not count
+      }
+          
+      try {
+        VPackSlice threads = server.get("threads");
+        serverThreadsRunning += extractNumber(threads, "runningPerSecond");
+        serverThreadsWorking += extractNumber(threads, "workingPerSecond");
+        serverThreadsBlocked += extractNumber(threads, "blockedPerSecond");
+        serverThreadsQueued += extractNumber(threads, "queuedPerSecond");
+      } catch (...) {
+        // if attribute "threads" is not present, simply do not count
+      }
 
-      VPackSlice threads = server.get("threads");
-      serverThreadsRunning += extractNumber(threads, "runningPerSecond");
-      serverThreadsWorking += extractNumber(threads, "workingPerSecond");
-      serverThreadsBlocked += extractNumber(threads, "blockedPerSecond");
-      serverThreadsQueued += extractNumber(threads, "queuedPerSecond");
+      try {
+        VPackSlice system = values.get("system");
+        systemMinorPageFaultsPerSecond += extractNumber(system, "minorPageFaultsPerSecond");
+        systemMajorPageFaultsPerSecond += extractNumber(system, "majorPageFaultsPerSecond");
+        systemUserTimePerSecond += extractNumber(system, "userTimePerSecond");
+        systemSystemTimePerSecond += extractNumber(system, "systemTimePerSecond");
+        systemResidentSize += extractNumber(system, "residentSize");
+        systemVirtualSize += extractNumber(system, "virtualSize");
+        systemNumberOfThreads += extractNumber(system, "numberOfThreads");
+      } catch (...) {
+        // if attribute "system" is not present, simply do not count
+      }
 
-      VPackSlice system = values.get("system");
-      systemMinorPageFaultsPerSecond += extractNumber(system, "minorPageFaultsPerSecond");
-      systemMajorPageFaultsPerSecond += extractNumber(system, "majorPageFaultsPerSecond");
-      systemUserTimePerSecond += extractNumber(system, "userTimePerSecond");
-      systemSystemTimePerSecond += extractNumber(system, "systemTimePerSecond");
-      systemResidentSize += extractNumber(system, "residentSize");
-      systemVirtualSize += extractNumber(system, "virtualSize");
-      systemNumberOfThreads += extractNumber(system, "numberOfThreads");
+      try {
+        VPackSlice http = values.get("http");
+        httpRequestsTotalPerSecond += extractNumber(http, "requestsTotalPerSecond");
+        httpRequestsAsyncPerSecond += extractNumber(http, "requestsAsyncPerSecond");
+        httpRequestsGetPerSecond += extractNumber(http, "requestsGetPerSecond");
+        httpRequestsHeadPerSecond += extractNumber(http, "requestsHeadPerSecond");
+        httpRequestsPostPerSecond += extractNumber(http, "requestsPostPerSecond");
+        httpRequestsPutPerSecond += extractNumber(http, "requestsPutPerSecond");
+        httpRequestsPatchPerSecond += extractNumber(http, "requestsPatchPerSecond");
+        httpRequestsDeletePerSecond += extractNumber(http, "requestsDeletePerSecond");
+        httpRequestsOptionsPerSecond += extractNumber(http, "requestsOptionsPerSecond");
+        httpRequestsOtherPerSecond += extractNumber(http, "requestsOtherPerSecond");
+      } catch (...) {
+        // if attribute "http" is not present, simply do not count
+      }
 
-      VPackSlice http = values.get("http");
-      httpRequestsTotalPerSecond += extractNumber(http, "requestsTotalPerSecond");
-      httpRequestsAsyncPerSecond += extractNumber(http, "requestsAsyncPerSecond");
-      httpRequestsGetPerSecond += extractNumber(http, "requestsGetPerSecond");
-      httpRequestsHeadPerSecond += extractNumber(http, "requestsHeadPerSecond");
-      httpRequestsPostPerSecond += extractNumber(http, "requestsPostPerSecond");
-      httpRequestsPutPerSecond += extractNumber(http, "requestsPutPerSecond");
-      httpRequestsPatchPerSecond += extractNumber(http, "requestsPatchPerSecond");
-      httpRequestsDeletePerSecond += extractNumber(http, "requestsDeletePerSecond");
-      httpRequestsOptionsPerSecond += extractNumber(http, "requestsOptionsPerSecond");
-      httpRequestsOtherPerSecond += extractNumber(http, "requestsOtherPerSecond");
-
-      VPackSlice client = values.get("client");
-      clientHttpConnections += extractNumber(client, "httpConnections");
-      clientBytesSentPerSecond += extractNumber(client, "bytesSentPerSecond");
-      clientBytesReceivedPerSecond += extractNumber(client, "bytesReceivedPerSecond");
-      clientAvgTotalTime += extractNumber(client, "avgTotalTime");
-      clientAvgRequestTime += extractNumber(client, "avgRequestTime");
-      clientAvgQueueTime += extractNumber(client, "avgQueueTime");
-      clientAvgIoTime += extractNumber(client, "avgIoTime");
+      try {
+        VPackSlice client = values.get("client");
+        clientHttpConnections += extractNumber(client, "httpConnections");
+        clientBytesSentPerSecond += extractNumber(client, "bytesSentPerSecond");
+        clientBytesReceivedPerSecond += extractNumber(client, "bytesReceivedPerSecond");
+        clientAvgTotalTime += extractNumber(client, "avgTotalTime");
+        clientAvgRequestTime += extractNumber(client, "avgRequestTime");
+        clientAvgQueueTime += extractNumber(client, "avgQueueTime");
+        clientAvgIoTime += extractNumber(client, "avgIoTime");
+      } catch (...) {
+        // if attribute "client" is not present, simply do not count
+      }
     } catch (std::exception const& ex) {
+      // should almost never happen now
       LOG_TOPIC(WARN, Logger::STATISTICS) << "caught exception during statistics processing: " << ex.what();
     }
   }
