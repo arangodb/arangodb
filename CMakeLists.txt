@@ -786,6 +786,52 @@ if(ARANGODB_DEBUG_CMAKE)
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
 
+
+################################################################################
+## OPENSSL
+################################################################################
+
+# Some special stuff for Mac OSX and homebrew as a preparation for the
+# generic FindOpenSSL script:
+if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
+  message("searching openssl with brew (${BREW})")
+  # if we have a brew openssl, prefer it over the elderly system one.
+  execute_process(OUTPUT_VARIABLE BREW_ROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND ${BREW} --prefix)
+  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
+  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+endif ()
+
+find_package(OpenSSL REQUIRED)
+
+include_directories(${OPENSSL_INCLUDE_DIR})
+add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
+add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
+
+if (OPENSSL_VERSION)
+  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
+  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
+  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+
+  if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      ON
+    )
+  else ()
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      OFF
+    )
+  endif ()
+endif ()
+
+if (USE_OPENSSL_NO_SSL2)
+  add_definitions(-DOPENSSL_NO_SSL2)
+endif ()
+
 ################################################################################
 ## 3RD PARTY
 ################################################################################
@@ -843,49 +889,6 @@ endforeach()
 
 include_directories(${ICU_INCLUDE_DIR})
 
-################################################################################
-## OPENSSL
-################################################################################
-
-# Some special stuff for Mac OSX and homebrew as a preparation for the 
-# generic FindOpenSSL script:
-if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
-  message("searching openssl with brew (${BREW})")
-  # if we have a brew openssl, prefer it over the elderly system one.
-  execute_process(OUTPUT_VARIABLE BREW_ROOT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND ${BREW} --prefix)
-  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
-  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
-endif ()
-
-find_package(OpenSSL REQUIRED)
-
-include_directories(${OPENSSL_INCLUDE_DIR})
-add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
-add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
-add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
-
-if (OPENSSL_VERSION)
-  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
-  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
-  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
-  if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
-    option(USE_OPENSSL_NO_SSL2
-      "do not use OPENSSL_NO_SSL2"
-      ON
-    )
-  else ()
-    option(USE_OPENSSL_NO_SSL2
-      "do not use OPENSSL_NO_SSL2"
-      OFF
-    )
-  endif ()
-endif ()
-
-if (USE_OPENSSL_NO_SSL2)
-  add_definitions(-DOPENSSL_NO_SSL2)
-endif ()
 
 ################################################################################
 ## V8
