@@ -1,6 +1,9 @@
 v3.3.20 (XXXX-XX-XX)
 --------------------
 
+* fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
+  edges inside the graph viewer.
+
 * fix side-effects of sorting larger arrays (>= 16 members) of constant literal
   values in AQL, when the array was not used only for IN-value filtering but also
   later in the query. 
