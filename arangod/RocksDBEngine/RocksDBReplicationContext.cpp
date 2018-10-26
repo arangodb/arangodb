@@ -144,7 +144,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     return std::make_tuple(TRI_ERROR_BAD_PARAMETER, 0, 0);
   }
   TRI_voc_cid_t cid = logical->id();
-
+  
   MUTEX_LOCKER(writeLocker, _contextLock);
   
   auto it = _iterators.find(cid);
@@ -174,6 +174,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     numberDocuments = rcoll->numberDocuments();
     lazyCreateSnapshot();
   }
+  TRI_ASSERT(_snapshot != nullptr);
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
   auto result = _iterators.emplace(cid, std::move(iter));
@@ -190,7 +191,6 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   
   // we should have a valid iterator if there are documents in here
   TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
-  
   return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
@@ -219,7 +219,6 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
     return true;
   };
   
-  
   TRI_ASSERT(_snapshot != nullptr);
   // FIXME is it technically correct to include newly created collections ?
   // simon: I think no, but this has been the behaviour since 3.2
@@ -231,6 +230,8 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
+  vocbase.updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
+
   return Result();
 }
 
@@ -920,9 +921,10 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
+      it->dbGuard.database().updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
       MUTEX_LOCKER(locker, _contextLock);
       _iterators.erase(it->logical->id());
-    } else {
+    } else { // Context::release() will update the replication client
       it->release();
     }
   }
