@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a race condition in a coordinator, it could happen in rare cases and
+  only with the maintainer mode enabled if the creation of a collection is in
+  progress and at the same time a deletion is forced.
+
 * fixes a routing issue within the web ui after the use of views
 
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
