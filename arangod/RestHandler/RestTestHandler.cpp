@@ -134,7 +134,7 @@ RestStatus RestTestHandler::execute() {
   auto self(shared_from_this());
 
   bool ok = SchedulerFeature::SCHEDULER->queue(
-    PriorityRequestLane(res.get()),
+    priority(res.get()),
     [this, self, duration]() {
       auto stop = clock::now() + duration;
 
@@ -166,5 +166,3 @@ RestStatus RestTestHandler::execute() {
   generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
   return RestStatus::DONE;
 }
-
-
