@@ -70,7 +70,7 @@ static char const* ReasonDeadCount =
     "compacting datafile because it contains many dead objects";
 static char const* ReasonNothingToCompact =
     "checked datafiles, but no compaction opportunity found";
-  
+
 /// @brief compaction state
 namespace arangodb {
 struct CompactionContext {
@@ -93,7 +93,7 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
 
   std::unique_ptr<MMFilesDatafile> datafile(df);
   TRI_voc_fid_t fid = datafile->fid();
-  
+
   std::string copy;
   std::string name("deleted-" + std::to_string(fid) + ".db");
   std::string filename = arangodb::basics::FileUtils::buildFilename(physical->path(), name);
@@ -105,23 +105,36 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
     int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR)
+          << "cannot rename obsolete datafile '" << copy << "' to '"
+          << filename << "': " << TRI_errno_string(res);
+    } else {
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+          << "renamed obsolete datafile '" << copy << "' to '"
+          << filename << "': " << TRI_errno_string(res);
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName() << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+      << "finished compacting datafile '" << datafile->getName() << "'";
 
   int res = datafile->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, Logger::COMPACTOR)
+        << "cannot close obsolete datafile '" << datafile->getName()
+        << "': " << TRI_errno_string(res);
   } else if (datafile->isPhysical()) {
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "wiping compacted datafile '" << datafile->getName() << "' from disk";
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+        << "wiping compacted datafile '" << datafile->getName()
+        << "' from disk";
 
     res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR)
+          << "cannot wipe obsolete datafile '" << datafile->getName()
+          << "': " << TRI_errno_string(res);
     }
 
     // check for .dead files
@@ -150,14 +163,15 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
 /// will be treated as a temporary file and dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile, 
-                                                    MMFilesDatafile* compactor, 
+void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
+                                                    MMFilesDatafile* compactor,
                                                     LogicalCollection* collection) {
   TRI_ASSERT(datafile != nullptr);
   TRI_ASSERT(compactor != nullptr);
   TRI_ASSERT(collection != nullptr);
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
+  std::string compactorName = compactor->getName();
 
   bool ok = false;
   TRI_ASSERT(datafile->fid() == compactor->fid());
@@ -173,10 +187,18 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName() << "' to '" << tempFilename << "': " << TRI_errno_string(res);
     } else {
+      LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+        << "renamed datafile from '" << realName << "' to '"
+        << tempFilename << "'";
+
       res = compactor->rename(realName);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName() << "' to '" << realName << "': " << TRI_errno_string(res);
+      } else {
+        LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+          << "renamed datafile from '" << compactorName << "' to '"
+          << tempFilename << "'";
       }
     }
 
@@ -361,7 +383,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   TRI_ASSERT(physical != nullptr);
   size_t const n = toCompact.size();
   TRI_ASSERT(n > 0);
-  
+
   auto context = std::make_unique<CompactionContext>();
 
   /// @brief datafile iterator, copies "live" data from datafile into compactor
@@ -390,7 +412,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         MMFilesDocumentPosition const old = physical->lookupDocument(element.localDocumentId());
         markerPtr = reinterpret_cast<MMFilesMarker const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       }
-        
+
       bool deleted = (markerPtr == nullptr || marker != markerPtr);
 
       if (deleted) {
@@ -405,7 +427,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       int res = copyMarker(context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write document marker into compactor file: ") + TRI_errno_string(res)); 
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write document marker into compactor file: ") + TRI_errno_string(res));
       }
 
       // let marker point to the new position
@@ -658,7 +680,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     wasBlocked = true;
     return false;
   }
-  
+
   // check if there is already a compactor file
   if (!physical->_compactors.empty()) {
     // we already have created a compactor file in progress.
@@ -677,11 +699,11 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     physical->setCompactionStatus(ReasonNoDatafiles);
     return false;
   }
-  
+
   std::vector<CompactionInfo> toCompact;
   toCompact.reserve(MMFilesCompactionFeature::COMPACTOR->maxFiles());
 
-  // now we have datafiles that we can process 
+  // now we have datafiles that we can process
   size_t const n = datafiles.size();
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << collection->name() << "' for compaction opportunities";
 
@@ -715,7 +737,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t totalSize = 0;
   char const* reason = nullptr;
   char const* firstReason = nullptr;
-  
+
   for (size_t i = start; i < n; ++i) {
     MMFilesDatafile* df = datafiles[i];
     if (df->state() == TRI_DF_STATE_OPEN_ERROR || df->state() == TRI_DF_STATE_WRITE_ERROR) {
@@ -777,7 +799,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
       numAlive += static_cast<int64_t>(dfi.numberAlive);
       continue;
     }
-    
+
 
     TRI_ASSERT(doCompact);
 
@@ -793,11 +815,11 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     // the size of the resulting file. this is because deletions will reduce the
     // size of the resulting file
     if (reason != ReasonOnlyDeletions) {
-      if (!toCompact.empty() && 
+      if (!toCompact.empty() &&
           totalSize + (uint64_t)df->maximalSize() >= maxSize &&
           (toCompact.size() != 1 || reason != ReasonDatafileSmall)) {
         // found enough files to compact (in terms of cumulated size)
-        // there's one exception to this: if we're merging multiple datafiles, 
+        // there's one exception to this: if we're merging multiple datafiles,
         // then we don't stop at the first one even if the merge of file #1 and #2
         // would be too big. if we wouldn't stop in this case, then file #1 would
         // be selected for compaction over and over
@@ -856,13 +878,13 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
     physical->setNextCompactionStartIndex(0);
-    
+
     // cleanup local variables
     physical->setCompactionStatus(ReasonNothingToCompact);
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
-    
+
   // handle datafiles with dead objects
   TRI_ASSERT(toCompact.size() >= 1);
   TRI_ASSERT(reason != nullptr);
@@ -905,10 +927,10 @@ void MMFilesCompactorThread::run() {
         } catch (...) {
           collections.clear();
         }
-  
+
         for (auto& collection : collections) {
           bool worked = false;
-            
+
           if (engine->isCompactionDisabled()) {
             continue;
           }
@@ -929,7 +951,7 @@ void MMFilesCompactorThread::run() {
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
               // check whether someone else holds a read-lock on the compaction
               // lock
-              
+
               auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
               TRI_ASSERT(physical != nullptr);
 
@@ -1032,7 +1054,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(
 
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
-  trx.addHint(transaction::Hints::Hint::TRY_LOCK); 
+  trx.addHint(transaction::Hints::Hint::TRY_LOCK);
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
   // when we get into this function, the caller has already acquired the
   // collection's status lock - so we better do not lock it again
@@ -1041,7 +1063,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(
   Result res = trx.begin();
 
   if (!res.ok()) {
-    return 16384; // assume some positive value 
+    return 16384; // assume some positive value
   }
 
   return collection.numberDocuments(&trx, transaction::CountType::Normal);

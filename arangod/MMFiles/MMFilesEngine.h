@@ -203,7 +203,7 @@ class MMFilesEngine final : public StorageEngine {
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
   void waitForSyncTick(TRI_voc_tick_t tick) override;
-  
+
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
@@ -239,6 +239,8 @@ class MMFilesEngine final : public StorageEngine {
 
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;
+
+  Result persistLocalDocumentIds(TRI_vocbase_t& vocbase);
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
@@ -421,10 +423,10 @@ class MMFilesEngine final : public StorageEngine {
 
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection,
                      bool ignoreErrors);
- 
+
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;
- 
+
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
 
