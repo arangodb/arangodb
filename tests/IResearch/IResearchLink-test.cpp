@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "store/fs_directory.hpp"
 #include "utils/log.hpp"

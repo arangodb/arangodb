@@ -25,7 +25,7 @@
 #include "common.h"
 
 #include "ExecutionBlockMock.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"

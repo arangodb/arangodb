@@ -31,6 +31,8 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Traverser.h"
+#include "VocBase/ManagedDocumentResult.h"
+#include "tests/Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -78,16 +80,26 @@ class TraverserHelper : public Traverser {
 
 SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   ExecutionState state;
+  mocks::MockAqlServer server{};
+  auto bindParams = std::make_shared<VPackBuilder>();
+  bindParams->openObject();
+  bindParams->close();
+  auto queryOptions = std::make_shared<VPackBuilder>();
+  queryOptions->openObject();
+  queryOptions->close();
+
   //TrxContext:
   //  ->getParentTransaction() != nullptr
   //  ->isEmbeddable
+  // arangodb::aql::Query fakedQuery(false, vocbase, "", bindParams, queryOptions, arangodb::aql::QueryPart::PART_DEPENDENT);
 
   ResourceMonitor monitor;
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
   arangodb::transaction::Methods* trx = nullptr;
+  arangodb::ManagedDocumentResult mdr;
 
-  auto traverser = std::make_unique<TraverserHelper>(nullptr, trx, nullptr);
+  auto traverser = std::make_unique<TraverserHelper>(nullptr, trx, &mdr);
   TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverser));
 
   GIVEN("there are no rows upstream") {

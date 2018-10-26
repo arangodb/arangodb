@@ -26,7 +26,7 @@
 #include "catch.hpp"
 #include "common.h"
 #include "AgencyMock.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ClusterPhase.h"
 #include "ApplicationFeatures/DatabasePhase.h"

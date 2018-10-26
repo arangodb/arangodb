@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"

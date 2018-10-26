@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "Aql/QueryRegistry.h"
 #if USE_ENTERPRISE

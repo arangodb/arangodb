@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_STORAGE_ENGINE_MOCK_H
-#define ARANGODB_IRESEARCH__IRESEARCH_STORAGE_ENGINE_MOCK_H 1
+#ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H
+#define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
 
 #include "Basics/Result.h"
 #include "Basics/StringRef.h"

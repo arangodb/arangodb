@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
