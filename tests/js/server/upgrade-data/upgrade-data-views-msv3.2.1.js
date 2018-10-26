@@ -47,10 +47,10 @@ function UpgradeData() {
       const c = db._collection('LargeCollection');
       assertEqual(c.count(), 10000);
 
-      const v = db._createView('TestView');
+      const v = db._createView('TestView', 'arangosearch', {});
       const properties = {
         links: {
-          'TestView': {
+          'LargeCollection': {
             includeAllFields: true
           }
         }
