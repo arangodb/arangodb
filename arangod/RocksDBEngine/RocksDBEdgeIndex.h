@@ -176,7 +176,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
 
-  void afterTruncate() override;
+  void afterTruncate(TRI_voc_tick_t tick) override;
   void recalculateEstimates() override;
 
   Result insertInternal(transaction::Methods*, RocksDBMethods*,

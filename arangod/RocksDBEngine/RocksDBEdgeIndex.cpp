@@ -1081,10 +1081,10 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   return true;
 }
 
-void RocksDBEdgeIndex::afterTruncate() {
+void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick) {
   TRI_ASSERT(_estimator != nullptr);
-  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
-  RocksDBIndex::afterTruncate();
+  _estimator->bufferTruncate(tick);
+  RocksDBIndex::afterTruncate(tick);
 }
 
 void RocksDBEdgeIndex::recalculateEstimates() {

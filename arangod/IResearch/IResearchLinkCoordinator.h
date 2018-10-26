@@ -65,8 +65,6 @@ class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
     return !(*this == meta);
   }
 
-  virtual void afterTruncate() override {}
-
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
