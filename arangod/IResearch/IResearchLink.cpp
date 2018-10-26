@@ -159,7 +159,7 @@ int IResearchLink::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
-void IResearchLink::afterTruncate() {
+void IResearchLink::doAfterTruncate() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
