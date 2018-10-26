@@ -509,7 +509,8 @@ SECTION("test_query") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE(nullptr != logicalCollection);
-    auto logicalWiew = vocbase.createView(createJson->slice());
+    arangodb::LogicalView::ptr logicalWiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(logicalWiew, vocbase, createJson->slice(), 42).ok()));
     REQUIRE((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     REQUIRE((false == !wiewImpl));

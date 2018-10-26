@@ -2513,7 +2513,7 @@ SECTION("test_unregister_link") {
     view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((1 == cids.size()));
     CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((true == vocbase.dropView(view->id(), false).ok()));
+    CHECK((true == view->drop().ok()));
     CHECK((true == !vocbase.lookupView("testView")));
     CHECK((nullptr != vocbase.lookupCollection("testCollection")));
     CHECK((true == vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
@@ -2619,6 +2619,7 @@ SECTION("test_tracked_cids") {
     arangodb::LogicalView::ptr logicalView;
     REQUIRE((arangodb::iresearch::IResearchView::factory().instantiate(logicalView, vocbase, viewJson->slice(), 0).ok()));
     REQUIRE((false == !logicalView));
+    s.engine.createView(vocbase, logicalView->id(), *logicalView); // ensure link can find view
     StorageEngineMock(s.server).registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
@@ -2648,6 +2649,7 @@ SECTION("test_tracked_cids") {
     arangodb::LogicalView::ptr logicalView;
     REQUIRE((arangodb::iresearch::IResearchView::factory().instantiate(logicalView, vocbase, viewJson->slice(), 0).ok()));
     REQUIRE((false == !logicalView));
+    s.engine.createView(vocbase, logicalView->id(), *logicalView); // ensure link can find view
     StorageEngineMock(s.server).registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
