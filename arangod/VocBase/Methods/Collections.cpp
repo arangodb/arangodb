@@ -109,23 +109,21 @@ LogicalCollection* Collections::Context::coll() const { return &_coll; }
 
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
-    std::function<void(LogicalCollection&)> const& func) {
+    std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func
+) {
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::shared_ptr<LogicalCollection>> colls =
         ClusterInfo::instance()->getCollections(vocbase->name());
 
     for (std::shared_ptr<LogicalCollection> const& c : colls) {
       if (!c->deleted()) {
-        func(*c);
+        func(c);
       }
     }
   } else {
-    std::vector<arangodb::LogicalCollection*> colls =
-        vocbase->collections(false);
-
-    for (LogicalCollection* c : colls) {
+    for (auto& c: vocbase->collections(false)) {
       if (!c->deleted()) {
-        func(*c);
+        func(c);
       }
     }
   }
@@ -153,7 +151,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
       }
 
       if (coll) {
-        func(*coll);
+        func(coll);
 
         return Result();
       }
@@ -179,7 +177,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                     "No access to collection '" + name + "'");
     }
     try {
-      func(*coll);
+      func(coll);
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -273,9 +271,9 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       }
 
       // reload otherwise collection might not be in yet
-      func(*col);
+      func(col);
     } else {
-      arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
+      auto col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);
 
       // do not grant rights on system collections
@@ -291,7 +289,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
         });
       }
 
-      func(*col);
+      func(col);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -483,10 +481,10 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   }
 
   std::string const oldName(coll->name());
-  int res = coll->vocbase().renameCollection(coll, newName, doOverride);
+  auto res = coll->vocbase().renameCollection(coll->id(), newName, doOverride);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, "cannot rename collection");
+  if (!res.ok()) {
+    return res;
   }
 
   // rename collection inside _graphs as well
@@ -584,7 +582,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase,
 
   auto idxs = coll.getIndexes();
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn, false);
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
   };
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
@@ -630,7 +628,7 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
                                std::make_shared<VPackBuilder>(),
                                arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::registry();;
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 

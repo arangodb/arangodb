@@ -61,7 +61,7 @@ class term_query : public filter::prepared {
  public:
   typedef states_cache<reader_term_state> states_t;
 
-  DECLARE_SPTR(term_query);
+  DECLARE_SHARED_PTR(term_query);
 
   static ptr make(
     const index_reader& rdr,

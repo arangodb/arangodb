@@ -21,22 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4244) // conversion from 'unsigned int' to 'unsigned char', possible loss of data
-  #pragma warning(disable: 4245) // conversion from 'int' to '...', signed/unsigned mismatch
-#endif
-
-  #include <boost/crc.hpp>
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4244)
-  #pragma warning(default: 4245)
-#endif
-
 #include "shared.hpp"
 #include "store_utils.hpp"
 
+#include "utils/crc.hpp"
 #include "utils/std.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/memory.hpp"
 
 NS_ROOT
@@ -140,7 +130,8 @@ void skip(data_input& in, size_t to_skip,
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(skip_buf, step);
     assert(read == step);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(skip_buf, step);
 #endif // IRESEARCH_DEBUG
 
@@ -198,7 +189,8 @@ void read_block(
       reqiured 
     );
     assert(read == reqiured);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
       reqiured 
@@ -230,7 +222,8 @@ void read_block(
       reqiured 
     );
     assert(read == reqiured);
-#else 
+    UNUSED(read);
+#else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
       reqiured
@@ -257,7 +250,7 @@ uint32_t write_block(
   }
 
   const auto bits = packed::bits_required_32(
-    *std::max_element(decoded, decoded + size)
+    decoded, decoded + size
   );
 
   std::memset(encoded, 0, sizeof(uint32_t) * size);
@@ -288,7 +281,7 @@ uint32_t write_block(
   }
 
   const auto bits = packed::bits_required_64(
-    *std::max_element(decoded, decoded + size)
+    decoded, decoded + size
   );
 
   std::memset(encoded, 0, sizeof(uint64_t) * size);
@@ -302,7 +295,6 @@ uint32_t write_block(
 
   return bits;
 }
-
 
 NS_END // bitpack
 NS_END // encode
@@ -354,13 +346,14 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   #ifdef IRESEARCH_DEBUG
     const auto read = read_bytes(&(buf[0]) + used, size);
     assert(read == size);
+    UNUSED(read);
   #else
     read_bytes(&(buf[0]) + used, size);
   #endif // IRESEARCH_DEBUG
 }
 
 int64_t bytes_ref_input::checksum(size_t offset) const {
-  boost::crc_32_type crc;
+  crc32c crc;
 
   crc.process_block(pos_, std::min(pos_ + offset, data_.end()));
 
@@ -419,6 +412,7 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
   #ifdef IRESEARCH_DEBUG
     const auto read = read_bytes(&(buf[0]) + used, size);
     assert(read == size);
+    UNUSED(read);
   #else
     read_bytes(&(buf[0]) + used, size);
   #endif // IRESEARCH_DEBUG
@@ -430,11 +424,12 @@ void bytes_input::read_from(data_input& in, size_t size) {
     return;
   }
 
-  oversize(buf_, size);
+  string_utils::oversize(buf_, size);
 
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(buf_[0]), size);
   assert(read == size);
+  UNUSED(read);
 #else
   in.read_bytes(&(buf_[0]), size);
 #endif // IRESEARCH_DEBUG

@@ -285,9 +285,8 @@ void GeneralServerFeature::defineHandlers() {
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
+  auto traverserEngineRegistry =  TraverserEngineRegistryFeature::registry();
   if (_combinedRegistries == nullptr) {
     _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
   } else {
@@ -309,10 +308,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::COLLECTION_PATH,
-      RestHandlerCreator<RestCollectionHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,

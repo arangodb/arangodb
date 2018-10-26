@@ -252,7 +252,7 @@ void dropCollectionFromAllViews(
 
       if (!view) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->id() << "': not an iresearch view";
+            << "error finding view: '" << view->id() << "': not an arangosearch view";
         return;
       }
 
@@ -289,7 +289,7 @@ void dropCollectionFromView(
       // don't remove the link if it's there
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "found link '" << indexId
-          << "' of type iresearch in collection '" << collectionId
+          << "' of type arangosearch in collection '" << collectionId
           << "' in database '" << dbId << "': skipping drop marker";
       return;
     }
@@ -379,51 +379,46 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   }
 }
 
-void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
-                                              const rocksdb::Slice& key) {
+// common implementation for DeleteCF / SingleDeleteCF
+void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
+                                                    const rocksdb::Slice& key) {
   if (column_family_id == _documentCF) {
-    auto coll =
-      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-
-    if (coll == nullptr) {
-      return;
-    }
-
-    auto const links = lookupLinks(*coll);
-
-    if (links.empty()) {
-      return;
-    }
-
-    auto docId = RocksDBKey::documentId(key);
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()),
-      *coll,
-      arangodb::AccessMode::Type::WRITE
-    );
-
-    trx.begin();
-
-    for (auto link : links) {
-      link->remove(
-        &trx,
-        docId,
-        arangodb::velocypack::Slice::emptyObjectSlice(),
-        Index::OperationMode::internal
-      );
-      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // removed: " << docId.id();
-    }
-
-    trx.commit();
-
     return;
   }
-}
+  auto coll =
+    lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
 
-void IResearchRocksDBRecoveryHelper::SingleDeleteCF(uint32_t column_family_id,
-                                                    const rocksdb::Slice& key) {
-  // not needed for anything atm
+  if (coll == nullptr) {
+    return;
+  }
+
+  auto const links = lookupLinks(*coll);
+
+  if (links.empty()) {
+    return;
+  }
+
+  auto docId = RocksDBKey::documentId(key);
+  SingleCollectionTransaction trx(
+    transaction::StandaloneContext::Create(coll->vocbase()),
+    *coll,
+    arangodb::AccessMode::Type::WRITE
+  );
+
+  trx.begin();
+
+  for (auto link : links) {
+    link->remove(
+      &trx,
+      docId,
+      arangodb::velocypack::Slice::emptyObjectSlice(),
+      Index::OperationMode::internal
+    );
+    // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
+    // removed: " << docId.id();
+  }
+
+  trx.commit();
 }
 
 void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
@@ -461,14 +456,14 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
     case RocksDBLogType::CollectionTruncate: {
       uint64_t objectId = RocksDBLogValue::objectId(blob);
       auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
-      
+
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
-          link->afterTruncate();
+          link->afterTruncate(/*tick*/0); // tick isn't used for links
         }
       }
-      
+
       break;
     }
     default: break; // shut up the compiler

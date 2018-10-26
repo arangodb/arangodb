@@ -97,10 +97,9 @@ OperationResult GraphManager::createCollection(std::string const& name,
                                                VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-
-  Result res = methods::Collections::create(&ctx()->vocbase(), name, colType,
-                                            options, waitForSync, true,
-                                            [&](LogicalCollection& coll) {});
+  Result res = methods::Collections::create(
+      &ctx()->vocbase(), name, colType, options, waitForSync, true,
+      [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
 }
@@ -119,14 +118,24 @@ OperationResult GraphManager::findOrCreateVertexCollectionByName(
 
 bool GraphManager::renameGraphCollection(std::string const& oldName, std::string const& newName) {
   // todo: return a result, by now just used in the graph modules
-  VPackBuilder graphsBuilder;
-  readGraphs(graphsBuilder, aql::PART_DEPENDENT);
-  VPackSlice graphs = graphsBuilder.slice();
+
+  std::vector<std::unique_ptr<Graph>> renamedGraphs;
+
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    bool renamed = graph->renameCollections(oldName, newName);
+    if (renamed) {
+      renamedGraphs.emplace_back(std::move(graph));
+    }
+    return Result{};
+  };
+  Result res = applyOnAllGraphs(callback);
+  if (res.fail()) {
+    return false;
+  }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
-
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
     return false;
@@ -134,86 +143,29 @@ bool GraphManager::renameGraphCollection(std::string const& oldName, std::string
   OperationOptions options;
   OperationResult checkDoc;
 
-
-  for (auto graphSlice : VPackArrayIterator(graphs.get("graphs"))) {
+  for (auto const& graph : renamedGraphs) {
     VPackBuilder builder;
-
-    graphSlice = graphSlice.resolveExternals();
-    TRI_ASSERT(graphSlice.isObject() && graphSlice.hasKey(StaticStrings::KeyString));
-    if (!graphSlice.isObject() || !graphSlice.hasKey(StaticStrings::KeyString)) {
-      // return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
-      return false;
-    }
-    std::unique_ptr<Graph> graph;
-    try {
-      graph = Graph::fromPersistence(graphSlice, _vocbase);
-    } catch (basics::Exception&) {
-      // return {e.message(), e.code()};
-      return false;
-    }
-    TRI_ASSERT(graph != nullptr);
-    if (graph == nullptr) {
-      return false;
-    }
-
-    // rename not allowed in a smart collection
-    if (graph->isSmart()) {
-      continue;
-    }
-
     builder.openObject();
-    builder.add(StaticStrings::KeyString, VPackValue(graphSlice.get(StaticStrings::KeyString).copyString()));
-
-    builder.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
-    for (auto const& sGED : graph->edgeDefinitions()) {
-      builder.openObject();
-      std::string col = sGED.first;
-      std::set<std::string> froms = sGED.second.getFrom();
-      std::set<std::string> tos = sGED.second.getTo();
-
-      if (col != oldName) {
-        builder.add("collection", VPackValue(col));
-      } else {
-        builder.add("collection", VPackValue(newName));
-      }
-
-      builder.add("from", VPackValue(VPackValueType::Array));
-      for (auto const& from : froms) {
-        if (from != oldName) {
-          builder.add(VPackValue(from));
-        } else {
-          builder.add(VPackValue(newName));
-        }
-      }
-      builder.close(); // array
-
-      builder.add("to", VPackValue(VPackValueType::Array));
-      for (auto const& to : tos) {
-        if (to != oldName) {
-          builder.add(VPackValue(to));
-        } else {
-          builder.add(VPackValue(newName));
-        }
-      }
-      builder.close(); // array
-
-      builder.close(); // object
-    }
-    builder.close(); // array
-    builder.close(); // object
-
+    graph->toPersistence(builder);
+    builder.close();
+    
     try {
-      checkDoc =
+      OperationResult checkDoc =
           trx.update(StaticStrings::GraphCollection, builder.slice(), options);
       if (checkDoc.fail()) {
-        trx.finish(checkDoc.result);
-        return false;
+        res = trx.finish(checkDoc.result);
+        if (res.fail()) {
+          return false;
+        }
       }
     } catch (...) {
     }
-  }
+  };
 
-  trx.finish(checkDoc.result);
+  res = trx.finish(checkDoc.result);
+  if (res.fail()) {
+    return false;
+  }
   return true;
 }
 
@@ -482,7 +434,7 @@ Result GraphManager::applyOnAllGraphs(
                              arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"}, nullptr,
                              nullptr, aql::PART_MAIN);
   aql::QueryResult queryResult =
-      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+      query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -534,16 +486,20 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& edgeColl : graph->edgeCollections()) {
     bool found = false;
     Result res = methods::Collections::lookup(
-        vocbase, edgeColl, [&found, &innerRes, &graph](LogicalCollection& col) {
-          if (col.type() != TRI_COL_TYPE_EDGE) {
+        vocbase, edgeColl,
+        [&found, &innerRes,
+         &graph](std::shared_ptr<LogicalCollection> const& col) -> void {
+          TRI_ASSERT(col);
+          if (col->type() != TRI_COL_TYPE_EDGE) {
             innerRes.reset(
                 TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                "Collection: '" + col.name() + "' is not an EdgeCollection");
+                "Collection: '" + col->name() + "' is not an EdgeCollection");
           } else {
-            innerRes = graph->validateCollection(col);
+            innerRes = graph->validateCollection(*col);
             found = true;
           }
         });
+
     if (innerRes.fail()) {
       return innerRes;
     }
@@ -564,10 +520,13 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     bool found = false;
     Result res = methods::Collections::lookup(
         vocbase, vertexColl,
-        [&found, &innerRes, &graph](LogicalCollection& col) {
-          innerRes = graph->validateCollection(col);
+        [&found, &innerRes,
+         &graph](std::shared_ptr<LogicalCollection> const& col) -> void {
+          TRI_ASSERT(col);
+          innerRes = graph->validateCollection(*col);
           found = true;
         });
+
     if (innerRes.fail()) {
       return innerRes;
     }
@@ -604,7 +563,8 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& vertexColl : documentCollectionsToCreate) {
     Result res = methods::Collections::create(
         vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT, options, waitForSync, true,
-        [&](LogicalCollection& coll) {});
+        [](std::shared_ptr<LogicalCollection> const&) -> void {});
+
     if (res.fail()) {
       return res;
     }
@@ -612,9 +572,10 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    Result res = methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
-                                              options, waitForSync, true,
-                                              [&](LogicalCollection& coll) {});
+    Result res = methods::Collections::create(
+        vocbase, edgeColl, TRI_COL_TYPE_EDGE, options, waitForSync, true,
+        [](std::shared_ptr<LogicalCollection> const&) -> void {});
+
     if (res.fail()) {
       return res;
     }
@@ -644,7 +605,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   LOG_TOPIC(DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
   aql::QueryResult queryResult =
-      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+      query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -859,10 +820,13 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
          boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection& coll) {
-            dropResult = methods::Collections::drop(&ctx()->vocbase(), &coll,
-                                                    false, -1.0);
+          &ctx()->vocbase(), collection,
+          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+            TRI_ASSERT(coll);
+            dropResult = methods::Collections::drop(&ctx()->vocbase(),
+                                                    coll.get(), false, -1.0);
           });
+
       if (dropResult.fail()) {
         LOG_TOPIC(WARN, Logger::GRAPHS)
             << "While removing graph `" << graph.name() << "`: "

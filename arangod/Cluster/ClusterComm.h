@@ -496,7 +496,8 @@ class ClusterComm {
   /// @brief start the communication background thread
   //////////////////////////////////////////////////////////////////////////////
 
-  void startBackgroundThread();
+  void startBackgroundThreads();
+  void stopBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.

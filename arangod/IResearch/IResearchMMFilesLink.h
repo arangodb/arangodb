@@ -34,7 +34,7 @@ NS_BEGIN(iresearch)
 class IResearchMMFilesLink final
   : public arangodb::Index, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchMMFilesLink();
 
@@ -54,8 +54,8 @@ class IResearchMMFilesLink final
     return IResearchLink::drop();
   }
     
-  void afterTruncate() override {
-    IResearchLink::afterTruncate();
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+    IResearchLink::doAfterTruncate();
   };
 
   virtual bool hasBatchInsert() const override {

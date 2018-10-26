@@ -228,9 +228,9 @@ SECTION("test_analyzer") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -478,9 +478,9 @@ SECTION("test_async_index") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -834,9 +834,9 @@ SECTION("test_fields") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));

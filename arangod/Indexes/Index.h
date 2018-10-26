@@ -322,8 +322,9 @@ class Index {
   // called when the index is dropped
   virtual int drop();
 
-  // called after the collection was truncated
-  virtual void afterTruncate() = 0;
+  /// @brief called after the collection was truncated
+  /// @param tick at which truncate was applied
+  virtual void afterTruncate(TRI_voc_tick_t tick) {};
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);

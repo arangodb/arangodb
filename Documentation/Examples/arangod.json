@@ -145,7 +145,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 19609898188,
+    "default" : 19609896960,
     "description" : "size of cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -824,6 +824,14 @@
     "section" : "log",
     "type" : "string"
   },
+  "log.request-parameters" : {
+    "default" : true,
+    "description" : "include full URLs and HTTP request parameters in trace logs",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.role" : {
     "default" : false,
     "description" : "log server role",
@@ -1034,7 +1042,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 19609898188,
+    "default" : 19609896960,
     "description" : "size of block cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -1484,7 +1492,7 @@
     "type" : "uint64"
   },
   "server.minimal-threads" : {
-    "default" : 2,
+    "default" : 0,
     "description" : "minimum number of request handling threads to run",
     "enterpriseOnly" : false,
     "hidden" : true,

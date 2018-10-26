@@ -54,16 +54,31 @@ NS_ROOT
 // --SECTION--                                       skip_writer implementation
 // ----------------------------------------------------------------------------
 
-skip_writer::skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT 
+skip_writer::skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 
 void skip_writer::prepare(
     size_t max_levels, 
-    size_t count, 
-    const skip_writer::write_f& write /* = nop */) {
+    size_t count,
+    const skip_writer::write_f& write, /* = nop */
+    const memory_allocator& alloc /* = memory_allocator::global() */
+) {
   max_levels = std::max(size_t(1), max_levels);
-  levels_.resize(std::min(max_levels, ::max_levels(skip_0_, skip_n_, count)));
+  max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
+  levels_.reserve(max_levels);
+  max_levels = std::max(max_levels, levels_.capacity());
+
+  // reset existing skip levels
+  for (auto& level : levels_) {
+    level.reset(alloc);
+  }
+
+  // add new skip levels
+  for (auto size = levels_.size(); size < max_levels; ++size) {
+    levels_.emplace_back(alloc);
+  }
+
   write_ = write;
 }
 
@@ -322,10 +337,11 @@ void skip_reader::reset() {
 void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t step) {
   // read level length
   const auto length = stream->read_vlong();
+
   if (!length) {
-    // corrupted index
-    throw index_error();
+    throw index_error("while loading level, error: zero length");
   }
+
   const auto begin = stream->file_pointer();
   const auto end = begin + length;
 

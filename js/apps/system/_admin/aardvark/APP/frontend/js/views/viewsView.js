@@ -30,7 +30,7 @@
     events: {
       'click #createView': 'createView',
       'click #viewsToggle': 'toggleSettingsDropdown',
-      'click .tile': 'gotoView',
+      'click .tile-view': 'gotoView',
       'keyup #viewsSearchInput': 'search',
       'click #viewsSearchSubmit': 'search',
       'click #viewsSortDesc': 'sorting'
@@ -151,7 +151,8 @@
     gotoView: function (e) {
       var name = $(e.currentTarget).attr('id');
       if (name) {
-        window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '/' + encodeURIComponent(name);
+        var url = 'view/' + encodeURIComponent(name);
+        window.App.navigate(url, {trigger: true});
       }
     },
 
@@ -242,6 +243,7 @@
         data: options,
         success: function (data) {
           window.modalView.hide();
+          arangoHelper.arangoNotification('View', 'Creation in progress. This may take a while.');
           self.getViews();
         },
         error: function (error) {

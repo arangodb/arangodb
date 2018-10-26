@@ -71,9 +71,6 @@ class PhysicalCollection {
   virtual void load() = 0;
   virtual void unload() = 0;
 
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
-
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
 

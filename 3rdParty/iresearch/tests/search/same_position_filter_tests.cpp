@@ -49,7 +49,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       });
       add_segment(gen);
       gen.reset();
-      add_segment(gen, irs::OPEN_MODE::OM_APPEND);
+      add_segment(gen, irs::OM_APPEND);
     }
 
     // read segment
@@ -569,8 +569,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 
@@ -590,8 +589,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 

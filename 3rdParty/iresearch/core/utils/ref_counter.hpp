@@ -26,54 +26,93 @@
 
 #include <functional>
 #include <memory>
-#include <unordered_map>
+#include <unordered_set>
 #include <mutex>
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/thread_utils.hpp"
+#include "utils/memory.hpp"
 
 NS_ROOT
 
 template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
-class ref_counter: public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
+class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
  public:
   typedef std::shared_ptr<const Key> ref_t;
+
+  struct equal_to : Equal {
+    bool operator()(const ref_t& lhs, const ref_t& rhs) const {
+      assert(lhs && rhs);
+      return Equal::operator()(*lhs, *rhs);
+    }
+  }; // equal_to
+
+  struct hash : Hash {
+    bool operator()(const ref_t& value) const {
+      assert(value);
+      return Hash::operator()(*value);
+    }
+  }; // hash
+
   ref_t add(Key&& key) {
-    scoped_lock_t lock(lock_);
-    auto itr = refs_.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple(nullptr));
+    SCOPED_LOCK(lock_);
 
-    if (itr.second) {
-      static auto noop_deleter = [](const Key*) {};
+    auto res = refs_.emplace(ref_t(), &key);
 
-      itr.first->second.reset(&(itr.first->first), noop_deleter);
+    if (res.second) {
+      try {
+        const_cast<ref_t&>(*res.first) = std::make_shared<const Key>(std::forward<Key>(key));
+      } catch (...) {
+        // rollback
+        refs_.erase(res.first);
+        return ref_t();
+      }
     }
 
-   return itr.first->second;
+    return *res.first;
   }
-  bool contains(const Key& key) {
-    scoped_lock_t lock(lock_);
-    return refs_.find(key) != refs_.end();
-  }
-  size_t find(const Key& key) {
-    scoped_lock_t lock(lock_);
-    auto itr = refs_.find(key);
 
-    return itr == refs_.end() ? 0 : (itr->second.use_count() - 1); // -1 for usage by refs_ itself
+  bool remove(const Key& key) {
+    const ref_t ref(ref_t(), &key); // aliasing ctor
+
+    SCOPED_LOCK(lock_);
+    return refs_.erase(ref) > 0;
   }
-  bool empty() {
-    scoped_lock_t lock(lock_);
+
+  bool contains(const Key& key) const NOEXCEPT {
+    const ref_t ref(ref_t(), &key); // aliasing ctor
+
+    SCOPED_LOCK(lock_);
+    return refs_.find(ref) != refs_.end();
+  }
+
+  size_t find(const Key& key) const NOEXCEPT {
+    const ref_t ref(ref_t(), &key); // aliasing ctor
+
+    SCOPED_LOCK(lock_);
+    auto itr = refs_.find(ref);
+
+    return itr == refs_.end() ? 0 : (itr->use_count() - 1); // -1 for usage by refs_ itself
+  }
+
+  bool empty() const NOEXCEPT {
+    SCOPED_LOCK(lock_);
     return refs_.empty();
   }
-  bool visit(const std::function<bool(const Key&, size_t)>& visitor, bool remove_unused = false) {
-    scoped_lock_t lock(lock_);
+
+  template<typename Visitor>
+  bool visit(const Visitor& visitor, bool remove_unused = false) {
+    SCOPED_LOCK(lock_);
 
     for (auto itr = refs_.begin(), end = refs_.end(); itr != end;) {
-      auto visit_next = visitor(itr->first, itr->second.use_count() - 1); // -1 for usage by refs_ itself
+      auto& ref = *itr;
+      assert(*itr);
 
-      if (remove_unused && itr->second.unique()) {
+      auto visit_next = visitor(*ref, ref.use_count() - 1); // -1 for usage by refs_ itself
+
+      if (remove_unused && ref.unique()) {
         itr = refs_.erase(itr);
-      }
-      else {
+      } else {
         ++itr;
       }
 
@@ -84,11 +123,11 @@ class ref_counter: public util::noncopyable { // noncopyable because shared_ptr 
 
     return true;
   }
+
  private:
-  std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
-  typedef std::lock_guard<decltype(lock_)> scoped_lock_t;
-  std::unordered_map<Key, ref_t, Hash, Equal> refs_;
-};
+  mutable std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
+  std::unordered_set<ref_t, hash, equal_to> refs_;
+}; // ref_counter
 
 NS_END
 

@@ -34,7 +34,7 @@ NS_BEGIN(iresearch)
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchRocksDBLink();
 
@@ -55,8 +55,8 @@ class IResearchRocksDBLink final
     return IResearchLink::drop();
   }
     
-  virtual void afterTruncate() override {
-    IResearchLink::afterTruncate();
+  virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
+    IResearchLink::doAfterTruncate();
   };
 
   virtual bool hasBatchInsert() const override {

@@ -28,6 +28,7 @@
 #include "iql/query_builder.hpp"
 #include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
+#include "utils/index_utils.hpp"
 
 NS_LOCAL
 
@@ -346,12 +347,14 @@ class transaction_store_tests: public test_base {
       size_t batch_size,
       size_t flush_interval
 ) {
-    auto always_merge = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-      return [](const irs::segment_meta& meta)->bool { return true; };
+    auto always_merge = [](
+      irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+    )->void {
+      for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
     };
     auto codec = irs::formats::get("1_0");
     irs::memory_directory dir;
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
 
@@ -375,7 +378,8 @@ class transaction_store_tests: public test_base {
       auto flushed = store.flush();
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
-      dir_writer->consolidate(always_merge, false);
+      dir_writer->commit();
+      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
       dir_writer->commit();
     }
 
@@ -3316,7 +3320,7 @@ TEST_F(transaction_store_tests, concurrent_add_mt) {
 TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
   auto codec = irs::formats::get("1_0");
   irs::memory_directory dir;
-  auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+  auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
   std::atomic<bool> done(false);
   irs::transaction_store store;
   tests::json_doc_generator gen(
@@ -3325,10 +3329,6 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
   std::vector<const tests::document*> docs;
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
-
-  auto always_merge = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-    return [](const irs::segment_meta& meta)->bool { return true; };
-  };
 
   {
     std::thread thread0a([&store, docs]()->void{
@@ -3396,7 +3396,8 @@ TEST_F(transaction_store_tests, concurrent_add_flush_mt) {
     auto flushed = store.flush();
 
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
-    dir_writer->consolidate(always_merge, false);
+    dir_writer->commit();
+    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     dir_writer->commit();
   }
 
@@ -5130,15 +5131,17 @@ TEST_F(transaction_store_tests, segment_flush) {
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
 
-  auto always_merge = [](const irs::directory& dir, const irs::index_meta& meta)->irs::index_writer::consolidation_acceptor_t {
-    return [](const irs::segment_meta& meta)->bool { return true; };
+  auto always_merge = [](
+    irs::bitvector& candidates, const irs::directory& dir, const irs::index_meta& meta
+  )->void {
+    for (size_t i = meta.size(); i; candidates.set(--i)); // merge every segment
   };
   auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
 
   // flush empty segment
   {
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5164,7 +5167,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush non-empty segment, remove on empty store
   {
     auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5213,7 +5216,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush non-empty segment, remove on non-empty store (partial remove)
   {
     auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5239,7 +5242,8 @@ TEST_F(transaction_store_tests, segment_flush) {
     ASSERT_TRUE(writer.commit());
     flushed = store.flush();
     ASSERT_TRUE(flushed && dir_writer->import(flushed));
-    dir_writer->consolidate(always_merge, false);
+    dir_writer->commit();
+    ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
     dir_writer->commit();
 
     // validate structure
@@ -5273,7 +5277,7 @@ TEST_F(transaction_store_tests, segment_flush) {
   // flush non-empty segment with uncommited insert+remove, commit remainder (partial remove)
   {
     auto query_doc1_doc2 = irs::iql::query_builder().build("name==A||name==B", std::locale::classic());
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
     irs::store_writer writer(store);
 
@@ -5338,7 +5342,8 @@ TEST_F(transaction_store_tests, segment_flush) {
       auto flushed = store.flush();
 
       ASSERT_TRUE(flushed && dir_writer->import(flushed));
-      dir_writer->consolidate(always_merge, false);
+      dir_writer->commit();
+      ASSERT_TRUE(dir_writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
       dir_writer->commit();
     }
 
@@ -5374,7 +5379,7 @@ TEST_F(transaction_store_tests, segment_flush) {
 
   // validate doc_id reuse after flush
   {
-    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     irs::transaction_store store;
 
     // rolled back insert

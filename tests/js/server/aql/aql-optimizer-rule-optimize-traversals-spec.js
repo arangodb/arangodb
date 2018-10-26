@@ -50,6 +50,36 @@ const cleanup = () => {
   } catch (x) {
   }
 };
+
+const assertRuleIsUsed = (query) => {
+  // assert the rule is not used when it's disabled
+  const planDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
+  expect(planDisabled.plan.rules.indexOf(ruleName)).to.equal(-1, query);
+
+  // assert the rule is used when it's enabled
+  const planEnabled = AQL_EXPLAIN(query, { }, paramEnabled);
+  expect(planEnabled.plan.rules.indexOf(ruleName)).to.not.equal(-1, query);
+};
+
+const assertResultsAreUnchanged = (query) => {
+  // assert the rule is not used when it's disabled.
+  const planDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
+  expect(planDisabled.plan.rules.indexOf(ruleName)).to.equal(-1, query);
+
+  const resultDisabled = AQL_EXECUTE(query, { }, paramDisabled).json;
+  const resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+
+  expect(isEqual(resultDisabled, resultEnabled)).to.equal(true, query);
+
+  const opts = { allPlans: true, verbosePlans: true, optimizer: { rules: [ '-all', '+' + ruleName ] } };
+
+  const plans = AQL_EXPLAIN(query, {}, opts).plans;
+  plans.forEach(function (plan) {
+    const jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ '-all' ] } }).json;
+    expect(jsonResult).to.deep.equal(resultDisabled, query);
+  });
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -204,25 +234,9 @@ describe('Rule optimize-traversals', () => {
       FILTER p.edges[1].theTruth == true FILTER p.edges[1].label == 'foo'
       RETURN {v,e,p}`
     ];
-    const opts = { allPlans: true, verbosePlans: true, optimizer: { rules: [ '-all', '+' + ruleName ] } };
 
-    queries.forEach(function (query) {
-      const planDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
-      const planEnabled = AQL_EXPLAIN(query, { }, paramEnabled);
-      const resultDisabled = AQL_EXECUTE(query, { }, paramDisabled).json;
-      const resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
-
-      expect(isEqual(resultDisabled, resultEnabled)).to.equal(true, query);
-
-      expect(planDisabled.plan.rules.indexOf(ruleName)).to.equal(-1, query);
-      expect(planEnabled.plan.rules.indexOf(ruleName)).to.not.equal(-1, query);
-
-      const plans = AQL_EXPLAIN(query, {}, opts).plans;
-      plans.forEach(function (plan) {
-        const jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ '-all' ] } }).json;
-        expect(jsonResult).to.deep.equal(resultDisabled, query);
-      });
-    });
+    queries.forEach(query => assertRuleIsUsed(query));
+    queries.forEach(query => assertResultsAreUnchanged(query));
   });
 
   it('should prune when using functions', () => {
@@ -647,6 +661,38 @@ describe('Rule optimize-traversals', () => {
         const conditions = multiplyArrays(starters, symetricOperators, starters);
         checkDoesOptimize(conditions, false);
       });
+    });
+  });
+
+  describe('regression tests', () => {
+    before(cleanup);
+    after(cleanup);
+
+    // https://github.com/arangodb/release-3.4/issues/91
+    // Regression test: With 'optimize-traversals' enabled, the filter
+    //   p.vertices[* FILTER CURRENT._id != 'V/1'].label ALL == true
+    // was effectively changed to
+    //   p.vertices[*].label ALL == true
+    // . That is, inline expressions were ignored.
+    it('inline expressions should not be changed', () => {
+      // create data
+      graph = graphModule._create(graphName, [
+        graphModule._relation('E', 'V', 'V')]);
+
+      graph.V.save({_key: '1', label: false});
+      graph.V.save({_key: '2', label: true});
+      graph.V.save({_key: '3', label: false});
+
+      graph.E.save('V/1', 'V/2', {});
+      graph.E.save('V/1', 'V/3', {});
+
+      const query = `
+        FOR v, e, p IN 1..10 OUTBOUND 'V/1' GRAPH '${graphName}'
+        FILTER p.vertices[* FILTER CURRENT._id != 'V/1'].label ALL == true
+        RETURN p.vertices
+      `;
+
+      assertResultsAreUnchanged(query);
     });
   });
 });

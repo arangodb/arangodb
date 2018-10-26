@@ -156,7 +156,7 @@ void Worker<V, E, M>::setupWorker() {
     package.close();
     _callConductor(Utils::finishedStartupPath, package);
   };
-  
+
   if (_config.lazyLoading()) {
     // TODO maybe lazy loading needs to be performed on another thread too
     std::set<std::string> activeSet = _algorithm->initialActiveSet();
@@ -173,9 +173,8 @@ void Worker<V, E, M>::setupWorker() {
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post(
-        [this, callback] { _graphStore->loadShards(&_config, callback); },
-        false);
+    scheduler->queue(RequestPriority::LOW,
+        [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 
@@ -335,7 +334,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    scheduler->post([this, start, end, i] {
+    scheduler->queue(RequestPriority::LOW, [this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -345,7 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    }, false);
+    });
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -582,9 +581,9 @@ void Worker<V, E, M>::_continueAsync() {
   int64_t milli =
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
-      boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this](const asio::error_code& error) {
+  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  _steady_timer->expires_after(std::chrono::milliseconds(milli));
+  _steady_timer->async_wait([this](const asio::error_code& error) {
     if (error != asio::error::operation_aborted) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);
@@ -599,7 +598,7 @@ void Worker<V, E, M>::_continueAsync() {
       _conductorAggregators->aggregateValues(*_workerAggregators.get());
       _workerAggregators->resetValues();
       _startProcessing();
-      _boost_timer.reset();
+      _steady_timer.reset();
     }
   });
 }
@@ -685,7 +684,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->post([this] {
+  scheduler->queue(RequestPriority::LOW, [this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -722,7 +721,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-    }, false);
+    });
 }
 
 template <typename V, typename E, typename M>
@@ -745,10 +744,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post([path, message] {
+    scheduler->queue(RequestPriority::LOW, [path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    }, false);
+    });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =

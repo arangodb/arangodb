@@ -139,35 +139,6 @@ arangodb::LogicalDataSource::Type const& readType(
 
 } // namespace
 
-/// @brief This the "copy" constructor used in the cluster
-///        it is required to create objects that survive plan
-///        modifications and can be freed
-LogicalCollection::LogicalCollection(LogicalCollection const& other)
-    : LogicalDataSource(other),
-      _version(other._version),
-      _internalVersion(0),
-      _type(other.type()),
-      _status(other.status()),
-      _isAStub(other._isAStub),
-      _isSmart(other.isSmart()),
-      _isLocal(false),
-      _waitForSync(other.waitForSync()),
-      _allowUserKeys(other.allowUserKeys()),
-      _keyOptions(other._keyOptions),
-      _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(*this)),
-      _followers(), // intentionally empty here
-      _sharding() {
-  TRI_ASSERT(_physical != nullptr);
-
-  _sharding = std::make_unique<ShardingInfo>(*other._sharding.get(), this);
-  
-  if (ServerState::instance()->isDBServer() ||
-      !ServerState::instance()->isRunningInCluster()) {
-    _followers.reset(new FollowerInfo(this));
-  }
-}
-
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(
@@ -228,7 +199,7 @@ LogicalCollection::LogicalCollection(
   }
 
   TRI_ASSERT(!guid().empty());
-  
+
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 
@@ -238,9 +209,9 @@ LogicalCollection::LogicalCollection(
   if (!keyOpts.isNone()) {
     _keyOptions = VPackBuilder::clone(keyOpts).steal();
   }
-  
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
-  
+
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -949,14 +920,13 @@ Result LogicalCollection::update(transaction::Methods* trx,
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
+  
   resultMarkerTick = 0;
-
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   prevRev = 0;
-
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -978,7 +948,6 @@ Result LogicalCollection::replace(transaction::Methods* trx,
     return Result(TRI_ERROR_DEBUG);
   }
   resultMarkerTick = 0;
-
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
@@ -1100,3 +1069,4 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
 
   return ChecksumResult(std::move(b));
 }
+

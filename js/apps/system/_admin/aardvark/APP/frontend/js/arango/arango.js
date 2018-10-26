@@ -1032,8 +1032,7 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url)
-      .success(function (result, dummy, request) {
+      $.ajax(url).success(function (result, dummy, request) {
         if (callback) {
           callback(result);
           return;
@@ -1234,12 +1233,12 @@
           validateInput: function () {
             return [
               {
-                rule: Joi.string().regex(/^((APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+                rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-\/]+))+$/i),
                 msg: 'May not contain /APP'
               },
               {
-                rule: Joi.string().regex(/^([a-zA-Z0-9_\-%]+)+$/),
-                msg: 'Can only contain [a-zA-Z0-9_-%]'
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-\/]+)+$/),
+                msg: 'Can only contain [a-zA-Z0-9_-/]'
               },
               {
                 rule: Joi.string().regex(/([^_]|_open\/)/),

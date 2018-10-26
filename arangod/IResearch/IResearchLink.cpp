@@ -97,7 +97,7 @@ void IResearchLink::batchInsert(
   }
 
   if (!queue) {
-    throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
+    throw std::runtime_error(std::string("failed to report status during batch insert for arangosearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
   if (!trx) {
@@ -139,7 +139,7 @@ int IResearchLink::drop() {
   if (!res.ok()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to drop collection '" << _collection.name()
-      << "' from IResearch View '" << _view->name() << "': " << res.errorMessage();
+      << "' from arangosearch view '" << _view->name() << "': " << res.errorMessage();
 
     return res.errorNumber();
   }
@@ -159,7 +159,7 @@ int IResearchLink::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
-void IResearchLink::afterTruncate() {
+void IResearchLink::doAfterTruncate() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -294,9 +294,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   if (!viewSelf->get()) {
     _viewLock.unlock();
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error getting view: '" << viewId << "' for link '" << _id << "'";
+        << "error getting view: '" << viewId << "' for link '" << _id << "'";
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "have raw view '" << view->guid() << "'";
+        << "have raw view '" << view->guid() << "'";
 
     return false;
   }
@@ -360,7 +360,10 @@ bool IResearchLink::json(arangodb::velocypack::Builder& builder) const {
     return false;
   }
 
-  builder.add("id", VPackValue(std::to_string(_id)));
+  builder.add(
+    arangodb::StaticStrings::IndexId,
+    arangodb::velocypack::Value(std::to_string(_id))
+  );
   builder.add(
     arangodb::StaticStrings::IndexType,
     arangodb::velocypack::Value(IResearchLinkHelper::type())

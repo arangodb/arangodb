@@ -30,10 +30,11 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"

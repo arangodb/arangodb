@@ -1,5 +1,92 @@
-v3.4.0-rc.3 (XXXX-XX-XX)
+v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
+
+* fixes a routing issue within the web ui after the use of views
+
+* fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
+  edges inside the graph viewer.
+
+* in a cluster environment, the arangod process now exits if wrong credentials
+  are used during the startup process.
+
+* added option `--rocksdb.total-write-buffer-size` to limit total memory usage
+  across all RocksDB in-memory write buffers
+
+* suppress warnings from statistics background threads such as 
+  `WARNING caught exception during statistics processing: Expecting Object`
+  during version upgrade
+
+
+v3.4.0-rc.3 (2018-10-23)
+------------------------
+
+* fixed handling of broken Foxx services
+
+  Installation now also fails when the service encounters an error when
+  executed. Upgrading or replacing with a broken service will still result
+  in the broken services being installed.
+
+* restored error pages for broken Foxx services
+
+  Services that could not be executed will now show an error page (with helpful
+  information if development mode is enabled) instead of a generic 404 response.
+  Requests to the service that do not prefer HTML (i.e. not a browser window)
+  will receive a JSON formatted 503 error response instead.
+
+* added support for `force` flag when upgrading Foxx services
+
+  Using the `force` flag when upgrading or replacing a service falls back to
+  installing the service if it does not already exist.
+
+* The order of JSON object attribute keys in JSON return values will now be 
+  "random" in more cases. In JSON, there is no defined order for object attribute
+  keys anyway, so ArangoDB is taking the freedom to return the attribute keys in
+  a non-deterministic, seemingly unordered way.
+
+* Fixed an AQL bug where the `optimize-traversals` rule was falsely applied to
+  extensions with inline expressions and thereby ignoring them
+  
+* fix side-effects of sorting larger arrays (>= 16 members) of constant literal
+  values in AQL, when the array was used not only for IN-value filtering but also
+  later in the query.
+  The array values were sorted so the IN-value lookup could use a binary search
+  instead of a linear search, but this did not take into account that the array
+  could have been used elsewhere in the query, e.g. as a return value. The fix
+  will create a copy of the array and sort the copy, leaving the original array
+  untouched.
+
+* disallow empty LDAP password
+
+* fixes validation of allowed or not allowed foxx service mount paths within
+  the Web UI
+
+* The single database or single coordinator statistics in a cluster
+  environment within the Web UI sometimes got called way too often.
+  This caused artifacts in the graphs, which is now fixed.
+
+* An aardvark statistics route could not collect and sum up the statistics of
+  all coordinators if one of them was ahead and had more results than the others
+
+* Web UI now checks if server statistics are enabled before it sends its first
+  request to the statistics API
+
+* fix internal issue #486: immediate deletion (right after creation) of
+  a view with a link to one collection and indexed data reports failure
+  but removes the link
+
+* fix internal issue #480: link to a collection is not added to a view
+  if it was already added to other view
+
+* fix internal issues #407, #445: limit ArangoSearch memory consumption
+  so that it won't cause OOM while indexing large collections
+
+* upgraded arangodb starter version to 0.13.5
+
+* removed undocumented `db.<view>.toArray()` function from ArangoShell
+
+* prevent creation of collections and views with the same in cluster setups
+
+* fixed issue #6770: document update: ignoreRevs parameter ignored 
 
 * added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
 
@@ -39,6 +126,11 @@ v3.4.0-rc.3 (XXXX-XX-XX)
   to work properly
 
   this should fix arangojs#573
+
+* increased default timeouts in replication
+
+  this decreases the chances of followers not getting in sync with leaders because
+  of replication operations timing out
 
 * include forward-ported diagnostic options for debugging LDAP connections
 
@@ -81,6 +173,12 @@ v3.4.0-rc.3 (XXXX-XX-XX)
 * added missing implementation for `DeleteRangeCF` in RocksDB WAL tailing handler
 
 * fixed agents busy looping gossip
+
+* handle missing `_frontend` collections gracefully
+
+  the `_frontend` system collection is not required for normal ArangoDB operations,
+  so if it is missing for whatever reason, ensure that normal operations can go
+  on.
 
 
 v3.4.0-rc.2 (2018-09-30)

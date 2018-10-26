@@ -87,6 +87,9 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   return std::chrono::seconds(2);
 }
 
+std::string const kTypeString = "type";
+std::string const kDataString = "data";
+
 }  // namespace
 
 namespace arangodb {
@@ -195,6 +198,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       if (r.fail()) {
         return r;
       }
+      
+      startRecurringBatchExtension();
     }
 
     VPackSlice collections, views;
@@ -235,7 +240,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "initial synchronization with master took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6)
-        << " s. status: " << r.errorMessage();
+        << " s. status: " << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
@@ -256,8 +261,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   }
 }
 
-/// @brief returns the inventory
-Result DatabaseInitialSyncer::inventory(VPackBuilder& builder) {
+/// @brief fetch the server's inventory, public method for TailingSyncer
+Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -319,7 +324,7 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
   builder.add("waitForCollectorQueue", VPackValue(true));
-  builder.add("maxWaitTime", VPackValue(180.0));
+  builder.add("maxWaitTime", VPackValue(300.0));
   builder.close();
 
   VPackSlice bodySlice = builder.slice();
@@ -328,9 +333,11 @@ Result DatabaseInitialSyncer::sendFlush() {
   // send request
   _config.progress.set("sending WAL flush command to url " + url);
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::PUT, url,
-                                              body.c_str(), body.size()));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::PUT, url,
+                                        body.c_str(), body.size()));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _config.connection);
@@ -339,11 +346,6 @@ Result DatabaseInitialSyncer::sendFlush() {
   _config.flushed = true;
   return Result();
 }
-
-namespace {
-std::string const kTypeString = "type";
-std::string const kDataString = "data";
-}  // namespace
 
 /// @brief handle a single dump marker
 Result DatabaseInitialSyncer::parseCollectionDumpMarker(
@@ -525,16 +527,19 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 #endif
 
     _config.progress.set(std::string("fetching master collection dump for collection '") +
-                        coll->name() + "', type: " + typeString + ", id: " +
-                        leaderColl + ", batch " + itoa(batch));
+                         coll->name() + "', type: " + typeString + ", id: " +
+                         leaderColl + ", batch " + itoa(batch) + ", url: " + url);
 
     ++stats.numDumpRequests;
     double t = TRI_microtime();
 
     // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                                nullptr, 0, headers));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::GET, url,
+                                          nullptr, 0, headers));
+    });
+    
 
     if (replutils::hasFailed(response.get())) {
       stats.waitedForDump += TRI_microtime() - t;
@@ -566,8 +571,9 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
         }
 
         std::string const jobUrl = "/_api/job/" + jobId;
-        response.reset(_config.connection.client->request(
-            rest::RequestType::PUT, jobUrl, nullptr, 0));
+        _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+        });
 
         if (response != nullptr && response->isComplete()) {
           if (response->hasHeaderField("x-arango-async-id")) {
@@ -843,9 +849,12 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
   // so we're sending the x-arango-async header here
   auto headers = replutils::createHeaders();
   headers[StaticStrings::Async] = "store";
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::POST, url,
-                                              nullptr, 0, headers));
+  
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::POST, url,
+                                        nullptr, 0, headers));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _config.connection);
@@ -870,8 +879,9 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     }
 
     std::string const jobUrl = "/_api/job/" + jobId;
-    response.reset(_config.connection.client->request(rest::RequestType::PUT,
-                                                      jobUrl, nullptr, 0));
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+    });
 
     if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
@@ -942,9 +952,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     _config.progress.set(msg);
 
     // now delete the keys we ordered
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _config.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                                url, nullptr, 0));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ,
+                                          url, nullptr, 0));
+    });
   };
 
   TRI_DEFER(shutdown());
@@ -1366,9 +1378,11 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                              nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  });
+  
   if (replutils::hasFailed(response.get())) {
     if (!_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -1446,14 +1460,14 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       continue;
     }
 
-    if (!_config.applier._restrictType.empty()) {
+    if (_config.applier._restrictType != ReplicationApplierConfiguration::RestrictType::None) {
       auto const it = _config.applier._restrictCollections.find(masterName);
       bool found = (it != _config.applier._restrictCollections.end());
 
-      if (_config.applier._restrictType == "include" && !found) {
+      if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include && !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType == "exclude" && found) {
+      } else if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Exclude && found) {
         // collection should be excluded
         continue;
       }
