@@ -292,13 +292,16 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   CURL* handle = handleInProgress->_handle;
   struct curl_slist* requestHeaders = nullptr;
 
-  // CURLOPT_POSTFIELDS has to be set, at least for CURLOPT_POST, even if the
-  // body is empty.
+  // CURLOPT_POSTFIELDS has to be set for CURLOPT_POST, even if the body is
+  // empty.
   // Otherwise, curl uses CURLOPT_READFUNCTION on CURLOPT_READDATA, which
   // default to fread and stdin, respectively: this can cause curl to wait
   // indefinitely.
-  curl_easy_setopt(handle, CURLOPT_POSTFIELDS, request->body().data());
-  curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE, request->body().length());
+  if (request->body().length() > 0 ||
+      request->requestType() == RequestType::POST) {
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDS, request->body().data());
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE, request->body().length());
+  }
 
   // We still omit the content type on empty bodies.
   if (request->body().length() > 0) {
