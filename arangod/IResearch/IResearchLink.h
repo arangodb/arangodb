@@ -81,7 +81,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   int drop(); // arangodb::Index override
   
-  void afterTruncate();
+  void doAfterTruncate();
 
   bool hasBatchInsert() const; // arangodb::Index override
   bool hasSelectivityEstimate() const; // arangodb::Index override
