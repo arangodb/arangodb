@@ -62,7 +62,7 @@ function UpgradeData() {
           SEARCH(doc.name >= "Name 1114" &&  doc.name <= "Name 1117")
           SORT doc.name ASC
           RETURN doc`;
-      const results = db._query(usQuery).toArray();
+      const results = db._query(query).toArray();
       assertEqual(results.length, 4);
       assertEqual(results[0].name, "Name 1114");
       assertEqual(results[1].name, "Name 1115");
