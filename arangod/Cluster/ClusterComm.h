@@ -490,13 +490,6 @@ class ClusterComm {
                     OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief send an answer HTTP request to a coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  void asyncAnswer(std::string& coordinatorHeader,
-                   GeneralResponse* responseToSend);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
   /// of ClusterCommRequest structs in the following way: all requests are
   /// tried and the result is stored in the result component. Each request is
