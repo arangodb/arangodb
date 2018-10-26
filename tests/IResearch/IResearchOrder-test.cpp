@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "ExpressionContextMock.h"
 
 #include "Aql/Ast.h"

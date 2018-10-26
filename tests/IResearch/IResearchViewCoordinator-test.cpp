@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 #include "AgencyMock.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "utils/utf8_path.hpp"
 #include "utils/log.hpp"
