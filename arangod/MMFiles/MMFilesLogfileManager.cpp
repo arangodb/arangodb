@@ -2301,6 +2301,9 @@ int MMFilesLogfileManager::inspectLogfiles() {
       << "setting max HLC value to " << _recoverState->maxRevisionId;
   TRI_HybridLogicalClock(_recoverState->maxRevisionId);
 
+  // track maximum local document id as well
+  LocalDocumentId::track(_recoverState->maxLocalDocumentId);
+
   return TRI_ERROR_NO_ERROR;
 }
 

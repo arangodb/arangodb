@@ -236,6 +236,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
     localDocumentId = LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
   } else {
     localDocumentId = LocalDocumentId::create();
+    state->_hasAllPersistentLocalIds = false;
   }
 
   VPackSlice keySlice;
@@ -1876,6 +1877,13 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
       << "found " << openState._documents << " document markers, "
       << openState._deletions << " deletion markers for collection '"
       << _logicalCollection.name() << "'";
+
+  // pick up persistent id flag from state
+  _hasAllPersistentLocalIds.store(openState._hasAllPersistentLocalIds);
+  LOG_TOPIC_IF(TRACE, arangodb::Logger::ENGINES,
+               !openState._hasAllPersistentLocalIds)
+     << "collection '" << _logicalCollection.name() << "' does not have all "
+     << "persistent LocalDocumentIds; cannot be linked to an arangosearch view";
 
   // update the real statistics for the collection
   try {

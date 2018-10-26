@@ -81,24 +81,24 @@ class PhysicalCollection {
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
-  
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
-  
+
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
   /// fetch current values!
   virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
-  
+
   /// @brief sets the current index selectivity estimates
   virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
-  
+
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-  
+
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
   /// @brief Find index by definition
@@ -109,10 +109,10 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-                       
+
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
-  
+
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
 
@@ -154,7 +154,7 @@ class PhysicalCollection {
   virtual Result read(transaction::Methods*,
                       arangodb::StringRef const& key,
                       ManagedDocumentResult& result, bool) = 0;
-  
+
   virtual Result read(transaction::Methods*,
                       arangodb::velocypack::Slice const& key,
                       ManagedDocumentResult& result, bool) = 0;
@@ -162,7 +162,7 @@ class PhysicalCollection {
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
-  
+
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
                                         IndexIterator::DocumentCallback const& cb) const = 0;
@@ -173,7 +173,7 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_tick_t& revisionId) = 0;
-  
+
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
@@ -206,6 +206,10 @@ class PhysicalCollection {
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
+
+  // returns true all documents have a persistent LocalDocumentId or false if it
+  // can change after a server restart
+  virtual bool hasAllPersistentLocalIds() const = 0;
 
  protected:
   PhysicalCollection(

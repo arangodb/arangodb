@@ -49,41 +49,44 @@ class LocalDocumentId {
   /// @brief return the document id
   inline BaseType id() const noexcept { return _id; }
   inline BaseType const* data() const noexcept { return &_id; }
- 
-  // same as isSet() 
+
+  // same as isSet()
   inline operator bool() const noexcept { return _id != 0; }
-  
+
   /// @brief check if two LocalDocumentIds are equal
   inline bool operator==(LocalDocumentId const& other) const {
     return _id == other._id;
   }
-  
+
   inline bool operator!=(LocalDocumentId const& other) const { return !(operator==(other)); }
-  
+
   /// @brief check if two LocalDocumentIds are equal (less)
   inline bool operator<(LocalDocumentId const& other) const {
     return _id < other._id;
   }
-  
+
   /// @brief check if two LocalDocumentIds are equal (less)
   inline bool operator>(LocalDocumentId const& other) const {
     return _id > other._id;
   }
 
   void clear() { _id = 0; }
-  
-  /// @brief create a not-set document id 
+
+  /// @brief create a not-set document id
   // clang does not like:
   // static constexpr LocalDocumentId none() { return LocalDocumentId(0); }
   static LocalDocumentId none() { return LocalDocumentId(0); }
 
   /// @brief create a new document id
   static LocalDocumentId create() { return LocalDocumentId(TRI_HybridLogicalClock()); }
-  
+
   /// @brief create a document id from an existing id
   // clang does not like:
   // static constexpr LocalDocumentId create(BaseType id) { return LocalDocumentId(id); }
   static LocalDocumentId create(BaseType id) { return LocalDocumentId(id); }
+
+  /// @brief use to track an existing value in recovery to ensure no duplicates
+  static void track(LocalDocumentId const& id) { TRI_HybridLogicalClock(id.id()); }
 
  private:
   BaseType _id;
