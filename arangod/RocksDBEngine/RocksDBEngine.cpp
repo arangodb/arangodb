@@ -502,6 +502,10 @@ void RocksDBEngine::start() {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
+  
+  if (opts->_totalWriteBufferSize > 0) {
+    _options.db_write_buffer_size = opts->_totalWriteBufferSize;
+  }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -610,6 +614,7 @@ void RocksDBEngine::start() {
       }
     }
   }
+  
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);

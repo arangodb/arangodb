@@ -748,8 +748,7 @@ bool State::createCollection(std::string const& name) {
     body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
   }
 
-  arangodb::LogicalCollection const* collection =
-      _vocbase->createCollection(body.slice());
+  auto collection = _vocbase->createCollection(body.slice());
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -894,7 +893,7 @@ bool State::loadCompacted() {
     arangodb::aql::PART_MAIN
   );
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -944,7 +943,7 @@ bool State::loadOrPersistConfiguration() {
     arangodb::aql::PART_MAIN
   );
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1056,7 +1055,7 @@ bool State::loadRemaining() {
     arangodb::aql::PART_MAIN
   );
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1271,7 +1270,7 @@ bool State::compactPersisted(index_t cind, index_t keep) {
     arangodb::aql::PART_MAIN
   );
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1304,7 +1303,7 @@ bool State::removeObsolete(index_t cind) {
       arangodb::aql::PART_MAIN
     );
 
-    aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+    aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1465,13 +1464,13 @@ query_t State::allLogs() const {
     arangodb::aql::PART_MAIN
   );
 
-  aql::QueryResult compqResult = compq.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult compqResult = compq.executeSync(QueryRegistryFeature::registry());
 
   if (compqResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(compqResult.code, compqResult.details);
   }
 
-  aql::QueryResult logsqResult = logsq.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult logsqResult = logsq.executeSync(QueryRegistryFeature::registry());
 
   if (logsqResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(logsqResult.code, logsqResult.details);
@@ -1562,7 +1561,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
   arangodb::aql::Query query(false, vocbase, aql::QueryString(aql), nullptr,
                              nullptr, arangodb::aql::PART_MAIN);
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1589,7 +1588,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
   arangodb::aql::Query query2(false, vocbase, aql::QueryString(aql), nullptr,
                               nullptr, arangodb::aql::PART_MAIN);
 
-  aql::QueryResult queryResult2 = query2.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult2 = query2.executeSync(QueryRegistryFeature::registry());
 
   if (queryResult2.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult2.code, queryResult2.details);

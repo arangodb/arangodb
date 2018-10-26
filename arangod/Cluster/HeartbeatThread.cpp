@@ -1289,7 +1289,17 @@ bool HeartbeatThread::sendServerState() {
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
   if (agentPool.isObject() && agentPool.get("pool").isObject() &&
       agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
-    _agency.updateEndpoints(agentPool.get("pool"));
+    try {
+      std::vector<std::string> values;
+      for (auto pair : VPackObjectIterator(agentPool.get("pool"))) {
+        values.emplace_back(pair.value.copyString());
+      }
+      AgencyCommManager::MANAGER->updateEndpoints(values);
+    } catch(basics::Exception const& e) {
+      LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.message();
+    } catch(std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.what();
+    } catch(...) {}
   } else {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Cannot find an agency persisted in RAFT 8|";
   }

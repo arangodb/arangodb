@@ -88,7 +88,10 @@ function IResearchFeatureDDLTestSuite () {
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(1, Object.keys(properties.links).length);
-        var indexes = db.TestCollection0.getIndexes(false, true);
+        var indexes = db.TestCollection0.getIndexes(false);
+        assertEqual(1, indexes.length);
+        assertEqual("primary", indexes[0].type);
+        indexes = db.TestCollection0.getIndexes(false, true);
         assertEqual(2, indexes.length);
         var link = indexes[1];
         assertEqual("primary", indexes[0].type);

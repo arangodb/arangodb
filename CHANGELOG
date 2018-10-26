@@ -1,5 +1,42 @@
+v3.4.0-rc.4 (XXXX-XX-XX)
+------------------------
+
+* fixes a routing issue within the web ui after the use of views
+
+* fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
+  edges inside the graph viewer.
+
+* in a cluster environment, the arangod process now exits if wrong credentials
+  are used during the startup process.
+
+* added option `--rocksdb.total-write-buffer-size` to limit total memory usage
+  across all RocksDB in-memory write buffers
+
+* suppress warnings from statistics background threads such as 
+  `WARNING caught exception during statistics processing: Expecting Object`
+  during version upgrade
+
+
 v3.4.0-rc.3 (2018-10-23)
 ------------------------
+
+* fixed handling of broken Foxx services
+
+  Installation now also fails when the service encounters an error when
+  executed. Upgrading or replacing with a broken service will still result
+  in the broken services being installed.
+
+* restored error pages for broken Foxx services
+
+  Services that could not be executed will now show an error page (with helpful
+  information if development mode is enabled) instead of a generic 404 response.
+  Requests to the service that do not prefer HTML (i.e. not a browser window)
+  will receive a JSON formatted 503 error response instead.
+
+* added support for `force` flag when upgrading Foxx services
+
+  Using the `force` flag when upgrading or replacing a service falls back to
+  installing the service if it does not already exist.
 
 * The order of JSON object attribute keys in JSON return values will now be 
   "random" in more cases. In JSON, there is no defined order for object attribute
@@ -32,10 +69,6 @@ v3.4.0-rc.3 (2018-10-23)
 
 * Web UI now checks if server statistics are enabled before it sends its first
   request to the statistics API
-
-* suppress warnings from statistics background threads such as 
-  `WARNING caught exception during statistics processing: Expecting Object`
-  during version upgrade
 
 * fix internal issue #486: immediate deletion (right after creation) of
   a view with a link to one collection and indexed data reports failure

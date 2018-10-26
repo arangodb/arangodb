@@ -857,6 +857,7 @@ void ClusterComm::cleanupAllQueues() {
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
+  _communicator = std::make_shared<communicator::Communicator>();
 }
 
 ClusterCommThread::~ClusterCommThread() { shutdown(); }
@@ -1260,9 +1261,8 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 }
 
 void ClusterCommThread::run() {
+  TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
-  _communicator = std::make_shared<communicator::Communicator>();
-
   auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
     try {
