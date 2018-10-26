@@ -27,13 +27,6 @@
 #include "Basics/Endian.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
-#undef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-#ifdef TRI_UNALIGNED_ACCESS
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-#endif
-#endif
-
 namespace arangodb {
   
 namespace rocksutils {
