@@ -60,6 +60,7 @@ function UpgradeData() {
       const query =
         `FOR doc in TestView
           SEARCH(doc.name >= "Name 1114" &&  doc.name <= "Name 1117")
+          OPTIONS { waitForSync: true }
           SORT doc.name ASC
           RETURN doc`;
       const results = db._query(query).toArray();
