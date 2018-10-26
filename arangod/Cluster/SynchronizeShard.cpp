@@ -940,6 +940,16 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       + res.errorMessage();
     return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
   }
+  auto readLockGuard = arangodb::scopeGuard([&]() {
+    // Always cancel the read lock.
+    // Reported seperately
+    auto res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+    if (!res.ok()) {
+      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+          << "Could not cancel soft read lock on leader: "
+          << res.errorMessage();
+    }
+  });
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
 
@@ -967,17 +977,14 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     std::string errorMessage(
       "synchronizeOneshard: error in syncCollectionCatchup: ") ;
     errorMessage += res.errorMessage();
-    res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-    if (!res.ok()) {
-      errorMessage += ", could not cancel read lock on leader: "
-        + res.errorMessage();
-    }
     return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
   }
 
   // Stop the read lock again:
   res = cancelReadLockOnLeader(ep, database, lockJobId,
                                clientId, 60.0);
+  // We removed the readlock
+  readLockGuard.cancel();
   if (!res.ok()) {
     std::string errorMessage
       = "synchronizeOneShard: error when cancelling soft read lock: "
@@ -1009,6 +1016,16 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
       + res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
+  auto readLockGuard = arangodb::scopeGuard([&]() {
+    // Always cancel the read lock.
+    // Reported seperately
+    auto res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+    if (!res.ok()) {
+      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+          << "Could not cancel hard read lock on leader: "
+          << res.errorMessage();
+    }
+  });
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
 
@@ -1029,11 +1046,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
     std::string errorMessage(
       "synchronizeOneshard: error in syncCollectionFinalize: ") ;
     errorMessage += res.errorMessage();
-    res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-    if (!res.ok()) {
-      errorMessage += ", could not cancel read lock on leader: "
-        + res.errorMessage();
-    }
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
 
@@ -1043,16 +1055,12 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
     std::string errorMessage(
       "synchronizeOneshard: error in addShardFollower: ") ;
     errorMessage += res.errorMessage();
-    res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-    if (!res.ok()) {
-      errorMessage += ", could not cancel read lock on leader: "
-        + res.errorMessage();
-    }
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
 
   // This result is unused, only in logs
   res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+  readLockGuard.cancel();
   if (!res.ok()) {
     LOG_TOPIC(INFO, Logger::MAINTENANCE)
       << "synchronizeOneShard: read lock has timed out for shard " << shard;
