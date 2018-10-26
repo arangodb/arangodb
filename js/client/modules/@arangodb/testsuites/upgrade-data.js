@@ -77,6 +77,7 @@ const byMinimumSuportedVersion = (version) => {
       if (s.startsWith("msv")) {
         const msv = s.substring(3);
         if (compareSemVer(msv, version) > 0) {
+          require('internal').print(testCase + " not supported on version " + version + ", detected as " + msv)
           supported = false;
         }
       }
@@ -195,7 +196,7 @@ const upgradeData = (engine, version) => {
 
     args['database.auto-upgrade'] = false;
 
-    const testCases = tu.scanTestPath('js/server/tests/upgrade-data')
+    const testCases = tu.scanTestPaths(['tests/js/server/upgrade-data'])
       .filter(byMinimumSuportedVersion(version));
     require('internal').print('Checking results...');
     return tu.performTests(
@@ -212,9 +213,7 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const configurations = fs.list('upgrade-data-tests/data').map(
     (filename) => {
       const re = /upgrade-data-(mmfiles|rocksdb)-(\d+(?:\.\d+)*)\.tar\.gz/;
-      require('internal').print(filename);
       const matches = re.exec(filename);
-      require('internal').print(JSON.stringify(matches));
       return {
         engine: matches[1],
         version: matches[2]
