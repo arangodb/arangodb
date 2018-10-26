@@ -614,9 +614,8 @@ ClusterCommResult const ClusterComm::wait(
   ClusterCommResult return_result;
   return_result.status = CL_COMM_DROPPED;
 
-  CONDITION_LOCKER(locker, somethingReceived);
-
   do {
+    CONDITION_LOCKER(locker, somethingReceived);
     match_good = false;
     status_ready = false;
 
