@@ -211,8 +211,10 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
   const configurations = fs.list('upgrade-data-tests/data').map(
     (filename) => {
-      const re = /upgrade-data-(mmfiles|rocksdb)-(\d(?:\.\d)*)\.tar\.gz/;
+      const re = /upgrade-data-(mmfiles|rocksdb)-(\d+(?:\.\d+)*)\.tar\.gz/;
+      require('internal').print(filename);
       const matches = re.exec(filename);
+      require('internal').print(JSON.stringify(matches));
       return {
         engine: matches[1],
         version: matches[2]
