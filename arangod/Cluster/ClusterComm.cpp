@@ -647,8 +647,8 @@ ClusterCommResult const ClusterComm::wait(
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 
-  CONDITION_LOCKER(locker, somethingReceived);
   do {
+    CONDITION_LOCKER(locker, somethingReceived);
     match_good=false;
     status_ready=false;
 
