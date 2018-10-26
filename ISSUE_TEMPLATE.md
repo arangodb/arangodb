@@ -1,12 +1,14 @@
 ## My Environment
 
-* __ArangoDB Version__:        <!-- e.g. 3.3.14 or self-compiled devel branch -->
+* __ArangoDB Version__:        <!-- e.g. 3.3.19 or self-compiled devel branch -->
 * __Storage Engine__:             <!-- MMFiles / RocksDB -->
 * __Deployment Mode__:       <!-- Single Server | Master/Slave | Active Failover | Cluster | DC2DC -->
 * __Deployment Strategy__:   <!-- Manual Start | Manual Start in Docker | ArangoDB Starter | ArangoDB Starter in Docker | Kubernetes | DCOS -->
 * __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
 * __Infrastructure__:               <!-- AWS | Azure | ... | own -->
 * __Operating System__:        <!-- Ubuntu 18.04 | Windows 10 | MacOS 10.13.4 | DCOS 1.10 | ... -->
+* __Total RAM in your machine__:        <!-- e.g. 32Gb -->
+* __Disks in use__:        <!-- SSD | HDD -->
 * __Used Package__:              <!-- Debian or Ubuntu .deb | SUSE or RedHat .rpm | Docker - official Docker library | other -->
 
 ## Component, Query & Data
@@ -24,6 +26,10 @@ __AQL explain (if applicable)__:
 
 __Dataset__:
 <!-- description, or if possible, please share an example dataset to reproduce the issue either as Gist with an arangodump, or an arangosh script with db.collection.save({my: "values"}) statements -->
+
+
+__Size of your Dataset on disk__:
+<!-- size of your dataset on disk-->
 
 
 __Replication Factor & Number of Shards (Cluster only)__:
