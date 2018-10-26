@@ -1307,7 +1307,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
@@ -2132,7 +2132,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
   aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
-  const std::string checksum = checksumSlice.copyString();
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum = computeCollectionChecksum(readLockId, col.get());
@@ -2144,7 +2143,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
-     << "Expected: " << referenceChecksum << " Actual: " << checksum;
+     << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
                   "'checksum' is wrong. Expected: "
                   + referenceChecksum.get()
@@ -2483,14 +2482,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
-  arangodb::LogicalCollection* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> col;
 
   if (!uuid.empty()) {
-    col = _vocbase.lookupCollectionByUuid(uuid).get();
+    col = _vocbase.lookupCollectionByUuid(uuid);
   }
 
   if (col != nullptr) {
-    col = _vocbase.lookupCollection(name).get();
+    col = _vocbase.lookupCollection(name);
   }
 
   if (col != nullptr && col->type() == type) {
@@ -2543,7 +2542,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 #endif
 
   if (dst != nullptr) {
-    *dst = col;
+    *dst = col.get();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2626,7 +2625,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   // we want to allow to cancel this operation while waiting
   // for the lock.
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -2666,7 +2665,7 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   // The query is only hold for long during initial locking
   // there it should return false.
   // In all other cases it is released quickly.
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -2687,7 +2686,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
   // otherwise an unconditional destroy() would do.
   auto res = isLockHeld(id);
   if (res.ok()) {
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry == nullptr) {
       return ResultT<bool>::error(TRI_ERROR_SHUTTING_DOWN);
     }
@@ -2703,7 +2702,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
 }
 
 ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::QueryId id, LogicalCollection* col) const {
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry == nullptr) {
     return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }

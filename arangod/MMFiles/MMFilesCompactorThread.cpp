@@ -907,7 +907,7 @@ void MMFilesCompactorThread::signal() {
 
 void MMFilesCompactorThread::run() {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-  std::vector<arangodb::LogicalCollection*> collections;
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
   int numCompacted = 0;
   while (true) {
     // keep initial _state value as vocbase->_state might change during
@@ -965,8 +965,7 @@ void MMFilesCompactorThread::run() {
               try {
                 double const now = TRI_microtime();
                 if (physical->lastCompactionStamp() + MMFilesCompactionFeature::COMPACTOR->compactionCollectionInterval() <= now) {
-                  auto ce = arangodb::MMFilesCollection::toMMFilesCollection(
-                                collection)
+                  auto ce = arangodb::MMFilesCollection::toMMFilesCollection(collection.get())
                                 ->ditches()
                                 ->createMMFilesCompactionDitch(__FILE__, __LINE__);
 
@@ -976,7 +975,7 @@ void MMFilesCompactorThread::run() {
                   } else {
                     try {
                       bool wasBlocked = false;
-                      worked = compactCollection(collection, wasBlocked);
+                      worked = compactCollection(collection.get(), wasBlocked);
 
                       if (!worked && !wasBlocked) {
                         // set compaction stamp
@@ -991,7 +990,7 @@ void MMFilesCompactorThread::run() {
                       // in case an error occurs, we must still free this ditch
                     }
 
-                    arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                     arangodb::MMFilesCollection::toMMFilesCollection(collection.get())
                         ->ditches()
                         ->freeDitch(ce);
                   }

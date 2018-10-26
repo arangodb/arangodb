@@ -4,9 +4,13 @@
 
 @RESTHEADER{GET /_api/endpoint, Return list of all endpoints}
 
-@RESTDESCRIPTION
-*THIS API IS DEPRECATED*
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+It is considered as deprecated from version 3.4.0 on.
+{% endhint %}
 
+@RESTDESCRIPTION
 Returns an array of all configured endpoints the server is listening on.
 
 The result is a JSON array of JSON objects, each with `"entrypoint"' as

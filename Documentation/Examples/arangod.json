@@ -1492,7 +1492,7 @@
     "type" : "uint64"
   },
   "server.minimal-threads" : {
-    "default" : 2,
+    "default" : 0,
     "description" : "minimum number of request handling threads to run",
     "enterpriseOnly" : false,
     "hidden" : true,

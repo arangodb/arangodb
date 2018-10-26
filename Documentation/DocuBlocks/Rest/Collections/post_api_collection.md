@@ -4,6 +4,12 @@
 
 @RESTHEADER{POST /_api/collection, Create collection}
 
+@HINTS
+{% hint 'warning' %}
+Accessing collections by their numeric ID is deprecated from version 3.4.0 on.
+You should reference them via their names instead.
+{% endhint %}
+
 @RESTDESCRIPTION
 Creates a new collection with a given name. The request must contain an
 object with the following attributes.

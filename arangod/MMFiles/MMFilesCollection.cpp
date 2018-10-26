@@ -2865,10 +2865,11 @@ Result MMFilesCollection::truncate(transaction::Methods* trx,
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
+  TRI_voc_tick_t tick = TRI_NewTickServer();
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-    idx->afterTruncate();
+    idx->afterTruncate(tick);
   }
   return Result();
 }
