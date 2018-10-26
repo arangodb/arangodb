@@ -302,7 +302,6 @@ static arangodb::Result addShardFollower (
 }
 
 static arangodb::Result cancelReadLockOnLeader (
-
   std::string const& endpoint, std::string const& database,
   uint64_t lockJobId, std::string const& clientId,
   double timeout = 10.0) {
@@ -839,16 +838,14 @@ bool SynchronizeShard::first() {
           << timepointToString(system_clock::now());
       }
 
-      //
+      // If this did not work, then we cannot go on:
       if (!res.ok()) {
-
         std::stringstream error;
         error << "could not initially synchronize shard " << shard << ": "
               << res.errorMessage();
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
-
       }
 
       // From here on, we have to call `cancelBarrier` in case of errors
@@ -865,12 +862,12 @@ bool SynchronizeShard::first() {
         error << "shard " << shard << " seems to be gone from leader, this "
           "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC(WARN,  Logger::MAINTENANCE) << "SynchronizeOneShard: "
-                                              << error.str();
+          << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
 
       }
-
+      
       auto lastTick = arangodb::basics::VelocyPackHelper::readNumericValue<TRI_voc_tick_t>(sy, LAST_LOG_TICK, 0);
       VPackBuilder builder;
 
@@ -893,7 +890,6 @@ bool SynchronizeShard::first() {
       }
 
     } catch (std::exception const& e) {
-
       std::stringstream error;
       error << "synchronization of";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
@@ -920,12 +916,9 @@ bool SynchronizeShard::first() {
     LOG_TOPIC(INFO, Logger::MAINTENANCE)
       << "synchronizeOneShard: done, " << msg.str();
   }
-
   notify();
   return false;
-
 }
-
 
 ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
                             std::string const& ep,
@@ -1086,13 +1079,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
 
 
 void SynchronizeShard::setState(ActionState state) {
-
   if ((COMPLETE==state || FAILED==state) && _state != state) {
     TRI_ASSERT(_description.has("shard"));
     _feature.incShardVersion(_description.get("shard"));
   }
 
   ActionBase::setState(state);
-
 }
-
