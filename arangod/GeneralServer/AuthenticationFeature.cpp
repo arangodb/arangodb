@@ -50,10 +50,10 @@ AuthenticationFeature::AuthenticationFeature(
       _authCache(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
-      _authenticationTimeout(0.0),
       _localAuthentication(true),
-      _jwtSecretProgramOption(""),
-      _active(true) {
+      _active(true),
+      _authenticationTimeout(0.0),
+      _jwtSecretProgramOption("") {
   setOptional(false);
   startsAfter("BasicsPhase");
 
