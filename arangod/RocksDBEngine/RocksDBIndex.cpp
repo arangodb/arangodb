@@ -256,7 +256,7 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
-void RocksDBIndex::afterTruncate() {
+void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
