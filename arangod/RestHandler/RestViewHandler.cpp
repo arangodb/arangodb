@@ -345,7 +345,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     );  // TODO: not force sync?
 
     if (!result.ok()) {
-      generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(), result.errorMessage());
+      generateError(result);
 
       return;
     }

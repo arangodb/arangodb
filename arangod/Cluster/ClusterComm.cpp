@@ -230,7 +230,8 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm()
-    : _logConnectionErrors(false),
+    : _roundRobin(0),
+      _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -246,7 +247,8 @@ ClusterComm::ClusterComm()
 
 /// @brief Unit test constructor
 ClusterComm::ClusterComm(bool ignored)
-    : _logConnectionErrors(false),
+    : _roundRobin(0),
+      _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
 
@@ -305,7 +307,7 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
 
 void ClusterComm::initialize() {
   auto i = instance();   // this will create the static instance
-  i->startBackgroundThread();
+  i->startBackgroundThreads();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,16 +315,19 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
+  if (!_theInstance) {
+    return ;
+  }
+
   _theInstance.reset();    // no more operations will be started, but running
                            // ones have their copy of the shared_ptr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the communication background thread
+/// @brief start the communication background threads
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::startBackgroundThread() {
-  _roundRobin = 0;
+void ClusterComm::startBackgroundThreads() {
 
   for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
     ClusterCommThread * thread = new ClusterCommThread();
@@ -402,7 +407,13 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ///
 /// There are two timeout arguments. `timeout` is the globale timeout
 /// specifying after how many seconds the complete operation must be
-/// completed. `connectTimeout` is the Timeout for initially opening a connection
+/// completed. `initTimeout` is a second timeout, which is used to
+/// limit the time to send the initial request away. If `initTimeout`
+/// is negative (as for example in the default value), then `initTimeout`
+/// is taken to be the same as `timeout`. The idea behind the two timeouts
+/// is to be able to specify correct behaviour for automatic failover.
+/// The idea is that if the initial request cannot be sent within
+/// `initTimeout`, one can retry after a potential failover.
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationID ClusterComm::asyncRequest(
@@ -411,7 +422,7 @@ OperationID ClusterComm::asyncRequest(
     std::shared_ptr<std::string const> body,
     std::unordered_map<std::string, std::string> const& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-    bool singleRequest, ClusterCommTimeout connectTimeout) {
+    bool singleRequest, ClusterCommTimeout initTimeout) {
   auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
   result->coordTransactionID = coordTransactionID;
@@ -426,7 +437,7 @@ OperationID ClusterComm::asyncRequest(
   }
 
   communicator::Options opt;
-  opt.connectionTimeout = connectTimeout;
+  opt.connectionTimeout = initTimeout;
   opt.requestTimeout = timeout;
 
   Callbacks callbacks;
@@ -434,14 +445,14 @@ OperationID ClusterComm::asyncRequest(
   callbacks._scheduleMe = scheduleMe;
 
   if (callback) {
-    callbacks._onError = [callback, result, doLogConnectionErrors, this, connectTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [callback, result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
         responses.erase(result->operationID);
       }
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        logConnectionError(doLogConnectionErrors, result.get(), connectTimeout, __LINE__);
+        logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
       /*bool ret =*/ ((*callback.get())(result.get()));
       // TRI_ASSERT(ret == true);
@@ -457,11 +468,11 @@ OperationID ClusterComm::asyncRequest(
       //TRI_ASSERT(ret == true);
     };
   } else {
-    callbacks._onError = [result, doLogConnectionErrors, this, connectTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [result, doLogConnectionErrors, this, initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        logConnectionError(doLogConnectionErrors, result.get(), connectTimeout, __LINE__);
+        logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
       somethingReceived.broadcast();
     };
@@ -794,6 +805,7 @@ void ClusterComm::cleanupAllQueues() {
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
+  _communicator = std::make_shared<communicator::Communicator>();
 }
 
 ClusterCommThread::~ClusterCommThread() { shutdown(); }
@@ -833,7 +845,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     ClusterCommTimeout timeout, size_t& nrDone,
                                     arangodb::LogTopic const& logTopic,
                                     bool retryOnCollNotFound) {
-  if (requests.empty()) {
+  if (requests.size() == 0) {
     nrDone = 0;
     return 0;
   }
@@ -1337,9 +1349,8 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 }
 
 void ClusterCommThread::run() {
+  TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
-  _communicator = std::make_shared<communicator::Communicator>();
-
   auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
     try {

@@ -174,7 +174,7 @@ void Worker<V, E, M>::setupWorker() {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(RequestPriority::LOW,
-        [this, callback] { _graphStore->loadShards(&_config, callback); });
+                     [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 
@@ -344,7 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    });
+      });
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -747,7 +747,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     scheduler->queue(RequestPriority::LOW, [path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    });
+      });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =

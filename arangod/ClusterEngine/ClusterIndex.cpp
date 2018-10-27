@@ -169,11 +169,10 @@ bool ClusterIndex::isSorted() const {
 void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   VPackBuilder merge;
   merge.openObject();
-  ClusterEngine* ce =
-      static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  if (ce->isMMFiles()) {
+
+  if (_engineType == ClusterEngineType::MMFilesEngine) {
     // nothing to update here
-  } else if (ce->isRocksDB()) {
+  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add("cacheEnabled", VPackValue(Helper::readBooleanValue(
                                   slice, "cacheEnabled", false)));
 

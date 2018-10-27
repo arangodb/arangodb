@@ -54,8 +54,8 @@ class IResearchMMFilesLink final
     return IResearchLink::drop();
   }
     
-  void afterTruncate() override {
-    IResearchLink::afterTruncate();
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+    IResearchLink::doAfterTruncate();
   };
 
   virtual bool hasBatchInsert() const override {

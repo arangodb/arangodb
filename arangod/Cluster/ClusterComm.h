@@ -489,7 +489,7 @@ class ClusterComm {
   /// @brief start the communication background thread
   //////////////////////////////////////////////////////////////////////////////
 
-  void startBackgroundThread();
+  void startBackgroundThreads();
   void stopBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -502,7 +502,7 @@ class ClusterComm {
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unordered_map<std::string, std::string> const& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-      bool singleRequest = false, ClusterCommTimeout connectTimeout = -1.0);
+      bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.

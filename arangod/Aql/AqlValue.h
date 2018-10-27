@@ -527,12 +527,6 @@ struct AqlValue final {
   }
   
   /// @brief construct a V8 value as input for the expression execution in V8
-  /// only construct those attributes that are needed in the expression
-  v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    transaction::Methods*,
-                                    std::unordered_set<std::string> const&) const;
-  
-  /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
 
   /// @brief materializes a value into the builder

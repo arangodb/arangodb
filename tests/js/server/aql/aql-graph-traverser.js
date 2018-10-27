@@ -330,7 +330,7 @@ function namedGraphSuite () {
       cleanup();
     },
 
-    testFirstEntryIsVertex: function () {
+    testNamedFirstEntryIsVertex: function () {
       var query = 'FOR x IN OUTBOUND @startId GRAPH @graph RETURN x';
       var bindVars = {
         graph: gn,
@@ -346,7 +346,7 @@ function namedGraphSuite () {
       });
     },
 
-    testSecondEntryIsEdge: function () {
+    testNamedSecondEntryIsEdge: function () {
       var query = 'FOR x, e IN OUTBOUND @startId GRAPH @graph RETURN e';
       var bindVars = {
         graph: gn,
@@ -362,7 +362,7 @@ function namedGraphSuite () {
       });
     },
 
-    testThirdEntryIsPath: function () {
+    testNamedThirdEntryIsPath: function () {
       var query = 'FOR x, e, p IN OUTBOUND @startId GRAPH @graph RETURN p';
       var bindVars = {
         graph: gn,
@@ -383,7 +383,7 @@ function namedGraphSuite () {
       });
     },
 
-    testOutboundDirection: function () {
+    testNamedOutboundDirection: function () {
       var query = 'FOR x IN OUTBOUND @startId GRAPH @graph RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -400,7 +400,7 @@ function namedGraphSuite () {
       });
     },
 
-    testInboundDirection: function () {
+    testNamedInboundDirection: function () {
       var query = 'FOR x IN INBOUND @startId GRAPH @graph RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -417,7 +417,7 @@ function namedGraphSuite () {
       });
     },
 
-    testAnyDirection: function () {
+    testNamedAnyDirection: function () {
       var query = 'FOR x IN ANY @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -438,7 +438,7 @@ function namedGraphSuite () {
       });
     },
 
-    testExactNumberSteps: function () {
+    testNamedExactNumberSteps: function () {
       var query = 'FOR x IN 2 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -456,7 +456,7 @@ function namedGraphSuite () {
       });
     },
 
-    testRangeNumberSteps: function () {
+    testNamedRangeNumberSteps: function () {
       var query = 'FOR x IN 2..3 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -475,7 +475,7 @@ function namedGraphSuite () {
       });
     },
 
-    testComputedNumberSteps: function () {
+    testNamedComputedNumberSteps: function () {
       var query = 'FOR x IN LENGTH([1,2]) OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -492,7 +492,7 @@ function namedGraphSuite () {
       });
     },
 
-    testZeroSteps: function () {
+    testNamedZeroSteps: function () {
       // We only include the start vertex
       var query = 'FOR x IN 0 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
@@ -509,7 +509,7 @@ function namedGraphSuite () {
       });
     },
 
-    testZeroStartRangeSteps: function () {
+    testNamedZeroStartRangeSteps: function () {
       // We only include the start vertex
       var query = 'FOR x IN 0..1 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
@@ -527,7 +527,7 @@ function namedGraphSuite () {
       });
     },
 
-    testSort: function () {
+    testNamedSort: function () {
       var query = 'FOR x IN OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id';
       var bindVars = {
         graph: gn,
@@ -554,7 +554,7 @@ function namedGraphSuite () {
       });
     },
 
-    testUniqueEdgesOnPath: function () {
+    testNamedUniqueEdgesOnPath: function () {
       var query = 'FOR x IN 6 OUTBOUND @startId GRAPH @graph RETURN x._id';
       var bindVars = {
         graph: gn,

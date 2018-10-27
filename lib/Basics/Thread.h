@@ -155,6 +155,7 @@ class Thread {
 
  private:
   bool const _deleteOnExit;
+  bool _threadStructInitialized;
 
   // name of the thread
   std::string const _name;

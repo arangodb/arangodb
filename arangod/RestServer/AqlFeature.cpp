@@ -81,9 +81,8 @@ void AqlFeature::stop() {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
 
   // Wait until all AQL queries are done
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
-  auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
+  auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
   TRI_ASSERT(traverserEngineRegistry != nullptr);
   while (true) {

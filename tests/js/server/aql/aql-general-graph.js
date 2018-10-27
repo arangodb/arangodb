@@ -1435,7 +1435,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     /// @brief checks shortest path with graph name
     ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathWithGraphName: function () {
+    testCycleShortestPathWithGraphName: function () {
       var actual;
       var query = `
         FOR source in ${AQL_START_EVERYWHERE}

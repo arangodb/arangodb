@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "utils/ref_counter.hpp"
+#include <unordered_map>
 
 namespace tests {
   class ref_counter_tests: public ::testing::Test {

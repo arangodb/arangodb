@@ -160,7 +160,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         if (opResult.fail() || _destroyed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
-        info.numEdges += opResult.slice().getUInt();;
+        info.numEdges += opResult.slice().getUInt();
       }
       eCount += info.numEdges;
 
@@ -240,7 +240,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
             TRI_DEFER(_runningThreads--);// exception safe
             _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
                           vertexOff, edgeDataOffsets[shardIdx]);
-          });
+            });
           // update to next offset
           vertexOff += info.numVertices;
         } catch(...) {
@@ -258,7 +258,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     }
 
     scheduler->queue(RequestPriority::LOW, callback);
-  });
+    });
 }
 
 template <typename V, typename E>
@@ -646,7 +646,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
                                         << (TRI_microtime() - now) << "s";
         cb();
       }
-    });
+      });
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest

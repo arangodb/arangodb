@@ -99,31 +99,23 @@ static void InvalidParameterHandler(
     uintptr_t pReserved) {      // in case microsoft forget something
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::string exp;
-  std::string func;
-  std::string fileName;
-  
-  UnicodeString uStr;
-  uStr = expression;
-  uStr.toUTF8String(exp);
-  uStr = function;
-  uStr.toUTF8String(func);
-  uStr = file;
-  uStr.toUTF8String(fileName);
-  
-  std::string bt;
-  TRI_GetBacktrace(bt);
+  char buf[1024] = "";
+  snprintf(buf, 1023,
+           " Expression: %ls Function: %ls File: %ls Line: %ld",
+           expression, function, file, line);
+  buf[1024] = '\0';
 #endif
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
     "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
                                           <<
-    " Expression: " << exp <<
-    " Function: " << func <<
-    " File: " << fileName <<
-    " Line: " << std::to_string(line) <<
-    " Backtrace: " << bt
+           buf;
+
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+    "Invalid handle parameter Invoked from: " << bt
 #endif
   ;
 }
@@ -651,7 +643,7 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
     serviceAbort(exitCode);
   }
 
-  exit(exitCode);
+  _exit(exitCode);
 }
 
 // Detect cygwin ssh / terminals

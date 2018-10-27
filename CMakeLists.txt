@@ -1120,6 +1120,7 @@ if (MSVC)
   include(generate_product_version)
 endif()
 
+add_subdirectory(Documentation)
 include(ArangoDBInstall)
 include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
@@ -1236,7 +1237,6 @@ add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
-add_subdirectory(Documentation)
 
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
@@ -1249,6 +1249,16 @@ add_dependencies(arangoexport  zlibstatic)
 add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
+
+if(UNIX)
+  add_dependencies(arangobench   man)
+  add_dependencies(arangod       man)
+  add_dependencies(arangodump    man)
+  add_dependencies(arangoexport  man)
+  add_dependencies(arangoimport  man)
+  add_dependencies(arangorestore man)
+  add_dependencies(arangosh      man)
+endif()
 
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well

@@ -381,7 +381,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 
 function runProcdump (options, instanceInfo, rootDir, pid) {
   let procdumpArgs = [ ];
-  let dumpFile = fs.join(rootDir, 'core_'+pid + '.dmp');
+  let dumpFile = fs.join(rootDir, 'core_' + pid + '.dmp');
   if (options.exceptionFilter != null) {
     procdumpArgs = [
       '-accepteula',
@@ -475,7 +475,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   };
 
   let res = {};
-  if (platform.substr(0, 3) === 'win') {
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     res = executeExternal(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
@@ -499,11 +499,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    let instanceInfo = {
-      rootDir: rootDir,
-      pid: res.pid,
-      exitStatus: res
-    };
     print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,

@@ -194,9 +194,6 @@ Scheduler::~Scheduler() {
   _managerGuard.reset();
   _managerContext.reset();
 
-  _serviceGuard.reset();
-  _ioContext.reset();
-
   FifoJob* job = nullptr;
 
   for (int i = 0; i < NUMBER_FIFOS; ++i) {
@@ -381,9 +378,11 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
     case RequestPriority::HIGH:
       return nrWorking + nrQueued < _maxThreads;
 
+    // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
+    //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
     case RequestPriority::MED:
     case RequestPriority::LOW:
-      return nrWorking + nrQueued < _maxThreads - _minThreads;
+      return nrWorking + nrQueued < _maxThreads / 2;
   }
 
   return false;
@@ -591,6 +590,12 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
+
+//
+// This routine tries to keep only the most likely needed count of threads running:
+//  - asio io_context runs less efficiently if it has too many threads, but
+//  - there is a latency hit to starting a new thread.
+//
 void Scheduler::rebalanceThreads() {
   static uint64_t count = 0;
 

@@ -27,7 +27,7 @@ using namespace arangodb;
 
 Result::Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-Result::Result(int errorNumber) : _errorNumber(errorNumber){
+Result::Result(int errorNumber) : _errorNumber(errorNumber) {
   if (errorNumber != TRI_ERROR_NO_ERROR) {
     _errorMessage = TRI_errno_string(errorNumber);
   }

@@ -126,28 +126,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
