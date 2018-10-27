@@ -3670,7 +3670,7 @@ yyreduce:
 #line 1312 "Aql/grammar.y" /* yacc.c:1646  */
     {
       auto node = parser->ast()->createNodeArray();
-      parser->pushStack(node);
+      parser->pushArray(node);
     }
 #line 3676 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
@@ -3678,7 +3678,7 @@ yyreduce:
   case 152:
 #line 1315 "Aql/grammar.y" /* yacc.c:1646  */
     {
-      (yyval.node) = static_cast<AstNode*>(parser->popStack());
+      (yyval.node) = parser->popArray();
     }
 #line 3684 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;

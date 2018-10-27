@@ -461,8 +461,8 @@ ExecutionPlan* Query::preparePlan() {
 
   if (!_queryString.empty()) {
     Parser parser(this);
+    parser.parse();
 
-    parser.parse(false);
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters, ctx->resolver());
   }
@@ -1004,7 +1004,7 @@ QueryResult Query::parse() {
   try {
     init();
     Parser parser(this);
-    return parser.parse(true);
+    return parser.parseWithDetails();
   } catch (arangodb::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   } catch (std::bad_alloc const&) {
@@ -1028,8 +1028,7 @@ QueryResult Query::explain() {
 
     auto ctx = createTransactionContext();
     Parser parser(this);
-
-    parser.parse(true);
+    parser.parse();
 
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters, ctx->resolver());

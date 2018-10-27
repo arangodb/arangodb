@@ -358,7 +358,10 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
                                                           bool verbose) const {
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackOptions options;
+  options.checkAttributeUniqueness = false;
+  options.buildUnindexedArrays = true;
+  auto builder = std::make_shared<VPackBuilder>(&options);
 
   toVelocyPack(*builder, ast, verbose);
   return builder;
