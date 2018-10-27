@@ -139,19 +139,19 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 AstNode const Ast::NopNode{NODE_TYPE_NOP};
 
 /// @brief initialize a singleton null node instance
-AstNode const Ast::NullNode{NODE_TYPE_VALUE, VALUE_TYPE_NULL};
+AstNode const Ast::NullNode{AstNodeValue()};
 
 /// @brief initialize a singleton false node instance
-AstNode const Ast::FalseNode{false, VALUE_TYPE_BOOL};
+AstNode const Ast::FalseNode{AstNodeValue(false)};
 
 /// @brief initialize a singleton true node instance
-AstNode const Ast::TrueNode{true, VALUE_TYPE_BOOL};
+AstNode const Ast::TrueNode{AstNodeValue(true)};
 
 /// @brief initialize a singleton zero node instance
-AstNode const Ast::ZeroNode{static_cast<int64_t>(0), VALUE_TYPE_INT};
+AstNode const Ast::ZeroNode{AstNodeValue(int64_t(0))};
 
 /// @brief initialize a singleton empty string node instance
-AstNode const Ast::EmptyStringNode{"", 0, VALUE_TYPE_STRING};
+AstNode const Ast::EmptyStringNode{AstNodeValue("", uint32_t(0))};
 
 /// @brief inverse comparison operators
 std::unordered_map<int, AstNodeType> const Ast::NegatedOperators{
@@ -190,7 +190,8 @@ Ast::Ast(Query* query)
     : _query(query),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
-      _containsTraversal(false) {
+      _containsTraversal(false),
+      _containsBindParameters(false) {
   TRI_ASSERT(_query != nullptr);
 
   startSubQuery();
@@ -823,6 +824,7 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name, length);
+  _containsBindParameters = true;
 
   return node;
 }
@@ -837,6 +839,7 @@ AstNode* Ast::createNodeParameterDatasource(char const* name, size_t length) {
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name, length);
+  _containsBindParameters = true;
 
   return node;
 }
@@ -925,6 +928,8 @@ AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
                        parameter->getStringLength());
   node->addMember(accessed);
   node->addMember(parameter);
+
+  _containsBindParameters = true;
 
   return node;
 }
@@ -1041,6 +1046,8 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
   node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
   return node;
 }
@@ -1051,6 +1058,8 @@ AstNode* Ast::createNodeValueDouble(double value) {
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
   node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
   return node;
 }
@@ -1072,6 +1081,8 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value, length);
   node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
   return node;
 }
@@ -1570,140 +1581,143 @@ void Ast::injectBindParameters(
     arangodb::CollectionNameResolver const& resolver
 ) {
   auto& p = parameters.get();
+  
+  if (_containsBindParameters) {
+    // inject bind parameters into query AST
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_PARAMETER ||
+          node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+        // found a bind parameter in the query string
+        std::string const param = node->getString();
 
-  auto func = [&](AstNode* node) -> AstNode* {
-    if (node->type == NODE_TYPE_PARAMETER ||
-        node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
-      // found a bind parameter in the query string
-      std::string const param = node->getString();
-
-      if (param.empty()) {
-        // parameter name must not be empty
-        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-        return nullptr;
-      }
-
-      auto const& it = p.find(param);
-
-      if (it == p.end()) {
-        // query uses a bind parameter that was not defined by the user
-        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-        return nullptr;
-      }
-
-      // mark the bind parameter as being used
-      (*it).second.second = true;
-      
-      auto const& value = (*it).second.first;
-    
-      if (node->type == NODE_TYPE_PARAMETER) {
-        // bind parameter containing a value literal
-        node = nodeFromVPack(value, true);
-
-        if (node != nullptr) {
-          // already mark node as constant here
-          node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-          // mark node as simple
-          node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-          // mark node as executable on db-server
-          node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-          // mark node as deterministic
-          node->setFlag(DETERMINED_NONDETERMINISTIC);
-
-          // finally note that the node was created from a bind parameter
-          node->setFlag(FLAG_BIND_PARAMETER);
+        if (param.empty()) {
+          // parameter name must not be empty
+          _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
+          return nullptr;
         }
-      } else {
-        TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+
+        auto const& it = p.find(param);
+
+        if (it == p.end()) {
+          // query uses a bind parameter that was not defined by the user
+          _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
+          return nullptr;
+        }
+
+        // mark the bind parameter as being used
+        (*it).second.second = true;
         
-        // bound data source parameter
-        TRI_ASSERT(value.isString());
-        VPackValueLength l;
-        char const* name = value.getString(l);
+        auto const& value = (*it).second.first;
+      
+        if (node->type == NODE_TYPE_PARAMETER) {
+          // bind parameter containing a value literal
+          node = nodeFromVPack(value, true);
 
-        // check if the collection was used in a data-modification query
-        bool isWriteCollection = false;
+          if (node != nullptr) {
+            // already mark node as constant here
+            node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            // mark node as simple
+            node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+            // mark node as executable on db-server
+            node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+            // mark node as deterministic
+            node->setFlag(DETERMINED_NONDETERMINISTIC);
 
-        arangodb::StringRef paramRef(param);
-        for (auto const& it : _writeCollections) {
-          auto const& c = it.first;
-
-          if (c->type == NODE_TYPE_PARAMETER_DATASOURCE
-              && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
-            isWriteCollection = true;
-            break;
+            // finally note that the node was created from a bind parameter
+            node->setFlag(FLAG_BIND_PARAMETER);
           }
-        }
-    
-        node = createNodeDataSource(resolver, name, l,
-          isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ, false, true
-        );
-    
-        if (isWriteCollection) {
-          // must update AST info now for all nodes that contained this parameter
-          for (size_t i = 0; i < _writeCollections.size(); ++i) {
-            auto& c = _writeCollections[i].first;
+        } else {
+          TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+          
+          // bound data source parameter
+          TRI_ASSERT(value.isString());
+          VPackValueLength l;
+          char const* name = value.getString(l);
+
+          // check if the collection was used in a data-modification query
+          bool isWriteCollection = false;
+
+          arangodb::StringRef paramRef(param);
+          for (auto const& it : _writeCollections) {
+            auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE
                 && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
-              c = node;
-              // no break here. replace all occurrences
+              isWriteCollection = true;
+              break;
+            }
+          }
+      
+          node = createNodeDataSource(resolver, name, l,
+            isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ, false, true
+          );
+      
+          if (isWriteCollection) {
+            // must update AST info now for all nodes that contained this parameter
+            for (size_t i = 0; i < _writeCollections.size(); ++i) {
+              auto& c = _writeCollections[i].first;
+
+              if (c->type == NODE_TYPE_PARAMETER_DATASOURCE
+                  && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+                c = node;
+                // no break here. replace all occurrences
+              }
             }
           }
         }
-      }
-    } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
-      // look at second sub-node. this is the (replaced) bind parameter
-      auto name = node->getMember(1);
+      } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
+        // look at second sub-node. this is the (replaced) bind parameter
+        auto name = node->getMember(1);
 
-      if (name->type == NODE_TYPE_VALUE) {
-        if (name->value.type == VALUE_TYPE_STRING && name->value.length != 0) {
-          // convert into a regular attribute access node to simplify handling later
-          return createNodeAttributeAccess(
-            node->getMember(0), name->getStringValue(), name->getStringLength());
-        }
-      } else if (name->type == NODE_TYPE_ARRAY) {
-        // bind parameter is an array (e.g. ["a", "b", "c"]. now build the attribute
-        // accesses for the array members recursively
-        size_t const n = name->numMembers();
+        if (name->type == NODE_TYPE_VALUE) {
+          if (name->value.type == VALUE_TYPE_STRING && name->value.length != 0) {
+            // convert into a regular attribute access node to simplify handling later
+            return createNodeAttributeAccess(
+              node->getMember(0), name->getStringValue(), name->getStringLength());
+          }
+        } else if (name->type == NODE_TYPE_ARRAY) {
+          // bind parameter is an array (e.g. ["a", "b", "c"]. now build the attribute
+          // accesses for the array members recursively
+          size_t const n = name->numMembers();
 
-        AstNode* result = nullptr;
-        if (n > 0) {
-          result = node->getMember(0);
-        }
-
-        for (size_t i = 0; i < n; ++i) {
-          auto part = name->getMember(i);
-          if (part->value.type != VALUE_TYPE_STRING || part->value.length == 0) {
-            // invalid attribute name part
-            result = nullptr;
-            break;
+          AstNode* result = nullptr;
+          if (n > 0) {
+            result = node->getMember(0);
           }
 
-          result = createNodeAttributeAccess(
-            result, part->getStringValue(), part->getStringLength());
-        }
+          for (size_t i = 0; i < n; ++i) {
+            auto part = name->getMember(i);
+            if (part->value.type != VALUE_TYPE_STRING || part->value.length == 0) {
+              // invalid attribute name part
+              result = nullptr;
+              break;
+            }
 
-        if (result != nullptr) {
-          return result;
+            result = createNodeAttributeAccess(
+              result, part->getStringValue(), part->getStringLength());
+          }
+
+          if (result != nullptr) {
+            return result;
+          }
         }
+        // fallthrough to exception
+
+        // if no string value was inserted for the parameter name, this is an
+        // error
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                      node->getString().c_str());
+      } else if (node->type == NODE_TYPE_TRAVERSAL) {
+        extractCollectionsFromGraph(node->getMember(2));
+      } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
+        extractCollectionsFromGraph(node->getMember(3));
       }
-      // fallthrough to exception
 
-      // if no string value was inserted for the parameter name, this is an
-      // error
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                    node->getString().c_str());
-    } else if (node->type == NODE_TYPE_TRAVERSAL) {
-      extractCollectionsFromGraph(node->getMember(2));
-    } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
-      extractCollectionsFromGraph(node->getMember(3));
-    }
+      return node;
+    };
 
-    return node;
-  };
-
-  _root = traverseAndModify(_root, func);
+    _root = traverseAndModify(_root, func);
+  }
 
   // add all collections used in data-modification statements
   for (auto& it : _writeCollections) {
@@ -1746,7 +1760,7 @@ AstNode* Ast::replaceAttributeAccess(
     return node;
   }
 
-  std::vector<std::string> attributePath;
+  std::vector<StringRef> attributePath;
 
   auto visitor = [&](AstNode* node) -> AstNode* {
     if (node == nullptr) {
@@ -1761,7 +1775,7 @@ AstNode* Ast::replaceAttributeAccess(
     AstNode* origNode = node;
 
     while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributePath.emplace_back(node->getString());
+      attributePath.emplace_back(node->getStringValue(), node->getStringLength());
       node = node->getMember(0);
     }
 
@@ -1770,7 +1784,7 @@ AstNode* Ast::replaceAttributeAccess(
       return origNode;
     }
     for (size_t i = 0; i < attribute.size(); ++i) {
-      if (attribute[i] != attributePath[i]) {
+      if (attributePath[i] != attribute[i]) {
         // different attribute
         return origNode;
       }
@@ -1795,7 +1809,7 @@ AstNode* Ast::replaceAttributeAccess(
 AstNode* Ast::replaceVariables(
     AstNode* node,
     std::unordered_map<VariableId, Variable const*> const& replacements) {
-  auto visitor = [&](AstNode* node) -> AstNode* {
+  auto visitor = [&replacements](AstNode* node) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
@@ -1824,18 +1838,26 @@ AstNode* Ast::replaceVariables(
 /// @brief replace a variable reference in the expression with another
 /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter
 /// becomes `a + b + 1`
-AstNode* Ast::replaceVariableReference(AstNode* node, Variable const* variable,
+AstNode* Ast::replaceVariableReference(AstNode* node, 
+                                       Variable const* variable,
                                        AstNode const* expressionNode) {
-  auto visitor = [&](AstNode* node) -> AstNode* {
+  struct SearchPattern {
+    Variable const* variable;
+    AstNode const* expressionNode;
+  };
+
+  SearchPattern const pattern{ variable, expressionNode };
+
+  auto visitor = [&pattern](AstNode* node) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
 
     // reference to a variable
     if (node->type == NODE_TYPE_REFERENCE &&
-        static_cast<Variable const*>(node->getData()) == variable) {
+        static_cast<Variable const*>(node->getData()) == pattern.variable) {
       // found the target node. now insert the new node
-      return const_cast<AstNode*>(expressionNode);
+      return const_cast<AstNode*>(pattern.expressionNode);
     }
 
     return node;
@@ -1904,6 +1926,12 @@ void Ast::validateAndOptimize() {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_MULTI_MODIFY);
       }
       ctx->hasSeenWriteNodeInCurrentScope = true;
+    } else if (node->type == NODE_TYPE_VALUE) {
+      return false;
+    } else if (node->type == NODE_TYPE_ARRAY &&
+               node->isConstant()) {
+      // nothing to be done in constant arrays
+      return false;
     }
 
     return true;
@@ -1956,10 +1984,11 @@ void Ast::validateAndOptimize() {
   };
 
   auto visitor = [&](AstNode* node) -> AstNode* {
-    auto ctx = &context;
     if (node == nullptr) {
       return nullptr;
     }
+    
+    auto ctx = &context;
 
     // unary operators
     if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
@@ -2111,7 +2140,7 @@ void Ast::validateAndOptimize() {
   };
 
   // run the optimizations
-  this->_root = traverseAndModify(this->_root, preVisitor, visitor, postVisitor);
+  _root = traverseAndModify(_root, preVisitor, visitor, postVisitor);
 }
 
 /// @brief determines the variables referenced in an expression
@@ -2142,8 +2171,13 @@ void Ast::getReferencedVariables(AstNode const* node,
 /// @brief count how many times a variable is referenced in an expression
 size_t Ast::countReferences(AstNode const* node,
                             Variable const* search) {
-  size_t result = 0;
-  auto visitor = [&result, &search](AstNode const* node) {
+  struct CountResult {
+    size_t count;
+    Variable const* search;
+  };
+
+  CountResult result{0, search };
+  auto visitor = [&result](AstNode const* node) {
     if (node == nullptr) {
       return;
     }
@@ -2152,14 +2186,14 @@ size_t Ast::countReferences(AstNode const* node,
     if (node->type == NODE_TYPE_REFERENCE) {
       auto variable = static_cast<Variable const*>(node->getData());
 
-      if (variable->id == search->id) {
-        ++result;
+      if (variable->id == result.search->id) {
+        ++result.count;
       }
     }
   };
 
   traverseReadOnly(node, visitor);
-  return result;
+  return result.count;
 }
 
 /// @brief determines the top-level attributes referenced in an expression,
@@ -2315,48 +2349,55 @@ bool Ast::getReferencedAttributes(AstNode const* node,
                                   Variable const* variable,
                                   std::unordered_set<std::string>& vars) {
   // traversal state
-  char const* attributeName = nullptr;
-  size_t nameLength = 0;
-  bool isSafeForOptimization = true;
+  struct TraversalState {
+    Variable const* variable;
+    char const* attributeName;
+    size_t nameLength;
+    bool isSafeForOptimization;
+    std::unordered_set<std::string>& vars;
+  };
 
-  auto visitor = [&](AstNode const* node) -> bool {
-    if (node == nullptr || !isSafeForOptimization) {
+  TraversalState state{variable, nullptr, 0, true, vars};
+
+  auto visitor = [&state](AstNode const* node) -> bool {
+    if (node == nullptr || !state.isSafeForOptimization) {
       return false;
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributeName = node->getStringValue();
-      nameLength = node->getStringLength();
+      state.attributeName = node->getStringValue();
+      state.nameLength = node->getStringLength();
       return true;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
       // reference to a variable
       auto v = static_cast<Variable const*>(node->getData());
-      if (v == variable) {
-        if (attributeName == nullptr) {
+      if (v == state.variable) {
+        if (state.attributeName == nullptr) {
           // we haven't seen an attribute access directly before...
           // this may have been an access to an indexed property, e.g value[0] or
           // a reference to the complete value, e.g. FUNC(value)
           // note that this is unsafe to optimize this away
-          isSafeForOptimization = false;
+          state.isSafeForOptimization = false;
           return false;
         }
         // insert attributeName only
-        vars.emplace(std::string(attributeName, nameLength));
+        state.vars.emplace(state.attributeName, state.nameLength);
       }
 
       // fall-through
     }
 
-    attributeName = nullptr;
-    nameLength = 0;
+    state.attributeName = nullptr;
+    state.nameLength = 0;
 
     return true;
   };
 
   traverseReadOnly(node, visitor, ::doNothingVisitor);
-  return isSafeForOptimization;
+
+  return state.isSafeForOptimization;
 }
 
 /// @brief recursively clone a node
@@ -2431,12 +2472,9 @@ AstNode* Ast::clone(AstNode const* node) {
 
   // recursively clone subnodes
   size_t const n = node->numMembers();
-  if (n > 0) {
-    copy->members.reserve(n);
-
-    for (size_t i = 0; i < n; ++i) {
-      copy->addMember(clone(node->getMemberUnchecked(i)));
-    }
+  copy->members.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    copy->addMember(clone(node->getMemberUnchecked(i)));
   }
 
   return copy;
@@ -2534,6 +2572,28 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
   if (n <= 1) {
     // nothing to do
     return node;
+  }
+
+  if (node->isSorted()) {
+    bool unique = true;
+    auto member = node->getMemberUnchecked(0);
+    VPackSlice lhs = member->computeValue();
+    for (size_t i = 1; i < n; ++i) {
+      auto member = node->getMemberUnchecked(i);
+      VPackSlice rhs = member->computeValue();
+
+      if (arangodb::basics::VelocyPackHelper::compare(lhs, rhs, false, nullptr) == 0) {
+        unique = false;
+        break;
+      }
+
+      lhs = rhs;
+    }
+
+    if (unique) {
+      // array members are unique
+      return node;
+    }
   }
 
   // TODO: sort values in place first and compare two adjacent members each
@@ -3515,24 +3575,30 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
   }
 
   if (slice.isArray()) {
-    auto node = createNodeArray(static_cast<size_t>(slice.length()));
+    VPackArrayIterator it(slice);
+    auto node = createNodeArray(static_cast<size_t>(it.size()));
 
-    for (auto const& it : VPackArrayIterator(slice)) {
-      node->addMember(nodeFromVPack(it, copyStringValues));
+    while (it.valid()) {
+      node->addMember(nodeFromVPack(it.value(), copyStringValues));
+      it.next();
     }
 
     node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
     return node;
   }
 
   if (slice.isObject()) {
-    auto node = createNodeObject();
-    node->members.reserve(static_cast<size_t>(slice.length()));
+    VPackObjectIterator it(slice, true);
 
-    for (auto const& it : VPackObjectIterator(slice)) {
+    auto node = createNodeObject();
+    node->members.reserve(static_cast<size_t>(it.size()));
+
+    while (it.valid()) {
       VPackValueLength nameLength;
-      char const* attributeName = it.key.getString(nameLength);
+      char const* attributeName = it.key().getString(nameLength);
 
       if (copyStringValues) {
         // create a copy of the string value
@@ -3541,10 +3607,13 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
       }
 
       node->addMember(createNodeObjectElement(
-          attributeName, static_cast<size_t>(nameLength), nodeFromVPack(it.value, copyStringValues)));
+          attributeName, static_cast<size_t>(nameLength), nodeFromVPack(it.value(), copyStringValues)));
+      it.next();
     }
 
     node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
     return node;
   }

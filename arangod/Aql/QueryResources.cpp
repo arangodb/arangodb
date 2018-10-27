@@ -46,15 +46,18 @@ QueryResources::~QueryResources() {
     TRI_FreeString(it);
   }
 
-  _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-
   // free nodes
-  //LOG_TOPIC(ERR, Logger::FIXME) << "nodes allocated: " << _nodes.size();
   for (auto& it : _nodes) {
     delete it;
   }
 
+#ifdef ARANGODB_USE_MAINTAINER_MODE
+  // we are in the destructor here already. decreasing the memory usage counters will only
+  // provide a benefit (in terms of assertions) if we are in maintainer mode, so we can
+  // save all these operations in non-maintainer mode
+  _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
   _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) + _nodes.capacity() * sizeof(AstNode*));
+#endif
 }
 
 void QueryResources::steal() {
@@ -82,7 +85,13 @@ void QueryResources::addNode(AstNode* node) {
   // reserve space for pointers
   if (capacity > _nodes.capacity()) {
     _resourceMonitor->increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
-    _nodes.reserve(capacity);
+    try {
+      _nodes.reserve(capacity);
+    } catch (...) {
+      // revert change in memory increase
+      _resourceMonitor->decreaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
+      throw;
+    }
   }
 
   // may throw
@@ -125,6 +134,10 @@ char* QueryResources::registerEscapedString(char const* p, size_t length,
     outLength = 0;
     return const_cast<char*>(EmptyString);
   }
+  
+  if (length < ShortStringStorage::maxStringLength) {
+    return _shortStringStorage.unescape(p, length, &outLength);
+  }
 
   char* copy = TRI_UnescapeUtf8String(p, length, &outLength, false);
   return registerLongString(copy, outLength);
@@ -142,20 +155,24 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
       // reserve some initial space for string storage
       capacity = 8;
     } else {
-      capacity = (std::max)(_strings.size() + 8, _strings.capacity());
+      capacity = _strings.size() + 1;
+      if (capacity > _strings.capacity()) {
+        capacity *= 2;
+      }
     }
 
     TRI_ASSERT(capacity > _strings.size());
-    TRI_ASSERT(capacity >= _strings.capacity());
 
     // reserve space
-    _resourceMonitor->increaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
-    try {
-      _strings.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
-      throw;
+    if (capacity > _strings.capacity()) {
+      _resourceMonitor->increaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
+      try {
+        _strings.reserve(capacity);
+      } catch (...) {
+        // revert change in memory increase
+        _resourceMonitor->decreaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
+        throw;
+      }
     }
 
     // will not fail

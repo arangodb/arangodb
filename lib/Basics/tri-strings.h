@@ -169,6 +169,15 @@ char* TRI_UnescapeUtf8String(char const* in,
                              size_t inLength, size_t* outLength, bool normalize);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unescapes unicode escape sequences into buffer "buffer".
+/// the buffer must be big enough to hold at least inLength + 1 bytes of chars
+/// returns the length of the unescaped string, excluding the trailing null
+/// byte
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in, size_t inLength);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of characters in a UTF-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
