@@ -212,7 +212,11 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
-        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        if (_auth->userManager() != nullptr) {
+          lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        } else {
+          lvl = auth::Level::RW;
+        }
       }
       if (lvl == auth::Level::NONE) {
         addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),

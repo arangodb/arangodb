@@ -658,7 +658,19 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes
+    // pre commit sequence needed to place a blocker
+    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
+    auto guard = scopeGuard([&] { // remove blocker afterwards
+      READ_LOCKER(guard, _indexesLock);
+      for (std::shared_ptr<Index> const& idx : _indexes) {
+        auto* est = static_cast<RocksDBIndex*>(idx.get())->estimator();
+        if (est) {
+          est->removeBlocker(state->id());
+        }
+      }
+    });
+    
+    // delete indexes, place estimator blockers
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -667,6 +679,10 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
+        }
+        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        if (est) {
+          est->placeBlocker(state->id(), seq);
         }
       }
     }
@@ -684,19 +700,19 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
+    seq = rocksutils::latestSequenceNumber(); // post commit sequence
     
-    
-    {// only truncate indexes after a successful commit
+    {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
-        idx->afterTruncate(); // clears caches / clears links (if applicable)
+        idx->afterTruncate(seq); // clears caches / clears links (if applicable)
       }
     }
+    guard.fire(); // remove blocker
     
-    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
     uint64_t numDocs = _numberDocuments.exchange(0);
     RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
-                                                     /*numRemoves*/numDocs, /*revision*/0);
+                                                     /*numRemoves*/numDocs, /*rev*/0);
     engine->settingsManager()->updateCounter(_objectId, update);
 
     if (numDocs > 64 * 1024) {

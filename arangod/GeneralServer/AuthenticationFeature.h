@@ -77,11 +77,11 @@ class AuthenticationFeature final
   std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
-  double _authenticationTimeout;
   bool _localAuthentication;
+  bool _active;
+  double _authenticationTimeout;
 
   std::string _jwtSecretProgramOption;
-  bool _active;
 
   static AuthenticationFeature* INSTANCE;
 
