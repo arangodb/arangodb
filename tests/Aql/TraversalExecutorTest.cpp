@@ -27,10 +27,12 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/TraversalExecutor.h"
+#include "Aql/Query.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/TraversalExecutor.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "tests/Mocks/Servers.h"
 
@@ -81,25 +83,25 @@ class TraverserHelper : public Traverser {
 SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   ExecutionState state;
   mocks::MockAqlServer server{};
+  TRI_vocbase_t& vocbase = server.getSystemDatabase();
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
   queryOptions->close();
+  QueryString fakeQueryString("");
 
-  //TrxContext:
-  //  ->getParentTransaction() != nullptr
-  //  ->isEmbeddable
-  // arangodb::aql::Query fakedQuery(false, vocbase, "", bindParams, queryOptions, arangodb::aql::QueryPart::PART_DEPENDENT);
+  arangodb::aql::Query fakedQuery(false, vocbase, fakeQueryString, bindParams, queryOptions, arangodb::aql::QueryPart::PART_DEPENDENT);
 
   ResourceMonitor monitor;
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
-  arangodb::transaction::Methods* trx = nullptr;
+  TraverserOptions traversalOptions(&fakedQuery);
+  arangodb::transaction::Methods* trx = fakedQuery.trx();
   arangodb::ManagedDocumentResult mdr;
 
-  auto traverser = std::make_unique<TraverserHelper>(nullptr, trx, &mdr);
+  auto traverser = std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr);
   TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverser));
 
   GIVEN("there are no rows upstream") {
@@ -110,7 +112,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       TraversalExecutor testee(fetcher, infos);
       TraversalStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return DONE and no result") {
         OutputAqlItemRow result(std::move(block), infos);
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
@@ -123,14 +125,14 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       TraversalExecutor testee(fetcher, infos);
       TraversalStats stats{};
 
-      THEN("the executor should first return WAIT with nullptr") {
+      THEN("the executor should first return WAIT and no result") {
         OutputAqlItemRow result(std::move(block), infos);
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
         REQUIRE(stats.getFiltered() == 0);
 
-        AND_THEN("the executor should return DONE with nullptr") {
+        AND_THEN("the executor should return DONE and no result") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());

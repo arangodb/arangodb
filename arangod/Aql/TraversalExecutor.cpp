@@ -53,7 +53,11 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
   TraversalStats s;
 
   while (true) {
-    if (!_input.isInitialized() && _rowState != ExecutionState::DONE) {
+    if (!_input.isInitialized()) {
+      if (_rowState == ExecutionState::DONE) {
+        // we are done
+        return {_rowState, s};
+      }
       std::tie(_rowState, _input) = _fetcher.fetchRow();
       if (_rowState == ExecutionState::WAITING) {
         TRI_ASSERT(!_input.isInitialized());
