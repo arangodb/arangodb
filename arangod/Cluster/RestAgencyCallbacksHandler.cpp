@@ -64,24 +64,29 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     return RestStatus::DONE;
   }
   
+  std::shared_ptr<AgencyCallback> cb;
   try {
     uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
-    auto cb = _agencyCallbackRegistry->getCallback(index);
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
-    << "Agency callback has been triggered. refetching!";
-    
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
-      try {
-        cb->refetchAndUpdate(true, false);
-      } catch(arangodb::basics::Exception const& e) {
-        LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: "
-        << e.message();
-      }
-    });
-    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
+    cb = _agencyCallbackRegistry->getCallback(index);
   } catch (arangodb::basics::Exception const&) {
     // mop: not found...expected
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   }
+  
+  if (cb) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Agency callback has been triggered. refetching!";
+    
+    //SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
+    try {
+      cb->refetchAndUpdate(true, false);
+    } catch(arangodb::basics::Exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: "
+      << e.message();
+    }
+    //});
+    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
+  }
+  
   return RestStatus::DONE;
 }

@@ -1697,7 +1697,6 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       std::to_string(col->id()),
       idxDef,
       true,
-      arangodb::Index::Compare,
       tmp,
       errorMsg,
       cluster->indexCreationTimeout()
