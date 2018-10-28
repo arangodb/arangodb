@@ -2406,12 +2406,13 @@ int ClusterInfo::ensureIndexCoordinator(
       } else if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto diff = std::chrono::steady_clock::now() - start;
         if (diff < std::chrono::seconds(120)) {
-          uint64_t wt = RandomGenerator::interval(static_cast<uint64_t>(diff.count() / 2));
+          uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(5000));
           std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
           continue;
         }
       }
-    } while(false);
+      break;
+    } while(true);
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
   } catch (...) {
