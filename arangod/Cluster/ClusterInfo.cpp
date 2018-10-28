@@ -2745,7 +2745,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
-  LOG_DEVEL << newIndexBuilder.slice().toJson();
   
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
