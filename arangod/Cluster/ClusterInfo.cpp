@@ -2405,13 +2405,13 @@ int ClusterInfo::ensureIndexCoordinator(
         return errorCode; // done
       } else if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto diff = std::chrono::steady_clock::now() - start;
-        if (diff > std::chrono::seconds(120)) {
-          break;
+        if (diff < std::chrono::seconds(120)) {
+          uint64_t wt = RandomGenerator::interval(static_cast<uint64_t>(diff.count() / 2));
+          std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
+          continue;
         }
-        uint64_t wt = RandomGenerator::interval(diff.count() / 2ULL);
-        std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
       }
-    } while(true);
+    } while(false);
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
   } catch (...) {
@@ -2686,6 +2686,11 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
         }
 
         for (auto const& v : VPackArrayIterator(indexes)) {
+          VPackSlice const k = v.get(StaticStrings::IndexId);
+          if (!k.isString() || idString != k.copyString()) {
+            continue; // this is not our index
+          }
+          
           // check for errors
           if (hasError(v)) {
             std::string errorMsg =
@@ -2697,12 +2702,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
                 arangodb::basics::VelocyPackHelper::readNumericValue<int>(
                     v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
             return true;
-          }
-
-          VPackSlice const k = v.get(StaticStrings::IndexId);
-          if (!k.isString() || idString != k.copyString()) {
-            // this is not our index
-            continue;
           }
 
           // found our index
@@ -2746,7 +2745,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
-  
+  LOG_DEVEL << newIndexBuilder.slice().toJson();
   
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
@@ -2808,7 +2807,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
         loadPlan();
         loadCurrent();
         if (*dbServerResult == TRI_ERROR_NO_ERROR) {
-          resultBuilder = newIndexBuilder;
+          // Copy over all elements in slice.
+          VPackObjectBuilder b(&resultBuilder);
+          resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+          resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
         return *dbServerResult;
       }
