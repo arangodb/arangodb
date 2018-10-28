@@ -1,7 +1,7 @@
 Contributing
 ============
 
-We welcome bug fixes and patches from 3rd party contributors. Please
+Hello, we're welcome to bug fixes and patches from 3rd party contributors. Please
 see the [Contributor Agreement](https://www.arangodb.com/community#contribute)
 for details.
 
