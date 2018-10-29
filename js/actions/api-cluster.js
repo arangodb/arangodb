@@ -1006,7 +1006,7 @@ actions.defineHttp({
     }
 
     // at least RW rights on db to move a shard
-    if (users.isAuthActive() && 
+    if (!users.isAdminUser && 
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'insufficent permissions on database to move shard');
