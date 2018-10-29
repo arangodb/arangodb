@@ -171,8 +171,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     // create a WAL logfile barrier that prevents WAL logfile collection
     // TODO: why are we ignoring the return value here?
     sendCreateBarrier(_masterInfo._lastLogTick);
+    
+    // enable patching of collection count for ShardSynchronization Job
+    std::string patchCount = StaticStrings::Empty;
+    std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+    if (incremental && engineName == "rocksdb" && _configuration._skipCreateDrop &&
+        _configuration._restrictType == "include" &&
+        _configuration._restrictCollections.size() == 1) {
+      patchCount = *_configuration._restrictCollections.begin();
+    }
 
-    r = sendStartBatch();
+    r = sendStartBatch(patchCount);
     if (r.fail()) {
       return r;
     }

@@ -61,6 +61,8 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
+/*static*/ constexpr double InitialSyncer::defaultBatchTimeout;
+
 InitialSyncer::InitialSyncer(
     ReplicationApplierConfiguration const& configuration)
     : Syncer(configuration),
@@ -77,16 +79,26 @@ InitialSyncer::~InitialSyncer() {
 }
 
 /// @brief send a "start batch" command
-Result InitialSyncer::sendStartBatch() {
+/// @param patchCount try to patch count of this collection
+///        only effective with the incremental sync
+Result InitialSyncer::sendStartBatch(std::string const& patchCount) {
   if (_isChildSyncer) {
     return Result();
   }
   
   double const now = TRI_microtime();
   _batchId = 0;
-  std::string const url =
-      ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
+  // SimpleHttpClient automatically adds database prefix
+  std::string const url = ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b, true);
+    guard->add("ttl", VPackValue(_batchTtl));
+    if (!patchCount.empty()) {
+      guard->add("patchCount", VPackValue(patchCount));
+    }
+  }
+  std::string const body = b.toJson();
 
   // send request
   std::string const progress = "sending batch start command to url " + url;
