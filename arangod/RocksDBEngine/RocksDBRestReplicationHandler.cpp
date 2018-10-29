@@ -93,7 +93,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       Result res = std::get<0>(triple);
       if (res.fail()) {
         LOG_TOPIC(WARN, Logger::REPLICATION) << "Error during first phase of"
-        << " collection cound patching: " << res.errorMessage();
+        << " collection count patching: " << res.errorMessage();
       }
     }
 
@@ -700,7 +700,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
 
-  RocksDBReplicationContext::DumpResult res(0);
+  RocksDBReplicationContext::DumpResult res(TRI_ERROR_NO_ERROR);
   if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
 
     VPackBuffer<uint8_t> buffer;

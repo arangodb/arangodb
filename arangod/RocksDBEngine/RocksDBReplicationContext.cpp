@@ -104,7 +104,9 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   auto it = _iterators.begin();
   while (it != _iterators.end()) {
     if (it->second->dbGuard.database().id() == vocbase.id()) {
-      if (!it->second->isUsed()) {
+      if (it->second->isUsed()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "trying to delete used iterator";
+      } else {
         it = _iterators.erase(it);
       }
     } else {
