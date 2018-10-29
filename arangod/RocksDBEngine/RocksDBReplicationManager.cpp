@@ -95,10 +95,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(TRI_vocbase_t* vocbase,
-                                                                    double ttl,
-                                                                    TRI_server_id_t serverId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(vocbase, ttl, serverId);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, TRI_server_id_t serverId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl, serverId);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -168,9 +166,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::find(
-    RocksDBReplicationId id, bool& busy, bool exclusive, double ttl) {
+    RocksDBReplicationId id, double ttl) {
   RocksDBReplicationContext* context = nullptr;
-  busy = false;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -185,15 +182,12 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
     TRI_ASSERT(context != nullptr);
 
     if (context->isDeleted()) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Trying to use delete "
+      << "replication context with id " << id;
       // already deleted
       return nullptr;
     }
-
-    bool acquired = context->use(ttl, exclusive);
-    if (!acquired) {
-      busy = true;
-      return nullptr;
-    }
+    context->use(ttl);
   }
 
   return context;
@@ -285,9 +279,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto& context : _contexts) {
-      if (context.second->vocbase() == vocbase) {
-        context.second->setDeleted();
-      }
+      context.second->removeVocbase(*vocbase); // will set deleted flag
     }
   }
 
