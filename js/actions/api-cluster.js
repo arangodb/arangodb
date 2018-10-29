@@ -795,7 +795,7 @@ actions.defineHttp({
       return;
     }
 
-    if (req.database !== '_system' || !req.isAdminUser) {
+    if (!req.isAdminUser) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only allowed for admins on the _system database');
       return;
@@ -896,11 +896,12 @@ actions.defineHttp({
       return;
     }
 
-    if (req.database !== '_system') {
+    // simon: maybe information leak, but usage is unclear to me
+    /*if (req.database !== '_system') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only allowed on the _system database');
       return;
-    }
+    }*/
 
     // Now get to work:
     let id;
@@ -983,12 +984,6 @@ actions.defineHttp({
       return;
     }
 
-    if (req.database !== '_system' || !req.isAdminUser) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
-      return;
-    }
-
     // Now get to work:
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {
@@ -1009,6 +1004,15 @@ actions.defineHttp({
         "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'");
       return;
     }
+
+    // at least RW rights on db to move a shard
+    let perm = users.permission(req.user, body.database);
+    if (perm !== 'rw') {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'insufficent permissions on database to move shard');
+      return;
+    }
+
     body.shards = [body.shard];
     body.collections = [body.collection];
     var r = cluster.moveShard(body);
@@ -1183,6 +1187,7 @@ actions.defineHttp({
       return;
     }
 
+    // simon: RO is sufficient to rebalance shards for current db
     // Now get to work:
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {

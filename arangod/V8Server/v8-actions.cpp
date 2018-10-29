@@ -364,18 +364,15 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty()) { // superuser
-      req->ForceSet(IsAdminUser, v8::True(isolate));
-    } else if (ExecContext::CURRENT != nullptr &&
-               ExecContext::CURRENT->isAdminUser()) {
+    if (user.empty() || (ExecContext::CURRENT != nullptr &&
+        ExecContext::CURRENT->isAdminUser())) {
       req->ForceSet(IsAdminUser, v8::True(isolate));
     } else {
       req->ForceSet(IsAdminUser, v8::False(isolate));
     }
-  } else if (!ExecContext::isAuthEnabled()) {
-    req->ForceSet(IsAdminUser, v8::True(isolate));
   } else {
-    req->ForceSet(IsAdminUser, v8::False(isolate));
+    req->ForceSet(IsAdminUser, ExecContext::isAuthEnabled() ?
+                  v8::False(isolate) : v8::True(isolate));
   }
 
   // create database attribute
