@@ -1274,21 +1274,6 @@ if (NOT USE_PRECOMPILED_V8)
   endif()
 endif ()
 
-# This copies the compile commands to the source dir.
-# There they can be used to repeat parts of compile
-# steps generating an AST. This AST can in turn be used
-# for meaningful auto-completion in editors without
-# heuristics, dice rolling and other guessing.
-
-if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-  message(STATUS "copy compile_commands.json")
-
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-      ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
-  )
-endif()
-
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
 )
