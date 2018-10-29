@@ -165,6 +165,7 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // collection attributes
+std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
