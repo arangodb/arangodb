@@ -177,7 +177,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
-  void afterTruncate() override {
+  void afterTruncate(TRI_voc_tick_t) override {
     _edgesFrom.clear();
     _edgesTo.clear();
   }

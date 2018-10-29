@@ -432,12 +432,6 @@ ShortestPathEngine::ShortestPathEngine(
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice));
-  TRI_ASSERT(_opts != nullptr);
-  if (_opts == nullptr) {
-    // It seems we could not generate the options
-    // without throwing an error. Must by OOM.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 }
@@ -533,12 +527,6 @@ TraverserEngine::TraverserEngine(
   }
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
-  TRI_ASSERT(_opts != nullptr);
-  if (_opts == nullptr) {
-    // It seems we could not generate the options
-    // without throwing an error. Must by OOM.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
 }
