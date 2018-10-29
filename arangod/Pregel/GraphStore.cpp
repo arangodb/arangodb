@@ -97,10 +97,10 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
   }
 
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
-  
+
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
-  
+
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
@@ -110,7 +110,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
   _config->edgeCollectionShards();
   size_t numShards = SIZE_MAX;
-  
+
   // Allocating some memory
   uint64_t vCount = 0;
   uint64_t eCount = 0;
@@ -121,16 +121,16 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
     } else if (numShards != vertexShards.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
     }
-    
+
     for (size_t i = 0; i < vertexShards.size(); i++) {
 
       VertexShardInfo info;
       info.vertexShard = vertexShards[i];
       info.trx = _createTransaction();
-      
+
       TRI_voc_cid_t cid = info.trx->addCollectionAtRuntime(info.vertexShard);
       info.trx->pinData(cid);  // will throw when it fails
-      
+
       OperationResult opResult = info.trx->count(info.vertexShard,
                                                  transaction::CountType::Normal);
       if (opResult.fail() || _destroyed) {
@@ -141,7 +141,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
       if (info.numVertices == 0) {
         continue;
       }
-      
+
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       for (auto const& pair2 : edgeCollMap) {
@@ -149,26 +149,26 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         if (vertexShards.size() != edgeShards.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
         }
-        
+
         ShardID const& eShard = edgeShards[i];
         info.edgeShards.push_back(eShard);
 
         cid = info.trx->addCollectionAtRuntime(eShard);
         info.trx->pinData(cid);  // will throw when it fails
-        
+
         OperationResult opResult = info.trx->count(eShard, transaction::CountType::Normal);
         if (opResult.fail() || _destroyed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
-        info.numEdges += opResult.slice().getUInt();;
+        info.numEdges += opResult.slice().getUInt();
       }
       eCount += info.numEdges;
-      
+
       result[pair.first].push_back(std::move(info));
     }
   }
 
-    
+
   _index.resize(vCount);
   size_t requiredMem = vCount * _graphFormat->estimatedVertexSize() +
                        eCount * _graphFormat->estimatedEdgeSize();
@@ -183,7 +183,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
     }
     _edges = new VectorTypedBuffer<Edge<E>>(eCount);
   }
-  
+
   return result;
 }
 
@@ -198,14 +198,14 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->post([this, scheduler, callback] {
-    
+  scheduler->queue(RequestPriority::LOW, [this, scheduler, callback] {
+
     // hold the current position where the ith vertex shard can
     // start to write its data. At the end the offset should equal the
     // sum of the counts of all ith edge shards
     auto collectionShards = _allocateSpace();
-    
-    
+
+
     uint64_t vertexOff = 0;
     std::vector<size_t> edgeDataOffsets; // will contain # off edges in ith shard
     for (auto& collection : collectionShards) {
@@ -219,12 +219,12 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         edgeDataOffsets[++shardIdx] += info.numEdges;
       }
     }
-    
+
     for (auto& collection : collectionShards) {
 
       size_t shardIdx = 0;
       for (VertexShardInfo& info : collection.second) {
-        
+
         try {
           // we might have already loaded these shards
           if (_loadedShards.find(info.vertexShard) != _loadedShards.end()) {
@@ -235,30 +235,30 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
           TRI_ASSERT(info.numVertices > 0);
           TRI_ASSERT(vertexOff < _index.size());
           TRI_ASSERT(info.numEdges == 0 || edgeDataOffsets[shardIdx] < _edges->size());
-          
-          scheduler->post([this, &info, &edgeDataOffsets, vertexOff, shardIdx] {
+
+          scheduler->queue(RequestPriority::LOW, [this, &info, &edgeDataOffsets, vertexOff, shardIdx] {
             TRI_DEFER(_runningThreads--);// exception safe
             _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
                           vertexOff, edgeDataOffsets[shardIdx]);
-          }, false);
+            });
           // update to next offset
           vertexOff += info.numVertices;
         } catch(...) {
           LOG_TOPIC(WARN, Logger::PREGEL) << "unhandled exception while "
             <<"loading pregel graph";
         }
-        
+
         shardIdx++;
       }
-      
+
       // we can only load one vertex collection at a time
       while (_runningThreads > 0) {
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
       }
     }
-    
-    scheduler->post(callback, false);
-  }, false);
+
+    scheduler->queue(RequestPriority::LOW, callback);
+    });
 }
 
 template <typename V, typename E>
@@ -440,7 +440,7 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx,
       break;
     }
   }
-  
+
   // Add all new vertices
   _localVerticeCount += (vertexOffset - originalVertexOffset);
 
@@ -486,7 +486,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx,
       // lazy loading always uses vector backed storage
       ((VectorTypedBuffer<Edge<E>>*)_edges)->appendEmptyElement();
     }
-    
+
     std::string toValue = slice.get(StaticStrings::ToString).copyString();
     std::size_t pos = toValue.find('/');
     std::string collectionName = toValue.substr(0, pos);
@@ -632,7 +632,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   do {
     _runningThreads++;
-    SchedulerFeature::SCHEDULER->post([this, start, end, now, cb] {
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, start, end, now, cb] {
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(_config->globalShardIDs(), it);
@@ -646,7 +646,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
                                         << (TRI_microtime() - now) << "s";
         cb();
       }
-    }, false);
+      });
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -667,4 +667,3 @@ template class arangodb::pregel::GraphStore<HITSValue, int8_t>;
 template class arangodb::pregel::GraphStore<DMIDValue, float>;
 template class arangodb::pregel::GraphStore<LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
-

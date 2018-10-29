@@ -2012,14 +2012,23 @@ static std::unique_ptr<char[]> SystemTempPath;
 /// @brief user-defined temp path
 static std::string UserTempPath;
 
-static void SystemTempPathCleaner(void) {
-  char* path = SystemTempPath.get();
+class SystemTempPathSweeper {
+  std::string _systemTempPath;
+public:
+  SystemTempPathSweeper() : _systemTempPath(){};
 
-  if (path != nullptr) {
-    // delete directory iff directory is empty
-    TRI_RMDIR(path);
+  ~SystemTempPathSweeper(void) {
+    if (!_systemTempPath.empty()) {
+      // delete directory iff directory is empty
+      TRI_RMDIR(_systemTempPath.c_str());
+    }
   }
-}
+  void init(const char *path) {
+    _systemTempPath = path;
+  }
+};
+
+SystemTempPathSweeper SystemTempPathSweeperInstance;
 
 // The TempPath is set but not created
 void TRI_SetTempPath(std::string const& temp) {
@@ -2096,11 +2105,12 @@ std::string TRI_GetTempPath() {
       std::this_thread::sleep_for(std::chrono::milliseconds(5 + RandomGenerator::interval(uint64_t(20))));
     }
 
-    atexit(SystemTempPathCleaner);
+    SystemTempPathSweeperInstance.init(SystemTempPath.get());
   }
 
   return std::string(path);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a temporary file name

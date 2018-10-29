@@ -72,8 +72,10 @@
 
     redirectToGraphViewer: function (e) {
       var name = $(e.currentTarget).attr('id');
-      name = name.substr(0, name.length - 5);
-      window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '/' + encodeURIComponent(name);
+      if (name) {
+        name = name.substr(0, name.length - 5);
+        window.App.navigate('graph/' + encodeURIComponent(name), {trigger: true});
+      }
     },
 
     loadGraphViewer: function (graphName, refetch) {

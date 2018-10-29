@@ -582,7 +582,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase,
 
   auto idxs = coll.getIndexes();
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn, false);
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
   };
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
@@ -628,7 +628,7 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
                                std::make_shared<VPackBuilder>(),
                                arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+    auto queryRegistry = QueryRegistryFeature::registry();
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 

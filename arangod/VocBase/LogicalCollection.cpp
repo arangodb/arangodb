@@ -228,7 +228,7 @@ LogicalCollection::LogicalCollection(
 
   return category;
 }
-   
+
 LogicalCollection::~LogicalCollection() {}
 
 // SECTION: sharding
@@ -418,7 +418,7 @@ bool LogicalCollection::isSmart() const { return _isSmart; }
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
- 
+
 std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool allowUpdate) {
   return getPhysical()->clusterIndexEstimates(allowUpdate);
 }
@@ -628,11 +628,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   if (_keyGenerator != nullptr) {
     result.openObject();
     _keyGenerator->toVelocyPack(result);
-    result.close();
   } else {
     result.openArray();
-    result.close();
   }
+  result.close();
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
@@ -920,7 +919,7 @@ Result LogicalCollection::update(transaction::Methods* trx,
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
-  
+
   resultMarkerTick = 0;
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1069,4 +1068,3 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
 
   return ChecksumResult(std::move(b));
 }
-

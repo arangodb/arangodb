@@ -143,6 +143,7 @@ class StaticStrings {
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoNoLock;
+  static std::string const XArangoFrontend;
 
   // mime types
   static std::string const MimeTypeJson;
@@ -157,6 +158,7 @@ class StaticStrings {
   static std::string const GraphTo;
   static std::string const GraphOptions;
   static std::string const GraphSmartGraphAttribute;
+  static std::string const IsSmart;
   static std::string const NumberOfShards;
   static std::string const DistributeShardsLike;
   static std::string const ReplicationFactor;
