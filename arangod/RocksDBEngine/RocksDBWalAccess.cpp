@@ -752,6 +752,11 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // pre 3.4 breaking up write batches is not supported
   size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
 
+  /*
+  maxTrxChunkSize = 16 * 16 * 16;
+  chunkSize = 16 * 16 * 16;
+  */
+
   MyWALDumper dumper(filter, func, maxTrxChunkSize);
   const uint64_t since = dumper.safeBeginTick();
   TRI_ASSERT(since <= filter.tickStart);
@@ -798,6 +803,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
     //LOG_TOPIC(INFO, Logger::ENGINES) << "found batch-seq: " << batch.sequence;
     lastScannedTick = batch.sequence;  // start of the batch
+
     if (batch.sequence < since) {
       iterator->Next();  // skip
       continue;
