@@ -1,6 +1,9 @@
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
 
+* force connection timeout to be 7 seconds to allow libcurl time to retry lost DNS
+  queries.
+
 * fixes a routing issue within the web ui after the use of views
 
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
@@ -12,7 +15,7 @@ v3.4.0-rc.4 (XXXX-XX-XX)
 * added option `--rocksdb.total-write-buffer-size` to limit total memory usage
   across all RocksDB in-memory write buffers
 
-* suppress warnings from statistics background threads such as 
+* suppress warnings from statistics background threads such as
   `WARNING caught exception during statistics processing: Expecting Object`
   during version upgrade
 
@@ -38,14 +41,14 @@ v3.4.0-rc.3 (2018-10-23)
   Using the `force` flag when upgrading or replacing a service falls back to
   installing the service if it does not already exist.
 
-* The order of JSON object attribute keys in JSON return values will now be 
+* The order of JSON object attribute keys in JSON return values will now be
   "random" in more cases. In JSON, there is no defined order for object attribute
   keys anyway, so ArangoDB is taking the freedom to return the attribute keys in
   a non-deterministic, seemingly unordered way.
 
 * Fixed an AQL bug where the `optimize-traversals` rule was falsely applied to
   extensions with inline expressions and thereby ignoring them
-  
+
 * fix side-effects of sorting larger arrays (>= 16 members) of constant literal
   values in AQL, when the array was used not only for IN-value filtering but also
   later in the query.
@@ -86,7 +89,7 @@ v3.4.0-rc.3 (2018-10-23)
 
 * prevent creation of collections and views with the same in cluster setups
 
-* fixed issue #6770: document update: ignoreRevs parameter ignored 
+* fixed issue #6770: document update: ignoreRevs parameter ignored
 
 * added AQL query optimizer rules `simplify-conditions` and `fuse-filters`
 
@@ -864,30 +867,30 @@ v3.3.17 (2018-10-04)
 * upgraded arangosync version to 0.6.0
 
 * added several advanced options for configuring and debugging LDAP connections.
-  Please note that some of the following options are platform-specific and may not 
+  Please note that some of the following options are platform-specific and may not
   work on all platforms or with all LDAP servers reliably:
 
-  - `--ldap.serialized`: whether or not calls into the underlying LDAP library 
+  - `--ldap.serialized`: whether or not calls into the underlying LDAP library
     should be serialized.
     This option can be used to work around thread-unsafe LDAP library functionality.
-  - `--ldap.serialize-timeout`: sets the timeout value that is used when waiting to 
-    enter the LDAP library call serialization lock. This is only meaningful when 
-    `--ldap.serialized` has been set to `true`. 
-  - `--ldap.retries`: number of tries to attempt a connection. Setting this to values 
-    greater than one will make ArangoDB retry to contact the LDAP server in case no 
+  - `--ldap.serialize-timeout`: sets the timeout value that is used when waiting to
+    enter the LDAP library call serialization lock. This is only meaningful when
+    `--ldap.serialized` has been set to `true`.
+  - `--ldap.retries`: number of tries to attempt a connection. Setting this to values
+    greater than one will make ArangoDB retry to contact the LDAP server in case no
     connection can be made initially.
-  - `--ldap.restart`: whether or not the LDAP library should implicitly restart 
+  - `--ldap.restart`: whether or not the LDAP library should implicitly restart
     connections
-  - `--ldap.referrals`: whether or not the LDAP library should implicitly chase 
+  - `--ldap.referrals`: whether or not the LDAP library should implicitly chase
     referrals
-  - `--ldap.debug`: turn on internal OpenLDAP library output (warning: will print 
+  - `--ldap.debug`: turn on internal OpenLDAP library output (warning: will print
     to stdout).
-  - `--ldap.timeout`: timeout value (in seconds) for synchronous LDAP API calls 
+  - `--ldap.timeout`: timeout value (in seconds) for synchronous LDAP API calls
     (a value of 0 means default timeout).
-  - `--ldap.network-timeout`: timeout value (in seconds) after which network operations 
-    following the initial connection return in case of no activity (a value of 0 means 
+  - `--ldap.network-timeout`: timeout value (in seconds) after which network operations
+    following the initial connection return in case of no activity (a value of 0 means
     default timeout).
-  - `--ldap.async-connect`: whether or not the connection to the LDAP library will 
+  - `--ldap.async-connect`: whether or not the connection to the LDAP library will
     be done asynchronously.
 
 * fixed a shutdown race in ArangoDB's logger, which could have led to some buffered
@@ -901,7 +904,7 @@ v3.3.17 (2018-10-04)
 
 * fixed issue #6583: Agency node segfaults if sent an authenticated HTTP request is sent to its port
 
-* when cleaning out a leader it could happen that it became follower instead of 
+* when cleaning out a leader it could happen that it became follower instead of
   being removed completely
 
 * make synchronous replication detect more error cases when followers cannot
@@ -911,7 +914,7 @@ v3.3.17 (2018-10-04)
   VelocyStream protocol (VST)
 
   That combination could have led to spurious errors such as "TLS padding error"
-  or "Tag mismatch" and connections being closed 
+  or "Tag mismatch" and connections being closed
 
 * agency endpoint updates now go through RAFT
 
@@ -926,7 +929,7 @@ v3.3.16 (2018-09-19)
 
 * fixed issue #6495 (Document not found when removing records)
 
-* fixed undefined behavior in cluster plan-loading procedure that may have 
+* fixed undefined behavior in cluster plan-loading procedure that may have
   unintentionally modified a shared structure
 
 * reduce overhead of function initialization in AQL COLLECT aggregate functions,
@@ -973,18 +976,18 @@ v3.3.15 (2018-09-10)
 
 * added startup option `--query.optimizer-max-plans value`
 
-  This option allows limiting the number of query execution plans created by the 
+  This option allows limiting the number of query execution plans created by the
   AQL optimizer for any incoming queries. The default value is `128`.
 
-  By adjusting this value it can be controlled how many different query execution 
-  plans the AQL query optimizer will generate at most for any given AQL query. 
-  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  By adjusting this value it can be controlled how many different query execution
+  plans the AQL query optimizer will generate at most for any given AQL query.
+  Normally the AQL query optimizer will generate a single execution plan per AQL query,
   but there are some cases in which it creates multiple competing plans. More plans
   can lead to better optimized queries, however, plan creation has its costs. The
-  more plans are created and shipped through the optimization pipeline, the more time 
+  more plans are created and shipped through the optimization pipeline, the more time
   will be spent in the optimizer.
 
-  Lowering this option's value will make the optimizer stop creating additional plans 
+  Lowering this option's value will make the optimizer stop creating additional plans
   when it has already created enough plans.
 
   Note that this setting controls the default maximum number of plans to create. The
@@ -1918,7 +1921,7 @@ v3.2.17 (XXXX-XX-XX)
 * make synchronous replication detect more error cases when followers cannot
   apply the changes from the leader
 
-* fixed undefined behavior in cluster plan-loading procedure that may have 
+* fixed undefined behavior in cluster plan-loading procedure that may have
   unintentionally modified a shared structure
 
 * cluster nodes should retry registering in agency until successful
