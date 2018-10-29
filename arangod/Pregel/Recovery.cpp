@@ -148,7 +148,7 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->post([this, shard] { _renewPrimaryServer(shard); }, false);
+      scheduler->queue(RequestPriority::LOW, [this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }
