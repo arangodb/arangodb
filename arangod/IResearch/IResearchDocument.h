@@ -268,7 +268,7 @@ class DocumentPrimaryKey {
   constexpr TRI_voc_cid_t const& cid() const noexcept { return _keys[0]; }
   constexpr TRI_voc_rid_t const& rid() const noexcept { return _keys[1]; }
 
-  constexpr explicit operator irs::bytes_ref() const noexcept {
+  explicit operator irs::bytes_ref() const noexcept {
     return {
       reinterpret_cast<irs::byte_type const*>(_keys),
       sizeof _keys
