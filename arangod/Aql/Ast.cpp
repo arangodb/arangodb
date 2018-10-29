@@ -1582,7 +1582,7 @@ void Ast::injectBindParameters(
 ) {
   auto& p = parameters.get();
   
-  if (_containsBindParameters) {
+  if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER ||
