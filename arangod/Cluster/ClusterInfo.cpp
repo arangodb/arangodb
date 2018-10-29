@@ -2523,8 +2523,8 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     return setErrormsg(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
   
-  size_t numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(collection,
-                                                    StaticStrings::NumberOfShards, 1);
+  const size_t numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(
+                                        collection, StaticStrings::NumberOfShards, 1);
   VPackSlice indexes = collection.get("indexes");
   if (indexes.isArray()) {
     auto type = slice.get(arangodb::StaticStrings::IndexType);
@@ -2535,8 +2535,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     for (auto const& other : VPackArrayIterator(indexes)) {
       TRI_ASSERT(other.isObject());
       if (true == arangodb::Index::Compare(slice, other)) {
-        // found an existing index...
-        {
+        { // found an existing index...
           // Copy over all elements in slice.
           VPackObjectBuilder b(&resultBuilder);
           resultBuilder.add(VPackObjectIterator(other));
@@ -2570,8 +2569,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
       if (slice.hasKey("indexes")) {
         VPackSlice const indexes = slice.get("indexes");
         if (!indexes.isArray()) {
-          // no list, so our index is not present. we can abort searching
-          break;
+          break; // no list, so our index is not present. we can abort searching
         }
 
         for (auto const& v : VPackArrayIterator(indexes)) {
@@ -2593,8 +2591,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
             return true;
           }
 
-          // found our index
-          found++;
+          found++; // found our index
           break;
         }
       }
@@ -2654,7 +2651,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
       errorMsg += " HttpCode: " + std::to_string(result.httpCode()) + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
-//      resultBuilder = *resBuilder;
     }
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
