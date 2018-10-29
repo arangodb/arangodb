@@ -1966,7 +1966,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
 
   // pick up persistent id flag from state
   _hasAllPersistentLocalIds.store(openState._hasAllPersistentLocalIds);
-  LOG_TOPIC_IF(TRACE, arangodb::Logger::ENGINES,
+  LOG_TOPIC_IF(WARN, arangodb::Logger::ENGINES,
                !openState._hasAllPersistentLocalIds)
      << "collection '" << _logicalCollection.name() << "' does not have all "
      << "persistent LocalDocumentIds; cannot be linked to an arangosearch view";
