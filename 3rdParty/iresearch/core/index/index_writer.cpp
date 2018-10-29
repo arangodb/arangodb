@@ -1375,7 +1375,7 @@ bool index_writer::consolidate(
       }
 
       IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: Name='%s', docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: Name='%s', docs_count=" IR_UINT64_T_SPECIFIER ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
         run_id,
         consolidation_meta.name.c_str(),
         consolidation_meta.docs_count,
@@ -1442,7 +1442,7 @@ bool index_writer::consolidate(
       }
 
       IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
+        "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished:\nName='%s', docs_count=" IR_UINT64_T_SPECIFIER ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER "",
         run_id,
         consolidation_meta.name.c_str(),
         consolidation_meta.docs_count,
