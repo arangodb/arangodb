@@ -364,6 +364,11 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
   // ensure we are not in recovery
   TRI_ASSERT(!inRecovery());
 
+  auto guard = scopeGuard([this]() -> void {
+    _upgrading.store(false);
+  });
+  _upgrading.store(true);
+
   // flush the wal and wait for compactor just to be sure
   result = flushWal(true, true, false);
   if (result.fail()) {
@@ -396,6 +401,9 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
     LOG_TOPIC(ERR, Logger::ENGINES)
         << "failure in persistence: " << result.errorMessage();
   }
+
+  LOG_TOPIC(DEBUG, Logger::ENGINES)
+      << "done with upgrade task to persist LocalDocumentIds";
 
   return result;
 }
@@ -3687,3 +3695,5 @@ void MMFilesEngine::enableCompaction() {
 bool MMFilesEngine::isCompactionDisabled() const {
   return _compactionDisabled.load() > 0;
 }
+
+bool MMFilesEngine::upgrading() const { return _upgrading.load(); }

@@ -1827,7 +1827,7 @@ int MMFilesCollection::openWorker(bool ignoreErrors) {
 
 void MMFilesCollection::open(bool ignoreErrors) {
   VPackBuilder builder;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  auto engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   auto& vocbase = _logicalCollection.vocbase();
   auto cid = _logicalCollection.id();
 
@@ -1915,7 +1915,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
     }
   }
 
-  if (!engine->inRecovery()) {
+  if (!engine->inRecovery() && !engine->upgrading()) {
     // build the index structures, and fill the indexes
     fillAllIndexes(&trx);
   }
@@ -3204,6 +3204,8 @@ Result MMFilesCollection::persistLocalDocumentIds() {
       }
     }
   }
+
+  _hasAllPersistentLocalIds.store(true);
 
   TRI_ASSERT(_compactors.empty());
   TRI_ASSERT(_journals.empty());
