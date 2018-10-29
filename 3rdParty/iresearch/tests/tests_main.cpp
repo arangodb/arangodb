@@ -269,42 +269,6 @@ int test_base::initialize(int argc, char* argv[]) {
   return RUN_ALL_TESTS();
 }
 
-void flush_timers(std::ostream &out) {
-  std::map<std::string, std::pair<size_t, size_t>> ordered_stats;
-
-  iresearch::timer_utils::visit([&ordered_stats](const std::string& key, size_t count, size_t time)->bool {
-    std::string key_str = key;
-
-#if defined(__GNUC__)
-    if (key_str.compare(0, strlen("virtual "), "virtual ") == 0) {
-      key_str = key_str.substr(strlen("virtual "));
-    }
-
-    size_t i;
-
-    if (std::string::npos != (i = key_str.find(' ')) && key_str.find('(') > i) {
-      key_str = key_str.substr(i + 1);
-    }
-#elif defined(_MSC_VER)
-    size_t i;
-
-    if (std::string::npos != (i = key_str.find("__cdecl "))) {
-      key_str = key_str.substr(i + strlen("__cdecl "));
-    }
-#endif
-
-    ordered_stats.emplace(key_str, std::make_pair(count, time));
-    return true;
-  });
-
-  for (auto& entry: ordered_stats) {
-    auto& key = entry.first;
-    auto& count = entry.second.first;
-    auto& time = entry.second.second;
-    out << key << "\tcalls:" << count << ",\ttime: " << time/1000 << " us,\tavg call: " << time/1000/(double)count << " us"<< std::endl;
-  }
-}
-
 void stack_trace_handler(int sig) {
   // reset to default handler
   signal(sig, SIG_DFL);
