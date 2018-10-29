@@ -180,9 +180,8 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
   auto result = _iterators.emplace(cid, std::move(iter));
-  if (!result.second) {
-    return std::make_tuple(TRI_ERROR_OUT_OF_MEMORY, 0, 0);
-  }
+  TRI_ASSERT(result.second);
+  
   CollectionIterator* cIter = result.first->second.get();
   if (nullptr == cIter->iter) {
     _iterators.erase(cid);
