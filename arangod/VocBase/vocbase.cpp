@@ -872,7 +872,10 @@ void TRI_vocbase_t::shutdown() {
 
   // starts unloading of collections
   for (auto& collection : collections) {
-    collection->close(); // required to release indexes
+    {
+      WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+      collection->close(); // required to release indexes
+    }
     unloadCollection(collection.get(), true);
   }
 
