@@ -77,8 +77,8 @@ uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
 
 static aql::QueryId ExtractReadlockId(VPackSlice slice) {
-TRI_ASSERT(slice.isString());
-return StringUtils::uint64(slice.copyString());
+  TRI_ASSERT(slice.isString());
+  return StringUtils::uint64(slice.copyString());
 }
 
 static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
