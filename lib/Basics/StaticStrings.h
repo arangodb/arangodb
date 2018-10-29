@@ -153,6 +153,7 @@ class StaticStrings {
   
   // collection attributes
   static std::string const NumberOfShards;
+  static std::string const IsSmart;
   static std::string const DistributeShardsLike;
   static std::string const ReplicationFactor;
   static std::string const ShardKeys;

@@ -725,7 +725,7 @@ void ClusterInfo::loadPlan() {
               std::shared_ptr<LogicalCollection> newCollection;
 
             #if defined(USE_ENTERPRISE)
-              VPackSlice isSmart = collectionSlice.get("isSmart");
+              VPackSlice isSmart = collectionSlice.get(StaticStrings::IsSmart);
 
               if (isSmart.isTrue()) {
                 auto type =
@@ -1781,7 +1781,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   }
 
   bool isSmart = false;
-  VPackSlice smartSlice = json.get("isSmart");
+  VPackSlice smartSlice = json.get(StaticStrings::IsSmart);
   if (smartSlice.isBool() && smartSlice.getBool()) {
     isSmart = true;
   }
@@ -2525,10 +2525,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   
   size_t numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(collection,
                                                     StaticStrings::NumberOfShards, 1);
-  if (numberOfShards == 0) {
-    return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
-  }
-  
   VPackSlice indexes = collection.get("indexes");
   if (indexes.isArray()) {
     auto type = slice.get(arangodb::StaticStrings::IndexType);
@@ -2556,108 +2552,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     TRI_ASSERT(resultBuilder.isEmpty());
     return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
   }
-  
-
-//  loadPlan();
-//  // It is possible that between the fetching of the planned collections
-//  // and the write lock we acquire below something has changed. Therefore
-//  // we first get the previous value and then do a compare and swap operation.
-//
-//  auto numberOfShardsMutex = std::make_shared<Mutex>();
-//  auto numberOfShards = std::make_shared<int>(0);
-//  auto resBuilder = std::make_shared<VPackBuilder>();
-//  VPackBuilder collectionBuilder;
-//
-//  {
-//    std::shared_ptr<LogicalCollection> c =
-//        getCollection(databaseName, collectionID);
-//    std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-//    c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
-//    {
-//      MUTEX_LOCKER(guard, *numberOfShardsMutex);
-//      *numberOfShards = static_cast<int>(c->numberOfShards());
-//    }
-//    VPackSlice const indexes = tmp->slice();
-//
-//    if (indexes.isArray()) {
-//      auto type = slice.get(arangodb::StaticStrings::IndexType);
-//
-//      if (!type.isString()) {
-//        return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
-//      }
-//
-//      for (auto const& other : VPackArrayIterator(indexes)) {
-//        TRI_ASSERT(other.isObject());
-//
-//        bool isSame = arangodb::Index::Compare(slice, other);
-//        if (isSame) {
-//          // found an existing index...
-//          {
-//            // Copy over all elements in slice.
-//            VPackObjectBuilder b(resBuilder.get());
-//            resBuilder->add(VPackObjectIterator(other));
-//            resBuilder->add("isNewlyCreated", VPackValue(false));
-//          }
-//          resultBuilder = *resBuilder;
-//          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-//        }
-//      }
-//    }
-//
-//    // no existing index found.
-//    if (!create) {
-//      TRI_ASSERT(resultBuilder.isEmpty());
-//      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-//    }
-//
-//    // now create a new index
-//    std::unordered_set<std::string> const ignoreKeys{
-//        "allowUserKeys", "cid", /* cid really ignore?*/
-//        "count",         "globallyUniqueId", "planId", "version", "objectId"
-//    };
-//    c->setStatus(TRI_VOC_COL_STATUS_LOADED);
-//    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false, false);
-//  }
-//  VPackSlice const collectionSlice = collectionBuilder.slice();
-//
-//  auto newBuilder = std::make_shared<VPackBuilder>();
-//  if (!collectionSlice.isObject()) {
-//    return setErrormsg(TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, errorMsg);
-//  }
-//
-//  try {
-//    VPackObjectBuilder b(newBuilder.get());
-//    // Create a new collection VPack with the new Index
-//    for (auto const& entry : VPackObjectIterator(collectionSlice)) {
-//      TRI_ASSERT(entry.key.isString());
-//      std::string key = entry.key.copyString();
-//
-//      if (key == "indexes") {
-//        TRI_ASSERT(entry.value.isArray());
-//        newBuilder->add(key, VPackValue(VPackValueType::Array));
-//        // Copy over all indexes known so far
-//        newBuilder->add(VPackArrayIterator(entry.value));
-//        {
-//          VPackObjectBuilder ob(newBuilder.get());
-//          // Add the new index ignoring "id"
-//          for (auto const& e : VPackObjectIterator(slice)) {
-//            TRI_ASSERT(e.key.isString());
-//            if (!e.key.isEqualString(StaticStrings::IndexId)) {
-//              newBuilder->add(e.key);
-//              newBuilder->add(e.value);
-//            }
-//          }
-//          newBuilder->add(StaticStrings::IndexId, VPackValue(idString));
-//        }
-//        newBuilder->close();  // the array
-//      } else {
-//        // Plain copy everything else
-//        newBuilder->add(key, entry.value);
-//      }
-//    }
-//  } catch (...) {
-//    return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
-//  }
 
   // will contain the error number and message
   std::shared_ptr<std::atomic<int>> dbServerResult = std::make_shared<std::atomic<int>>(-1);
@@ -2665,12 +2559,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](
       VPackSlice const& result) {
-//    MUTEX_LOCKER(guard, *numberOfShardsMutex);
-//
-//    // mop: uhhhh....we didn't even set the plan yet :O
-//    if (*numberOfShards == 0) {
-//      return false;
-//    }
 
     if (!result.isObject() || result.length() != numberOfShards) {
       return true;
@@ -2713,19 +2601,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
 
     if (found == (size_t)numberOfShards) {
-      /*VPackSlice indexFinder = newBuilder->slice();
-      TRI_ASSERT(indexFinder.isObject());
-      indexFinder = indexFinder.get("indexes");
-      TRI_ASSERT(indexFinder.isArray());
-      VPackValueLength l = indexFinder.length();
-      indexFinder = indexFinder.at(l - 1);  // Get the last index
-      TRI_ASSERT(indexFinder.isObject());
-      {
-        // Copy over all elements in slice.
-        VPackObjectBuilder b(&resultBuilder);
-        resultBuilder.add(VPackObjectIterator(indexFinder));
-        resultBuilder.add("isNewlyCreated", VPackValue(true));
-      }*/
       *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
       return true;
     }
@@ -2785,26 +2660,20 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   }
 
   loadPlan();
-//
-//  {
-//    MUTEX_LOCKER(guard, *numberOfShardsMutex);
-//    if (*numberOfShards == 0) {
-//      errorMsg = *errMsg;
-//      resultBuilder = *resBuilder;
-//      loadCurrent();
-//      return TRI_ERROR_NO_ERROR;
-//    }
-//  }
+
+  if (numberOfShards == 0) { // smart "dummy" collection has no shards
+    TRI_ASSERT(collection.get(StaticStrings::IsSmart).getBool());
+    loadCurrent();
+    return TRI_ERROR_NO_ERROR;
+  }
 
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (true) {
       errorMsg = *errMsg;
-//      resultBuilder = *resBuilder;
 
       if (*dbServerResult >= 0) {
-        loadPlan();
         loadCurrent();
         if (*dbServerResult == TRI_ERROR_NO_ERROR) {
           // Copy over all elements in slice.

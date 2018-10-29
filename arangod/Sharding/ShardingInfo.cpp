@@ -49,7 +49,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardIds(new ShardMap()),
       _shardingStrategy() {
 
-  bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, "isSmart", false);
+  bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
 
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
