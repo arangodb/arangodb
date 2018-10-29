@@ -2666,7 +2666,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-    while (true) {
+    while (!application_features::ApplicationServer::isStopping()) {
       errorMsg = *errMsg;
 
       if (*dbServerResult >= 0) {
@@ -2683,19 +2683,18 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
       if (TRI_microtime() > endTime) {
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
-
-      if (application_features::ApplicationServer::isStopping()) {
-        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+      
+      auto c = getCollection(databaseName, collectionID);
+      if (!c) {
+        errorMsg = "collection was dropped during ensureIndex";
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
-      if (!application_features::ApplicationServer::isRetryOK()) {
-        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
-      }
     }
   }
 
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+  return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
