@@ -171,6 +171,9 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
+  // Replication
+  static std::string const ReplicationSoftLockOnly;
+
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
