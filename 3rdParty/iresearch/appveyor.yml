@@ -126,28 +126,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
@@ -177,6 +177,9 @@ install:
   - set GTEST_URL="https://github.com/google/googletest.git"
   - cd %DEPS_DIR%
   - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1
+  - cd %GTEST_DIR%
+  - appveyor-retry git fetch --tags
+  - appveyor-retry git checkout tags/release-1.8.0
   - set GTEST_ROOT=%GTEST_DIR%\googletest
 
   ############################################################################

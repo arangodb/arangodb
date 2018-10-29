@@ -277,15 +277,6 @@ void RocksDBTransactionCollection::addOperation(
   }
 }
 
-void RocksDBTransactionCollection::addTruncateOperation() {
-  TRI_ASSERT(_numInserts == 0 && _numUpdates == 0 && _numRemoves == 0);
-  if (!isLocked() || _accessType != AccessMode::Type::EXCLUSIVE) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection must be exlusively locked");
-  }
-  _numRemoves += _initialNumberDocuments + _numInserts;
-}
-
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
                                                  uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
@@ -347,8 +338,8 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
     auto estimator = ridx->estimator();
     if (estimator) {
-      estimator->bufferUpdates(commitSeq, std::move(pair.second.first),
-                                          std::move(pair.second.second));
+      estimator->bufferUpdates(commitSeq, std::move(pair.second.inserts),
+                                          std::move(pair.second.removals));
       estimator->removeBlocker(trxId);
     }
   }
@@ -363,13 +354,13 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
 void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].first.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].inserts.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].second.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].removals.emplace_back(hash);
 }
 
 /// @brief lock a collection

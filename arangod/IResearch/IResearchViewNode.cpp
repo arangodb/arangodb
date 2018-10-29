@@ -356,6 +356,7 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+  TRI_ASSERT(LogicalView::category() == _view->category());
 
   // FIXME any other way to validate options before object creation???
   std::string error;
@@ -665,6 +666,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto& view = *this->view();
   PrimaryKeyIndexReader* reader;
 
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+    << "Start getting snapshot for view '" << view.name() << "'";
+
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
@@ -696,6 +700,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       "failed to get snapshot while creating arangosearch view ExecutionBlock"
     );
   }
+
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+    << "Finish getting snapshot for view '" << view.name() << "'";
 
   if (_sortCondition.empty()) {
     // unordered case

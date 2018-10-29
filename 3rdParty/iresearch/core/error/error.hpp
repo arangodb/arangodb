@@ -24,9 +24,9 @@
 #ifndef IRESEARCH_ERROR_H
 #define IRESEARCH_ERROR_H
 
-#include "utils/string.hpp"
-
 #include <exception>
+
+#include "utils/string.hpp"
 
 MSVC_ONLY(class IRESEARCH_API std::exception);
 
@@ -55,6 +55,23 @@ enum class ErrorCode : uint32_t {
 struct IRESEARCH_API error_base: std::exception {
   virtual ErrorCode code() const NOEXCEPT;
   virtual const char* what() const NOEXCEPT override;
+};
+
+// -----------------------------------------------------------------------------
+//                                                           detailed_error_base
+// -----------------------------------------------------------------------------
+class IRESEARCH_API detailed_error_base: public error_base {
+ public:
+  explicit detailed_error_base(const char* error): error_(error) {}
+  explicit detailed_error_base(std::string&& error) NOEXCEPT
+    : error_(std::move(error)) {
+  }
+  virtual const char* what() const NOEXCEPT final { return error_.c_str(); }
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::string error_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 // ----------------------------------------------------------------------------
@@ -87,21 +104,12 @@ struct IRESEARCH_API eof_error: io_error {
 // ----------------------------------------------------------------------------
 //                                                            detailed_io_error
 // ----------------------------------------------------------------------------
-class IRESEARCH_API detailed_io_error: public io_error {
+struct IRESEARCH_API detailed_io_error: public detailed_error_base {
  public:
   DECLARE_ERROR_CODE(io_error);
-  explicit detailed_io_error(const irs::string_ref& error = irs::string_ref::NIL);
-  explicit detailed_io_error(std::string&& error);
-  explicit detailed_io_error(const char* error);
-  detailed_io_error& operator<<(const irs::string_ref& error);
-  detailed_io_error& operator<<(std::string&& error);
-  detailed_io_error& operator<<(const char* error);
-  virtual iresearch::ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT override;
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string error_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+  template<typename T>
+  detailed_io_error(T&& error): detailed_error_base(std::forward<T>(error)) {}
+  virtual ErrorCode code() const NOEXCEPT override { return CODE; }
 };
 
 // ----------------------------------------------------------------------------
@@ -146,10 +154,11 @@ struct IRESEARCH_API index_not_found: error_base {
 // ----------------------------------------------------------------------------
 //                                                                  index_error
 // ----------------------------------------------------------------------------
-struct IRESEARCH_API index_error: error_base {
-  DECLARE_ERROR_CODE( index_error );
-  virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT override;
+struct IRESEARCH_API index_error: detailed_error_base {
+  DECLARE_ERROR_CODE(index_error);
+  template<typename T>
+  index_error(T&& error): detailed_error_base(std::forward<T>(error)) {}
+  virtual ErrorCode code() const NOEXCEPT override { return CODE; }
 };
 
 // ----------------------------------------------------------------------------

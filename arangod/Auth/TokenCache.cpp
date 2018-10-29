@@ -181,6 +181,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     WRITE_LOCKER(writeLocker, _jwtLock);
     // intentionally copy the entry from the cache
     auth::TokenCache::Entry const& entry = _jwtCache.get(jwt);
+    // would have thrown if not found
     if (entry.expired()) {
       try {
         _jwtCache.remove(jwt);
@@ -215,18 +216,18 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  auth::TokenCache::Entry entry = validateJwtBody(body);
-  if (!entry._authenticated) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt body " << body;
-    return auth::TokenCache::Entry::Unauthenticated();
-  }
-
   std::string const message = header + "." + body;
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt signature " << signature << " against "
         << _jwtSecret;
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+  
+  auth::TokenCache::Entry entry = validateJwtBody(body);
+  if (!entry._authenticated) {
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry::Unauthenticated();
   }
 

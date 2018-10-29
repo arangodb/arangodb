@@ -312,7 +312,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->post([this] {
+  scheduler->queue(RequestPriority::LOW, [this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -325,7 +325,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
       LOG_TOPIC(WARN, Logger::PREGEL)
           << "No further action taken after receiving all responses";
     }
-    }, false);
+    });
   return VPackBuilder();
 }
 
@@ -421,10 +421,10 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
-    boost::posix_time::seconds(2)));
-  _boost_timer->async_wait([this](const asio::error_code& error) {
-    _boost_timer.reset();
+  _steady_timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  _steady_timer->expires_after(std::chrono::seconds(2));
+  _steady_timer->async_wait([this](const asio::error_code& error) {
+    _steady_timer.reset();
 
     if (error == asio::error::operation_aborted ||
         _state != ExecutionState::RECOVERING) {
@@ -716,7 +716,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.close();
-  
+
   // merge results from DBServers
   outBuilder.openArray();
   int res = _sendToAllDBServers(Utils::aqlResultsPath, b,
@@ -770,13 +770,13 @@ int Conductor::_sendToAllDBServers(std::string const& path,
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->post([this, path, message] {
+      scheduler->queue(RequestPriority::LOW, [this, path, message] {
         VPackBuilder response;
 
         PregelFeature::handleWorkerRequest(
           _vocbaseGuard.database(), path, message.slice(), response
         );
-      }, false);
+      });
     }
     return TRI_ERROR_NO_ERROR;
   }

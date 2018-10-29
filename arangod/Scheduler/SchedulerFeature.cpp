@@ -98,6 +98,9 @@ void SchedulerFeature::validateOptions(
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = defaultNumberOfThreads();
   }
+  if (_nrMinimalThreads < 2) {
+    _nrMinimalThreads = 2;
+  }
 
   if (_queueSize == 0) {
     _queueSize = _nrMaximalThreads * 8;
@@ -136,7 +139,7 @@ void SchedulerFeature::start() {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
         << (_nrMinimalThreads + 1) << ", raising it";
-    _nrMaximalThreads = _nrMinimalThreads + 1;
+    _nrMaximalThreads = _nrMinimalThreads;
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
@@ -300,7 +303,7 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler = std::make_shared<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize, _fifo1Size, _fifo2Size);
+                                           _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
 }

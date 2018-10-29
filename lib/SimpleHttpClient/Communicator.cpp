@@ -137,10 +137,14 @@ Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
 
+  /// start with unlimited, non-closing connection count.  ConnectionCount object will
+  ///  moderate once requests start
+  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, 0);  //default is -1, want unlimited
+
   if (_curl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "unable to initialize curl");
   }
-  
+
 #ifdef _WIN32
   int err = dumb_socketpair(_socks, 0);
   if (err != 0) {
@@ -174,7 +178,7 @@ Ticket Communicator::addRequest(Destination&& destination,
                                 Callbacks callbacks, Options options) {
   uint64_t id = NEXT_TICKET_ID.fetch_add(1, std::memory_order_seq_cst);
   TRI_ASSERT(request != nullptr);
-  
+
   {
     MUTEX_LOCKER(guard, _newRequestsLock);
     _newRequests.emplace_back(
@@ -199,11 +203,17 @@ Ticket Communicator::addRequest(Destination&& destination,
 
 int Communicator::work_once() {
   std::vector<NewRequest> newRequests;
+  int connections;
 
   {
     MUTEX_LOCKER(guard, _newRequestsLock);
     newRequests.swap(_newRequests);
   }
+
+  /// make sure there is enough room for every new request to get
+  ///  an independent connection
+  connections = connectionCount.newMaxConnections(newRequests.size());
+  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, connections);
 
   for (auto& newRequest : newRequests) {
     createRequestInProgress(std::move(newRequest));
@@ -216,6 +226,11 @@ int Communicator::work_once() {
         "Invalid curl multi result while performing! Result was " +
         std::to_string(_mc));
   }
+
+  /// use stillRunning as high water mark for open connections needed.
+  ///  curl/lib/multi.c uses stillRunning * 4 to estimate connections retained,
+  ///  starting with *2
+  connectionCount.updateMaxConnections(stillRunning * 2);
 
   // handle all messages received
   CURLMsg* msg = nullptr;
@@ -270,8 +285,8 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
       newRequest._destination, newRequest._callbacks, newRequest._ticketId,
       newRequest._options, std::move(newRequest._request));
 
-  auto handleInProgress = std::make_unique<CurlHandle>(rip);
-  
+  auto handleInProgress = std::make_shared<CurlHandle>(rip);
+
   auto request = (HttpRequest*)handleInProgress->_rip->_request.get();
 
   CURL* handle = handleInProgress->_handle;
@@ -316,7 +331,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
     thisHeader.append(": ", 2);
     thisHeader.append(header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());
-    
+
     thisHeader.clear();
   }
 
@@ -337,7 +352,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_easy_setopt(handle, CURLOPT_HEADERDATA, handleInProgress->_rip.get());
   curl_easy_setopt(handle, CURLOPT_ERRORBUFFER,
                    handleInProgress->_rip.get()->_errorBuffer);
-  
+
   // mop: XXX :S CURLE 51 and 60...
   curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -358,7 +373,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   // the requests immediately fail
   // if not this hack can go away
   if (connectTimeout <= 0) {
-    connectTimeout = 1;
+    connectTimeout = 5;
   }
 
   curl_easy_setopt(
@@ -415,9 +430,8 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_multi_add_handle(_curl, handle);
 }
 
+/// new code using lambda and Scheduler
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
-  // remove request in progress
-  double connectTime = 0.0;
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
@@ -426,80 +440,99 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     return;
   }
 
+  // unclear if this would be safe on another thread.  Leaving here.
   if (rip->_options._curlRcFn) {
     (*rip->_options._curlRcFn)(rc);
   }
-  
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
-      << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
-  
-  if (CURLE_OPERATION_TIMEDOUT == rc) {
-    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << ::buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
-  } // if
 
-  if (strlen(rip->_errorBuffer) != 0) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-        << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
-  }
+  std::shared_ptr<CurlHandle> curlHandle;
 
-  MUTEX_LOCKER(guard, _handlesLock);
-  switch (rc) {
-    case CURLE_OK: {
-      long httpStatusCode = 200;
-      curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
-
-      std::unique_ptr<GeneralResponse> response(
-          new HttpResponse(static_cast<ResponseCode>(httpStatusCode)));
-
-      transformResult(handle, std::move(rip->_responseHeaders),
-                      std::move(rip->_responseBody),
-                      dynamic_cast<HttpResponse*>(response.get()));
-
-      if (httpStatusCode < 400) {
-        callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));
-      } else {
-        callErrorFn(rip, httpStatusCode, std::move(response));
-      }
-      break;
+  {
+    MUTEX_LOCKER(guard, _handlesLock);
+    auto inProgress = _handlesInProgress.find(rip->_ticketId);
+    if (_handlesInProgress.end() != inProgress) {
+      curlHandle = (*inProgress).second->getSharedPtr();
+      _handlesInProgress.erase(rip->_ticketId);
     }
-    case CURLE_COULDNT_CONNECT:
-    case CURLE_SSL_CONNECT_ERROR:
-    case CURLE_COULDNT_RESOLVE_HOST:
-    case CURLE_URL_MALFORMAT:
-    case CURLE_SEND_ERROR:
-      callErrorFn(rip, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
-      break;
-    case CURLE_OPERATION_TIMEDOUT:
-    case CURLE_RECV_ERROR:
-    case CURLE_GOT_NOTHING:
-      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0 == connectTime)) {
-        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
-      } else {
-        callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
-      }
-      break;
-    case CURLE_WRITE_ERROR:
-      if (rip->_aborted) {
-        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
-      } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got a write error from curl but request was not aborted";
-        callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
-      }
-      break;
-    case CURLE_ABORTED_BY_CALLBACK:
-      TRI_ASSERT(rip->_aborted);
-      callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
-      break;
-    default:
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "curl return " << rc;
-      callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
-      break;
   }
 
-  _handlesInProgress.erase(rip->_ticketId);
+  if (curlHandle) {
+    rip->_callbacks._scheduleMe([curlHandle, this, handle, rc, rip]
+    {// lamda rewrite starts
+      double connectTime = 0.0;
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+        << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
+        << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+
+      if (CURLE_OPERATION_TIMEDOUT == rc) {
+        curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << ::buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
+      } // if
+
+      if (strlen(rip->_errorBuffer) != 0) {
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
+      }
+
+      switch (rc) {
+        case CURLE_OK: {
+          long httpStatusCode = 200;
+          curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
+
+          std::unique_ptr<GeneralResponse> response(
+            new HttpResponse(static_cast<ResponseCode>(httpStatusCode)));
+
+          transformResult(handle, std::move(rip->_responseHeaders),
+                          std::move(rip->_responseBody),
+                          dynamic_cast<HttpResponse*>(response.get()));
+
+          if (httpStatusCode < 400) {
+            callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));
+          } else {
+            callErrorFn(rip, httpStatusCode, std::move(response));
+          }
+          break;
+        }
+        case CURLE_COULDNT_CONNECT:
+        case CURLE_SSL_CONNECT_ERROR:
+        case CURLE_COULDNT_RESOLVE_HOST:
+        case CURLE_URL_MALFORMAT:
+        case CURLE_SEND_ERROR:
+          callErrorFn(rip, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
+          break;
+        case CURLE_OPERATION_TIMEDOUT:
+        case CURLE_RECV_ERROR:
+        case CURLE_GOT_NOTHING:
+          if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0 == connectTime)) {
+            callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          } else {
+            callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
+          }
+          break;
+        case CURLE_WRITE_ERROR:
+          if (rip->_aborted) {
+            callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          } else {
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got a write error from curl but request was not aborted";
+            callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
+          }
+          break;
+        case CURLE_ABORTED_BY_CALLBACK:
+          TRI_ASSERT(rip->_aborted);
+          callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          break;
+        default:
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "curl return " << rc;
+          callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
+          break;
+      }
+
+    }); //lambda rewrite ends
+  } else {
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "In progress id not found via _handlesInProgress.find("
+                                          << rip->_ticketId << ")";
+  }
 }
 
 void Communicator::transformResult(CURL* handle,
@@ -668,8 +701,8 @@ std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   }
   return vec;
 }
-      
-// needs _handlesLock! 
+
+// needs _handlesLock!
 void Communicator::abortRequestInternal(Ticket ticketId) {
   _handlesLock.assertLockedByCurrentThread();
 
@@ -678,8 +711,8 @@ void Communicator::abortRequestInternal(Ticket ticketId) {
     return;
   }
 
-  LOG_TOPIC(WARN, Logger::REQUESTS) 
-      << ::buildPrefix(handle->second->_rip->_ticketId) 
+  LOG_TOPIC(WARN, Logger::REQUESTS)
+      << ::buildPrefix(handle->second->_rip->_ticketId)
       << "aborting request to " << handle->second->_rip->_destination.url();
   handle->second->_rip->_aborted = true;
 }
@@ -698,7 +731,7 @@ void Communicator::callErrorFn(Ticket const& ticketId, Destination const& destin
   auto total = TRI_microtime() - start;
 
   if (total > CALLBACK_WARN_TIME) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) 
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << ::buildPrefix(ticketId) << "error callback for request to " << destination.url() << " took " << total << "s";
   }
 }
@@ -714,7 +747,7 @@ void Communicator::callSuccessFn(Ticket const& ticketId, Destination const& dest
   auto total = TRI_microtime() - start;
 
   if (total > CALLBACK_WARN_TIME) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) 
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << ::buildPrefix(ticketId) << "success callback for request to " << destination.url() << " took " << (total) << "s";
   }
 }

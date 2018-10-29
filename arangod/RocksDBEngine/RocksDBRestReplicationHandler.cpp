@@ -94,17 +94,6 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->lastTick())));
     b.close();
 
-    if (serverId == 0) {
-      serverId = ctx->id();
-    }
-
-    // we are inserting the current tick (WAL sequence number) here.
-    // this is ok because the batch creation is the first operation done
-    // for initial synchronization. the inventory request and collection
-    // dump requests will all happen after the batch creation, so the
-    // current tick value here is good
-    _vocbase.updateReplicationClient(serverId, ctx->lastTick(), ttl);
-
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -125,16 +114,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
-    int res = TRI_ERROR_NO_ERROR;
-    bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, false, ttl);
-    RocksDBReplicationContextGuard guard(_manager, ctx);
-    if (busy) {
-      res = TRI_ERROR_CURSOR_BUSY;
-      generateError(GeneralResponse::responseCode(res), res);
-      return;
-    } else if (ctx == nullptr) {
-      res = TRI_ERROR_CURSOR_NOT_FOUND;
+    int res = _manager->extendLifetime(id, ttl);
+    if (res != TRI_ERROR_NO_ERROR) {
       generateError(GeneralResponse::responseCode(res), res);
       return;
     }
@@ -148,7 +129,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
           << _request->fullUrl();
     }
 
-    TRI_server_id_t serverId = ctx->id();
+    TRI_server_id_t serverId = id; // just use context id as fallback
     if (!value.empty() && value != "none") {
       serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
@@ -156,7 +137,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.updateReplicationClient(serverId, ctx->lastTick(), ttl);
+    _vocbase.updateReplicationClient(serverId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -182,6 +163,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
+// handled by the batch for rocksdb
 void RocksDBRestReplicationHandler::handleCommandBarrier() {
   auto const type = _request->requestType();
   if (type == rest::RequestType::POST) {
@@ -220,7 +202,6 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   // determine end tick for dump
   std::string const& value2 = _request->value("to", found);
-
   if (found) {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
@@ -239,18 +220,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
   }
 
-  bool includeSystem = true;
-  std::string const& value4 = _request->value("includeSystem", found);
-
-  if (found) {
-    includeSystem = StringUtils::boolean(value4);
-  }
-
-  size_t chunkSize = 1024 * 1024;  // TODO: determine good default value?
-  std::string const& value5 = _request->value("chunkSize", found);
-  if (found) {
-    chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
+  uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
   grantTemporaryRights();
 
@@ -274,8 +245,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   builder.openArray();
 
-  auto result = tailWal(
-    &_vocbase, tickStart, tickEnd, chunkSize, includeSystem, cid, builder
+  auto result = tailWal(&_vocbase, tickStart, tickEnd, static_cast<size_t>(chunkSize),
+                        includeSystem, cid, builder
   );
 
   builder.close();
@@ -313,7 +284,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, StringUtils::itoa(latest));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned, StringUtils::itoa(result.lastScannedTick()));
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true"); // TODO remove
   _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          result.minTickIncluded() ? "true" : "false");
 
@@ -492,19 +463,14 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   }
 
   static uint64_t const DefaultChunkSize = 5000;
-  uint64_t chunkSize = DefaultChunkSize;
 
   // determine chunk size
-  bool found;
-  std::string const& value = _request->value("chunkSize", found);
+  uint64_t chunkSize = _request->parsedValue("chunkSize", DefaultChunkSize);
 
-  if (found) {
-    chunkSize = StringUtils::uint64(value);
-    if (chunkSize < 100) {
-      chunkSize = DefaultChunkSize;
-    } else if (chunkSize > 20000) {
-      chunkSize = 20000;
-    }
+  if (chunkSize < 100) {
+    chunkSize = DefaultChunkSize;
+  } else if (chunkSize > 20000) {
+    chunkSize = 20000;
   }
 
   //first suffix needs to be the batch id
@@ -545,36 +511,28 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   static uint64_t const DefaultChunkSize = 5000;
-  uint64_t chunkSize = DefaultChunkSize;
 
   // determine chunk size
-  bool found;
-  std::string const& value1 = _request->value("chunkSize", found);
+  uint64_t chunkSize = _request->parsedValue("chunkSize", DefaultChunkSize);
 
-  if (found) {
-    chunkSize = StringUtils::uint64(value1);
-    if (chunkSize < 100) {
-      chunkSize = DefaultChunkSize;
-    } else if (chunkSize > 20000) {
-      chunkSize = 20000;
-    }
+  if (chunkSize < 100) {
+    chunkSize = DefaultChunkSize;
+  } else if (chunkSize > 20000) {
+    chunkSize = 20000;
   }
 
   // chunk is supplied by old clients, low is an optimization
   // for rocksdb, because seeking should be cheaper
-  std::string const& value2 = _request->value("chunk", found);
-  size_t chunk = 0;
-  if (found) {
-    chunk = static_cast<size_t>(StringUtils::uint64(value2));
-  }
-  std::string const& lowKey = _request->value("low", found);
+  size_t chunk = static_cast<size_t>(_request->parsedValue("chunk", uint64_t(0)));
 
-  std::string const& value3 = _request->value("type", found);
+  bool found;
+  std::string const& lowKey = _request->value("low", found);
+  std::string const& value = _request->value("type", found);
 
   bool keys = true;
-  if (value3 == "keys") {
+  if (value == "keys") {
     keys = true;
-  } else if (value3 == "docs") {
+  } else if (value == "docs") {
     keys = false;
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -584,9 +542,9 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
   size_t offsetInChunk = 0;
   size_t maxChunkSize = SIZE_MAX;
-  std::string const& value4 = _request->value("offset", found);
+  std::string const& value2 = _request->value("offset", found);
   if (found) {
-    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value2));
     // "offset" was introduced with ArangoDB 3.3. if the client sends it,
     // it means we can adapt the result size dynamically and the client
     // may refetch data for the same chunk

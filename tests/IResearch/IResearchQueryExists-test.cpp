@@ -268,7 +268,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    impl->sync();
+    impl->commit();
   }
 
   // test non-existent (any)
@@ -1526,7 +1526,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    impl->sync();
+    CHECK(impl->commit().ok());
   }
 
   // test non-existent (any)

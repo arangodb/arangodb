@@ -75,6 +75,7 @@
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/LogicalView.h"
 
@@ -288,6 +289,12 @@ void RocksDBEngine::validateOptions(
         << " supported on this platform";
   }
 #endif
+  
+  if (_pruneWaitTimeInitial < 10) {
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    << "consider increasing the value for --rocksdb.wal-file-timeout-initial. "
+    << "Replication clients might have trouble to get in sync";
+  }
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -493,6 +500,10 @@ void RocksDBEngine::start() {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
+  
+  if (opts->_totalWriteBufferSize > 0) {
+    _options.db_write_buffer_size = opts->_totalWriteBufferSize;
+  }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -601,6 +612,7 @@ void RocksDBEngine::start() {
       }
     }
   }
+  
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
@@ -1899,15 +1911,26 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#ifdef USE_IRESEARCH
-      if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
-        LOG_TOPIC(DEBUG, Logger::VIEWS)
-            << "arangosearch view '" << v->name()
-            << "' contains " << v->count() << " documents";
-      }
+
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+      struct DummyTransaction : transaction::Methods {
+        explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
+          : transaction::Methods(ctx) {
+        }
+      };
+
+      transaction::StandaloneContext context(view->vocbase());
+      std::shared_ptr<transaction::Context> dummy;  // intentionally empty
+      DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
+      auto& viewImpl = dynamic_cast<iresearch::IResearchView&>(*view);
+      auto reader = viewImpl.snapshot(trx, iresearch::IResearchView::Snapshot::FindOrCreate);
+      TRI_ASSERT(reader);
+
+      LOG_TOPIC(DEBUG, Logger::VIEWS)
+          << "arangosearch view '" << view->name()
+          << "' contains " << reader->docs_count() << " documents";
 #endif
-#endif
+
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)

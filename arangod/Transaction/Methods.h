@@ -324,10 +324,6 @@ class Methods {
   OperationResult truncate(std::string const& collectionName,
                            OperationOptions const& options);
 
-  /// @brief rotate all active journals of the collection
-  OperationResult rotateActiveJournal(std::string const& collectionName,
-                                      OperationOptions const& options);
-
   /// @brief count the number of documents in a collection
   virtual OperationResult count(std::string const& collectionName, CountType type);
 
@@ -512,10 +508,6 @@ class Methods {
 
   OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
                                                  OperationOptions const& options);
-
-  OperationResult rotateActiveJournalLocal(std::string const& collectionName,
-                                           OperationOptions const& options);
-
 
  protected:
 

@@ -37,6 +37,9 @@ extern size_t (*JSONStringCopyCheckUtf8)(uint8_t*, uint8_t const*, size_t);
 // White space skipping:
 extern size_t (*JSONSkipWhiteSpace)(uint8_t const*, size_t);
 
+// check string for invalid utf-8 sequences
+extern bool (*ValidateUtf8String)(uint8_t const*, size_t);
+
 namespace arangodb {
 namespace velocypack {
 

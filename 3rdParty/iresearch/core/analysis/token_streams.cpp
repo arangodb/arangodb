@@ -24,6 +24,7 @@
 #include "shared.hpp"
 #include "token_streams.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/string_utils.hpp"
 
 NS_LOCAL
 
@@ -128,30 +129,31 @@ bool string_token_stream::next() {
 bytes_ref numeric_token_stream::numeric_term::value(
     bstring& buf,
     NumericType type,
-    decltype(numeric_token_stream::numeric_term::val_) val,
-    uint32_t shift) {
+    value_t val,
+    uint32_t shift
+) {
   switch (type) {
     case NT_LONG: {
       typedef numeric_utils::numeric_traits<int64_t> traits_t;
-      oversize(buf, traits_t::size());
+      string_utils::oversize(buf, traits_t::size());
 
       return bytes_ref(&(buf[0]), traits_t::encode(val.i64, &(buf[0]), shift));
     }
     case NT_DBL: {
       typedef numeric_utils::numeric_traits<double_t> traits_t;
-      oversize(buf, traits_t::size());
+      string_utils::oversize(buf, traits_t::size());
 
       return bytes_ref(&(buf[0]), traits_t::encode(val.i64, &(buf[0]), shift));
     }
     case NT_INT: {
       typedef numeric_utils::numeric_traits<int32_t> traits_t;
-      oversize(buf, traits_t::size());
+      string_utils::oversize(buf, traits_t::size());
 
       return bytes_ref(&(buf[0]), traits_t::encode(val.i32, &(buf[0]), shift));
     }
     case NT_FLOAT: {
       typedef numeric_utils::numeric_traits<float_t> traits_t;
-      oversize(buf, traits_t::size());
+      string_utils::oversize(buf, traits_t::size());
 
       return bytes_ref(&(buf[0]), traits_t::encode(val.i32, &(buf[0]), shift));
     }

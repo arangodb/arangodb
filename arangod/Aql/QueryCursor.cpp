@@ -159,7 +159,7 @@ QueryStreamCursor::QueryStreamCursor(
       _guard(vocbase),
       _exportCount(-1),
       _queryResultPos(0) {
-  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto registry = QueryRegistryFeature::registry();
   TRI_ASSERT(registry != nullptr);
 
   _query = std::make_unique<Query>(

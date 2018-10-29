@@ -414,8 +414,10 @@ void HeartbeatThread::runDBServer() {
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT)
-              << "Heartbeat: Could not read from agency!";
+          if (!application_features::ApplicationServer::isStopping()) {
+            LOG_TOPIC(WARN, Logger::HEARTBEAT)
+                << "Heartbeat: Could not read from agency!";
+          }
         } else {
 
           VPackSlice agentPool = result.slice()[0].get(".agency");
@@ -586,10 +588,12 @@ void HeartbeatThread::runSingleServer() {
             "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency! status code: "
-            << result._statusCode << ", incriminating body: "
-            << result.bodyRef() << ", timeout: " << timeout;
+        if (!application_features::ApplicationServer::isStopping()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "Heartbeat: Could not read from agency! status code: "
+              << result._statusCode << ", incriminating body: "
+              << result.bodyRef() << ", timeout: " << timeout;
+        }
 
         if (!applier->isActive()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
@@ -835,10 +839,12 @@ void HeartbeatThread::runCoordinator() {
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
 
       if (!result.successful()) {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency! status code: "
-            << result._statusCode << ", incriminating body: "
-            << result.bodyRef() << ", timeout: " << timeout;
+        if (!application_features::ApplicationServer::isStopping()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "Heartbeat: Could not read from agency! status code: "
+              << result._statusCode << ", incriminating body: "
+              << result.bodyRef() << ", timeout: " << timeout;
+        }
       } else {
 
         VPackSlice agentPool = result.slice()[0].get(".agency");
@@ -1061,9 +1067,6 @@ void HeartbeatThread::beginShutdown() {
   _condition.signal();
 }
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finished plan change
 ////////////////////////////////////////////////////////////////////////////////
@@ -1277,7 +1280,17 @@ bool HeartbeatThread::sendServerState() {
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
   if (agentPool.isObject() && agentPool.get("pool").isObject() &&
       agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
-    _agency.updateEndpoints(agentPool.get("pool"));
+    try {
+      std::vector<std::string> values;
+      for (auto pair : VPackObjectIterator(agentPool.get("pool"))) {
+        values.emplace_back(pair.value.copyString());
+      }
+      AgencyCommManager::MANAGER->updateEndpoints(values);
+    } catch(basics::Exception const& e) {
+      LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.message();
+    } catch(std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.what();
+    } catch(...) {}
   } else {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Cannot find an agency persisted in RAFT 8|";
   }

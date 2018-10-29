@@ -22,45 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/Result.h"
-#include "Basics/RocksDBUtils.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
-#include "Logger/Logger.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/utilities.h"
-#include "RestServer/DatabaseFeature.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/StorageEngine.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionGuard.h"
-#include "Utils/OperationOptions.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <cstring>
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb {
-using namespace arangodb::basics;
-using namespace arangodb::httpclient;
-using namespace arangodb::rest;
-
+  
 InitialSyncer::InitialSyncer(
     ReplicationApplierConfiguration const& configuration,
     replutils::ProgressInfo::Setter setter)
@@ -68,12 +34,40 @@ InitialSyncer::InitialSyncer(
       _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
+  if (_batchPingTimer) {
+    _batchPingTimer->cancel();
+  }
+  
   try {
     if (!_state.isChildSyncer) {
     _batch.finish(_state.connection, _progress);
   }
   } catch (...) {
   }
+}
+  
+/// @brief start a recurring task to extend the batch
+void InitialSyncer::startRecurringBatchExtension() {
+  TRI_ASSERT(!_state.isChildSyncer);
+  if (isAborted()) {
+    return;
+  }
+  
+  if (!_batchPingTimer) {
+    _batchPingTimer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  }
+  
+  int secs = _batch.ttl / 2;
+  if (secs < 30) {
+    secs = 30;
+  }
+  _batchPingTimer->expires_after(std::chrono::seconds(secs));
+  _batchPingTimer->async_wait([this](asio_ns::error_code ec) {
+    if (!ec && _batch.id != 0 && !isAborted()) {
+      _batch.extend(_state.connection, _progress);
+      startRecurringBatchExtension();
+    }
+  });
 }
 
 }  // namespace arangodb

@@ -460,7 +460,7 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
-          link->afterTruncate();
+          link->afterTruncate(/*tick*/0); // tick isn't used for links
         }
       }
 

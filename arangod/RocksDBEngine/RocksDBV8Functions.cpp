@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -138,6 +139,13 @@ static void JS_RecalculateCounts(
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  
+  if (ExecContext::CURRENT != nullptr) {
+    if (!ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   auto* physical = toRocksDBCollection(*collection);

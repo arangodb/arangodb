@@ -54,7 +54,7 @@ class GeneralServer {
 private:
   class IoThread final : public Thread {
   public:
-    IoThread(IoContext& iocontext);
+    explicit IoThread(IoContext& iocontext);
     ~IoThread();
     void run() override;
   private:

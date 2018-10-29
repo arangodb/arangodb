@@ -70,7 +70,6 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
-    IResearch/IResearchViewSingleServer.cpp IResearch/IResearchViewSingleServer.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
@@ -300,7 +299,6 @@ SET(ARANGOD_SOURCES
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
-  Cluster/EngineEqualityCheckFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp

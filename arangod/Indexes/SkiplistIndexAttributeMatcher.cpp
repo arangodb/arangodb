@@ -196,7 +196,7 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
   size_t attributesCoveredByEquality = 0;
   double equalityReductionFactor = 20.0;
   estimatedCost = static_cast<double>(itemsInIndex);
-  
+ 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
     
@@ -250,7 +250,7 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
   if (values == 0) {
     values = 1;
   }
-  
+ 
   if (attributesCoveredByEquality == idx->fields().size() &&
       (idx->unique() || idx->implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
@@ -335,7 +335,7 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
       // lookup cost is O(log(n))
       estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
       // slightly prefer indexes that cover more attributes
-      estimatedCost -= (idx->fields().size() - 1) * 0.01;
+      estimatedCost -= (attributesCovered - 1) * 0.02;
     }
     return true;
   }

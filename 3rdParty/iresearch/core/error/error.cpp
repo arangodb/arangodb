@@ -75,52 +75,6 @@ const char* eof_error::what() const NOEXCEPT {
 }
 
 // ----------------------------------------------------------------------------
-//                                                            detailed_io_error
-// ----------------------------------------------------------------------------
-
-detailed_io_error::detailed_io_error(
-  const irs::string_ref& error /*= irs::string_ref::NIL*/
-) {
-  if (!error.empty()) {
-    error_.append(error.c_str(), error.size());
-  }
-}
-
-detailed_io_error::detailed_io_error(std::string&& error)
-  : error_(std::move(error)) {
-}
-
-detailed_io_error::detailed_io_error(const char* error)
-  : detailed_io_error(irs::string_ref(error)) {
-}
-
-detailed_io_error& detailed_io_error::operator<<(const irs::string_ref& error) {
-  if (!error.empty()) {
-    error_.append(error.c_str(), error.size());
-  }
-
-  return *this;
-}
-
-detailed_io_error& detailed_io_error::operator<<(std::string&& error) {
-  error.append(std::move(error));
-
-  return *this;
-}
-
-detailed_io_error& detailed_io_error::operator<<(const char* error) {
-  return (*this) << irs::string_ref(error);
-}
-
-ErrorCode detailed_io_error::code() const NOEXCEPT {
-  return CODE;
-}
-
-const char* detailed_io_error::what() const NOEXCEPT {
-  return error_.c_str();
-}
-
-// ----------------------------------------------------------------------------
 //                                                           lock_obtain_failed
 // ----------------------------------------------------------------------------
 
@@ -176,18 +130,6 @@ ErrorCode index_not_found::code() const NOEXCEPT{
 
 const char* index_not_found::what() const NOEXCEPT {
   return "No segments* file found.";
-}
-
-// ----------------------------------------------------------------------------
-//                                                                  index_error
-// ----------------------------------------------------------------------------
-
-ErrorCode index_error::code() const NOEXCEPT{
-  return CODE;
-}
-
-const char* index_error::what() const NOEXCEPT { 
-  return "Index error."; 
 }
 
 // ----------------------------------------------------------------------------

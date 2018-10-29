@@ -1305,11 +1305,11 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION(res);
         }
       }
-
-      auto res = methods::Collections::updateProperties(
-        consoleColl, builder.slice()
-      );
-
+      
+      TRI_ASSERT(builder.isClosed());
+      
+      Result res = methods::Collections::updateProperties(consoleColl, builder.slice());
+      
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }

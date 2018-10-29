@@ -15,7 +15,7 @@ ArangoDB. Since version 3.4, the default storage engine is RocksDB.
 
 | MMFiles | RocksDB |
 |---|---|
-| default | optional |
+| optional | default |
 | dataset needs to fit into memory | work with as much data as fits on disk |
 | indexes in memory | hot set in memory, data and indexes on disk |
 | slow restart due to index rebuilding | fast startup (no rebuilding of indexes) |

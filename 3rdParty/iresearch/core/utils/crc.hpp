@@ -99,7 +99,6 @@ NS_END
 #endif
 
 #include <boost/crc.hpp>
-MSVC_ONLY(__pragma(warning(pop)))
 
 NS_ROOT
 

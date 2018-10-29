@@ -30,10 +30,19 @@
     events: {
       'click #createView': 'createView',
       'click #viewsToggle': 'toggleSettingsDropdown',
-      'click .tile': 'gotoView',
+      'click .tile-view': 'gotoView',
       'keyup #viewsSearchInput': 'search',
       'click #viewsSearchSubmit': 'search',
       'click #viewsSortDesc': 'sorting'
+    },
+
+    checkVisibility: function () {
+      if ($('#viewsDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#viewsDropdown');
     },
 
     sorting: function () {
@@ -43,12 +52,7 @@
         this.setSortingDesc(false);
       }
 
-      if ($('#viewsDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -62,11 +66,14 @@
     },
 
     toggleSettingsDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#viewsSortDesc').attr('checked', this.sortOptions.desc);
 
       $('#viewsToggle').toggleClass('activated');
-      $('#viewsDropdown2').slideToggle(200);
+      $('#viewsDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     render: function (data) {
@@ -87,7 +94,7 @@
 
       if (self.dropdownVisible === true) {
         $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
-        $('#viewsToggle').toggleClass('activated');
+        $('#viewsToggle').addClass('activated');
         $('#viewsDropdown2').show();
       }
 
@@ -144,7 +151,8 @@
     gotoView: function (e) {
       var name = $(e.currentTarget).attr('id');
       if (name) {
-        window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '/' + encodeURIComponent(name);
+        var url = 'view/' + encodeURIComponent(name);
+        window.App.navigate(url, {trigger: true});
       }
     },
 
@@ -235,6 +243,7 @@
         data: options,
         success: function (data) {
           window.modalView.hide();
+          arangoHelper.arangoNotification('View', 'Creation in progress. This may take a while.');
           self.getViews();
         },
         error: function (error) {

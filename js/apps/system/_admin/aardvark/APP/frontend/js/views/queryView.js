@@ -396,28 +396,26 @@
         this.breadcrumb(name);
       }
 
-      $('#lastQuery').hide().fadeIn(500)
-        .on('click', function () {
-          $('#updateCurrentQuery').hide();
-          self.aqlEditor.setValue(self.state.lastQuery.query, 1);
-          self.fillBindParamTable(self.state.lastQuery.bindParam);
-          self.updateBindParams();
+      $('#lastQuery').hide().fadeIn(500).on('click', function () {
+        $('#updateCurrentQuery').hide();
+        self.aqlEditor.setValue(self.state.lastQuery.query, 1);
+        self.fillBindParamTable(self.state.lastQuery.bindParam);
+        self.updateBindParams();
 
-          self.collection.each(function (model) {
-            model = model.toJSON();
+        self.collection.each(function (model) {
+          model = model.toJSON();
 
-            if (model.value === self.state.lastQuery.query) {
-              self.breadcrumb(model.name);
-            } else {
-              self.breadcrumb();
-            }
-          });
+          if (model.value === self.state.lastQuery.query) {
+            self.breadcrumb(model.name);
+          } else {
+            self.breadcrumb();
+          }
+        });
 
-          $('#lastQuery').fadeOut(500, function () {
-            $(this).remove();
-          });
-        }
-      );
+        $('#lastQuery').fadeOut(500, function () {
+          $(this).remove();
+        });
+      });
     },
 
     deleteAQL: function (name) {
@@ -1613,13 +1611,12 @@
       }
 
       var content = this.aqlEditor.getValue();
-        // check for already existing entry
+      // check for already existing entry
       var quit = false;
       _.each(this.customQueries, function (v) {
         if (v.name === saveName) {
           v.value = content;
           quit = true;
-          return;
         }
       });
 
@@ -2360,9 +2357,9 @@
 
           // var outputPosition = $(element + ' .fa-caret-down').first().offset();
           queryProfile
-          .css('position', 'absolute')
-          .css('left', 215)
-          .css('top', 55);
+            .css('position', 'absolute')
+            .css('left', 215)
+            .css('top', 55);
 
           // $("#el").offset().top - $(document).scrollTop()
           var profileWidth = 590;
@@ -2396,7 +2393,7 @@
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
             '<span class="profileHeader">Profiling information</span>' +
-            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="pure-g pure-table pure-table-body" style="width: auto;"></div>' +
             '<div class="prof-progress"></div>' +
             '<div class="prof-progress-label"></div>' +
             '<div class="clear"></div>'
@@ -2498,8 +2495,17 @@
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
-      if (result[0]) {
-        if (result[0].vertices && result[0].edges) {
+
+      var index = 0;
+      for (var i = 0; i < result.length; i++) {
+        if (result[i]) {
+          index = i;
+          break;
+        }
+      }
+
+      if (result[index]) {
+        if (result[index].vertices && result[index].edges) {
           var hitsa = 0;
           var totala = 0;
 
@@ -2742,7 +2748,7 @@
       var headers = {}; // quick lookup cache
       var pos = 0;
       _.each(data.original, function (obj) {
-        if (first === true) {
+        if (first === true && obj) {
           tableDescription.titles = Object.keys(obj);
           tableDescription.titles.forEach(function (t) {
             headers[String(t)] = pos++;

@@ -223,11 +223,11 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
 namespace arangodb {
 
-Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer) 
-    : _syncer(syncer), 
+Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer)
+    : _syncer(syncer),
       _gotResponse(false),
       _jobsInFlight(0) {}
-  
+
 
 Syncer::JobSynchronizer::~JobSynchronizer() {
   // signal that we have got something
@@ -238,9 +238,9 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
   }
 
   // wait until all posted jobs have been completed/canceled
-  while (hasJobInFlight()) { 
+  while (hasJobInFlight()) {
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
-    std::this_thread::yield(); 
+    std::this_thread::yield();
   }
 }
 
@@ -273,7 +273,7 @@ Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpcl
   while (true) {
     {
       CONDITION_LOCKER(guard, _condition);
-      
+
       if (!_gotResponse) {
         guard.wait(1 * 1000 * 1000);
       }
@@ -299,18 +299,20 @@ Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpcl
       break;
     }
   }
-      
+
   return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
 }
 
 void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
-  jobPosted();
+  if (!jobPosted()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
 
   try {
     auto self = shared_from_this();
-    SchedulerFeature::SCHEDULER->post([this, self, cb]() {
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [this, self, cb]() {
       // whatever happens next, when we leave this here, we need to indicate
       // that there is no more posted job.
       // otherwise the calling thread may block forever waiting on the posted jobs
@@ -320,19 +322,36 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
       });
 
       cb();
-    }, false);
+      });
   } catch (...) {
     // will get here only if Scheduler::post threw
     jobDone();
   }
 }
-    
-/// @brief notifies that a job was posted
-void Syncer::JobSynchronizer::jobPosted() {
-  CONDITION_LOCKER(guard, _condition);
 
-  TRI_ASSERT(_jobsInFlight == 0);
-  ++_jobsInFlight;
+/// @brief notifies that a job was posted
+/// returns false if job counter could not be increased (e.g. because
+/// the syncer was stopped/aborted already)
+bool Syncer::JobSynchronizer::jobPosted() {
+  while (true) {
+    CONDITION_LOCKER(guard, _condition);
+
+    // _jobsInFlight should be 0 in almost all cases, however, there
+    // is a small window in which the request has been processed already
+    // (i.e. after waitForResponse() has returned and before jobDone()
+    // has been called and has decreased _jobsInFlight). For this
+    // particular case, we simply wait for _jobsInFlight to become 0 again
+    if (_jobsInFlight == 0) {
+      ++_jobsInFlight;
+      return true;
+    }
+
+    if (_syncer->isAborted()) {
+      // syncer already stopped... no need to carry on here
+      return false;
+    }
+    guard.wait(10 * 1000);
+  }
 }
 
 /// @brief notifies that a job was done
@@ -341,6 +360,7 @@ void Syncer::JobSynchronizer::jobDone() {
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
+  _condition.signal();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
@@ -382,9 +402,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
 }
 
 Syncer::~Syncer() {
-  try {
-    sendRemoveBarrier();
-  } catch (...) {
+  if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
   }
 }
 
@@ -409,32 +428,6 @@ TRI_voc_tick_t Syncer::stealBarrier() {
   _state.barrier.id = 0;
   _state.barrier.updateTime = 0;
   return id;
-}
-
-/// @brief send a "remove barrier" command
-Result Syncer::sendRemoveBarrier() {
-  if (_state.isChildSyncer || _state.barrier.id == 0) {
-    return Result();
-  }
-
-  try {
-    std::string const url = replutils::ReplicationUrl + "/barrier/" +
-                            basics::StringUtils::itoa(_state.barrier.id);
-
-    // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _state.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                               url, nullptr, 0));
-
-    if (replutils::hasFailed(response.get())) {
-      return replutils::buildHttpError(response.get(), url, _state.connection);
-    }
-    _state.barrier.id = 0;
-    _state.barrier.updateTime = 0;
-    return Result();
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
-  }
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -808,7 +801,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
   return r;
 }
-  
+
 /// @brief creates a view, based on the VelocyPack provided
 Result Syncer::createView(TRI_vocbase_t& vocbase,
                           arangodb::velocypack::Slice const& slice) {
@@ -816,7 +809,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");
   }
-  
+
   VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
   if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -832,7 +825,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no type specified for view");
   }
-  
+
   auto view = vocbase.lookupView(guidSlice.copyString());
   if (view) { // identical view already exists
     VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
@@ -842,11 +835,11 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
         return res;
       }
     }
-    
+
     bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
     return view->updateProperties(slice, false, doSync);
   }
-  
+
   view = vocbase.lookupView(nameSlice.copyString());
   if (view) { // resolve name conflict by deleting existing
     Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
@@ -854,16 +847,16 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
       return res;
     }
   }
-  
+
   VPackBuilder s;
   s.openObject();
   s.add("id", VPackSlice::nullSlice());
   s.close();
-  
+
   VPackBuilder merged =
   VPackCollection::merge(slice, s.slice(), /*mergeValues*/ true,
                          /*nullMeansRemove*/ true);
-  
+
   try {
     vocbase.createView(merged.slice());
   } catch (basics::Exception const& ex) {
@@ -873,7 +866,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   return Result();
 }
 
@@ -884,7 +877,7 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   VPackSlice guidSlice = slice.get("globallyUniqueId");
   if (guidSlice.isNone()) {
     guidSlice = slice.get("cuid");
@@ -893,7 +886,7 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
-  
+
   try {
     auto view = vocbase->lookupView(guidSlice.copyString());
     if (view != nullptr) { // ignore non-existing
@@ -906,7 +899,7 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   return Result();
 }
 

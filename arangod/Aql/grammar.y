@@ -392,7 +392,8 @@ optional_with:
       parser->pushStack(node);
      } with_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto withNode = parser->ast()->createNodeWithCollections(node);
+      auto const& resolver = parser->query()->resolver();
+      auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
    ;
@@ -1525,7 +1526,8 @@ graph_subject:
     graph_collection {
       auto node = parser->ast()->createNodeArray();
       node->addMember($1);
-      $$ = parser->ast()->createNodeCollectionList(node);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | graph_collection T_COMMA {
       auto node = parser->ast()->createNodeArray();
@@ -1533,7 +1535,8 @@ graph_subject:
       node->addMember($1);
     } graph_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      $$ = parser->ast()->createNodeCollectionList(node);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | T_GRAPH bind_parameter {
       // graph name
@@ -1769,10 +1772,12 @@ value_literal:
 
 in_or_into_collection_name:
     T_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, $1.length, arangodb::AccessMode::Type::WRITE);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, $1.length, arangodb::AccessMode::Type::WRITE);
+      auto const& resolver = parser->query()->resolver();
+      $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {

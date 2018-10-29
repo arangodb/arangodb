@@ -183,8 +183,12 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->updateUser(username, [&](auth::User& u) {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "users are not supported on this server");
+  }
+  um->updateUser(username, [&](auth::User& u) {
     if (args.Length() > 1 && args[1]->IsString()) {
       u.updatePassword(TRI_ObjectToString(args[1]));
     }
@@ -355,7 +359,6 @@ static void JS_GrantCollection(
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "user are not supported on this server");

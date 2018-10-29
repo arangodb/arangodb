@@ -8,6 +8,9 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
+// max elements to print from array/objects
+const maxMembersToPrint = 20;
+
 let uniqueValue = 0;
 
 const anonymize = function(doc) {
@@ -779,9 +782,9 @@ function processQuery (query, explain) {
         return value(JSON.stringify(node.value));
       case 'object':
         if (node.hasOwnProperty('subNodes')) {
-          if (node.subNodes.length > 20) {
-            // print only the first 20 values from the objects
-            return '{ ' + node.subNodes.slice(0, 20).map(buildExpression).join(', ') + ', ... }';
+          if (node.subNodes.length > maxMembersToPrint) {
+            // print only the first few values from the object
+            return '{ ' + node.subNodes.slice(0, maxMembersToPrint).map(buildExpression).join(', ') + ', ... }';
           }
           return '{ ' + node.subNodes.map(buildExpression).join(', ') + ' }';
         }
@@ -792,9 +795,9 @@ function processQuery (query, explain) {
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
         if (node.hasOwnProperty('subNodes')) {
-          if (node.subNodes.length > 20) {
-            // print only the first 20 values from the array
-            return '[ ' + node.subNodes.slice(0, 20).map(buildExpression).join(', ') + ', ... ]';
+          if (node.subNodes.length > maxMembersToPrint) {
+            // print only the first few values from the array
+            return '[ ' + node.subNodes.slice(0, maxMembersToPrint).map(buildExpression).join(', ') + ', ... ]';
           }
           return '[ ' + node.subNodes.map(buildExpression).join(', ') + ' ]';
         }
@@ -1467,6 +1470,7 @@ function processQuery (query, explain) {
         'EnumerateViewNode',
         'IndexRangeNode',
         'IndexNode',
+        'TraversalNode',
         'SubqueryNode' ].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
@@ -1657,7 +1661,8 @@ function debug(query, bindVars, options) {
     version: db._version(true),
     database: db._name(),
     query: input,
-    collections: {}
+    collections: {},
+    views: {}
   };
 
   result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
@@ -1711,31 +1716,45 @@ function debug(query, bindVars, options) {
   // add collection information
   collections.forEach(function(collection) {
     let c = db._collection(collection.name);
-    let examples;
-    if (input.options.examples) {
-      // include example data from collections
-      let max = 10; // default number of documents 
-      if (typeof input.options.examples === 'number') {
-        max = input.options.examples;
+    if (c === null) {
+      // probably a view...
+      let v = db._view(collection.name);
+      if (v === null) {
+        return;
       }
-      if (max > 100) {
-        max = 100;
-      } else if (max < 0) {
-        max = 0;
+      
+      result.views[collection.name] = { 
+        type: v.type(),
+        properties: v.properties()
+      };
+    } else {
+      // a collection
+      let examples;
+      if (input.options.examples) {
+        // include example data from collections
+        let max = 10; // default number of documents 
+        if (typeof input.options.examples === 'number') {
+          max = input.options.examples;
+        }
+        if (max > 100) {
+          max = 100;
+        } else if (max < 0) {
+          max = 0;
+        }
+        examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
+        if (input.options.anonymize) {
+          examples = examples.map(anonymize);
+        }
       }
-      examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
-      if (input.options.anonymize) {
-        examples = examples.map(anonymize);
-      }
+      result.collections[collection.name] = { 
+        type: c.type(),
+        properties: c.properties(),
+        indexes: c.getIndexes(true),
+        count: c.count(),
+        counts: c.count(true),
+        examples
+      };
     }
-    result.collections[collection.name] = { 
-      type: c.type(),
-      properties: c.properties(),
-      indexes: c.getIndexes(true),
-      count: c.count(),
-      counts: c.count(true),
-      examples
-    };
   });
   
   result.graphs = graphs;
@@ -1810,6 +1829,15 @@ function inspectDump(filename, outfile) {
       print("/* collection '" + collection + "' needs " + missing + " more document(s) */");
     }
     print();
+  });
+  print();
+
+  // views
+  print("/* views */");
+  Object.keys(data.views || {}).forEach(function(view) {
+    let details = data.views[view];
+    print("db._dropView(" + JSON.stringify(view) + ");");
+    print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
   
