@@ -483,7 +483,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
 
       if (5.0 <= namelookup) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "libcurl DNS lookup took "
-                                                 << namelookup << " seconds.  Consider static IP addresses.";
+                                                 << namelookup << " seconds.  Consider using static IP addresses.";
       }
 
       switch (rc) {
