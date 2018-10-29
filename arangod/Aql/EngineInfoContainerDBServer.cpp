@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -966,7 +966,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
 
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
     ttl = registry->defaultTTL();
   }

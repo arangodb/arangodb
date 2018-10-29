@@ -99,6 +99,7 @@ function SynchronousReplicationSuite () {
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed follower", follower);
+    return pos;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -802,6 +803,39 @@ function SynchronousReplicationSuite () {
       runBasicOperations({place:18, follower: false},
                          {place:18, follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+    testLargeTransactionsSplitting : function () {
+      let docs = [];
+      // We try to create a massive write transaction.
+      // This one now is above 6MB
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({"undderhund": "macht so wau wau wau!"});
+      }
+      for (let i = 0; i < 5; ++i) {
+        // We trigger 5 of these large transactions
+        c.insert(docs);
+      }
+      let referenceCounter = c.count();
+      assertTrue(waitForSynchronousReplication("_system"));
+
+      // Now we trigger failedFollower
+      const failedPos = failFollower();
+      // We now continuously add more large transaction to trigger tailing
+      for (let i = 0; i < 5; ++i) {
+        // We trigger 5 more of these large transactions
+        c.insert(docs);
+      }
+ 
+      // This should trigger a new follower to be added.
+      // This follower needs to sync up with at least one splitted transaction
+      // The collection will not get back into sync if this splitted transaction
+      // fails. Also assertions will be triggered.
+      // Wait for it:
+      assertTrue(waitForSynchronousReplication("_system"));
+
+      // Heal follower
+      assertTrue(continueExternal(global.instanceInfo.arangods[failedPos].pid));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

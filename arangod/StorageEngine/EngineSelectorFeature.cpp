@@ -147,6 +147,11 @@ void EngineSelectorFeature::start() {
 void EngineSelectorFeature::unprepare() {
   // unregister storage engine
   ENGINE = nullptr;
+  
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterEngine* ce = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
+    ce->setActualEngine(nullptr);
+  }
 }
 
 // return the names of all available storage engines

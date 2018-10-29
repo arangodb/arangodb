@@ -64,9 +64,12 @@ ClientFeature::ClientFeature(
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false),
-      _codePage(65001), // default to UTF8
-      _originalCodePage(UINT16_MAX) {
+      _haveServerPassword(false)
+#if _WIN32
+      ,_codePage(65001), // default to UTF8
+      _originalCodePage(UINT16_MAX)
+#endif
+  {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("GreetingsPhase");

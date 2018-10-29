@@ -332,8 +332,6 @@ MMFilesHashIndex::MMFilesHashIndex(
 
     _uniqueArray = new MMFilesHashIndex::UniqueArray(numPaths(), std::move(array));
   } else {
-    _multiArray = nullptr;
-
     auto array = std::make_unique<TRI_HashArrayMulti_t>(
         MMFilesMultiHashIndexHelper(_paths.size(), _useExpansion),
         indexBuckets, 64,

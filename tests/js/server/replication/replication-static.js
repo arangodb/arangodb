@@ -1,72 +1,73 @@
-/*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/* jshint globalstrict:false, strict:false, unused: false */
+/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the replication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the replication
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
+const jsunity = require('jsunity');
+const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
 
-const replication = require("@arangodb/replication");
-const compareTicks = require("@arangodb/replication-common").compareTicks;
-const console = require("console");
-const internal = require("internal");
+const replication = require('@arangodb/replication');
+const compareTicks = require('@arangodb/replication-common').compareTicks;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const console = require('console');
+const internal = require('internal');
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
-const mmfilesEngine = (db._engine().name === "mmfiles");
+const mmfilesEngine = (db._engine().name === 'mmfiles');
 
-const cn = "UnitTestsReplication";
-const cn2 = "UnitTestsReplication2";
-const systemCn = "_UnitTestsReplicationSys";
+const cn = 'UnitTestsReplication';
+const cn2 = 'UnitTestsReplication2';
+const systemCn = '_UnitTestsReplicationSys';
 
 // these must match the values in the Makefile!
-const replicatorUser = "replicator-user";
-const replicatorPassword = "replicator-password";
+const replicatorUser = 'replicator-user';
+const replicatorPassword = 'replicator-password';
 
-const connectToMaster = function() {
+const connectToMaster = function () {
   arango.reconnect(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
 };
 
-const connectToSlave = function() {
-  arango.reconnect(slaveEndpoint, db._name(), "root", "");
+const connectToSlave = function () {
+  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
 };
 
-const collectionChecksum = function(name) {
+const collectionChecksum = function (name) {
   var c = db._collection(name).checksum(true, true);
   return c.checksum;
 };
 
-const collectionCount = function(name) {
+const collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-const compare = function(masterFunc, slaveFunc, applierConfiguration) {
+const compare = function (masterFunc, slaveFunc, applierConfiguration) {
   var state = {};
 
   db._flushCache();
@@ -80,17 +81,17 @@ const compare = function(masterFunc, slaveFunc, applierConfiguration) {
   }
 
   var includeSystem = true;
-  var restrictType = "";
+  var restrictType = '';
   var restrictCollections = [];
 
   if (typeof applierConfiguration === 'object') {
-    if (applierConfiguration.hasOwnProperty("includeSystem")) {
+    if (applierConfiguration.hasOwnProperty('includeSystem')) {
       includeSystem = applierConfiguration.includeSystem;
     }
-    if (applierConfiguration.hasOwnProperty("restrictType")) {
+    if (applierConfiguration.hasOwnProperty('restrictType')) {
       restrictType = applierConfiguration.restrictType;
     }
-    if (applierConfiguration.hasOwnProperty("restrictCollections")) {
+    if (applierConfiguration.hasOwnProperty('restrictCollections')) {
       restrictCollections = applierConfiguration.restrictCollections;
     }
   }
@@ -105,10 +106,10 @@ const compare = function(masterFunc, slaveFunc, applierConfiguration) {
     restrictCollections: restrictCollections,
     waitForSyncTimeout: 120
   });
-  
+
   db._flushCache();
   slaveFunc(state);
-  
+
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
   applierConfiguration = applierConfiguration || {};
@@ -128,25 +129,25 @@ const compare = function(masterFunc, slaveFunc, applierConfiguration) {
 
   while (true) {
     var slaveState = replication.applier.state();
-    
+
     if (slaveState.state.lastError.errorNum > 0) {
-      console.warn("slave has errored:", JSON.stringify(slaveState.state.lastError));
+      console.warn('slave has errored:', JSON.stringify(slaveState.state.lastError));
       break;
     }
 
     if (!slaveState.state.running) {
-      console.warn("slave is not running");
+      console.warn('slave is not running');
       break;
     }
-       
+
     if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
         compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
-      console.debug("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick, "slaveState:", slaveState);
+      console.debug('slave has caught up. syncResult.lastLogTick:', syncResult.lastLogTick, 'slaveState.lastAppliedContinuousTick:', slaveState.state.lastAppliedContinuousTick, 'slaveState.lastProcessedContinuousTick:', slaveState.state.lastProcessedContinuousTick, 'slaveState:', slaveState);
       break;
     }
 
     if (!printed) {
-      console.debug("waiting for slave to catch up");
+      console.debug('waiting for slave to catch up');
       printed = true;
     }
     internal.wait(0.5, false);
@@ -156,24 +157,24 @@ const compare = function(masterFunc, slaveFunc, applierConfiguration) {
   slaveFunc(state);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Base Test Config. Identitical part for _system and other DB
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Base Test Config. Identitical part for _system and other DB
+// //////////////////////////////////////////////////////////////////////////////
 
-function BaseTestConfig() {
+function BaseTestConfig () {
   'use strict';
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test invalid credentials
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test invalid credentials
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testInvalidCredentials1: function() {
+    testInvalidCredentials1: function () {
       var configuration = {
         endpoint: masterEndpoint,
         username: replicatorUser,
-        password: replicatorPassword + "xx" // invalid
+        password: replicatorPassword + 'xx' // invalid
       };
 
       try {
@@ -183,14 +184,14 @@ function BaseTestConfig() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test invalid credentials
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test invalid credentials
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testInvalidCredentials2: function() {
+    testInvalidCredentials2: function () {
       var configuration = {
         endpoint: masterEndpoint,
-        username: replicatorUser + "xx", // invalid
+        username: replicatorUser + 'xx', // invalid
         password: replicatorPassword
       };
 
@@ -201,15 +202,15 @@ function BaseTestConfig() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test invalid credentials
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test invalid credentials
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testInvalidCredentials3: function() {
+    testInvalidCredentials3: function () {
       var configuration = {
         endpoint: masterEndpoint,
-        username: "root",
-        password: "abc"
+        username: 'root',
+        password: 'abc'
       };
 
       try {
@@ -218,60 +219,79 @@ function BaseTestConfig() {
         assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
       }
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test trx with multiple collections
-    ////////////////////////////////////////////////////////////////////////////////
 
-    testTrxMultiCollections: function() {
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test trx with multiple collections
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testTrxMultiCollections: function () {
       connectToMaster();
 
       compare(
-        function() {
+        function () {
           db._create(cn);
           db._create(cn2);
 
-          db[cn].insert({ _key: "foo", value: 1 });
-          db[cn2].insert({ _key: "bar", value: "A" });
-          
+          db[cn].insert({
+            _key: 'foo',
+            value: 1
+          });
+          db[cn2].insert({
+            _key: 'bar',
+            value: 'A'
+          });
+
           db._executeTransaction({
             collections: {
               write: [ cn, cn2 ]
             },
-            action: function(params) {
-              var c = require("internal").db._collection(params.cn);
-              var c2 = require("internal").db._collection(params.cn2);
+            action: function (params) {
+              var c = require('internal').db._collection(params.cn);
+              var c2 = require('internal').db._collection(params.cn2);
 
-              c.replace("foo", { value: 2 });
-              c.insert({ _key: "foo2", value: 3 });
-              
-              c2.replace("bar", { value: "B" });
-              c2.insert({ _key: "bar2", value: "C" });
+              c.replace('foo', {
+                value: 2
+              });
+              c.insert({
+                _key: 'foo2',
+                value: 3
+              });
+
+              c2.replace('bar', {
+                value: 'B'
+              });
+              c2.insert({
+                _key: 'bar2',
+                value: 'C'
+              });
             },
-            params: { cn, cn2 }
+            params: {
+              cn,
+              cn2
+            }
           });
         },
-        function() {
+        function () {
           assertEqual(2, db[cn].count());
-          assertEqual(2, db[cn].document("foo").value);
-          assertEqual(3, db[cn].document("foo2").value);
-          
+          assertEqual(2, db[cn].document('foo').value);
+          assertEqual(3, db[cn].document('foo2').value);
+
           assertEqual(2, db[cn2].count());
-          assertEqual("B", db[cn2].document("bar").value);
-          assertEqual("C", db[cn2].document("bar2").value);
+          assertEqual('B', db[cn2].document('bar').value);
+          assertEqual('C', db[cn2].document('bar2').value);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test few documents
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test few documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testFew: function() {
+    testFew: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
@@ -284,22 +304,22 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test many documents
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    testMany: function() {
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test many documents
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testMany: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
@@ -315,24 +335,24 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(50000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test many documents
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test many documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testManyMore: function() {
+    testManyMore: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          
+
           let docs = [];
           for (let i = 0; i < 150000; ++i) {
             docs.push({ value: i });
@@ -348,33 +368,33 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(150000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test big markers
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test big markers
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testBigMarkersObject: function() {
+    testBigMarkersObject: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          
+
           var doc = {};
           for (let i = 0; i < 1000; ++i) {
-            doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
+            doc['test' + i] = 'the quick brown foxx jumped over the LAZY dog';
           }
-          
+
           for (let i = 0; i < 100; ++i) {
             c.save({
-              "value": i,
-              "values": doc
+              'value': i,
+              'values': doc
             });
           }
 
@@ -385,33 +405,33 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(100, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test big markers
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test big markers
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testBigMarkersArray: function() {
+    testBigMarkersArray: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let doc = [];
 
           for (let i = 0; i < 1000; ++i) {
-            doc.push("the quick brown foxx jumped over the LAZY dog");
+            doc.push('the quick brown foxx jumped over the LAZY dog');
           }
 
           for (let i = 0; i < 100; ++i) {
             c.save({
-              "value": i,
-              "values": doc
+              'value': i,
+              'values': doc
             });
           }
 
@@ -422,30 +442,30 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(100, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test heterogenous markers
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test heterogenous markers
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testHeterogenousMarkers: function() {
+    testHeterogenousMarkers: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             let doc = {};
-            doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
+            doc['test' + i] = 'the quick brown foxx jumped over the LAZY dog';
             docs.push({
-              "value": i,
-              "values": doc
+              'value': i,
+              'values': doc
             });
           }
           c.insert(docs);
@@ -457,22 +477,22 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test empty markers
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test empty markers
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testEmptyMarkers: function() {
+    testEmptyMarkers: function () {
       connectToMaster();
 
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
@@ -485,31 +505,31 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test documents
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testDocuments1: function() {
+    testDocuments1: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "value": i,
-              "foo": true,
-              "bar": [i, false],
-              "value2": null,
-              "mydata": {
-                "test": ["abc", "def"]
+              'value': i,
+              'foo': true,
+              'bar': [i, false],
+              'value2': null,
+              'mydata': {
+                'test': ['abc', 'def']
               }
             });
           }
@@ -519,33 +539,32 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test documents
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testDocuments2: function() {
+    testDocuments2: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           for (let i = 0; i < 1000; ++i) {
             c.save({
-              "abc": true,
-              "_key": "test" + i
+              'abc': true,
+              '_key': 'test' + i
             });
             if (i % 3 === 0) {
-              c.remove("test" + i);
+              c.remove('test' + i);
             } else if (i % 5 === 0) {
-              c.update("test" + i, {
-                "def": "hifh"
+              c.update('test' + i, {
+                'def': 'hifh'
               });
             }
           }
@@ -554,28 +573,28 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(666, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test documents
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testDocuments3: function() {
+    testDocuments3: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
           for (let i = 0; i < 50000; ++i) {
             docs.push({
-              "_key": "test" + i,
-              "foo": "bar",
-              "baz": "bat"
+              '_key': 'test' + i,
+              'foo': 'bar',
+              'baz': 'bat'
             });
             if (docs.length === 5000) {
               c.insert(docs);
@@ -587,28 +606,28 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(50000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test documents
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testDocuments4: function() {
+    testDocuments4: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
           for (let i = 0; i < 50000; ++i) {
             docs.push({
-              "_key": "test" + i,
-              "foo": "bar",
-              "baz": "bat"
+              '_key': 'test' + i,
+              'foo': 'bar',
+              'baz': 'bat'
             });
             if (docs.length === 5000) {
               c.insert(docs);
@@ -620,7 +639,7 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(50000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }, {
@@ -629,25 +648,25 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test documents
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test documents
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testDocuments5: function() {
+    testDocuments5: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           for (let i = 0; i < 100; ++i) {
             c.save({
-              "abc": true,
-              "_key": "test" + i
+              'abc': true,
+              '_key': 'test' + i
             });
             if (i % 3 === 0) {
-              c.remove("test" + i);
+              c.remove('test' + i);
             } else if (i % 5 === 0) {
-              c.update("test" + i, {
-                "def": "hifh"
+              c.update('test' + i, {
+                'def': 'hifh'
               });
             }
           }
@@ -656,38 +675,38 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(66, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test edges
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test edges
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testEdges: function() {
+    testEdges: function () {
       compare(
-        function(state) {
+        function (state) {
           let v = db._create(cn);
           let e = db._createEdgeCollection(cn2);
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i
+              '_key': 'test' + i
             });
           }
           v.save(docs);
 
           docs = [];
           for (let i = 0; i < 5000; i += 10) {
-            docs.push({ 
-              _from: cn + "/test" + i, 
-              _to: cn + "/test" + i,
-              "foo": "bar",
-              "value": i
+            docs.push({
+              _from: cn + '/test' + i,
+              _to: cn + '/test' + i,
+              'foo': 'bar',
+              'value': i
             });
           }
           e.save(docs);
@@ -700,7 +719,7 @@ function BaseTestConfig() {
           state.count2 = collectionCount(cn2);
           assertEqual(500, state.count2);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count1, collectionCount(cn));
           assertEqual(state.checksum1, collectionChecksum(cn));
 
@@ -709,26 +728,26 @@ function BaseTestConfig() {
         }
       );
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionInsert: function() {
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testTransactionInsert: function () {
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
 
           db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
-              var c = require("internal").db._collection(params.cn);
+            action: function (params) {
+              var c = require('internal').db._collection(params.cn);
 
               for (var i = 0; i < 1000; ++i) {
                 c.save({
-                  "_key": "test" + i
+                  '_key': 'test' + i
                 });
               }
             },
@@ -739,36 +758,36 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionInsertFail: function() {
+    testTransactionInsertFail: function () {
       compare(
-        function(state) {
-          let c = db._create(cn);
+        function (state) {
+          db._create(cn);
 
           try {
             db._executeTransaction({
               collections: {
                 write: cn
               },
-              action: function(params) {
-                var c = require("@arangodb").db._collection(params.cn);
+              action: function (params) {
+                var c = require('@arangodb').db._collection(params.cn);
                 for (var i = 0; i < 1000; ++i) {
                   c.save({
-                    "_key": "test" + i
+                    '_key': 'test' + i
                   });
                 }
 
-                throw "rollback!";
+                throw new Error('rollback!');
               },
               params: { cn }
             });
@@ -779,26 +798,26 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionRemove: function() {
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testTransactionRemove: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i
+              '_key': 'test' + i
             });
           }
           c.insert(docs);
@@ -807,10 +826,10 @@ function BaseTestConfig() {
             collections: {
               write: cn
             },
-            action: function(params) {
-              var c = require("@arangodb").db._collection(params.cn);
+            action: function (params) {
+              var c = require('@arangodb').db._collection(params.cn);
               for (var i = 0; i < 1000; ++i) {
-                c.remove("test" + i);
+                c.remove('test' + i);
               }
             },
             params: { cn }
@@ -820,26 +839,26 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionRemoveFail: function() {
+    testTransactionRemoveFail: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i
+              '_key': 'test' + i
             });
           }
           c.insert(docs);
@@ -849,12 +868,12 @@ function BaseTestConfig() {
               collections: {
                 write: cn
               },
-              action: function(params) {
-                var c = require("@arangodb").db._collection(params.cn);
+              action: function (params) {
+                var c = require('@arangodb').db._collection(params.cn);
                 for (var i = 0; i < 1000; ++i) {
-                  c.remove("test" + i);
+                  c.remove('test' + i);
                 }
-                throw "peng!";
+                throw new Error('peng!');
               },
               params: { cn }
             });
@@ -866,109 +885,109 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionMultiOps: function() {
+    testTransactionMultiOps: function () {
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
 
           db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
-              var c = require("internal").db._collection(params.cn),
-                i;
+            action: function (params) {
+              var c = require('internal').db._collection(params.cn);
+              var i;
 
               for (i = 0; i < 1000; ++i) {
                 c.save({
-                  "_key": "test" + i
+                  '_key': 'test' + i
                 });
               }
 
               for (i = 0; i < 1000; ++i) {
-                c.update("test" + i, {
-                  "foo": "bar" + i
+                c.update('test' + i, {
+                  'foo': 'bar' + i
                 });
               }
 
               for (i = 0; i < 1000; ++i) {
-                c.update("test" + i, {
-                  "foo": "baz" + i
+                c.update('test' + i, {
+                  'foo': 'baz' + i
                 });
               }
 
               for (i = 0; i < 1000; i += 10) {
-                c.remove("test" + i);
+                c.remove('test' + i);
               }
             },
             params: {
-              "cn": cn
-            },
+              'cn': cn
+            }
           });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(900, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test big transaction
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test big transaction
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionBig: function() {
+    testTransactionBig: function () {
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
 
           db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
-              var c = require("internal").db._collection(params.cn),
-                i;
+            action: function (params) {
+              var c = require('internal').db._collection(params.cn);
+              var i;
 
               for (i = 0; i < 50000; ++i) {
                 c.save({
-                  "_key": "test" + i,
+                  '_key': 'test' + i,
                   value: i
                 });
-                c.update("test" + i, {
+                c.update('test' + i, {
                   value: i + 1
                 });
 
                 if (i % 5 === 0) {
-                  c.remove("test" + i);
+                  c.remove('test' + i);
                 }
               }
             },
             params: {
-              "cn": cn
-            },
+              'cn': cn
+            }
           });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(40000, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }, {
@@ -977,30 +996,30 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test delayed transaction
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test delayed transaction
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionDelayed: function() {
+    testTransactionDelayed: function () {
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
 
           db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function(params) {
-              var c = require("internal").db._collection(params.cn),
-                i;
-              var wait = require("internal").wait;
+            action: function (params) {
+              var c = require('internal').db._collection(params.cn);
+              var i;
+              var wait = require('internal').wait;
 
               for (i = 0; i < 10; ++i) {
                 c.save({
-                  "_key": "test" + i,
+                  '_key': 'test' + i,
                   value: i
                 });
-                c.update("test" + i, {
+                c.update('test' + i, {
                   value: i + 1
                 });
 
@@ -1008,15 +1027,15 @@ function BaseTestConfig() {
               }
             },
             params: {
-              "cn": cn
-            },
+              'cn': cn
+            }
           });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(10, state.count);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }, {
@@ -1025,13 +1044,13 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionMulti: function() {
+    testTransactionMulti: function () {
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
           db._create(cn2);
 
@@ -1039,45 +1058,45 @@ function BaseTestConfig() {
             collections: {
               write: [cn, cn2]
             },
-            action: function(params) {
-              var c1 = require("internal").db._collection(params.cn);
-              var c2 = require("internal").db._collection(params.cn2);
+            action: function (params) {
+              var c1 = require('internal').db._collection(params.cn);
+              var c2 = require('internal').db._collection(params.cn2);
               var i;
 
               for (i = 0; i < 1000; ++i) {
                 c1.save({
-                  "_key": "test" + i
+                  '_key': 'test' + i
                 });
                 c2.save({
-                  "_key": "test" + i,
-                  "foo": "bar"
+                  '_key': 'test' + i,
+                  'foo': 'bar'
                 });
               }
 
               for (i = 0; i < 1000; ++i) {
-                c1.update("test" + i, {
-                  "foo": "bar" + i
+                c1.update('test' + i, {
+                  'foo': 'bar' + i
                 });
               }
 
               for (i = 0; i < 1000; ++i) {
-                c1.update("test" + i, {
-                  "foo": "baz" + i
+                c1.update('test' + i, {
+                  'foo': 'baz' + i
                 });
-                c2.update("test" + i, {
-                  "foo": "baz" + i
+                c2.update('test' + i, {
+                  'foo': 'baz' + i
                 });
               }
 
               for (i = 0; i < 1000; i += 10) {
-                c1.remove("test" + i);
-                c2.remove("test" + i);
+                c1.remove('test' + i);
+                c2.remove('test' + i);
               }
             },
             params: {
-              "cn": cn,
-              "cn2": cn2
-            },
+              'cn': cn,
+              'cn2': cn2
+            }
           });
 
           state.checksum1 = collectionChecksum(cn);
@@ -1087,7 +1106,7 @@ function BaseTestConfig() {
           assertEqual(900, state.count1);
           assertEqual(900, state.count2);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count1, collectionCount(cn));
           assertEqual(state.count2, collectionCount(cn2));
           assertEqual(state.checksum1, collectionChecksum(cn));
@@ -1096,21 +1115,21 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testTransactionAbort: function() {
+    testTransactionAbort: function () {
       compare(
-        function(state) {
+        function (state) {
           db._create(cn);
           db._create(cn2);
 
           db._collection(cn).save({
-            foo: "bar"
+            foo: 'bar'
           });
           db._collection(cn2).save({
-            bar: "baz"
+            bar: 'baz'
           });
 
           try {
@@ -1118,47 +1137,47 @@ function BaseTestConfig() {
               collections: {
                 write: [cn, cn2]
               },
-              action: function(params) {
-                var c1 = require("internal").db._collection(params.cn);
-                var c2 = require("internal").db._collection(params.cn2);
+              action: function (params) {
+                var c1 = require('internal').db._collection(params.cn);
+                var c2 = require('internal').db._collection(params.cn2);
                 var i;
 
                 for (i = 0; i < 1000; ++i) {
                   c1.save({
-                    "_key": "test" + i
+                    '_key': 'test' + i
                   });
                   c2.save({
-                    "_key": "test" + i,
-                    "foo": "bar"
+                    '_key': 'test' + i,
+                    'foo': 'bar'
                   });
                 }
 
                 for (i = 0; i < 1000; ++i) {
-                  c1.update("test" + i, {
-                    "foo": "bar" + i
+                  c1.update('test' + i, {
+                    'foo': 'bar' + i
                   });
                 }
 
                 for (i = 0; i < 1000; ++i) {
-                  c1.update("test" + i, {
-                    "foo": "baz" + i
+                  c1.update('test' + i, {
+                    'foo': 'baz' + i
                   });
-                  c2.update("test" + i, {
-                    "foo": "baz" + i
+                  c2.update('test' + i, {
+                    'foo': 'baz' + i
                   });
                 }
 
                 for (i = 0; i < 1000; i += 10) {
-                  c1.remove("test" + i);
-                  c2.remove("test" + i);
+                  c1.remove('test' + i);
+                  c2.remove('test' + i);
                 }
 
-                throw "rollback!";
+                throw new Error('rollback!');
               },
               params: {
-                "cn": cn,
-                "cn2": cn2
-              },
+                'cn': cn,
+                'cn2': cn2
+              }
             });
             fail();
           } catch (err) {}
@@ -1170,7 +1189,7 @@ function BaseTestConfig() {
           assertEqual(1, state.count1);
           assertEqual(1, state.count2);
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count1, collectionCount(cn));
           assertEqual(state.count2, collectionCount(cn2));
           assertEqual(state.checksum1, collectionChecksum(cn));
@@ -1179,13 +1198,13 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test rename collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test rename collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testRenameCollection1: function() {
+    testRenameCollection1: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             isVolatile: mmfilesEngine,
             waitForSync: false,
@@ -1193,7 +1212,7 @@ function BaseTestConfig() {
             journalSize: 1048576,
             keyOptions: {
               allowUserKeys: false
-            },
+            }
           });
 
           c.rename(cn2);
@@ -1201,7 +1220,7 @@ function BaseTestConfig() {
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           try {
             db._collection(cn).properties();
             fail();
@@ -1219,18 +1238,18 @@ function BaseTestConfig() {
           assertFalse(properties.waitForSync);
           assertFalse(properties.deleted);
           assertFalse(properties.keyOptions.allowUserKeys);
-          assertEqual("traditional", properties.keyOptions.type);
+          assertEqual('traditional', properties.keyOptions.type);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test rename collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test rename collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testRenameCollection2: function() {
+    testRenameCollection2: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn);
           c.rename(cn2);
           c.rename(cn);
@@ -1238,7 +1257,7 @@ function BaseTestConfig() {
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           try {
             db._collection(cn2).properties();
             fail();
@@ -1251,13 +1270,13 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test change collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test change collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testChangeCollection1: function() {
+    testChangeCollection1: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             waitForSync: false,
             doCompact: false,
@@ -1280,33 +1299,33 @@ function BaseTestConfig() {
           if (mmfilesEngine) {
             assertTrue(properties.doCompact);
             assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty("indexBuckets"));
+            assertTrue(properties.hasOwnProperty('indexBuckets'));
           }
 
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertTrue(properties.waitForSync);
           if (mmfilesEngine) {
             assertTrue(properties.doCompact);
             assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty("indexBuckets"));
+            assertTrue(properties.hasOwnProperty('indexBuckets'));
             assertEqual(properties.indexBuckets, properties.indexBuckets);
           }
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test change collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test change collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testChangeCollection2: function() {
+    testChangeCollection2: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             waitForSync: true,
             doCompact: true,
@@ -1329,34 +1348,34 @@ function BaseTestConfig() {
           if (mmfilesEngine) {
             assertFalse(properties.doCompact);
             assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty("indexBuckets"));
+            assertTrue(properties.hasOwnProperty('indexBuckets'));
           }
 
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
           if (mmfilesEngine) {
             assertFalse(properties.doCompact);
             assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty("indexBuckets"));
+            assertTrue(properties.hasOwnProperty('indexBuckets'));
             assertEqual(properties.indexBuckets, properties.indexBuckets);
           }
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test change collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test change collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testChangeCollectionIndexBuckets: function() {
+    testChangeCollectionIndexBuckets: function () {
       if (mmfilesEngine) {
         compare(
-          function(state) {
+          function (state) {
             var c = db._create(cn, {
               indexBuckets: 4
             });
@@ -1372,7 +1391,7 @@ function BaseTestConfig() {
             state.cid = c._id;
             state.properties = c.properties();
           },
-          function(state) {
+          function (state) {
             var properties = db._collection(cn).properties();
             assertEqual(8, properties.indexBuckets);
           }
@@ -1380,13 +1399,13 @@ function BaseTestConfig() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test create collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test create collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testCreateCollection1: function() {
+    testCreateCollection1: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             isVolatile: mmfilesEngine,
             waitForSync: false,
@@ -1397,7 +1416,7 @@ function BaseTestConfig() {
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
@@ -1406,24 +1425,24 @@ function BaseTestConfig() {
             assertTrue(properties.isVolatile);
             assertFalse(properties.doCompact);
             assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty("indexBuckets"));
+            assertTrue(properties.hasOwnProperty('indexBuckets'));
           }
           assertTrue(properties.keyOptions.allowUserKeys);
-          assertEqual("traditional", properties.keyOptions.type);
+          assertEqual('traditional', properties.keyOptions.type);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test create collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test create collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testCreateCollection2: function() {
+    testCreateCollection2: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             keyOptions: {
-              type: "autoincrement",
+              type: 'autoincrement',
               allowUserKeys: false
             },
             isVolatile: false,
@@ -1435,7 +1454,7 @@ function BaseTestConfig() {
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.isVolatile);
@@ -1444,20 +1463,20 @@ function BaseTestConfig() {
           if (mmfilesEngine) {
             assertTrue(properties.doCompact);
             assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty("indexBuckets"));
+            assertTrue(properties.hasOwnProperty('indexBuckets'));
           }
           assertFalse(properties.keyOptions.allowUserKeys);
-          assertEqual("autoincrement", properties.keyOptions.type);
+          assertEqual('autoincrement', properties.keyOptions.type);
         }
       );
     },
-    
-    testCreateCollectionKeygenUuid: function() {
+
+    testCreateCollectionKeygenUuid: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             keyOptions: {
-              type: "uuid",
+              type: 'uuid',
               allowUserKeys: false
             }
           });
@@ -1465,21 +1484,21 @@ function BaseTestConfig() {
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.keyOptions.allowUserKeys);
-          assertEqual("uuid", properties.keyOptions.type);
+          assertEqual('uuid', properties.keyOptions.type);
         }
       );
     },
-    
-    testCreateCollectionKeygenPadded: function() {
+
+    testCreateCollectionKeygenPadded: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn, {
             keyOptions: {
-              type: "padded",
+              type: 'padded',
               allowUserKeys: false
             }
           });
@@ -1487,23 +1506,23 @@ function BaseTestConfig() {
           state.cid = c._id;
           state.properties = c.properties();
         },
-        function(state) {
+        function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.keyOptions.allowUserKeys);
-          assertEqual("padded", properties.keyOptions.type);
+          assertEqual('padded', properties.keyOptions.type);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test create collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test create collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testCreateCollectionIndexBuckets1: function() {
+    testCreateCollectionIndexBuckets1: function () {
       if (mmfilesEngine) {
         compare(
-          function(state) {
+          function (state) {
             var c = db._create(cn, {
               indexBuckets: 16
             });
@@ -1511,7 +1530,7 @@ function BaseTestConfig() {
             state.cid = c._id;
             state.properties = c.properties();
           },
-          function(state) {
+          function (state) {
             var properties = db._collection(cn).properties();
             assertEqual(cn, db._collection(cn).name());
             assertEqual(16, properties.indexBuckets);
@@ -1520,14 +1539,14 @@ function BaseTestConfig() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test create collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test create collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testCreateCollectionIndexBuckets2: function() {
+    testCreateCollectionIndexBuckets2: function () {
       if (mmfilesEngine) {
         compare(
-          function(state) {
+          function (state) {
             var c = db._create(cn, {
               indexBuckets: 8
             });
@@ -1535,7 +1554,7 @@ function BaseTestConfig() {
             state.cid = c._id;
             state.properties = c.properties();
           },
-          function(state) {
+          function (state) {
             var properties = db._collection(cn).properties();
             assertEqual(cn, db._collection(cn).name());
             assertEqual(8, properties.indexBuckets);
@@ -1544,38 +1563,38 @@ function BaseTestConfig() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test drop collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test drop collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testDropCollection: function() {
+    testDropCollection: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(cn);
           c.drop();
         },
-        function(state) {
+        function (state) {
           assertNull(db._collection(cn));
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test hash index
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test hash index
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testHashIndex: function() {
+    testHashIndex: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureHashIndex("a", "b");
+          c.ensureHashIndex('a', 'b');
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i,
-              "a": parseInt(i / 2),
-              "b": i
+              '_key': 'test' + i,
+              'a': parseInt(i / 2),
+              'b': i
             });
           }
           c.insert(docs);
@@ -1587,38 +1606,38 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("hash", state.idx.type);
+          assertEqual('hash', state.idx.type);
           assertFalse(state.idx.unique);
           assertFalse(state.idx.sparse);
-          assertEqual(["a", "b"], state.idx.fields);
+          assertEqual(['a', 'b'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test hash index
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test hash index
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSparseHashIndex: function() {
+    testSparseHashIndex: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureHashIndex("a", "b", {
+          c.ensureHashIndex('a', 'b', {
             sparse: true
           });
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i,
-              "a": parseInt(i / 2),
-              "b": i
+              '_key': 'test' + i,
+              'a': parseInt(i / 2),
+              'b': i
             });
           }
           c.insert(docs);
@@ -1630,35 +1649,35 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("hash", state.idx.type);
+          assertEqual('hash', state.idx.type);
           assertFalse(state.idx.unique);
           assertTrue(state.idx.sparse);
-          assertEqual(["a", "b"], state.idx.fields);
+          assertEqual(['a', 'b'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test unique constraint
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test unique constraint
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testUniqueConstraint: function() {
+    testUniqueConstraint: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureUniqueConstraint("a");
+          c.ensureUniqueConstraint('a');
 
           for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
-                "_key": "test" + i,
-                "a": parseInt(i / 2)
+                '_key': 'test' + i,
+                'a': parseInt(i / 2)
               });
             } catch (err) {}
           }
@@ -1670,37 +1689,37 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("hash", state.idx.type);
+          assertEqual('hash', state.idx.type);
           assertTrue(state.idx.unique);
           assertFalse(state.idx.sparse);
-          assertEqual(["a"], state.idx.fields);
+          assertEqual(['a'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test unique constraint
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test unique constraint
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSparseUniqueConstraint: function() {
+    testSparseUniqueConstraint: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureUniqueConstraint("a", {
+          c.ensureUniqueConstraint('a', {
             sparse: true
           });
 
           for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
-                "_key": "test" + i,
-                "a": parseInt(i / 2)
+                '_key': 'test' + i,
+                'a': parseInt(i / 2)
               });
             } catch (err) {}
           }
@@ -1712,36 +1731,36 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("hash", state.idx.type);
+          assertEqual('hash', state.idx.type);
           assertTrue(state.idx.unique);
           assertTrue(state.idx.sparse);
-          assertEqual(["a"], state.idx.fields);
+          assertEqual(['a'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test skiplist
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test skiplist
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSkiplist: function() {
+    testSkiplist: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureSkiplist("a", "b");
+          c.ensureSkiplist('a', 'b');
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i,
-              "a": parseInt(i / 2),
-              "b": i
+              '_key': 'test' + i,
+              'a': parseInt(i / 2),
+              'b': i
             });
           }
           c.insert(docs);
@@ -1753,38 +1772,38 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("skiplist", state.idx.type);
+          assertEqual('skiplist', state.idx.type);
           assertFalse(state.idx.unique);
           assertFalse(state.idx.sparse);
-          assertEqual(["a", "b"], state.idx.fields);
+          assertEqual(['a', 'b'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test skiplist
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test skiplist
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSparseSkiplist: function() {
+    testSparseSkiplist: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureSkiplist("a", "b", {
+          c.ensureSkiplist('a', 'b', {
             sparse: true
           });
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({
-              "_key": "test" + i,
-              "a": parseInt(i / 2),
-              "b": i
+              '_key': 'test' + i,
+              'a': parseInt(i / 2),
+              'b': i
             });
           }
           c.insert(docs);
@@ -1796,35 +1815,35 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("skiplist", state.idx.type);
+          assertEqual('skiplist', state.idx.type);
           assertFalse(state.idx.unique);
           assertTrue(state.idx.sparse);
-          assertEqual(["a", "b"], state.idx.fields);
+          assertEqual(['a', 'b'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test unique skiplist
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test unique skiplist
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testUniqueSkiplist: function() {
+    testUniqueSkiplist: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureUniqueSkiplist("a");
+          c.ensureUniqueSkiplist('a');
 
           for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
-                "_key": "test" + i,
-                "a": parseInt(i / 2)
+                '_key': 'test' + i,
+                'a': parseInt(i / 2)
               });
             } catch (err) {}
           }
@@ -1836,37 +1855,37 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("skiplist", state.idx.type);
+          assertEqual('skiplist', state.idx.type);
           assertTrue(state.idx.unique);
           assertFalse(state.idx.sparse);
-          assertEqual(["a"], state.idx.fields);
+          assertEqual(['a'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test unique skiplist
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test unique skiplist
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testUniqueSparseSkiplist: function() {
+    testUniqueSparseSkiplist: function () {
       compare(
-        function(state) {
+        function (state) {
           let c = db._create(cn);
-          c.ensureUniqueSkiplist("a", {
+          c.ensureUniqueSkiplist('a', {
             sparse: true
           });
 
           for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
-                "_key": "test" + i,
-                "a": parseInt(i / 2)
+                '_key': 'test' + i,
+                'a': parseInt(i / 2)
               });
             } catch (err) {}
           }
@@ -1878,58 +1897,58 @@ function BaseTestConfig() {
 
           state.idx = c.getIndexes()[1];
         },
-        function(state) {
+        function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual("skiplist", state.idx.type);
+          assertEqual('skiplist', state.idx.type);
           assertTrue(state.idx.unique);
           assertTrue(state.idx.sparse);
-          assertEqual(["a"], state.idx.fields);
+          assertEqual(['a'], state.idx.fields);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test system collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test system collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSystemCollectionWithDefaults: function() {
+    testSystemCollectionWithDefaults: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(systemCn, {
             isSystem: true
           });
           c.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 42
           });
         },
-        function(state) {
-          var doc = db[systemCn].document("UnitTester");
+        function (state) {
+          var doc = db[systemCn].document('UnitTester');
           assertEqual(42, doc.testValue);
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test system collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test system collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSystemCollectionExcludeSystem: function() {
+    testSystemCollectionExcludeSystem: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(systemCn, {
             isSystem: true
           });
           c.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 42
           });
         },
-        function(state) {
+        function (state) {
           assertNull(db._collection(systemCn));
         }, {
           includeSystem: false
@@ -1937,142 +1956,142 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test system collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test system collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSystemCollectionExcludeCollection: function() {
+    testSystemCollectionExcludeCollection: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(systemCn, {
             isSystem: true
           });
           c.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 42
           });
         },
-        function(state) {
+        function (state) {
           assertNull(db._collection(systemCn));
         }, {
           includeSystem: true,
-          restrictType: "exclude",
+          restrictType: 'exclude',
           restrictCollections: [systemCn]
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test system collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test system collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testSystemCollectionIncludeCollection: function() {
+    testSystemCollectionIncludeCollection: function () {
       compare(
-        function(state) {
+        function (state) {
           var c = db._create(systemCn, {
             isSystem: true
           });
           c.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 42
           });
         },
-        function(state) {
-          var doc = db[systemCn].document("UnitTester");
+        function (state) {
+          var doc = db[systemCn].document('UnitTester');
           assertEqual(42, doc.testValue);
         }, {
           includeSystem: true,
-          restrictType: "include",
+          restrictType: 'include',
           restrictCollections: [systemCn]
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test include/exclude collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test include/exclude collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testCollectionIncludeCollection: function() {
+    testCollectionIncludeCollection: function () {
       compare(
-        function(state) {
+        function (state) {
           var c1 = db._create(cn);
           var c2 = db._create(cn2);
           c1.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 42
           });
           c2.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 23
           });
         },
-        function(state) {
-          var doc = db[cn].document("UnitTester");
+        function (state) {
+          var doc = db[cn].document('UnitTester');
           assertEqual(42, doc.testValue);
           assertNull(db._collection(cn2));
         }, {
-          restrictType: "include",
+          restrictType: 'include',
           restrictCollections: [cn]
         }
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test include/exclude collection
-    ////////////////////////////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test include/exclude collection
+    // /////////////////////////////////////////////////////////////////////////////
 
-    testCollectionExcludeCollection: function() {
+    testCollectionExcludeCollection: function () {
       compare(
-        function(state) {
+        function (state) {
           var c1 = db._create(cn);
           var c2 = db._create(cn2);
           c1.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 42
           });
           c2.save({
-            _key: "UnitTester",
+            _key: 'UnitTester',
             testValue: 23
           });
         },
-        function(state) {
-          var doc = db[cn].document("UnitTester");
+        function (state) {
+          var doc = db[cn].document('UnitTester');
           assertEqual(42, doc.testValue);
           assertNull(db._collection(cn2));
         }, {
-          restrictType: "exclude",
+          restrictType: 'exclude',
           restrictCollections: [cn2]
         }
       );
     },
 
-    testViewBasic: function() {
+    testViewBasic: function () {
       compare(
-        function(state) {
+        function (state) {
           try {
             db._create(cn);
-            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
             let links = {};
-            links[cn] =  { 
+            links[cn] = {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en" ] }
+                text: { analyzers: [ 'text_en' ] }
               }
             };
-            view.properties({"links": links});
+            view.properties({'links': links});
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
-        function(state) {
+        function (state) {
           if (!state.arangoSearchEnabled) {
             return;
           }
-    
-          let view = db._view("UnitTestsSyncView");
+
+          let view = db._view('UnitTestsSyncView');
           assertTrue(view !== null);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
-          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.hasOwnProperty('links'));
           assertTrue(props.links.hasOwnProperty(cn));
         }
       );
@@ -2080,134 +2099,133 @@ function BaseTestConfig() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite on _system
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite on _system
+// //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function ReplicationSuite () {
   'use strict';
 
-  let suite = BaseTestConfig();
-  
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set up
-  ////////////////////////////////////////////////////////////////////////////////
+  let suite = {
 
-  suite.setUp = function() {
-    connectToSlave();
-    try {
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief set up
+    // /////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      connectToSlave();
+      try {
+        replication.applier.stop();
+        replication.applier.forget();
+      } catch (err) { }
+      connectToMaster();
+
+      db._drop(cn);
+      db._drop(cn2);
+      db._drop(systemCn, { isSystem: true });
+    },
+
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief tear down
+    // /////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      connectToMaster();
+
+      db._drop(cn);
+      db._drop(cn2);
+      db._drop(systemCn, { isSystem: true });
+
+      connectToSlave();
       replication.applier.stop();
       replication.applier.forget();
+      db._drop(cn);
+      db._drop(cn2);
+      db._drop(systemCn, { isSystem: true });
     }
-    catch (err) {
-    }
-    connectToMaster();
-
-    db._drop(cn);
-    db._drop(cn2);
-    db._drop(systemCn, { isSystem: true });
   };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tear down
-  ////////////////////////////////////////////////////////////////////////////////
-
-  suite.tearDown = function() {
-    connectToMaster();
-
-    db._drop(cn);
-    db._drop(cn2);
-    db._drop(systemCn, { isSystem: true });
-
-    connectToSlave();
-    replication.applier.stop();
-    replication.applier.forget();
-    db._drop(cn);
-    db._drop(cn2);
-    db._drop(systemCn, { isSystem: true });
-  };
- 
-  return suite;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite on other DB
-////////////////////////////////////////////////////////////////////////////////
-
-function ReplicationOtherDBSuite() {
-  let suite = BaseTestConfig();
-
-  const testDB = "UnitTestDB";
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set up
-  ////////////////////////////////////////////////////////////////////////////////
- 
-  suite.setUp = function() {
-    db._useDatabase("_system");
-    // Slave side code
-    connectToSlave();
-    try {
-      replication.applier.stop();
-      replication.applier.forget();
-    }
-    catch (err) {
-    }
-    try {
-      db._dropDatabase(testDB);
-    } catch (e) {
-    }
-    db._createDatabase(testDB);
-    assertNotEqual(-1, db._databases().indexOf(testDB));
-
-    // Master side code
-    connectToMaster();
-
-    try {
-      db._dropDatabase(testDB);
-    } catch (e) {
-    }
-    db._createDatabase(testDB);
-
-    assertNotEqual(-1, db._databases().indexOf(testDB));
-    // We now have an empty testDB
-    db._useDatabase(testDB);
-    // Use it and setup replication
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tear down
-  ////////////////////////////////////////////////////////////////////////////////
-
-  suite.tearDown = function() {
-    // Just drop the databases
-    connectToMaster();
-    db._useDatabase("_system");
-    try {
-      db._dropDatabase(testDB);
-    } catch (e) {}
-
-    assertEqual(-1, db._databases().indexOf(testDB));
-
-    connectToSlave();
-    // We need to stop applier in testDB
-    db._useDatabase(testDB);
-    replication.applier.stop();
-    replication.applier.forget();
-    db._useDatabase("_system");
-    try {
-      db._dropDatabase(testDB);
-    } catch (e) {}
-    
-    assertEqual(-1, db._databases().indexOf(testDB));
-  };
+  deriveTestSuite(BaseTestConfig(), suite, '_Repl');
 
   return suite;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite on other DB
+// //////////////////////////////////////////////////////////////////////////////
+
+function ReplicationOtherDBSuite () {
+  const testDB = 'UnitTestDB';
+  let suite = {
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief set up
+    // /////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._useDatabase('_system');
+      // Slave side code
+      connectToSlave();
+      try {
+        replication.applier.stop();
+        replication.applier.forget();
+      } catch (err) { }
+      try {
+        db._dropDatabase(testDB);
+      } catch (e) {
+      }
+      db._createDatabase(testDB);
+      assertNotEqual(-1, db._databases().indexOf(testDB));
+
+      // Master side code
+      connectToMaster();
+
+      try {
+        db._dropDatabase(testDB);
+      } catch (e) {
+      }
+      db._createDatabase(testDB);
+
+      assertNotEqual(-1, db._databases().indexOf(testDB));
+      // We now have an empty testDB
+      db._useDatabase(testDB);
+      // Use it and setup replication
+    },
+
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief tear down
+    // /////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      // Just drop the databases
+      connectToMaster();
+      db._useDatabase('_system');
+      try {
+        db._dropDatabase(testDB);
+      } catch (e) {}
+
+      assertEqual(-1, db._databases().indexOf(testDB));
+
+      connectToSlave();
+      // We need to stop applier in testDB
+      db._useDatabase(testDB);
+      replication.applier.stop();
+      replication.applier.forget();
+      db._useDatabase('_system');
+      try {
+        db._dropDatabase(testDB);
+      } catch (e) {}
+
+      assertEqual(-1, db._databases().indexOf(testDB));
+    }
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
+
+  return suite;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);

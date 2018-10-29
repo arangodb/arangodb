@@ -158,7 +158,11 @@ using namespace iresearch;
 class features {
  public:
   enum Mask : uint32_t {
-    POS = 3, POS_OFFS = 7, POS_PAY = 11, POS_OFFS_PAY = 15
+    DOCS = 0,
+    FREQ = 1,
+    POS = 2,
+    OFFS = 4,
+    PAY = 8
   };
 
   features() = default;
@@ -188,9 +192,19 @@ class features {
   bool payload() const NOEXCEPT { return irs::check_bit<3>(mask_); }
   operator Mask() const NOEXCEPT { return static_cast<Mask>(mask_); }
 
+  bool any(Mask mask) const NOEXCEPT {
+    return Mask(0) != (mask_ & mask);
+  }
+
+  bool all(Mask mask) const NOEXCEPT {
+    return mask != (mask_ & mask);
+  }
+
  private:
   irs::byte_type mask_{};
 }; // features
+
+ENABLE_BITMASK_ENUM(features::Mask);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             forward declarations
@@ -215,11 +229,10 @@ inline void prepare_output(
   out = state.dir->create(str);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to create file, path: %s",
+      str.c_str()
+    ));
   }
 
   format_utils::write_header(*out, format, version);
@@ -239,11 +252,10 @@ inline void prepare_input(
   in = state.dir->open(str, advice);
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << str;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      str.c_str()
+    ));
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -494,7 +506,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
     std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
-  if (features.check< position >()) {
+  if (features.check<position>()) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique< pos_stream >();
@@ -503,7 +515,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
     pos_->reset();
     prepare_output(name, pos_->out, state, POS_EXT, POS_FORMAT_NAME, FORMAT_MAX);
 
-    if (features.check< payload >() || features.check< offset >()) {
+    if (features.check<payload>() || features.check<offset>()) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_stream>();
@@ -631,11 +643,11 @@ void postings_writer::begin_term() {
   doc.start = doc.out->file_pointer();
   std::fill_n(doc.skip_ptr, MAX_SKIP_LEVELS, doc.start);
   if (features_.position()) {
-    assert(pos_);
+    assert(pos_ && pos_->out);
     pos_->start = pos_->out->file_pointer();
     std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.payload() || features_.offset()) {
-      assert(pay_);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_->out);
       pay_->start = pay_->out->file_pointer();
       std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
     }
@@ -652,8 +664,10 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
   }
 
   if (id < doc.last) {
-    // docs out of order
-    throw index_error();
+    throw index_error(string_utils::to_string(
+      "while beginning doc in postings_writer, error: docs out of order '%d' < '%d'",
+      id, doc.last
+    ));
   }
 
   doc.doc(id - doc.last);
@@ -674,7 +688,7 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
 
 void postings_writer::add_position(uint32_t pos, const offset* offs, const payload* pay) {
   assert(!offs || offs->start <= offs->end);
-  assert(pos_); /* at least positions stream should be created */
+  assert(features_.position() && pos_ && pos_->out); /* at least positions stream should be created */
 
   pos_->pos(pos - pos_->last);
   if (pay) pay_->payload(pos_->size, pay->value);
@@ -686,26 +700,29 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
     pos_->flush(buf);
 
     if (pay) {
+      assert(features_.payload() && pay_ && pay_->out);
       pay_->flush_payload(buf);
     }
 
     if (offs) {
+      assert(features_.payload() && pay_ && pay_->out);
       pay_->flush_offsets(buf);
     }
   }
 }
 
 void postings_writer::end_doc() {
-  if ( doc.full() ) {
+  if (doc.full()) {
     doc.block_last = doc.last;
     doc.end = doc.out->file_pointer();
-    if ( pos_ ) {
-      assert( pos_ );
+    if (features_.position()) {
+      assert(pos_ && pos_->out);
       pos_->end = pos_->out->file_pointer();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_->block_last = pos_->size;
-      if ( pay_ ) {
+      if (features_.any(features::OFFS | features::PAY)) {
+        assert(pay_ && pay_->out);
         pay_->end = pay_->out->file_pointer();
         pay_->block_last = pay_->pay_buf_.size();
       }
@@ -751,6 +768,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
   /* write remaining position using
    * variable length encoding */
   if (features_.position()) {
+    assert(pos_ && pos_->out);
+
     if (meta.freq > BLOCK_SIZE) {
       meta.pos_end = pos_->out->file_pointer() - pos_->start;
     }
@@ -763,6 +782,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
         if (features_.payload()) {
+          assert(pay_ && pay_->out);
+
           const uint32_t size = pay_->pay_sizes[i];
           if (last_pay_size != size) {
             last_pay_size = size;
@@ -781,6 +802,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
         }
 
         if (features_.offset()) {
+          assert(pay_ && pay_->out);
+
           const uint32_t pay_offs_delta = pay_->offs_start_buf[i];
           const uint32_t len = pay_->offs_len_buf[i];
           if (len == last_offs_len) {
@@ -794,6 +817,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
       }
 
       if (features_.payload()) {
+        assert(pay_ && pay_->out);
         pay_->pay_buf_.clear();
       }
     }
@@ -850,8 +874,8 @@ void postings_writer::write_skip(size_t level, index_output& out) {
 
     pos_->skip_ptr[level] = pos_ptr;
 
-    if (features_.payload() || features_.offset()) {
-      assert(pay_);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_->out);
 
       if (features_.payload()) {
         out.write_vint(static_cast<uint32_t>(pay_->block_last));
@@ -886,7 +910,7 @@ void postings_writer::encode(
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (features_.payload() || features_.offset()) {
+    if (features_.any(features::OFFS | features::PAY)) {
       out.write_vlong(meta.pay_start - last_state.pay_start);
     }
   }
@@ -999,7 +1023,7 @@ class doc_iterator : public iresearch::doc_iterator {
         if (!doc_in_) {
           IR_FRMT_FATAL("Failed to reopen document input in: %s", __FUNCTION__);
 
-          throw detailed_io_error("Failed to reopen document input");
+          throw detailed_io_error("failed to reopen document input");
         }
       }
 
@@ -1354,7 +1378,7 @@ class pos_iterator: public position {
     if (!pos_in_) {
       IR_FRMT_FATAL("Failed to reopen positions input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen positions input");
+      throw detailed_io_error("failed to reopen positions input");
     }
 
     pos_in_->seek(state.term_state->pos_start);
@@ -1467,7 +1491,7 @@ class offs_pay_iterator final: public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1533,7 +1557,7 @@ class offs_pay_iterator final: public pos_iterator {
         if (pay_lengths_[i]) {
           const auto size = pay_lengths_[i]; // length of current payload
 
-          oversize(pay_data_, pos + size);
+          string_utils::oversize(pay_data_, pos + size);
 
           #ifdef IRESEARCH_DEBUG
             const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
@@ -1560,7 +1584,7 @@ class offs_pay_iterator final: public pos_iterator {
       const uint32_t size = pay_in_->read_vint();
       if (size) {
         format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
-        oversize(pay_data_, size);
+        string_utils::oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
           const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
@@ -1612,7 +1636,7 @@ class offs_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1722,7 +1746,7 @@ class pay_iterator final : public pos_iterator {
     if (!pay_in_) {
       IR_FRMT_FATAL("Failed to reopen payload input in: %s", __FUNCTION__);
 
-      throw detailed_io_error("Failed to reopen payload input");
+      throw detailed_io_error("failed to reopen payload input");
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1788,7 +1812,7 @@ class pay_iterator final : public pos_iterator {
         if (pay_lengths_[i]) {
           const auto size = pay_lengths_[i]; // current payload length
 
-          oversize(pay_data_, pos + size);
+          string_utils::oversize(pay_data_, pos + size);
 
           #ifdef IRESEARCH_DEBUG
             const auto read = pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
@@ -1816,7 +1840,7 @@ class pay_iterator final : public pos_iterator {
       const uint32_t size = pay_in_->read_vint();
       if (size) {
         format_traits::read_block(*pay_in_, postings_writer::BLOCK_SIZE, enc_buf_, pay_lengths_);
-        oversize(pay_data_, size);
+        string_utils::oversize(pay_data_, size);
 
         #ifdef IRESEARCH_DEBUG
           const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
@@ -2040,12 +2064,10 @@ void index_meta_writer::commit() {
     auto clear_pending = make_finally([this]{ meta_ = nullptr; });
 
     if (!dir_->rename(src, dst)) {
-      std::stringstream ss;
-
-      ss << "Failed to rename file, src path: " << src
-         << " dst path: " << dst;
-
-      throw(detailed_io_error(ss.str()));
+      throw detailed_io_error(string_utils::to_string(
+        "failed to rename file, src path: '%s' dst path: '%s'",
+        src.c_str(), dst.c_str()
+      ));
     }
 
     complete(*meta_);
@@ -2117,11 +2139,10 @@ void index_meta_reader::read(
   );
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      meta_file.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2195,18 +2216,18 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
   byte_type flags = meta.column_store ? segment_meta_writer::flags_t::HAS_COLUMN_STORE : 0;
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to create file, path: %s",
+      meta_file.c_str()
+    ));
   }
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
-  out->write_vlong(meta.docs_count);
   out->write_vlong(meta.live_docs_count);
+  out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
+  out->write_vlong(meta.size);
   out->write_byte(flags);
   write_strings( *out, meta.files );
   format_utils::write_footer(*out);
@@ -2238,11 +2259,10 @@ void segment_meta_reader::read(
   );
 
   if (!in) {
-    std::stringstream ss;
-
-    ss << "Failed to open file, path: " << meta_file;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "failed to open file, path: %s",
+      meta_file.c_str()
+    ));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2256,14 +2276,25 @@ void segment_meta_reader::read(
 
   auto name = read_string<std::string>(*in);
   const auto version = in->read_vlong();
-  const auto docs_count = in->read_vlong();
   const auto live_docs_count = in->read_vlong();
+  const auto docs_count = in->read_vlong() + live_docs_count;
+
+  if (docs_count < live_docs_count) {
+    throw index_error(std::string("while reader segment meta '") + name
+      + "', error: docs_count(" + std::to_string(docs_count)
+      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")"
+    );
+  }
+
+  const auto size = in->read_vlong();
   const auto flags = in->read_byte();
   auto files = read_strings<segment_meta::file_set>(*in);
 
   if (flags & ~(segment_meta_writer::flags_t::HAS_COLUMN_STORE)) {
-    // corrupted index
-    throw index_error(); // use of unsupported flags
+    throw index_error(
+      std::string("while reading segment meta '" + name
+      + "', error: use of unsupported flags '" + std::to_string(flags) + "'")
+    );
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2277,6 +2308,7 @@ void segment_meta_reader::read(
   meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
+  meta.size = size;
   meta.files = std::move(files);
 }
 
@@ -2329,11 +2361,10 @@ void document_mask_writer::write(
   auto out = dir.create(filename);
 
   if (!out) {
-    std::stringstream ss;
-
-    ss << "Failed to create file, path: " << filename;
-
-    throw detailed_io_error(ss.str());
+    throw detailed_io_error(string_utils::to_string(
+      "Failed to create file, path: %s",
+      filename.c_str()
+    ));
   }
 
   // segment can't have more than integer_traits<uint32_t>::const_max documents
@@ -2342,9 +2373,11 @@ void document_mask_writer::write(
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
   out->write_vint(count);
+
   for (auto mask : docs_mask) {
     out->write_vint(mask);
   }
+
   format_utils::write_footer(*out);
 }
 
@@ -2657,7 +2690,7 @@ void read_compact(
     return;
   }
 
-  irs::oversize(encode_buf, buf_size);
+  irs::string_utils::oversize(encode_buf, buf_size);
 
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(encode_buf[0]), buf_size);
@@ -2678,7 +2711,10 @@ void read_compact(
   );
 
   if (!irs::type_limits<iresearch::type_t::address_t>::valid(buf_size)) {
-    throw irs::index_error(); // corrupted index
+    throw irs::index_error(string_utils::to_string(
+      "while reading compact, error: invalid buffer size '" IR_SIZE_T_SPECIFIER "'",
+      buf_size
+    ));
   }
 }
 
@@ -3190,7 +3226,11 @@ class sparse_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'sparse_block' found in columnstore");
+      return false;
+    }
 
     auto begin = std::begin(index_);
 
@@ -3375,7 +3415,11 @@ class dense_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     const uint32_t size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'dense_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -3543,7 +3587,11 @@ class dense_fixed_length_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
-    assert(size_);
+
+    if (!size_) {
+      IR_FRMT_ERROR("Empty 'dense_fixed_length_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -3684,7 +3732,11 @@ class sparse_mask_block : util::noncopyable {
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
-    assert(size_);
+
+    if (!size_) {
+      IR_FRMT_ERROR("Empty 'sparse_mask_block' found in columnstore");
+      return false;
+    }
 
     auto begin = std::begin(keys_);
 
@@ -3805,7 +3857,11 @@ class dense_mask_block {
 
   bool load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
     const auto size = in.read_vint(); // total number of entries in a block
-    assert(size);
+
+    if (!size) {
+      IR_FRMT_ERROR("Empty 'dense_mask_block' found in columnstore");
+      return false;
+    }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
@@ -4973,9 +5029,12 @@ bool postings_reader::prepare(
   );
 
   const uint64_t block_size = in.read_vint();
+
   if (block_size != postings_writer::BLOCK_SIZE) {
-    // invalid block size
-    throw index_error();
+    throw index_error(string_utils::to_string(
+      "while preparing postings_reader, error: invalid block size '" IR_UINT64_T_SPECIFIER "'",
+      block_size
+    ));
   }
 
   return true;
@@ -5018,6 +5077,12 @@ void postings_reader::decode(
   }
 }
 
+#if defined(_MSC_VER)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wswitch"
+#endif
+
 irs::doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
@@ -5029,17 +5094,24 @@ irs::doc_iterator::ptr postings_reader::iterator(
   const auto enabled = features & req;
   doc_iterator::ptr it;
 
-  switch(enabled) {
-   case features::POS_OFFS_PAY:
+  // MSVC 2013 doesn't support constexpr, can't use
+  // 'operator|' in the following switch statement
+  CONSTEXPR const auto FREQ_POS_OFFS_PAY = features::FREQ | features::POS | features::OFFS | features::PAY;
+  CONSTEXPR const auto FREQ_POS_OFFS = features::FREQ | features::POS | features::OFFS;
+  CONSTEXPR const auto FREQ_POS_PAY = features::FREQ | features::POS | features::PAY;
+  CONSTEXPR const auto FREQ_POS = features::FREQ | features::POS;
+
+  switch (enabled) {
+   case FREQ_POS_OFFS_PAY:
     it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
     break;
-   case features::POS_OFFS:
+   case FREQ_POS_OFFS:
     it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
     break;
-   case features::POS_PAY:
+   case FREQ_POS_PAY:
     it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
     break;
-   case features::POS:
+   case FREQ_POS:
     it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
     break;
    default:
@@ -5053,6 +5125,11 @@ irs::doc_iterator::ptr postings_reader::iterator(
 
   return IMPLICIT_MOVE_WORKAROUND(it);
 }
+
+#if defined(_MSC_VER)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 // actual implementation
 class format : public irs::version10::format {

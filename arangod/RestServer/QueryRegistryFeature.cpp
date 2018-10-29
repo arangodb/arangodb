@@ -148,14 +148,14 @@ void QueryRegistryFeature::prepare() {
 
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
-  QUERY_REGISTRY.store(_queryRegistry.get());
+  QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 }
 
 void QueryRegistryFeature::start() {}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
-  QUERY_REGISTRY.store(nullptr);
+  QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
 } // arangodb

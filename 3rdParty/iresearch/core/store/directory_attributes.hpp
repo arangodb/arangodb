@@ -93,6 +93,7 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);
   void clear();
+  bool remove(const std::string& key) { return refs_.remove(key); }
   counter_t& refs() NOEXCEPT {
     return refs_;
   }
