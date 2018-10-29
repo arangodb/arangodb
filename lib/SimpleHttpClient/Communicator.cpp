@@ -386,8 +386,10 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   // indefinitely.
   if (request->body().length() > 0 ||
       request->requestType() == RequestType::POST) {
-    curl_easy_setopt(handle, CURLOPT_POSTFIELDS, request->body().data());
-    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE, request->body().length());
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE,
+                     handleInProgress->_rip->_requestBody.length());
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDS,
+                     handleInProgress->_rip->_requestBody.c_str());
   }
 
   handleInProgress->_rip->_startTime = TRI_microtime();
