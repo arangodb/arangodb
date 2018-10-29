@@ -47,10 +47,10 @@ function UpgradeData() {
       const c = db._collection('LargeCollection');
       assertEqual(c.count(), 10000);
 
-      const v = db._createView('TestView');
+      const v = db._createView('TestView', 'arangosearch', {});
       const properties = {
         links: {
-          'TestView': {
+          'LargeCollection': {
             includeAllFields: true
           }
         }
@@ -60,9 +60,10 @@ function UpgradeData() {
       const query =
         `FOR doc in TestView
           SEARCH(doc.name >= "Name 1114" &&  doc.name <= "Name 1117")
+          OPTIONS { waitForSync: true }
           SORT doc.name ASC
           RETURN doc`;
-      const results = db._query(usQuery).toArray();
+      const results = db._query(query).toArray();
       assertEqual(results.length, 4);
       assertEqual(results[0].name, "Name 1114");
       assertEqual(results[1].name, "Name 1115");

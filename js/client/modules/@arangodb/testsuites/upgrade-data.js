@@ -195,7 +195,7 @@ const upgradeData = (engine, version) => {
 
     args['database.auto-upgrade'] = false;
 
-    const testCases = tu.scanTestPath('js/server/tests/upgrade-data')
+    const testCases = tu.scanTestPaths(['tests/js/server/upgrade-data'])
       .filter(byMinimumSuportedVersion(version));
     require('internal').print('Checking results...');
     return tu.performTests(
@@ -211,7 +211,7 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
   const configurations = fs.list('upgrade-data-tests/data').map(
     (filename) => {
-      const re = /upgrade-data-(mmfiles|rocksdb)-(\d(?:\.\d)*)\.tar\.gz/;
+      const re =  /upgrade-data-(mmfiles|rocksdb)-(\d+(?:\.\d+)*)\.tar\.gz/;
       const matches = re.exec(filename);
       return {
         engine: matches[1],
