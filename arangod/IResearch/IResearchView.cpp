@@ -1168,6 +1168,8 @@ arangodb::Result IResearchView::drop(
   // if an errors occurs below than a drop retry would most likely happen
   // ...........................................................................
 
+  _flushCallback.reset(); // unregister flush callback from flush thread
+
   try {
     if (_storePersisted) {
       _storePersisted._writer->documents().remove(shared_filter);
