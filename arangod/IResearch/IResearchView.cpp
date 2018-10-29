@@ -296,17 +296,15 @@ inline void insertDocument(
   }
 
   // System fields
-  // Indexed: CID
-  Field::setCidValue(field, cid, Field::init_stream_t());
-  doc.insert(irs::action::index, field);
-
-  // Indexed: RID
-  Field::setRidValue(field, rid);
-  doc.insert(irs::action::index, field);
-
-  // Stored: CID + RID
   DocumentPrimaryKey const primaryKey(cid, rid);
-  doc.insert(irs::action::store, primaryKey);
+
+  // Indexed and Stored: CID + RID
+  Field::setPkValue(field, primaryKey, Field::init_stream_t());
+  doc.insert(irs::action::index_store, field);
+
+  // Indexed: CID
+  Field::setCidValue(field, primaryKey.cid());
+  doc.insert(irs::action::index, field);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

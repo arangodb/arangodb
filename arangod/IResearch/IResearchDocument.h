@@ -30,6 +30,7 @@
 #include "VelocyPackHelper.h"
 
 #include "search/filter.hpp"
+#include "store/data_output.hpp"
 
 NS_BEGIN(iresearch)
 
@@ -80,6 +81,7 @@ char const NESTING_LIST_OFFSET_PREFIX = '[';
 char const NESTING_LIST_OFFSET_SUFFIX = ']';
 
 struct IResearchViewMeta; // forward declaration
+class DocumentPrimaryKey; // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
@@ -87,10 +89,10 @@ struct IResearchViewMeta; // forward declaration
 struct Field {
   struct init_stream_t{}; // initialize stream
 
-  static void setCidValue(Field& field, TRI_voc_cid_t& cid);
-  static void setCidValue(Field& field, TRI_voc_cid_t& cid, init_stream_t);
-  static void setRidValue(Field& field, TRI_voc_rid_t& rid);
-  static void setRidValue(Field& field, TRI_voc_rid_t& rid, init_stream_t);
+  static void setCidValue(Field& field, TRI_voc_cid_t const& cid);
+  static void setCidValue(Field& field, TRI_voc_cid_t const& cid, init_stream_t);
+  static void setPkValue(Field& field, DocumentPrimaryKey const& pk);
+  static void setPkValue(Field& field, DocumentPrimaryKey const& pk, init_stream_t);
 
   Field() = default;
   Field(Field&& rhs);
@@ -110,13 +112,18 @@ struct Field {
     return *_analyzer;
   }
 
-  bool write(irs::data_output&) const noexcept {
+  bool write(irs::data_output& out) const noexcept {
+    if (!_value.null()) {
+      out.write_bytes(_value.c_str(), _value.size());
+    }
+
     return true;
   }
 
   irs::flags const* _features{ &irs::flags::empty_instance() };
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
+  irs::bytes_ref _value;
   ValueStorage _storeValues;
 }; // Field
 
@@ -239,7 +246,6 @@ class DocumentPrimaryKey {
  public:
   static irs::string_ref const& PK(); // stored primary key column
   static irs::string_ref const& CID(); // stored collection id column
-  static irs::string_ref const& RID(); // stored revision id column
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief decodes the specified value in a proper way into 'buf'
@@ -254,18 +260,22 @@ class DocumentPrimaryKey {
   ////////////////////////////////////////////////////////////////////////////////
   static irs::bytes_ref encode(uint64_t& value);
 
-  DocumentPrimaryKey() = default;
+  constexpr DocumentPrimaryKey() = default;
   DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept;
 
-  irs::string_ref const& name() const noexcept { return PK(); }
+  // returning reference is important
+  // (because of casting to 'irs::bytes_ref')
+  constexpr TRI_voc_cid_t const& cid() const noexcept { return _keys[0]; }
+  constexpr TRI_voc_rid_t const& rid() const noexcept { return _keys[1]; }
+
+  constexpr explicit operator irs::bytes_ref() const noexcept {
+    return {
+      reinterpret_cast<irs::byte_type const*>(_keys),
+      sizeof _keys
+    };
+  }
+
   bool read(irs::bytes_ref const& in) noexcept;
-  bool write(irs::data_output& out) const;
-
-  TRI_voc_cid_t cid() const noexcept { return _keys[0]; }
-  void cid(TRI_voc_cid_t cid) noexcept { _keys[0] = cid; }
-
-  TRI_voc_rid_t rid() const noexcept { return _keys[1]; }
-  void rid(TRI_voc_rid_t rid) noexcept { _keys[1] = rid; }
 
  private:
   // FIXME: define storage format (LE or BE)
