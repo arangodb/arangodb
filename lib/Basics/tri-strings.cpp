@@ -771,17 +771,41 @@ char* TRI_EscapeUtf8String(char const* in,
 
 char* TRI_UnescapeUtf8String(char const* in,
                              size_t inLength, size_t* outLength, bool normalize) {
-  char const* ptr;
-  char const* end;
-  size_t tmpLength = 0;
-
   char* buffer = static_cast<char*>(TRI_Allocate(inLength + 1));
 
   if (buffer == nullptr) {
     return nullptr;
   }
 
+  *outLength = TRI_UnescapeUtf8StringInPlace(buffer, in, inLength);
+  buffer[*outLength] = '\0';
+
+  if (normalize && *outLength > 0) {
+    size_t tmpLength = 0;
+    char* utf8_nfc =
+        TRI_normalize_utf8_to_NFC(buffer, *outLength, &tmpLength);
+
+    if (utf8_nfc != nullptr) {
+      *outLength = tmpLength;
+      TRI_Free(buffer);
+      buffer = utf8_nfc;
+    }
+    // intentionally falls through
+  }
+
+  return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unescapes unicode escape sequences into buffer "buffer".
+/// the buffer must be big enough to hold at least inLength bytes of chars
+/// returns the length of the unescaped string
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in, size_t inLength) {
   char* qtr = buffer;
+  char const* ptr;
+  char const* end;
 
   for (ptr = in, end = ptr + inLength; ptr < end; ++ptr, ++qtr) {
     if (*ptr == '\\' && ptr + 1 < end) {
@@ -867,22 +891,7 @@ char* TRI_UnescapeUtf8String(char const* in,
     *qtr = *ptr;
   }
 
-  *qtr = '\0';
-  *outLength = (size_t)(qtr - buffer);
-
-  if (normalize && *outLength > 0) {
-    char* utf8_nfc =
-        TRI_normalize_utf8_to_NFC(buffer, *outLength, &tmpLength);
-
-    if (utf8_nfc != nullptr) {
-      *outLength = tmpLength;
-      TRI_Free(buffer);
-      return utf8_nfc;
-    }
-    // intentionally falls through
-  }
-
-  return buffer;
+  return static_cast<size_t>(qtr - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
