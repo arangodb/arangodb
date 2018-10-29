@@ -2667,8 +2667,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (!application_features::ApplicationServer::isStopping()) {
-      errorMsg = *errMsg;
-
       if (*dbServerResult >= 0) {
         loadCurrent();
         if (*dbServerResult == TRI_ERROR_NO_ERROR) {
@@ -2677,6 +2675,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
           resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
+        errorMsg = *errMsg;
         return *dbServerResult;
       }
 
