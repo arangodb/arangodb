@@ -473,7 +473,7 @@ SECTION("test_query") {
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
-  arangodb::aql::AstNode noopChild(true, arangodb::aql::AstNodeValueType::VALUE_TYPE_BOOL); // all
+  arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeValue(true));
 
   noop.addMember(&noopChild);
 
