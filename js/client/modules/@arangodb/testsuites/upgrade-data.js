@@ -77,7 +77,6 @@ const byMinimumSuportedVersion = (version) => {
       if (s.startsWith("msv")) {
         const msv = s.substring(3);
         if (compareSemVer(msv, version) > 0) {
-          require('internal').print(testCase + " not supported on version " + version + ", detected as " + msv)
           supported = false;
         }
       }
