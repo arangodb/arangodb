@@ -74,6 +74,12 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _dumpOptions(arangodb::velocypack::Options::Defaults),
       _transaction{ 0, false }, 
       _ownsResolver(false) {
+  /// dump options contain have the escapeUnicode attribute set to true
+  /// this allows dumping of string values as plain 7-bit ASCII values.
+  /// for example, the string "möter" will be dumped as "m\u00F6ter".
+  /// this allows faster JSON parsing in some client implementations,
+  /// which speculate on ASCII strings first and only fall back to slower
+  /// multibyte strings on first actual occurrence of a multibyte character.
   _dumpOptions.escapeUnicode = true;        
 }
 
@@ -171,6 +177,12 @@ VPackOptions* transaction::Context::getVPackOptionsForDump() {
     orderCustomTypeHandler();
   }
 
+  /// dump options have the escapeUnicode attribute set to true.
+  /// this allows dumping of string values as plain 7-bit ASCII values.
+  /// for example, the string "möter" will be dumped as "m\u00F6ter".
+  /// this allows faster JSON parsing in some client implementations,
+  /// which speculate on ASCII strings first and only fall back to slower
+  /// multibyte strings on first actual occurrence of a multibyte character.
   return &_dumpOptions;
 }
 
