@@ -249,7 +249,10 @@ struct V8Cursor {
     for(auto pair : VPackObjectIterator(_tmpResult.slice())) {
       if (pair.key.isEqualString("result")) {
         dataSlice = pair.value;
-        dataIterator = std::make_unique<VPackArrayIterator>(dataSlice);
+        TRI_ASSERT(dataSlice.isArray());
+        if (dataSlice.length() > 0) {
+          dataIterator = std::make_unique<VPackArrayIterator>(dataSlice);
+        }
       } else if (pair.key.isEqualString("hasMore")) {
         hasMore = pair.value.getBool();
       } else if (pair.key.isEqualString("extra")) {
