@@ -1,7 +1,9 @@
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
 
-* do not rely on `_modules` collection being present at arangod startup
+* increase maximum number of collections/shards in an AQL query from 256 to 2048
+
+* don't rely on `_modules` collection being present and usable for arangod startup
 
 * fixes a routing issue within the web ui after the use of views
 
