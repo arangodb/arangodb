@@ -436,6 +436,10 @@ class Methods {
   virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) { return false; }
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) { return false; }
 #endif
+  
+  /// @brief return the transaction collection for a document collection
+  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
+                               AccessMode::Type type = AccessMode::Type::READ) const;
 
  private:
 
@@ -518,10 +522,6 @@ class Methods {
       std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
 
   OperationResult countLocal(std::string const& collectionName, CountType type);
-
-  /// @brief return the transaction collection for a document collection
-  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
-                               AccessMode::Type type = AccessMode::Type::READ) const;
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(
