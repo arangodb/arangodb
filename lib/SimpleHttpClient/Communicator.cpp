@@ -467,7 +467,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
 
   if (curlHandle) {
-    rip->_callbacks._scheduleMe([curlHandle, this, handle, rc, rip]
+    // defensive code:  intentionally not passing "this".  There is a
+    //   possibility that Scheduler will execute the code after Communicator
+    //   object destroyed.  use shared_from_this() if ever essential.
+    rip->_callbacks._scheduleMe([curlHandle, handle, rc, rip]
     {// lamda rewrite starts
       double connectTime = 0.0;
       LOG_TOPIC(TRACE, Logger::COMMUNICATION)
