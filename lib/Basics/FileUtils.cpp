@@ -290,17 +290,26 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool copyRecursive(std::string const& source, std::string const& target,
+bool copyRecursive(std::string const& source, 
+                   std::string const& target,
+                   std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
   if (isDirectory(source)) {
-    return copyDirectoryRecursive(source, target, error);
+    return copyDirectoryRecursive(source, target, filter, error);
   }
 
+  if (filter(source)) {
+    return TRI_ERROR_NO_ERROR;
+  }
   return TRI_CopyFile(source, target, error);
 }
 
+/// @brief will not copy files/directories for which the filter function
+/// returns true
 bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, std::string& error) {
+                            std::string const& target,
+                            std::function<bool(std::string const&)> const& filter,
+                            std::string& error) {
   bool rc = true;
 
   auto isSubDirectory = [](std::string const& name) -> bool {
@@ -310,8 +319,8 @@ bool copyDirectoryRecursive(std::string const& source,
   struct _finddata_t oneItem;
   intptr_t handle;
 
-  std::string filter = source + "\\*";
-  handle = _findfirst(filter.c_str(), &oneItem);
+  std::string flt = source + "\\*";
+  handle = _findfirst(flt.c_str(), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + "not found";
@@ -346,6 +355,10 @@ bool copyDirectoryRecursive(std::string const& source,
 
     std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
     std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
+    
+    if (filter(src)) {
+      continue;
+    }
 
     // Handle subdirectories:
     if (isSubDirectory(src)) {
@@ -354,7 +367,7 @@ bool copyDirectoryRecursive(std::string const& source,
       if (rc != TRI_ERROR_NO_ERROR) {
         break;
       }
-      if (!copyDirectoryRecursive(src, dst, error)) {
+      if (!copyDirectoryRecursive(src, dst, filter, error)) {
         break;
       }
       if (!TRI_CopyAttributes(src, dst, error)) {
