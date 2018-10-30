@@ -274,49 +274,6 @@ RocksDBReplicationContext::DumpResult
   return DumpResult(TRI_ERROR_NO_ERROR, hasMore, cIter->currentTick);
 }
 
-// iterates over at most 'limit' documents in the collection specified,
-// creating a new iterator if one does not exist for this collection
-RocksDBReplicationContext::DumpResult
-  RocksDBReplicationContext::dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
-                                       VPackBuffer<uint8_t>& buffer, uint64_t chunkSize) {
-  TRI_ASSERT(_users > 0 && chunkSize > 0);
-
-  CollectionIterator* cIter{nullptr};
-  TRI_DEFER(releaseDumpIterator(cIter));
-
-  {
-    TRI_voc_cid_t const cid = ::normalizeIdentifier(vocbase, cname);
-    if (0 == cid) {
-      return DumpResult(TRI_ERROR_BAD_PARAMETER);
-    }
-    
-    MUTEX_LOCKER(writeLocker, _contextLock);
-    cIter = getCollectionIterator(vocbase, cid, /*sorted*/false, /*create*/true);
-    if (!cIter || cIter->sorted() || !cIter->iter) {
-      return DumpResult(TRI_ERROR_BAD_PARAMETER);
-    }
-  }
-
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
-  
-  VPackBuilder builder(buffer, &cIter->vpackOptions);
-  TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buffer.length() < chunkSize) {
-    builder.openObject();
-    builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
-    builder.add(VPackValue("data"));
-    builder.add(velocypack::Slice(cIter->iter->value().data()));
-    builder.close();
-    cIter->iter->Next();
-  }
-  
-  bool hasMore = cIter->hasMore();
-  if (hasMore) {
-    cIter->currentTick++;
-  }
-  return DumpResult(TRI_ERROR_NO_ERROR, hasMore, cIter->currentTick);
-}
-
 /// Dump all key chunks for the bound collection
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
                                                           VPackBuilder& b, uint64_t chunkSize) {

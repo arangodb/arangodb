@@ -112,7 +112,7 @@ class InitialSyncer : public Syncer {
   double _batchUpdateTime;
 
   /// @brief ttl for batches
-  int _batchTtl;
+  double _batchTtl;
 
 };
 }

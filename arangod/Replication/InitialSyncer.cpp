@@ -149,7 +149,7 @@ Result InitialSyncer::sendExtendBatch() {
 
   std::string const url = ReplicationUrl + "/batch/" + StringUtils::itoa(_batchId) +
                           "?serverId=" + _localServerIdString;
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
+  std::string const body = "{\"ttl\":" + std::to_string(_batchTtl) + "}";
 
   // send request
   std::string const progress = "sending batch extend command to url " + url;
