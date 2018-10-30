@@ -1637,12 +1637,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                   plannedServers = (*it).second;
                 } else {
                   LOG_TOPIC(DEBUG, Logger::CLUSTER)
-                    << "Did not find shard in _shardServers: "
-                    << p.key.copyString() << ". Maybe the collection is already dropped.";
-                  *errMsg = "Error in creation of collection: " + p.key.copyString() + ". Collection already dropped. "
-                      + __FILE__ + std::to_string(__LINE__);
-                  *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
-                  return true;
+                    << "Strange, did not find shard in _shardServers: "
+                    << p.key.copyString();
                 }
               }
               if (plannedServers.empty()) {
@@ -1923,9 +1919,8 @@ int ClusterInfo::dropCollectionCoordinator(
       numberOfShards = shards.length();
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER)
-          << "Missing shards information on dropping " << databaseName << "/"
+          << "Missing shards information on dropping" << databaseName << "/"
           << collectionID;
-      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
   }
 
