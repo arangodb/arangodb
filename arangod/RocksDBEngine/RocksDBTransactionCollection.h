@@ -85,15 +85,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
 
-  /// @brief the following operation should only be used for counter adjustments
-  void adjustCounter(int64_t diff) {
-    if (diff > 0) {
-      _numInserts += static_cast<uint64_t>(diff);
-    } else {
-      _numRemoves += static_cast<uint64_t>(-diff);
-    }
-  }
-
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType,
                     TRI_voc_rid_t revisionId);

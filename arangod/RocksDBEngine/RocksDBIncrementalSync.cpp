@@ -855,7 +855,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) - static_cast<int64_t>(numberDocumentsDueToCounter);
-        static_cast<RocksDBTransactionCollection*>(trx.trxCollection(col->id()))->adjustCounter(diff);
+        static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())->adjustNumberDocuments(0, diff);
       }
     }
 

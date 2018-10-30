@@ -57,13 +57,11 @@ const connectToSlave = function () {
 };
 
 const collectionChecksum = function (name) {
-  var c = db._collection(name).checksum(true, true);
-  return c.checksum;
+  return db._collection(name).checksum(true, true).checksum;
 };
 
 const collectionCount = function (name) {
-  var res = db._collection(name).count();
-  return res;
+  return db._collection(name).count();
 };
 
 const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
@@ -107,7 +105,7 @@ function BaseTestConfig () {
         return;
       }
           
-      let r = arango.GET("/_admin/debug/failat");
+      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
       }
@@ -149,8 +147,8 @@ function BaseTestConfig () {
           assertEqual(state.checksum, collectionChecksum(cn));
           // now validate counters
           let c = db._collection(cn);
-          assertEqual(5000, c.count());
           assertEqual(5000, c.toArray().length);
+          assertEqual(5000, c.count());
         },
         true
       );
@@ -162,7 +160,7 @@ function BaseTestConfig () {
         return;
       }
           
-      let r = arango.GET("/_admin/debug/failat");
+      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
       }
@@ -272,7 +270,7 @@ function BaseTestConfig () {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
@@ -1370,7 +1368,7 @@ function BaseTestConfig () {
         true
       );
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test with existing documents - same on the slave but different keys
     // //////////////////////////////////////////////////////////////////////////////
@@ -1572,7 +1570,7 @@ function BaseTestConfig () {
         true
       );
     }
-
+  
   };
 }
 
