@@ -1,6 +1,8 @@
 v3.3.20 (XXXX-XX-XX)
 --------------------
 
+* don't rely on `_modules` collection being present and usable for arangod startup
+
 * optimizes the web ui's routing which could possibly led to unwanted events.
 
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
