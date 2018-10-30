@@ -362,7 +362,7 @@ SECTION("test_defaults") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((10U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("id").copyString() == "1"));
       CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
@@ -385,7 +385,7 @@ SECTION("test_defaults") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.get("id").copyString() == "1"));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
