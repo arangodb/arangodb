@@ -456,9 +456,9 @@
 ///   undefined the context it is used.
 /// - 1521: @LIT{unable to read-lock collection \%s}
 ///   Will be raised when a read lock on the collection cannot be acquired.
-/// - 1522: @LIT{too many collections}
-///   Will be raised when the number of collections in a query is beyond the
-///   allowed value.
+/// - 1522: @LIT{too many collections/shards}
+///   Will be raised when the number of collections or shards in a query is
+///   beyond the allowed value.
 /// - 1530: @LIT{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1540: @LIT{usage of unknown function '\%s()'}
@@ -2687,10 +2687,10 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
 ///
-/// too many collections
+/// too many collections/shards
 ///
-/// Will be raised when the number of collections in a query is beyond the
-/// allowed value.
+/// Will be raised when the number of collections or shards in a query is
+/// beyond the allowed value.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              (1522)
