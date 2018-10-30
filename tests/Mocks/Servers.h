@@ -30,6 +30,10 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+namespace aql {
+class Query;
+}
+
 namespace application_features {
 class ApplicationFeature;
 }
@@ -38,17 +42,17 @@ namespace tests {
 namespace mocks {
 
 class MockServer {
- public:
-  MockServer();
-  virtual ~MockServer();
+public:
+MockServer();
+virtual ~MockServer();
 
-  void init();
+void init();
 
-  TRI_vocbase_t& getSystemDatabase() const;
+TRI_vocbase_t& getSystemDatabase() const;
 
-  protected:
-    // Implementation knows the place when all features are included
-    void startFeatures();
+protected:
+  // Implementation knows the place when all features are included
+  void startFeatures();
 
   private:
     // Will be called by destructor
@@ -65,6 +69,8 @@ class MockAqlServer : public MockServer {
   public:
     MockAqlServer();
     ~MockAqlServer();
+
+    std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
 };
 
 } // mocks

@@ -55,7 +55,7 @@ class TraverserHelper : public Traverser {
   }
 
   void setStartVertex(std::string const& value) override {
-    // IMPLEMENT
+    _usedVertexAt.push_back(value);
   }
 
   bool getVertex(VPackSlice edge, std::vector<arangodb::StringRef>& result) override {
@@ -78,31 +78,37 @@ class TraverserHelper : public Traverser {
     // IMPLEMENT
     return;
   }
+
+  std::string const& startVertexUsedAt(uint64_t index) {
+    REQUIRE(index < _usedVertexAt.size());
+    return _usedVertexAt[index];
+  }
+
+  std::string const& currentStartVertex() {
+  return _usedVertexAt.back();
+  }
+
+ private:
+  std::vector<std::string> _usedVertexAt;
 };
 
 SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   ExecutionState state;
   mocks::MockAqlServer server{};
-  TRI_vocbase_t& vocbase = server.getSystemDatabase();
-  auto bindParams = std::make_shared<VPackBuilder>();
-  bindParams->openObject();
-  bindParams->close();
-  auto queryOptions = std::make_shared<VPackBuilder>();
-  queryOptions->openObject();
-  queryOptions->close();
-  QueryString fakeQueryString("");
 
-  arangodb::aql::Query fakedQuery(false, vocbase, fakeQueryString, bindParams, queryOptions, arangodb::aql::QueryPart::PART_DEPENDENT);
+  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
   ResourceMonitor monitor;
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
-  TraverserOptions traversalOptions(&fakedQuery);
-  arangodb::transaction::Methods* trx = fakedQuery.trx();
+  TraverserOptions traversalOptions(fakedQuery.get());
+  arangodb::transaction::Methods* trx = fakedQuery->trx();
   arangodb::ManagedDocumentResult mdr;
 
-  auto traverser = std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr);
-  TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverser));
+  auto traverserPtr = std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr);
+
+  auto traverser = traverserPtr.get();
+  TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverserPtr));
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -162,6 +168,10 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
           REQUIRE(!row.produced());
           REQUIRE(fetcher.isDone());
           REQUIRE(fetcher.nrCalled() == 3);
+
+          REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+          REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
+          REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
 
           AND_THEN("The output should stay stable") {
             std::tie(state, stats) = testee.produceRow(row);

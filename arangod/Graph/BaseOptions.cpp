@@ -326,6 +326,8 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
 
+arangodb::aql::Query* BaseOptions::query() const { return _query; }
+
 arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
 }

@@ -110,6 +110,8 @@ struct BaseOptions {
 
   transaction::Methods* trx() const;
 
+  aql::Query* query() const;
+
   TraverserCache* cache() const;
 
   /// @brief Build a velocypack for cloning in the plan.
