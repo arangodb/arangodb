@@ -564,22 +564,6 @@ RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
   return _rocksMethods.get();
 }
 
-void RocksDBTransactionState::donateSnapshot(rocksdb::Snapshot const* snap) {
-  TRI_ASSERT(_readSnapshot == nullptr);
-  TRI_ASSERT(isReadOnlyTransaction());
-  TRI_ASSERT(_status == transaction::Status::CREATED);
-  _readSnapshot = snap;
-}
-
-rocksdb::Snapshot const* RocksDBTransactionState::stealReadSnapshot() {
-  TRI_ASSERT(_readSnapshot != nullptr);
-  TRI_ASSERT(isReadOnlyTransaction());
-  TRI_ASSERT(_status == transaction::Status::RUNNING);
-  rocksdb::Snapshot const* snap = _readSnapshot;
-  _readSnapshot = nullptr;
-  return snap;
-}
-
 uint64_t RocksDBTransactionState::sequenceNumber() const {
   if (_rocksTransaction) {
     return static_cast<uint64_t>(

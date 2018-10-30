@@ -195,14 +195,34 @@ TEST_CASE("IResearchViewDBServerTest", "[cluster][iresearch][iresearch-view]") {
   (void)(s);
 
 SECTION("test_drop") {
+  auto* database = arangodb::DatabaseFeature::DATABASE;
+  REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
+  std::string error;
+  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+
+  // create database
+  {
+    // simulate heartbeat thread
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+
+    REQUIRE(nullptr != vocbase);
+    CHECK("testDatabase" == vocbase->name());
+    CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
+    CHECK(1 == vocbase->id());
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
+      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
+    ));
+    CHECK("no error" == error);
+  }
 
   // drop empty
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().create(wiew, *vocbase, json->slice()).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -214,8 +234,8 @@ SECTION("test_drop") {
   {
     auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().create(wiew, *vocbase, json->slice()).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -225,8 +245,8 @@ SECTION("test_drop") {
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
-    CHECK((true == !vocbase.lookupView(shardViewName)));
-    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK((true == !vocbase->lookupView(shardViewName)));
+    auto shardView = vocbase->createView(jsonShard->slice());
     CHECK(shardView);
 
     auto view = impl->ensure(123);
@@ -235,9 +255,9 @@ SECTION("test_drop") {
     CHECK(view == shardView);
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((false == impl->visitCollections(visitor)));
-    CHECK((false == !vocbase.lookupView(view->id())));
+    CHECK((false == !vocbase->lookupView(view->id())));
     CHECK((true == impl->drop().ok()));
-    CHECK((true == !vocbase.lookupView(viewId)));
+    CHECK((true == !vocbase->lookupView(viewId)));
     CHECK((true == impl->visitCollections(visitor)));
   }
 
@@ -245,8 +265,8 @@ SECTION("test_drop") {
   {
     auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().create(wiew, *vocbase, json->slice()).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -256,8 +276,8 @@ SECTION("test_drop") {
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
-    CHECK((true == !vocbase.lookupView(shardViewName)));
-    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK((true == !vocbase->lookupView(shardViewName)));
+    auto shardView = vocbase->createView(jsonShard->slice());
     CHECK(shardView);
 
     auto view = impl->ensure(123);
@@ -265,14 +285,14 @@ SECTION("test_drop") {
     CHECK(view == shardView);
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((false == impl->visitCollections(visitor)));
-    CHECK((false == !vocbase.lookupView(view->id())));
+    CHECK((false == !vocbase->lookupView(view->id())));
 
     auto before = StorageEngineMock::before;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
     StorageEngineMock::before = []()->void { throw std::exception(); };
 
     CHECK_THROWS((impl->drop()));
-    CHECK((false == !vocbase.lookupView(view->id())));
+    CHECK((false == !vocbase->lookupView(view->id())));
     CHECK((false == impl->visitCollections(visitor)));
   }
 }
@@ -280,7 +300,8 @@ SECTION("test_drop") {
 SECTION("test_drop_cid") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+  arangodb::LogicalView::ptr wiew;
+  REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
   CHECK((false == !wiew));
   auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
   CHECK((nullptr != impl));
@@ -349,7 +370,8 @@ SECTION("test_drop_database") {
 SECTION("test_ensure") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ] }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+  arangodb::LogicalView::ptr wiew;
+  REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
   CHECK((false == !wiew));
   auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
   CHECK((nullptr != impl));
@@ -377,7 +399,8 @@ SECTION("test_make") {
     auto const wiewId = ci->uniqid() + 1; // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,  "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -396,7 +419,8 @@ SECTION("test_make") {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 100, \"name\": \"_iresearch_123_456\", \"type\": \"arangosearch\", \"isSystem\": true }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     CHECK((true == !vocbase.lookupView("testView")));
-    auto view = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr view;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(view, vocbase, json->slice(), 42).ok()));
     CHECK((false == !view));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     CHECK((nullptr != impl));
@@ -419,7 +443,8 @@ SECTION("test_open") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -435,7 +460,8 @@ SECTION("test_open") {
     std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -473,7 +499,7 @@ SECTION("test_query") {
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
-  arangodb::aql::AstNode noopChild(true, arangodb::aql::AstNodeValueType::VALUE_TYPE_BOOL); // all
+  arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeValue(true));
 
   noop.addMember(&noopChild);
 
@@ -483,7 +509,8 @@ SECTION("test_query") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE(nullptr != logicalCollection);
-    auto logicalWiew = vocbase.createView(createJson->slice());
+    arangodb::LogicalView::ptr logicalWiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(logicalWiew, vocbase, createJson->slice(), 42).ok()));
     REQUIRE((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     REQUIRE((false == !wiewImpl));
@@ -736,7 +763,8 @@ SECTION("test_rename") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -775,7 +803,8 @@ SECTION("test_rename") {
     auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -826,7 +855,8 @@ SECTION("test_toVelocyPack") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -847,7 +877,8 @@ SECTION("test_toVelocyPack") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -858,7 +889,7 @@ SECTION("test_toVelocyPack") {
     wiew->toVelocyPack(builder, true, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((6U == slice.length()));
+    CHECK((9U == slice.length()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
@@ -868,7 +899,8 @@ SECTION("test_toVelocyPack") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -1025,7 +1057,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1045,7 +1077,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1066,7 +1098,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1082,7 +1114,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1115,7 +1147,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1135,7 +1167,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1156,7 +1188,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1172,7 +1204,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1210,7 +1242,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1230,7 +1262,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1248,7 +1280,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1264,7 +1296,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1305,7 +1337,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1325,7 +1357,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((6U == slice.length()));
+      CHECK((9U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1343,7 +1375,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1359,7 +1391,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1376,7 +1408,8 @@ SECTION("test_visitCollections") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -1390,7 +1423,8 @@ SECTION("test_visitCollections") {
     auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    arangodb::LogicalView::ptr wiew;
+    REQUIRE((arangodb::iresearch::IResearchViewDBServer::factory().instantiate(wiew, vocbase, json->slice(), 42).ok()));
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));

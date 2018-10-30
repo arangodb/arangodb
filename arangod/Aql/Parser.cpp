@@ -75,7 +75,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
 }
 
 /// @brief parse the query
-QueryResult Parser::parse(bool withDetails) {
+void Parser::parse() {
   if (queryString().empty() || remainingLength() == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
@@ -111,14 +111,16 @@ QueryResult Parser::parse(bool withDetails) {
   }
 
   TRI_ASSERT(scopes->numActive() == 0);
+}
+
+/// @brief parse the query and retun parse details
+QueryResult Parser::parseWithDetails() {
+  parse();
 
   QueryResult result;
-
-  if (withDetails) {
-    result.collectionNames = _query->collectionNames();
-    result.bindParameters = _ast->bindParameters();
-    result.result = _ast->toVelocyPack(false);
-  }
+  result.collectionNames = _query->collectionNames();
+  result.bindParameters = _ast->bindParameters();
+  result.result = _ast->toVelocyPack(false);
 
   return result;
 }
@@ -180,11 +182,31 @@ void Parser::registerWarning(int errorCode, char const* data, int line,
   _query->registerWarning(errorCode, data);
 }
 
+/// @brief push an AstNode array element on top of the stack
+/// the array must be removed from the stack via popArray
+void Parser::pushArray(AstNode* array)  {
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  array->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+  pushStack(array);
+}
+  
+/// @brief pop an array value from the parser's stack
+/// the array must have been added to the stack via pushArray
+AstNode* Parser::popArray() {
+  AstNode* array = static_cast<AstNode*>(popStack());
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  return array;
+}
+
 /// @brief push an AstNode into the array element on top of the stack
 void Parser::pushArrayElement(AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
   array->addMember(node);
+  if (array->hasFlag(AstNodeFlagType::VALUE_CONSTANT) &&
+      !node->isConstant()) {
+    array->removeFlag(AstNodeFlagType::VALUE_CONSTANT);
+  }
 }
 
 /// @brief push an AstNode into the object element on top of the stack

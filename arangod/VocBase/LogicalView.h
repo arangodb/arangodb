@@ -47,17 +47,8 @@ class Builder;
 ////////////////////////////////////////////////////////////////////////////////
 class LogicalView : public LogicalDataSource {
  public:
+  typedef std::shared_ptr<LogicalView> ptr;
   typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief typedef for a LogicalView pre-commit callback
-  ///        called before completing view creation
-  ///        e.g. before persisting definition to filesystem
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<bool(
-    std::shared_ptr<LogicalView>const& view // a pointer to the created view
-  )> PreCommitCallback;
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief casts a specified 'LogicalView' to a provided Target type
@@ -123,16 +114,30 @@ class LogicalView : public LogicalDataSource {
   static Category const& category() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates view according to a definition
-  /// @param preCommit called before completing view creation (IFF returns true)
-  ///                  e.g. before persisting definition to filesystem
+  /// @brief creates a new view according to a definition
+  /// @param view out-param for created view on success
+  ///        on success non-null, on failure undefined
+  /// @param vocbase database where the view resides
+  /// @param definition the view definition
+  /// @return success and sets 'view' or failure
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> create(
+  static Result create(
+    LogicalView::ptr& view,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief instantiates an existing view according to a definition
+  /// @param vocbase database where the view resides
+  /// @param definition the view definition
+  /// @return view instance or nullptr on error
+  //////////////////////////////////////////////////////////////////////////////
+  static Result instantiate(
+    LogicalView::ptr& view,
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
-    bool isNew,
-    uint64_t planVersion = 0,
-    PreCommitCallback const& preCommit = PreCommitCallback() // called before
+    uint64_t planVersion = 0 // '0' by default for non-cluster
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -187,6 +192,13 @@ class LogicalView : public LogicalDataSource {
 /// @brief a LogicalView base class for ClusterInfo view implementations
 ////////////////////////////////////////////////////////////////////////////////
 class LogicalViewClusterInfo: public LogicalView {
+ public:
+  virtual Result drop() override final;
+
+  /*FIXME TODO add to trigger rename via vocbase or cluster-info
+  virtual Result rename(std::string&& newName, bool doSync) override final;
+  */
+
  protected:
   LogicalViewClusterInfo(
     TRI_vocbase_t& vocbase,
@@ -207,6 +219,12 @@ class LogicalViewClusterInfo: public LogicalView {
     velocypack::Builder& builder,
     bool forPersistence
   ) const = 0;
+
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop implementation-specific parts of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result dropImpl() = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,12 +234,10 @@ class LogicalViewStorageEngine: public LogicalView {
  public:
   ~LogicalViewStorageEngine() override;
 
-  arangodb::Result drop() override final;
+  virtual Result drop() override final;
 
-  Result rename(
-    std::string&& newName,
-    bool doSync
-  ) override final;
+  // FIXME TODO rename via vocbase or cluster-info
+  virtual Result rename(std::string&& newName, bool doSync) override final;
 
   arangodb::Result updateProperties(
     velocypack::Slice const& properties,
@@ -249,12 +265,6 @@ class LogicalViewStorageEngine: public LogicalView {
     velocypack::Builder& builder,
     bool forPersistence
   ) const = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief called by view factories during view creation to persist the view
-  ///        to the storage engine
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result create(LogicalViewStorageEngine const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view

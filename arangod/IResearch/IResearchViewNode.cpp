@@ -49,7 +49,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
-aql::AstNode const ALL(true, aql::VALUE_TYPE_BOOL);
+aql::AstNode const ALL(arangodb::aql::AstNodeValue(true));
 
 inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
   return filterCondition == &ALL;
