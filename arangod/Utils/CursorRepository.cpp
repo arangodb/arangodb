@@ -133,7 +133,7 @@ Cursor* CursorRepository::createFromQueryResult(
   TRI_ASSERT(result.result != nullptr);
 
   CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
-
+  TRI_ASSERT(id != 0);
   std::unique_ptr<Cursor> cursor(new aql::QueryResultCursor(
       _vocbase, id, std::move(result), batchSize, ttl, hasCount));
   cursor->use();
@@ -155,6 +155,7 @@ Cursor* CursorRepository::createQueryStream(std::string const& query,
   TRI_ASSERT(!query.empty());
 
   CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
+  TRI_ASSERT(id != 0);
   std::unique_ptr<Cursor> cursor(new aql::QueryStreamCursor(
         _vocbase, id, query, binds, opts, batchSize, ttl));
   cursor->use();
@@ -192,7 +193,7 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
 
     if (cursor->isUsed()) {
       // cursor is in use by someone else. now mark as deleted
-      cursor->deleted();
+      cursor->setDeleted();
       return true;
     }
 
@@ -311,7 +312,7 @@ bool CursorRepository::garbageCollect(bool force) {
 
       if (force || cursor->expires() < now) {
         cursor->kill();
-        cursor->deleted();
+        cursor->setDeleted();
       }
 
       if (cursor->isDeleted()) {

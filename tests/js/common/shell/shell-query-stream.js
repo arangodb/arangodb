@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, fail, more */
+/*global assertEqual, assertTrue, assertUndefined, fail, more */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -92,8 +92,20 @@ function StreamCursorSuite () {
           cursor.next();
         }
       });      
-    }
+    },
 
+    testInfiniteAQL : function() {
+      var stmt = db._createStatement({ query: "FOR i IN 1..100000000000 RETURN i",
+        options: { stream: true },
+        batchSize: 1000});
+      var cursor = stmt.execute();
+
+      assertUndefined(cursor.count());
+      let i = 10;
+      while (cursor.hasNext() && i-- > 0) {
+        cursor.next();
+      }
+    }
   };
 }
 

@@ -92,11 +92,11 @@
   delete global.ArangoDatabase;
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief ShapedJson stub object - only here for compatibility with 2.8
+  // / @brief ArangoQueryStreamCursor
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.ShapedJson = function () {};
-  delete global.ShapedJson;
+  exports.ArangoQueryStreamCursor = global.ArangoQueryStreamCursor;
+  delete global.ArangoQueryStreamCursor;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief dispatcherThreads
