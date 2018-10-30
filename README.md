@@ -42,7 +42,7 @@ Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.ar
 that is executed in the database server with direct access to the data. Build your
 own data-centric microservices with a few lines of code:
 
-Microservice Example
+Microservice Example,...
 
 ![Microservice Example](https://www.arangodb.com/wp-content/uploads/2015/03/microservice.png)
 
@@ -63,17 +63,17 @@ Other features of ArangoDB include:
 - Different **storage engines**: ArangoDB provides a storage engine for mostly
   in-memory operations and an alternative storage engine based on RocksDB which 
   handle datasets that are much bigger than RAM.
-- **Powerful query language** (AQL) to retrieve and modify data 
+- **Powerful query language** (AQL) to retrieve and modify data. 
 - **Transactions**: run queries on multiple documents or collections with
-  optional transactional consistency and isolation
+  optional transactional consistency and isolation.
 - **Replication** and **Sharding**: set up the database in a master-slave
-  configuration or spread bigger datasets across multiple servers
+  configuration or spread bigger datasets across multiple servers.
 - Configurable **durability**: let the application decide if it needs more
-  durability or more performance
+  durability or more performance.
 - **Schema-free schemata** let you combine the space efficiency of MySQL with the
-  performance power of NoSQL
+  performance power of NoSQL.
 - Free **index choice**: use the correct index for your problem, be it a skiplist 
-  or a fulltext search
+  or a fulltext search.
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
 - It is **open source** (Apache License 2.0)
 
