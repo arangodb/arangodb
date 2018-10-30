@@ -580,32 +580,28 @@ void ClusterInfo::loadPlan() {
                 viewPairSlice.key.copyString();
 
             try {
-              auto preCommit = [this, viewId, databaseName](std::shared_ptr<LogicalView> const& view)->bool {
-                auto& views = _newPlannedViews[databaseName];
-                // register with name as well as with id:
-                views.reserve(views.size() + 2);
-                views[viewId] = view;
-                views[view->name()] = view;
-                views[view->guid()] = view;
-                return true;
-              };
-
-              const auto newView = LogicalView::create(
-                *vocbase,
-                viewPairSlice.value,
-                false, // false == coming from Agency
-                newPlanVersion,
-                preCommit
+              LogicalView::ptr view;
+              auto res = LogicalView::instantiate(
+                view, *vocbase, viewPairSlice.value, newPlanVersion
               );
 
-              if (!newView) {
+              if (!res.ok() || !view) {
                 LOG_TOPIC(ERR, Logger::AGENCY)
                   << "Failed to create view '" << viewId
                   << "'. The view will be ignored for now and the invalid information "
                   "will be repaired. VelocyPack: "
                   << viewSlice.toJson();
+
                 continue;
               }
+
+              auto& views = _newPlannedViews[databaseName];
+
+              // register with guid/id/name
+              views.reserve(views.size() + 3);
+              views[viewId] = view;
+              views[view->name()] = view;
+              views[view->guid()] = view;
             } catch (std::exception const& ex) {
               // The Plan contains invalid view information.
               // This should not happen in healthy situations.
@@ -619,7 +615,6 @@ void ClusterInfo::loadPlan() {
                 << viewSlice.toJson();
 
               TRI_ASSERT(false);
-              continue;
             } catch (...) {
               // The Plan contains invalid view information.
               // This should not happen in healthy situations.
@@ -633,7 +628,6 @@ void ClusterInfo::loadPlan() {
                 << viewSlice.toJson();
 
               TRI_ASSERT(false);
-              continue;
             }
           }
 
