@@ -90,53 +90,51 @@ LogicalView::LogicalView(
   return category;
 }
 
-/*static*/ std::shared_ptr<LogicalView> LogicalView::create(
+/*static*/ Result LogicalView::create(
+    LogicalView::ptr& view,
     TRI_vocbase_t& vocbase,
-    velocypack::Slice definition,
-    bool isNew,
-    uint64_t planVersion /*= 0*/,
-    PreCommitCallback const& preCommit /*= PreCommitCallback()*/
+    velocypack::Slice definition
 ) {
-  auto const* viewTypes =
+  auto* viewTypes =
     application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
 
   if (!viewTypes) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Failure to get 'ViewTypes' feature while creating LogicalView";
-
-    return nullptr;
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "Failure to get 'ViewTypes' feature while creating LogicalView"
+    );
   }
 
-  auto const viewType = basics::VelocyPackHelper::getStringRef(
-    definition, StaticStrings::DataSourceType, ""
+  auto type = basics::VelocyPackHelper::getStringRef(
+    definition, StaticStrings::DataSourceType, velocypack::StringRef(nullptr, 0)
   );
-  auto const& dataSourceType =
-    arangodb::LogicalDataSource::Type::emplace(viewType);
-  auto const& viewFactory = viewTypes->factory(dataSourceType);
+  auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
 
-  if (!viewFactory) {
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Found view type for which there is no factory, type: "
-      << viewType.toString();
+  return factory.create(view, vocbase, definition);
+}
 
-    return nullptr;
+/*static*/ Result LogicalView::instantiate(
+    LogicalView::ptr& view,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition,
+    uint64_t planVersion /*= 0*/
+) {
+  auto* viewTypes =
+    application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
+
+  if (!viewTypes) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "Failure to get 'ViewTypes' feature while creating LogicalView"
+    );
   }
 
-  auto view = viewFactory(vocbase, definition, isNew, planVersion, preCommit);
+  auto type = basics::VelocyPackHelper::getStringRef(
+    definition, StaticStrings::DataSourceType, velocypack::StringRef(nullptr, 0)
+  );
+  auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
 
-  if (!view) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Failure to instantiate view of type: " << viewType.toString();
-
-    return nullptr;
-  }
-
-  LOG_TOPIC(DEBUG, Logger::VIEWS)
-    << "created '" << viewType.toString() << "' view '" << view->name() << "' ("
-    << view->guid() << ")";
-
-  return view;
+  return factory.instantiate(view, vocbase, definition, planVersion);
 }
 
 // -----------------------------------------------------------------------------
@@ -188,6 +186,53 @@ arangodb::Result LogicalViewClusterInfo::appendVelocyPack(
   return arangodb::Result();
 }
 
+arangodb::Result LogicalViewClusterInfo::drop() {
+  if (deleted()) {
+    return Result(); // view already dropped
+  }
+
+  auto* engine = arangodb::ClusterInfo::instance();
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to get storage engine while dropping View '") + name() + "'"
+    );
+  }
+
+  try {
+    deleted(true); // mark as deleted to avoid double-delete (including recursive calls)
+
+    auto res = dropImpl();
+
+    if (!res.ok()) {
+      deleted(false); // not fully deleted
+
+      return res;
+    }
+
+    std::string error;
+    auto resNum = engine->dropViewCoordinator(
+      vocbase().name(), std::to_string(id()), error
+    );
+
+    if (TRI_ERROR_NO_ERROR != resNum) {
+      deleted(false); // not fully deleted
+
+      return arangodb::Result(
+        resNum,
+        std::string("failure during ClusterInfo removal of View in database '") + vocbase().name() + "', error: " + error
+      );
+    }
+  } catch (...) {
+    deleted(false); // not fully deleted
+
+    throw;
+  }
+
+  return arangodb::Result();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          LogicalViewStorageEngine
 // -----------------------------------------------------------------------------
@@ -207,7 +252,7 @@ LogicalViewStorageEngine::~LogicalViewStorageEngine() {
   if (deleted()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
-
+    // FIXME TODO is this required?
     engine->destroyView(vocbase(), *this);
   }
 }
@@ -260,51 +305,36 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
   return arangodb::Result();
 }
 
-/*static*/ arangodb::Result LogicalViewStorageEngine::create(
-    LogicalViewStorageEngine const& view
-) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failure to get storage engine during storage engine persistance of view '") + view.name() + "'"
-    );
-  }
-
-  try {
-    return engine->createView(view.vocbase(), view.id(), view);
-  } catch (std::exception const& e) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("caught exception during storage engine persistance of view '") + view.name() + "': " + e.what()
-    );
-  } catch (...) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("caught exception during storage engine persistance of view '") + view.name() + "'"
-    );
-  }
-}
-
 arangodb::Result LogicalViewStorageEngine::drop() {
   if (deleted()) {
     return Result(); // view already dropped
   }
 
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
-  auto res = dropImpl();
+  try {
+    deleted(true); // mark as deleted to avoid double-delete (including recursive calls)
 
-  // skip on error or if already called by dropImpl()
-  if (res.ok() && !deleted()) {
-    deleted(true);
-    engine->dropView(vocbase(), *this);
+    auto res = dropImpl();
+
+    if (!res.ok()) {
+      deleted(false); // not fully deleted
+
+      return res;
+    }
+
+    res = vocbase().dropView(id(), true); // true since caller should have checked for 'system'
+
+    if (!res.ok()) {
+      deleted(false); // not fully deleted
+
+      return res;
+    }
+  } catch (...) {
+    deleted(false); // not fully deleted
+
+    throw;
   }
 
-  return res;
+  return arangodb::Result();
 }
 
 Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {

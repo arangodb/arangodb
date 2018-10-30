@@ -291,10 +291,20 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
 
   CURL* handle = handleInProgress->_handle;
   struct curl_slist* requestHeaders = nullptr;
-  if (request->body().length() > 0) {
+
+  // CURLOPT_POSTFIELDS has to be set for CURLOPT_POST, even if the body is
+  // empty.
+  // Otherwise, curl uses CURLOPT_READFUNCTION on CURLOPT_READDATA, which
+  // default to fread and stdin, respectively: this can cause curl to wait
+  // indefinitely.
+  if (request->body().length() > 0 ||
+      request->requestType() == RequestType::POST) {
     curl_easy_setopt(handle, CURLOPT_POSTFIELDS, request->body().data());
     curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE, request->body().length());
+  }
 
+  // We still omit the content type on empty bodies.
+  if (request->body().length() > 0) {
     switch (request->contentType()) {
       case ContentType::UNSET:
       case ContentType::CUSTOM:
@@ -460,7 +470,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
 
   if (curlHandle) {
-    rip->_callbacks._scheduleMe([curlHandle, this, handle, rc, rip]
+    // defensive code:  intentionally not passing "this".  There is a
+    //   possibility that Scheduler will execute the code after Communicator
+    //   object destroyed.  use shared_from_this() if ever essential.
+    rip->_callbacks._scheduleMe([curlHandle, handle, rc, rip]
     {// lamda rewrite starts
       double connectTime = 0.0;
       LOG_TOPIC(TRACE, Logger::COMMUNICATION)

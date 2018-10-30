@@ -1702,7 +1702,6 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       std::to_string(col->id()),
       idxDef,
       true,
-      arangodb::Index::Compare,
       tmp,
       errorMsg,
       cluster->indexCreationTimeout()
@@ -1746,6 +1745,57 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
     << nameSlice.copyString();
+
+  if (ServerState::instance()->isCoordinator()) {
+    try {
+      auto* ci = ClusterInfo::instance();
+      auto view = ci->getView(_vocbase.name(), nameSlice.toString());
+
+      if (view) {
+        if (overwrite) {
+          auto res = view->drop();
+
+          if (!res.ok()) {
+            generateError(res);
+
+            return;
+          }
+
+          generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
+          return;
+        }
+      }
+
+      auto res = LogicalView::create(view, _vocbase, slice); // must create() since view was drop()ed
+
+      if (!res.ok()) {
+        generateError(res);
+
+        return;
+      }
+
+      if (!view) {
+        generateError(Result(TRI_ERROR_INTERNAL, "problem creating view"));
+
+        return;
+      }
+
+      velocypack::Builder result;
+
+      result.openObject();
+      result.add("result", velocypack::Slice::trueSlice());
+      result.close();
+      generateResult(rest::ResponseCode::OK, result.slice());
+    } catch (basics::Exception const& ex) {
+      generateError(Result(ex.code(), ex.message()));
+    } catch (...) {
+      generateError(Result(TRI_ERROR_INTERNAL, "problem creating view"));
+    }
+
+    return; // done
+  }
+
   auto view = _vocbase.lookupView(nameSlice.copyString());
 
   if (view) {
@@ -1766,6 +1816,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   try {
     view = _vocbase.createView(slice);
+
     if (view == nullptr) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "problem creating view");
