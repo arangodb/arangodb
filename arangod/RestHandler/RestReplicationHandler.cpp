@@ -1746,16 +1746,16 @@ void RestReplicationHandler::handleCommandRestoreView() {
     auto view = resolver.getView(nameSlice.toString());
 
     if (view) {
-      if (overwrite) {
-        auto res = view->drop();
-
-        if (!res.ok()) {
-          generateError(res);
-
-          return;
-        }
-
+      if (!overwrite) {
         generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
+        return;
+      }
+
+      auto res = view->drop();
+
+      if (!res.ok()) {
+        generateError(res);
 
         return;
       }
