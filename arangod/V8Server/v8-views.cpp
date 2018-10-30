@@ -199,11 +199,19 @@ static void JS_CreateViewVocbase(
   );
 
   try {
-    auto view = vocbase.createView(builder.slice());
+    LogicalView::ptr view;
+    auto res = LogicalView::create(view, vocbase, builder.slice());
 
-    TRI_ASSERT(view != nullptr);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
+    if (!view) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "problem creating view");
+    }
 
     v8::Handle<v8::Value> result = WrapView(isolate, view);
+
     if (result.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
@@ -268,7 +276,12 @@ static void JS_DropViewVocbase(
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view");
     }
 
-    auto res = vocbase.dropView(view->id(), allowDropSystem);
+    // prevent dropping of system views
+    if (!allowDropSystem && view->system()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view");
+    }
+
+    auto res = view->drop();
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -319,7 +332,12 @@ static void JS_DropViewVocbaseObj(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view");
   }
 
-  auto res = view->vocbase().dropView(view->id(), allowDropSystem);
+  // prevent dropping of system views
+  if (!allowDropSystem && view->system()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view");
+  }
+
+  auto res = view->drop();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);

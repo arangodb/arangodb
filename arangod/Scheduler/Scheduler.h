@@ -38,6 +38,7 @@
 namespace arangodb {
 class JobGuard;
 class ListenTask;
+class SchedulerThread;
 
 namespace velocypack {
 class Builder;
@@ -55,9 +56,10 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
   friend class arangodb::rest::GeneralCommTask;
   friend class arangodb::rest::SocketTask;
   friend class arangodb::ListenTask;
+  friend class arangodb::SchedulerThread;
 
  public:
-  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
+  Scheduler(uint64_t minThreads, uint64_t maxThreads,
             uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~Scheduler();
 
@@ -91,16 +93,11 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     uint64_t _queued;
     uint64_t _fifo1;
     uint64_t _fifo2;
-    uint64_t _fifo8;
-    uint64_t _queuedV8;
+    uint64_t _fifo3;
   };
 
-  void post(std::function<void()> const&, bool isV8,
-                      uint64_t timeout = 0);
-  void post(asio_ns::io_context::strand&, std::function<void()> const&);
-
   bool queue(RequestPriority prio, std::function<void()> const&);
-  void drain();
+  void post(asio_ns::io_context::strand&, std::function<void()> const callback);
 
   void addQueueStatistics(velocypack::Builder&) const;
   QueueStatistics queueStatistics() const;
@@ -109,53 +106,17 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
   bool isRunning() const { return numRunning(_counters) > 0; }
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
 
- public:
-  template <typename T>
-  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
-    return new asio_ns::deadline_timer(*_ioContext, timeout);
-  }
-  asio_ns::steady_timer* newSteadyTimer() {
-    return new asio_ns::steady_timer(*_ioContext);
-  }
-  asio_ns::io_context::strand* newStrand() {
-    return new asio_ns::io_context::strand(*_ioContext);
-  }
-  asio_ns::ip::tcp::acceptor* newAcceptor() {
-    return new asio_ns::ip::tcp::acceptor(*_ioContext);
-  }
-#ifndef _WIN32
-  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
-    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
-  }
-#endif
-  asio_ns::ip::tcp::socket* newSocket() {
-    return new asio_ns::ip::tcp::socket(*_ioContext);
-  }
-#ifndef _WIN32
-  asio_ns::local::stream_protocol::socket* newDomainSocket() {
-    return new asio_ns::local::stream_protocol::socket(*_ioContext);
-  }
-#endif
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
-      asio_ns::ssl::context& context) {
-    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
-                                                              context);
-  }
-  asio_ns::ip::tcp::resolver* newResolver() {
-    return new asio_ns::ip::tcp::resolver(*_ioContext);
-  }
-  asio_ns::signal_set* newSignalSet() {
-    return new asio_ns::signal_set(*_managerContext);
-  }
-
  private:
+  void post(std::function<void()> const callback);
+  void drain();
+
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
   inline bool isStopping(uint64_t value) const noexcept {
     return (value & (1ULL << 63)) != 0;
   }
 
-  bool canPostDirectly() const noexcept;
+  bool canPostDirectly(RequestPriority prio) const noexcept;
 
   static uint64_t numRunning(uint64_t value) noexcept {
     return value & 0xFFFFULL;
@@ -190,11 +151,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     _counters -= 1ULL << 16;
   }
 
-  std::atomic<int64_t> _queuedV8;
-  int64_t const _maxQueuedV8;
-
-  // maximal number of running + queued jobs in the Scheduler `io_context`
-  uint64_t const _maxQueueSize;
 
   // we store most of the threads status info in a single atomic uint64_t
   // the encoding of the values inside this variable is (left to right means
@@ -221,32 +177,78 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void()> const& callback, bool isV8)
-        : _isV8(isV8), _callback(callback) {}
-    bool const _isV8;
+    FifoJob(std::function<void()> const& callback)
+        : _callback(callback) {}
     std::function<void()> _callback;
   };
 
-  bool pushToFifo(int64_t fifo, std::function<void()> const& callback,
-                  bool isV8);
+  bool pushToFifo(int64_t fifo, std::function<void()> const& callback);
   bool popFifo(int64_t fifo);
 
   static constexpr int64_t NUMBER_FIFOS = 3;
   static constexpr int64_t FIFO1 = 0;
   static constexpr int64_t FIFO2 = 1;
-  static constexpr int64_t FIFO8 = 2;
+  static constexpr int64_t FIFO3 = 2;
 
   uint64_t const _maxFifoSize[NUMBER_FIFOS];
   std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
 
   boost::lockfree::queue<FifoJob*> _fifo1;
   boost::lockfree::queue<FifoJob*> _fifo2;
-  boost::lockfree::queue<FifoJob*> _fifo8;
+  boost::lockfree::queue<FifoJob*> _fifo3;
   boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
 
   // the following methds create tasks in the `io_context`.
   // The `io_context` itself is not exposed because everything
   // should use the method `post` of the Scheduler.
+
+ public:
+  template <typename T>
+  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
+    return new asio_ns::deadline_timer(*_ioContext, timeout);
+  }
+
+  asio_ns::steady_timer* newSteadyTimer() {
+    return new asio_ns::steady_timer(*_ioContext);
+  }
+
+  asio_ns::io_context::strand* newStrand() {
+    return new asio_ns::io_context::strand(*_ioContext);
+  }
+
+  asio_ns::ip::tcp::acceptor* newAcceptor() {
+    return new asio_ns::ip::tcp::acceptor(*_ioContext);
+  }
+
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
+    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
+  }
+#endif
+
+  asio_ns::ip::tcp::socket* newSocket() {
+    return new asio_ns::ip::tcp::socket(*_ioContext);
+  }
+
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::socket* newDomainSocket() {
+    return new asio_ns::local::stream_protocol::socket(*_ioContext);
+  }
+#endif
+
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
+      asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
+                                                              context);
+  }
+
+  asio_ns::ip::tcp::resolver* newResolver() {
+    return new asio_ns::ip::tcp::resolver(*_ioContext);
+  }
+
+  asio_ns::signal_set* newSignalSet() {
+    return new asio_ns::signal_set(*_managerContext);
+  }
 
  private:
   static void initializeSignalHandlers();

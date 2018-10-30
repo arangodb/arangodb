@@ -308,7 +308,7 @@ class index_test_case_base: public index_test_base {
 
     std::ofstream out(path.native());
 
-    flush_timers(out);
+    irs::timer_utils::flush_stats(out);
 
     out.close();
     std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;

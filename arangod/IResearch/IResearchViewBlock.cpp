@@ -334,6 +334,8 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (_done) {
+    // aggregate stats
+    _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
     size_t skipped = _inflight;
     _inflight = 0;
     traceSkipSomeEnd(skipped, ExecutionState::DONE);
@@ -351,6 +353,8 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
       _upstreamState = upstreamRes.first;
       if (!upstreamRes.second) {
         _done = true;
+        // aggregate stats
+        _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
         size_t skipped = _inflight;
         _inflight = 0;
         traceSkipSomeEnd(skipped, ExecutionState::DONE);
