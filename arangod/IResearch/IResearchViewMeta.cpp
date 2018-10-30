@@ -391,13 +391,19 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _cleanupIntervalStep(mask),
     _consolidationIntervalMsec(mask),
     _consolidationPolicy(mask),
-    _locale(mask) {
+    _locale(mask),
+    _segmentCountMax(mask),
+    _segmentDocsMax(mask),
+    _segmentMemoryMax(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
   : _cleanupIntervalStep(10),
     _consolidationIntervalMsec(60 * 1000),
-    _locale(std::locale::classic()) {
+    _locale(std::locale::classic()),
+    _segmentCountMax(0),
+    _segmentDocsMax(0),
+    _segmentMemoryMax(32*(size_t(1)<<20)) { // 32MB
   std::string errorField;
 
   _consolidationPolicy = createConsolidationPolicy<
@@ -427,6 +433,9 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
     _locale = std::move(other._locale);
+    _segmentCountMax = std::move(other._segmentCountMax);
+    _segmentDocsMax = std::move(other._segmentDocsMax);
+    _segmentMemoryMax = std::move(other._segmentMemoryMax);
   }
 
   return *this;
@@ -438,6 +447,9 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
     _locale = other._locale;
+    _segmentCountMax = other._segmentCountMax;
+    _segmentDocsMax = other._segmentDocsMax;
+    _segmentMemoryMax = other._segmentMemoryMax;
   }
 
   return *this;
@@ -459,6 +471,18 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale)
       || irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale)
       || irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
+    return false; // values do not match
+  }
+
+  if (_segmentCountMax != other._segmentCountMax) {
+    return false; // values do not match
+  }
+
+  if (_segmentDocsMax != other._segmentDocsMax) {
+    return false; // values do not match
+  }
+
+  if (_segmentMemoryMax != other._segmentMemoryMax) {
     return false; // values do not match
   }
 
@@ -637,6 +661,64 @@ bool IResearchViewMeta::init(
     }
   }
 */
+
+  {
+    // optional size_t
+    static const std::string fieldName("segmentCountMax");
+
+    mask->_segmentCountMax = slice.hasKey(fieldName);
+
+    if (!mask->_segmentCountMax) {
+      _segmentCountMax = defaults._segmentCountMax;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_segmentCountMax, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("segmentDocsMax");
+
+    mask->_segmentDocsMax = slice.hasKey(fieldName);
+
+    if (!mask->_segmentDocsMax) {
+      _segmentDocsMax = defaults._segmentDocsMax;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_segmentDocsMax, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("segmentMemoryMax");
+
+    mask->_segmentMemoryMax = slice.hasKey(fieldName);
+
+    if (!mask->_segmentMemoryMax) {
+      _segmentMemoryMax = defaults._segmentMemoryMax;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_segmentMemoryMax, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -665,6 +747,19 @@ bool IResearchViewMeta::json(
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
 */
+
+  if ((!ignoreEqual || _segmentCountMax != ignoreEqual->_segmentCountMax) && (!mask || mask->_segmentCountMax)) {
+    builder.add("segmentCountMax", arangodb::velocypack::Value(_segmentCountMax));
+  }
+
+  if ((!ignoreEqual || _segmentDocsMax != ignoreEqual->_segmentDocsMax) && (!mask || mask->_segmentDocsMax)) {
+    builder.add("segmentDocsMax", arangodb::velocypack::Value(_segmentDocsMax));
+  }
+
+  if ((!ignoreEqual || _segmentMemoryMax != ignoreEqual->_segmentMemoryMax) && (!mask || mask->_segmentMemoryMax)) {
+    builder.add("segmentMemoryMax", arangodb::velocypack::Value(_segmentMemoryMax));
+  }
+
   return true;
 }
 

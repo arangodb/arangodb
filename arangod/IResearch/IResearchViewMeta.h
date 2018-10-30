@@ -78,6 +78,9 @@ struct IResearchViewMeta {
     bool _consolidationIntervalMsec;
     bool _consolidationPolicy;
     bool _locale;
+    bool _segmentCountMax;
+    bool _segmentDocsMax;
+    bool _segmentMemoryMax;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -85,6 +88,9 @@ struct IResearchViewMeta {
   size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
   ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
   std::locale _locale; // locale used for ordering processed attribute names
+  size_t _segmentCountMax; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
+  size_t _segmentDocsMax; // maximum number of documents per segment before a segment flush is triggered (0 == unlimited)
+  size_t _segmentMemoryMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
