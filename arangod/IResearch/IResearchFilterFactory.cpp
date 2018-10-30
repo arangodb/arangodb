@@ -47,11 +47,11 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchDocument.h"
 #include "IResearchKludge.h"
+#include "IResearchPrimaryKeyFilter.h"
 #include "Aql/Function.h"
 #include "Aql/Ast.h"
 #include "Logger/LogMacros.h"
 
-#include "utils/hash_utils.hpp"
 using namespace arangodb::iresearch;
 
 namespace {
@@ -2056,135 +2056,6 @@ bool filter(
       return fromExpression(filter, queryCtx, filterCtx, node);
   }
 }
-
-class PrimaryKeyFilter
-    : public irs::filter,
-      public irs::filter::prepared {
- private:
-  struct PrimaryKeyIterator : public irs::doc_iterator {
-    PrimaryKeyIterator() = default;
-
-    virtual bool next() noexcept override {
-      _doc = _next;
-      _next = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      return !irs::type_limits<irs::type_t::doc_id_t>::eof(_doc);
-    }
-
-    virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
-      _doc = target <= _next
-        ? _next
-        : irs::type_limits<irs::type_t::doc_id_t>::eof();
-
-      return _doc;
-    }
-
-    virtual irs::doc_id_t value() const noexcept override {
-      return _doc;
-    }
-
-    virtual irs::attribute_view const& attributes() const noexcept override {
-      return irs::attribute_view::empty_instance();
-    }
-
-    void reset(irs::sub_reader const& segment, irs::doc_id_t doc) noexcept {
-      _pkSegment = &segment;
-      _doc = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      _next = doc;
-    }
-
-    mutable irs::sub_reader const* _pkSegment{};
-    mutable irs::doc_id_t _doc{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    mutable irs::doc_id_t _next{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
-  }; // PrimaryKeyIterator
-
- public:
-  DECLARE_FILTER_TYPE();
-
-  PrimaryKeyFilter(TRI_voc_cid_t cid, TRI_voc_rid_t id) noexcept
-    : irs::filter(PrimaryKeyFilter::type()), _pk(cid, id) {
-  }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                            irs::filter::prepared
-// ----------------------------------------------------------------------------
-
-  virtual irs::doc_iterator::ptr execute(
-      irs::sub_reader const& segment,
-      irs::order::prepared const& /*order*/,
-      irs::attribute_view const& /*ctx*/
-  ) const override {
-    if (&segment != _pkIterator._pkSegment) {
-      return irs::doc_iterator::empty();
-    }
-
-    // aliasing constructor
-    return irs::doc_iterator::ptr(
-      irs::doc_iterator::ptr(),
-      const_cast<PrimaryKeyIterator*>(&_pkIterator)
-    );
-  }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      irs::filter
-// ----------------------------------------------------------------------------
-
-  virtual size_t hash() const noexcept override {
-    size_t seed = 0;
-    irs::hash_combine(seed, filter::hash());
-    irs::hash_combine(seed, _pk.cid());
-    irs::hash_combine(seed, _pk.rid());
-    return seed;
-  }
-
-  virtual filter::prepared::ptr prepare(
-      irs::index_reader const& index,
-      irs::order::prepared const& /*ord*/,
-      boost_t /*boost*/,
-      irs::attribute_view const& /*ctx*/
-  ) const override {
-    auto const pkRef = static_cast<irs::bytes_ref>(_pk);
-
-    for (auto& segment : index) {
-      auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-      if (!pkField) {
-        continue;
-      }
-
-      auto term = pkField->iterator();
-
-      if (!term->seek(pkRef)) {
-        continue;
-      }
-
-      auto docs = term->postings(irs::flags::empty_instance());
-
-      if (docs->next()) {
-        _pkIterator.reset(segment, docs->value());
-      }
-
-      break;
-    }
-
-    // aliasing constructor
-    return irs::filter::prepared::ptr(irs::filter::prepared::ptr(), this);
-  }
-
- protected:
-  bool equals(filter const& rhs) const noexcept override {
-    auto const& trhs = static_cast<PrimaryKeyFilter const&>(rhs);
-
-    return filter::equals(rhs)
-      && _pk.cid() == trhs._pk.cid()
-      && _pk.rid() == trhs._pk.rid();
-  }
-
- private:
-  DocumentPrimaryKey _pk;
-  mutable PrimaryKeyIterator _pkIterator;
-}; // PrimaryKeyFilter
-
-DEFINE_FILTER_TYPE(PrimaryKeyFilter);
 
 }
 
