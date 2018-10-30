@@ -26,6 +26,10 @@
 
 #include "shared.hpp"
 
+#if defined(_MSC_VER) && _MSC_VER < 1900 // before MSVC2015
+  #define snprintf _snprintf
+#endif
+
 NS_ROOT
 NS_BEGIN(string_utils)
 
@@ -49,8 +53,7 @@ inline std::basic_string<T>& oversize(
 ////////////////////////////////////////////////////////////////////////////////
 template <typename... Args>
 inline int to_string(std::string& buf, const char* format, Args&&... args) {
-  char ch;
-  auto result = snprintf(&ch, 0, format, std::forward<Args>(args)...);
+  auto result = snprintf(nullptr, 0, format, std::forward<Args>(args)...); // MSVC requires 'nullptr' buffer and '0' size to get expected size
 
   if (result <= 0) {
     return result;
@@ -63,7 +66,7 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
 
   try {
     result = snprintf(&buf[start], result, format, std::forward<Args>(args)...);
-    buf.resize(start + std::max(0, result));
+    buf.resize(start + (std::max)(0, result));
   } catch (...) {
     buf.resize(start);
 
@@ -84,7 +87,6 @@ inline std::string to_string(const char* format, Args&&... args) {
 
   assert(result >= 0);
   assert(size_t(result) == buf.size());
-
   UNUSED(result);
 
   return buf;
