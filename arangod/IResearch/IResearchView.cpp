@@ -61,11 +61,6 @@
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flush segment when it reached approximately this size
-////////////////////////////////////////////////////////////////////////////////
-constexpr size_t MAX_SEGMENT_SIZE = 32*(size_t(1)<<20); // 32MB
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of threads that will not be blocked
 ///        when inserting/removing data into/from a view
 ////////////////////////////////////////////////////////////////////////////////
@@ -1006,7 +1001,7 @@ IResearchView::~IResearchView() {
 
     if (_storePersisted) {
       try {
-        _storePersisted._writer->commit();
+        // NOTE: do not commit writer so as not to go out-of-sync with the WAL (i.e. flush thread)
         _storePersisted._writer->close();
         _storePersisted._writer.reset();
         _storePersisted._directory->close();
@@ -1208,8 +1203,6 @@ arangodb::Result IResearchView::drop(
   // if an errors occurs below than a drop retry would most likely happen
   // ...........................................................................
 
-  _flushCallback.reset(); // unregister flush callback from flush thread
-
   try {
     if (_storePersisted) {
       _storePersisted._writer->documents().remove(std::move(filter));
@@ -1292,6 +1285,7 @@ arangodb::Result IResearchView::dropImpl() {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
   updateProperties(_meta); // trigger reload of settings for async jobs
   _asyncSelf->reset(); // the view data-stores are being deallocated, view use is no longer valid (wait for all the view users to finish)
+  _flushCallback.reset(); // unregister flush callback from flush thread
 
   WriteMutex mutex(_mutex); // members can be asynchronously updated
   SCOPED_LOCK(mutex);
@@ -1723,8 +1717,12 @@ void IResearchView::open() {
       if (_storePersisted._directory) {
         // do not lock index, ArangoDB has it's own lock
         irs::index_writer::options options;
+
+        TRI_ASSERT(_meta);
         options.lock_repository = false;
-        options.segment_memory_max = MAX_SEGMENT_SIZE;
+        options.segment_count_max = _meta->_segmentCountMax;
+        options.segment_docs_max = _meta->_segmentDocsMax;
+        options.segment_memory_max = _meta->_segmentMemoryMax;
         options.segment_pool_size = MAX_NON_BLOCKING_SEGMENTS_COUNT;
 
         // create writer before reader to ensure data directory is present
@@ -1995,6 +1993,9 @@ arangodb::Result IResearchView::updateProperties(
 
       // reset non-updatable values to match current meta
       meta._locale = viewMeta->_locale;
+      meta._segmentCountMax = viewMeta->_segmentCountMax;
+      meta._segmentDocsMax = viewMeta->_segmentDocsMax;
+      meta._segmentMemoryMax = viewMeta->_segmentMemoryMax;
 
       if (arangodb::ServerState::instance()->isDBServer()) {
         viewMeta = std::make_shared<AsyncMeta>(); // create an instance not shared with cluster-view

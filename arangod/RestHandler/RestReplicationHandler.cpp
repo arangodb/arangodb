@@ -51,6 +51,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -1728,7 +1729,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
     return;
   }
 
-  bool force = _request->parsedValue<bool>("force", false);
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
   auto nameSlice = slice.get(StaticStrings::DataSourceName);
   auto typeSlice = slice.get(StaticStrings::DataSourceType);
@@ -1741,87 +1741,49 @@ void RestReplicationHandler::handleCommandRestoreView() {
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
     << nameSlice.copyString();
 
-  if (ServerState::instance()->isCoordinator()) {
-    try {
-      auto* ci = ClusterInfo::instance();
-      auto view = ci->getView(_vocbase.name(), nameSlice.toString());
+  try {
+    CollectionNameResolver resolver(_vocbase);
+    auto view = resolver.getView(nameSlice.toString());
 
-      if (view) {
-        if (overwrite) {
-          auto res = view->drop();
+    if (view) {
+      if (!overwrite) {
+        generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
-          if (!res.ok()) {
-            generateError(res);
-
-            return;
-          }
-
-          generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
-          return;
-        }
+        return;
       }
 
-      auto res = LogicalView::create(view, _vocbase, slice); // must create() since view was drop()ed
+      auto res = view->drop();
 
       if (!res.ok()) {
         generateError(res);
 
         return;
       }
-
-      if (!view) {
-        generateError(Result(TRI_ERROR_INTERNAL, "problem creating view"));
-
-        return;
-      }
-
-      velocypack::Builder result;
-
-      result.openObject();
-      result.add("result", velocypack::Slice::trueSlice());
-      result.close();
-      generateResult(rest::ResponseCode::OK, result.slice());
-    } catch (basics::Exception const& ex) {
-      generateError(Result(ex.code(), ex.message()));
-    } catch (...) {
-      generateError(Result(TRI_ERROR_INTERNAL, "problem creating view"));
     }
 
-    return; // done
-  }
+    auto res = LogicalView::create(view, _vocbase, slice); // must create() since view was drop()ed
 
-  auto view = _vocbase.lookupView(nameSlice.copyString());
-
-  if (view) {
-    if (overwrite) {
-      Result res = _vocbase.dropView(view->id(), /*dropSytem*/force);
-
-      if (res.fail()) {
-        generateError(res);
-
-        return;
-      }
-    } else {
-      generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    if (!res.ok()) {
+      generateError(res);
 
       return;
     }
-  }
-
-  try {
-    view = _vocbase.createView(slice);
 
     if (view == nullptr) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "problem creating view");
+
       return;
     }
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+
+    return;
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
+
+    return;
   }
 
   VPackBuilder result;
