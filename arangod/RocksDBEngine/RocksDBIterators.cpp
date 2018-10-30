@@ -197,7 +197,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     auto initialKey = RocksDBKey();
     initialKey.constructDocument(
       static_cast<RocksDBCollection*>(col->getPhysical())->objectId(),
-      LocalDocumentId(RandomGenerator::interval(UINT64_MAX))
+      RandomGenerator::interval(UINT64_MAX)
     );
     _iterator->Seek(initialKey.string());
 

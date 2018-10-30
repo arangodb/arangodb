@@ -372,7 +372,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       if (!RocksDBValue::revisionId(cIter->iter->value(), docRev)) {
         // for collections that do not have the revisionId in the value
         LocalDocumentId docId = RocksDBValue::documentId(cIter->iter->value());
-        docKey.constructDocument(cObjectId, docId);
+        docKey.constructDocument(cObjectId, docId.id());
         
         rocksdb::PinnableSlice ps;
         auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
@@ -509,7 +509,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     if (!RocksDBValue::revisionId(cIter->iter->value(), docRev)) {
       // for collections that do not have the revisionId in the value
       LocalDocumentId docId = RocksDBValue::documentId(cIter->iter->value());
-      tmpKey.constructDocument(cObjectId, docId);
+      tmpKey.constructDocument(cObjectId, docId.id());
       
       rocksdb::PinnableSlice ps;
       auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
@@ -648,7 +648,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
       if ((hasMore = cIter->hasMore())) {
         // for collections that do not have the revisionId in the value
         LocalDocumentId docId = RocksDBValue::documentId(cIter->iter->value());
-        tmpKey.constructDocument(cObjectId, docId);
+        tmpKey.constructDocument(cObjectId, docId.id());
         
         rocksdb::PinnableSlice ps;
         auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
