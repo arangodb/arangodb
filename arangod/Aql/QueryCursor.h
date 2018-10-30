@@ -89,7 +89,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
                     std::shared_ptr<velocypack::Builder> bindVars,
                     std::shared_ptr<velocypack::Builder> opts, 
                     size_t batchSize,
-                    double ttl);
+                    double ttl,
+                    bool contextOwnedByExterior);
 
   ~QueryStreamCursor();
 

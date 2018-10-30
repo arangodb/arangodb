@@ -160,7 +160,8 @@ QueryStreamCursor::QueryStreamCursor(
     std::shared_ptr<VPackBuilder> bindVars,
     std::shared_ptr<VPackBuilder> opts,
     size_t batchSize,
-    double ttl)
+    double ttl,
+    bool contextOwnedByExterior)
     : Cursor(id, batchSize, ttl, /*hasCount*/ false),
       _guard(vocbase),
       _exportCount(-1),
@@ -168,8 +169,6 @@ QueryStreamCursor::QueryStreamCursor(
   auto registry = QueryRegistryFeature::registry();
   TRI_ASSERT(registry != nullptr);
 
-  // only v8 cursor will use 0 as cursor ID
-  bool contextOwnedByExterior = id > 0;
   _query = std::make_unique<Query>(
     contextOwnedByExterior,
     _guard.database(),
