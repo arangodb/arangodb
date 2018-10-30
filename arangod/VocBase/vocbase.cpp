@@ -1016,10 +1016,8 @@ void TRI_vocbase_t::inventory(
       collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
-        // AND exclude arangosearch indexes
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString", "indexes" }, true, false);
@@ -1647,91 +1645,64 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     arangodb::velocypack::Slice parameters
 ) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  auto* engine =  EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failure to get storage engine during creation of view"
+    );
+  }
+
   // check that the name does not contain any strange characters
   if (!IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
-  std::shared_ptr<arangodb::LogicalView> view;
+  arangodb::LogicalView::ptr view;
+  auto res = LogicalView::instantiate(view, *this, parameters);
 
-  if (ServerState::instance()->isCoordinator()) {
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to find ClusterInfo while creating view")
-      );
-    }
-
-    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
-    view = LogicalView::create(*this, parameters, true);
-
-    if (!view) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno(),
-        std::string("failed to instantiate view in agency'")
-      );
-    }
-
-    view = ci->getView(name(), std::to_string(view->id())); // refresh view from Agency
-  } else {
-    std::shared_ptr<arangodb::LogicalView> registeredView;
-    auto callback = [this, &registeredView](
-      std::shared_ptr<arangodb::LogicalView> const& view
-    )->bool {
-      TRI_ASSERT(false == !view);
-      RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-      auto itr = _dataSourceByName.find(view->name());
-
-      if (itr != _dataSourceByName.end()) {
-        events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-      }
-
-      registerView(basics::ConditionalLocking::DoNotLock, view);
-      registeredView = view;
-
-      return true;
-    };
-
-    READ_LOCKER(readLocker, _inventoryLock);
-
-    // Try to create a new view. This is not registered yet
-    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
-    view = LogicalView::create(*this, parameters, true, 0, callback);
-
-    if (!view) {
-      auto errorNumber = TRI_ERROR_NO_ERROR == TRI_errno()
-                       ? TRI_ERROR_INTERNAL : TRI_errno();
-
-      if (registeredView) {
-        unregisterView(*registeredView);
-      }
-
-      auto name = arangodb::basics::VelocyPackHelper::getStringValue(
-        parameters, StaticStrings::DataSourceName, ""
-      );
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        errorNumber,
-        std::string("failed to instantiate view '") + name + "'"
-      );
-    }
-
-    events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
-
-    if (DatabaseFeature::DATABASE != nullptr &&
-        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-      DatabaseFeature::DATABASE->versionTracker()->track("create view");
-    }
+  if (!res.ok() || !view) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to instantiate view from definition: ") + parameters.toString()
+    );
   }
 
-  // And lets open it.
-  if (view) {
-    view->open();
+  READ_LOCKER(readLocker, _inventoryLock);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  auto itr = _dataSourceByName.find(view->name());
+
+  if (itr != _dataSourceByName.end()) {
+    events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
+
+  registerView(basics::ConditionalLocking::DoNotLock, view);
+
+  try {
+    auto res = engine->createView(view->vocbase(), view->id(), *view);
+
+    if (!res.ok()) {
+      unregisterView(*view);
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+  } catch (...) {
+    unregisterView(*view);
+
+    throw;
+  }
+
+  events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
+
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create view");
+  }
+
+  view->open(); // And lets open it.
 
   return view;
 }
@@ -1741,29 +1712,24 @@ arangodb::Result TRI_vocbase_t::dropView(
     TRI_voc_cid_t cid,
     bool allowDropSystem
 ) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
 
   if (!view) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && view->system()) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-    if (!engine) {
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to find StorageEngine while dropping view '") + view->name() + "'"
-      );
-    }
-
-    if (!engine->inRecovery()) {
-      return TRI_ERROR_FORBIDDEN; // prevent dropping of system views
-    }
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find StorageEngine while dropping view '") + view->name() + "'"
+    );
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return view->drop(); // will internally drop view from ClusterInfo
+  if (!allowDropSystem && view->system() && !engine->inRecovery()) {
+    return TRI_ERROR_FORBIDDEN; // prevent dropping of system views
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1807,7 +1773,7 @@ arangodb::Result TRI_vocbase_t::dropView(
   arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  auto res = view->drop();
+  auto res = engine->dropView(*this, *view);
 
   if (!res.ok()) {
     return res;

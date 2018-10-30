@@ -200,32 +200,38 @@ void RestViewHandler::createView() {
   }
 
   try {
-    auto view = _vocbase.createView(body);
+    LogicalView::ptr view;
+    auto res = LogicalView::create(view, _vocbase, body);
 
-    if (view != nullptr) {
-      VPackBuilder props;
+    if (!res.ok()) {
+      generateError(res);
 
-      props.openObject();
-
-      auto res = view->toVelocyPack(props, true, false);
-
-      if (!res.ok()) {
-        generateError(res);
-
-        return;
-      }
-
-      props.close();
-      generateResult(rest::ResponseCode::CREATED, props.slice());
-    } else {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "problem creating view");
+      return;
     }
+
+    if (!view) {
+      generateError(arangodb::Result(TRI_ERROR_INTERNAL, "problem creating view"));
+
+      return;
+    }
+
+    velocypack::Builder builder;
+
+    builder.openObject();
+    res = view->toVelocyPack(builder, true, false);
+
+    if (!res.ok()) {
+      generateError(res);
+
+      return;
+    }
+
+    builder.close();
+    generateResult(rest::ResponseCode::CREATED, builder.slice());
   } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+    generateError(arangodb::Result(ex.code(), ex.message()));
   } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "problem creating view");
+    generateError(arangodb::Result(TRI_errno(), "problem creating view"));
   }
 }
 
@@ -417,13 +423,22 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  auto res = _vocbase.dropView(view->id(), allowDropSystem);
+  // prevent dropping of system views
+  if (!allowDropSystem && view->system()) {
+    generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view"));
 
-  if (res.ok()) {
-    generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
-  } else {
-    generateError(res);
+    return;
   }
+
+  auto res = view->drop();
+
+  if (!res.ok()) {
+    generateError(res);
+
+    return;
+  }
+
+  generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

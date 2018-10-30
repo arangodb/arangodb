@@ -31,6 +31,12 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+
+struct ViewFactory; // forward declaration
+
+} // arangodb
+
+namespace arangodb {
 namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -40,6 +46,8 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
  public:
+
+  using LogicalView::drop;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
@@ -63,25 +71,16 @@ class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
     arangodb::velocypack::Slice const& value
   );
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief view factory
-  /// @returns initialized view object
-  ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit
-  );
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of view
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::ViewFactory const& factory();
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
   void open() override {
     // NOOP
   }
-
-  Result drop() override;
 
   virtual Result rename(
       std::string&& /*newName*/,
@@ -103,7 +102,11 @@ class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
       bool forPersistence
   ) const override;
 
+  virtual arangodb::Result dropImpl() override;
+
  private:
+  struct ViewFactory; // forward declaration
+
   IResearchViewCoordinator(
     TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
   );

@@ -43,5 +43,4 @@ ArangoSearch
 * ArangoSearch ignores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported (internal #316)
 * Using a loop variable in expressions within a corresponding SEARCH condition is not supported (internal #318)
-* ArangoSearch doesn't support joins with satellite collections (internal #440)
 * RocksDB recovery fails sometimes after renaming a view (internal #469)
