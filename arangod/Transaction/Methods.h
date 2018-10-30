@@ -436,12 +436,7 @@ class Methods {
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) { return false; }
 #endif
   
-  /// @brief return the transaction collection for a document collection
-  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
-                               AccessMode::Type type = AccessMode::Type::READ) const;
-
  private:
-
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
@@ -513,6 +508,9 @@ class Methods {
                                                  OperationOptions const& options);
 
  protected:
+  /// @brief return the transaction collection for a document collection
+  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
+                               AccessMode::Type type = AccessMode::Type::READ) const;
 
   OperationResult countCoordinator(std::string const& collectionName,
                                    CountType type);
