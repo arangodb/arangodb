@@ -5,6 +5,8 @@ v3.4.0-rc.4 (XXXX-XX-XX)
   only with the maintainer mode enabled if the creation of a collection is in
   progress and at the same time a deletion is forced.
 
+* do not rely on `_modules` collection being present at arangod startup
+
 * fixes a routing issue within the web ui after the use of views
 
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate

@@ -103,6 +103,11 @@ IRESEARCH_API bool visit(
   const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
 );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush formatted timer stats to a specified stream
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void flush_stats(std::ostream &out);
+
 NS_END // timer_utils
 NS_END // NS_ROOT
 

@@ -147,7 +147,7 @@ namespace arangodb {
   std::lock_guard<std::mutex> lock(mutex);
   auto itr = types.emplace(name, Type());
 
-  if (itr.second) {
+  if (itr.second && name.data()) {
     const_cast<std::string&>(itr.first->second._name) = name.toString(); // update '_name'
     const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =
       itr.first->second.name(); // point key at value stored in '_name'

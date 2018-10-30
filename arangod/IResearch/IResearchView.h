@@ -50,6 +50,7 @@ namespace arangodb {
 
 class DatabasePathFeature; // forward declaration
 class TransactionState; // forward declaration
+struct ViewFactory; // forward declaration
 class ViewIterator; // forward declaration
 
 namespace aql {
@@ -199,6 +200,11 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   bool emplace(TRI_voc_cid_t cid);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of view
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::ViewFactory const& factory();
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a document into this IResearch View and the underlying
   ///        IResearch stores
@@ -225,18 +231,6 @@ class IResearchView final
     TRI_voc_cid_t cid,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
-  );
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief view factory
-  /// @returns initialized view object
-  ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = {}
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -334,6 +328,7 @@ class IResearchView final
     PersistedStore(irs::utf8_path&& path);
   };
 
+  struct ViewFactory; // forward declaration
   class ViewStateHelper; // forward declaration
   struct ViewStateRead; // forward declaration
   struct ViewStateWrite; // forward declaration
