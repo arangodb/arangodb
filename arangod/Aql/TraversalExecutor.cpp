@@ -21,8 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
+#include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -71,8 +73,30 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
       }
 
       // Now reset the traverser
-      std::string const vertex = "";
-      _traverser.setStartVertex(vertex);
+      auto inReg = _infos.getInputRegisters();
+      if (inReg.empty()) {
+        // TODO Implement me!!
+        TRI_ASSERT(false);
+      } else {
+        // Only one input possible
+        TRI_ASSERT(inReg.size() == 1);
+        AqlValue const& in = _input.getValue(*inReg.begin());
+        if (in.isObject()) {
+          try {
+            _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
+          }
+          catch (...) {
+            // _id or _key not present... ignore this error and fall through
+          }
+        } else if (in.isString()) {
+          _traverser.setStartVertex(in.slice().copyString());
+        } else {
+          _traverser.options()->query()->registerWarning(
+              TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only "
+                                           "id strings or objects with _id are "
+                                           "allowed");
+        }
+      }
     }
 
     // TODO Remove me! This will directly consume and dump the input.

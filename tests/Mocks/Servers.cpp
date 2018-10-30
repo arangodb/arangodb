@@ -22,8 +22,9 @@
 
 #include "Servers.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -138,4 +139,17 @@ MockAqlServer::~MockAqlServer() {
   arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
   arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+}
+
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
+  auto bindParams = std::make_shared<VPackBuilder>();
+  bindParams->openObject();
+  bindParams->close();
+  auto queryOptions = std::make_shared<VPackBuilder>();
+  queryOptions->openObject();
+  queryOptions->close();
+  aql::QueryString fakeQueryString("");
+  return std::make_unique<arangodb::aql::Query>(
+      false, getSystemDatabase(), fakeQueryString, bindParams, queryOptions,
+      arangodb::aql::QueryPart::PART_DEPENDENT);
 }
