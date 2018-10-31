@@ -1372,16 +1372,35 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     OperationResult opRes =
         trx.remove(collectionName, oldBuilder.slice(), options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not delete " << oldBuilder.slice().length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/deleted "
+        << oldBuilder.slice().length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1436,15 +1455,34 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.isRestore = true;
     options.waitForSync = false;
     options.overwrite = true;
+    double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not insert " << requestSlice.length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/inserted "
+        << requestSlice.length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1490,15 +1528,34 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     opRes = trx.replace(collectionName, builder.slice(), options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not replace " << builder.slice().length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/replaced "
+        << builder.slice().length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
