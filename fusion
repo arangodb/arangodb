@@ -1,0 +1,26 @@
+#Map and Lambda Function
+#Hackerrank
+
+m=list()
+n=int(input())
+def fibonacci(n):
+
+    a=0
+    b=1
+    if(n==0):
+        return m
+    m.append(a)
+    if(n==1):
+        return m
+    m.append(b)
+    if(n==2):
+        return m
+    while n-2>=1:
+        c=a+b
+        m.append(c)
+        a=b
+        b=c
+        n=n-1
+    return m
+cube = (lambda x:x**3) # complete the lambda function
+print (list(map(cube, fibonacci(n))))
