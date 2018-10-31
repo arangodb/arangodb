@@ -24,7 +24,6 @@
 #include "ManagedDirectory.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -77,14 +76,14 @@ inline std::string filePath(std::string const& directory,
 /// @brief Opens a file given a path and flags
 inline int openFile(std::string const& path, int flags) {
   return (::flagIsSet(flags, O_CREAT)
-              ? TRI_TRACKED_CREATE_FILE(path.c_str(), flags, S_IRUSR | S_IWUSR)
-              : TRI_TRACKED_OPEN_FILE(path.c_str(), flags));
+              ? TRI_CREATE(path.c_str(), flags, S_IRUSR | S_IWUSR)
+              : TRI_OPEN(path.c_str(), flags));
 }
 
 /// @brief Closes an open file and sets the status
 inline void closeFile(int& fd, arangodb::Result& status) {
   TRI_ASSERT(fd >= 0);
-  status = arangodb::Result{TRI_TRACKED_CLOSE_FILE(fd)};
+  status = arangodb::Result{TRI_CLOSE(fd)};
   fd = -1;
 }
 
