@@ -795,6 +795,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
         VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
+        auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+          DatabaseFeature
+        >("Database");
+
+        if (!databaseFeature) {
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+            << "failed to find feature 'Database' while renaming view";
+          ++state->errorCount;
+          return state->canContinue();
+        }
 
         if (!payloadSlice.isObject()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -853,7 +863,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             vocbase->dropView(other->id(), true);
           }
 
-          auto res = vocbase->renameView(view->id(), name);
+          auto res = view->rename(
+            std::string(name), databaseFeature->forceSyncProperties()
+          );
 
           if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)

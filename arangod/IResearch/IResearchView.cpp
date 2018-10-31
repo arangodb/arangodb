@@ -60,12 +60,6 @@
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum number of threads that will not be blocked
-///        when inserting/removing data into/from a view
-////////////////////////////////////////////////////////////////////////////////
-constexpr size_t MAX_NON_BLOCKING_SEGMENTS_COUNT = 64;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::aql::AstNode ALL(arangodb::aql::AstNodeValue(true));
@@ -1684,10 +1678,9 @@ void IResearchView::open() {
 
         TRI_ASSERT(_meta);
         options.lock_repository = false;
-        options.segment_count_max = _meta->_segmentCountMax;
-        options.segment_docs_max = _meta->_segmentDocsMax;
-        options.segment_memory_max = _meta->_segmentMemoryMax;
-        options.segment_pool_size = MAX_NON_BLOCKING_SEGMENTS_COUNT;
+        options.segment_count_max = _meta->_writebufferActive;
+        options.segment_memory_max = _meta->_writebufferSizeMax;
+        options.segment_pool_size = _meta->_writebufferIdle;
 
         // create writer before reader to ensure data directory is present
         _storePersisted._writer = irs::index_writer::make(
@@ -1965,9 +1958,9 @@ arangodb::Result IResearchView::updateProperties(
 
       // reset non-updatable values to match current meta
       meta._locale = viewMeta->_locale;
-      meta._segmentCountMax = viewMeta->_segmentCountMax;
-      meta._segmentDocsMax = viewMeta->_segmentDocsMax;
-      meta._segmentMemoryMax = viewMeta->_segmentMemoryMax;
+      meta._writebufferActive = viewMeta->_writebufferActive;
+      meta._writebufferIdle = viewMeta->_writebufferIdle;
+      meta._writebufferSizeMax = viewMeta->_writebufferSizeMax;
 
       if (arangodb::ServerState::instance()->isDBServer()) {
         viewMeta = std::make_shared<AsyncMeta>(); // create an instance not shared with cluster-view

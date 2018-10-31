@@ -623,15 +623,6 @@ void IResearchViewDBServer::open() {
   }
 }
 
-arangodb::Result IResearchViewDBServer::rename(
-    std::string&& newName,
-    bool /*doSync*/
-) {
-  name(std::move(newName));
-
-  return arangodb::Result();
-}
-
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,

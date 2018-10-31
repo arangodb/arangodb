@@ -214,7 +214,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
       properties = view.properties();
@@ -223,12 +223,12 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       meta = {
         cleanupIntervalStep: 20,
-        consolidationPolicy: { threshold: 0.75, type: "count" }
+        consolidationPolicy: { threshold: 0.75, type: "bytes_accum" }
       };
       view.properties(meta, false); // full update
       properties = view.properties();
@@ -237,7 +237,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("count", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.75).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     },
 
@@ -524,7 +524,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
 
@@ -535,7 +535,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       col0.save({ name: "quarter", text: "quick over" });
@@ -559,7 +559,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
 
@@ -574,7 +574,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       // 2 non-empty collections
@@ -598,7 +598,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
 
@@ -613,7 +613,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       // 1 empty collection + 2 non-empty collections
@@ -640,7 +640,7 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         consolidationIntervalMsec: 10000,
-        consolidationPolicy: { threshold: 0.5, type: "bytes" },
+        consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
 
@@ -655,7 +655,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       view.properties({}, false); // full update (reset to defaults)

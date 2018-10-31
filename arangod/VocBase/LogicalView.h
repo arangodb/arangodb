@@ -128,6 +128,16 @@ class LogicalView : public LogicalDataSource {
   );
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief calls the callback on every view found for the specified vocbase
+  /// @param callback if false is returned then enumiration stops
+  /// @return full enumeration finished successfully
+  //////////////////////////////////////////////////////////////////////////////
+  static bool enumerate(
+    TRI_vocbase_t& vocbase,
+    std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief instantiates an existing view according to a definition
   /// @param vocbase database where the view resides
   /// @param definition the view definition
@@ -194,10 +204,7 @@ class LogicalView : public LogicalDataSource {
 class LogicalViewClusterInfo: public LogicalView {
  public:
   virtual Result drop() override final;
-
-  /*FIXME TODO add to trigger rename via vocbase or cluster-info
   virtual Result rename(std::string&& newName, bool doSync) override final;
-  */
 
  protected:
   LogicalViewClusterInfo(
@@ -235,8 +242,6 @@ class LogicalViewStorageEngine: public LogicalView {
   ~LogicalViewStorageEngine() override;
 
   virtual Result drop() override final;
-
-  // FIXME TODO rename via vocbase or cluster-info
   virtual Result rename(std::string&& newName, bool doSync) override final;
 
   arangodb::Result updateProperties(
