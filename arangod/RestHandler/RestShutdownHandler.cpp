@@ -46,7 +46,7 @@ RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
 
 RestStatus RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
   
@@ -65,15 +65,10 @@ RestStatus RestShutdownHandler::execute() {
     }
   }
   
-  bool removeFromCluster;
-  std::string const& remove =
-      _request->value("remove_from_cluster", removeFromCluster);
-  removeFromCluster = removeFromCluster && remove == "1";
+  bool removeFromCluster = _request->parsedValue("remove_from_cluster", false);
+  bool shutdownCluster = _request->parsedValue("shutdown_cluster", false);
 
-  bool shutdownClusterFound;
-  std::string const& shutdownCluster =
-      _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1" &&
+  if (shutdownCluster &&
     AgencyCommManager::isEnabled()) {
     AgencyComm agency;
     VPackBuilder builder;

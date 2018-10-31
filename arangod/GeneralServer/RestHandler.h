@@ -124,11 +124,15 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual uint32_t forwardingTarget() { return 0; }
 
   void resetResponse(rest::ResponseCode);
-
-  void generateError(rest::ResponseCode, int, std::string const&);
-
+  
   // generates an error
-  void generateError(rest::ResponseCode, int);
+  void generateError(rest::ResponseCode code) {
+    generateError(code, static_cast<int>(code));
+  }
+  
+  void generateError(rest::ResponseCode code, int errorCode);
+
+  void generateError(rest::ResponseCode code, int errorCode, std::string const& message);
 
   // generates an error
   void generateError(arangodb::Result const&);
