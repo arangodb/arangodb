@@ -654,7 +654,7 @@ function iterateTests(cases, options, jsonReply) {
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
             pu.getCleanupDBDirectories() +
-            cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed);
+           cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed);
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");

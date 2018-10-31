@@ -580,32 +580,28 @@ void ClusterInfo::loadPlan() {
                 viewPairSlice.key.copyString();
 
             try {
-              auto preCommit = [this, viewId, databaseName](std::shared_ptr<LogicalView> const& view)->bool {
-                auto& views = _newPlannedViews[databaseName];
-                // register with name as well as with id:
-                views.reserve(views.size() + 2);
-                views[viewId] = view;
-                views[view->name()] = view;
-                views[view->guid()] = view;
-                return true;
-              };
-
-              const auto newView = LogicalView::create(
-                *vocbase,
-                viewPairSlice.value,
-                false, // false == coming from Agency
-                newPlanVersion,
-                preCommit
+              LogicalView::ptr view;
+              auto res = LogicalView::instantiate(
+                view, *vocbase, viewPairSlice.value, newPlanVersion
               );
 
-              if (!newView) {
+              if (!res.ok() || !view) {
                 LOG_TOPIC(ERR, Logger::AGENCY)
                   << "Failed to create view '" << viewId
                   << "'. The view will be ignored for now and the invalid information "
                   "will be repaired. VelocyPack: "
                   << viewSlice.toJson();
+
                 continue;
               }
+
+              auto& views = _newPlannedViews[databaseName];
+
+              // register with guid/id/name
+              views.reserve(views.size() + 3);
+              views[viewId] = view;
+              views[view->name()] = view;
+              views[view->guid()] = view;
             } catch (std::exception const& ex) {
               // The Plan contains invalid view information.
               // This should not happen in healthy situations.
@@ -619,7 +615,6 @@ void ClusterInfo::loadPlan() {
                 << viewSlice.toJson();
 
               TRI_ASSERT(false);
-              continue;
             } catch (...) {
               // The Plan contains invalid view information.
               // This should not happen in healthy situations.
@@ -633,7 +628,6 @@ void ClusterInfo::loadPlan() {
                 << viewSlice.toJson();
 
               TRI_ASSERT(false);
-              continue;
             }
           }
 
@@ -725,7 +719,7 @@ void ClusterInfo::loadPlan() {
               std::shared_ptr<LogicalCollection> newCollection;
 
             #if defined(USE_ENTERPRISE)
-              VPackSlice isSmart = collectionSlice.get("isSmart");
+              VPackSlice isSmart = collectionSlice.get(StaticStrings::IsSmart);
 
               if (isSmart.isTrue()) {
                 auto type =
@@ -1781,7 +1775,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   }
 
   bool isSmart = false;
-  VPackSlice smartSlice = json.get("isSmart");
+  VPackSlice smartSlice = json.get(StaticStrings::IsSmart);
   if (smartSlice.isBool() && smartSlice.getBool()) {
     isSmart = true;
   }
@@ -2375,59 +2369,62 @@ Result ClusterInfo::setCollectionStatusCoordinator(
 int ClusterInfo::ensureIndexCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     VPackSlice const& slice, bool create,
-    bool (*compare)(VPackSlice const&, VPackSlice const&),
     VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
 
   // check index id
   uint64_t iid = 0;
 
-  VPackSlice const idSlice = slice.get("id");
+  VPackSlice const idSlice = slice.get(StaticStrings::IndexId);
   if (idSlice.isString()) {
     // use predefined index id
     iid = arangodb::basics::StringUtils::uint64(idSlice.copyString());
   }
-
   if (iid == 0) {
     // no id set, create a new one!
     iid = uniqid();
   }
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
-  AgencyComm ac;
   int errorCode;
   try {
     auto start = std::chrono::steady_clock::now();
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
-    while (true) {
+    do {
       resultBuilder.clear();
       errorCode = ensureIndexCoordinatorWithoutRollback(
-        databaseName, collectionID, idString, slice, create, compare,
+        databaseName, collectionID, idString, slice, create,
         resultBuilder, errorMsg, timeout);
-
-      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-        if (std::chrono::duration_cast<std::chrono::seconds>(
-              std::chrono::steady_clock::now()-start).count() < 120) {
-          std::chrono::duration<size_t, std::milli>
-            waitTime(RandomGenerator::interval(0, 1000));
-          std::this_thread::sleep_for(waitTime);
+      
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        return errorCode; // done
+      } else if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+        auto diff = std::chrono::steady_clock::now() - start;
+        if (diff < std::chrono::seconds(120)) {
+          uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(5000));
+          std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
           continue;
-        } else {
-          AgencyCommResult ag = ac.getValues("/");
-          if (ag.successful()) {
-            LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n" << ag.slice().toJson();
-          } else {
-            LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-          }
         }
       }
       break;
-    }
+    } while(true);
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
   } catch (...) {
     errorCode = TRI_ERROR_INTERNAL;
   }
-  if (errorCode == TRI_ERROR_NO_ERROR || application_features::ApplicationServer::isStopping()) {
+  
+  if (application_features::ApplicationServer::isStopping()) {
+    return errorCode;
+  }
+  
+  if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) { // nothing to rollback
+    AgencyComm ac;
+    AgencyCommResult ag = ac.getValues("/");
+    if (ag.successful()) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n" << ag.slice().toJson();
+    } else {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+    }
     return errorCode;
   }
 
@@ -2448,8 +2445,8 @@ int ClusterInfo::ensureIndexCoordinator(
 
     if (planIndexes.isArray()) {
       for (auto const& index : VPackArrayIterator(planIndexes)) {
-        auto idPlanSlice = index.get("id");
-        if (idPlanSlice.isString() && idPlanSlice.copyString() == idString) {
+        auto idPlanSlice = index.get(StaticStrings::IndexId);
+        if (idPlanSlice.isString() && idPlanSlice.isEqualString(idString)) {
           planValue.reset(new VPackBuilder());
           planValue->add(index);
           break;
@@ -2486,14 +2483,14 @@ int ClusterInfo::ensureIndexCoordinator(
     std::this_thread::sleep_for(waitTime);
   } while (++tries < 5);
 
-  LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't roll back index creation of " << idString << ". Database: " << databaseName << ", Collection " << collectionID;
+  LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't roll back index creation of "
+    << idString << ". Database: " << databaseName << ", Collection " << collectionID;
   return errorCode;
 }
 
 int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     std::string const& databaseName, std::string const& collectionID,
     std::string const& idString, VPackSlice const& slice, bool create,
-    bool (*compare)(VPackSlice const&, VPackSlice const&),
     VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
   AgencyComm ac;
 
@@ -2503,11 +2500,11 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
   TRI_ASSERT(resultBuilder.isEmpty());
 
-  std::string const key =
+  std::string const planCollKey =
       "Plan/Collections/" + databaseName + "/" + collectionID;
+  std::string const planIndexesKey = planCollKey + "/indexes";
 
-  AgencyCommResult previous = ac.getValues(key);
-
+  AgencyCommResult previous = ac.getValues(planCollKey);
   if (!previous.successful()) {
     return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
   }
@@ -2519,117 +2516,34 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   if (!collection.isObject()) {
     return setErrormsg(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
-
-  loadPlan();
-  // It is possible that between the fetching of the planned collections
-  // and the write lock we acquire below something has changed. Therefore
-  // we first get the previous value and then do a compare and swap operation.
-
-  auto numberOfShardsMutex = std::make_shared<Mutex>();
-  auto numberOfShards = std::make_shared<int>(0);
-  auto resBuilder = std::make_shared<VPackBuilder>();
-  VPackBuilder collectionBuilder;
-
-  {
-    std::shared_ptr<LogicalCollection> c =
-        getCollection(databaseName, collectionID);
-    std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
-    {
-      MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      *numberOfShards = static_cast<int>(c->numberOfShards());
+  
+  const size_t numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(
+                                        collection, StaticStrings::NumberOfShards, 1);
+  VPackSlice indexes = collection.get("indexes");
+  if (indexes.isArray()) {
+    auto type = slice.get(arangodb::StaticStrings::IndexType);
+    if (!type.isString()) {
+      return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
     }
-    VPackSlice const indexes = tmp->slice();
-
-    if (indexes.isArray()) {
-      auto type = slice.get(arangodb::StaticStrings::IndexType);
-
-      if (!type.isString()) {
-        return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
-      }
-
-      for (auto const& other : VPackArrayIterator(indexes)) {
-        if (arangodb::basics::VelocyPackHelper::compare(
-              type, other.get(arangodb::StaticStrings::IndexType), false
-            ) != 0) {
-          // compare index types first. they must match
-          continue;
+    
+    for (auto const& other : VPackArrayIterator(indexes)) {
+      TRI_ASSERT(other.isObject());
+      if (true == arangodb::Index::Compare(slice, other)) {
+        { // found an existing index...
+          // Copy over all elements in slice.
+          VPackObjectBuilder b(&resultBuilder);
+          resultBuilder.add(VPackObjectIterator(other));
+          resultBuilder.add("isNewlyCreated", VPackValue(false));
         }
-        TRI_ASSERT(other.isObject());
-
-        bool isSame = compare(slice, other);
-
-        if (isSame) {
-          // found an existing index...
-          {
-            // Copy over all elements in slice.
-            VPackObjectBuilder b(resBuilder.get());
-            for (auto const& entry : VPackObjectIterator(other)) {
-              resBuilder->add(entry.key.copyString(), entry.value);
-            }
-            resBuilder->add("isNewlyCreated", VPackValue(false));
-          }
-          resultBuilder = *resBuilder;
-          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-        }
+        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
-
-    // no existing index found.
-    if (!create) {
-      TRI_ASSERT(resultBuilder.isEmpty());
-      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-    }
-
-    // now create a new index
-    std::unordered_set<std::string> const ignoreKeys{
-        "allowUserKeys", "cid", /* cid really ignore?*/
-        "count",         "globallyUniqueId", "planId", "version", "objectId"
-    };
-    c->setStatus(TRI_VOC_COL_STATUS_LOADED);
-    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false, false);
   }
-  VPackSlice const collectionSlice = collectionBuilder.slice();
-
-  auto newBuilder = std::make_shared<VPackBuilder>();
-  if (!collectionSlice.isObject()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, errorMsg);
-  }
-
-  try {
-    VPackObjectBuilder b(newBuilder.get());
-    // Create a new collection VPack with the new Index
-    for (auto const& entry : VPackObjectIterator(collectionSlice)) {
-      TRI_ASSERT(entry.key.isString());
-      std::string key = entry.key.copyString();
-
-      if (key == "indexes") {
-        TRI_ASSERT(entry.value.isArray());
-        newBuilder->add(key, VPackValue(VPackValueType::Array));
-        // Copy over all indexes known so far
-        for (auto const& idx : VPackArrayIterator(entry.value)) {
-          newBuilder->add(idx);
-        }
-        {
-          VPackObjectBuilder ob(newBuilder.get());
-          // Add the new index ignoring "id"
-          for (auto const& e : VPackObjectIterator(slice)) {
-            TRI_ASSERT(e.key.isString());
-            std::string tmpkey = e.key.copyString();
-            if (tmpkey != "id") {
-              newBuilder->add(tmpkey, e.value);
-            }
-          }
-          newBuilder->add("id", VPackValue(idString));
-        }
-        newBuilder->close();  // the array
-      } else {
-        // Plain copy everything else
-        newBuilder->add(key, entry.value);
-      }
-    }
-  } catch (...) {
-    return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+  
+  // no existing index found.
+  if (!create) {
+    TRI_ASSERT(resultBuilder.isEmpty());
+    return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
   }
 
   // will contain the error number and message
@@ -2638,81 +2552,67 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](
       VPackSlice const& result) {
-    MUTEX_LOCKER(guard, *numberOfShardsMutex);
 
-    // mop: uhhhh....we didn't even set the plan yet :O
-    if (*numberOfShards == 0) {
-      return false;
-    }
-
-    if (!result.isObject()) {
+    if (!result.isObject() || result.length() != numberOfShards) {
       return true;
     }
 
-    if (result.length() == (size_t)*numberOfShards) {
-      size_t found = 0;
-      for (auto const& shard : VPackObjectIterator(result)) {
-        VPackSlice const slice = shard.value;
-        if (slice.hasKey("indexes")) {
-          VPackSlice const indexes = slice.get("indexes");
-          if (!indexes.isArray()) {
-            // no list, so our index is not present. we can abort searching
-            break;
-          }
-
-          for (auto const& v : VPackArrayIterator(indexes)) {
-            // check for errors
-            if (hasError(v)) {
-              std::string errorMsg =
-                  extractErrorMessage(shard.key.copyString(), v);
-
-              errorMsg = "Error during index creation: " + errorMsg;
-
-              // Returns the specific error number if set, or the general
-              // error otherwise
-              *dbServerResult =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                      v, "errorNum", TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-              return true;
-            }
-
-            VPackSlice const k = v.get("id");
-
-            if (!k.isString() || idString != k.copyString()) {
-              // this is not our index
-              continue;
-            }
-
-            // found our index
-            found++;
-            break;
-          }
+    size_t found = 0;
+    for (auto const& shard : VPackObjectIterator(result)) {
+      VPackSlice const slice = shard.value;
+      if (slice.hasKey("indexes")) {
+        VPackSlice const indexes = slice.get("indexes");
+        if (!indexes.isArray()) {
+          break; // no list, so our index is not present. we can abort searching
         }
-      }
 
-      if (found == (size_t)*numberOfShards) {
-        VPackSlice indexFinder = newBuilder->slice();
-        TRI_ASSERT(indexFinder.isObject());
-        indexFinder = indexFinder.get("indexes");
-        TRI_ASSERT(indexFinder.isArray());
-        VPackValueLength l = indexFinder.length();
-        indexFinder = indexFinder.at(l - 1);  // Get the last index
-        TRI_ASSERT(indexFinder.isObject());
-        {
-          // Copy over all elements in slice.
-          VPackObjectBuilder b(resBuilder.get());
-          for (auto const& entry : VPackObjectIterator(indexFinder)) {
-            resBuilder->add(entry.key.copyString(), entry.value);
+        for (auto const& v : VPackArrayIterator(indexes)) {
+          VPackSlice const k = v.get(StaticStrings::IndexId);
+          if (!k.isString() || idString != k.copyString()) {
+            continue; // this is not our index
           }
-          resBuilder->add("isNewlyCreated", VPackValue(true));
+          
+          // check for errors
+          if (hasError(v)) {
+            std::string errorMsg =
+                extractErrorMessage(shard.key.copyString(), v);
+            errorMsg = "Error during index creation: " + errorMsg;
+            // Returns the specific error number if set, or the general
+            // error otherwise
+            *dbServerResult =
+                arangodb::basics::VelocyPackHelper::readNumericValue<int>(
+                    v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+            return true;
+          }
+
+          found++; // found our index
+          break;
         }
-        *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
-        return true;
       }
     }
+
+    if (found == (size_t)numberOfShards) {
+      *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+      return true;
+    }
+    
     return true;
   };
 
+  VPackBuilder newIndexBuilder;
+  {
+    VPackObjectBuilder ob(&newIndexBuilder);
+    // Add the new index ignoring "id"
+    for (auto const& e : VPackObjectIterator(slice)) {
+      TRI_ASSERT(e.key.isString());
+      if (!e.key.isEqualString(StaticStrings::IndexId)) {
+        ob->add(e.key);
+        ob->add(e.value);
+      }
+    }
+    ob->add(StaticStrings::IndexId, VPackValue(idString));
+  }
+  
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
@@ -2726,11 +2626,11 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
-  AgencyOperation newValue(key, AgencyValueOperationType::SET,
-                           newBuilder->slice());
+  AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
+                           newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version",
                                    AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition oldValue(key, AgencyPrecondition::Type::VALUE, collection);
+  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collection);
   AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
@@ -2738,58 +2638,56 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   if (!result.successful()) {
     if (result.httpCode() ==
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED;
+      return TRI_ERROR_HTTP_PRECONDITION_FAILED;
     } else {
       errorMsg += " Failed to execute ";
       errorMsg += trx.toJson();
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
       errorMsg += " HttpCode: " + std::to_string(result.httpCode()) + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
-      resultBuilder = *resBuilder;
     }
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
 
   loadPlan();
 
-  {
-    MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    if (*numberOfShards == 0) {
-      errorMsg = *errMsg;
-      resultBuilder = *resBuilder;
-      loadCurrent();
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (numberOfShards == 0) { // smart "dummy" collection has no shards
+    TRI_ASSERT(collection.get(StaticStrings::IsSmart).getBool());
+    loadCurrent();
+    return TRI_ERROR_NO_ERROR;
   }
 
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-    while (true) {
-      errorMsg = *errMsg;
-      resultBuilder = *resBuilder;
-
+    while (!application_features::ApplicationServer::isStopping()) {
       if (*dbServerResult >= 0) {
         loadCurrent();
+        if (*dbServerResult == TRI_ERROR_NO_ERROR) {
+          // Copy over all elements in slice.
+          VPackObjectBuilder b(&resultBuilder);
+          resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+          resultBuilder.add("isNewlyCreated", VPackValue(true));
+        }
+        errorMsg = *errMsg;
         return *dbServerResult;
       }
 
       if (TRI_microtime() > endTime) {
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
-
-      if (application_features::ApplicationServer::isStopping()) {
-        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+      
+      auto c = getCollection(databaseName, collectionID);
+      if (!c) {
+        errorMsg = "collection was dropped during ensureIndex";
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
-      if (!application_features::ApplicationServer::isRetryOK()) {
-        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
-      }
     }
   }
 
-  return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+  return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

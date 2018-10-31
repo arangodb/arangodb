@@ -79,6 +79,9 @@ void MMFilesWalRecoveryFeature::start() {
   // notify everyone that recovery is now done
   auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
+
+  LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+    << "DB recovery finished successfully";
 }
 
 } // arangodb

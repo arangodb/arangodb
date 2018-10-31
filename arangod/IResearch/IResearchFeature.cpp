@@ -345,11 +345,11 @@ void registerViewFactory() {
 
   // DB server in custer or single-server
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_FAILED,
