@@ -1534,7 +1534,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
       return opRes.result;
     }
     if (duration > 30) {
-      LOG_TOPIC(INFO, Logger::PERFORMANCE) << << "Restored/replaced "
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/replaced "
         << builder.slice().length() << " documents in time: " << duration
         << " seconds.";
     }
