@@ -623,7 +623,48 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 }
 runInArangosh.info = 'arangosh';
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs a local unittest file in the current arangosh
+// //////////////////////////////////////////////////////////////////////////////
 
+function runInLocalArangosh (options, instanceInfo, file, addArgs) {
+
+  let endpoint = arango.getEndpoint();
+  if (endpoint !== instanceInfo.endpoint) {
+    print(`runInLocalArangosh: Reconnecting to ${instanceInfo.endpoint} from ${endpoint}`);
+    arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+  }
+  
+  let testCode;
+  if (file.indexOf('-spec') === -1) {
+    let testCase = JSON.stringify(options.testCase);
+    if (options.testCase === undefined) {
+      testCase = '"undefined"';
+    }
+    testCode = 'const runTest = require("jsunity").runTest;\n ' +
+      'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
+  } else {
+    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
+    testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
+      'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
+  }
+
+  let testFunc;
+  eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
+  
+  try {
+    let result = testFunc();
+    return result;
+  }
+  catch (ex) {
+    return {
+      status: false,
+      message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
+      stack: ex.stack
+    };
+  }
+}
+runInLocalArangosh.info = 'localarangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a unittest file using rspec
@@ -801,6 +842,7 @@ function makeResults (testname, instanceInfo) {
 
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
+exports.runInLocalArangosh = runInLocalArangosh;
 exports.runInRSpec = runInRSpec;
 
 exports.makePathUnix = makePathUnix;
