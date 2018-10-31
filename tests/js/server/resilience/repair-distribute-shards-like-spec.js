@@ -224,6 +224,14 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
   // distributeShardsLike will break your cluster!
   global.ArangoAgency.remove(`Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`);
 
+  const getShardInfoOf = (colName, shard) => {
+    const shardDist = internal.getCollectionShardDistribution(colName)[colName].Plan;
+    return {
+      leader: shardDist[shard].leader,
+      followers: shardDist[shard].followers,
+    };
+  };
+
   global.ArangoClusterInfo.flush();
   const protoShardDist = internal.getCollectionShardDistribution(protoColName)[protoColName].Plan;
   const shardDist = internal.getCollectionShardDistribution(localColName)[localColName].Plan;
@@ -238,6 +246,14 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
       (nameToId, server) => {
         nameToId[server.serverName] = server.serverId;
         return nameToId;
+      },
+      {}
+    );
+  const dbServerNameById =
+    dbServers.reduce(
+      (idToName, server) => {
+        idToName[server.serverId] = server.serverName;
+        return idToName;
       },
       {}
     );
@@ -345,11 +361,23 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
   let result = waitForAgencyJob(jobId);
   expect(result).to.equal(true);
   expect(waitForReplicationFactor(collection)).to.be.true;
+  let expected = {
+    leader: dbServerNameById[freeDbServer],
+    followers: protoShardInfo.followers,
+  };
+  let actual = getShardInfoOf(localColName, shard);
+  expect(expected).to.deep.equal(actual);
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
 
   jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
   result = waitForAgencyJob(jobId);
   expect(waitForReplicationFactor(collection)).to.be.true;
+  expected = {
+    leader: dbServerNameById[freeDbServer],
+    followers: protoShardInfo.followers.slice(1).concat([dbServerNameById[leaderDbServer]]),
+  };
+  actual = getShardInfoOf(localColName, shard);
+  expect(expected).to.deep.equal(actual);
 
   expect(result).to.equal(true);
 
