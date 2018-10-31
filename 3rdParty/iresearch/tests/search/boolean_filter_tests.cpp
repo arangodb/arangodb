@@ -6663,7 +6663,7 @@ TEST(And_test, optimize_double_negation) {
   term.field("test_field").term("test_term");
 
   auto prepared = root.prepare(empty_index_reader::instance());
-  ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+  ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 }
 
 TEST(And_test, prepare_empty_filter) {
@@ -6681,7 +6681,7 @@ TEST(And_test, optimize_single_node) {
     term.field("test_field").term("test_term");
 
     auto prepared = root.prepare(empty_index_reader::instance());
-    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
   }
 
   // complex hierarchy
@@ -6691,7 +6691,7 @@ TEST(And_test, optimize_single_node) {
     term.field("test_field").term("test_term");
 
     auto prepared = root.prepare(empty_index_reader::instance());
-    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
   }
 }
 
@@ -6727,7 +6727,7 @@ TEST(And_test, optimize_all_filters) {
     root.add<irs::all>().boost(2.f);
 
     auto prepared = root.prepare(empty_index_reader::instance());
-    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
     ASSERT_EQ(10.f, irs::boost::extract(prepared->attributes()));
   }
 
@@ -6739,7 +6739,7 @@ TEST(And_test, optimize_all_filters) {
     root.add<irs::all>().boost(5.f);
 
     auto prepared = root.prepare(empty_index_reader::instance());
-    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
     ASSERT_EQ(5.f, irs::boost::extract(prepared->attributes()));
   }
 }
@@ -6817,7 +6817,7 @@ TEST(Or_test, optimize_double_negation) {
   term.field("test_field").term("test_term");
 
   auto prepared = root.prepare(empty_index_reader::instance());
-  ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+  ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 }
 
 TEST(Or_test, optimize_single_node) {
@@ -6828,7 +6828,7 @@ TEST(Or_test, optimize_single_node) {
     term.field("test_field").term("test_term");
 
     auto prepared = root.prepare(empty_index_reader::instance());
-    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
   }
 
   // complex hierarchy
@@ -6838,7 +6838,7 @@ TEST(Or_test, optimize_single_node) {
     term.field("test_field").term("test_term");
 
     auto prepared = root.prepare(empty_index_reader::instance());
-    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
   }
 }
 

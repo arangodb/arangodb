@@ -1155,10 +1155,7 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
 ) const {
-  if (ServerState::instance()->isCoordinator()) {
-    std::string const viewId = StringUtils::itoa(id);
-    return ClusterInfo::instance()->getView(name(), viewId);
-  }
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<arangodb::LogicalView>(
@@ -1176,9 +1173,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
 ) const {
-  if (ServerState::instance()->isCoordinator()) {
-    return ClusterInfo::instance()->getView(name(), nameOrId);
-  }
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<arangodb::LogicalView>(
@@ -1371,6 +1366,7 @@ arangodb::Result TRI_vocbase_t::renameView(
     TRI_voc_cid_t cid,
     std::string const& newName
 ) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
 
   if (!view) {
@@ -1414,16 +1410,6 @@ arangodb::Result TRI_vocbase_t::renameView(
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
 
   // stores the parameters on disk
-  auto* databaseFeature =
-    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  TRI_ASSERT(databaseFeature);
-  auto doSync = databaseFeature->forceSyncProperties();
-  auto res = itr1->second->rename(std::string(newName), doSync);
-
-  if (!res.ok()) {
-    return res.errorNumber(); // rename failed
-  }
-
   auto itr2 = _dataSourceByName.emplace(newName, itr1->second);
 
   TRI_ASSERT(itr2.second);
@@ -2010,10 +1996,7 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
-  if (ServerState::instance()->isCoordinator()) {
-    return ClusterInfo::instance()->getViews(name());
-  }
-
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {
