@@ -1414,11 +1414,17 @@ bool IResearchView::emplace(TRI_voc_cid_t cid) {
 }
 
 arangodb::Result IResearchView::commit() {
-  ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
-  SCOPED_LOCK(mutex);
+  SCOPED_LOCK(_asyncSelf->mutex()); // ensure '_storePersisted' is not deallocated
+
+  if (!*_asyncSelf) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string("failed to start sync for deallocated arangosearch view '") + name() + "'"
+    );
+  }
 
   if (!_storePersisted) {
-    return {}; // nothing more to do
+    return arangodb::Result(); // nothing more to do
   }
 
   try {
@@ -2030,7 +2036,8 @@ arangodb::Result IResearchView::updateProperties(
 
     return IResearchLinkHelper::updateLinks(
       collections, vocbase(), *this, links, stale
-    );  } catch (arangodb::basics::Exception& e) {
+    );
+  } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
