@@ -169,7 +169,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 // .............................................................................
 
 struct V8Cursor final {
-  static constexpr uint16_t CID = 455656;
+  static constexpr uint16_t CID = 4956;
   
   V8Cursor(v8::Isolate* isolate,
            v8::Handle<v8::Object> holder,
@@ -230,7 +230,8 @@ struct V8Cursor final {
       bool busy;
       Cursor* cc = cursors->find(_cursorId, Cursor::CURSOR_VPACK, busy);
       if (busy || cc == nullptr) {
-        return true; // someone else is using it
+        TRI_V8_SET_ERROR("cursor is busy");
+        return false; // someone else is using it
       }
       TRI_DEFER(cc->release());
       
@@ -245,9 +246,12 @@ struct V8Cursor final {
   
   /// @brief fetch the next batch
   Result fetchData(Cursor* cursor) {
+    TRI_ASSERT(cursor != nullptr && cursor->isUsed());
+    
     TRI_ASSERT(_hasMore);
     TRI_ASSERT(_dataIterator == nullptr);
-    TRI_ASSERT(cursor != nullptr && cursor->isUsed());
+    _dataSlice = VPackSlice::noneSlice();
+    _extraSlice = VPackSlice::noneSlice();
     
     _tmpResult.clear();
     _tmpResult.openObject();
@@ -363,10 +367,12 @@ struct V8Cursor final {
   ////////////////////////////////////////////////////////////////////////////////
 
   static void toArray(v8::FunctionCallbackInfo<v8::Value> const& args) {
+    TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                       "toArray() is not supported on ArangoQueryStreamCursor");
+    TRI_V8_TRY_CATCH_END
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -393,7 +399,6 @@ struct V8Cursor final {
     
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "getExtra() is only valid after all data has been fetched");
-    
     TRI_V8_TRY_CATCH_END
   }
 
@@ -465,12 +470,6 @@ struct V8Cursor final {
   static void count(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::HandleScope scope(isolate);
-    
-    V8Cursor* self = V8Cursor::unwrap(args.Holder());
-    if (self == nullptr) {
-      TRI_V8_RETURN(v8::Undefined(isolate));
-    }
-    
     TRI_V8_RETURN_UNDEFINED(); // always undefined
     TRI_V8_TRY_CATCH_END
   }
@@ -486,6 +485,11 @@ struct V8Cursor final {
       TRI_GET_GLOBALS();
       CursorRepository* cursors = v8g->_vocbase->cursorRepository();
       cursors->remove(self->_cursorId, Cursor::CURSOR_VPACK);
+      self->_hasMore = false;
+      self->_dataSlice = VPackSlice::noneSlice();
+      self->_extraSlice = VPackSlice::noneSlice();
+      self->_dataIterator.reset();
+      self->_tmpResult.clear();
     }
     TRI_V8_TRY_CATCH_END
   }
