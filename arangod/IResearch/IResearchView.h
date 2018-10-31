@@ -311,7 +311,6 @@ class IResearchView final
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
-    irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
     irs::index_writer::ptr _writer;
 
     DataStore() = default;
@@ -331,7 +330,7 @@ class IResearchView final
   struct ViewFactory; // forward declaration
   class ViewStateHelper; // forward declaration
   struct ViewStateRead; // forward declaration
-  struct ViewStateWrite; // forward declaration
+  class ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
