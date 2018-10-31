@@ -64,7 +64,6 @@ struct Options;
 
 }
 
-class TransactionCollection;
 class RocksDBMethods;
 
 /// @brief transaction type
