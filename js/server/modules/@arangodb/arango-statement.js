@@ -76,9 +76,9 @@ ArangoStatement.prototype.execute = function () {
     if (this._cache !== undefined) {
       opts.cache = this._cache;
     }
-  }
-  if (opts.stream) {
-    return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
+    if (opts.stream) {
+      return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
+    }
   }
   // {json:[docs], stats:{}, profile:{}, warnings:{}, cached:true}
   var result = AQL_EXECUTE(this._query, this._bindVars, opts);

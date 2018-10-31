@@ -195,16 +195,32 @@ QueryStreamCursor::QueryStreamCursor(
       _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
   }
+
+  if (contextOwnedByExterior) {
+    // things break if the Query outlives a V8 transaction
+    _stateChangeCb = [this](transaction::Methods& trx,
+                            transaction::Status status) {
+      if ((status == transaction::Status::COMMITTED ||
+          status == transaction::Status::ABORTED) &&
+          !this->isUsed()) {
+        this->setDeleted();
+      }
+    };
+    if (!_query->trx()->addStatusChangeCallback(&_stateChangeCb)) {
+      _stateChangeCb = nullptr;
+    }
+  }
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
-  while (!_queryResults.empty()) {
-    _query->engine()->_itemBlockManager.returnBlock(
-        std::move(_queryResults.front()));
-    _queryResults.pop_front();
-  }
-
   if (_query) {  // cursor is canceled or timed-out
+    cleanupStateCallback();
+    
+    while (!_queryResults.empty()) {
+      _query->engine()->_itemBlockManager.returnBlock(std::move(_queryResults.front()));
+      _queryResults.pop_front();
+    }
+    
     // now remove the continue handler we may have registered in the query
     _query->sharedState()->setContinueCallback();
     // Query destructor will cleanup plan and abort transaction
@@ -374,6 +390,9 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
       ss->setContinueCallback();
+      
+      // cleanup before transaction is committet
+      cleanupStateCallback();
 
       QueryResult result;
       ExecutionState state = _query->finalize(result); // will commit transaction
@@ -385,6 +404,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
         builder.add("extra", result.extra->slice());
       }
       _query.reset();
+      TRI_ASSERT(_queryResults.empty());
       this->setDeleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -450,4 +470,12 @@ ExecutionState QueryStreamCursor::prepareDump() {
   }
 
   return state;
+}
+
+void QueryStreamCursor::cleanupStateCallback() {
+  TRI_ASSERT(_query);
+  transaction::Methods* trx = _query->trx();
+  if (trx && _stateChangeCb) {
+    trx->removeStatusChangeCallback(&_stateChangeCb);
+  }
 }

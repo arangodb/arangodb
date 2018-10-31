@@ -27,6 +27,7 @@
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
+#include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
 #include "VocBase/vocbase.h"
 
@@ -100,9 +101,6 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   size_t count() const override final { return 0; }
 
-  // TODO add this to Cursor and make it virtual / override final.
-  ExecutionState prepareDump();
-
   std::pair<ExecutionState, Result> dump(
       velocypack::Builder& result,
       std::function<void()> const& continueHandler) override final;
@@ -118,15 +116,23 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // Relies on the caller to have fetched more than batchSize() result rows
   // (if possible) in order to set hasMore reliably.
   Result writeResult(velocypack::Builder& builder);
+  
+  ExecutionState prepareDump();
+  
+  void cleanupStateCallback();
+  void cleanupResources();
 
  private:
   DatabaseGuard _guard;
   int64_t _exportCount;  // used by RocksDBRestExportHandler
+  /// current query
   std::unique_ptr<aql::Query> _query;
+  /// buffered results
   std::deque<std::unique_ptr<AqlItemBlock>> _queryResults;
-
-  // index of the next to-be-returned row in _queryResults.front()
+  /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
+  /// used when cursor is owned by V8 transaction
+  transaction::Methods::StatusChangeCallback _stateChangeCb;
 };
 
 }  // aql

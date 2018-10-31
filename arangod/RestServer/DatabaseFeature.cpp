@@ -372,12 +372,7 @@ void DatabaseFeature::beginShutdown() {
     TRI_ASSERT(vocbase != nullptr);
 
     // throw away all open cursors in order to speed up shutdown
-    CursorRepository* repo = vocbase->cursorRepository();
-    repo->garbageCollect(true); // will delete unused cursors
-    while(repo->containsUsedCursor()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      repo->garbageCollect(true);
-    }
+    vocbase->cursorRepository()->garbageCollect(true);
   }
 }
 

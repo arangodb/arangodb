@@ -25,6 +25,8 @@
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
 #include "Basics/conversions.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Transaction/Context.h"
@@ -171,9 +173,12 @@ struct V8Cursor final {
   
   V8Cursor(v8::Isolate* isolate,
            v8::Handle<v8::Object> holder,
-           CursorId cursorId,
-           std::shared_ptr<transaction::Context> ctx)
-  : _isolate(isolate), _cursorId(cursorId), _ctx(std::move(ctx)) {
+           TRI_vocbase_t& vocbase,
+           CursorId cursorId)
+  : _isolate(isolate),
+    _cursorId(cursorId),
+    _resolver(vocbase),
+    _cte(transaction::Context::createCustomTypeHandler(vocbase, _resolver)) {
     // sanity checks
     TRI_ASSERT(_handle.IsEmpty());
     TRI_ASSERT(holder->InternalFieldCount() > 0);
@@ -185,6 +190,7 @@ struct V8Cursor final {
     
     // and make it weak, so that we can garbage collect
     _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer);
+    _options.customTypeHandler = _cte.get();
   }
   
   ~V8Cursor() {
@@ -197,8 +203,14 @@ struct V8Cursor final {
       data->SetInternalField(0, v8::Undefined(_isolate));
       _handle.Reset();
     }
-    CursorRepository* cursors = _ctx->vocbase().cursorRepository();
-    cursors->remove(_cursorId, Cursor::CURSOR_VPACK);
+    if (_isolate) {
+      TRI_GET_GLOBALS2(_isolate);
+      TRI_vocbase_t* vocbase = v8g->_vocbase;
+      if (vocbase) {
+        CursorRepository* cursors = vocbase->cursorRepository();
+        cursors->remove(_cursorId, Cursor::CURSOR_VPACK);
+      }
+    }
   }
   
   //////////////////////////////////////////////////////////////////////////////
@@ -213,7 +225,8 @@ struct V8Cursor final {
   /// @brief return false on error
   bool maybeFetchBatch(v8::Isolate* isolate) {
     if (_dataIterator == nullptr && _hasMore) { // fetch more data
-      CursorRepository* cursors = _ctx->vocbase().cursorRepository();
+      TRI_GET_GLOBALS();
+      CursorRepository* cursors = v8g->_vocbase->cursorRepository();
       bool busy;
       Cursor* cc = cursors->find(_cursorId, Cursor::CURSOR_VPACK, busy);
       if (busy || cc == nullptr) {
@@ -246,7 +259,7 @@ struct V8Cursor final {
     
     TRI_ASSERT(_tmpResult.slice().isObject());
     // TODO as an optimization
-    for(auto pair : VPackObjectIterator(_tmpResult.slice())) {
+    for(auto pair : VPackObjectIterator(_tmpResult.slice(), true)) {
       if (pair.key.isEqualString("result")) {
         _dataSlice = pair.value;
         TRI_ASSERT(_dataSlice.isArray());
@@ -318,7 +331,10 @@ struct V8Cursor final {
     } else {
       VPackObjectBuilder guard(options.get());
     }
+    size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(options->slice(),
+                                                                 "batchSize", 1000);
     
+    const bool contextOwnedByExterior = transaction::V8Context::isEmbedded();
     TRI_vocbase_t* vocbase = v8g->_vocbase;
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository(); // create a cursor
@@ -327,11 +343,11 @@ struct V8Cursor final {
     auto cc = cursors->createQueryStream(queryString,
                                          std::move(bindVars),
                                          std::move(options),
-                                         /*batchSize*/1000, ttl,
-                                         /*contextOwnedByExt*/true);
+                                         batchSize, ttl,
+                                         contextOwnedByExterior);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
-    auto self = new V8Cursor(isolate, args.Holder(), cc->id(), cc->context());
+    auto self = new V8Cursor(isolate, args.Holder(), *vocbase, cc->id());
     Result r = self->fetchData(cc);
     if (r.fail()) {
       TRI_V8_THROW_EXCEPTION(r);
@@ -428,8 +444,7 @@ struct V8Cursor final {
       TRI_ASSERT(self->_dataIterator->valid());
       
       VPackSlice s = self->_dataIterator->value();
-      VPackOptions* opts = self->_ctx->getVPackOptions();
-      v8::Local<v8::Value> val = TRI_VPackToV8(isolate, s, opts);
+      v8::Local<v8::Value> val = TRI_VPackToV8(isolate, s, &self->_options);
       
       ++(*self->_dataIterator);
       // reset so that the next one can fetch again
@@ -461,20 +476,32 @@ struct V8Cursor final {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief explicitly discard cursor, mostly relevant for testing
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  static void dispose(v8::FunctionCallbackInfo<v8::Value> const& args) {
+    TRI_V8_TRY_CATCH_BEGIN(isolate);
+    V8Cursor* self = V8Cursor::unwrap(args.Holder());
+    if (self != nullptr) {
+      TRI_GET_GLOBALS();
+      CursorRepository* cursors = v8g->_vocbase->cursorRepository();
+      cursors->remove(self->_cursorId, Cursor::CURSOR_VPACK);
+    }
+    TRI_V8_TRY_CATCH_END
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoQueryStreamCursor.prototype.id = ...
   ////////////////////////////////////////////////////////////////////////////////
 
   static void id(v8::FunctionCallbackInfo<v8::Value> const& args) {
-    TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
-    
     V8Cursor* self = V8Cursor::unwrap(args.Holder());
     if (self == nullptr) {
       TRI_V8_RETURN(v8::Undefined(isolate));
     }
-    
     TRI_V8_RETURN(v8::Integer::New(isolate, self->_cursorId));
-    TRI_V8_TRY_CATCH_END
   }
   
 private:
@@ -502,9 +529,7 @@ private:
   /// @brief temporary result buffer
   VPackBuilder _tmpResult;
   /// @brief id of cursor
-  TRI_voc_tick_t _cursorId;
-  /// @brief transaction context to use
-  std::shared_ptr<transaction::Context> _ctx;
+  CursorId _cursorId;
   
   /// cache has more variable
   bool _hasMore = true;
@@ -513,6 +538,10 @@ private:
   VPackSlice _extraSlice = VPackSlice::noneSlice();
   /// @brief pointer to the current result
   std::unique_ptr<VPackArrayIterator> _dataIterator;
+  
+  CollectionNameResolver _resolver;
+  std::shared_ptr<VPackCustomTypeHandler> _cte;
+  VPackOptions _options = VPackOptions::Defaults;
 };
 
 // .............................................................................
@@ -553,6 +582,8 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
                         V8Cursor::next);
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "count"),
                         V8Cursor::count);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "dispose"),
+                        V8Cursor::dispose);
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "id"),
                         V8Cursor::id);
   
