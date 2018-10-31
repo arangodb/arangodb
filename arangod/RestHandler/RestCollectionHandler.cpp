@@ -299,12 +299,12 @@ void RestCollectionHandler::handleCommandPost() {
   }
 
   // for some "security" a white-list of allowed parameters
-  VPackBuilder filtered = VPackCollection::keep(
-      body,
+  VPackBuilder filtered = VPackCollection::keep(body,
       std::unordered_set<std::string>{
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
-          "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
+          StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
+          StaticStrings::DistributeShardsLike, "avoidServers",
           "isSmart", "shardingStrategy", "smartGraphAttribute", "replicationFactor", 
           "servers"});
   VPackSlice const parameters = filtered.slice();
