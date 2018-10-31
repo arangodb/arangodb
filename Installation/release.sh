@@ -215,13 +215,10 @@ fi
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS})
 
 # recalculate SHA1 sum for JS files
-(
-  cd js 
-  rm -rf JS_FILES.txt JS_SHA1SUM.txt
-  find . -type f | sort | xargs sha1sum > JS_FILES.txt
-  sha1sum JS_FILES.txt > JS_SHA1SUM.txt
-  rm -f JS_FILES.txt
-)
+rm -f js/JS_FILES.txt js/JS_SHA1SUM.txt
+find js enterprise/js -type f | sort | xargs sha1sum > js/JS_FILES.txt
+sha1sum js/JS_FILES.txt > js/JS_SHA1SUM.txt
+rm -f js/JS_FILES.txt
 
 VERSION_MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
 VERSION_MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
