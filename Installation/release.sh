@@ -50,6 +50,13 @@ else
     exit 1
 fi
 
+if sha1sum --version; then
+    echo "sha1sum found."
+else
+    echo "sha1sum missing from your system"
+    exit 1
+fi
+
 if [ "$#" -lt 1 ];  then
     echo "usage: $0 <major>.<minor>.<revision>"
     exit 1
@@ -126,7 +133,7 @@ if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
 fi
 
 if echo "${VERSION}" | grep -q -- '-'; then
-    echo "${VERSION} mustn't contain minuses! "
+    echo "${VERSION} mustn't contain minuses!"
     exit 1
 fi
 
@@ -207,7 +214,14 @@ else
 fi
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS})
 
-
+# recalculate SHA1 sum for JS files
+(
+  cd js 
+  rm -rf JS_FILES.txt JS_SHA1SUM.txt
+  find . -type f | sort | xargs sha1sum > JS_FILES.txt
+  sha1sum JS_FILES.txt > JS_SHA1SUM.txt
+  rm -f JS_FILES.txt
+)
 
 VERSION_MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
 VERSION_MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
@@ -274,6 +288,7 @@ git add -f \
     lib/Basics/voc-errors.h \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
+    js/JS_SHA1SUM.txt \
     CMakeLists.txt \
     VERSIONS
 
