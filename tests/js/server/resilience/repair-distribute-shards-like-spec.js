@@ -98,7 +98,7 @@ const waitForAgencyJob = function (jobId) {
   ].map(p => `${prefix}/${p}`);
 
   const waitInterval = 1.0;
-  const maxWaitTime = 60;
+  const maxWaitTime = 120;
 
   let jobStopped = false;
   let success = false;
@@ -202,15 +202,20 @@ const expectEqualShardDistributionPlan = function (shardDist, protoShardDist) {
   }
 };
 
-const createBrokenClusterState = function ({failOnOperation = null} = {}) {
+const createBrokenClusterState = function ({failOnOperation = null, withData} = {}) {
+  expect(withData).to.be.a('boolean');
   const replicationFactor = dbServerCount - 1;
-  const protoCollection = internal.db._createDocumentCollection(protoColName,
-    {replicationFactor: replicationFactor, numberOfShards: 16});
+  const { collection: protoCollection, dataInfo: protoData }
+  = createCollectionOptionallyWithData(protoColName,
+    { replicationFactor: replicationFactor, numberOfShards: 16 },
+    withData);
   let localColName = failOnOperation === null
     ? colName
     : colName + `---fail_on_operation_nr-${failOnOperation}`;
-  const collection = internal.db._createDocumentCollection(localColName,
-    {distributeShardsLike: protoCollection._id});
+  const { collection, dataInfo: colData }
+    = createCollectionOptionallyWithData(localColName,
+    { distributeShardsLike: protoCollection._id },
+    withData);
 
   expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
@@ -359,7 +364,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
   global.ArangoAgency.increaseVersion("Plan/Version");
 
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
-  return {collection, protoCollection, expectedCollections};
+  return {collection, colData, protoCollection, protoData, expectedCollections};
 };
 
 
@@ -420,9 +425,7 @@ const fillWithAndReturnDataInfo = (() => {
 
     collection.insert(data);
 
-    // TODO we might want to return only start value and count here, that
-    // suffices for a check later.
-    return data;
+    return {startValue, endValue};
   }
 })();
 
@@ -430,16 +433,37 @@ const fillWithAndReturnDataInfo = (() => {
 // asserts that the collection contains exactly the data that was inserted by
 // it.
 const expectToContain = function (collection, expectedData) {
-  // TODO we don't necessarily need expectedData to actually contain all data,
-  // but just enough information to know what it should be.
-  const actualData = collection.toArray().map(
-    // remove metadata
-    doc => Object.assign({}, doc,
-      {_key: undefined, _id: undefined, _rev: undefined})
-  );
+  const {startValue, endValue} = expectedData;
+
+  const actualData = collection.toArray();
   // sort ascending by obj.value
   actualData.sort((a, b) => a.value - b.value);
-  expect(actualData).to.deep.equal(data);
+
+  expect(actualData)
+    .to.be.an('array')
+    .and.to.have.lengthOf(endValue - startValue);
+
+  for(let i = 0, value = startValue; value < endValue; i++, value++) {
+    expect(actualData[i]).to.have.property('value', value);
+  }
+};
+
+const createCollectionOptionallyWithData =
+    (collectionName, options, withData) => {
+  expect(withData).to.be.a('boolean');
+  const collection
+    = internal.db._createDocumentCollection(collectionName, options);
+
+  let dataInfo;
+
+  if (withData) {
+    dataInfo = fillWithAndReturnDataInfo(collection);
+  } else {
+    // zero length data
+    dataInfo = { startValue: 0, endValue: 0 };
+  }
+
+  return {collection, dataInfo};
 };
 
 const distributeShardsLikeSuite = (options) => {
@@ -460,15 +484,12 @@ const distributeShardsLikeSuite = (options) => {
     });
 
     it('if newly created, should always be ok', function() {
-      const protoCollection = internal.db._createDocumentCollection(protoColName,
-        {replicationFactor: dbServerCount, numberOfShards: 3});
-      const collection = internal.db._createDocumentCollection(colName,
-        {distributeShardsLike: protoCollection._id});
-      let colData, protoData;
-      if (withData) {
-        protoData = fillWithAndReturnDataInfo(protoCollection);
-        colData = fillWithAndReturnDataInfo(collection);
-      }
+      const { collection: protoCollection, dataInfo: protoData }
+        = createCollectionOptionallyWithData(protoColName,
+        { replicationFactor: dbServerCount, numberOfShards: 3 }, withData);
+      const { collection, dataInfo: colData }
+        = createCollectionOptionallyWithData(colName,
+        { distributeShardsLike: protoCollection._id }, withData);
 
       expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
       expect(waitForPlanEqualCurrent(collection)).to.be.true;
@@ -487,11 +508,8 @@ const distributeShardsLikeSuite = (options) => {
       expect(response).to.have.property("code", 200);
       expect(response).to.have.property("message", "Nothing to do.");
 
-
-      if (withData) {
-        expectToContain(protoCollection, protoData);
-        expectToContain(collection, colData);
-      }
+      expectToContain(protoCollection, protoData);
+      expectToContain(collection, colData);
     });
 
 
@@ -506,8 +524,8 @@ const distributeShardsLikeSuite = (options) => {
   // - Use an agency transaction to restore distributeShardsLike
   // - Execute repairs
     it('if broken, should be repaired', function() {
-      const { protoCollection, collection, expectedCollections }
-        = createBrokenClusterState();
+      const { protoCollection, protoData, collection, colData, expectedCollections }
+        = createBrokenClusterState({ withData });
 
       { // Before executing repairs, check via GET if the planned operations
         // seem right.
@@ -560,6 +578,9 @@ const distributeShardsLikeSuite = (options) => {
       const protoShardDist = internal
         .getCollectionShardDistribution(protoCollection._id)[protoCollection.name()];
       expectEqualShardDistributionPlan(shardDist, protoShardDist);
+
+      expectToContain(collection, colData);
+      expectToContain(protoCollection, protoData);
     });
 
     if (internal.debugCanUseFailAt()) {
@@ -567,8 +588,8 @@ const distributeShardsLikeSuite = (options) => {
         // In this test case, trigger an exception after the second operation,
         // i.e. after the first move shard operation, has been posted
         // (but not finished).
-        const {protoCollection, collection, expectedCollections}
-          = createBrokenClusterState({failOnOperation: 2});
+        const { protoCollection, protoData, collection, colData, expectedCollections }
+          = createBrokenClusterState({ failOnOperation: 2, withData });
 
 
         { // Before executing repairs, check via GET if the planned operations
@@ -697,12 +718,15 @@ const distributeShardsLikeSuite = (options) => {
         const protoShardDist = internal
           .getCollectionShardDistribution(protoCollection._id)[protoCollection.name()];
         expectEqualShardDistributionPlan(shardDist, protoShardDist);
+
+        expectToContain(collection, colData);
+        expectToContain(protoCollection, protoData);
       });
     }
 
     it('if called via GET, only return planned operations', function() {
-      const { protoCollection, collection, expectedCollections }
-        = createBrokenClusterState();
+      const { protoCollection, protoData, collection, colData, expectedCollections }
+        = createBrokenClusterState({withData});
 
       global.ArangoClusterInfo.flush();
       const previousShardDist = internal
@@ -731,6 +755,9 @@ const distributeShardsLikeSuite = (options) => {
       const shardDist = internal
         .getCollectionShardDistribution(collection._id)[collection.name()];
       expectEqualShardDistributionPlan(shardDist, previousShardDist);
+
+      expectToContain(collection, colData);
+      expectToContain(protoCollection, protoData);
     });
 
   }
