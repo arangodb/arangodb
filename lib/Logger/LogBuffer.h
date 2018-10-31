@@ -29,7 +29,7 @@
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
-
+//description should specify
 struct LogBuffer {
   static size_t const RING_BUFFER_SIZE = 10240;
   static Mutex _ringBufferLock;
