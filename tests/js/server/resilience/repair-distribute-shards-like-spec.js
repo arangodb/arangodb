@@ -426,7 +426,7 @@ const fillWithAndReturnDataInfo = (() => {
     collection.insert(data);
 
     return {startValue, endValue};
-  }
+  };
 })();
 
 // takes a collection and an object returned by fillWithAndReturnDataInfo and
@@ -760,7 +760,7 @@ const distributeShardsLikeSuite = (options) => {
       expectToContain(protoCollection, protoData);
     });
 
-  }
+  };
 };
 
 
