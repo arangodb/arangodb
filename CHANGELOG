@@ -1,12 +1,12 @@
-devel
+developer
 -----
 
 * force connection timeout to be 7 seconds to allow libcurl time to retry lost DNS
   queries.
 
-* fixes a routing issue within the web ui after the use of views
+* fixes a routing issue within the Web UI after the use of views
 
-* fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
+* fixes some graph data parsing issues in the UI, e.g. cleaning up duplicate
   edges inside the graph viewer.
 
 * in a cluster environment, the arangod process now exits if wrong credentials
@@ -33,7 +33,7 @@ devel
   Using the `force` flag when upgrading or replacing a service falls back to
   installing the service if it does not already exist.
 
-* the query editor within the web ui is now catching HTTP 501 responses
+* the query editor within the Web UI is now catching HTTP 501 responses
   properly.
 
 * Fixed an AQL bug where the optimize-traversals rule was falsely applied to
