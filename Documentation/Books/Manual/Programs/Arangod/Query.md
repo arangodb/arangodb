@@ -63,7 +63,7 @@ The default value is *10.0*.
 
 By setting *value* it can be controlled after what execution time streaming AQL 
 queries are considered "slow". This option exists to give streaming queries a
-separate, potentially higher timeout value than regula queries. Streaming queries
+separate, potentially higher timeout value than regular queries. Streaming queries
 are often executed in lockstep with application data processing logic, which then
 also accounts for the queries' runtime. It is thus not unexpected if streaming 
 queries' lifetime is longer than the one of regular queries.
