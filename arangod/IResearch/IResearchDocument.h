@@ -117,6 +117,7 @@ struct Field {
   irs::flags const* _features{ &irs::flags::empty_instance() };
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
+  irs::bytes_ref _value;
   ValueStorage _storeValues;
 }; // Field
 
