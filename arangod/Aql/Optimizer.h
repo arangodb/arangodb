@@ -165,8 +165,13 @@ class Optimizer {
   /// @brief current list of plans (while applying optimizer rules)
   PlanList _newPlans;
   
-  // which optimizer rules are disabled?
-  std::unordered_set<int> _disabledIds;
+  struct Rule {
+    OptimizerRule& rule;
+    bool enabled;
+  };
+  
+  /// @brief list of optimizer rules to be applied
+  std::map<int, Rule> _rules;
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;

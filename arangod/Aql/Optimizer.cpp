@@ -34,10 +34,16 @@ using namespace arangodb::aql;
 // @brief constructor, this will initialize the rules database
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans),
-      _runOnlyRequiredRules(false) {}
+      _runOnlyRequiredRules(false) {
+  for (auto& r : OptimizerRulesFeature::_rules) {
+    _rules.emplace(r.first, Rule{r.second, true});
+  }
+}
   
 void Optimizer::disableRule(int rule) {
-  _disabledIds.emplace(rule);
+  auto it = _rules.find(rule);
+  TRI_ASSERT(it != _rules.end());
+  it->second.enabled = false;
 }
    
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
@@ -105,11 +111,13 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   int leastDoneLevel = 0;
 
-  TRI_ASSERT(!OptimizerRulesFeature::_rules.empty());
-  int maxRuleLevel = OptimizerRulesFeature::_rules.rbegin()->first;
+  TRI_ASSERT(!_rules.empty());
+  int maxRuleLevel = _rules.rbegin()->first;
 
   // which optimizer rules are disabled?
-  _disabledIds = OptimizerRulesFeature::getDisabledRuleIds(queryOptions.optimizerRules);
+  for (auto rule : OptimizerRulesFeature::getDisabledRuleIds(queryOptions.optimizerRules)) {
+    disableRule(rule);
+  }
 
   _newPlans.clear();
         
@@ -131,17 +139,16 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       if (level >= maxRuleLevel) {
         _newPlans.push_back(std::move(p), level);  // nothing to do, just keep it
       } else {                                // find next rule
-        auto it = OptimizerRulesFeature::_rules.upper_bound(level);
-        TRI_ASSERT(it != OptimizerRulesFeature::_rules.end());
+        auto it = _rules.upper_bound(level);
+        TRI_ASSERT(it != _rules.end());
 
         level = (*it).first;
-        auto& rule = (*it).second;
+        auto& rule = (*it).second.rule;
 
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if ((_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled) ||
-            _disabledIds.find(level) != _disabledIds.end()) {
+        if (!it->second.enabled || (_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled)) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
           _newPlans.push_back(std::move(p), level);  // nothing to do, just keep it
