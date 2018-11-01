@@ -528,6 +528,7 @@ bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
   _value._storeValues = context._storeValues;
+  _value._value = irs::bytes_ref::NIL;
 
   switch (value.type()) {
     case VPackValueType::None:
