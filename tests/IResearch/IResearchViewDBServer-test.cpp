@@ -781,7 +781,7 @@ SECTION("test_rename") {
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((true == wiew->rename("newName", true).ok()));
+    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName", true).errorNumber()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -790,7 +790,7 @@ SECTION("test_rename") {
       wiew->toVelocyPack(builder, false, false);
       builder.close();
       CHECK((builder.slice().hasKey("name")));
-      CHECK((std::string("newName") == builder.slice().get("name").copyString()));
+      CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
     auto view = impl->ensure(123);
@@ -833,7 +833,7 @@ SECTION("test_rename") {
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((true == wiew->rename("newName", true).ok()));
+    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName", true).errorNumber()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -842,7 +842,7 @@ SECTION("test_rename") {
       wiew->toVelocyPack(builder, false, false);
       builder.close();
       CHECK((builder.slice().hasKey("name")));
-      CHECK((std::string("newName") == builder.slice().get("name").copyString()));
+      CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
     CHECK((("_iresearch_123_" + wiewId) == view->name()));

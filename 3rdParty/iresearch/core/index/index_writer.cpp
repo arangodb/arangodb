@@ -125,8 +125,18 @@ bool add_document_mask_modified_records(
 
     auto prepared = modification.filter->prepare(reader);
 
-    for (auto itr = prepared->execute(reader); itr->next();) {
-      auto doc_id = itr->value();
+    if (!prepared) {
+      continue; // skip invalid prepared filters
+    }
+
+    auto itr = prepared->execute(reader);
+
+    if (!itr) {
+      continue; // skip invalid iterators
+    }
+
+    while (itr->next()) {
+      const auto doc_id = itr->value();
 
       // if the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
@@ -183,8 +193,18 @@ bool add_document_mask_modified_records(
 
     auto prepared = modification.filter->prepare(reader);
 
-    for (auto itr = prepared->execute(reader); itr->next();) {
-      auto doc_id = itr->value();
+    if (!prepared) {
+      continue; // skip invalid prepared filters
+    }
+
+    auto itr = prepared->execute(reader);
+
+    if (!itr) {
+      continue; // skip invalid iterators
+    }
+
+    while (itr->next()) {
+      const auto doc_id = itr->value();
 
       if (doc_id < ctx.doc_id_begin_ || doc_id >= ctx.doc_id_end_) {
         continue; // doc_id is not part of the current flush_context

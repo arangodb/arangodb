@@ -501,14 +501,7 @@ int IResearchLink::unload() {
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (_collection.deleted()
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
-    auto res = drop();
-
-    LOG_TOPIC_IF(WARN, arangodb::iresearch::TOPIC, TRI_ERROR_NO_ERROR != res)
-        << "failed to drop collection from view while unloading dropped "
-        << "arangosearch link '" << _id << "' for arangosearch view '"
-        << _view->name() << "'";
-
-    return res;
+    return drop();
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped

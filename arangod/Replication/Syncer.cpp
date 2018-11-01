@@ -805,38 +805,60 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 /// @brief creates a view, based on the VelocyPack provided
 Result Syncer::createView(TRI_vocbase_t& vocbase,
                           arangodb::velocypack::Slice const& slice) {
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while creating view"
+    );
+  }
+
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");
   }
 
   VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
   if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no name specified for view");
   }
+
   VPackSlice guidSlice = slice.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   VPackSlice typeSlice = slice.get(StaticStrings::DataSourceType);
+
   if (!typeSlice.isString() || typeSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no type specified for view");
   }
 
   auto view = vocbase.lookupView(guidSlice.copyString());
+
   if (view) { // identical view already exists
     VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
     if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-      auto res = vocbase.renameView(view->id(), nameSlice.copyString());
+      auto res = view->rename(
+        nameSlice.copyString(), databaseFeature->forceSyncProperties()
+      );
+
       if (!res.ok()) {
         return res;
       }
     }
 
     bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+
     return view->updateProperties(slice, false, doSync);
   }
 

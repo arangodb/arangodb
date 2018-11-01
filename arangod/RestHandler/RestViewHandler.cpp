@@ -23,10 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestViewHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/DatabaseFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -62,7 +65,7 @@ RestViewHandler::RestViewHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
-  auto view = _vocbase.lookupView(nameOrId);
+  auto view = CollectionNameResolver(_vocbase).getView(nameOrId);
 
   if (!view) {
     generateError(
@@ -250,7 +253,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   std::string const& name = suffixes[0];
-  auto view = _vocbase.lookupView(name);
+  CollectionNameResolver resolver(_vocbase);
+  auto view = resolver.getView(name);
 
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -269,6 +273,19 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     // handle rename functionality
     if (suffixes[1] == "rename") {
+      auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+        DatabaseFeature
+      >("Database");
+
+      if (!databaseFeature) {
+        generateError(Result(
+          TRI_ERROR_INTERNAL,
+          "failed to find feature 'Database' while renaming view"
+        ));
+
+        return;
+      }
+
       VPackSlice newName = body.get("name");
 
       if (!newName.isString()) {
@@ -308,11 +325,12 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return; // skip view
       }
 
-      auto newNameStr = newName.copyString();
-      auto res = _vocbase.renameView(view->id(), newNameStr);
+      auto res = view->rename(
+        newName.copyString(), databaseFeature->forceSyncProperties()
+      );
 
       if (res.ok()) {
-        getView(newNameStr, false);
+        getView(view->name(), false);
       } else {
         generateError(res);
       }
@@ -356,7 +374,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
-    view = _vocbase.lookupView(view->id()); // ensure have the latest definition
+    view = resolver.getView(view->id()); // ensure have the latest definition
 
     if (!view) {
       generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
@@ -401,7 +419,7 @@ void RestViewHandler::deleteView() {
 
   std::string const& name = suffixes[0];
   auto allowDropSystem = _request->parsedValue("isSystem", false);
-  auto view = _vocbase.lookupView(name);
+  auto view = CollectionNameResolver(_vocbase).getView(name);
 
   if (!view) {
     generateError(
@@ -477,7 +495,16 @@ void RestViewHandler::getViews() {
     return;
   }
 
-  auto views = _vocbase.views();
+  std::vector<LogicalView::ptr> views;
+
+  LogicalView::enumerate(
+    _vocbase,
+    [&views](LogicalView::ptr const& view)->bool {
+      views.emplace_back(view);
+
+      return true;
+    }
+  );
 
   std::sort(
     views.begin(),
