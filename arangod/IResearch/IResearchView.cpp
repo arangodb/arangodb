@@ -1414,14 +1414,8 @@ bool IResearchView::emplace(TRI_voc_cid_t cid) {
 }
 
 arangodb::Result IResearchView::commit() {
-  SCOPED_LOCK(_asyncSelf->mutex()); // ensure '_storePersisted' is not deallocated
-
-  if (!*_asyncSelf) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      std::string("failed to start sync for deallocated arangosearch view '") + name() + "'"
-    );
-  }
+  ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
+  SCOPED_LOCK(mutex);
 
   if (!_storePersisted) {
     return arangodb::Result(); // nothing more to do
@@ -1434,8 +1428,6 @@ arangodb::Result IResearchView::commit() {
     _storePersisted._writer->commit(); // finishing flush transaction
 
     {
-      ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
-      SCOPED_LOCK(mutex);
       SCOPED_LOCK(_readerLock);
 
       auto reader = _storePersisted._reader.reopen(); // update reader
