@@ -1434,6 +1434,8 @@ arangodb::Result IResearchView::commit() {
     _storePersisted._writer->commit(); // finishing flush transaction
 
     {
+      ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
+      SCOPED_LOCK(mutex);
       SCOPED_LOCK(_readerLock);
 
       auto reader = _storePersisted._reader.reopen(); // update reader
