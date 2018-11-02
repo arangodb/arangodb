@@ -366,7 +366,9 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
     followers: protoShardInfo.followers,
   };
   let actual = getShardInfoOf(localColName, shard);
-  expect(expected).to.deep.equal(actual);
+  expect(expected).to.deep.equal(actual,
+    `Expected ${JSON.stringify(expected)}, but got ${JSON.stringify(actual)} `
+  + `after moving leader ${dbServerNameById[leaderDbServer]} to ${dbServerNameById[freeDbServer]}`);
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
 
   jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
@@ -377,7 +379,9 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
     followers: protoShardInfo.followers.slice(1).concat([dbServerNameById[leaderDbServer]]),
   };
   actual = getShardInfoOf(localColName, shard);
-  expect(expected).to.deep.equal(actual);
+  expect(expected).to.deep.equal(actual,
+    `Expected ${JSON.stringify(expected)}, but got ${JSON.stringify(actual)}`
+    + `after moving follower ${dbServerNameById[followerDbServer]} to ${dbServerNameById[leaderDbServer]}`);
 
   expect(result).to.equal(true);
 
@@ -701,7 +705,7 @@ const distributeShardsLikeSuite = (options) => {
           );
           const jobRes = waitForJob(postJobRes);
 
-          expect(jobRes).to.have.property("status", 200);
+          expect(jobRes).to.have.property("status", 200, {jobRes});
 
           let response = JSON.parse(jobRes.body);
 
@@ -797,4 +801,3 @@ describe('Collections with distributeShardsLike without data',
 
 describe('Collections with distributeShardsLike with data',
   distributeShardsLikeSuite({withData: true}));
-
