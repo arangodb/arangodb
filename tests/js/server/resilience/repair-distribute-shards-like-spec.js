@@ -206,7 +206,7 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
   expect(withData).to.be.a('boolean');
   const replicationFactor = dbServerCount - 1;
   const { collection: protoCollection, dataInfo: protoData }
-  = createCollectionOptionallyWithData(protoColName,
+    = createCollectionOptionallyWithData(protoColName,
     { replicationFactor: replicationFactor, numberOfShards: 16 },
     withData);
   let localColName = failOnOperation === null
