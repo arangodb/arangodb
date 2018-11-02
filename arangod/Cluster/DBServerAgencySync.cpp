@@ -98,7 +98,8 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
             collections.add(VPackValue("servers"));
             { VPackArrayBuilder guard(&collections);
               collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-              for (auto const& s : *folls->get()) {
+              std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+              for (auto const& s : *srvs) {
                 collections.add(VPackValue(s));
               }
             }
