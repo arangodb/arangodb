@@ -18,6 +18,13 @@ install(
     "^.*/client/tests$" EXCLUDE
 )
 
+install(
+  FILES
+    ${ARANGODB_SOURCE_DIR}/js/JS_SHA1SUM.txt
+  DESTINATION
+    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/JS_SHA1SUM.txt
+)
+
 if (USE_ENTERPRISE)
   install(
     DIRECTORY
