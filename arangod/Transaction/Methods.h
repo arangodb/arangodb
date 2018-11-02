@@ -159,6 +159,7 @@ class Methods {
   /// @param callback nullptr and empty functers are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
+  bool removeStatusChangeCallback(StatusChangeCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
