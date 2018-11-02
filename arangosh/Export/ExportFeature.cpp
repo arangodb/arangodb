@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -336,7 +335,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     VPackSlice body = parsedBody->slice();
 
     int fd =
-        TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+        TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                    S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
@@ -344,7 +343,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
     }
 
-    TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+    TRI_DEFER(TRI_CLOSE(fd));
 
     writeFirstLine(fd, fileName, collection);
 
@@ -397,7 +396,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   VPackSlice body = parsedBody->slice();
 
   int fd =
-      TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+      TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                   S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
@@ -405,7 +404,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   writeFirstLine(fd, fileName, "");
 
@@ -651,14 +650,14 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   }
 
   int fd =
-      TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+      TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     errorMsg = "cannot write to file '" + fileName + "'";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
   }
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   std::string xmlHeader =
       R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
