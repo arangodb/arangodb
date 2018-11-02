@@ -275,7 +275,7 @@ SECTION("test_rename") {
 
   auto const res = view->rename("otherName");
   CHECK(res.fail());
-  CHECK(TRI_ERROR_NOT_IMPLEMENTED == res.errorNumber());
+  CHECK((TRI_ERROR_CLUSTER_UNSUPPORTED == res.errorNumber()));
 }
 
 SECTION("visit_collections") {
