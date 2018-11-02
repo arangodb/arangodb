@@ -773,6 +773,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(ctx.uncomitted_modification_queries_ <= ctx.modification_queries_.size());
     modification_count =
       ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_ + 1; // +1 for insertions before removals
+    if (segment.flush_ctx_ && this != segment.flush_ctx_) generation_base = segment.flush_ctx_->generation_ += modification_count; else  // FIXME TODO remove this condition once col_writer tail is writen correctly
     generation_base = generation_ += modification_count; // atomic increment to end of unique generation range
     generation_base -= modification_count; // start of generation range
   }
@@ -1320,7 +1321,7 @@ bool index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, consolidation_segment.meta.name);
+  merge_writer merger(dir);
   merger.reserve(candidates.size());
 
   // add consolidated segments to the merge_writer
@@ -1475,7 +1476,11 @@ bool index_writer::consolidate(
   return true;
 }
 
-bool index_writer::import(const index_reader& reader, format::ptr codec /*= nullptr*/) {
+bool index_writer::import(
+    const index_reader& reader,
+    format::ptr codec /*= nullptr*/,
+    const merge_writer::flush_progress_t& progress /*= {}*/
+) {
   if (!reader.live_docs_count()) {
     return true; // skip empty readers since no documents to import
   }
@@ -1490,14 +1495,14 @@ bool index_writer::import(const index_reader& reader, format::ptr codec /*= null
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, segment.meta.name);
+  merge_writer merger(dir);
   merger.reserve(reader.size());
 
   for (auto& segment : reader) {
     merger.add(segment);
   }
 
-  if (!merger.flush(segment)) {
+  if (!merger.flush(segment, progress)) {
     return false; // import failure (no files created, nothing to clean up)
   }
 
@@ -1630,8 +1635,6 @@ index_writer::pending_context_t index_writer::flush_all() {
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
   std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
-  std::vector<modification_context> pending_modification_queries;
-  std::vector<segment_meta> pending_segments;
   SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
 
   //////////////////////////////////////////////////////////////////////////////
