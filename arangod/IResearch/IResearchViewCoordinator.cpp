@@ -25,6 +25,8 @@
 #include "IResearchCommon.h"
 #include "IResearchLinkCoordinator.h"
 #include "IResearchLinkHelper.h"
+
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -270,7 +272,7 @@ bool IResearchViewCoordinator::emplace(
       irs::string_ref const& key
   )->bool {
     return key != arangodb::StaticStrings::IndexType
-      && key != StaticStrings::ViewIdField; // ignored fields
+        && key != StaticStrings::ViewIdField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
