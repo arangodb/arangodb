@@ -1,6 +1,25 @@
 v3.4.0-rc.4 (XXXX-XX-XX)
 ------------------------
 
+* increase AQL query string parsing performance for queries with many (100K+) string
+  values contained in the query string
+
+* increase timeouts for inter-node communication in the cluster
+
+* fixed undefined behavior in `/_api/import` when importing a single document went
+  wrong
+
+* replication bugfixes
+
+* stop printing `connection class corrupted` in arangosh
+
+ when just starting the arangosh without a connection to a server and running 
+ code such as `require("internal")`, the shell always printed "connection class 
+ corrupted", which was somewhat misleading.
+
+* add separate option `--query.slow-streaming-threshold` for tracking slow
+  streaming queries with a different timeout value
+
 * increase maximum number of collections/shards in an AQL query from 256 to 2048
 
 * don't rely on `_modules` collection being present and usable for arangod startup
