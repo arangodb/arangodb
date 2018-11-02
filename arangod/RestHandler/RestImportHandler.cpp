@@ -901,96 +901,100 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
   OperationResult opResult =
       trx.insert(collectionName, babies.slice(), opOptions);
 
-  VPackSlice resultSlice = opResult.slice();
+  if (!opResult.fail()) {
+    VPackSlice resultSlice = opResult.slice();
 
-  if (resultSlice.isArray()) {
-    std::vector<size_t> originalPositions;
-    VPackBuilder updateReplace;
-    updateReplace.openArray();
-    size_t pos = 0;
+    if (resultSlice.isArray()) {
+      std::vector<size_t> originalPositions;
+      VPackBuilder updateReplace;
+      updateReplace.openArray();
+      size_t pos = 0;
 
-    for (VPackSlice it : VPackArrayIterator(resultSlice)) {
-      if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
-        ++result._numCreated;
-      } else {
-        // got an error, now handle it
+      for (VPackSlice it : VPackArrayIterator(resultSlice)) {
+        if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
+          ++result._numCreated;
+        } else {
+          // got an error, now handle it
 
-        int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
-        VPackSlice const which = babies.slice().at(pos);
-        // special behavior in case of unique constraint violation . . .
-        if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
-            _onDuplicateAction != DUPLICATE_ERROR) {
-          VPackSlice const keySlice = which.get(StaticStrings::KeyString);
+          int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
+          VPackSlice const which = babies.slice().at(pos);
+          // special behavior in case of unique constraint violation . . .
+          if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
+              _onDuplicateAction != DUPLICATE_ERROR) {
+            VPackSlice const keySlice = which.get(StaticStrings::KeyString);
 
-          if (keySlice.isString()) {
-            // insert failed. now try an update/replace
-            if (_onDuplicateAction == DUPLICATE_UPDATE ||
-                _onDuplicateAction == DUPLICATE_REPLACE) {
-              // update/replace
-              updateReplace.add(which);
-              originalPositions.emplace_back(pos);
+            if (keySlice.isString()) {
+              // insert failed. now try an update/replace
+              if (_onDuplicateAction == DUPLICATE_UPDATE ||
+                  _onDuplicateAction == DUPLICATE_REPLACE) {
+                // update/replace
+                updateReplace.add(which);
+                originalPositions.emplace_back(pos);
+              } else {
+                // simply ignore unique key violations silently
+                TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE);
+                res = TRI_ERROR_NO_ERROR;
+                ++result._numIgnored;
+              }
             } else {
-              // simply ignore unique key violations silently
-              TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE);
-              res = TRI_ERROR_NO_ERROR;
-              ++result._numIgnored;
+              makeError(pos, errorCode, which, result);
+              if (!complete) {
+                res = errorCode;
+                break;
+              }
             }
           } else {
             makeError(pos, errorCode, which, result);
-            if (!complete) {
-              res = errorCode;
-              break;
-            }
-          }
-        } else {
-          makeError(pos, errorCode, which, result);
-          if (complete) {
-            res = errorCode;
-            break;
-          }
-        }
-      }
-
-      ++pos;
-    }
-
-    updateReplace.close();
-
-    if (res.ok() && updateReplace.slice().length() > 0) {
-      if (_onDuplicateAction == DUPLICATE_UPDATE) {
-        opResult = trx.update(collectionName, updateReplace.slice(), opOptions);
-      } else {
-        opResult =
-            trx.replace(collectionName, updateReplace.slice(), opOptions);
-      }
-
-      if (opResult.fail() && res.ok()) {
-        res = opResult.result;
-      }
-
-      VPackSlice resultSlice = opResult.slice();
-      if (resultSlice.isArray()) {
-        size_t pos = 0;
-        for (auto const& it : VPackArrayIterator(resultSlice)) {
-          if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
-            ++result._numUpdated;
-          } else {
-            int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
-
-            if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-              // "not found" can only occur when the original insert did not
-              // succeed because of a unique key constraint violation 
-              // otherwise the document should be there
-              errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-            }
-            makeError(originalPositions[pos], errorCode,
-                      babies.slice().at(originalPositions[pos]), result);
             if (complete) {
               res = errorCode;
               break;
             }
           }
-          ++pos;
+        }
+
+        ++pos;
+      }
+
+      updateReplace.close();
+
+      if (res.ok() && updateReplace.slice().length() > 0) {
+        if (_onDuplicateAction == DUPLICATE_UPDATE) {
+          opResult = trx.update(collectionName, updateReplace.slice(), opOptions);
+        } else {
+          opResult =
+              trx.replace(collectionName, updateReplace.slice(), opOptions);
+        }
+
+        if (opResult.fail() && res.ok()) {
+          res = opResult.result;
+        }
+
+        if (!opResult.fail()) {
+          VPackSlice resultSlice = opResult.slice();
+          if (resultSlice.isArray()) {
+            size_t pos = 0;
+            for (auto const& it : VPackArrayIterator(resultSlice)) {
+              if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
+                ++result._numUpdated;
+              } else {
+                int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
+
+                if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+                  // "not found" can only occur when the original insert did not
+                  // succeed because of a unique key constraint violation 
+                  // otherwise the document should be there
+                  errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+                }
+                makeError(originalPositions[pos], errorCode,
+                          babies.slice().at(originalPositions[pos]), result);
+                if (complete) {
+                  res = errorCode;
+                  break;
+                }
+              }
+              ++pos;
+            }
+          }
         }
       }
     }

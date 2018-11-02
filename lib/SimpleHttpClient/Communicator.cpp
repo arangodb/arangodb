@@ -506,7 +506,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
 
           transformResult(handle, std::move(rip->_responseHeaders),
                           std::move(rip->_responseBody),
-                          dynamic_cast<HttpResponse*>(response.get()));
+                          static_cast<HttpResponse*>(response.get()));
 
           if (httpStatusCode < 400) {
             callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));

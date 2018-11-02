@@ -504,16 +504,28 @@ void QueryCache::properties(VPackSlice const& properties) {
 
   v = properties.get("maxResults");
   if (v.isNumber()) {
+    int64_t value = v.getNumericValue<int64_t>();
+    if (value <= 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for maxResults");
+    }
     maxResultsCount = v.getNumericValue<size_t>();
   }
   
   v = properties.get("maxResultsSize");
   if (v.isNumber()) {
+    int64_t value = v.getNumericValue<int64_t>();
+    if (value <= 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for maxResultsSize");
+    }
     maxResultsSize = v.getNumericValue<size_t>();
   }
 
   v = properties.get("maxEntrySize");
   if (v.isNumber()) {
+    int64_t value = v.getNumericValue<int64_t>();
+    if (value <= 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for maxEntrySize");
+    }
     maxEntrySize = v.getNumericValue<size_t>();
   }
 
