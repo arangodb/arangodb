@@ -235,11 +235,12 @@ void dropCollectionFromAllViews(
     TRI_voc_tick_t dbId,
     TRI_voc_cid_t collectionId
 ) {
+  LOG_DEVEL << "dropCollectionFromAllViews";
   auto* vocbase = db.useDatabase(dbId);
-
   if (!vocbase) {
     return;
   }
+  TRI_DEFER(vocbase->release());
 
   // iterate over vocbase views
   arangodb::LogicalView::enumerate(
