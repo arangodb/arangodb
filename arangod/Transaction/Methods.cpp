@@ -1606,13 +1606,13 @@ OperationResult transaction::Methods::insertLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
       
-      auto const& followerInfo = collection->followers();
       // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
@@ -1970,13 +1970,13 @@ OperationResult transaction::Methods::modifyLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
       
-      auto const& followerInfo = collection->followers();
       // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
@@ -2281,14 +2281,14 @@ OperationResult transaction::Methods::removeLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
   
-      auto const& followerInfo = collection->followers();
-      // fetch followers 
+      // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
         replicationType = ReplicationType::LEADER;
@@ -2609,14 +2609,14 @@ OperationResult transaction::Methods::truncateLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
       
-      auto const& followerInfo = collection->followers();
-      // fetch followers 
+      // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
         replicationType = ReplicationType::LEADER;
