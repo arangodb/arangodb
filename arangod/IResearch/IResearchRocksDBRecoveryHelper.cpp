@@ -254,7 +254,7 @@ void dropCollectionFromAllViews(
       if (!impl) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
             << "error finding view: not an arangosearch view";
-        return;
+        return true;
       }
 
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
