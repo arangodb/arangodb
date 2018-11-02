@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
@@ -123,7 +122,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
 
     if (_fd == -1) {
       // no existing appender found yet
-      int fd = TRI_TRACKED_CREATE_FILE(_filename.c_str(),
+      int fd = TRI_CREATE(_filename.c_str(),
                           O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                           S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -205,7 +204,7 @@ void LogAppenderFile::reopenAll() {
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
-    int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
+    int fd = TRI_CREATE(filename.c_str(),
                         O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -224,7 +223,7 @@ void LogAppenderFile::reopenAll() {
     std::get<2>(it)->updateFd(fd);
 
     if (old > STDERR_FILENO) {
-      TRI_TRACKED_CLOSE_FILE(old);
+      TRI_CLOSE(old);
     }
   }
 }
@@ -239,7 +238,7 @@ void LogAppenderFile::closeAll() {
 
     if (fd > STDERR_FILENO) {
       fsync(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
     }
   }
 }
