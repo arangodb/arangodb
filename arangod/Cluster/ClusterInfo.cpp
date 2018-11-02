@@ -2620,9 +2620,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   auto type = slice.get(arangodb::StaticStrings::IndexType);
   VPackBuilder collectionBuilder;
 
+  std::shared_ptr<LogicalCollection> c =
+    getCollection(databaseName, collectionID);
+
   {
-    std::shared_ptr<LogicalCollection> c =
-        getCollection(databaseName, collectionID);
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
     c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
     {
@@ -2706,7 +2707,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
           for (auto const& e : VPackObjectIterator(slice)) {
             TRI_ASSERT(e.key.isString());
             std::string tmpkey = e.key.copyString();
-            if (tmpkey != "id") {
+            if (tmpkey != "id" && tmpkey != "isBuilding") {
               newBuilder->add(tmpkey, e.value);
             }
           }
@@ -2726,6 +2727,8 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   } catch (...) {
     return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
   }
+
+  LOG_TOPIC(ERR, Logger::FIXME) << newBuilder->toJson();
 
   // will contain the error number and message
   std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
