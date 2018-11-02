@@ -55,6 +55,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool trackSlowQueries() const { return _trackSlowQueries; }
   bool trackBindVars() const { return _trackBindVars; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
+  double slowStreamingQueryThreshold() const { return _slowStreamingQueryThreshold; }
   bool failOnWarning() const { return _failOnWarning; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
@@ -66,6 +67,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t _queryMemoryLimit;
   uint64_t _maxQueryPlans;
   double _slowQueryThreshold;
+  double _slowStreamingQueryThreshold;
   std::string _queryCacheMode;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;

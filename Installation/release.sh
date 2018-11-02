@@ -54,6 +54,13 @@ else
     exit 1
 fi
 
+if sha1sum --version; then
+    echo "sha1sum found."
+else
+    echo "sha1sum missing from your system"
+    exit 1
+fi
+
 if [ "$#" -lt 1 ];  then
     echo "usage: $0 <major>.<minor>.<revision>"
     exit 1
@@ -245,6 +252,11 @@ fi
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
 git fetch --tags
 
+# recalculate SHA1 sum for JS files
+rm -f js/JS_FILES.txt js/JS_SHA1SUM.txt
+find js enterprise/js -type f | sort | xargs sha1sum > js/JS_FILES.txt
+sha1sum js/JS_FILES.txt > js/JS_SHA1SUM.txt
+rm -f js/JS_FILES.txt
 
 # shellcheck disable=SC2002
 cat CMakeLists.txt \
@@ -309,6 +321,7 @@ git add -f \
     lib/Basics/voc-errors.h \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
+    js/JS_SHA1SUM.txt \
     CMakeLists.txt \
     VERSIONS
 

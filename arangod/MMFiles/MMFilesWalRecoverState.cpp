@@ -795,6 +795,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
         VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
+        auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+          DatabaseFeature
+        >("Database");
+
+        if (!databaseFeature) {
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+            << "failed to find feature 'Database' while renaming view";
+          ++state->errorCount;
+          return state->canContinue();
+        }
 
         if (!payloadSlice.isObject()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -853,7 +863,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             vocbase->dropView(other->id(), true);
           }
 
-          auto res = vocbase->renameView(view->id(), name);
+          auto res = view->rename(
+            std::string(name), databaseFeature->forceSyncProperties()
+          );
 
           if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -1125,7 +1137,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             vocbase->lookupView(viewId);
 
         if (view != nullptr) {
-          vocbase->dropView(view->id(), true); // drop an existing view
+          view->drop(); // drop an existing view
         }
 
         // check if there is another view with the same name as the one that
@@ -1138,7 +1150,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           view = vocbase->lookupView(name);
 
           if (view != nullptr) {
-            vocbase->dropView(view->id(), true);
+            view->drop();
           }
         } else {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -1162,7 +1174,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
           }
 
-          view = vocbase->createView(payloadSlice);
+          auto res = arangodb::LogicalView::create(view,*vocbase, payloadSlice);
+          TRI_ASSERT(res.ok());
           TRI_ASSERT(view != nullptr);
           TRI_ASSERT(view->id() == viewId); // otherwise this a corrupt marker
         } catch (basics::Exception const& ex) {

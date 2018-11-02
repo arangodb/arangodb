@@ -158,7 +158,17 @@ using namespace iresearch;
 class features {
  public:
   enum Mask : uint32_t {
-    POS = 3, POS_OFFS = 7, POS_PAY = 11, POS_OFFS_PAY = 15
+    DOCS = 0,
+    FREQ = 1,
+    POS = 2,
+    OFFS = 4,
+    PAY = 8,
+    // MSVC2013 requires compile-time constant values for enum combinations
+    // used by switch-case statements
+    FREQ_POS = 3, // FREQ | POS
+    FREQ_POS_OFFS = 7, // FREQ | POS | OFFS
+    FREQ_POS_PAY = 11, // FREQ | POS | PAY
+    FREQ_POS_OFFS_PAY = 15, // FREQ | POS | OFFS | PAY
   };
 
   features() = default;
@@ -188,9 +198,19 @@ class features {
   bool payload() const NOEXCEPT { return irs::check_bit<3>(mask_); }
   operator Mask() const NOEXCEPT { return static_cast<Mask>(mask_); }
 
+  bool any(Mask mask) const NOEXCEPT {
+    return Mask(0) != (mask_ & mask);
+  }
+
+  bool all(Mask mask) const NOEXCEPT {
+    return mask != (mask_ & mask);
+  }
+
  private:
   irs::byte_type mask_{};
 }; // features
+
+ENABLE_BITMASK_ENUM(features::Mask);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             forward declarations
@@ -492,7 +512,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
     std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
-  if (features.check< position >()) {
+  if (features.check<position>()) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique< pos_stream >();
@@ -501,7 +521,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
     pos_->reset();
     prepare_output(name, pos_->out, state, POS_EXT, POS_FORMAT_NAME, FORMAT_MAX);
 
-    if (features.check< payload >() || features.check< offset >()) {
+    if (features.check<payload>() || features.check<offset>()) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_stream>();
@@ -629,11 +649,11 @@ void postings_writer::begin_term() {
   doc.start = doc.out->file_pointer();
   std::fill_n(doc.skip_ptr, MAX_SKIP_LEVELS, doc.start);
   if (features_.position()) {
-    assert(pos_);
+    assert(pos_ && pos_->out);
     pos_->start = pos_->out->file_pointer();
     std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.payload() || features_.offset()) {
-      assert(pay_);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_->out);
       pay_->start = pay_->out->file_pointer();
       std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
     }
@@ -674,7 +694,7 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
 
 void postings_writer::add_position(uint32_t pos, const offset* offs, const payload* pay) {
   assert(!offs || offs->start <= offs->end);
-  assert(pos_); /* at least positions stream should be created */
+  assert(features_.position() && pos_ && pos_->out); /* at least positions stream should be created */
 
   pos_->pos(pos - pos_->last);
   if (pay) pay_->payload(pos_->size, pay->value);
@@ -686,26 +706,29 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
     pos_->flush(buf);
 
     if (pay) {
+      assert(features_.payload() && pay_ && pay_->out);
       pay_->flush_payload(buf);
     }
 
     if (offs) {
+      assert(features_.payload() && pay_ && pay_->out);
       pay_->flush_offsets(buf);
     }
   }
 }
 
 void postings_writer::end_doc() {
-  if ( doc.full() ) {
+  if (doc.full()) {
     doc.block_last = doc.last;
     doc.end = doc.out->file_pointer();
-    if ( pos_ ) {
-      assert( pos_ );
+    if (features_.position()) {
+      assert(pos_ && pos_->out);
       pos_->end = pos_->out->file_pointer();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_->block_last = pos_->size;
-      if ( pay_ ) {
+      if (features_.any(features::OFFS | features::PAY)) {
+        assert(pay_ && pay_->out);
         pay_->end = pay_->out->file_pointer();
         pay_->block_last = pay_->pay_buf_.size();
       }
@@ -751,6 +774,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
   /* write remaining position using
    * variable length encoding */
   if (features_.position()) {
+    assert(pos_ && pos_->out);
+
     if (meta.freq > BLOCK_SIZE) {
       meta.pos_end = pos_->out->file_pointer() - pos_->start;
     }
@@ -763,6 +788,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
         if (features_.payload()) {
+          assert(pay_ && pay_->out);
+
           const uint32_t size = pay_->pay_sizes[i];
           if (last_pay_size != size) {
             last_pay_size = size;
@@ -781,6 +808,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
         }
 
         if (features_.offset()) {
+          assert(pay_ && pay_->out);
+
           const uint32_t pay_offs_delta = pay_->offs_start_buf[i];
           const uint32_t len = pay_->offs_len_buf[i];
           if (len == last_offs_len) {
@@ -794,6 +823,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
       }
 
       if (features_.payload()) {
+        assert(pay_ && pay_->out);
         pay_->pay_buf_.clear();
       }
     }
@@ -850,8 +880,8 @@ void postings_writer::write_skip(size_t level, index_output& out) {
 
     pos_->skip_ptr[level] = pos_ptr;
 
-    if (features_.payload() || features_.offset()) {
-      assert(pay_);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_->out);
 
       if (features_.payload()) {
         out.write_vint(static_cast<uint32_t>(pay_->block_last));
@@ -886,7 +916,7 @@ void postings_writer::encode(
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (features_.payload() || features_.offset()) {
+    if (features_.any(features::OFFS | features::PAY)) {
       out.write_vlong(meta.pay_start - last_state.pay_start);
     }
   }
@@ -5053,6 +5083,12 @@ void postings_reader::decode(
   }
 }
 
+#if defined(_MSC_VER)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wswitch"
+#endif
+
 irs::doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
@@ -5064,17 +5100,19 @@ irs::doc_iterator::ptr postings_reader::iterator(
   const auto enabled = features & req;
   doc_iterator::ptr it;
 
-  switch(enabled) {
-   case features::POS_OFFS_PAY:
+  // MSVC 2013 doesn't support constexpr, can't use
+  // 'operator|' in the following switch statement
+  switch (enabled) {
+   case features::FREQ_POS_OFFS_PAY:
     it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
     break;
-   case features::POS_OFFS:
+   case features::FREQ_POS_OFFS:
     it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
     break;
-   case features::POS_PAY:
+   case features::FREQ_POS_PAY:
     it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
     break;
-   case features::POS:
+   case features::FREQ_POS:
     it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
     break;
    default:
@@ -5088,6 +5126,11 @@ irs::doc_iterator::ptr postings_reader::iterator(
 
   return IMPLICIT_MOVE_WORKAROUND(it);
 }
+
+#if defined(_MSC_VER)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 // actual implementation
 class format : public irs::version10::format {

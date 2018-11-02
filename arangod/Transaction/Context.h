@@ -69,8 +69,8 @@ class Context {
 
   /// @brief factory to create a custom type handler, not managed
   static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
-           TRI_vocbase_t*,
-           arangodb::CollectionNameResolver const*);
+           TRI_vocbase_t&,
+           arangodb::CollectionNameResolver const&);
 
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }

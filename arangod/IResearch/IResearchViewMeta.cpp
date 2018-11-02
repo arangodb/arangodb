@@ -35,10 +35,7 @@
 
 NS_LOCAL
 
-const std::string POLICY_BYTES = "bytes"; // {threshold} > segment_bytes / (all_segment_bytes / #segments)
 const std::string POLICY_BYTES_ACCUM = "bytes_accum"; // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-const std::string POLICY_DOCS_FILL = "fill"; // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-const std::string POLICY_DOCS_LIVE = "count"; // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
 const std::string POLICY_TIER = "tier"; // scoring policy based on byte size and live docs
 
 template<typename T>
@@ -46,49 +43,6 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
     arangodb::velocypack::Slice const& slice,
     std::string& errorField
 );
-
-template<>
-arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy<
-    irs::index_utils::consolidate_bytes
->(
-    arangodb::velocypack::Slice const& slice,
-    std::string& errorField
-) {
-  irs::index_utils::consolidate_bytes options;
-  arangodb::velocypack::Builder properties;
-
-  {
-    // optional float
-    static const std::string fieldName("threshold");
-
-    if (slice.hasKey(fieldName)) {
-      auto field = slice.get(fieldName);
-
-      if (!field.isNumber<float>()) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-
-      options.threshold = field.getNumber<float>();
-
-      if (options.threshold  < 0. || options.threshold  > 1.) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-    }
-  }
-
-  properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_BYTES));
-  properties.add("threshold", arangodb::velocypack::Value(options.threshold));
-  properties.close();
-
-  return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy{
-    irs::index_utils::consolidation_policy(options), std::move(properties)
-  };
-}
 
 template<>
 arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy<
@@ -125,92 +79,6 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
 
   properties.openObject();
   properties.add("type", arangodb::iresearch::toValuePair(POLICY_BYTES_ACCUM));
-  properties.add("threshold", arangodb::velocypack::Value(options.threshold));
-  properties.close();
-
-  return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy{
-    irs::index_utils::consolidation_policy(options), std::move(properties)
-  };
-}
-
-template<>
-arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy<
-    irs::index_utils::consolidate_docs_live
->(
-    arangodb::velocypack::Slice const& slice,
-    std::string& errorField
-) {
-  irs::index_utils::consolidate_docs_live options;
-  arangodb::velocypack::Builder properties;
-
-  {
-    // optional float
-    static const std::string fieldName("threshold");
-
-    if (slice.hasKey(fieldName)) {
-      auto field = slice.get(fieldName);
-
-      if (!field.isNumber<float>()) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-
-      options.threshold = field.getNumber<float>();
-
-      if (options.threshold  < 0. || options.threshold  > 1.) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-    }
-  }
-
-  properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_DOCS_LIVE));
-  properties.add("threshold", arangodb::velocypack::Value(options.threshold));
-  properties.close();
-
-  return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy{
-    irs::index_utils::consolidation_policy(options), std::move(properties)
-  };
-}
-
-template<>
-arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy<
-    irs::index_utils::consolidate_docs_fill
->(
-    arangodb::velocypack::Slice const& slice,
-    std::string& errorField
-) {
-  irs::index_utils::consolidate_docs_fill options;
-  arangodb::velocypack::Builder properties;
-
-  {
-    // optional float
-    static const std::string fieldName("threshold");
-
-    if (slice.hasKey(fieldName)) {
-      auto field = slice.get(fieldName);
-
-      if (!field.isNumber<float>()) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-
-      options.threshold = field.getNumber<float>();
-
-      if (options.threshold  < 0. || options.threshold  > 1.) {
-        errorField = fieldName;
-
-        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
-      }
-    }
-  }
-
-  properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_DOCS_FILL));
   properties.add("threshold", arangodb::velocypack::Value(options.threshold));
   properties.close();
 
@@ -332,72 +200,24 @@ NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
-/*
-static IResearchViewMeta::ConsolidationPolicy IResearchViewMeta::ConsolidationPolicy::make(
-    arangodb::velocypack::Slice const& slice,
-    std::string& errorField
-) {
-  if (!slice.isObject()) {
-    return ConsolidationPolicy();
-  }
 
-  // required string enum
-  static const std::string fieldName("type");
-
-  if (!slice.hasKey(policyTypeField)) {
-    errorField = policyTypeField;
-
-    return ConsolidationPolicy();
-  }
-
-  auto field = slice.get(policyTypeField);
-
-  if (!field.isString()) {
-    errorField = policyTypeField;
-
-    return ConsolidationPolicy();
-  }
-
-  auto policyType = field.copyString();
-
-  if (POLICY_BYTES == policyType) {
-    return createConsolidationPolicy<irs::index_utils::consolidate_bytes>(
-      properties, errorField
-    );
-  } else if (POLICY_BYTES_ACCUM == policyType) {
-    return createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
-      properties, errorField
-    );
-  } else if (POLICY_DOCS_FILL == policyType) {
-    return createConsolidationPolicy<irs::index_utils::consolidate_docs_fill>(
-      properties, errorField
-    );
-  } else if (POLICY_DOCS_LIVE == policyType) {
-    return createConsolidationPolicy<irs::index_utils::consolidate_docs_live>(
-      properties, errorField
-    );
-  } else if (POLICY_TIER == policyType) {
-    return createConsolidationPolicy<irs::index_utils::consolidate_tier>(
-      properties, errorField
-    );
-  }
-
-  errorField = policyTypeField;
-
-  return ConsolidationPolicy();
-}
-*/
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _cleanupIntervalStep(mask),
     _consolidationIntervalMsec(mask),
     _consolidationPolicy(mask),
-    _locale(mask) {
+    _locale(mask),
+    _writebufferActive(mask),
+    _writebufferIdle(mask),
+    _writebufferSizeMax(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
   : _cleanupIntervalStep(10),
     _consolidationIntervalMsec(60 * 1000),
-    _locale(std::locale::classic()) {
+    _locale(std::locale::classic()),
+    _writebufferActive(0),
+    _writebufferIdle(64),
+    _writebufferSizeMax(32*(size_t(1)<<20)) { // 32MB
   std::string errorField;
 
   _consolidationPolicy = createConsolidationPolicy<
@@ -427,6 +247,9 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
     _locale = std::move(other._locale);
+    _writebufferActive = std::move(other._writebufferActive);
+    _writebufferIdle = std::move(other._writebufferIdle);
+    _writebufferSizeMax = std::move(other._writebufferSizeMax);
   }
 
   return *this;
@@ -438,6 +261,9 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
     _locale = other._locale;
+    _writebufferActive = other._writebufferActive;
+    _writebufferIdle = other._writebufferIdle;
+    _writebufferSizeMax = other._writebufferSizeMax;
   }
 
   return *this;
@@ -459,6 +285,18 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale)
       || irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale)
       || irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
+    return false; // values do not match
+  }
+
+  if (_writebufferActive != other._writebufferActive) {
+    return false; // values do not match
+  }
+
+  if (_writebufferIdle != other._writebufferIdle) {
+    return false; // values do not match
+  }
+
+  if (_writebufferSizeMax != other._writebufferSizeMax) {
     return false; // values do not match
   }
 
@@ -568,21 +406,9 @@ bool IResearchViewMeta::init(
 
       auto type = typeField.copyString();
 
-      if (POLICY_BYTES == type) {
-        _consolidationPolicy = createConsolidationPolicy<
-          irs::index_utils::consolidate_bytes
-        >(field, errorSubField);
-      } else if (POLICY_BYTES_ACCUM == type) {
+      if (POLICY_BYTES_ACCUM == type) {
         _consolidationPolicy = createConsolidationPolicy<
           irs::index_utils::consolidate_bytes_accum
-        >(field, errorSubField);
-      } else if (POLICY_DOCS_FILL == type) {
-        _consolidationPolicy = createConsolidationPolicy<
-          irs::index_utils::consolidate_docs_fill
-        >(field, errorSubField);
-      } else if (POLICY_DOCS_LIVE == type) {
-        _consolidationPolicy = createConsolidationPolicy<
-          irs::index_utils::consolidate_docs_live
         >(field, errorSubField);
       } else if (POLICY_TIER == type) {
         _consolidationPolicy = createConsolidationPolicy<
@@ -637,6 +463,64 @@ bool IResearchViewMeta::init(
     }
   }
 */
+
+  {
+    // optional size_t
+    static const std::string fieldName("writebufferActive");
+
+    mask->_writebufferActive = slice.hasKey(fieldName);
+
+    if (!mask->_writebufferActive) {
+      _writebufferActive = defaults._writebufferActive;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_writebufferActive, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("writebufferIdle");
+
+    mask->_writebufferIdle = slice.hasKey(fieldName);
+
+    if (!mask->_writebufferIdle) {
+      _writebufferIdle = defaults._writebufferIdle;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_writebufferIdle, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("writebufferSizeMax");
+
+    mask->_writebufferSizeMax = slice.hasKey(fieldName);
+
+    if (!mask->_writebufferSizeMax) {
+      _writebufferSizeMax = defaults._writebufferSizeMax;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_writebufferSizeMax, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -665,6 +549,19 @@ bool IResearchViewMeta::json(
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
 */
+
+  if ((!ignoreEqual || _writebufferActive != ignoreEqual->_writebufferActive) && (!mask || mask->_writebufferActive)) {
+    builder.add("writebufferActive", arangodb::velocypack::Value(_writebufferActive));
+  }
+
+  if ((!ignoreEqual || _writebufferIdle != ignoreEqual->_writebufferIdle) && (!mask || mask->_writebufferIdle)) {
+    builder.add("writebufferIdle", arangodb::velocypack::Value(_writebufferIdle));
+  }
+
+  if ((!ignoreEqual || _writebufferSizeMax != ignoreEqual->_writebufferSizeMax) && (!mask || mask->_writebufferSizeMax)) {
+    builder.add("writebufferSizeMax", arangodb::velocypack::Value(_writebufferSizeMax));
+  }
+
   return true;
 }
 

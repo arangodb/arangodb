@@ -611,6 +611,9 @@ class Ast {
 
   /// @brief whether or not the query contains a traversal
   bool _containsTraversal;
+  
+  /// @brief whether or not the query contains bind parameters
+  bool _containsBindParameters;
 
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;

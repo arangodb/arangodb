@@ -20,7 +20,7 @@ let cursors = [];
 function sendQuery (count, async) {
   count = count || 1;
   for (let i = 0; i < count; ++i) {
-    let opts = { stream:true };
+    let opts = { stream: true };
     if (async === true) {
       opts.batchSize = 1; // runs SLEEP once
     }

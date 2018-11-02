@@ -502,6 +502,68 @@ namespace iresearch {
   return LINK_TYPE;
 }
 
+/*static*/ arangodb::Result IResearchLinkHelper::validateLinks(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& links
+) {
+  if (!links.isObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("while validating arangosearch link definition, error: definition is not an object")
+    );
+  }
+
+  size_t offset = 0;
+  arangodb::CollectionNameResolver resolver(vocbase);
+
+  for (arangodb::velocypack::ObjectIterator itr(links);
+       itr.valid();
+       ++itr, ++offset
+  ) {
+    auto collectionName = itr.key();
+    auto linkDefinition = itr.value();
+
+    if (!collectionName.isString()) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("while validating arangosearch link definition, error: collection at offset ") + std::to_string(offset) + " is not a string"
+      );
+    }
+
+    auto collection = resolver.getCollection(collectionName.copyString());
+
+    if (!collection) {
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not a string"
+      );
+    }
+
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT
+        && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+      return arangodb::Result(
+        TRI_ERROR_FORBIDDEN,
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorised for read access"
+      );
+    }
+
+    IResearchLinkMeta meta;
+    std::string errorField;
+
+    if (!linkDefinition.isNull() && !meta.init(linkDefinition, errorField)) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        errorField.empty()
+         ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
+         : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
+      );
+    }
+  }
+
+  return arangodb::Result();
+}
+
 /*static*/ arangodb::Result IResearchLinkHelper::updateLinks(
     std::unordered_set<TRI_voc_cid_t>& modified,
     TRI_vocbase_t& vocbase,

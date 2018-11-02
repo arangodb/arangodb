@@ -312,7 +312,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 
 void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
                                                 uint64_t commitSeq) {
-    TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
@@ -331,6 +331,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
+
     if (idx == nullptr) {
       TRI_ASSERT(false); // Index reported estimates, but does not exist
       continue;

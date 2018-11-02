@@ -53,7 +53,13 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+// Timeout for read operations:
 static double const CL_DEFAULT_TIMEOUT = 120.0;
+
+// Timeout for write operations, note that these are used for communication
+// with a shard leader and we always have to assume that some follower has
+// stopped writes for some time to get in sync:
+static double const CL_DEFAULT_LONG_TIMEOUT = 900.0;
 
 namespace {
 template<typename T>
@@ -231,7 +237,12 @@ static void mergeResults(
         arr.get(StaticStrings::Error).isBoolean() && arr.get(StaticStrings::Error).getBoolean()) {
       // an error occurred, now rethrow the error
       int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
-      THROW_ARANGO_EXCEPTION(res);
+      VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
+      if (msg.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
+      } else {
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
     resultBody->add(arr.at(pair.second));
   }
@@ -1186,7 +1197,7 @@ Result createDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1350,7 +1361,7 @@ int deleteDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1400,7 +1411,7 @@ int deleteDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1864,14 +1875,13 @@ int fetchEdgesFromEngines(
         continue;
       }
       StringRef idRef(id);
-      auto resE = cache.find(idRef);
-      if (resE == cache.end()) {
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
-        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
-        result.emplace_back(resE->second);
+        result.emplace_back(resE.first->second);
       }
     }
     if (!allCached) {
@@ -2359,7 +2369,7 @@ int modifyDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+    cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -2415,7 +2425,7 @@ int modifyDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -2753,14 +2763,13 @@ int fetchEdgesFromEngines(
         continue;
       }
       StringRef idRef(id);
-      auto resE = cache.find(idRef);
-      if (resE == cache.end()) {
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
-        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
-        result.emplace_back(resE->second);
+        result.emplace_back(resE.first->second);
       }
     }
     if (!allCached) {

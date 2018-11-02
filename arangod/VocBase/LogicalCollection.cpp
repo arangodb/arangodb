@@ -172,9 +172,9 @@ LogicalCollection::LogicalCollection(
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
-      _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
+      _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
-      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
+      _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
 
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _keyOptions(nullptr),
@@ -645,7 +645,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   getIndexesVPack(result, flags);
 
   // Cluster Specific
-  result.add("isSmart", VPackValue(_isSmart));
+  result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
