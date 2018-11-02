@@ -112,7 +112,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, 
 
     _contexts.emplace(id, context.get());
   }
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "created replication context " << id;
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "created replication context " << id << ", ttl: " << ttl;
 
   return context.release();
 }
@@ -128,6 +129,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _contexts.find(id);
+
     if (it == _contexts.end()) {
       // not found
       return false;
@@ -173,8 +175,10 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
     MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _contexts.find(id);
+
     if (it == _contexts.end()) {
       // not found
+      LOG_TOPIC(TRACE, Logger::REPLICATION) << "trying to find non-existing context " << id;
       return nullptr;
     }
 
@@ -182,7 +186,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
     TRI_ASSERT(context != nullptr);
 
     if (context->isDeleted()) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "Trying to use delete "
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Trying to use deleted "
       << "replication context with id " << id;
       // already deleted
       return nullptr;
@@ -197,11 +201,13 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
 /// @brief find an existing context by id and extend lifetime
 /// may be used concurrently on used contextes
 //////////////////////////////////////////////////////////////////////////////
+
 int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id,
                                               double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
   
   auto it = _contexts.find(id);
+  
   if (it == _contexts.end()) {
     // not found
     return TRI_ERROR_CURSOR_NOT_FOUND;
@@ -219,7 +225,6 @@ int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id,
   
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a context for later use
@@ -275,6 +280,8 @@ bool RocksDBReplicationManager::containsUsedContext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "dropping all replication contexts for database " << vocbase->name();
+
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -291,6 +298,8 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::dropAll() {
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "deleting all replication contexts";
+
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -307,6 +316,8 @@ void RocksDBReplicationManager::dropAll() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RocksDBReplicationManager::garbageCollect(bool force) {
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage-collecting replication contexts";
+
   auto const now = TRI_microtime();
   std::vector<RocksDBReplicationContext*> found;
 
@@ -326,7 +337,11 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
       }
 
       if (force || context->expires() < now) {
-        // expire contexts
+        if (force) {
+          LOG_TOPIC(TRACE, Logger::REPLICATION) << "force-deleting context " << context->id();
+        } else {
+          LOG_TOPIC(TRACE, Logger::REPLICATION) << "context " << context->id() << " is expired";
+        }
         context->setDeleted();
       }
 
