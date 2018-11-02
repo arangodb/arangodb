@@ -80,7 +80,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
   {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto result = _queries[vocbase.name()].insert({id, std::move(p)});
+    auto result = _queries[vocbase.name()].emplace(id, std::move(p));
     if (!result.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
