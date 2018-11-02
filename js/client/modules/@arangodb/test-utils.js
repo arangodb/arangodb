@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print db */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -628,7 +628,6 @@ runInArangosh.info = 'arangosh';
 // //////////////////////////////////////////////////////////////////////////////
 
 function runInLocalArangosh (options, instanceInfo, file, addArgs) {
-
   let endpoint = arango.getEndpoint();
   if (endpoint !== instanceInfo.endpoint) {
     print(`runInLocalArangosh: Reconnecting to ${instanceInfo.endpoint} from ${endpoint}`);
