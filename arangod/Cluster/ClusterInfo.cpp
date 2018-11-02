@@ -1636,7 +1636,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                 if (it != _shardServers.end()) {
                   plannedServers = (*it).second;
                 } else {
-                  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                  LOG_TOPIC(ERR, Logger::CLUSTER)
                     << "Did not find shard in _shardServers: "
                     << p.key.copyString() << ". Maybe the collection is already dropped.";
                   *errMsg = "Error in creation of collection: " + p.key.copyString() + ". Collection already dropped. "
