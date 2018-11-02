@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
+/* global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the replication
@@ -1305,6 +1305,7 @@ function ReplicationOtherDBSuite () {
     testDropDatabaseOnMasterDuringReplication: function () {
       setupReplication();
 
+<<<<<<< HEAD
       // Section - Master
       // Now do the evil stuff: drop the database that is replicating from right now.
       connectToMaster();
@@ -1316,6 +1317,9 @@ function ReplicationOtherDBSuite () {
       // The DB should be gone and the server should be running.
       let dbs = db._databases();
       assertEqual(-1, dbs.indexOf(dbName));
+=======
+    const lastLogTick = replication.logger.state().state.lastLogTick;
+>>>>>>> cfd9387f04... smaller changes for replication
 
       // Now recreate a new database with this name
       db._createDatabase(dbName);
@@ -1345,10 +1349,17 @@ function ReplicationOtherDBSuite () {
         internal.sleep(0.5);
       }
 
-      // Now test if the Slave did replicate the new database directly...
-      assertEqual(50, collectionCount(cn),
-                  'The slave inserted the new collection data into the old one, it skipped the drop.');
+    i = 60;
+    while (i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        // all good
+        return;
+      }
+      internal.sleep(0.5);
     }
+
+    fail();
   };
   deriveTestSuite(BaseTestConfig(), suite, '_ReplOther');
 
