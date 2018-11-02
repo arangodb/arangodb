@@ -476,8 +476,6 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   }
-
-  return arangodb::Result();
 }
 
 Result IResearchViewCoordinator::dropImpl() {
