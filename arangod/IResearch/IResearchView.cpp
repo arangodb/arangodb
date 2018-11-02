@@ -2065,8 +2065,6 @@ arangodb::Result IResearchView::updateProperties(
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   }
-
-  return arangodb::Result();
 }
 
 arangodb::Result IResearchView::updateProperties(
