@@ -1875,14 +1875,13 @@ int fetchEdgesFromEngines(
         continue;
       }
       StringRef idRef(id);
-      auto resE = cache.find(idRef);
-      if (resE == cache.end()) {
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
-        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
-        result.emplace_back(resE->second);
+        result.emplace_back(resE.first->second);
       }
     }
     if (!allCached) {
@@ -2764,14 +2763,13 @@ int fetchEdgesFromEngines(
         continue;
       }
       StringRef idRef(id);
-      auto resE = cache.find(idRef);
-      if (resE == cache.end()) {
+      auto resE = cache.insert({idRef, e});
+      if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
-        cache.emplace(idRef, e);
         result.emplace_back(e);
       } else {
-        result.emplace_back(resE->second);
+        result.emplace_back(resE.first->second);
       }
     }
     if (!allCached) {
