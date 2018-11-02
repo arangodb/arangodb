@@ -46,7 +46,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-constexpr double MIN_SECONDS = 60.0;
+  // controls how fast excess threads to io_context get pruned.
+  //  60 known to slow down tests that use single client thread (matthewv)
+  constexpr double MIN_SECONDS = 30.0;
 }
 
 // -----------------------------------------------------------------------------
