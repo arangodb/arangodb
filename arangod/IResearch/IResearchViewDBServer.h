@@ -82,7 +82,6 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   static arangodb::ViewFactory const& factory();
 
   virtual void open() override;
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return pointer to an index reader containing the datastore record snapshot

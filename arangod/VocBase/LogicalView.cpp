@@ -113,6 +113,40 @@ LogicalView::LogicalView(
   return factory.create(view, vocbase, definition);
 }
 
+/*static*/ bool LogicalView::enumerate(
+  TRI_vocbase_t& vocbase,
+  std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback
+) {
+  TRI_ASSERT(callback);
+
+  if (ServerState::instance()->isSingleServer()) {
+    for (auto& view: vocbase.views()) {
+      if (!callback(view)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  auto* engine = arangodb::ClusterInfo::instance();
+
+  if (!engine) {
+    LOG_TOPIC(ERR, Logger::VIEWS)
+      << "failure to get storage engine while enumerating views";
+
+    return false;
+  }
+
+  for (auto& view: engine->getViews(vocbase.name())) {
+    if (!callback(view)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /*static*/ Result LogicalView::instantiate(
     LogicalView::ptr& view,
     TRI_vocbase_t& vocbase,
@@ -233,6 +267,11 @@ arangodb::Result LogicalViewClusterInfo::drop() {
   return arangodb::Result();
 }
 
+arangodb::Result LogicalViewClusterInfo::rename(std::string&&, bool) {
+  // renaming a view in a cluster is unsupported
+  return TRI_ERROR_NOT_IMPLEMENTED;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          LogicalViewStorageEngine
 // -----------------------------------------------------------------------------
@@ -341,25 +380,35 @@ Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
-
   auto oldName = name();
+  auto res = vocbase().renameView(id(), newName);
+
+  if (!res.ok()) {
+    return res;
+  }
 
   try {
     name(std::move(newName));
 
-    // store new view definition to disk
-    if (!engine->inRecovery()) {
-      // write WAL 'change' marker
-      return engine->changeView(vocbase(), *this, doSync);
+    auto res = engine->inRecovery()
+      ? Result() : engine->changeView(vocbase(), *this, doSync);
+
+    if (!res.ok()) {
+      name(std::move(oldName)); // restore name
+      vocbase().renameView(id(), oldName);
+
+      return res;
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
+    vocbase().renameView(id(), oldName);
 
-    return ex.code();
+    return Result(ex.code(), ex.message());
   } catch (...) {
     name(std::move(oldName));
+    vocbase().renameView(id(), oldName);
 
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, "caught exception while renaming view");;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -393,9 +442,9 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   try {
     engine->changeView(vocbase(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
-    return { e.code() };
+    return Result(e.code(), e.message());
   } catch (...) {
-    return { TRI_ERROR_INTERNAL };
+    return Result(TRI_ERROR_INTERNAL, "caught exception while updating view");
   }
 
   arangodb::aql::PlanCache::instance()->invalidate(&vocbase());

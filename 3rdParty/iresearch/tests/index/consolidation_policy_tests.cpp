@@ -24,6 +24,7 @@
 #include "tests_shared.hpp"
 
 #include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
 
 NS_LOCAL
@@ -47,6 +48,7 @@ TEST(consolidation_test_tier, test_defaults) {
   irs::index_utils::consolidate_tier options;
   auto policy = irs::index_utils::consolidation_policy(options);
 
+  irs::memory_directory dir;
 
   {
     irs::index_writer::consolidating_segments_t consolidating_segments;
@@ -124,6 +126,8 @@ TEST(consolidation_test_tier, test_defaults) {
 }
 
 TEST(consolidation_test_tier, test_skewed_segments) {
+  irs::memory_directory dir;
+
   {
     irs::index_utils::consolidate_tier options;
     options.min_segments = 1;         // min number of segments per tier to merge at once
@@ -416,46 +420,6 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
-  }
-  // left-skewed distribution
-  {
-    const size_t sizes[] = {
-     9067, 2228, 9023, 0, 9293, 2637, 7529, 291, 4816, 68, 11, 3582, 4298, 4590, 2772, 9021, 32, 1993, 340, 538, 8578, 258, 8731, 5180, 5708, 339, 3830, 1530, 3906, 8714, 3501,
-     1767, 2695, 458, 286, 2506, 3454, 9191, 9368, 305, 17, 219, 6198, 1562, 6303, 7162, 4601, 2687, 8205, 8321, 4568, 2511, 6629, 9109, 9502, 1412, 357, 5235, 137, 9886, 5607,
-     1359, 9174, 529, 7074, 8343, 8023, 1618, 6128, 1661, 515, 2388, 2549, 826, 180, 886, 4237, 317, 170, 1532, 1602, 1091, 8953, 1791, 8523, 130, 22, 6319, 6145, 7034, 2006, 52,
-     9361, 3443, 8228, 1345, 95, 1940, 6432, 609
-    };
-
-    irs::index_meta meta;
-    for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end; ++begin) {
-      const size_t i = std::distance(begin, end);
-      meta.add(irs::segment_meta(std::to_string(i), nullptr, 100, 100, false, irs::segment_meta::file_set{}, *begin));
-    }
-
-    irs::index_utils::consolidate_tier options;
-    options.min_segments = 10;           // min number of segments per tier to merge at once
-    options.max_segments = 10;           // max number of segments per tier to merge at once
-    options.max_segments_bytes = 250000; // max size of the merge
-    options.floor_segment_bytes = 50;    // smaller segments will be treated as equal to this value
-    options.lookahead = 0;//irs::integer_traits<size_t>::const_max;
-
-    auto policy = irs::index_utils::consolidation_policy(options);
-
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    std::set<const irs::segment_meta*> candidates;
-
-    do {
-      candidates.clear();
-      policy(candidates, meta, consolidating_segments);
-
-      std::cerr << "Consolidation: ";
-      for (auto* segment : candidates) {
-        std::cerr << segment->size << ", ";
-      }
-      std::cerr << std::endl;
-
-      consolidating_segments.insert(candidates.begin(), candidates.end()); // register candidates for consolidation
-    } while (!candidates.empty());
   }
 }
 

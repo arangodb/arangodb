@@ -162,7 +162,13 @@ class features {
     FREQ = 1,
     POS = 2,
     OFFS = 4,
-    PAY = 8
+    PAY = 8,
+    // MSVC2013 requires compile-time constant values for enum combinations
+    // used by switch-case statements
+    FREQ_POS = 3, // FREQ | POS
+    FREQ_POS_OFFS = 7, // FREQ | POS | OFFS
+    FREQ_POS_PAY = 11, // FREQ | POS | PAY
+    FREQ_POS_OFFS_PAY = 15, // FREQ | POS | OFFS | PAY
   };
 
   features() = default;
@@ -5096,22 +5102,17 @@ irs::doc_iterator::ptr postings_reader::iterator(
 
   // MSVC 2013 doesn't support constexpr, can't use
   // 'operator|' in the following switch statement
-  CONSTEXPR const auto FREQ_POS_OFFS_PAY = features::FREQ | features::POS | features::OFFS | features::PAY;
-  CONSTEXPR const auto FREQ_POS_OFFS = features::FREQ | features::POS | features::OFFS;
-  CONSTEXPR const auto FREQ_POS_PAY = features::FREQ | features::POS | features::PAY;
-  CONSTEXPR const auto FREQ_POS = features::FREQ | features::POS;
-
   switch (enabled) {
-   case FREQ_POS_OFFS_PAY:
+   case features::FREQ_POS_OFFS_PAY:
     it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
     break;
-   case FREQ_POS_OFFS:
+   case features::FREQ_POS_OFFS:
     it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
     break;
-   case FREQ_POS_PAY:
+   case features::FREQ_POS_PAY:
     it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
     break;
-   case FREQ_POS:
+   case features::FREQ_POS:
     it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
     break;
    default:

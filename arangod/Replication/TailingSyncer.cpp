@@ -740,6 +740,17 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
 /// @brief changes the properties of a view,
 /// based on the VelocyPack provided
 Result TailingSyncer::changeView(VPackSlice const& slice) {
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while changing view properties"
+    );
+  }
+
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "view marker slice is no object");
@@ -788,7 +799,9 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
 
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    auto res = vocbase->renameView(view->id(), nameSlice.copyString());
+    auto res = view->rename(
+      nameSlice.copyString(), databaseFeature->forceSyncProperties()
+    );
 
     if (!res.ok()) {
       return res;
