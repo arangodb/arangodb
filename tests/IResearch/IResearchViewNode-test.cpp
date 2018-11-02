@@ -1052,7 +1052,7 @@ SECTION("collections") {
       "\"testCollection2\": { \"includeAllFields\": true }"
     "}}"
   );
-  CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+  CHECK((logicalView->modify(updateJson->slice(), true).ok()));
 
   // dummy query
   arangodb::aql::Query query(

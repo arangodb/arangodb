@@ -1036,12 +1036,8 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
   arangodb::CollectionGuard guard(&vocbase(), col->id());
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync);
+  return guard.collection()->modify(slice, false); // always a full-update
 }
 
 /// @brief determine the number of documents in a collection

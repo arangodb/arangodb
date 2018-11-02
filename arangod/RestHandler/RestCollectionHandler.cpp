@@ -430,7 +430,9 @@ void RestCollectionHandler::handleCommandPut() {
                                            "replicationFactor", "cacheEnabled"};
           VPackBuilder props = VPackCollection::keep(body, keep);
 
-          res = methods::Collections::updateProperties(coll.get(), props.slice());
+          res = methods::Collections::updateProperties(
+            *coll, props.slice(), false // always a full-update
+          );
 
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ true,

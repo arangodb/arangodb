@@ -1414,9 +1414,7 @@ bool IResearchView::emplace(TRI_voc_cid_t cid) {
 }
 
 arangodb::Result IResearchView::commit() {
-  ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
+  // '_storePersisted' protected by '_asyncSelf' held by snapshot()/registerFlushCallback()
   if (!_storePersisted) {
     return arangodb::Result(); // nothing more to do
   }
@@ -1855,6 +1853,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
       break;
     case Snapshot::SyncAndReplace: {
       // ingore existing cookie, recreate snapshot
+      SCOPED_LOCK(_asyncSelf->mutex()); // '_storePersisted' may be modified asynchronously
       auto const res = const_cast<IResearchView*>(this)->commit();
 
       if (!res.ok()) {
@@ -1887,9 +1886,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   }
 
   try {
-    ReadMutex mutex(_mutex); // _storePersisted can be asynchronously updated
-    SCOPED_LOCK(mutex);
-
+    // '_storePersisted' protected by '_asyncSelf' held by ViewStateRead
     if (_storePersisted) {
       reader->add(_storePersisted._reader);
     }

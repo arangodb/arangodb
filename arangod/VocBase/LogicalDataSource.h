@@ -136,12 +136,23 @@ class LogicalDataSource {
   virtual Result drop() = 0;
   std::string const& guid() const noexcept { return _guid; }
   TRI_voc_cid_t id() const noexcept { return _id; } 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing DataSource
+  /// @param definition the properties being updated
+  /// @param partialUpdate modify only the specified properties (false == all)
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result modify(
+    velocypack::Slice const& definition,
+    bool partialUpdate
+  ) = 0;
+
   std::string const& name() const noexcept { return _name; }
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
-  virtual Result rename(std::string&& newName, bool doSync) = 0;
+  virtual Result rename(std::string&& newName) = 0;
   bool system() const noexcept { return _system; }
- 
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append a jSON definition of the data-source to the 'builder'
   /// @param the buffer to append to, must be an open object

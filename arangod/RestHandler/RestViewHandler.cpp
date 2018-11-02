@@ -273,19 +273,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     // handle rename functionality
     if (suffixes[1] == "rename") {
-      auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
-        DatabaseFeature
-      >("Database");
-
-      if (!databaseFeature) {
-        generateError(Result(
-          TRI_ERROR_INTERNAL,
-          "failed to find feature 'Database' while renaming view"
-        ));
-
-        return;
-      }
-
       VPackSlice newName = body.get("name");
 
       if (!newName.isString()) {
@@ -325,9 +312,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return; // skip view
       }
 
-      auto res = view->rename(
-        newName.copyString(), databaseFeature->forceSyncProperties()
-      );
+      auto res = view->rename(newName.copyString());
 
       if (res.ok()) {
         getView(view->name(), false);
@@ -364,9 +349,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       }
     }
 
-    auto const result = view->updateProperties(
-      body, partialUpdate, true
-    );  // TODO: not force sync?
+    auto result = view->modify(body, partialUpdate);
 
     if (!result.ok()) {
       generateError(result);

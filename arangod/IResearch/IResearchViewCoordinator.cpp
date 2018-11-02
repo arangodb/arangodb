@@ -327,10 +327,9 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
-arangodb::Result IResearchViewCoordinator::updateProperties(
+arangodb::Result IResearchViewCoordinator::modify(
     velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool /*doSync*/
+    bool partialUpdate
 ) {
   auto* engine = arangodb::ClusterInfo::instance();
 

@@ -216,7 +216,7 @@ class LogicalCollection : public LogicalDataSource {
   void unload();
 
   virtual arangodb::Result drop() override;
-  virtual Result rename(std::string&& name, bool doSync) override;
+  virtual Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -234,7 +234,10 @@ class LogicalCollection : public LogicalDataSource {
                                                bool allInSync) const;
 
   // Update this collection.
-  virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
+  virtual arangodb::Result modify(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) override;
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures() const;

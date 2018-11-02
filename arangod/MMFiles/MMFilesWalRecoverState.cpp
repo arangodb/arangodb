@@ -772,12 +772,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        // turn off sync temporarily if the database or collection are going to
-        // be
-        // dropped later
-        bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        arangodb::Result res =
-            collection->updateProperties(payloadSlice, forceSync);
+        auto res = collection->modify(payloadSlice, false); // always a full-update
+
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "cannot change properties for collection " << collectionId
@@ -795,16 +791,6 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
         VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
-        auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
-          DatabaseFeature
-        >("Database");
-
-        if (!databaseFeature) {
-          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-            << "failed to find feature 'Database' while renaming view";
-          ++state->errorCount;
-          return state->canContinue();
-        }
 
         if (!payloadSlice.isObject()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -842,10 +828,6 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        // turn off sync temporarily if the database or collection are going to
-        // be dropped later
-        bool const forceSync = state->willViewBeDropped(databaseId, viewId);
-
         VPackSlice nameSlice = payloadSlice.get("name");
 
         if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
@@ -863,9 +845,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             vocbase->dropView(other->id(), true);
           }
 
-          auto res = view->rename(
-            std::string(name), databaseFeature->forceSyncProperties()
-          );
+          auto res = view->rename(std::string(name));
 
           if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -878,7 +858,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           }
         }
 
-        auto res = view->updateProperties(payloadSlice, false, forceSync);
+        auto res = view->modify(payloadSlice, false); // always a full-update
+
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "cannot change properties for view " << viewId

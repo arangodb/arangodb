@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -267,7 +268,7 @@ arangodb::Result LogicalViewClusterInfo::drop() {
   return arangodb::Result();
 }
 
-arangodb::Result LogicalViewClusterInfo::rename(std::string&&, bool) {
+arangodb::Result LogicalViewClusterInfo::rename(std::string&&) {
   // renaming a view in a cluster is unsupported
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
@@ -376,10 +377,29 @@ arangodb::Result LogicalViewStorageEngine::drop() {
   return arangodb::Result();
 }
 
-Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
+Result LogicalViewStorageEngine::rename(std::string&& newName) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while renaming view"
+    );
+  }
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+
+  if (!engine) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find a storage engine while renaming view"
+    );
+  }
+
+  auto doSync = databaseFeature->forceSyncProperties();
   auto oldName = name();
   auto res = vocbase().renameView(id(), newName);
 
@@ -414,12 +434,31 @@ Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result LogicalViewStorageEngine::updateProperties(
+arangodb::Result LogicalViewStorageEngine::modify(
     VPackSlice const& slice,
-    bool partialUpdate,
-    bool doSync
+    bool partialUpdate
 ) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while updating collection"
+    );
+   }
+
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find a storage engine while updating collection"
+    );
+  }
 
   auto res = updateProperties(slice, partialUpdate);
 
@@ -431,10 +470,9 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   LOG_TOPIC(DEBUG, Logger::VIEWS) << "updated view with properties '"
                                   << slice.toJson() << "'";
 
-  // after this call the properties are stored
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+  auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
 
+  // after this call the properties are stored
   if (engine->inRecovery()) {
     return arangodb::Result(); // do not modify engine while in recovery
   }

@@ -805,17 +805,6 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 /// @brief creates a view, based on the VelocyPack provided
 Result Syncer::createView(TRI_vocbase_t& vocbase,
                           arangodb::velocypack::Slice const& slice) {
-  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
-    DatabaseFeature
-  >("Database");
-
-  if (!databaseFeature) {
-    return Result(
-      TRI_ERROR_INTERNAL,
-      "failed to find feature 'Database' while creating view"
-    );
-  }
-
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");
@@ -848,29 +837,28 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
     VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
 
     if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-      auto res = view->rename(
-        nameSlice.copyString(), databaseFeature->forceSyncProperties()
-      );
+      auto res = view->rename(nameSlice.copyString());
 
       if (!res.ok()) {
         return res;
       }
     }
 
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-
-    return view->updateProperties(slice, false, doSync);
+    return view->modify(slice, false); // always a full-update
   }
 
   view = vocbase.lookupView(nameSlice.copyString());
+
   if (view) { // resolve name conflict by deleting existing
     Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
+
     if (res.fail()) {
       return res;
     }
   }
 
   VPackBuilder s;
+
   s.openObject();
   s.add("id", VPackSlice::nullSlice());
   s.close();

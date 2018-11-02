@@ -382,11 +382,16 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::updateProperties(LogicalCollection* coll,
-                                     VPackSlice const& props) {
+Result Collections::updateProperties(
+    LogicalCollection& collection,
+    velocypack::Slice const& props,
+    bool partialUpdate
+) {
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr) {
-    bool canModify = exec->canUseCollection(coll->name(), auth::Level::RW);
+    bool canModify = exec->canUseCollection(collection.name(), auth::Level::RW);
+
     if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
     }
@@ -394,17 +399,17 @@ Result Collections::updateProperties(LogicalCollection* coll,
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
+    auto info = ci->getCollection(
+      collection.vocbase().name(), std::to_string(collection.id())
+    );
 
-    TRI_ASSERT(coll);
-
-    auto info =
-        ci->getCollection(coll->vocbase().name(), std::to_string(coll->id()));
-
-    return info->updateProperties(props, false);
+    return info->modify(props, partialUpdate);
   } else {
     auto ctx =
-        transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
-    SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
+      transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
+    SingleCollectionTransaction trx(
+      ctx, collection, AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -412,15 +417,15 @@ Result Collections::updateProperties(LogicalCollection* coll,
     }
 
     // try to write new parameter to file
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    arangodb::Result updateRes = coll->updateProperties(props, doSync);
+    auto updateRes = collection.modify(props, partialUpdate);
 
     if (!updateRes.ok()) {
       return updateRes;
     }
 
-    auto physical = coll->getPhysical();
+    auto physical = collection.getPhysical();
     TRI_ASSERT(physical != nullptr);
+
     return physical->persistProperties();
   }
 }

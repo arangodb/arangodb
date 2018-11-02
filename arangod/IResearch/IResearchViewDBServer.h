@@ -81,6 +81,11 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::ViewFactory const& factory();
 
+  virtual arangodb::Result modify(
+    arangodb::velocypack::Slice const& properties,
+    bool partialUpdate
+  ) override;
+
   virtual void open() override;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -95,11 +100,6 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
     IResearchView::Snapshot mode = IResearchView::Snapshot::Find
   ) const;
 
-  virtual arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
-  ) override;
   virtual bool visitCollections(
     CollectionVisitor const& visitor
   ) const override;
