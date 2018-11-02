@@ -1305,7 +1305,6 @@ function ReplicationOtherDBSuite () {
     testDropDatabaseOnMasterDuringReplication: function () {
       setupReplication();
 
-<<<<<<< HEAD
       // Section - Master
       // Now do the evil stuff: drop the database that is replicating from right now.
       connectToMaster();
@@ -1317,16 +1316,6 @@ function ReplicationOtherDBSuite () {
       // The DB should be gone and the server should be running.
       let dbs = db._databases();
       assertEqual(-1, dbs.indexOf(dbName));
-=======
-    const lastLogTick = replication.logger.state().state.lastLogTick;
->>>>>>> cfd9387f04... smaller changes for replication
-
-      // Now recreate a new database with this name
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-
-      db._create(cn);
-      db._collection(cn).save(docs);
 
       const lastLogTick = replication.logger.state().state.lastLogTick;
 
