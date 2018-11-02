@@ -270,7 +270,7 @@ arangodb::Result LogicalViewClusterInfo::drop() {
 
 arangodb::Result LogicalViewClusterInfo::rename(std::string&&) {
   // renaming a view in a cluster is unsupported
-  return TRI_ERROR_NOT_IMPLEMENTED;
+  return TRI_ERROR_CLUSTER_UNSUPPORTED;
 }
 
 // -----------------------------------------------------------------------------

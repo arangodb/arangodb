@@ -781,7 +781,7 @@ SECTION("test_rename") {
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName").errorNumber()));
+    CHECK((TRI_ERROR_CLUSTER_UNSUPPORTED == wiew->rename("newName").errorNumber()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -833,7 +833,7 @@ SECTION("test_rename") {
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName").errorNumber()));
+    CHECK((TRI_ERROR_CLUSTER_UNSUPPORTED == wiew->rename("newName").errorNumber()));
 
     {
       arangodb::velocypack::Builder builder;
