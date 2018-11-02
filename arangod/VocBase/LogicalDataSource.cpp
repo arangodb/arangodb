@@ -221,6 +221,7 @@ Result LogicalDataSource::toVelocyPack(
     );
   }
 
+  builder.add(StaticStrings::DataSourceGuid, toValuePair(guid())); // required for dump/restore
   builder.add(
     StaticStrings::DataSourceId,
     velocypack::Value(std::to_string(id()))
@@ -232,7 +233,6 @@ Result LogicalDataSource::toVelocyPack(
   // includeSystem if we are persisting the properties
   if (forPersistence) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
-    builder.add(StaticStrings::DataSourceGuid, toValuePair(guid()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
     // FIXME not sure if the following is relevant

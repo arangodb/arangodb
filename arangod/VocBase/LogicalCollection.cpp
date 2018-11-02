@@ -456,10 +456,20 @@ bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
 
-Result LogicalCollection::rename(std::string&& newName, bool doSync) {
+Result LogicalCollection::rename(std::string&& newName) {
   // Should only be called from inside vocbase.
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while renaming collection"
+    );
+  }
 
   // Check for illegal states.
   switch (_status) {
@@ -484,6 +494,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
       return TRI_ERROR_INTERNAL;
   }
 
+  auto doSync = databaseFeature->forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
@@ -616,7 +627,6 @@ arangodb::Result LogicalCollection::appendVelocyPack(
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
-    result.add(StaticStrings::DataSourceGuid, VPackValue(guid()));
     result.add(StaticStrings::DataSourceSystem, VPackValue(system()));
   }
 
@@ -628,11 +638,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   if (_keyGenerator != nullptr) {
     result.openObject();
     _keyGenerator->toVelocyPack(result);
-    result.close();
   } else {
     result.openArray();
-    result.close();
   }
+  result.close();
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
@@ -688,8 +697,10 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
-arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
-                                                     bool doSync) {
+arangodb::Result LogicalCollection::modify(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+) {
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -698,6 +709,26 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // - _isSystem
   // - _isVolatile
   // ... probably a few others missing here ...
+
+  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
+    DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find feature 'Database' while updating collection"
+    );
+   }
+
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return Result(
+      TRI_ERROR_INTERNAL,
+      "failed to find a storage engine while updating collection"
+    );
+  }
 
   MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
 
@@ -750,6 +781,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
     }
   }
 
+  auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
+
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   Result res = getPhysical()->updateProperties(slice, doSync);
@@ -767,8 +800,6 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       vocbase().name(), std::to_string(id()), this
     );
   }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   engine->changeCollection(vocbase(), id(), *this, doSync);
 

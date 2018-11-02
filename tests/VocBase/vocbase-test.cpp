@@ -44,8 +44,8 @@ struct TestView: public arangodb::LogicalView {
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder&, bool , bool) const override { return arangodb::Result(); }
   virtual arangodb::Result drop() override { deleted(true); return vocbase().dropView(id(), true); }
   virtual void open() override {}
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
-  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const&, bool, bool) override { return arangodb::Result(); }
+  virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result modify(arangodb::velocypack::Slice const&, bool) override { return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 

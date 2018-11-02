@@ -691,8 +691,6 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
-  auto views = ci->getViews(dbName); // ci does not store links in the view objects
-
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
@@ -720,12 +718,18 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
   resultBuilder.close();  // collections
   resultBuilder.add("views", VPackValue(VPackValueType::Array));
-  for (auto const& view : views) {
-    resultBuilder.openObject();
-    view->toVelocyPack(resultBuilder, /*details*/true, /*forPersistence*/false);
-    resultBuilder.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
-    resultBuilder.close();
-  }
+    LogicalView::enumerate(
+      _vocbase,
+      [&resultBuilder](LogicalView::ptr const& view)->bool {
+        if (view) {
+          resultBuilder.openObject();
+            view->toVelocyPack(resultBuilder, true, false); // details, !forPersistence because on restore any datasource ids will differ, so need an end-user representation
+          resultBuilder.close();
+        }
+
+        return true;
+      }
+    );
   resultBuilder.close();  // views
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();

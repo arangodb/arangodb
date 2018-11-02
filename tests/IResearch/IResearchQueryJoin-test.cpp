@@ -372,7 +372,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->modify(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
@@ -522,7 +522,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->modify(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 

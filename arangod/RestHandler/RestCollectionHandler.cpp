@@ -424,14 +424,15 @@ void RestCollectionHandler::handleCommandPut() {
               /*detailedCount*/ true
             );
           }
-
         } else if (sub == "properties") {
           std::vector<std::string> keep = {"doCompact",         "journalSize",
                                            "waitForSync",       "indexBuckets",
                                            "replicationFactor", "cacheEnabled"};
           VPackBuilder props = VPackCollection::keep(body, keep);
 
-          res = methods::Collections::updateProperties(coll.get(), props.slice());
+          res = methods::Collections::updateProperties(
+            *coll, props.slice(), false // always a full-update
+          );
 
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ true,
@@ -454,7 +455,6 @@ void RestCollectionHandler::handleCommandPut() {
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*detailedCount*/ true);
           }
-
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, *coll);
 

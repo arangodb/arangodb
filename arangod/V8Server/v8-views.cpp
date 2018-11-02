@@ -570,17 +570,13 @@ static void JS_PropertiesViewVocbase(
       }
     }
 
-    auto doSync = arangodb::application_features::ApplicationServer::getFeature<
-      DatabaseFeature
-    >("Database")->forceSyncProperties();
-
     auto view = resolver.getView(viewPtr->id()); // ensure have the latest definition
 
     if (!view) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto res = view->updateProperties(builder.slice(), partialUpdate, doSync);
+    auto res = view->modify(builder.slice(), partialUpdate);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
@@ -629,16 +625,6 @@ static void JS_RenameViewVocbase(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
-    DatabaseFeature
-  >("Database");
-
-  if (!databaseFeature) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-      "failed to find feature 'Database' while renaming view"
-    );
-  }
-
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("rename(<name>)");
   }
@@ -681,8 +667,7 @@ static void JS_RenameViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); // skip view
   }
 
-  auto res =
-    view->rename(std::string(name), databaseFeature->forceSyncProperties());
+  auto res = view->rename(std::string(name));
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);

@@ -358,7 +358,7 @@ SECTION("test_drop_database") {
   REQUIRE((false == !wiewImpl));
 
   beforeCount = 0; // reset before call to StorageEngine::createView(...)
-  auto res = logicalWiew->updateProperties(viewUpdateJson->slice(), true, false);
+  auto res = logicalWiew->modify(viewUpdateJson->slice(), true);
   REQUIRE(true == res.ok());
   CHECK((1 + 2 + 1 == beforeCount)); // +1 for StorageEngineMock::createView(...), +2 for StorageEngineMock::getViewProperties(...), +1 for StorageEngineMock::changeView(...)
 
@@ -599,7 +599,7 @@ SECTION("test_query") {
     CHECK((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     CHECK((false == !wiewImpl));
-    arangodb::Result res = logicalWiew->updateProperties(links->slice(), true, false);
+    arangodb::Result res = logicalWiew->modify(links->slice(), true);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -699,7 +699,7 @@ SECTION("test_query") {
     REQUIRE((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     REQUIRE((false == !wiewImpl));
-    arangodb::Result res = logicalWiew->updateProperties(viewUpdateJson->slice(), true, false);
+    arangodb::Result res = logicalWiew->modify(viewUpdateJson->slice(), true);
     REQUIRE(true == res.ok());
 
     // start flush thread
@@ -781,7 +781,7 @@ SECTION("test_rename") {
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName", true).errorNumber()));
+    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName").errorNumber()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -833,7 +833,7 @@ SECTION("test_rename") {
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName", true).errorNumber()));
+    CHECK((TRI_ERROR_NOT_IMPLEMENTED == wiew->rename("newName").errorNumber()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -846,7 +846,7 @@ SECTION("test_rename") {
     }
 
     CHECK((("_iresearch_123_" + wiewId) == view->name()));
-    wiew->rename("testView", true); // rename back or vocbase will be out of sync
+    wiew->rename("testView"); // rename back or vocbase will be out of sync
   }
 }
 
@@ -867,7 +867,8 @@ SECTION("test_toVelocyPack") {
     wiew->toVelocyPack(builder,false, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((3 == slice.length()));
+    CHECK((4U == slice.length()));
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("1") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
@@ -889,7 +890,8 @@ SECTION("test_toVelocyPack") {
     wiew->toVelocyPack(builder, true, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((9U == slice.length()));
+    CHECK((10U == slice.length()));
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
@@ -1057,7 +1059,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1065,7 +1067,7 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"consolidationIntervalMsec\": 52, \"links\": { \"testCollection\": {} } }");
-      CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
+      CHECK((true == wiew->modify(update->slice(), true).ok()));
     }
 
     {
@@ -1077,7 +1079,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1098,7 +1100,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((10U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1147,7 +1149,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1155,7 +1157,7 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
-      CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
+      CHECK((true == wiew->modify(update->slice(), false).ok()));
     }
 
     {
@@ -1167,7 +1169,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1188,7 +1190,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((10U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1242,7 +1244,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1250,7 +1252,7 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
-      CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
+      CHECK((true == wiew->modify(update->slice(), true).ok()));
     }
 
     {
@@ -1262,7 +1264,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1280,7 +1282,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((10U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1337,7 +1339,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1345,7 +1347,7 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
-      CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
+      CHECK((true == wiew->modify(update->slice(), false).ok()));
     }
 
     {
@@ -1357,7 +1359,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((9U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
@@ -1375,7 +1377,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((10U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));

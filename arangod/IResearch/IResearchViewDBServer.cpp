@@ -735,10 +735,9 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
   return reader;
 }
 
-arangodb::Result IResearchViewDBServer::updateProperties(
+arangodb::Result IResearchViewDBServer::modify(
   arangodb::velocypack::Slice const& slice,
-  bool partialUpdate,
-  bool doSync
+  bool partialUpdate
 ) {
   if (!slice.isObject()) {
     return arangodb::Result(
