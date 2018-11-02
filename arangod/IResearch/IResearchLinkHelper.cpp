@@ -251,7 +251,10 @@ arangodb::Result modifyLinks(
   auto res = trx.begin();
 
   if (!res.ok()) {
-    return res;
+    return arangodb::Result(
+      res.errorNumber(),
+      std::string("failed to start transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
+    );
   }
 
   {
@@ -419,7 +422,15 @@ arangodb::Result modifyLinks(
   }
 
   if (error.empty()) {
-    return arangodb::Result(trx.commit());
+    auto res = trx.commit();
+
+    return res.ok()
+      ? arangodb::Result()
+      : arangodb::Result(
+          res.errorNumber(),
+          std::string("failed to commit transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
+        )
+      ;
   }
 
   return arangodb::Result(
