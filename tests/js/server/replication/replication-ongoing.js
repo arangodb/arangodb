@@ -1316,7 +1316,7 @@ function ReplicationOtherDBSuite () {
       // The DB should be gone and the server should be running.
       let dbs = db._databases();
       assertEqual(-1, dbs.indexOf(dbName));
-    
+      
       const lastLogTick = replication.logger.state().state.lastLogTick;
 
       // Section - Slave
