@@ -2639,7 +2639,9 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+  auto cbGuard = scopeGuard([&] {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  });
 
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
@@ -2677,6 +2679,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
     while (!application_features::ApplicationServer::isStopping()) {
       if (*dbServerResult >= 0) {
+        cbGuard.fire(); // unregister cb before accessing errMsg
         loadCurrent();
         if (*dbServerResult == TRI_ERROR_NO_ERROR) {
           // Copy over all elements in slice.
@@ -2718,43 +2721,73 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-
-  auto numberOfShardsMutex = std::make_shared<Mutex>();
-  auto numberOfShards = std::make_shared<int>(0);
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
-  std::string const key =
+  std::string const planCollKey =
       "Plan/Collections/" + databaseName + "/" + collectionID;
+  std::string const planIndexesKey = planCollKey + "/indexes";
 
-  AgencyCommResult res = ac.getValues(key);
+  AgencyCommResult previous = ac.getValues(planCollKey);
 
-  if (!res.successful()) {
+  if (!previous.successful()) {
     events::DropIndex(collectionID, idString,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
     return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
   }
 
-  velocypack::Slice previous = res.slice()[0].get(
+  velocypack::Slice collection = previous.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Plan",
                                 "Collections", databaseName, collectionID}));
-  if (!previous.isObject()) {
+  if (!collection.isObject()) {
     events::DropIndex(collectionID, idString,
                       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  TRI_ASSERT(VPackObjectIterator(previous).size() > 0);
+  TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
+  const size_t numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(
+                                      collection, StaticStrings::NumberOfShards, 1);
+  
+  VPackSlice indexes = collection.get("indexes");
+  if (!indexes.isArray()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Failed to find index " << databaseName << "/" << collectionID
+    << "/" << iid;
+    return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
+  }
+  
+  VPackSlice indexToRemove;
+  for (VPackSlice indexSlice : VPackArrayIterator(indexes)) {
+    auto idSlice = indexSlice.get(arangodb::StaticStrings::IndexId);
+    auto typeSlice = indexSlice.get(arangodb::StaticStrings::IndexType);
+    if (!idSlice.isString() || !typeSlice.isString()) {
+      continue;
+    }
+    if (idSlice.isEqualString(idString)) {
+      Index::IndexType type = Index::type(typeSlice.copyString());
+      if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        return setErrormsg(TRI_ERROR_FORBIDDEN, errorMsg);
+      }
+      indexToRemove = indexSlice;
+      break;
+    }
+  }
+  
+  if (!indexToRemove.isObject()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Failed to find index " << databaseName << "/" << collectionID
+    << "/" << iid;
+    return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
+  }
 
   std::string where =
       "Current/Collections/" + databaseName + "/" + collectionID;
 
-  auto dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   auto errMsg = std::make_shared<std::string>();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& current) {
-        MUTEX_LOCKER(guard, *numberOfShardsMutex);
-
-        if (*numberOfShards  == 0) {
+        if (numberOfShards  == 0) {
           return false;
         }
 
@@ -2764,7 +2797,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
         VPackObjectIterator shards(current);
 
-        if (shards.size() == (size_t)(*numberOfShards)) {
+        if (shards.size() == numberOfShards) {
           bool found = false;
           for (auto const& shard : shards) {
             VPackSlice const indexes = shard.value.get("indexes");
@@ -2772,8 +2805,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
             if (indexes.isArray()) {
               for (auto const& v : VPackArrayIterator(indexes)) {
                 if (v.isObject()) {
-                  VPackSlice const k = v.get("id");
-                  if (k.isString() && idString == k.copyString()) {
+                  VPackSlice const k = v.get(StaticStrings::IndexId);
+                  if (k.isString() && k.isEqualString(idString)) {
                     // still found the index in some shard
                     found = true;
                     break;
@@ -2802,101 +2835,15 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+  auto cbGuard = scopeGuard([&] {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  });
 
-  loadPlan();
-  // It is possible that between the fetching of the planned collections
-  // and the write lock we acquire below something has changed. Therefore
-  // we first get the previous value and then do a compare and swap operation.
-
-  VPackBuilder tmp;
-  VPackSlice indexes;
-  {
-    std::shared_ptr<LogicalCollection> c =
-        getCollection(databaseName, collectionID);
-
-    READ_LOCKER(readLocker, _planProt.lock);
-
-    c->getIndexesVPack(tmp, Index::makeFlags(Index::Serialize::Basics));
-    indexes = tmp.slice();
-
-    if (!indexes.isArray()) {
-      try {
-        LOG_TOPIC(DEBUG, Logger::CLUSTER)
-          << "Failed to find index " << databaseName << "/" << collectionID
-          << "/" << iid << " - " << indexes.toJson();
-      } catch (std::exception const& e) {
-        LOG_TOPIC(DEBUG, Logger::CLUSTER)
-          << "Failed to find index " << databaseName << "/" << collectionID
-          << "/" << iid << " - " << e.what();
-      }
-      // no indexes present, so we can't delete our index
-      return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
-    }
-
-    MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    *numberOfShards = static_cast<int>(c->numberOfShards());
-  }
-
-  bool found = false;
-  VPackBuilder newIndexes;
-  {
-    VPackArrayBuilder newIndexesArrayBuilder(&newIndexes);
-    // mop: eh....do we need a flag to mark it invalid until cache is renewed?
-    for (auto const& indexSlice : VPackArrayIterator(indexes)) {
-      auto id = indexSlice.get(arangodb::StaticStrings::DataSourceId);
-      auto type = indexSlice.get(arangodb::StaticStrings::DataSourceType);
-
-      if (!id.isString() || !type.isString()) {
-        continue;
-      }
-      if (idString == id.copyString()) {
-        // found our index, ignore it when copying
-        found = true;
-
-        std::string const typeString = type.copyString();
-        if (typeString == "primary" || typeString == "edge") {
-          return setErrormsg(TRI_ERROR_FORBIDDEN, errorMsg);
-        }
-        continue;
-      }
-      newIndexes.add(indexSlice);
-    }
-  }
-  if (!found) {
-    try {
-      // it is not necessarily an error that the index is not found,
-      // for example if one tries to drop a non-existing index. so we
-      // do not log any warnings but just in debug mode
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "Failed to find index " << databaseName << "/" << collectionID
-        << "/" << iid << " - " << indexes.toJson();
-    } catch (std::exception const& e) {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "Failed to find index " << databaseName << "/" << collectionID
-        << "/" << iid << " - " << e.what();
-    }
-    return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
-  }
-
-  VPackBuilder newCollectionBuilder;
-  {
-    VPackObjectBuilder newCollectionObjectBuilder(&newCollectionBuilder);
-    for (auto const& property : VPackObjectIterator(previous)) {
-      if (property.key.copyString() == "indexes") {
-        newCollectionBuilder.add(property.key.copyString(), newIndexes.slice());
-      } else {
-        newCollectionBuilder.add(property.key.copyString(), property.value);
-      }
-    }
-  }
-
-  AgencyOperation newVal(key, AgencyValueOperationType::SET,
-                         newCollectionBuilder.slice());
+  AgencyOperation planErase(planIndexesKey, AgencyValueOperationType::ERASE, indexToRemove);
   AgencyOperation incrementVersion("Plan/Version",
                                    AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition prec(key, AgencyPrecondition::Type::VALUE, previous);
-  AgencyWriteTransaction trx({newVal, incrementVersion}, prec);
+  AgencyPrecondition prec(planCollKey, AgencyPrecondition::Type::VALUE, collection);
+  AgencyWriteTransaction trx({planErase, incrementVersion}, prec);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
@@ -2911,21 +2858,19 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
   // load our own cache:
   loadPlan();
-  {
-    MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    if (*numberOfShards == 0) {
-      loadCurrent();
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (numberOfShards == 0) { // smart "dummy" collection has no shards
+    TRI_ASSERT(collection.get(StaticStrings::IsSmart).getBool());
+    loadCurrent();
+    return TRI_ERROR_NO_ERROR;
   }
-
+  
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (true) {
-      errorMsg = *errMsg;
-
       if (*dbServerResult >= 0) {
+        cbGuard.fire(); // unregister cb before accessing errMsg
+        errorMsg = *errMsg;
         loadCurrent();
         events::DropIndex(collectionID, idString, *dbServerResult);
         return *dbServerResult;
