@@ -275,7 +275,7 @@ SECTION("test_rename") {
 
   auto const res = view->rename("otherName");
   CHECK(res.fail());
-  CHECK((TRI_ERROR_CLUSTER_UNSUPPORTED == res.errorNumber()));
+  CHECK(TRI_ERROR_CLUSTER_UNSUPPORTED == res.errorNumber());
 }
 
 SECTION("visit_collections") {
@@ -356,7 +356,7 @@ SECTION("test_defaults") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -379,7 +379,7 @@ SECTION("test_defaults") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -400,7 +400,7 @@ SECTION("test_defaults") {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->toVelocyPack(builder, false, false);
+      view->properties(builder, false, false);
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -420,7 +420,7 @@ SECTION("test_defaults") {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->toVelocyPack(builder, false, true);
+      view->properties(builder, false, true);
       builder.close();
       auto slice = builder.slice();
 
@@ -746,7 +746,7 @@ SECTION("test_drop_with_link") {
       CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
 
-    CHECK((logicalView->modify(viewUpdateJson->slice(), true).ok()));
+    CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection));
     logicalView = ci->getView(vocbase->name(), viewId);
@@ -858,7 +858,7 @@ SECTION("test_update_properties") {
     {
       VPackBuilder builder;
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       arangodb::iresearch::IResearchViewMeta meta;
@@ -873,7 +873,7 @@ SECTION("test_update_properties") {
     // update properties - full update
     {
       auto props = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 }");
-      CHECK(view->modify(props->slice(), false).ok());
+      CHECK(view->properties(props->slice(), false).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
 
@@ -893,7 +893,7 @@ SECTION("test_update_properties") {
       {
         VPackBuilder builder;
         builder.openObject();
-        fullyUpdatedView->toVelocyPack(builder, true, false);
+        fullyUpdatedView->properties(builder, true, false);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -910,7 +910,7 @@ SECTION("test_update_properties") {
       {
         VPackBuilder builder;
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -924,7 +924,7 @@ SECTION("test_update_properties") {
     // partially update properties
     {
       auto props = arangodb::velocypack::Parser::fromJson("{ \"consolidationIntervalMsec\": 42 }");
-      CHECK(fullyUpdatedView->modify(props->slice(), true).ok());
+      CHECK(fullyUpdatedView->properties(props->slice(), true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
 
@@ -944,7 +944,7 @@ SECTION("test_update_properties") {
       {
         VPackBuilder builder;
         builder.openObject();
-        partiallyUpdatedView->toVelocyPack(builder, true, false);
+        partiallyUpdatedView->properties(builder, true, false);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1084,7 +1084,7 @@ SECTION("test_update_links_partial_remove") {
     "  \"testCollection3\" : { \"id\": \"3\" } "
     "} }"
   );
-  CHECK(view->modify(linksJson->slice(), true).ok()); // add links
+  CHECK(view->properties(linksJson->slice(), true).ok()); // add links
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   auto oldView = view;
@@ -1117,7 +1117,7 @@ SECTION("test_update_links_partial_remove") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -1309,7 +1309,7 @@ SECTION("test_update_links_partial_remove") {
     CHECK(0 < slice.get("figures").get("memory").getUInt());
   }
 
-  CHECK(view->modify(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
+  CHECK(view->properties(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
   CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
   // remove testCollection2 link
@@ -1324,7 +1324,7 @@ SECTION("test_update_links_partial_remove") {
     "  \"2\" : null "
     "} }"
   );
-  CHECK(view->modify(updateJson->slice(), true).ok());
+  CHECK(view->properties(updateJson->slice(), true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   oldView = view;
@@ -1356,7 +1356,7 @@ SECTION("test_update_links_partial_remove") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -1644,7 +1644,7 @@ SECTION("test_update_links_partial_add") {
     "  \"testCollection3\" : { \"id\": \"3\" } "
     "} }"
   );
-  CHECK(view->modify(linksJson->slice(), true).ok()); // add links
+  CHECK(view->properties(linksJson->slice(), true).ok()); // add links
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   auto oldView = view;
@@ -1676,7 +1676,7 @@ SECTION("test_update_links_partial_add") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -1808,7 +1808,7 @@ SECTION("test_update_links_partial_add") {
     CHECK(0 < slice.get("figures").get("memory").getUInt());
   }
 
-  CHECK(view->modify(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
+  CHECK(view->properties(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
   CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
   // remove testCollection2 link
@@ -1823,7 +1823,7 @@ SECTION("test_update_links_partial_add") {
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
     "} }"
   );
-  CHECK(view->modify(updateJson->slice(), true).ok());
+  CHECK(view->properties(updateJson->slice(), true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   oldView = view;
@@ -1856,7 +1856,7 @@ SECTION("test_update_links_partial_add") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -2053,7 +2053,7 @@ SECTION("test_update_links_partial_add") {
   // partial update - empty delta
   {
     auto const updateJson = arangodb::velocypack::Parser::fromJson("{ }");
-    CHECK(view->modify(updateJson->slice(), true).ok()); // empty properties -> should not affect plan version
+    CHECK(view->properties(updateJson->slice(), true).ok()); // empty properties -> should not affect plan version
     CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
   }
 
@@ -2130,7 +2130,7 @@ SECTION("test_update_links_partial_add") {
     userManager->setQueryRegistry(&queryRegistry);
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(linksJson->slice(), true).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(linksJson->slice(), true).errorNumber()));
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection1));
     logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
@@ -2252,7 +2252,7 @@ SECTION("test_update_links_replace") {
     "  \"testCollection3\" : { \"id\": \"3\" } "
     "} }"
   );
-  CHECK(view->modify(linksJson->slice(), false).ok()); // add link
+  CHECK(view->properties(linksJson->slice(), false).ok()); // add link
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   auto oldView = view;
@@ -2284,7 +2284,7 @@ SECTION("test_update_links_replace") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -2416,10 +2416,10 @@ SECTION("test_update_links_replace") {
     CHECK(0 < slice.get("figures").get("memory").getUInt());
   }
 
-  CHECK(view->modify(linksJson->slice(), false).ok()); // same properties -> should not affect plan version
+  CHECK(view->properties(linksJson->slice(), false).ok()); // same properties -> should not affect plan version
   CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
-  CHECK(view->modify(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
+  CHECK(view->properties(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
   CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
   // replace links with testCollection2 link
@@ -2442,7 +2442,7 @@ SECTION("test_update_links_replace") {
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
     "} }"
   );
-  CHECK(view->modify(updateJson->slice(), false).ok());
+  CHECK(view->properties(updateJson->slice(), false).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   oldView = view;
@@ -2473,7 +2473,7 @@ SECTION("test_update_links_replace") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -2564,7 +2564,7 @@ SECTION("test_update_links_replace") {
     "  \"2\" : null "
     "} }"
   );
-  CHECK(view->modify(updateJson->slice(), false).ok());
+  CHECK(view->properties(updateJson->slice(), false).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   oldView = view;
@@ -2595,7 +2595,7 @@ SECTION("test_update_links_replace") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -2825,7 +2825,7 @@ SECTION("test_update_links_clear") {
     "  \"testCollection3\" : { \"id\": \"3\" } "
     "} }"
   );
-  CHECK(view->modify(linksJson->slice(), false).ok()); // add link
+  CHECK(view->properties(linksJson->slice(), false).ok()); // add link
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   auto oldView = view;
@@ -2858,7 +2858,7 @@ SECTION("test_update_links_clear") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -3051,10 +3051,10 @@ SECTION("test_update_links_clear") {
     CHECK(0 < slice.get("figures").get("memory").getUInt());
   }
 
-  CHECK(view->modify(linksJson->slice(), false).ok()); // same properties -> should not affect plan version
+  CHECK(view->properties(linksJson->slice(), false).ok()); // same properties -> should not affect plan version
   CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
-  CHECK(view->modify(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
+  CHECK(view->properties(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
   CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
   // remove all links
@@ -3073,7 +3073,7 @@ SECTION("test_update_links_clear") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": {} }");
-  CHECK(view->modify(updateJson->slice(), false).ok());
+  CHECK(view->properties(updateJson->slice(), false).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
   oldView = view;
@@ -3100,7 +3100,7 @@ SECTION("test_update_links_clear") {
   {
     VPackBuilder info;
     info.openObject();
-    view->toVelocyPack(info, true, false);
+    view->properties(info, true, false);
     info.close();
 
     auto const properties = info.slice();
@@ -3213,7 +3213,7 @@ SECTION("test_drop_link") {
     }
 
     auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\" : { \"includeAllFields\" : true } } }");
-    CHECK(view->modify(linksJson->slice(), true).ok()); // add link
+    CHECK(view->properties(linksJson->slice(), true).ok()); // add link
     CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion();
 
@@ -3243,7 +3243,7 @@ SECTION("test_drop_link") {
     {
       VPackBuilder info;
       info.openObject();
-      view->toVelocyPack(info, true, false);
+      view->properties(info, true, false);
       info.close();
 
       auto const properties = info.slice();
@@ -3320,7 +3320,7 @@ SECTION("test_drop_link") {
       CHECK(0 < slice.get("figures").get("memory").getUInt());
     }
 
-    CHECK(view->modify(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
+    CHECK(view->properties(linksJson->slice(), true).ok()); // same properties -> should not affect plan version
     CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
 
     // simulate heartbeat thread (drop index from current)
@@ -3355,7 +3355,7 @@ SECTION("test_drop_link") {
     {
       VPackBuilder info;
       info.openObject();
-      view->toVelocyPack(info, true, false);
+      view->properties(info, true, false);
       info.close();
 
       auto const properties = info.slice();
@@ -3412,7 +3412,7 @@ SECTION("test_drop_link") {
     userManager->setQueryRegistry(&queryRegistry);
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection1));
     logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
@@ -3464,14 +3464,14 @@ SECTION("test_update_overwrite") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     expectedMeta._cleanupIntervalStep = 10;
 
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+    logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3507,14 +3507,14 @@ SECTION("test_update_overwrite") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     expectedMeta._cleanupIntervalStep = 10;
 
-    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+    logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3557,7 +3557,7 @@ SECTION("test_update_overwrite") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -3587,13 +3587,13 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 10;
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -3612,13 +3612,13 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 62;
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -3666,7 +3666,7 @@ SECTION("test_update_overwrite") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection));
     logicalView = ci->getView(vocbase->name(), viewId);
@@ -3710,7 +3710,7 @@ SECTION("test_update_overwrite") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -3744,7 +3744,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -3760,7 +3760,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -3817,7 +3817,7 @@ SECTION("test_update_overwrite") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -3848,7 +3848,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -3868,7 +3868,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -3928,7 +3928,7 @@ SECTION("test_update_overwrite") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -3965,7 +3965,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -3985,7 +3985,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -4041,14 +4041,14 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     expectedMeta._cleanupIntervalStep = 10;
 
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+    logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4084,14 +4084,14 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     expectedMeta._cleanupIntervalStep = 10;
 
-    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+    logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4134,7 +4134,7 @@ SECTION("test_update_partial") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -4164,13 +4164,13 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 10;
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4189,13 +4189,13 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 62;
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4243,7 +4243,7 @@ SECTION("test_update_partial") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection));
     logicalView = ci->getView(vocbase->name(), viewId);
@@ -4287,7 +4287,7 @@ SECTION("test_update_partial") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -4320,7 +4320,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -4336,7 +4336,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
       REQUIRE((false == !logicalCollection));
       logicalView = ci->getView(vocbase->name(), viewId);
@@ -4390,7 +4390,7 @@ SECTION("test_update_partial") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -4430,7 +4430,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -4450,7 +4450,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -4510,7 +4510,7 @@ SECTION("test_update_partial") {
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      CHECK((logicalView->modify(updateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -4547,7 +4547,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->modify(viewUpdateJson->slice(), true).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
@@ -4567,7 +4567,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->modify(viewUpdateJson->slice(), true).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
       REQUIRE((false == !logicalCollection0));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);

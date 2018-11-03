@@ -692,7 +692,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(vocbase, col);
 
-  return guard.collection()->modify(data, false); // always a full-update
+  return guard.collection()->properties(data, false); // always a full-update
 }
 
 /// @brief truncate a collections. Assumes no trx are running
@@ -797,7 +797,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    return view->modify(properties, false); // always a full-update
+    return view->properties(properties, false); // always a full-update
   }
 
   return {};

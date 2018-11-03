@@ -209,7 +209,7 @@ LogicalDataSource::LogicalDataSource(
   TRI_ASSERT(!_guid.empty());
 }
 
-Result LogicalDataSource::toVelocyPack(
+Result LogicalDataSource::properties(
     velocypack::Builder& builder,
     bool detailed,
     bool forPersistence

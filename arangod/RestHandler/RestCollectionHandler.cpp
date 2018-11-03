@@ -137,7 +137,7 @@ void RestCollectionHandler::handleCommandGet() {
 
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
-          if (!coll->isLocal()) {
+          if (ServerState::instance()->isCoordinator()) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
 
@@ -411,9 +411,9 @@ void RestCollectionHandler::handleCommandPut() {
         }
 
         if (res.ok()) {
-          if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
-            coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
-          }
+            if (ServerState::instance()->isCoordinator()) { // ClusterInfo::loadPlan eventually updates status
+              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+            }
 
             collectionRepresentation(
               builder,

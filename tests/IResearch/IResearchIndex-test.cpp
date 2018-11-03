@@ -269,7 +269,7 @@ SECTION("test_analyzer") {
       } } \
     } }");
 
-    CHECK((viewImpl->modify(updateJson->slice(), false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -500,7 +500,7 @@ SECTION("test_async_index") {
       } } \
     } }");
 
-    CHECK((viewImpl->modify(updateJson->slice(), false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -874,7 +874,7 @@ SECTION("test_fields") {
       } } \
     } }");
 
-    CHECK((viewImpl->modify(updateJson->slice(), false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // docs match from both collections

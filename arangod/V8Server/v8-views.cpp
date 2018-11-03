@@ -381,7 +381,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     viewBuilder.openObject();
 
-    auto res = view->toVelocyPack(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, true, false);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res); // skip view
@@ -453,7 +453,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       viewBuilder.openObject();
 
-      if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+      if (!view->properties(viewBuilder, true, false).ok()) {
         continue; // skip view
       }
     } catch(...) {
@@ -563,7 +563,7 @@ static void JS_PropertiesViewVocbase(
 
       builderCurrent.openObject();
 
-      auto resCurrent = viewPtr->toVelocyPack(builderCurrent, true, false);
+      auto resCurrent = viewPtr->properties(builderCurrent, true, false);
 
       if (!resCurrent.ok()) {
         TRI_V8_THROW_EXCEPTION(resCurrent);
@@ -576,7 +576,7 @@ static void JS_PropertiesViewVocbase(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto res = view->modify(builder.slice(), partialUpdate);
+    auto res = view->properties(builder.slice(), partialUpdate);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
@@ -602,7 +602,7 @@ static void JS_PropertiesViewVocbase(
 
   builder.openObject();
 
-  auto res = view->toVelocyPack(builder, true, false);
+  auto res = view->properties(builder, true, false);
 
   builder.close();
 
@@ -658,7 +658,7 @@ static void JS_RenameViewVocbase(
 
     viewBuilder.openObject();
 
-    auto res = view->toVelocyPack(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, true, false);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res); // skip view

@@ -110,7 +110,7 @@ SECTION("test_category") {
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
       virtual arangodb::Result rename(std::string&& newName) override { return arangodb::Result(); }
-      virtual arangodb::Result modify(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 
@@ -144,7 +144,7 @@ SECTION("test_construct") {
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
       virtual arangodb::Result rename(std::string&& newName) override { return arangodb::Result(); }
-      virtual arangodb::Result modify(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 
@@ -180,7 +180,7 @@ SECTION("test_defaults") {
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
       virtual arangodb::Result rename(std::string&& newName) override { return arangodb::Result(); }
-      virtual arangodb::Result modify(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 

@@ -844,7 +844,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
       }
     }
 
-    return view->modify(slice, false); // always a full-update
+    return view->properties(slice, false); // always a full-update
   }
 
   view = vocbase.lookupView(nameSlice.copyString());

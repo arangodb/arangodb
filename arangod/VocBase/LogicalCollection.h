@@ -141,7 +141,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
-  bool isLocal() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -234,7 +233,8 @@ class LogicalCollection : public LogicalDataSource {
                                                bool allInSync) const;
 
   // Update this collection.
-  virtual arangodb::Result modify(
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
     velocypack::Slice const& slice,
     bool partialUpdate
   ) override;
@@ -378,8 +378,6 @@ class LogicalCollection : public LogicalDataSource {
   bool _isSmart;
 
   // SECTION: Properties
-  bool _isLocal;
-
   bool _waitForSync;
 
   bool const _allowUserKeys;

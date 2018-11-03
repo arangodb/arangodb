@@ -815,7 +815,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
       engine->getCollectionInfo(*this, collection->id(), builder, false, 0);
 
-      auto res = collection->modify(builder.slice().get("parameters"), false); // always a full-update
+      auto res =
+        collection->properties(builder.slice().get("parameters"), false); // always a full-update
 
       if (!res.ok()) {
         return res.errorNumber();
@@ -1032,7 +1033,7 @@ void TRI_vocbase_t::inventory(
       [&result](LogicalView::ptr const& view)->bool {
         if (view) {
           result.openObject();
-            view->toVelocyPack(result, true, false); // details, !forPersistence because on restore any datasource ids will differ, so need an end-user representation
+            view->properties(result, true, false); // details, !forPersistence because on restore any datasource ids will differ, so need an end-user representation
           result.close();
         }
 

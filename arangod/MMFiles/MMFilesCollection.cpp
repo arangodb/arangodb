@@ -2158,7 +2158,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
       {"path", "statusString"}, true, true
     );
 
-    _logicalCollection.modify(builder.slice(), false); // always a full-update
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   created = true;
@@ -2353,7 +2353,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
       {"path", "statusString"}, true, true
     );
 
-    _logicalCollection.modify(builder.slice(), false); // always a full-update
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   if (!engine->inRecovery()) {

@@ -81,12 +81,12 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::ViewFactory const& factory();
 
-  virtual arangodb::Result modify(
+  virtual void open() override;
+
+  virtual arangodb::Result properties(
     arangodb::velocypack::Slice const& properties,
     bool partialUpdate
   ) override;
-
-  virtual void open() override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return pointer to an index reader containing the datastore record snapshot

@@ -153,7 +153,8 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result modify(
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
     velocypack::Slice const& properties,
     bool partialUpdate
   ) override = 0;
@@ -239,7 +240,8 @@ class LogicalViewStorageEngine: public LogicalView {
 
   virtual Result drop() override final;
 
-  virtual arangodb::Result modify(
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
     velocypack::Slice const& properties,
     bool partialUpdate
   ) override final;
