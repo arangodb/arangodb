@@ -44,10 +44,9 @@ InitialSyncer::~InitialSyncer() {
   
   try {
     if (!_state.isChildSyncer) {
-    _batch.finish(_state.connection, _progress);
-  }
-  } catch (...) {
-  }
+      _batch.finish(_state.connection, _progress);
+    }
+  } catch (...) {}
 }
   
 /// @brief start a recurring task to extend the batch

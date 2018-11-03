@@ -411,6 +411,9 @@ struct TRI_v8_global_t {
 
   /// @brief Buffer template
   v8::Persistent<v8::FunctionTemplate> BufferTempl;
+  
+  /// @brief stream query cursor templace
+  v8::Persistent<v8::FunctionTemplate> StreamQueryCursorTempl;
 
   /// @brief "Buffer" constant
   v8::Persistent<v8::String> BufferConstant;
