@@ -88,7 +88,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         VPackObjectBuilder col(&collections);
         collection->toVelocyPack(collections,true,false);
         auto const& folls = collection->followers();
-        auto const theLeader = folls->getLeader();
+        std::string const theLeader = folls->getLeader();
         collections.add("theLeader", VPackValue(theLeader));
         if (theLeader.empty()) {  // we are the leader ourselves
           // In this case we report our in-sync followers here in the format
@@ -96,7 +96,8 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
           collections.add(VPackValue("servers"));
           { VPackArrayBuilder guard(&collections);
             collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-            for (auto const& s : *folls->get()) {
+            std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+            for (auto const& s : *srvs) {
               collections.add(VPackValue(s));
             }
           }
