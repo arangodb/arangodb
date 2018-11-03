@@ -173,9 +173,7 @@ LogicalCollection::LogicalCollection(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
       _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
-      _isLocal(!ServerState::instance()->isCoordinator()),
       _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
-
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _keyOptions(nullptr),
       _keyGenerator(),
@@ -408,8 +406,6 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
-
-bool LogicalCollection::isLocal() const { return _isLocal; }
 
 bool LogicalCollection::waitForSync() const { return _waitForSync; }
 
@@ -686,7 +682,7 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(
     bool forPersistence) const {
   VPackBuilder full;
   full.openObject();
-  toVelocyPack(full, translateCids, forPersistence);
+    properties(full, translateCids, forPersistence);
   full.close();
   return VPackCollection::remove(full.slice(), ignoreKeys);
 }
@@ -697,7 +693,7 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
-arangodb::Result LogicalCollection::modify(
+arangodb::Result LogicalCollection::properties(
     velocypack::Slice const& slice,
     bool partialUpdate
 ) {
@@ -747,7 +743,8 @@ arangodb::Result LogicalCollection::modify(
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
       }
 
-      if (!_isLocal && rf != _sharding->replicationFactor()) { // sanity checks
+      if (ServerState::instance()->isCoordinator()
+          && rf != _sharding->replicationFactor()) { // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
                         "please change " + _sharding->distributeShardsLike());
@@ -794,7 +791,7 @@ arangodb::Result LogicalCollection::modify(
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _sharding->replicationFactor(rf);
 
-  if (!_isLocal) {
+  if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
       vocbase().name(), std::to_string(id()), this

@@ -772,7 +772,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        auto res = collection->modify(payloadSlice, false); // always a full-update
+        auto res = collection->properties(payloadSlice, false); // always a full-update
 
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -858,7 +858,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           }
         }
 
-        auto res = view->modify(payloadSlice, false); // always a full-update
+        auto res = view->properties(payloadSlice, false); // always a full-update
 
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)

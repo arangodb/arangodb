@@ -403,7 +403,7 @@ Result Collections::updateProperties(
       collection.vocbase().name(), std::to_string(collection.id())
     );
 
-    return info->modify(props, partialUpdate);
+    return info->properties(props, partialUpdate);
   } else {
     auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
@@ -417,7 +417,7 @@ Result Collections::updateProperties(
     }
 
     // try to write new parameter to file
-    auto updateRes = collection.modify(props, partialUpdate);
+    auto updateRes = collection.properties(props, partialUpdate);
 
     if (!updateRes.ok()) {
       return updateRes;

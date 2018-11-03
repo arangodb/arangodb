@@ -69,10 +69,18 @@ IResearchLink::IResearchLink(
 }
 
 IResearchLink::~IResearchLink() {
-  if (_dropCollectionInDestructor) {
-    drop();
-  } else {
+  if (!_dropCollectionInDestructor) {
     unload(); // disassociate from view if it has not been done yet
+
+    return;
+  }
+
+  auto res = drop();
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch view link in link destructor: "
+      << res.errorNumber() << " " << res.errorMessage();
   }
 }
 
@@ -85,6 +93,21 @@ bool IResearchLink::operator==(LogicalView const& view) const noexcept {
 
 bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
+}
+
+void IResearchLink::afterTruncate() {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+  if (!_view) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
+  }
+
+  auto res = _view->drop(_view->id(), false);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 void IResearchLink::batchInsert(
@@ -126,7 +149,7 @@ bool IResearchLink::canBeDropped() const {
   return true; // valid for a link to be dropped from an iResearch view
 }
 
-int IResearchLink::drop() {
+arangodb::Result IResearchLink::drop() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -157,21 +180,6 @@ int IResearchLink::drop() {
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-void IResearchLink::doAfterTruncate() {
-  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-  SCOPED_LOCK(mutex);
-
-  if (!_view) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
-  }
-
-  auto res = _view->drop(_view->id(), false);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -501,7 +509,7 @@ int IResearchLink::unload() {
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (_collection.deleted()
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
-    return drop();
+    return drop().errorNumber();
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped

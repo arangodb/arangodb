@@ -358,7 +358,7 @@ SECTION("test_drop_database") {
   REQUIRE((false == !wiewImpl));
 
   beforeCount = 0; // reset before call to StorageEngine::createView(...)
-  auto res = logicalWiew->modify(viewUpdateJson->slice(), true);
+  auto res = logicalWiew->properties(viewUpdateJson->slice(), true);
   REQUIRE(true == res.ok());
   CHECK((1 + 2 + 1 == beforeCount)); // +1 for StorageEngineMock::createView(...), +2 for StorageEngineMock::getViewProperties(...), +1 for StorageEngineMock::changeView(...)
 
@@ -599,7 +599,7 @@ SECTION("test_query") {
     CHECK((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     CHECK((false == !wiewImpl));
-    arangodb::Result res = logicalWiew->modify(links->slice(), true);
+    arangodb::Result res = logicalWiew->properties(links->slice(), true);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -699,7 +699,7 @@ SECTION("test_query") {
     REQUIRE((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     REQUIRE((false == !wiewImpl));
-    arangodb::Result res = logicalWiew->modify(viewUpdateJson->slice(), true);
+    arangodb::Result res = logicalWiew->properties(viewUpdateJson->slice(), true);
     REQUIRE(true == res.ok());
 
     // start flush thread
@@ -775,7 +775,7 @@ SECTION("test_rename") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, false, false);
+      wiew->properties(builder, false, false);
       builder.close();
       CHECK((builder.slice().hasKey("name")));
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
@@ -787,7 +787,7 @@ SECTION("test_rename") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, false, false);
+      wiew->properties(builder, false, false);
       builder.close();
       CHECK((builder.slice().hasKey("name")));
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
@@ -827,7 +827,7 @@ SECTION("test_rename") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, false, false);
+      wiew->properties(builder, false, false);
       builder.close();
       CHECK((builder.slice().hasKey("name")));
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
@@ -839,7 +839,7 @@ SECTION("test_rename") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, false, false);
+      wiew->properties(builder, false, false);
       builder.close();
       CHECK((builder.slice().hasKey("name")));
       CHECK((std::string("testView") == builder.slice().get("name").copyString()));
@@ -864,7 +864,7 @@ SECTION("test_toVelocyPack") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    wiew->toVelocyPack(builder,false, false);
+    wiew->properties(builder,false, false);
     builder.close();
     auto slice = builder.slice();
     CHECK((4U == slice.length()));
@@ -887,7 +887,7 @@ SECTION("test_toVelocyPack") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    wiew->toVelocyPack(builder, true, false);
+    wiew->properties(builder, true, false);
     builder.close();
     auto slice = builder.slice();
     CHECK((10U == slice.length()));
@@ -910,7 +910,7 @@ SECTION("test_toVelocyPack") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    wiew->toVelocyPack(builder, false, true);
+    wiew->properties(builder, false, true);
     builder.close();
     auto slice = builder.slice();
     CHECK((7 == slice.length()));
@@ -1054,7 +1054,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1067,14 +1067,14 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"consolidationIntervalMsec\": 52, \"links\": { \"testCollection\": {} } }");
-      CHECK((true == wiew->modify(update->slice(), true).ok()));
+      CHECK((true == wiew->properties(update->slice(), true).ok()));
     }
 
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1095,7 +1095,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1111,7 +1111,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -1144,7 +1144,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1157,14 +1157,14 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
-      CHECK((true == wiew->modify(update->slice(), false).ok()));
+      CHECK((true == wiew->properties(update->slice(), false).ok()));
     }
 
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1185,7 +1185,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1201,7 +1201,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -1239,7 +1239,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1252,14 +1252,14 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
-      CHECK((true == wiew->modify(update->slice(), true).ok()));
+      CHECK((true == wiew->properties(update->slice(), true).ok()));
     }
 
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1277,7 +1277,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1293,7 +1293,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -1334,7 +1334,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1347,14 +1347,14 @@ SECTION("test_updateProperties") {
 
     {
       auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
-      CHECK((true == wiew->modify(update->slice(), false).ok()));
+      CHECK((true == wiew->properties(update->slice(), false).ok()));
     }
 
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->toVelocyPack(builder, true, false);
+      wiew->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1372,7 +1372,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1388,7 +1388,7 @@ SECTION("test_updateProperties") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();

@@ -434,7 +434,7 @@ Result LogicalViewStorageEngine::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result LogicalViewStorageEngine::modify(
+arangodb::Result LogicalViewStorageEngine::properties(
     VPackSlice const& slice,
     bool partialUpdate
 ) {

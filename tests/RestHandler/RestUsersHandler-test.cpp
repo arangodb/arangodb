@@ -63,7 +63,7 @@ struct TestView: public arangodb::LogicalView {
   virtual arangodb::Result drop() override { return arangodb::Result(); }
   virtual void open() override {}
   virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
-  virtual arangodb::Result modify(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 
