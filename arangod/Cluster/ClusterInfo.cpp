@@ -1315,7 +1315,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
   auto DBServers =
       std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
@@ -1352,10 +1352,12 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
           }
           if (tmpHaveError) {
             *errMsg = "Error in creation of database:" + tmpMsg;
-            *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
+            dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                                  std::memory_order_release);
             return true;
           }
-          *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+          dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg),
+                                std::memory_order_release);
         }
         return true;
       };
@@ -1368,7 +1370,9 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, "Current/Databases/" + name, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+  auto cbGuard = scopeGuard([&] {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  });
 
   AgencyOperation newVal("Plan/Databases/" + name,
                          AgencyValueOperationType::SET, slice);
@@ -1399,8 +1403,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
     int count = 0;  // this counts, when we have to reload the DBServers
     while (true) {
-      errorMsg = *errMsg;
-
       if (++count >=
           static_cast<int>(getReloadServerListTimeout() / interval)) {
         // We update the list of DBServers every minute in case one of them
@@ -1412,13 +1414,15 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         count = 0;
       }
 
-      if (*dbServerResult >= 0) {
+      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      if (tmpRes >= 0) {
+        cbGuard.fire(); // unregister cb before accessing errMsg
+        errorMsg = *errMsg;
         loadCurrent();  // update our cache
-        return *dbServerResult;
+        return tmpRes;
       }
 
       if (TRI_microtime() > endTime) {
-
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
@@ -1450,11 +1454,11 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isObject() && result.length() == 0) {
-          *dbServerResult = 0;
+        if (result.isNone() || (result.isEmptyObject())) {
+          dbServerResult->store(0, std::memory_order_release);
         }
         return true;
       };
@@ -1501,7 +1505,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
     while (true) {
-      if (*dbServerResult >= 0) {
+      if (dbServerResult->load(std::memory_order_acquire) >= 0) {
         res = ac.removeValues(where, true);
         if (res.successful()) {
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
@@ -2562,7 +2566,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   }
 
   // will contain the error number and message
-  std::shared_ptr<std::atomic<int>> dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](
@@ -2594,9 +2598,9 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
             errorMsg = "Error during index creation: " + errorMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
-            *dbServerResult =
-                arangodb::basics::VelocyPackHelper::readNumericValue<int>(
-                    v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+            int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
+                           v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+            dbServerResult->store(errNum, std::memory_order_release);
             return true;
           }
 
@@ -2607,7 +2611,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
 
     if (found == (size_t)numberOfShards) {
-      *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
       return true;
     }
     
@@ -2678,17 +2682,18 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (!application_features::ApplicationServer::isStopping()) {
-      if (*dbServerResult >= 0) {
+      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      if (tmpRes >= 0) {
         cbGuard.fire(); // unregister cb before accessing errMsg
         loadCurrent();
-        if (*dbServerResult == TRI_ERROR_NO_ERROR) {
+        if (tmpRes == TRI_ERROR_NO_ERROR) {
           // Copy over all elements in slice.
           VPackObjectBuilder b(&resultBuilder);
           resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
         errorMsg = *errMsg;
-        return *dbServerResult;
+        return tmpRes;
       }
 
       if (TRI_microtime() > endTime) {
