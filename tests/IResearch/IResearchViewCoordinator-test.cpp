@@ -448,7 +448,7 @@ SECTION("test_defaults") {
 
   // new view definition with links with invalid definition
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\", \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\", \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\", \"links\": { \"testCollection\": 42 } }");
     auto collectionId = std::to_string(1);
     auto viewId = "testView";
@@ -472,7 +472,7 @@ SECTION("test_defaults") {
 
   // new view definition with links (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\", \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\", \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\", \"links\": { \"testCollection\": {} } }");
     auto collectionId = std::to_string(1);
     auto viewId = "testView";
@@ -508,7 +508,7 @@ SECTION("test_defaults") {
 
   // new view definition with links
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\", \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\", \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\", \"links\": { \"testCollection\": {} } }");
     auto collectionId = std::to_string(1);
     auto viewId = "testView";
@@ -715,7 +715,7 @@ SECTION("test_drop_with_link") {
     CHECK(("no error" == error));
   }
 
-  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
   auto collectionId = std::to_string(1);
@@ -997,7 +997,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1013,7 +1013,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1029,7 +1029,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1562,7 +1562,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1578,7 +1578,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1594,7 +1594,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2170,7 +2170,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2186,7 +2186,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2202,7 +2202,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2738,7 +2738,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2754,7 +2754,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2770,7 +2770,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -3175,7 +3175,7 @@ SECTION("test_drop_link") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -3480,7 +3480,7 @@ SECTION("test_update_overwrite") {
 
   // modify meta params with links with invalid definition
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": 42 } }");
     auto collectionId = std::to_string(1);
@@ -3523,7 +3523,7 @@ SECTION("test_update_overwrite") {
 
   // modify meta params with links (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
     auto collectionId = std::to_string(1);
@@ -3675,7 +3675,7 @@ SECTION("test_update_overwrite") {
 
   // drop link (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
     auto collectionId = std::to_string(1);
@@ -3770,8 +3770,8 @@ SECTION("test_update_overwrite") {
 
   // add authorised link (existing collection not authorized)
   {
-    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"type\": 1 }");
-    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
     auto collectionId0 = std::to_string(1);
@@ -3881,8 +3881,8 @@ SECTION("test_update_overwrite") {
 
   // drop authorised link (existing collection not authorized)
   {
-    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"type\": 1 }");
-    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
     auto collectionId0 = std::to_string(1);
@@ -4057,7 +4057,7 @@ SECTION("test_update_partial") {
 
   // modify meta params with links with invalid definition
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": 42 } }");
     auto collectionId = std::to_string(1);
@@ -4100,7 +4100,7 @@ SECTION("test_update_partial") {
 
   // modify meta params with links (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62 }");
     auto collectionId = std::to_string(1);
@@ -4205,7 +4205,7 @@ SECTION("test_update_partial") {
 
   // add link (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
     auto collectionId = std::to_string(1);
@@ -4252,7 +4252,7 @@ SECTION("test_update_partial") {
 
   // drop link (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
     auto collectionId = std::to_string(1);
@@ -4346,8 +4346,8 @@ SECTION("test_update_partial") {
 
   // add authorised link (existing collection not authorized)
   {
-    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1 }");
-    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }");
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"shards\":{} }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": {} } }");
     auto collectionId0 = std::to_string(1);
@@ -4463,8 +4463,8 @@ SECTION("test_update_partial") {
 
   // drop authorised link (existing collection not authorized)
   {
-    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1 }");
-    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }");
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"shards\":{} }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"shards\":{} }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": null } }");
     auto collectionId0 = std::to_string(1);

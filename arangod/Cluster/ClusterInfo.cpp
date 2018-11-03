@@ -1547,8 +1547,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   auto const name = arangodb::basics::VelocyPackHelper::getStringValue(
     json, arangodb::StaticStrings::DataSourceName, StaticStrings::Empty
   );
-
-  if (name.empty()) {
+  if (name.empty() || !json.isObject() || !json.get("shards").isObject()) {
     return TRI_ERROR_BAD_PARAMETER; // must not be empty
   }
 
@@ -1705,8 +1704,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::vector<AgencyPrecondition> precs;
 
   std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
-  if (json.hasKey("distributeShardsLike")) {
-    auto const otherCidString = json.get("distributeShardsLike").copyString();
+  VPackSlice distSLSlice = json.get(StaticStrings::DistributeShardsLike);
+  if (distSLSlice.isString()) {
+    auto const otherCidString = distSLSlice.copyString();
     if (!otherCidString.empty()) {
       otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       // Any of the shards locked?
