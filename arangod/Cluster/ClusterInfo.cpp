@@ -1445,7 +1445,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   }
 
   AgencyComm ac;
-  AgencyCommResult res;
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
@@ -1484,7 +1483,16 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   AgencyWriteTransaction trans(
       {delPlanDatabases, delPlanCollections, incrementVersion}, databaseExists);
 
-  res = ac.sendTransactionWithFailover(trans);
+  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
+  if (!res.successful()) {
+    if (res._statusCode ==
+        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    }
+    errorMsg = std::string("Failed to drop database at ") +
+    __FILE__ + ":" + std::to_string(__LINE__);
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN, errorMsg);
+  }
 
   // Load our own caches:
   loadPlan();
@@ -1599,7 +1607,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   auto dbServerResult = std::make_shared<int>(-1);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
-  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>(); // current thread owning 'cacheMutex' write lock (workaround for non-recusrive Mutex)
+  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
+  // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
 
   auto dbServers = getCurrentDBServers();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
@@ -1854,16 +1863,19 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ClusterInfo::dropCollectionCoordinator(
-  std::string const& databaseName, std::string const& collectionID,
+  std::string const& dbName, std::string const& collectionID,
   std::string& errorMsg, double timeout) {
+  if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
+    return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, errorMsg);
+  }
 
   AgencyComm ac;
   AgencyCommResult res;
 
   // First check that no other collection has a distributeShardsLike
   // entry pointing to us:
-  auto coll = getCollection(databaseName, collectionID);
-  auto colls = getCollections(databaseName);
+  auto coll = getCollection(dbName, collectionID);
+  auto colls = getCollections(dbName); // reloads plan
   std::vector<std::string> clones;
   for (std::shared_ptr<LogicalCollection> const& p : colls) {
     if (p->distributeShardsLike() == coll->name() ||
@@ -1898,8 +1910,7 @@ int ClusterInfo::dropCollectionCoordinator(
       };
 
   // monitor the entry for the collection
-  std::string const where =
-      "Current/Collections/" + databaseName + "/" + collectionID;
+  std::string const where = "Current/Collections/" + dbName + "/" + collectionID;
 
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
@@ -1912,18 +1923,17 @@ int ClusterInfo::dropCollectionCoordinator(
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   size_t numberOfShards = 0;
-  res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID +
-                     "/shards");
+  res = ac.getValues("Plan/Collections/" + dbName + "/" + collectionID + "/shards");
 
   if (res.successful()) {
     velocypack::Slice shards = res.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", databaseName,
+        {AgencyCommManager::path(), "Plan", "Collections", dbName,
          collectionID, "shards"}));
     if (shards.isObject()) {
       numberOfShards = shards.length();
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "Missing shards information on dropping " << databaseName << "/"
+        << "Missing shards information on dropping " << dbName << "/"
         << collectionID;
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
@@ -1931,12 +1941,12 @@ int ClusterInfo::dropCollectionCoordinator(
 
   // Transact to agency
   AgencyOperation delPlanCollection(
-      "Plan/Collections/" + databaseName + "/" + collectionID,
+      "Plan/Collections/" + dbName + "/" + collectionID,
       AgencySimpleOperationType::DELETE_OP);
   AgencyOperation incrementVersion("Plan/Version",
                                    AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition precondition = AgencyPrecondition(
-      "Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false);
+      "Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
   AgencyWriteTransaction trans({delPlanCollection, incrementVersion},
                                precondition);
   res = ac.sendTransactionWithFailover(trans);
@@ -1969,7 +1979,7 @@ int ClusterInfo::dropCollectionCoordinator(
       if (*dbServerResult >= 0) {
         // ...remove the entire directory for the collection
         ac.removeValues(
-            "Current/Collections/" + databaseName + "/" + collectionID, true);
+            "Current/Collections/" + dbName + "/" + collectionID, true);
         loadCurrent();
         events::DropCollection(collectionID, *dbServerResult);
         return *dbServerResult;
@@ -1978,7 +1988,7 @@ int ClusterInfo::dropCollectionCoordinator(
       if (TRI_microtime() > endTime) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
             << "Timeout in _drop collection (" << realTimeout << ")"
-            << ": database: " << databaseName << ", collId:" << collectionID
+            << ": database: " << dbName << ", collId:" << collectionID
             << "\ntransaction sent to agency: " << trans.toJson();
         AgencyCommResult ag = ac.getValues("");
         if (ag.successful()) {
