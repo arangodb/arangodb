@@ -241,6 +241,8 @@ void V8ShellFeature::copyInstallationFiles() {
   
   LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory << "' to '" << _copyDirectory << "'";
   int res = TRI_ERROR_NO_ERROR;
+        
+  _nodeModulesDirectory = _startupDirectory;
 
   if (FileUtils::exists(_copyDirectory)) {
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
@@ -270,7 +272,6 @@ void V8ShellFeature::copyInstallationFiles() {
       if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
         // filter it out!
-        _nodeModulesDirectory = _startupDirectory;
         return true;
       }
     }

@@ -69,7 +69,6 @@ RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
-  
   // determine start and end tick
   filter.tickStart = _request->parsedValue<uint64_t>("from", filter.tickStart);
   filter.tickLastScanned = _request->parsedValue<uint64_t>("lastScanned", filter.tickLastScanned);
@@ -82,9 +81,8 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     return false;
   }
   
-  bool found = false;
-  std::string const& value1 = _request->value("global", found);
-  if (found && StringUtils::boolean(value1)) {
+  bool global = _request->parsedValue("global", false);
+  if (global) {
     if (!_vocbase.isSystem()) {
       generateError(
           rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
@@ -92,10 +90,11 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
       return false;
     }
   } else {
-    // filter for collection
+    // filter for database
     filter.vocbase = _vocbase.id();
 
     // extract collection
+    bool found = false;
     std::string const& value2 = _request->value("collection", found);
     if (found) {
       auto c = _vocbase.lookupCollection(value2);
@@ -106,14 +105,12 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
         return false;
       }
 
+      // filter for collection
       filter.collection = c->id();
     }
   }
 
-  std::string const& value3 = _request->value("includeSystem", found);
-  if (found) {
-    filter.includeSystem = StringUtils::boolean(value3);
-  }
+  filter.includeSystem = _request->parsedValue("includeSystem", filter.includeSystem);
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {

@@ -1,36 +1,36 @@
-/*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/* jshint globalstrict:false, strict:false, unused: false */
+/* global arango, assertEqual, assertTrue, assertFalse, arango, ARGUMENTS */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the sync method of the replication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the sync method of the replication
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
-const errors = arangodb.errors;
+const jsunity = require('jsunity');
+const arangodb = require('@arangodb');
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const db = arangodb.db;
 const _ = require('lodash');
 
@@ -57,14 +57,12 @@ const connectToSlave = function() {
   db._flushCache();
 };
 
-const collectionChecksum = function(name) {
-  var c = db._collection(name).checksum(true, true);
-  return c.checksum;
+const collectionChecksum = function (name) {
+  return db._collection(name).checksum(true, true).checksum;
 };
 
-const collectionCount = function(name) {
-  var res = db._collection(name).count();
-  return res;
+const collectionCount = function (name) {
+  return db._collection(name).count();
 };
 
 const compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
@@ -97,6 +95,126 @@ function BaseTestConfig() {
   'use strict';
 
   return {
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test existing collection
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testExistingPatchBrokenSlaveCounters1: function () {
+      // can only use this with failure tests enabled and RocksDB engine
+      if (db._engine().name !== "rocksdb") {
+        return;
+      }
+          
+      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      if (String(r) === "false") {
+        return;
+      }
+
+      connectToMaster();
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
+          }
+          c.insert(docs);
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          //  already create the collection on the slave
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          // collection present on slave now
+          var c = db._collection(cn);
+          assertEqual(5000, c.count());
+          assertEqual(5000, c.toArray().length);
+          arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
+          c.insert({});
+          arango.DELETE_RAW("/_admin/debug/failat", "");
+          assertEqual(5000, c.count());
+          assertEqual(5001, c.toArray().length);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          // now validate counters
+          let c = db._collection(cn);
+          assertEqual(5000, c.toArray().length);
+          assertEqual(5000, c.count());
+        },
+        true
+      );
+    },
+    
+    testExistingPatchBrokenSlaveCounters2: function () {
+      // can only use this with failure tests enabled and RocksDB engine
+      if (db._engine().name !== "rocksdb") {
+        return;
+      }
+          
+      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      if (String(r) === "false") {
+        return;
+      }
+
+      connectToMaster();
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+
+          for (let i = 0; i < 10000; ++i) {
+            docs.push({ value: i, _key: "test" + i });
+          }
+          c.insert(docs);
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(10000, state.count);
+        },
+        function (state) {
+          //  already create the collection on the slave
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          
+          // collection present on slave now
+          var c = db._collection(cn);
+          for (let i = 0; i < 10000; i += 10) {
+            c.remove("test" + i);
+          }
+          assertEqual(9000, c.count());
+          assertEqual(9000, c.toArray().length);
+          arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
+          for (let i = 0; i < 100; ++i) {
+            c.insert({ _key: "testmann" + i });
+          }
+          arango.DELETE_RAW("/_admin/debug/failat", "");
+          assertEqual(9000, c.count());
+          assertEqual(9100, c.toArray().length);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          // now validate counters
+          let c = db._collection(cn);
+          assertEqual(10000, c.count());
+          assertEqual(10000, c.toArray().length);
+        },
+        true
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test existing collection
@@ -153,10 +271,6 @@ function BaseTestConfig() {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test existing collection
-    ////////////////////////////////////////////////////////////////////////////////
 
     testInsertSomeWithIncremental: function() {
       connectToMaster();
@@ -1236,10 +1350,6 @@ function BaseTestConfig() {
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test with existing documents - same on the slave but different keys
-    ////////////////////////////////////////////////////////////////////////////////
-
     testSameSameButDifferentKeys: function() {
       connectToMaster();
 
@@ -1413,7 +1523,7 @@ function BaseTestConfig() {
         true
       );
     }
-
+  
   };
 }
 

@@ -54,7 +54,7 @@ transaction::V8Context::orderCustomTypeHandler() {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
       _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(
-        &_vocbase, &resolver()
+        _vocbase, resolver()
       ));
     }
 

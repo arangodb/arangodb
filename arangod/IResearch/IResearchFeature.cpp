@@ -169,7 +169,7 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     ),
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
       auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
       auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
       return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
@@ -345,11 +345,11 @@ void registerViewFactory() {
 
   // DB server in custer or single-server
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_FAILED,

@@ -116,9 +116,8 @@ bool EnsureIndex::first() {
     auto const props = properties();
     { VPackObjectBuilder b(&body);
       body.add(COLLECTION, VPackValue(shard));
-      for (auto const& i : VPackObjectIterator(props)) {
-        body.add(i.key.copyString(), i.value);
-      }}
+      body.add(VPackObjectIterator(props));
+    }
     
     VPackBuilder index;
     _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
@@ -137,9 +136,9 @@ bool EnsureIndex::first() {
 
       VPackBuilder eb;
       { VPackObjectBuilder o(&eb);
-        eb.add("error", VPackValue(true));
-        eb.add("errorMessage", VPackValue(_result.errorMessage()));
-        eb.add("errorNum", VPackValue(_result.errorNumber()));
+        eb.add(StaticStrings::Error, VPackValue(true));
+        eb.add(StaticStrings::ErrorMessage, VPackValue(_result.errorMessage()));
+        eb.add(StaticStrings::ErrorNum, VPackValue(_result.errorNumber()));
         eb.add(ID, VPackValue(id)); }
 
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)

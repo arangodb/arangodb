@@ -26,6 +26,8 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -61,20 +63,30 @@ RestStatus RestAgencyCallbacksHandler::execute() {
                   "invalid JSON");
     return RestStatus::DONE;
   }
-
+  
+  std::shared_ptr<AgencyCallback> cb;
   try {
-    std::stringstream ss(suffixes.at(0));
-    uint32_t index;
-    ss >> index;
-
-    auto callback = _agencyCallbackRegistry->getCallback(index);
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Agency callback has been triggered. refetching!";
-    callback->refetchAndUpdate(true, false);
-    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
+    uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
+    cb = _agencyCallbackRegistry->getCallback(index);
   } catch (arangodb::basics::Exception const&) {
     // mop: not found...expected
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   }
+  
+  if (cb) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Agency callback has been triggered. refetching!";
+    
+    //SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
+    try {
+      cb->refetchAndUpdate(true, false);
+    } catch(arangodb::basics::Exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: "
+      << e.message();
+    }
+    //});
+    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
+  }
+  
   return RestStatus::DONE;
 }

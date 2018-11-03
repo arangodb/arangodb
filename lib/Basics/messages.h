@@ -64,6 +64,7 @@
 #define TRI_BYE_MESSAGE_SV "\x41\x64\x6a\xc3\xb6\x21"
 #define TRI_BYE_MESSAGE_PT "\x41\x74\xc3\xa9\x20\x42\x72\x65\x76\x65\x21"
 #define TRI_BYE_MESSAGE_FA "\xd8\xae\xd8\xaf\xd8\xa7\xd8\xad\xd8\xa7\xd9\x81\xd8\xb8\x21"
+#define TRI_BYE_MESSAGE_GE "\xe1\x83\xa8\xe1\x83\x94\xe1\x83\xae\xe1\x83\x95\xe1\x83\x94\xe1\x83\x93\xe1\x83\xa0\xe1\x83\x90\xe1\x83\x9b\xe1\x83\x93\xe1\x83\x94"
 
 #define TRI_BYE_MESSAGE                                                 \
   TRI_BYE_MESSAGE_CH  " " TRI_BYE_MESSAGE_CN                            \
@@ -72,5 +73,5 @@
   "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT " " TRI_BYE_MESSAGE_NL \
   " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_FR " " TRI_BYE_MESSAGE_JP  \
   " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT " " TRI_BYE_MESSAGE_FA  \
-  " " TRI_BYE_MESSAGE_LV
+  " " TRI_BYE_MESSAGE_LV " " TRI_BYE_MESSAGE_GE
 #endif

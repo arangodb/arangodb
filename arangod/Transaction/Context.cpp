@@ -43,7 +43,7 @@ using namespace arangodb;
 
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler final : public VPackCustomTypeHandler {
-  CustomTypeHandler(TRI_vocbase_t* vocbase, CollectionNameResolver const* resolver)
+  CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
       : vocbase(vocbase), resolver(resolver) {}
 
   ~CustomTypeHandler() {} 
@@ -56,11 +56,11 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    return transaction::helpers::extractIdString(resolver, value, base);
+    return transaction::helpers::extractIdString(&resolver, value, base);
   }
 
-  TRI_vocbase_t* vocbase;
-  CollectionNameResolver const* resolver;
+  TRI_vocbase_t& vocbase;
+  CollectionNameResolver const& resolver;
 };
 
 /// @brief create the context
@@ -97,8 +97,8 @@ transaction::Context::~Context() {
 }
 
 /// @brief factory to create a custom type handler, not managed
-VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbase_t* vocbase, 
-                                                                    CollectionNameResolver const* resolver) {
+VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbase_t& vocbase,
+                                                                      CollectionNameResolver const& resolver) {
   return new CustomTypeHandler(vocbase, resolver);
 }
 

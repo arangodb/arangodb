@@ -65,7 +65,6 @@ static_assert(
 );
 
 irs::string_ref const CID_FIELD("@_CID");
-irs::string_ref const RID_FIELD("@_REV");
 irs::string_ref const PK_COLUMN("@_PK");
 
 // wrapper for use objects with the IResearch unbounded_object_pool
@@ -370,19 +369,6 @@ bool setStringValue(
   return true;
 }
 
-void setIdValue(
-    uint64_t& value,
-    irs::token_stream& analyzer
-) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(analyzer);
-#else
-  auto& sstream = static_cast<irs::string_token_stream&>(analyzer);
-#endif
-
-  sstream.reset(arangodb::iresearch::DocumentPrimaryKey::encode(value));
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
@@ -392,35 +378,61 @@ NS_BEGIN(iresearch)
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setCidValue(Field& field, TRI_voc_cid_t& cid) {
+/*static*/ void Field::setCidValue(
+    Field& field,
+    TRI_voc_cid_t const& cid
+) {
+  TRI_ASSERT(field._analyzer);
+
+  irs::bytes_ref const cidRef(
+    reinterpret_cast<irs::byte_type const*>(&cid),
+    sizeof(TRI_voc_cid_t)
+  );
+
   field._name = CID_FIELD;
-  setIdValue(cid, *field._analyzer);
   field._features = &irs::flags::empty_instance();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
+#else
+  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
+#endif
+  sstream.reset(cidRef);
 }
 
 /*static*/ void Field::setCidValue(
     Field& field,
-    TRI_voc_cid_t& cid,
+    TRI_voc_cid_t const& cid,
     Field::init_stream_t
 ) {
   field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
   setCidValue(field, cid);
 }
 
-/*static*/ void Field::setRidValue(Field& field, TRI_voc_rid_t& rid) {
-  field._name = RID_FIELD;
-  setIdValue(rid, *field._analyzer);
+/*static*/ void Field::setPkValue(
+    Field& field,
+    DocumentPrimaryKey const& pk
+) {
+  field._name = PK_COLUMN;
   field._features = &irs::flags::empty_instance();
+  field._storeValues = ValueStorage::FULL;
+  field._value = static_cast<irs::bytes_ref>(pk);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
+#else
+  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
+#endif
+  sstream.reset(field._value);
 }
 
-/*static*/ void Field::setRidValue(
+/*static*/ void Field::setPkValue(
     Field& field,
-    TRI_voc_rid_t& rid,
+    DocumentPrimaryKey const& pk,
     Field::init_stream_t
 ) {
   field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
-  setRidValue(field, rid);
+  setPkValue(field, pk);
 }
+
 
 Field::Field(Field&& rhs)
   : _features(rhs._features),
@@ -528,6 +540,7 @@ bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
   _value._storeValues = context._storeValues;
+  _value._value = irs::bytes_ref::NIL;
 
   switch (value.type()) {
     case VPackValueType::None:
@@ -632,10 +645,6 @@ void FieldIterator::next() {
   return CID_FIELD;
 }
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::RID() {
-  return RID_FIELD;
-}
-
 /* static */ bool DocumentPrimaryKey::decode(
     uint64_t& buf, const irs::bytes_ref& value
 ) {
@@ -671,6 +680,12 @@ DocumentPrimaryKey::DocumentPrimaryKey(
 ) noexcept
   : _keys{ cid, rid } {
   static_assert(sizeof(_keys) == sizeof(cid) + sizeof(rid), "Invalid size");
+
+  // ensure little endian
+  if (irs::numeric_utils::is_big_endian()) {
+    _keys[0] = Swap8Bytes(_keys[0]);
+    _keys[1] = Swap8Bytes(_keys[1]);
+  }
 }
 
 bool DocumentPrimaryKey::read(irs::bytes_ref const& in) noexcept {
@@ -679,15 +694,6 @@ bool DocumentPrimaryKey::read(irs::bytes_ref const& in) noexcept {
   }
 
   std::memcpy(_keys, in.c_str(), sizeof(_keys));
-
-  return true;
-}
-
-bool DocumentPrimaryKey::write(irs::data_output& out) const {
-  out.write_bytes(
-    reinterpret_cast<const irs::byte_type*>(_keys),
-    sizeof(_keys)
-  );
 
   return true;
 }
