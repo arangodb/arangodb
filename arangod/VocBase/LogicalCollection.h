@@ -141,7 +141,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
-  bool isLocal() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -216,7 +215,7 @@ class LogicalCollection : public LogicalDataSource {
   void unload();
 
   virtual arangodb::Result drop() override;
-  virtual Result rename(std::string&& name, bool doSync) override;
+  virtual Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -234,7 +233,11 @@ class LogicalCollection : public LogicalDataSource {
                                                bool allInSync) const;
 
   // Update this collection.
-  virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) override;
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures() const;
@@ -375,8 +378,6 @@ class LogicalCollection : public LogicalDataSource {
   bool _isSmart;
 
   // SECTION: Properties
-  bool _isLocal;
-
   bool _waitForSync;
 
   bool const _allowUserKeys;

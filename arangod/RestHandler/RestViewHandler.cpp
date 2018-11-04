@@ -92,7 +92,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->toVelocyPack(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, true, false);
 
     if (!res.ok()) {
       generateError(res);
@@ -109,7 +109,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res = view->toVelocyPack(builder, detailed, false);
+  auto res = view->properties(builder, detailed, false);
 
   builder.close();
 
@@ -221,7 +221,7 @@ void RestViewHandler::createView() {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = view->toVelocyPack(builder, true, false);
+    res = view->properties(builder, true, false);
 
     if (!res.ok()) {
       generateError(res);
@@ -273,19 +273,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     // handle rename functionality
     if (suffixes[1] == "rename") {
-      auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
-        DatabaseFeature
-      >("Database");
-
-      if (!databaseFeature) {
-        generateError(Result(
-          TRI_ERROR_INTERNAL,
-          "failed to find feature 'Database' while renaming view"
-        ));
-
-        return;
-      }
-
       VPackSlice newName = body.get("name");
 
       if (!newName.isString()) {
@@ -312,7 +299,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->toVelocyPack(viewBuilder, true, false);
+        auto res = view->properties(viewBuilder, true, false);
 
         if (!res.ok()) {
           generateError(res);
@@ -325,9 +312,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return; // skip view
       }
 
-      auto res = view->rename(
-        newName.copyString(), databaseFeature->forceSyncProperties()
-      );
+      auto res = view->rename(newName.copyString());
 
       if (res.ok()) {
         getView(view->name(), false);
@@ -355,7 +340,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent = view->toVelocyPack(builderCurrent, true, false);
+      auto resCurrent = view->properties(builderCurrent, true, false);
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -364,9 +349,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       }
     }
 
-    auto const result = view->updateProperties(
-      body, partialUpdate, true
-    );  // TODO: not force sync?
+    auto result = view->properties(body, partialUpdate);
 
     if (!result.ok()) {
       generateError(result);
@@ -386,7 +369,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->toVelocyPack(updated, true, false);
+    auto res = view->properties(updated, true, false);
 
     updated.close();
 
@@ -528,7 +511,7 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+        if (!view->properties(viewBuilder, true, false).ok()) {
           continue; // skip view
         }
       } catch(...) {
@@ -540,7 +523,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->toVelocyPack(viewBuilder, false, false);
+        auto res = view->properties(viewBuilder, false, false);
 
         if (!res.ok()) {
           generateError(res);

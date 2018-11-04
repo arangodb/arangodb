@@ -1123,6 +1123,7 @@ static void JS_PropertiesVocbaseCol(
   }
 
   bool const isModification = (args.Length() != 0);
+
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
 
@@ -1134,11 +1135,13 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION(res);
         }
       }
-      
+
       TRI_ASSERT(builder.isClosed());
-      
-      Result res = methods::Collections::updateProperties(consoleColl, builder.slice());
-      
+
+      auto res = methods::Collections::updateProperties(
+        *consoleColl, builder.slice(), false // always a full-update
+      );
+
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1147,6 +1150,7 @@ static void JS_PropertiesVocbaseCol(
       // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
+
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
