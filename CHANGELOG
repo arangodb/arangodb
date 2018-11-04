@@ -1,4 +1,4 @@
-v3.4.0-rc.4 (XXXX-XX-XX)
+v3.4.0-rc.4 (2018-11-04)
 ------------------------
 
 * increase AQL query string parsing performance for queries with many (100K+) string
