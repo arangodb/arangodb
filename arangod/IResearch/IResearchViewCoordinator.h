@@ -76,17 +76,18 @@ class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::ViewFactory const& factory();
 
-  bool visitCollections(CollectionVisitor const& visitor) const override;
-
   void open() override {
     // NOOP
   }
 
-  virtual arangodb::Result updateProperties(
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
     velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
+    bool partialUpdate
   ) override;
+
+  bool visitCollections(CollectionVisitor const& visitor) const override;
+
 
  protected:
   virtual Result appendVelocyPackDetailed(

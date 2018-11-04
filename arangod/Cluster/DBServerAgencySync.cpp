@@ -73,6 +73,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
 
   VPackObjectBuilder c(&collections);
+
   for (auto const& database : Databases::list()) {
 
     try {
@@ -80,23 +81,31 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
       auto vocbase = &guard.database();
 
       collections.add(VPackValue(database));
+
       VPackObjectBuilder db(&collections);
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
         if (!collection->system()) {
           std::string const colname = collection->name();
+
           collections.add(VPackValue(colname));
+
           VPackObjectBuilder col(&collections);
-          collection->toVelocyPack(collections,true,false);
+
+          collection->properties(collections,true,false);
+
           auto const& folls = collection->followers();
           auto const theLeader = folls->getLeader();
+
           collections.add("theLeader", VPackValue(theLeader));
+
           if (theLeader.empty()) {  // we are the leader ourselves
             // In this case we report our in-sync followers here in the format
             // of the agency: [ leader, follower1, follower2, ... ]
             collections.add(VPackValue("servers"));
             { VPackArrayBuilder guard(&collections);
+
               collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
               std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
               for (auto const& s : *srvs) {
@@ -111,11 +120,9 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         TRI_ERROR_INTERNAL,
         std::string("Failed to guard database ") +  database + ": " + e.what());
     }
-
   }
 
   return Result();
-
 }
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
