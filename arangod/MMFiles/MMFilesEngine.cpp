@@ -1356,14 +1356,16 @@ Result MMFilesEngine::createView(
   }
 
   VPackBuilder builder;
+
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   TRI_ASSERT(id != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
   res = TRI_ERROR_NO_ERROR;
+
   try {
     MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CREATE_VIEW, vocbase.id(),
                              view.id(), builder.slice());
@@ -1463,10 +1465,10 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase,
                                  arangodb::LogicalView const* view,
                                  bool forceSync) const {
   std::string const filename = viewParametersFilename(vocbase->id(), view->id());
-
   VPackBuilder builder;
+
   builder.openObject();
-  view->toVelocyPack(builder, true, true);
+    view->properties(builder, true, true);
   builder.close();
 
   LOG_TOPIC(TRACE, Logger::VIEWS)
@@ -1499,8 +1501,9 @@ Result MMFilesEngine::changeView(
 ) {
   if (!inRecovery()) {
     VPackBuilder infoBuilder;
+
     infoBuilder.openObject();
-    view.toVelocyPack(infoBuilder, true, true);
+      view.properties(infoBuilder, true, true);
     infoBuilder.close();
 
     MMFilesViewMarker marker(
@@ -2265,16 +2268,7 @@ void MMFilesEngine::registerCollectionPath(TRI_voc_tick_t databaseId,
                                            TRI_voc_cid_t id,
                                            std::string const& path) {
   WRITE_LOCKER(locker, _pathsLock);
-
-  auto it = _collectionPaths.find(databaseId);
-
-  if (it == _collectionPaths.end()) {
-    it = _collectionPaths
-             .emplace(databaseId,
-                      std::unordered_map<TRI_voc_cid_t, std::string>())
-             .first;
-  }
-  (*it).second[id] = path;
+  _collectionPaths[databaseId][id] = path;
 }
 
 void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId,
@@ -2295,16 +2289,7 @@ void MMFilesEngine::registerViewPath(TRI_voc_tick_t databaseId,
                                      TRI_voc_cid_t id,
                                      std::string const& path) {
   WRITE_LOCKER(locker, _pathsLock);
-
-  auto it = _viewPaths.find(databaseId);
-
-  if (it == _viewPaths.end()) {
-    it = _viewPaths
-             .emplace(databaseId,
-                      std::unordered_map<TRI_voc_cid_t, std::string>())
-             .first;
-  }
-  (*it).second[id] = path;
+  _viewPaths[databaseId][id] = path;
 }
 
 void MMFilesEngine::saveCollectionInfo(
@@ -2557,16 +2542,7 @@ int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
 
   {
     WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
-
-    auto it = _compactionBlockers.find(vocbase);
-
-    if (it == _compactionBlockers.end()) {
-      it =
-          _compactionBlockers.emplace(vocbase, std::vector<CompactionBlocker>())
-              .first;
-    }
-
-    (*it).second.emplace_back(blocker);
+    _compactionBlockers[vocbase].emplace_back(blocker);
   }
 
   id = blocker._id;

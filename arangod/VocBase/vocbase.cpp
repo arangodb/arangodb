@@ -811,16 +811,12 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       collection->deleted(true);
 
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      bool doSync =
-          !engine->inRecovery() &&
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->forceSyncProperties();
-
       VPackBuilder builder;
+
       engine->getCollectionInfo(*this, collection->id(), builder, false, 0);
-      arangodb::Result res = collection->updateProperties(
-          builder.slice().get("parameters"), doSync);
+
+      auto res =
+        collection->properties(builder.slice().get("parameters"), false); // always a full-update
 
       if (!res.ok()) {
         return res.errorNumber();
@@ -1032,25 +1028,18 @@ void TRI_vocbase_t::inventory(
   result.close(); // </collection>
 
   result.add("views", VPackValue(VPackValueType::Array, true));
-  if (ServerState::instance()->isCoordinator()) {
-    auto views = ClusterInfo::instance()->getViews(name());
-    for (auto const& view : views) {
-      result.openObject();
-      view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
-      result.close();
-    }
-  } else {
-    for (auto const& dataSource : dataSourceById) {
-      if (dataSource.second->category() != LogicalView::category()) {
-        continue;
+    LogicalView::enumerate(
+      *this,
+      [&result](LogicalView::ptr const& view)->bool {
+        if (view) {
+          result.openObject();
+            view->properties(result, true, false); // details, !forPersistence because on restore any datasource ids will differ, so need an end-user representation
+          result.close();
+        }
+
+        return true;
       }
-      LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
-      result.openObject();
-      view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
-      result.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
-      result.close();
-    }
-  }
+    );
   result.close(); // </views>
 }
 
@@ -1519,11 +1508,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(
 
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr1->second));
 
-  auto* databaseFeature =
-    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  TRI_ASSERT(databaseFeature);
-  auto doSync = databaseFeature->forceSyncProperties();
-  auto res = itr1->second->rename(std::string(newName), doSync);
+  auto res = itr1->second->rename(std::string(newName));
 
   if (!res.ok()) {
     return res.errorNumber(); // rename failed

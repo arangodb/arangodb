@@ -83,11 +83,9 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime
   
   for(auto const& pair : summand.nodes) {
-    auto it = nodes.find(pair.first);
-    if (it != nodes.end()) {
-      it->second += pair.second;
-    } else {
-      nodes.emplace(pair);
+    auto result = nodes.insert(pair);
+    if (!result.second) {
+      result.first->second += pair.second;
     }
   }
 }
