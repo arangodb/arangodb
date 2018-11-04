@@ -46,7 +46,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-constexpr double MIN_SECONDS = 60.0;
+constexpr double MIN_SECONDS = 30.0;
 }
 
 // -----------------------------------------------------------------------------
