@@ -1608,13 +1608,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // closure and the main thread executing this function. Note that it can
   // happen that the callback is called only after we return from this
   // function!
-  auto dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
 
-  auto dbServers = getCurrentDBServers();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
@@ -1653,11 +1652,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                     << p.key.copyString() << ". Maybe the collection is already dropped.";
                   *errMsg = "Error in creation of collection: " + p.key.copyString() + ". Collection already dropped. "
                   + __FILE__ + std::to_string(__LINE__);
-                  *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+                  dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, std::memory_order_release);
                   return true;
                 }
               }
               if (plannedServers.empty()) {
+                READ_LOCKER(readLocker, _planProt.lock);
                 LOG_TOPIC(DEBUG, Logger::CLUSTER)
                   << "This should never have happened, Plan empty. Dumping _shards in Plan:";
                 for (auto const& p : _shards) {
@@ -1690,9 +1690,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           if (!tmpError.empty()) {
             *errMsg = "Error in creation of collection:" + tmpError + " "
                 + __FILE__ + std::to_string(__LINE__);
-            *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+            dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, std::memory_order_release);
           } else {
-            *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+            dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
           }
         }
         return true;
@@ -1707,7 +1707,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       ac, "Current/Collections/" + databaseName + "/" + collectionID,
       dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+  auto cbGuard = scopeGuard([&] {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  });
 
   std::vector<AgencyOperation> opers (
     { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
@@ -1807,12 +1809,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (true) {
-      errorMsg = *errMsg;
 
-      if (*dbServerResult >= 0) {
+      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      if (tmpRes >= 0) {
+        cbGuard.fire(); // unregister cb before accessing errMsg
+        errorMsg = *errMsg;
         loadCurrent();
         events::CreateCollection(name, *dbServerResult);
-        return *dbServerResult;
+        return tmpRes;
       }
 
       if (TRI_microtime() > endTime) {
