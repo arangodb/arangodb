@@ -274,7 +274,6 @@ class IResearchView final
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  using LogicalView::updateProperties;
   arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -363,7 +362,7 @@ class IResearchView final
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   IResearchViewMetaState _metaState; // the per-instance configuration state
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
-  PersistedStore _storePersisted;
+  PersistedStore _storePersisted; // protected by _asyncSelf->mutex()
   std::mutex _readerLock; // prevents query cache double invalidation
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   FlushCallback _flushCallback; // responsible for flush callback unregistration

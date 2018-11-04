@@ -69,10 +69,18 @@ IResearchLink::IResearchLink(
 }
 
 IResearchLink::~IResearchLink() {
-  if (_dropCollectionInDestructor) {
-    drop();
-  } else {
+  if (!_dropCollectionInDestructor) {
     unload(); // disassociate from view if it has not been done yet
+
+    return;
+  }
+
+  auto res = drop();
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to drop arangosearch view link in link destructor: "
+      << res.errorNumber() << " " << res.errorMessage();
   }
 }
 
@@ -85,6 +93,21 @@ bool IResearchLink::operator==(LogicalView const& view) const noexcept {
 
 bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
+}
+
+void IResearchLink::afterTruncate() {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+  if (!_view) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
+  }
+
+  auto res = _view->drop(_view->id(), false);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 void IResearchLink::batchInsert(
@@ -126,22 +149,24 @@ bool IResearchLink::canBeDropped() const {
   return true; // valid for a link to be dropped from an iResearch view
 }
 
-int IResearchLink::drop() {
+arangodb::Result IResearchLink::drop() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
   if (!_view) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED, // IResearchView required
+      std::string("failed to drop collection '") + _collection.name() + "' from an unset arangosearch view"
+    );
   }
 
   auto res = _view->drop(_collection.id());
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to drop collection '" << _collection.name()
-      << "' from arangosearch view '" << _view->name() << "': " << res.errorMessage();
-
-    return res.errorNumber();
+    return arangodb::Result(
+      res.errorNumber(),
+      std::string("failed to drop collection '") + _collection.name() + "' from arangosearch view '" + _view->name() + "': " + res.errorMessage()
+    );
   }
 
   _dropCollectionInDestructor = false; // will do drop now
@@ -153,25 +178,10 @@ int IResearchLink::drop() {
 
   // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
   if (arangodb::ServerState::instance()->isDBServer()) {
-    return view->drop().errorNumber(); // cluster-view in ClusterInfo should already not have cid-view
+    return view->drop(); // cluster-view in ClusterInfo should already not have cid-view
   }
 
-  return TRI_ERROR_NO_ERROR;
-}
-
-void IResearchLink::doAfterTruncate() {
-  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-  SCOPED_LOCK(mutex);
-
-  if (!_view) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
-  }
-
-  auto res = _view->drop(_view->id(), false);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  return arangodb::Result();
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -501,7 +511,7 @@ int IResearchLink::unload() {
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (_collection.deleted()
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
-    return drop();
+    return drop().errorNumber();
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
