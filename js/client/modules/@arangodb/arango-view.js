@@ -210,6 +210,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   const mask = {
     'code': true,
+    'globallyUniqueId': true,
     'id': true,
     'name': true,
     'type': true,
