@@ -489,7 +489,7 @@ Result Collections::rename(
   }
 
   // check required to pass shell-collection-rocksdb-noncluster.js::testSystemSpecial
-  if (collection->system()) {
+  if (collection.system()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
