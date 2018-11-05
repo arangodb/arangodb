@@ -172,7 +172,7 @@ class RocksDBSettingsManager {
                      std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>
       _estimators;
 
-  /// @brief synced sequence numbers
+  /// @brief synced sequence numbers per object
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNums;
 
   /// @brief last sync sequence number

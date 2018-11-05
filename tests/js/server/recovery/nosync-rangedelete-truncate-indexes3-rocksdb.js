@@ -37,27 +37,30 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
 
-  let c = db._createEdgeCollection('UnitTestsRecovery1');
+  let c = db._create('UnitTestsRecovery1');
   let c2 = db._create('UnitTestsRecovery2');
   c2.insert({}); // make sure count is initalized
 
+  c.ensureIndex({ type: "hash", fields: ["value"] });
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ _key: "test" + i, _from: "test/1", _to: "test/" + i, value: i });
+    docs.push({ _key: "test" + i, value: i % 1000});
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
     }
   }
 
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
+  // turn off any background op like sync
+  internal.waitForEstimatorSync();
+  print(c.getIndexes(true));
+
+  internal.debugSetFailAt("RocksDBBackgroundThread::run"); 
+  // force a sync right before truncate
+  internal.debugSetFailAt("RocksDBCollection::truncate::forceSync"); 
  
   // should trigger range deletion
   c.truncate();
-  
-  // turn off syncing of counters etc.  
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
   c2.insert({}, { waitForSync: true });
   internal.debugSegfault('crashing server');
@@ -80,13 +83,11 @@ function recoverySuite () {
       assertEqual(0, c.count());
       assertNotNull(db._collection('UnitTestsRecovery2'));
   
-      assertEqual([], c.edges("test/1"));
       let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
       
       for (let i = 0; i < 100000; i += 1000) {
         assertFalse(c.exists("key" + i));
         assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
-        assertEqual([], c.edges("test/" + i));
       }
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -95,7 +96,6 @@ function recoverySuite () {
         switch (i.type) {
           case 'primary':
           case 'hash':
-          case 'edge':
             assertEqual(i.selectivityEstimate, 1, JSON.stringify(i));
             break;
           default:

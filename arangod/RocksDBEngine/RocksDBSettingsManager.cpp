@@ -58,15 +58,14 @@ std::pair<arangodb::Result, rocksdb::SequenceNumber>
   writeCounterValue(std::unordered_map<uint64_t, rocksdb::SequenceNumber> const& syncedSeqNums,
                     rocksdb::Transaction* rtrx, VPackBuilder& b,
                     std::pair<uint64_t, arangodb::RocksDBSettingsManager::CMValue> const& pair,
-                    rocksdb::SequenceNumber baseSeq) {
+                    rocksdb::SequenceNumber maxSeqNr) {
   using arangodb::Logger;
   using arangodb::Result;
   using arangodb::RocksDBColumnFamily;
   using arangodb::RocksDBKey;
   using arangodb::rocksutils::convertStatus;
 
-  rocksdb::SequenceNumber returnSeq = baseSeq;
-
+  rocksdb::SequenceNumber returnSeq = maxSeqNr;
   // Skip values which we did not change
   auto const& it = syncedSeqNums.find(pair.first);
   if (it != syncedSeqNums.end() && it->second == pair.second._sequenceNum) {
@@ -325,6 +324,7 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
   setMaxUpdateSequenceNumber(seqNo);
 
   if (needsSync) {
+    LOG_DEVEL << "force syncing document count for " << objectId;
     sync(true);
   }
 }
@@ -423,15 +423,14 @@ Result RocksDBSettingsManager::sync(bool force) {
   // only one thread can enter here at a time
 
   // make sure we give up our lock when we exit this function
-  auto guard = scopeGuard([this]() { _syncing = false; });
+  auto guard = scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
   
-  auto maxUpdateSeqNo =  _maxUpdateSeqNo.load(std::memory_order_acquire);
-
-  if (!force && maxUpdateSeqNo <= _lastSyncedSeqNo) {
-    // if noone has updated any counters etc. since we were here last,
-    // there is no need to do anything!
-    return Result();
-  }
+//  auto maxUpdateSeqNo = _maxUpdateSeqNo.load(std::memory_order_acquire);
+//  if (!force && maxUpdateSeqNo <= _lastSyncedSeqNo) {
+//    // if noone has updated any counters etc. since we were here last,
+//    // there is no need to do anything!
+//    return Result();
+//  }
 
   // ok, when we are here, we will write out something back to the database
 
@@ -443,8 +442,10 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
-  auto seqNumber = _db->GetLatestSequenceNumber();
- 
+  auto maxSeqNr = _db->GetLatestSequenceNumber();
+  auto minSeqNr = maxSeqNr;
+  LOG_DEVEL << "starting sync with latestSeqNr: " << maxSeqNr;
+
   rocksdb::WriteOptions writeOptions;
   std::unique_ptr<rocksdb::Transaction> rtrx(
       _db->BeginTransaction(writeOptions));
@@ -457,36 +458,35 @@ Result RocksDBSettingsManager::sync(bool force) {
     rocksdb::SequenceNumber returnSeq;
     
     std::tie(res, returnSeq) = writeCounterValue(_syncedSeqNums, rtrx.get(),
-                                                 _builder, pair, seqNumber);
+                                                 _builder, pair, maxSeqNr);
     if (res.fail()) {
       return res;
     }
-    seqNumber = std::min(seqNumber, returnSeq);
+    minSeqNr = std::min(minSeqNr, returnSeq);
 
     std::tie(res, returnSeq) =
-        writeIndexEstimatorsAndKeyGenerator(rtrx.get(), pair, seqNumber);
+        writeIndexEstimatorsAndKeyGenerator(rtrx.get(), pair, maxSeqNr);
     if (res.fail()) {
       return res;
     }
-    seqNumber = std::min(seqNumber, returnSeq);
+    minSeqNr = std::min(minSeqNr, returnSeq);
   }
 
-  Result res = writeSettings(rtrx.get(), _builder, seqNumber);
+  Result res = writeSettings(rtrx.get(), _builder, minSeqNr);
 
   if (res.fail()) {
     return res;
   }
 
+  LOG_DEVEL << "commiting settings up to " << minSeqNr;
   // we have to commit all counters in one batch
   auto s = rtrx->Commit();
   
   if (s.ok()) {
-    _lastSyncedSeqNo = maxUpdateSeqNo;
-
+//    _lastSyncedSeqNo = maxUpdateSeqNo;
     {
       WRITE_LOCKER(guard, _rwLock);
-      LOG_DEVEL << "synced tick " << _lastSync;
-      _lastSync = seqNumber;
+      _lastSync = minSeqNr;
     }
     for (std::pair<uint64_t, CMValue> const& pair : copy) {
       _syncedSeqNums[pair.first] = pair.second._sequenceNum;
@@ -562,13 +562,9 @@ void RocksDBSettingsManager::loadIndexEstimates() {
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
        iter->Next()) {
     
-    
-    
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
-    
     uint64_t lastSeqNumber =
         rocksutils::uint64FromPersistent(iter->value().data());
-    
     
     LOG_DEVEL << "est. objectID " << objectId << "  lastSequence " << lastSeqNumber;
     
@@ -586,7 +582,7 @@ void RocksDBSettingsManager::loadIndexEstimates() {
                           lastSeqNumber, estimateSerialization));
         if (it.second) {
           auto estimator = it.first->second.get();
-          LOG_TOPIC(TRACE, Logger::ENGINES)
+          LOG_TOPIC(ERR, Logger::ENGINES)
               << "found index estimator for objectId '" << objectId
               << "' last synced at " << lastSeqNumber << " with estimate "
               << estimator->computeEstimate();

@@ -1226,6 +1226,8 @@ rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!_unique) {
     TRI_ASSERT(_estimator != nullptr);
+    LOG_DEVEL << "serializing index estimator for objectId '" << _objectId
+              <<  "' with estimate " << _estimator->computeEstimate();
     return _estimator->serialize(output, seq);
   }
   return seq;

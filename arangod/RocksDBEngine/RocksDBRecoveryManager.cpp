@@ -92,6 +92,7 @@ void RocksDBRecoveryManager::start() {
     return;
   }
 
+  LOG_DEVEL << "running recovery";
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
   // synchronizes with acquire inRecovery()
@@ -258,10 +259,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     auto it = _deltas.find(objectId);
     if (it != _deltas.end()) {
       *ops = &(it->second);
-      if (it->second.startSequenceNumber <= _currentSequence) {
-        LOG_DEVEL << "startSequenceNumber " << it->second.startSequenceNumber << " <= " << _currentSequence;
-      }
-      return it->second.startSequenceNumber <= _currentSequence;
+      return it->second.startSequenceNumber < _currentSequence;
     }
     auto res = _deltas.emplace(objectId, _currentSequence); // do not ignore unknown counters
     *ops = &(res.first->second);
@@ -325,11 +323,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
       LOG_DEVEL << "index " << idx->typeName() << " objectID: " << ridx->objectId();
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-      if (est && est->commitSeq() <= _currentSequence) {
+      if (est && est->commitSeq() < _currentSequence) {
         LOG_DEVEL << "truncating index " << ridx->typeName() << " with  " << est->commitSeq();
         est->bufferTruncate(_currentSequence);
       } else if (est) {
-        LOG_DEVEL << "skipping index " << ridx->typeName() << " with  " << est->commitSeq();
+        LOG_DEVEL << "skipping index " << ridx->typeName() << " with  " << est->commitSeq()
+        << " and selectivity " << est->computeEstimate();
       }
     }
 
@@ -424,13 +423,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   
   // tick function that is called before each new WAL entry
   void incTick() {
-    if (_startOfBatch) {
-      // we are at the start of a batch. do NOT increase sequence number
-      _startOfBatch = false;
-    } else {
-      // we are inside a batch already. now increase sequence number
-      ++_currentSequence;
-    }
+//    if (_startOfBatch) {
+//      // we are at the start of a batch. do NOT increase sequence number
+//      _startOfBatch = false;
+//    } else {
+//      // we are inside a batch already. now increase sequence number
+//      ++_currentSequence;
+//    }
   }
   
  public:
@@ -459,12 +458,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         hash = RocksDBEdgeIndex::HashForKey(key);
       }
 
+      static int ss = 0;
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est != nullptr && est->commitSeq() < _currentSequence) {
           // We track estimates for this index
           est->insert(hash);
+          LOG_DEVEL << "insert nr " << ++ss;
         }
       }
     }
@@ -507,12 +508,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         hash = RocksDBEdgeIndex::HashForKey(key);
       }
 
+      static int ss = 0;
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est != nullptr && est->commitSeq() < _currentSequence) {
           // We track estimates for this index
           est->remove(hash);
+          LOG_DEVEL << "removal nr " << ++ss;
         }
       }
     }
@@ -632,7 +635,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     LOG_DEVEL << "earliest seq needed " << earliest;
     auto minTick = std::min(earliest, engine->releasedTick());
     LOG_DEVEL << "restoring from tick " << minTick;
-    minTick = 0;
     
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s = _db->GetUpdatesSince(

@@ -41,6 +41,9 @@ function runSetup () {
   db._drop('UnitTestsRecovery2');
 
   let c = db._createEdgeCollection('UnitTestsRecovery1');
+  let c2 = db._create('UnitTestsRecovery2');
+  c2.insert({}); // make sure count is initalized
+
   let docs = [];
   for (let i = 0; i < 100000; i++) {
     docs.push({ _key: "test" + i, _from: "test/1", _to: "test/" + i, value: i });
@@ -56,9 +59,7 @@ function runSetup () {
   // should trigger range deletion
   c.truncate();
 
-  c = db._create('UnitTestsRecovery2');
-  c.insert({}, { waitForSync: true });
-
+  c2.insert({}, { waitForSync: true });
   internal.debugSegfault('crashing server');
 }
 
