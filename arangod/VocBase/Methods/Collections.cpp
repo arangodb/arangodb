@@ -488,6 +488,11 @@ Result Collections::rename(
     }
   }
 
+  // check required to pass shell-collection-rocksdb-noncluster.js::testSystemSpecial
+  if (collection->system()) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+  }
+
   if (!doOverride) {
     auto isSystem = TRI_vocbase_t::IsSystemName(collection.name());
 
