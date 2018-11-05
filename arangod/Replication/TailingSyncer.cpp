@@ -678,9 +678,9 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
 
-  if (col == nullptr) {
+  if (!col) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave

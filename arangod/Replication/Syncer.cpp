@@ -766,9 +766,9 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    auto* col = resolveCollection(*vocbase, slice).get();
+    auto col = resolveCollection(*vocbase, slice);
 
-    if (col == nullptr) {
+    if (!col) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 

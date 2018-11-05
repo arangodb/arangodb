@@ -1449,7 +1449,7 @@ int TransactionCollectionMock::lockRecursive(arangodb::AccessMode::Type type, in
 
 void TransactionCollectionMock::release() {
   if (_collection) {
-    _transaction->vocbase().releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection.get());
     _collection = nullptr;
   }
 }
