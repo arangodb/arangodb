@@ -485,6 +485,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
     {
       WRITE_LOCKER(guard, _rwLock);
+      LOG_DEVEL << "synced tick " << _lastSync;
       _lastSync = seqNumber;
     }
     for (std::pair<uint64_t, CMValue> const& pair : copy) {
@@ -538,7 +539,7 @@ void RocksDBSettingsManager::loadSettings() {
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC(TRACE, Logger::ENGINES)
+          LOG_TOPIC(ERR, Logger::ENGINES)
               << "last background settings sync: " << _lastSync;
         }
       } catch (...) {

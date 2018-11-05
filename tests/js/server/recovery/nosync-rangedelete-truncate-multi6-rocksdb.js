@@ -51,9 +51,6 @@ function runSetup () {
 
   // should trigger range deletion
   c.truncate();
-
-  // turn off syncing of counters etc.  
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
   
   for (let i = 0; i < 90000; i++) {
     docs.push({ _key: "test" + i, value: i % 1000 });
@@ -64,6 +61,9 @@ function runSetup () {
   }
   
   c.truncate();
+
+  // turn off syncing of counters etc.  
+  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
   c = db._create('UnitTestsRecovery2');
   c.insert({}, { waitForSync: true });
