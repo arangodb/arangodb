@@ -180,8 +180,9 @@ arangodb::Result modifyLinks(
         irs::string_ref const& key
     )->bool {
       // ignored fields
-      return key != arangodb::StaticStrings::IndexType
-        && key != arangodb::iresearch::StaticStrings::ViewIdField;
+      return key != arangodb::StaticStrings::IndexId
+          && key != arangodb::StaticStrings::IndexType
+          && key != arangodb::iresearch::StaticStrings::ViewIdField;
     };
     arangodb::velocypack::Builder namedJson;
 

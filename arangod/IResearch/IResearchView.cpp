@@ -1115,7 +1115,8 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
           static const std::function<bool(irs::string_ref const& key)> acceptor = [](
               irs::string_ref const& key
           )->bool {
-            return key != arangodb::StaticStrings::IndexType
+            return key != arangodb::StaticStrings::IndexId
+                && key != arangodb::StaticStrings::IndexType
                 && key != StaticStrings::ViewIdField; // ignored fields
           };
 
