@@ -54,6 +54,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
   startsAfter("DatabasePhase");
+  startsAfter("Scheduler");
 }
 
 ClusterFeature::~ClusterFeature() {
