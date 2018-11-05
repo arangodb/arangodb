@@ -35,24 +35,22 @@ var db = require("internal").db;
 var queues = require('@arangodb/foxx/queues');
 var FoxxManager = require('org/arangodb/foxx/manager');
 var fs = require('fs');
-var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 
 function foxxQueuesSuite () {
   var cn = "UnitTestsFoxx";
-  var collection = null;
   var qn = "FoxxCircus";
 
   return {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn);
+      db._create(cn);
       queues.delete(qn);
     },
 
     tearDown : function () {
       db._drop(cn);
-      collection = null;
       queues.delete(qn);
     },
 
@@ -97,7 +95,7 @@ function foxxQueuesSuite () {
       }, {});
 
       var tries = 0;
-      while (++tries < 60) {
+      while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
@@ -137,7 +135,7 @@ function foxxQueuesSuite () {
         }, {});
 
         var tries = 0;
-        while (++tries < 120) {
+        while (++tries < 240) {
           var result = db._jobs.document(id);
           if (result.status === 'pending') {
             internal.wait(0.5, false);
@@ -163,7 +161,7 @@ function foxxQueuesSuite () {
       }});
 
       var tries = 0;
-      while (++tries < 60) {
+      while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
@@ -199,7 +197,7 @@ function foxxQueuesSuite () {
       }});
 
       var tries = 0;
-      while (++tries < 120) {
+      while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
@@ -220,6 +218,29 @@ function foxxQueuesSuite () {
         }
       }
       assertNotEqual(3, db.UnitTestsFoxx.count());
+    },
+
+    testExecuteInfinitelyFailingJob : function () {
+      assertEqual(0, db.UnitTestsFoxx.count());
+      var queue = queues.create(qn);
+      var id = queue.push({
+        name: 'peng',
+        mount: '/_admin/aardvark',
+        maxFailures: -1
+      }, {}, { failure: function() {
+        require("internal").db.UnitTestsFoxx.insert({ failed: true }); 
+      }});
+
+      for (let tries = 0; tries < 60; tries++) {
+        var result = db.UnitTestsFoxx.count();
+        if (result < 2) {
+          internal.wait(0.5, false);
+          continue;
+        }
+        queue.delete(id);
+        break;
+      }
+      assertNotEqual(0, db.UnitTestsFoxx.count());
     }
 
   };

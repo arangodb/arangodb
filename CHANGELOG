@@ -1,6 +1,8 @@
 v3.3.20 (XXXX-XX-XX)
 --------------------
 
+* fixed Foxx queues not retrying jobs with infinite `maxFailures`
+
 * force connection timeout to be 7 seconds to allow libcurl time to retry lost DNS
   queries.
 
