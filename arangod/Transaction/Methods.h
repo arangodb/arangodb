@@ -159,6 +159,7 @@ class Methods {
   /// @param callback nullptr and empty functers are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
+  bool removeStatusChangeCallback(StatusChangeCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
@@ -435,9 +436,8 @@ class Methods {
   virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) { return false; }
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) { return false; }
 #endif
-
+  
  private:
-
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
@@ -509,6 +509,9 @@ class Methods {
                                                  OperationOptions const& options);
 
  protected:
+  /// @brief return the transaction collection for a document collection
+  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
+                               AccessMode::Type type = AccessMode::Type::READ) const;
 
   OperationResult countCoordinator(std::string const& collectionName,
                                    CountType type);
@@ -517,10 +520,6 @@ class Methods {
       std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
 
   OperationResult countLocal(std::string const& collectionName, CountType type);
-
-  /// @brief return the transaction collection for a document collection
-  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
-                               AccessMode::Type type = AccessMode::Type::READ) const;
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(

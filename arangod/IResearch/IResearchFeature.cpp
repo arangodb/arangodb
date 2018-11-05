@@ -169,7 +169,7 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     ),
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
       auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
       auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
       return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));

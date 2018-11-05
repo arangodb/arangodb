@@ -691,9 +691,8 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
-  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 
-  return guard.collection()->updateProperties(data, doSync);
+  return guard.collection()->properties(data, false); // always a full-update
 }
 
 /// @brief truncate a collections. Assumes no trx are running
@@ -788,7 +787,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
 
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    auto res = vocbase->renameView(view->id(), nameSlice.copyString());
+    auto res = view->rename(nameSlice.copyString());
 
     if (!res.ok()) {
       return res;
@@ -798,9 +797,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-
-    return view->updateProperties(properties, false, doSync);
+    return view->properties(properties, false); // always a full-update
   }
 
   return {};

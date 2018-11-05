@@ -38,6 +38,10 @@ class IResearchMMFilesLink final
 
   virtual ~IResearchMMFilesLink();
 
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
+
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
@@ -51,12 +55,8 @@ class IResearchMMFilesLink final
   }
 
   virtual int drop() override {
-    return IResearchLink::drop();
+    return IResearchLink::drop().errorNumber();
   }
-    
-  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
-    IResearchLink::doAfterTruncate();
-  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();

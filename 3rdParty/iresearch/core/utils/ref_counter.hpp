@@ -48,7 +48,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   }; // equal_to
 
   struct hash : Hash {
-    bool operator()(const ref_t& value) const {
+    size_t operator()(const ref_t& value) const {
       assert(value);
       return Hash::operator()(*value);
     }

@@ -1409,14 +1409,16 @@ Result MMFilesEngine::createView(
   }
 
   VPackBuilder builder;
+
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   TRI_ASSERT(id != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
   res = TRI_ERROR_NO_ERROR;
+
   try {
     MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CREATE_VIEW, vocbase.id(),
                              view.id(), builder.slice());
@@ -1516,10 +1518,10 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase,
                                  arangodb::LogicalView const* view,
                                  bool forceSync) const {
   std::string const filename = viewParametersFilename(vocbase->id(), view->id());
-
   VPackBuilder builder;
+
   builder.openObject();
-  view->toVelocyPack(builder, true, true);
+    view->properties(builder, true, true);
   builder.close();
 
   LOG_TOPIC(TRACE, Logger::VIEWS)
@@ -1552,8 +1554,9 @@ Result MMFilesEngine::changeView(
 ) {
   if (!inRecovery()) {
     VPackBuilder infoBuilder;
+
     infoBuilder.openObject();
-    view.toVelocyPack(infoBuilder, true, true);
+      view.properties(infoBuilder, true, true);
     infoBuilder.close();
 
     MMFilesViewMarker marker(

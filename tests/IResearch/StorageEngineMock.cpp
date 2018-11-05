@@ -1006,7 +1006,7 @@ arangodb::Result StorageEngineMock::changeView(
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+  view.properties(builder, true, true);
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
   return {};
@@ -1108,7 +1108,7 @@ arangodb::Result StorageEngineMock::createView(
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+  view.properties(builder, true, true);
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 

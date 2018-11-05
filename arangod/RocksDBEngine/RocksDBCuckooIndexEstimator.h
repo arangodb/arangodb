@@ -580,28 +580,29 @@ class RocksDBCuckooIndexEstimator {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
-      bool foundTruncate = false;
+
+      // truncate will increase this sequence
+      rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
+        bool foundTruncate = false;
         // find out if we have buffers to apply
         {
           WRITE_LOCKER(locker, _lock);
 
-          rocksdb::SequenceNumber ignoreSeq = 0;
           // check for a truncate marker
-          if (!_truncateBuffer.empty()) {
-            auto it = _truncateBuffer.begin(); // sorted ASC
-            while (*it <= commitSeq && *it >= ignoreSeq) {
-              ignoreSeq = *it;
-              foundTruncate = true;
-              it = _truncateBuffer.erase(it);
-            }
+          auto it = _truncateBuffer.begin(); // sorted ASC
+          while (it != _truncateBuffer.end() && *it <= commitSeq) {
+            ignoreSeq = *it;
+            TRI_ASSERT(ignoreSeq != 0);
+            foundTruncate = true;
+            it = _truncateBuffer.erase(it);
           }
-          
+            
           // check for inserts
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
-              if (!foundTruncate || it->first > ignoreSeq) {
+              if (it->first >= ignoreSeq) {
                 inserts = std::move(it->second);
                 TRI_ASSERT(!inserts.empty());
               }
@@ -613,7 +614,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
-              if (!foundTruncate || it->first > ignoreSeq) {
+              if (it->first >= ignoreSeq) {
                 removals = std::move(it->second);
                 TRI_ASSERT(!removals.empty());
               }
@@ -624,7 +625,6 @@ class RocksDBCuckooIndexEstimator {
         
         if (foundTruncate) {
           clear(); // clear estimates
-          foundTruncate = false;
         }
 
         // no inserts or removals left to apply, drop out of loop

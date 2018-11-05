@@ -282,7 +282,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
   
-  /// Truncate indexes of collection
+  /// Truncate indexes of collection with objectId
   bool truncateIndexes(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -304,9 +304,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
     
     for (auto const& idx : coll->getIndexes()) {
+      LOG_DEVEL << "truncating index: " << idx->typeName();
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-      if (est) {
+      if (est && est->commitSeq() < currentSeqNum) {
         est->bufferTruncate(currentSeqNum);
       }
     }
@@ -314,6 +315,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     return true;
   }
 
+  // find estimator for index
   RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -536,12 +538,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           ops->removed = 0;
           ops->added = 0;
           ops->mustTruncate = true;
-
-          if (!truncateIndexes(objectId)) {
-            // unable to truncate indexes of the collection.
-            // may be due to collection having been deleted etc.
-            LOG_TOPIC(WARN, Logger::ENGINES) << "unable to truncate indexes for objectId " << objectId;
-          }
+        }
+        // index estimates have their own commitSeq
+        if (!truncateIndexes(objectId)) {
+          // unable to truncate indexes of the collection.
+          // may be due to collection having been deleted etc.
+          LOG_TOPIC(WARN, Logger::ENGINES) << "unable to truncate indexes for objectId " << objectId;
         }
 
         _lastRemovedDocRid = 0; // reset in any other case

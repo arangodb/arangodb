@@ -274,7 +274,6 @@ class IResearchView final
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  using LogicalView::updateProperties;
   arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -311,7 +310,6 @@ class IResearchView final
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
-    irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
     irs::index_writer::ptr _writer;
 
     DataStore() = default;
@@ -331,7 +329,7 @@ class IResearchView final
   struct ViewFactory; // forward declaration
   class ViewStateHelper; // forward declaration
   struct ViewStateRead; // forward declaration
-  struct ViewStateWrite; // forward declaration
+  class ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
@@ -364,7 +362,7 @@ class IResearchView final
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   IResearchViewMetaState _metaState; // the per-instance configuration state
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
-  PersistedStore _storePersisted;
+  PersistedStore _storePersisted; // protected by _asyncSelf->mutex()
   std::mutex _readerLock; // prevents query cache double invalidation
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   FlushCallback _flushCallback; // responsible for flush callback unregistration

@@ -59,13 +59,14 @@ static constexpr bool isLittleEndian() {return true;}
 static constexpr bool isLittleEndian() {return false;}
   #endif
 #else
-#pragma messsage("unsupported os or compiler")
+  #pragma messsage("unsupported os or compiler")
 #endif
  
 template<typename T, size_t size> struct EndianTraits;
 
 template<typename T> struct EndianTraits<T, 2> {
   typedef typename std::make_unsigned<T>::type type;
+  
   inline static type htole(type in) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt16(in);
@@ -75,9 +76,12 @@ template<typename T> struct EndianTraits<T, 2> {
     if (!isLittleEndian()) {
       return _byteswap_ushort(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type letoh(type in) {
 #ifdef __APPLE__
     return OSSwapLittleToHostInt16(in);
@@ -87,9 +91,12 @@ template<typename T> struct EndianTraits<T, 2> {
     if (!isLittleEndian()) {
       return _byteswap_ushort(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type htobe(type in) {
 #ifdef __APPLE__
     return OSSwapHostToBigInt16(in);
@@ -99,8 +106,10 @@ template<typename T> struct EndianTraits<T, 2> {
     if (isLittleEndian()) {
       return _byteswap_ushort(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
   inline static type betoh(type in) {
 #ifdef __APPLE__
@@ -111,13 +120,16 @@ template<typename T> struct EndianTraits<T, 2> {
     if (isLittleEndian()) {
       return _byteswap_ushort(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
 };
 
 template<typename T> struct EndianTraits<T, 4> {
   typedef typename std::make_unsigned<T>::type type;
+
   inline static type htole(type in) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt32(in);
@@ -127,9 +139,12 @@ template<typename T> struct EndianTraits<T, 4> {
     if (!isLittleEndian()) {
       return _byteswap_ulong(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type letoh(type in) {
 #ifdef __APPLE__
     return OSSwapLittleToHostInt32(in);
@@ -139,9 +154,12 @@ template<typename T> struct EndianTraits<T, 4> {
     if (!isLittleEndian()) {
       return _byteswap_ulong(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type htobe(type in) {
 #ifdef __APPLE__
     return OSSwapHostToBigInt32(in);
@@ -151,9 +169,12 @@ template<typename T> struct EndianTraits<T, 4> {
     if (isLittleEndian()) {
       return _byteswap_ulong(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type betoh(type in) {
 #ifdef __APPLE__
     return OSSwapBigToHostInt32(in);
@@ -163,13 +184,16 @@ template<typename T> struct EndianTraits<T, 4> {
     if (isLittleEndian()) {
       return _byteswap_ulong(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
 };
 
 template<typename T> struct EndianTraits<T, 8> {
   typedef typename std::make_unsigned<T>::type type;
+
   inline static type htole(type in) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt64(in);
@@ -179,9 +203,12 @@ template<typename T> struct EndianTraits<T, 8> {
     if (!isLittleEndian()) {
       return _byteswap_uint64(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type letoh(type in) {
 #ifdef __APPLE__
     return OSSwapLittleToHostInt64(in);
@@ -191,9 +218,12 @@ template<typename T> struct EndianTraits<T, 8> {
     if (!isLittleEndian()) {
       return _byteswap_uint64(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type htobe(type in) {
 #ifdef __APPLE__
     return OSSwapHostToBigInt64(in);
@@ -203,9 +233,12 @@ template<typename T> struct EndianTraits<T, 8> {
     if (isLittleEndian()) {
       return _byteswap_uint64(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
+
   inline static type betoh(type in) {
 #ifdef __APPLE__
     return OSSwapBigToHostInt64(in);
@@ -215,8 +248,10 @@ template<typename T> struct EndianTraits<T, 8> {
     if (isLittleEndian()) {
       return _byteswap_uint64(in);
     }
-#endif
     return in;
+#else
+    return in;
+#endif
   }
 };
 
