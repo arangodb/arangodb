@@ -442,13 +442,15 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "rename") {
           VPackSlice const newNameSlice = body.get("name");
+
           if (!newNameSlice.isString()) {
             res = Result(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name is empty");
             return;
           }
 
           std::string const newName = newNameSlice.copyString();
-          res = methods::Collections::rename(coll.get(), newName, false);
+
+          res = methods::Collections::rename(*coll, newName, false);
 
           if (res.ok()) {
             collectionRepresentation(builder, newName, /*showProperties*/ false,

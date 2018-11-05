@@ -136,8 +136,9 @@ class IResearchMMFilesLink final
   }
 
   virtual void unload() override {
-    int res = IResearchLink::unload();
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }

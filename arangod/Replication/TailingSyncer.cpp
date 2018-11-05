@@ -642,7 +642,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
         << "Renaming system collection " << col->name();
   }
 
-  return vocbase->renameCollection(col->id(), name, true);
+  return vocbase->renameCollection(col->id(), name);
 }
 
 /// @brief changes the properties of a collection,
