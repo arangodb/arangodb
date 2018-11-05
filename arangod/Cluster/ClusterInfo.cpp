@@ -2619,49 +2619,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
   }
 
-  try {
-    VPackObjectBuilder b(newBuilder.get());
-    // Create a new collection VPack with the new Index
-    for (auto const& entry : VPackObjectIterator(collectionSlice)) {
-      TRI_ASSERT(entry.key.isString());
-      std::string key = entry.key.copyString();
-
-      if (key == "indexes") {
-        TRI_ASSERT(entry.value.isArray());
-        newBuilder->add(key, VPackValue(VPackValueType::Array));
-        // Copy over all indexes known so far
-        for (auto const& idx : VPackArrayIterator(entry.value)) {
-          newBuilder->add(idx);
-        }
-        {
-          VPackObjectBuilder ob(newBuilder.get());
-          // Add the new index ignoring "id"
-          for (auto const& e : VPackObjectIterator(slice)) {
-            TRI_ASSERT(e.key.isString());
-            std::string tmpkey = e.key.copyString();
-            if (tmpkey != "id" && tmpkey != "isBuilding") {
-              newBuilder->add(tmpkey, e.value);
-            }
-          }
-          // Adding this key to show to outside world that the index
-          // creation is going on
-          if (!type.isEqualString("arangosearch")) {
-            newBuilder->add("isBuilding", VPackValue(true));
-          }
-          newBuilder->add("id", VPackValue(idString));
-        }
-        newBuilder->close();  // the array
-      } else {
-        // Plain copy everything else
-        newBuilder->add(key, entry.value);
-      }
-    }
-  } catch (...) {
-    return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-  }
-
-  LOG_TOPIC(ERR, Logger::FIXME) << newBuilder->toJson();
-
   // will contain the error number and message
   std::shared_ptr<std::atomic<int>> dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
@@ -2721,14 +2678,20 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     // Add the new index ignoring "id"
     for (auto const& e : VPackObjectIterator(slice)) {
       TRI_ASSERT(e.key.isString());
-      if (!e.key.isEqualString(StaticStrings::IndexId)) {
+      std::string const& key = e.key.copyString();
+      if (key != StaticStrings::IndexId && key != "isBuilding") {
         ob->add(e.key);
         ob->add(e.value);
       }
     }
+    if (!slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
+      ob->add("isBuilding", VPackValue(true));
+    }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
-  
+
+  LOG_TOPIC(ERR, Logger::FIXME) << newIndexBuilder.toJson();
+
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
@@ -3131,9 +3094,7 @@ void ClusterInfo::loadServers() {
     << " errorCode: " << result.errorCode()
     << " errorMessage: " << result.errorMessage()
     << " body: " << result.body();
-}
-
-////////////////////////////////////////////////////////////////////////////////
+}////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
