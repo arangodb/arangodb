@@ -332,7 +332,7 @@ void ClusterComm::startBackgroundThreads() {
   for(unsigned loop=0; loop<(TRI_numberProcessors()/8+1); ++loop) {
     ClusterCommThread * thread = new ClusterCommThread();
 
-    if (thread->start()) {
+    if (thread->start(&_activeThreadsCondition)) {
       _backgroundThreads.push_back(thread);
     } else {
       LOG_TOPIC(FATAL, Logger::CLUSTER)
@@ -343,12 +343,24 @@ void ClusterComm::startBackgroundThreads() {
 }
 
 void ClusterComm::stopBackgroundThreads() {
+  // pass 1:  tell all background threads to stop
   for (ClusterCommThread * thread: _backgroundThreads) {
     thread->beginShutdown();
+  } // for
+
+  // pass 2:  verify each thread is stopped, wait if necessary
+  CONDITION_LOCKER(locker, _activeThreadsCondition);
+  for (ClusterCommThread * thread: _backgroundThreads) {
+    // wait until all communications on the thread actual complete
+    while(thread->isRunning()) {
+      _activeThreadsCondition.wait(10000);
+    } // while
+
     delete thread;
   }
 
   _backgroundThreads.clear();
+
 }
 
 
