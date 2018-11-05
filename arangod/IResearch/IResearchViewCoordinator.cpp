@@ -100,7 +100,7 @@ struct IResearchViewCoordinator::ViewFactory: public arangodb::ViewFactory {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    res = impl->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+    res = impl->properties(builder, true, true); // include links so that Agency will always have a full definition
 
     if (!res.ok()) {
       return res;
@@ -330,10 +330,9 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
-arangodb::Result IResearchViewCoordinator::updateProperties(
+arangodb::Result IResearchViewCoordinator::properties(
     velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool /*doSync*/
+    bool partialUpdate
 ) {
   auto* engine = arangodb::ClusterInfo::instance();
 
@@ -397,7 +396,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       builder.openObject();
       meta.json(builder);
 
-      auto result = toVelocyPack(builder, false, true);
+      auto result = properties(builder, false, true);
 
       if (!result.ok()) {
         return result;
@@ -479,8 +478,6 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       std::string("error updating properties for arangosearch view '") + name() + "'"
     );
   }
-
-  return arangodb::Result();
 }
 
 Result IResearchViewCoordinator::dropImpl() {

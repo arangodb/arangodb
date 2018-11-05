@@ -139,9 +139,7 @@ class LogicalDataSource {
   std::string const& name() const noexcept { return _name; }
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
-  virtual Result rename(std::string&& newName, bool doSync) = 0;
-  bool system() const noexcept { return _system; }
- 
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append a jSON definition of the data-source to the 'builder'
   /// @param the buffer to append to, must be an open object
@@ -151,12 +149,24 @@ class LogicalDataSource {
   /// @param forPersistence this definition is meant to be persisted
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result toVelocyPack(
+  Result properties(
     velocypack::Builder& builder,
     bool detailed,
     bool forPersistence
-  ) const /*final*/;
+  ) const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing DataSource
+  /// @param definition the properties being updated
+  /// @param partialUpdate modify only the specified properties (false == all)
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result properties(
+    velocypack::Slice const& definition,
+    bool partialUpdate
+  ) = 0;
+
+  virtual Result rename(std::string&& newName) = 0;
+  bool system() const noexcept { return _system; }
   Type const& type() const noexcept { return _type; }
   TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 

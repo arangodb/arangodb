@@ -236,10 +236,10 @@ void dropCollectionFromAllViews(
     TRI_voc_cid_t collectionId
 ) {
   auto* vocbase = db.useDatabase(dbId);
-
   if (!vocbase) {
     return;
   }
+  TRI_DEFER(vocbase->release());
 
   // iterate over vocbase views
   arangodb::LogicalView::enumerate(
@@ -253,8 +253,7 @@ void dropCollectionFromAllViews(
 
       if (!impl) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->name() << "': not an arangosearch view";
-
+            << "error finding view: not an arangosearch view";
         return true;
       }
 
