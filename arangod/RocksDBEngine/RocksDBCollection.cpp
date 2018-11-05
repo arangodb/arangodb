@@ -706,18 +706,18 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
     seq = rocksutils::latestSequenceNumber(); // post commit sequence
     
+    uint64_t numDocs = _numberDocuments.exchange(0);
+    RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
+                                                     /*numRemoves*/numDocs, /*rev*/0);
+    engine->settingsManager()->updateCounter(_objectId, update);
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         idx->afterTruncate(seq); // clears caches / clears links (if applicable)
       }
     }
-    guard.fire(); // remove blocker
     
-    uint64_t numDocs = _numberDocuments.exchange(0);
-    RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
-                                                     /*numRemoves*/numDocs, /*rev*/0);
-    engine->settingsManager()->updateCounter(_objectId, update);
+    guard.fire(); // remove blocker
 
     if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses

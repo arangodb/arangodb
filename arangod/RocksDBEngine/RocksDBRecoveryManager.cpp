@@ -166,6 +166,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    LOG_DEVEL << "starting batch " << startSequence;
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -257,6 +258,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     auto it = _deltas.find(objectId);
     if (it != _deltas.end()) {
       *ops = &(it->second);
+      if (it->second.startSequenceNumber <= _currentSequence) {
+        LOG_DEVEL << "startSequenceNumber " << it->second.startSequenceNumber << " <= " << _currentSequence;
+      }
       return it->second.startSequenceNumber <= _currentSequence;
     }
     auto res = _deltas.emplace(objectId, _currentSequence); // do not ignore unknown counters
@@ -316,13 +320,16 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return false;
     }
     
-    LOG_DEVEL << "truncating indexes at " << _currentSequence;
-    for (auto const& idx : coll->getIndexes()) {
+    LOG_DEVEL << "truncating indexes on " << coll->name() << " at " << _currentSequence;
+    for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+      LOG_DEVEL << "index " << idx->typeName() << " objectID: " << ridx->objectId();
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-      if (est && est->commitSeq() < _currentSequence) {
+      if (est && est->commitSeq() <= _currentSequence) {
         LOG_DEVEL << "truncating index " << ridx->typeName() << " with  " << est->commitSeq();
         est->bufferTruncate(_currentSequence);
+      } else if (est) {
+        LOG_DEVEL << "skipping index " << ridx->typeName() << " with  " << est->commitSeq();
       }
     }
 
@@ -571,7 +578,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         break;
       case RocksDBLogType::CollectionTruncate: {
         uint64_t objectId = RocksDBLogValue::objectId(blob);
-        LOG_DEVEL << "seeing truncate marker " << objectId;
+        LOG_DEVEL << "seeing truncate marker for objectID: " << objectId;
         Operations* ops = nullptr;
         if (shouldHandleCollection(objectId, &ops)) {
           TRI_ASSERT(ops != nullptr);
@@ -579,7 +586,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           ops->removed = 0;
           ops->added = 0;
           ops->mustTruncate = true;
-          LOG_DEVEL << "truncating collection counts " << objectId;
+          LOG_DEVEL << "truncating collection counts objectID:" << objectId;
         }
         // index estimates have their own commitSeq
         if (!truncateIndexes(objectId)) {
@@ -625,7 +632,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     LOG_DEVEL << "earliest seq needed " << earliest;
     auto minTick = std::min(earliest, engine->releasedTick());
     LOG_DEVEL << "restoring from tick " << minTick;
-
+    minTick = 0;
+    
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s = _db->GetUpdatesSince(
         minTick, &iterator, rocksdb::TransactionLogIterator::ReadOptions(true));

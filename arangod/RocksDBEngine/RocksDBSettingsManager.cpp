@@ -170,6 +170,7 @@ writeIndexEstimatorsAndKeyGenerator(
 
   auto collection = vocbase->lookupCollection(dbColPair.second);
   if (collection == nullptr) {
+#warning LOG ?
     // Bad state, we have references to a collection that is not known
     // anymore.
     // However let's just skip in production. Not allowed to crash.
@@ -561,10 +562,17 @@ void RocksDBSettingsManager::loadIndexEstimates() {
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
        iter->Next()) {
+    
+    
+    
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
+    
     uint64_t lastSeqNumber =
         rocksutils::uint64FromPersistent(iter->value().data());
-
+    
+    
+    LOG_DEVEL << "est. objectID " << objectId << "  lastSequence " << lastSeqNumber;
+    
     StringRef estimateSerialization(iter->value().data() + sizeof(uint64_t),
                                     iter->value().size() - sizeof(uint64_t));
     
