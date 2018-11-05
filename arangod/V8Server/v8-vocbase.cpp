@@ -1358,7 +1358,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED
           && cid > 0
-          && collection->isLocal()) {
+          && !ServerState::instance()->isCoordinator()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {

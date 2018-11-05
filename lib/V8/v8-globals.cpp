@@ -41,8 +41,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
 #ifdef USE_ENTERPRISE
       SmartGraphTempl(),
 #endif
-
       BufferTempl(),
+      StreamQueryCursorTempl(),
 
       BufferConstant(),
       DeleteConstant(),
