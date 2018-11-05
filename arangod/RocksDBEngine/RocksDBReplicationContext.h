@@ -32,8 +32,6 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/CollectionGuard.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
@@ -50,7 +48,6 @@ namespace rocksdb {
 }
 
 namespace arangodb {
-class DatabaseGuard;
 
 class RocksDBReplicationContext {
  private:
