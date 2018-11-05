@@ -326,8 +326,8 @@ function ahuacatlProfilerTestSuite () {
         return [
           {type: SingletonBlock, calls: 2, items: 1},
           {type: EnumerateViewNode, calls: batches + 1, items: rows},
-          {type: CalculationBlock, calls: rows % defaultBatchSize == 0 ? batches + 1 : batches, items: rows},
-          {type: ReturnBlock, calls: rows % defaultBatchSize == 0 ? batches + 1 : batches, items: rows}
+          {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
+          {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows}
         ];
       };
       profHelper.runDefaultChecks(
@@ -353,7 +353,7 @@ function ahuacatlProfilerTestSuite () {
         return [
           {type: SingletonBlock, calls: 2, items: 1},
           {type: EnumerateViewNode, calls: batches + 1, items: rows},
-          {type: CalculationBlock, calls: rows % defaultBatchSize == 0 ? batches + 1 : batches, items: rows},
+          {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
           {type: SortBlock, calls: batches, items: rows},
           {type: ReturnBlock, calls: batches, items: rows}
         ];
