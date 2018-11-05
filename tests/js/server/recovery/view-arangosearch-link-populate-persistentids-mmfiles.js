@@ -46,7 +46,7 @@ function runSetup () {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
   }
 
-  internal.wal.flush(true, true);
+  internal.wal.flush(true, true, true);
 
   internal.debugSegfault('crashing server');
 }
