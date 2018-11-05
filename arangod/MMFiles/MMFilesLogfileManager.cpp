@@ -1764,7 +1764,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   double const end = TRI_microtime() + maxWaitTime;
 
   while (true) {
-    if (_lastCollectedId >= logfileId) {
+    if (_lastCollectedId.load() >= logfileId) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1784,7 +1784,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
       << "still waiting for collector. logfileId: "
-      << logfileId << " lastCollected: " << _lastCollectedId
+      << logfileId << " lastCollected: " << _lastCollectedId.load()
       << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
