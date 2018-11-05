@@ -2690,8 +2690,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << newIndexBuilder.toJson();
-
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
