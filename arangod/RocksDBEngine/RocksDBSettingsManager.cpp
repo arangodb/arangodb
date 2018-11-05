@@ -170,7 +170,6 @@ writeIndexEstimatorsAndKeyGenerator(
 
   auto collection = vocbase->lookupCollection(dbColPair.second);
   if (collection == nullptr) {
-#warning LOG ?
     // Bad state, we have references to a collection that is not known
     // anymore.
     // However let's just skip in production. Not allowed to crash.
