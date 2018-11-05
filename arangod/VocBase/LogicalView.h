@@ -151,6 +151,15 @@ class LogicalView : public LogicalDataSource {
   );
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
+    velocypack::Slice const& properties,
+    bool partialUpdate
+  ) override = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   //////////////////////////////////////////////////////////////////////////////
   virtual void open() = 0;
@@ -163,19 +172,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result rename(
-    std::string&& newName,
-    bool doSync
-  ) override = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates properties of an existing view
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result updateProperties(
-    velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
-  ) = 0;
+  virtual Result rename(std::string&& newName) override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
@@ -204,7 +201,7 @@ class LogicalView : public LogicalDataSource {
 class LogicalViewClusterInfo: public LogicalView {
  public:
   virtual Result drop() override final;
-  virtual Result rename(std::string&& newName, bool doSync) override final;
+  virtual Result rename(std::string&& newName) override final;
 
  protected:
   LogicalViewClusterInfo(
@@ -242,13 +239,14 @@ class LogicalViewStorageEngine: public LogicalView {
   ~LogicalViewStorageEngine() override;
 
   virtual Result drop() override final;
-  virtual Result rename(std::string&& newName, bool doSync) override final;
 
-  arangodb::Result updateProperties(
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
     velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
+    bool partialUpdate
   ) override final;
+
+  virtual Result rename(std::string&& newName) override final;
 
  protected:
   LogicalViewStorageEngine(

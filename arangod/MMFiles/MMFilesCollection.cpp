@@ -2199,15 +2199,11 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   addIndexLocal(idx);
 
   {
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
     auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, true
     );
 
-    _logicalCollection.updateProperties(builder.slice(), doSync);
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   created = true;
@@ -2402,15 +2398,11 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   engine->dropIndex(&vocbase, cid, iid);
 
   {
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
     auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, true
     );
 
-    _logicalCollection.updateProperties(builder.slice(), doSync);
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   if (!engine->inRecovery()) {

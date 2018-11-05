@@ -212,7 +212,7 @@ struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    res = impl->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+    res = impl->properties(builder, true, true); // include links so that Agency will always have a full definition
 
     if (!res.ok()) {
       return res;
@@ -735,10 +735,9 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
   return reader;
 }
 
-arangodb::Result IResearchViewDBServer::updateProperties(
+arangodb::Result IResearchViewDBServer::properties(
   arangodb::velocypack::Slice const& slice,
-  bool partialUpdate,
-  bool doSync
+  bool partialUpdate
 ) {
   if (!slice.isObject()) {
     return arangodb::Result(

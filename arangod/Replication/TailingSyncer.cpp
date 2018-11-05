@@ -691,9 +691,8 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
-  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 
-  return guard.collection()->updateProperties(data, doSync);
+  return guard.collection()->properties(data, false); // always a full-update
 }
 
 /// @brief truncate a collections. Assumes no trx are running
@@ -740,17 +739,6 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
 /// @brief changes the properties of a view,
 /// based on the VelocyPack provided
 Result TailingSyncer::changeView(VPackSlice const& slice) {
-  auto* databaseFeature = application_features::ApplicationServer::lookupFeature<
-    DatabaseFeature
-  >("Database");
-
-  if (!databaseFeature) {
-    return Result(
-      TRI_ERROR_INTERNAL,
-      "failed to find feature 'Database' while changing view properties"
-    );
-  }
-
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "view marker slice is no object");
@@ -799,9 +787,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
 
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    auto res = view->rename(
-      nameSlice.copyString(), databaseFeature->forceSyncProperties()
-    );
+    auto res = view->rename(nameSlice.copyString());
 
     if (!res.ok()) {
       return res;
@@ -811,9 +797,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-
-    return view->updateProperties(properties, false, doSync);
+    return view->properties(properties, false); // always a full-update
   }
 
   return {};

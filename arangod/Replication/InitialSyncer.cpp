@@ -35,7 +35,11 @@ InitialSyncer::InitialSyncer(
 
 InitialSyncer::~InitialSyncer() {
   if (_batchPingTimer) {
-    _batchPingTimer->cancel();
+    try {
+      _batchPingTimer->cancel();
+    } catch (...) {
+      // cancel may throw
+    }
   }
   
   try {

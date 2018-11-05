@@ -1404,17 +1404,22 @@ Result RocksDBEngine::createView(
   RocksDBLogValue logValue = RocksDBLogValue::ViewCreate(vocbase.id(), id);
 
   VPackBuilder props;
+
   props.openObject();
-  view.toVelocyPack(props, true, true);
+    view.properties(props, true, true);
   props.close();
+
   RocksDBValue const value = RocksDBValue::View(props.slice());
 
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+
   auto res = _db->Write(wo, &batch);
+
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
+
   return rocksutils::convertStatus(res);
 }
 
@@ -1428,7 +1433,7 @@ arangodb::Result RocksDBEngine::dropView(
   VPackBuilder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   auto logValue =
@@ -1474,11 +1479,13 @@ Result RocksDBEngine::changeView(
   }
 
   RocksDBKey key;
+
   key.constructView(vocbase.id(), view.id());
 
   VPackBuilder infoBuilder;
+
   infoBuilder.openObject();
-  view.toVelocyPack(infoBuilder, true, true);
+    view.properties(infoBuilder, true, true);
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1487,14 +1494,18 @@ Result RocksDBEngine::changeView(
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   rocksdb::Status s;
+
   s = batch.PutLogData(log.slice());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
+
   s = batch.Put(RocksDBColumnFamily::definitions(),
             key.string(), value.string());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();

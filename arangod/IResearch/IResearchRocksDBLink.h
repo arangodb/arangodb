@@ -38,6 +38,10 @@ class IResearchRocksDBLink final
 
   virtual ~IResearchRocksDBLink();
 
+  virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
+
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
@@ -52,12 +56,9 @@ class IResearchRocksDBLink final
 
   virtual int drop() override {
     writeRocksWalMarker();
-    return IResearchLink::drop();
+
+    return IResearchLink::drop().errorNumber();
   }
-    
-  virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
-    IResearchLink::doAfterTruncate();
-  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
