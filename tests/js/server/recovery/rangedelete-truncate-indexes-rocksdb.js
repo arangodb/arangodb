@@ -82,6 +82,20 @@ function recoverySuite () {
         assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
         assertEqual([], c.edges("test/" + i));
       }
+
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+          case 'hash':
+          case 'edge':
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(i));
+            break;
+            default:
+            fail();
+        }
+      }
     }
 
   };
