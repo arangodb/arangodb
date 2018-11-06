@@ -100,6 +100,7 @@ void iterateBounds(RocksDBKeyBounds const& bounds, T callback,
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
+  options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(
       globalRocksDB()->NewIterator(options, bounds.columnFamily()));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {

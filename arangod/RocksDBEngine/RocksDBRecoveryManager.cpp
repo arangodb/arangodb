@@ -325,7 +325,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
       if (est && est->commitSeq() < _currentSequence) {
         LOG_DEVEL << "truncating index " << ridx->typeName() << " with  " << est->commitSeq();
-        est->bufferTruncate(_currentSequence);
+        est->clear();
       } else if (est) {
         LOG_DEVEL << "skipping index " << ridx->typeName() << " with  " << est->commitSeq()
         << " and selectivity " << est->computeEstimate();
@@ -465,7 +465,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (est != nullptr && est->commitSeq() < _currentSequence) {
           // We track estimates for this index
           est->insert(hash);
-          LOG_DEVEL << "insert nr " << ++ss;
+          LOG_DEVEL << "insert nr " << ++ss << " into index " << objectId;
         }
       }
     }

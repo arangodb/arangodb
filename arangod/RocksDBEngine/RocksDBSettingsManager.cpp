@@ -569,7 +569,7 @@ void RocksDBSettingsManager::loadIndexEstimates() {
     uint64_t lastSeqNumber =
         rocksutils::uint64FromPersistent(iter->value().data());
     
-    LOG_DEVEL << "est. objectID " << objectId << "  lastSequence " << lastSeqNumber;
+    LOG_DEVEL << "found est. objectID " << objectId << "  lastSequence " << lastSeqNumber;
     
     StringRef estimateSerialization(iter->value().data() + sizeof(uint64_t),
                                     iter->value().size() - sizeof(uint64_t));

@@ -1255,20 +1255,30 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (unique()) {
     return;
   }
+  
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
-
-  RocksDBKeyBounds bounds = getBounds();
-  rocksutils::iterateBounds(bounds,
-                            [this](rocksdb::Iterator* it) {
-                              uint64_t hash =
-                                  RocksDBVPackIndex::HashForKey(it->key());
-                              _estimator->insert(hash);
-                            });
+  
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
+  
+  auto bounds = getBounds();
+  rocksdb::Slice const end = bounds.end();
+  rocksdb::ReadOptions options;
+  options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
+  options.prefix_same_as_start = true;  // key-prefix includes edge
+  options.verify_checksums = false;
+  options.fill_cache = false;
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
+    _estimator->insert(hash);
+  }
+  std::string ignore;
+  _estimator->serialize(ignore, seq); // update committed sequence nr
 }
 
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {

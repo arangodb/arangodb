@@ -73,6 +73,9 @@ class RocksDBCuckooIndexEstimator {
   static constexpr size_t kSlotSize = sizeof(uint16_t);
   // total size of a counter
   static constexpr size_t kCounterSize = sizeof(uint32_t);
+  // maximum number of cuckoo rounds on insertion
+  static constexpr unsigned kMaxRounds = 16;
+
 
  private:
   // Helper class to hold the finger prints.
@@ -175,7 +178,6 @@ class RocksDBCuckooIndexEstimator {
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
-        _maxRounds(16),
         _committedSeq(0),
         _needToPersist(true) {
     // Inflate size so that we have some padding to avoid failure
@@ -205,7 +207,6 @@ class RocksDBCuckooIndexEstimator {
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
-        _maxRounds(16),
         _committedSeq(commitSeq),
         _needToPersist(false) {
     switch (serialized.front()) {
@@ -768,7 +769,7 @@ class RocksDBCuckooIndexEstimator {
     }
 
     // Bad luck, let us try to move to a different slot.
-    for (unsigned attempt = 1; attempt < _maxRounds; attempt++) {
+    for (unsigned attempt = 1; attempt < kMaxRounds; attempt++) {
       std::swap(pos1, pos2);
       // Now expunge a random element from any of these slots:
       r = pseudoRandomChoice();
@@ -992,7 +993,6 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _nrUsed;            // number of pairs stored in the table
   uint64_t _nrCuckood;  // number of elements that have been removed by cuckoo
   uint64_t _nrTotal;    // number of elements included in total (not cuckood)
-  unsigned _maxRounds;  // maximum number of cuckoo rounds on insertion
 
   rocksdb::SequenceNumber mutable _committedSeq;
   std::atomic<bool> _needToPersist;
