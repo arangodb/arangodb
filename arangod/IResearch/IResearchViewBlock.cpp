@@ -48,7 +48,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-NS_LOCAL
+namespace {
 
 inline arangodb::aql::RegisterId getRegister(
     arangodb::aql::Variable const& var,
@@ -60,12 +60,35 @@ inline arangodb::aql::RegisterId getRegister(
   return vars.end() == it
     ? arangodb::aql::ExecutionNode::MaxRegisterId
     : it->second.registerId;
+}
+
+typedef std::vector<arangodb::iresearch::DocumentPrimaryKey> pks_t;
+
+pks_t::iterator readPKs(
+    irs::doc_iterator& it,
+    irs::columnstore_reader::values_reader_f const& values,
+    pks_t& keys,
+    size_t limit
+) {
+  keys.clear();
+  keys.resize(limit);
+
+  auto begin = keys.begin();
+  auto end = keys.end();
+
+  for (irs::bytes_ref key; begin != end && it.next(); ) {
+    if (values(it.value(), key) && begin->read(key)) {
+      ++begin;
+    }
   }
 
-NS_END // NS_LOCAL
+  return begin;
+}
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+}
+
+namespace arangodb {
+namespace iresearch {
 
 using namespace arangodb::aql;
 
@@ -195,6 +218,33 @@ void IResearchViewBlockBase::reset() {
     _volatileSort = volatility.second;
     _volatileFilter = _volatileSort || volatility.first;
   }
+}
+
+bool IResearchViewBlockBase::readDocument(
+    DocumentPrimaryKey const& docPk,
+    IndexIterator::DocumentCallback const& callback
+) {
+  TRI_ASSERT(_trx->state());
+
+  // this is necessary for MMFiles
+  _trx->pinData(docPk.cid());
+
+  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
+  auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
+
+  if (!collection) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.cid()
+      << "', rid '" << docPk.rid() << "'";
+
+    return false; // not a valid collection reference
+  }
+
+  TRI_ASSERT(collection->collection());
+
+  return collection->collection()->readDocumentWithCallback(
+    _trx, arangodb::LocalDocumentId(docPk.rid()), callback
+  );
 }
 
 bool IResearchViewBlockBase::readDocument(
@@ -441,54 +491,57 @@ bool IResearchViewBlock::next(
   };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
-    bool done = false;
-
     if (!_itr) {
       resetIterator();
     }
 
     while (limit && _itr->next()) {
-      if (readDocument(_readerOffset, _itr->value(), copyDocument)) {
-        // The result is in the first variable of this depth,
-        // we do not need to do a lookup in
-        // getPlanNode()->_registerPlan->varInfo,
-        // but can just take cur->getNrRegs() as registerId:
-
-        // evaluate scores
-        TRI_ASSERT(!viewNode.sortCondition().empty());
-        _scr->evaluate();
-
-        // copy scores, registerId's are sequential
-        auto scoreRegs = ctx.curRegs;
-
-        for (size_t i = 0; i < numSorts; ++i) {
-          ctx.res->setValue(
-            ctx.pos,
-            ++scoreRegs,
-            _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
-          );
-        }
+      if (!readDocument(_readerOffset, _itr->value(), copyDocument)) {
+        continue;
       }
+
+      // evaluate scores
+      TRI_ASSERT(!viewNode.sortCondition().empty());
+      _scr->evaluate();
+
+      // copy scores, registerId's are sequential
+      auto scoreRegs = ctx.curRegs;
+
+      for (size_t i = 0; i < numSorts; ++i) {
+        ctx.res->setValue(
+          ctx.pos,
+          ++scoreRegs,
+          _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
+        );
+      }
+
+      // The result is in the first variable of this depth,
+      // we do not need to do a lookup in
+      // getPlanNode()->_registerPlan->varInfo,
+      // but can just take cur->getNrRegs() as registerId:
 
       // FIXME why?
       if (ctx.pos > 0) {
         // re-use already copied AQLValues
         ctx.res->copyValuesFromFirstRow(ctx.pos, static_cast<RegisterId>(ctx.curRegs));
       }
-      ++ctx.pos;
 
-      done = (0 == --limit);
+      ++ctx.pos;
+      --limit;
     }
 
-    if (done) {
-      break; // do not change iterator if already reached limit
+    if (!limit) {
+      // return 'true' if we've reached the requested limit,
+      // but don't know exactly are there any more data
+      return true; // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
     _itr.reset();
   }
 
-  // FIXME will still return 'true' if reached end of last iterator
+  // return 'true' if we've reached the requested limit,
+  // but don't know exactly are there any more data
   return (limit == 0);
 }
 
@@ -497,18 +550,16 @@ size_t IResearchViewBlock::skip(size_t limit) {
   size_t skipped{};
 
   for (size_t count = _reader.size(); _readerOffset < count;) {
-    bool done = false;
-
     if (!_itr) {
       resetIterator();
     }
 
     while (limit && _itr->next()) {
       ++skipped;
-      done = (0 == --limit);
+      --limit;
     }
 
-    if (done) {
+    if (!limit) {
       break; // do not change iterator if already reached limit
     }
 
@@ -545,8 +596,6 @@ bool IResearchViewUnorderedBlock::next(
   };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
-    bool done = false;
-
     if (!_itr) {
       auto& segmentReader = _reader[_readerOffset];
 
@@ -555,8 +604,15 @@ bool IResearchViewUnorderedBlock::next(
       ));
     }
 
-    while (limit && _itr->next()) {
-      readDocument(_readerOffset, _itr->value(), copyDocument);
+    // read document PKs from iresearch
+    auto end = readPKs(*_itr, _reader.pkColumn(_readerOffset), _keys, limit);
+
+    // read documents from underlying storage engine
+    for (auto begin = _keys.begin(); begin != end; ++begin) {
+      if (!readDocument(*begin, copyDocument)) {
+        continue;
+      }
+
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in
       // getPlanNode()->_registerPlan->varInfo,
@@ -567,20 +623,23 @@ bool IResearchViewUnorderedBlock::next(
         // re-use already copied AQLValues
         ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
       }
-      ++ctx.pos;
 
-      done = (0 == --limit);
+      ++ctx.pos;
+      --limit;
     }
 
-    if (done) {
-      break; // do not change iterator if already reached limit
+    if (!limit) {
+      // return 'true' since we've reached the requested limit,
+      // but don't know exactly are there any more data
+      return true; // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
     _itr.reset();
   }
 
-  // FIXME will still return 'true' if reached end of last iterator
+  // return 'true' if we've reached the requested limit,
+  // but don't know exactly are there any more data
   return (limit == 0);
 }
 
@@ -589,8 +648,6 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
   size_t skipped{};
 
   for (size_t count = _reader.size(); _readerOffset < count;) {
-    bool done = false;
-
     if (!_itr) {
       auto& segmentReader = _reader[_readerOffset];
 
@@ -601,10 +658,10 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
 
     while (limit && _itr->next()) {
       ++skipped;
-      done = (0 == --limit);
+      --limit;
     }
 
-    if (done) {
+    if (!limit) {
       break; // do not change iterator if already reached limit
     }
 
@@ -615,143 +672,8 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
   return skipped;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                          IResearchViewOrderedBlock implementation
-// -----------------------------------------------------------------------------
-
-IResearchViewOrderedBlock::IResearchViewOrderedBlock(
-    PrimaryKeyIndexReader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-): IResearchViewBlockBase(reader, engine, node) {
-}
-
-bool IResearchViewOrderedBlock::next(
-    ReadContext& ctx,
-    size_t limit
-) {
-  TRI_ASSERT(_filter);
-
-  auto scoreLess = [this](irs::bstring const& lhs, irs::bstring const& rhs) {
-    return _order.less(lhs.c_str(), rhs.c_str());
-  };
-
-  // FIXME use irs::memory_pool
-  typedef std::pair<size_t, irs::doc_id_t> DocumentToken;
-
-  std::multimap<irs::bstring, DocumentToken, decltype(scoreLess)> orderedDocTokens(scoreLess);
-  auto const maxDocCount = _skip + limit;
-
-  for (size_t i = 0, count = _reader.size(); i < count; ++i) {
-    auto& segmentReader = _reader[i];
-    auto itr = segmentReader.mask(_filter->execute(segmentReader, _order, _filterCtx));
-    irs::score const* score = itr->attributes().get<irs::score>().get();
-
-    if (!score) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to retrieve document score attribute while iterating arangosearch view, ignoring: reader_id '" << i << "'";
-      IR_LOG_STACK_TRACE();
-
-      continue; // if here then there is probably a bug in IResearchView while querying
-    }
-
-#if defined(__GNUC__) && !defined(_GLIBCXX_USE_CXX11_ABI)
-    // workaround for std::basic_string's COW with old compilers
-    const irs::bytes_ref scoreValue = score->value();
-#else
-    const auto& scoreValue = score->value();
-#endif
-
-    while (itr->next()) {
-      score->evaluate(); // compute a score for the current document
-
-      orderedDocTokens.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(scoreValue),
-        std::forward_as_tuple(i, itr->value())
-      );
-
-      if (orderedDocTokens.size() > maxDocCount) {
-        orderedDocTokens.erase(--(orderedDocTokens.end())); // remove element with the least score
-      }
-    }
-  }
-
-  auto tokenItr = orderedDocTokens.begin();
-  auto tokenEnd = orderedDocTokens.end();
-
-  // skip documents previously returned
-  for (size_t i = _skip; i; --i, ++tokenItr) {
-    if (tokenItr == tokenEnd) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "document count less than the document count during the previous iteration on the same query while iterating arangosearch view'";
-
-      break; // if here then there is probably a bug in the iResearch library
-    }
-  }
-
-  // capture only one reference
-  // to potentially avoid heap allocation
-  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
-      LocalDocumentId /*id*/, VPackSlice doc
-  ) {
-    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
-  };
-
-  // iterate through documents
-  while (limit && tokenItr != tokenEnd) {
-    auto& token = tokenItr->second;
-
-    readDocument(token.first, token.second, copyDocument);
-    // The result is in the first variable of this depth,
-    // we do not need to do a lookup in
-    // getPlanNode()->_registerPlan->varInfo,
-    // but can just take cur->getNrRegs() as registerId:
-
-    // FIXME why?
-    if (ctx.pos > 0) {
-      // re-use already copied AQLValues
-      ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
-    }
-    ++ctx.pos;
-
-    ++tokenItr;
-    ++_skip;
-    --limit;
-  }
-
-  return (limit == 0); // exceeded limit
-}
-
-size_t IResearchViewOrderedBlock::skip(size_t limit) {
-  TRI_ASSERT(_filter);
-
-  size_t skipped = 0;
-  auto skip = _skip;
-
-  for (size_t i = 0, readerCount = _reader.size(); i < readerCount; ++i) {
-    auto& segmentReader = _reader[i];
-
-    auto itr = segmentReader.mask(_filter->execute(
-      segmentReader, irs::order::prepared::unordered(), _filterCtx
-    ));
-
-    while (skip && itr->next()) {
-      --skip;
-    }
-
-    while (limit > skipped && itr->next()) {
-      ++skipped;
-    }
-  }
-
-  _skip += skipped;
-
-  return skipped;
-}
-
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

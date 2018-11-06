@@ -35,18 +35,20 @@
 #include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchDocument.h"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 class score;
-NS_END // iresearch
+} // iresearch
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
+namespace arangodb {
+
+namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
-NS_END // aql
+} // aql
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
 class IResearchViewNode;
 
@@ -118,6 +120,11 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
     IndexIterator::DocumentCallback const& callback
   );
 
+  bool readDocument(
+    DocumentPrimaryKey const& key,
+    IndexIterator::DocumentCallback const& callback
+  );
+
   virtual void reset();
 
   virtual bool next(
@@ -127,6 +134,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
   virtual size_t skip(size_t count) = 0;
 
+  std::vector<DocumentPrimaryKey> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
   iresearch::PrimaryKeyIndexReader const& _reader;
@@ -196,35 +204,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
   irs::bytes_ref _scrVal;
 }; // IResearchViewBlock
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class IResearchViewOrderedBlock
-///////////////////////////////////////////////////////////////////////////////
-class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
- public:
-  IResearchViewOrderedBlock(
-    PrimaryKeyIndexReader const& reader,
-    aql::ExecutionEngine& engine,
-    IResearchViewNode const& node
-  );
-
- protected:
-  virtual void reset() override {
-    IResearchViewBlockBase::reset();
-    _skip = 0;
-  }
-
-  virtual bool next(
-    ReadContext& ctx,
-    size_t limit
-  ) override;
-
-  virtual size_t skip(size_t count) override;
-
- private:
-  size_t _skip{};
-}; // IResearchViewOrderedBlock
-
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 

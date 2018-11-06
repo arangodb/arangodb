@@ -709,14 +709,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
   }
 
-//FIXME uncomment when the following method will be there:
-// `int getAndSkip(size_t skip, size_t& skipped, size_t read, size_t& count, AqlItemBlock*& res)`
-//
-//  if (!isInInnerLoop()) {
-//    // optimized execution for simple queries
-//    return new IResearchViewOrderedBlock(*reader, engine, *this);
-//  }
-
   // generic case
   return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
 }
