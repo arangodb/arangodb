@@ -30,7 +30,6 @@
 #include "IResearchView.h"
 #include "IResearchViewBlock.h"
 #include "IResearchViewNode.h"
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
@@ -84,7 +83,28 @@ AqlValue ViewExpressionContext::getVariableValue(
 
   if (var == &_node->outVariable()) {
     // self-reference
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    if (_expr) {
+      std::string expr;
+
+      try {
+        expr = _expr->toString();
+      } catch (...) { }
+
+      if (!expr.empty()) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "Unable to evaluate loop variable '%s' as a part of ArangoSearch noncompliant expression '%s'",
+          var->name.c_str(),
+          expr.c_str()
+        );
+      }
+    }
+
+    THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Unable to evaluate loop variable '%s' as a part of ArangoSearch noncompliant expression",
+      var->name.c_str()
+    );
   }
 
   mustDestroy = false;
