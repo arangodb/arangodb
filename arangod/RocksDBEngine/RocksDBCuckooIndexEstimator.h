@@ -68,7 +68,11 @@ template <class Key, class HashKey = HashWithSeed<Key, 0xdeadbeefdeadbeefULL>,
           class CompKey = std::equal_to<Key>>
 class RocksDBCuckooIndexEstimator {
   // Note that the following has to be a power of two and at least 4!
-  static constexpr uint32_t SlotsPerBucket = 4;
+  static constexpr uint32_t kSlotsPerBucket = 4;
+  // total size of a slot
+  static constexpr size_t kSlotSize = sizeof(uint16_t);
+  // total size of a counter
+  static constexpr size_t kCounterSize = sizeof(uint32_t);
 
  private:
   // Helper class to hold the finger prints.
@@ -157,8 +161,6 @@ class RocksDBCuckooIndexEstimator {
 
   RocksDBCuckooIndexEstimator(uint64_t size)
       : _randState(0x2636283625154737ULL),
-        _slotSize(sizeof(uint16_t)),     // Sort out offsets and alignments
-        _counterSize(sizeof(uint32_t)),  // Sort out offsets and alignments
         _logSize(0),
         _size(0),
         _niceSize(0),
@@ -181,7 +183,7 @@ class RocksDBCuckooIndexEstimator {
     size = (size >= 1024) ? size : 1024;  // want 256 buckets minimum
 
     // First find the smallest power of two that is not smaller than size:
-    size /= SlotsPerBucket;
+    size /= kSlotsPerBucket;
     _size = size;
     initializeDefault();
   }
@@ -189,8 +191,6 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator(rocksdb::SequenceNumber commitSeq,
                               arangodb::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
-        _slotSize(sizeof(uint16_t)),     // Sort out offsets and alignments
-        _counterSize(sizeof(uint32_t)),  // Sort out offsets and alignments
         _logSize(0),
         _size(0),
         _niceSize(0),
@@ -271,8 +271,8 @@ class RocksDBCuckooIndexEstimator {
           (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
            sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
            sizeof(_niceSize) + sizeof(_logSize) +
-           (_size * _slotSize * SlotsPerBucket)) +
-          (_size * _counterSize * SlotsPerBucket);
+           (_size * kSlotSize * kSlotsPerBucket)) +
+          (_size * kCounterSize * kSlotsPerBucket);
 
       serialized.reserve(sizeof(uint64_t) + serialLength);
       // We always prepend the length, so parsing is easier
@@ -287,19 +287,19 @@ class RocksDBCuckooIndexEstimator {
       rocksutils::uint64ToPersistent(serialized, _logSize);
 
       // Add the data blob
-      // Size is as follows: nrOfBuckets * SlotsPerBucket * SlotSize
-      TRI_ASSERT((_size * _slotSize * SlotsPerBucket) <= _slotAllocSize);
+      // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
+      TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
 
-      for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
-           i += _slotSize) {
+      for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
+           i += kSlotSize) {
         rocksutils::uint16ToPersistent(
             serialized, *(reinterpret_cast<uint16_t*>(_base + i)));
       }
 
-      TRI_ASSERT((_size * _counterSize * SlotsPerBucket) <= _counterAllocSize);
+      TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
 
-      for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
-           i += _counterSize) {
+      for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
+           i += kCounterSize) {
         rocksutils::uint32ToPersistent(
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
@@ -328,7 +328,7 @@ class RocksDBCuckooIndexEstimator {
     // Reset filter content
     // Now initialize all slots in all buckets with zero data:
     for (uint32_t b = 0; b < _size; ++b) {
-      for (size_t i = 0; i < SlotsPerBucket; ++i) {
+      for (size_t i = 0; i < kSlotsPerBucket; ++i) {
         Slot f = findSlot(b, i);
         f.injectCounter(findCounter(b, i));
         f.reset();
@@ -460,7 +460,7 @@ class RocksDBCuckooIndexEstimator {
     return false;
   }
 
-  uint64_t capacity() const { return _size * SlotsPerBucket; }
+  uint64_t capacity() const { return _size * kSlotsPerBucket; }
 
   // not thread safe. called only during tests
   uint64_t nrTotal() const { return _nrTotal; }
@@ -695,7 +695,7 @@ class RocksDBCuckooIndexEstimator {
     Slot firstEmpty(nullptr);
     bool foundEmpty = false;
 
-    for (uint64_t i = 0; i < SlotsPerBucket; ++i) {
+    for (uint64_t i = 0; i < kSlotsPerBucket; ++i) {
       Slot slot = findSlot(pos1, i);
       if (slot.isEqual(fp)) {
         // Found we are done, short-circuit.
@@ -709,7 +709,7 @@ class RocksDBCuckooIndexEstimator {
       }
     }
 
-    for (uint64_t i = 0; i < SlotsPerBucket; ++i) {
+    for (uint64_t i = 0; i < kSlotsPerBucket; ++i) {
       Slot slot = findSlot(pos2, i);
       if (slot.isEqual(fp)) {
         // Found we are done, short-circuit.
@@ -745,7 +745,7 @@ class RocksDBCuckooIndexEstimator {
     // and place our own into it.
     // We have to keep the reference to the cuckood slot here.
     r = pseudoRandomChoice();
-    uint64_t i = r & (SlotsPerBucket - 1);
+    uint64_t i = r & (kSlotsPerBucket - 1);
     firstEmpty = findSlot(pos1, i);
     firstEmpty.injectCounter(findCounter(pos1, i));
     firstEmpty.swap(fp, counter);
@@ -755,7 +755,7 @@ class RocksDBCuckooIndexEstimator {
 
     // Now let the cuckoo fly and find a place for the poor one we just took
     // out.
-    for (uint64_t i = 0; i < SlotsPerBucket; ++i) {
+    for (uint64_t i = 0; i < kSlotsPerBucket; ++i) {
       Slot slot = findSlot(pos2, i);
       if (slot.isEmpty()) {
         slot.injectCounter(findCounter(pos2, i));
@@ -772,13 +772,13 @@ class RocksDBCuckooIndexEstimator {
       std::swap(pos1, pos2);
       // Now expunge a random element from any of these slots:
       r = pseudoRandomChoice();
-      uint64_t i = r & (SlotsPerBucket - 1);
+      uint64_t i = r & (kSlotsPerBucket - 1);
       // We expunge the element at position pos1 and slot i:
       Slot slot = findSlot(pos1, i);
       if (slot == firstEmpty) {
         // We have to keep this one in place.
         // Take a different one
-        i = (i + 1) % SlotsPerBucket;
+        i = (i + 1) % kSlotsPerBucket;
         slot = findSlot(pos1, i);
       }
       slot.injectCounter(findCounter(pos1, i));
@@ -787,7 +787,7 @@ class RocksDBCuckooIndexEstimator {
       hash2 = _hasherPosFingerprint(pos1, fp);
       pos2 = hashToPos(hash2);
 
-      for (uint64_t i = 0; i < SlotsPerBucket; ++i) {
+      for (uint64_t i = 0; i < kSlotsPerBucket; ++i) {
         Slot slot = findSlot(pos2, i);
         if (slot.isEmpty()) {
           slot.injectCounter(findCounter(pos2, i));
@@ -810,7 +810,7 @@ class RocksDBCuckooIndexEstimator {
   // Do not use the output if found == false
   Slot findSlotNoCuckoo(uint64_t pos, uint16_t fp, bool& found) const {
     found = false;
-    for (uint64_t i = 0; i < SlotsPerBucket; ++i) {
+    for (uint64_t i = 0; i < kSlotsPerBucket; ++i) {
       Slot slot = findSlot(pos, i);
       if (fp == *slot.fingerprint()) {
         slot.injectCounter(findCounter(pos, i));
@@ -822,16 +822,16 @@ class RocksDBCuckooIndexEstimator {
   }
 
   Slot findSlot(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(_slotSize * (pos * SlotsPerBucket + slot) <= _slotAllocSize);
-    char* address = _base + _slotSize * (pos * SlotsPerBucket + slot);
+    TRI_ASSERT(kSlotSize * (pos * kSlotsPerBucket + slot) <= _slotAllocSize);
+    char* address = _base + kSlotSize * (pos * kSlotsPerBucket + slot);
     auto ret = reinterpret_cast<uint16_t*>(address);
     return Slot(ret);
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(_counterSize * (pos * SlotsPerBucket + slot) <=
+    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
                _counterAllocSize);
-    char* address = _counters + _counterSize * (pos * SlotsPerBucket + slot);
+    char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
 
@@ -901,27 +901,27 @@ class RocksDBCuckooIndexEstimator {
                (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
                 sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
                 sizeof(_niceSize) + sizeof(_logSize) +
-                (_size * _slotSize * SlotsPerBucket)) +
-                   (_size * _counterSize * SlotsPerBucket));
+                (_size * kSlotSize * kSlotsPerBucket)) +
+                   (_size * kCounterSize * kSlotsPerBucket));
 
     // Insert the raw data
-    // Size is as follows: nrOfBuckets * SlotsPerBucket * SlotSize
-    TRI_ASSERT((_size * _slotSize * SlotsPerBucket) <= _slotAllocSize);
+    // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
+    TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
 
-    for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
-         i += _slotSize) {
+    for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
+         i += kSlotSize) {
       *(reinterpret_cast<uint16_t*>(_base + i)) =
           rocksutils::uint16FromPersistent(current);
-      current += _slotSize;
+      current += kSlotSize;
     }
 
-    TRI_ASSERT((_size * _counterSize * SlotsPerBucket) <= _counterAllocSize);
+    TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
 
-    for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
-         i += _counterSize) {
+    for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
+         i += kCounterSize) {
       *(reinterpret_cast<uint32_t*>(_counters + i)) =
           rocksutils::uint32FromPersistent(current);
-      current += _counterSize;
+      current += kCounterSize;
     }
   }
 
@@ -937,7 +937,7 @@ class RocksDBCuckooIndexEstimator {
 
     // Now initialize all slots in all buckets with zero data:
     for (uint32_t b = 0; b < _size; ++b) {
-      for (size_t i = 0; i < SlotsPerBucket; ++i) {
+      for (size_t i = 0; i < kSlotsPerBucket; ++i) {
         Slot f = findSlot(b, i);
         f.injectCounter(findCounter(b, i));
         f.reset();
@@ -950,7 +950,7 @@ class RocksDBCuckooIndexEstimator {
     _sizeShift = static_cast<uint32_t>((64 - _logSize) / 2);
 
     // give 64 bytes padding to enable 64-byte alignment
-    _slotAllocSize = _size * _slotSize * SlotsPerBucket + 64;
+    _slotAllocSize = _size * kSlotSize * kSlotsPerBucket + 64;
 
     _slotBase = new char[_slotAllocSize];
 
@@ -961,7 +961,7 @@ class RocksDBCuckooIndexEstimator {
                                // 64-byte boundary
 
     // give 64 bytes padding to enable 64-byte alignment
-    _counterAllocSize = _size * _counterSize * SlotsPerBucket + 64;
+    _counterAllocSize = _size * kCounterSize * kSlotsPerBucket + 64;
     _counterBase = new char[_counterAllocSize];
 
     _counters = reinterpret_cast<char*>(
@@ -972,10 +972,8 @@ class RocksDBCuckooIndexEstimator {
   }
 
  private:               // member variables
+  
   uint64_t _randState;  // pseudo random state for expunging
-
-  size_t _slotSize;     // total size of a slot
-  size_t _counterSize;  // total size of a counter
 
   uint64_t _logSize;    // logarithm (base 2) of number of buckets
   uint64_t _size;       // actual number of buckets
@@ -984,9 +982,9 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _sizeMask;   // used to mask out some bits from the hash
   uint32_t _sizeShift;  // used to shift the bits down to get a position
   uint64_t _slotAllocSize;     // number of allocated bytes for the slots,
-                               // == _size * SlotsPerBucket * _slotSize + 64
+                               // == _size * kSlotsPerBucket * kSlotSize + 64
   uint64_t _counterAllocSize;  // number of allocated bytes ofr the counters,
-                               // == _size * SlotsPerBucket * _counterSize + 64
+                               // == _size * kSlotsPerBucket * kCounterSize + 64
   char* _base;                 // pointer to allocated space, 64-byte aligned
   char* _slotBase;             // base of original allocation
   char* _counters;             // pointer to allocated space, 64-byte aligned

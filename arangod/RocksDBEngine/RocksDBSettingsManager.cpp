@@ -425,6 +425,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // make sure we give up our lock when we exit this function
   auto guard = scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
   
+#warning fix maxUpdateSeqNo
 //  auto maxUpdateSeqNo = _maxUpdateSeqNo.load(std::memory_order_acquire);
 //  if (!force && maxUpdateSeqNo <= _lastSyncedSeqNo) {
 //    // if noone has updated any counters etc. since we were here last,
@@ -440,6 +441,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     copy = _counters;
   }
 
+#warning use lastTick - 1
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto maxSeqNr = _db->GetLatestSequenceNumber();
@@ -483,6 +485,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto s = rtrx->Commit();
   
   if (s.ok()) {
+#warning fix maxUpdateSeqNo
 //    _lastSyncedSeqNo = maxUpdateSeqNo;
     {
       WRITE_LOCKER(guard, _rwLock);
