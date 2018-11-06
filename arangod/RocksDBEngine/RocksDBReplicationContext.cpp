@@ -105,7 +105,7 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   
   auto it = _iterators.begin();
   while (it != _iterators.end()) {
-    if (it->second->dbGuard.database().id() == vocbase.id()) {
+    if (it->second->vocbase.id() == vocbase.id()) {
       if (it->second->isUsed()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "trying to delete used context";
       } else {
@@ -736,7 +736,7 @@ void RocksDBReplicationContext::use(double ttl) {
   // make sure the WAL files are not deleted
   std::set<TRI_vocbase_t*> dbs;
   for (auto& pair : _iterators) {
-    dbs.emplace(&pair.second->dbGuard.database());
+    dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
     vocbase->updateReplicationClient(replicationClientId(), _snapshotTick, ttl);
@@ -754,7 +754,7 @@ void RocksDBReplicationContext::release() {
   // make sure the WAL files are not deleted immediately
   std::set<TRI_vocbase_t*> dbs;
   for (auto& pair : _iterators) {
-    dbs.emplace(&pair.second->dbGuard.database());
+    dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
     vocbase->updateReplicationClient(replicationClientId(), _snapshotTick, ttl);
@@ -782,7 +782,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
     TRI_vocbase_t& vocbase,
     std::shared_ptr<LogicalCollection> const& coll,
     bool sorted, rocksdb::Snapshot const* snapshot)
-    : dbGuard(vocbase),
+    : vocbase(vocbase),
       logical{coll},
       iter{nullptr},
       bounds{RocksDBKeyBounds::Empty()},
@@ -797,15 +797,31 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       _isUsed{false},
       _sortedIterator{!sorted} // this makes sure that setSorted works
 {
-  TRI_ASSERT(snapshot != nullptr);
+  TRI_ASSERT(snapshot != nullptr && coll);
   _readOptions.snapshot = snapshot;
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
   
+  if (!vocbase.use()) { // false if vobase was deleted
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  TRI_vocbase_col_status_e ignore;
+  int res = vocbase.useCollection(logical.get(), ignore);
+  if (res != TRI_ERROR_NO_ERROR) { // collection was deleted
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
   _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);
+}
+
+RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
+  TRI_ASSERT(!vocbase.isDangling());
+  vocbase.releaseCollection(logical.get());
+  logical.reset();
+  vocbase.release();
 }
 
 void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
@@ -904,7 +920,7 @@ RocksDBReplicationContext::getCollectionIterator(TRI_vocbase_t& vocbase,
   }
 
   if (cIter) {
-    TRI_ASSERT(cIter->dbGuard.database().id() == vocbase.id());
+    TRI_ASSERT(cIter->vocbase.id() == vocbase.id());
     cIter->use();
     
     if (allowCreate && cIter->sorted() != sorted) {
@@ -915,7 +931,7 @@ RocksDBReplicationContext::getCollectionIterator(TRI_vocbase_t& vocbase,
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->dbGuard.database().updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
+    cIter->vocbase.updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -925,7 +941,7 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
-      it->dbGuard.database().updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
+      it->vocbase.updateReplicationClient(replicationClientId(), _snapshotTick, _ttl);
       MUTEX_LOCKER(locker, _contextLock);
       _iterators.erase(it->logical->id());
     } else { // Context::release() will update the replication client
