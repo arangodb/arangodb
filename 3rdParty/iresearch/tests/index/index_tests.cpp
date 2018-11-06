@@ -102,7 +102,7 @@ void string_field::value(const irs::string_ref& str) {
   const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
-  value_ = std::string(begin, end);
+  value_.assign(begin, end);
 }
 
 bool string_field::write(irs::data_output& out) const {
@@ -11097,6 +11097,132 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
   }
 }
 
+TEST_F(memory_index_test, concurrent_add_remove_overlap_commit_mt) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
+      doc.insert(std::make_shared<tests::templates::string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  // remove added docs, add same docs again commit separate thread before end of add
+  {
+    std::condition_variable cond;
+    std::mutex mutex;
+    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto writer = open_writer();
+    SCOPED_LOCK_NAMED(mutex, lock);
+    std::atomic<bool> stop(false);
+    std::thread thread([&cond, &mutex, &writer, &stop]()->void {
+      SCOPED_LOCK(mutex);
+      writer->commit();
+      stop = true;
+      cond.notify_all();
+    });
+
+    // initial add docs
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // remove docs
+    writer->documents().remove(*(query_doc1_doc2.filter.get()));
+
+    // re-add docs into a single segment
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+        doc.insert(irs::action::store, doc1->indexed.begin(), doc1->indexed.end());
+      }
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->indexed.begin(), doc2->indexed.end());
+      }
+
+      // commit from a separate thread before end of add
+      lock.unlock();
+      std::mutex cond_mutex;
+      SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
+      auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
+
+      // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+      MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+
+      // FIXME TODO add once segment_context will not block flush_all()
+      //ASSERT_TRUE(stop);
+    }
+
+    thread.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.docs_count());
+    ASSERT_EQ(2, reader.live_docs_count());
+  }
+
+  // remove added docs, add same docs again commit separate thread after end of add
+  {
+    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto writer = open_writer();
+
+    // initial add docs
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // remove docs
+    writer->documents().remove(*(query_doc1_doc2.filter.get()));
+
+    // re-add docs into a single segment
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+        doc.insert(irs::action::store, doc1->indexed.begin(), doc1->indexed.end());
+      }
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->indexed.begin(), doc2->indexed.end());
+      }
+    }
+
+    std::thread thread([&writer]()->void {
+      writer->commit();
+    });
+    thread.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.docs_count());
+    ASSERT_EQ(2, reader.live_docs_count());
+  }
+}
+
 TEST_F(memory_index_test, document_context) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -17981,28 +18107,36 @@ TEST_F(memory_index_test, consolidate_progress) {
 
   size_t progress_call_count = 0;
 
+  const size_t MAX_DOCS = 32768;
+
   // test always-true progress
   {
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    ASSERT_TRUE(insert(
-      *writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+    }
     writer->commit(); // create segment0
-    ASSERT_TRUE(insert(
-      *writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+    }
     writer->commit(); // create segment1
 
     auto reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
 
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
@@ -18013,7 +18147,7 @@ TEST_F(memory_index_test, consolidate_progress) {
     reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(2, reader[0].docs_count());
+    ASSERT_EQ(2*MAX_DOCS, reader[0].docs_count());
   }
 
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
@@ -18023,24 +18157,29 @@ TEST_F(memory_index_test, consolidate_progress) {
     size_t call_count = i;
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    ASSERT_TRUE(insert(
-      *writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+    }
     writer->commit(); // create segment0
-    ASSERT_TRUE(insert(
-      *writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+    }
     writer->commit(); // create segment1
 
     auto reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
 
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
@@ -18051,8 +18190,8 @@ TEST_F(memory_index_test, consolidate_progress) {
     reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
   }
 }
 

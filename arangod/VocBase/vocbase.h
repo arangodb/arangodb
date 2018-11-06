@@ -327,8 +327,7 @@ struct TRI_vocbase_t {
   /// @brief renames a collection
   arangodb::Result renameCollection(
     TRI_voc_cid_t cid,
-    std::string const& newName,
-    bool doOverride
+    std::string const& newName
   );
 
   /// @brief renames a view

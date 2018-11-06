@@ -710,7 +710,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           }
         }
 
-        auto res = vocbase->renameCollection(collection->id(), name, true);
+        auto res = vocbase->renameCollection(collection->id(), name);
 
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)

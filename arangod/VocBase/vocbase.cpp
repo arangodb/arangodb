@@ -1416,8 +1416,7 @@ arangodb::Result TRI_vocbase_t::renameView(
 /// @brief renames a collection
 arangodb::Result TRI_vocbase_t::renameCollection(
     TRI_voc_cid_t cid,
-    std::string const& newName,
-    bool doOverride
+    std::string const& newName
 ) {
   auto collection = lookupCollection(cid);
 
@@ -1437,24 +1436,6 @@ arangodb::Result TRI_vocbase_t::renameCollection(
   // check if names are actually different
   if (oldName == newName) {
     return TRI_ERROR_NO_ERROR;
-  }
-
-  if (!doOverride) {
-    auto isSystem = IsSystemName(oldName);
-
-    if (isSystem && !IsSystemName(newName)) {
-      // a system collection shall not be renamed to a non-system collection
-      // name
-      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    } else if (!isSystem && IsSystemName(newName)) {
-      // a non-system collection shall not be renamed to a system collection
-      // name
-      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    }
-
-    if (!IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
-      return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    }
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
