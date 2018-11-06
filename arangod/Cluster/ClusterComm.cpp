@@ -1225,7 +1225,15 @@ void ClusterComm::disable() {
 }
 
 void ClusterComm::scheduleMe(std::function<void()> task) {
-  arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
+  // Post to Scheduler for async execution, but only if
+  //  not heading into shutdown ... still a race condition
+  if (!application_features::ApplicationServer::isStopping()) {
+    arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
+  } else {
+    // performance no longer a concern, execute on caller's thread because
+    //  Scheduler's state is uncertain ... Nov 6, 2018 matthewv
+    task();
+  } // else
 }
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
