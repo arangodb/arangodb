@@ -727,6 +727,7 @@ class ClusterComm {
 
   std::atomic_uint _roundRobin;
   std::vector<ClusterCommThread*> _backgroundThreads;
+  arangodb::basics::ConditionVariable _activeThreadsCondition;
 
   std::shared_ptr<communicator::Communicator> communicator();
 

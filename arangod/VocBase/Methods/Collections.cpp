@@ -466,8 +466,11 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::rename(LogicalCollection* coll, std::string const& newName,
-                           bool doOverride) {
+Result Collections::rename(
+    LogicalCollection& collection,
+    std::string const& newName,
+    bool doOverride
+) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -480,20 +483,46 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->canUseDatabase(auth::Level::RW) ||
-        !exec->canUseCollection(coll->name(), auth::Level::RW)) {
+        !exec->canUseCollection(collection.name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
-  std::string const oldName(coll->name());
-  auto res = coll->vocbase().renameCollection(coll->id(), newName, doOverride);
+  // check required to pass shell-collection-rocksdb-noncluster.js::testSystemSpecial
+  if (collection.system()) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+  }
+
+  if (!doOverride) {
+    auto isSystem = TRI_vocbase_t::IsSystemName(collection.name());
+
+    if (isSystem && !TRI_vocbase_t::IsSystemName(newName)) {
+      // a system collection shall not be renamed to a non-system collection name
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "a system collection shall not be renamed to a non-system collection name"
+      );
+    } else if (!isSystem && TRI_vocbase_t::IsSystemName(newName)) {
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "a non-system collection shall not be renamed to a system collection name"
+      );
+    }
+
+    if (!TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
+      return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+    }
+  }
+
+  std::string const oldName(collection.name());
+  auto res = collection.vocbase().renameCollection(collection.id(), newName);
 
   if (!res.ok()) {
     return res;
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(&(coll->vocbase()), oldName, newName);
+  return RenameGraphCollections(&(collection.vocbase()), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
