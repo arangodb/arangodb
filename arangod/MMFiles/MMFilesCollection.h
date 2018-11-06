@@ -77,35 +77,29 @@ class MMFilesCollection final : public PhysicalCollection {
   struct OpenIteratorState {
     LogicalCollection* _collection;
     arangodb::MMFilesPrimaryIndex* _primaryIndex;
-    TRI_voc_tid_t _tid;
-    TRI_voc_fid_t _fid;
+    TRI_voc_tid_t _tid{0};
+    TRI_voc_fid_t _fid{0};
     std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*>
         _stats;
-    MMFilesDatafileStatisticsContainer* _dfi;
+    MMFilesDatafileStatisticsContainer* _dfi{nullptr};
     transaction::Methods* _trx;
     ManagedDocumentResult _mmdr;
     IndexLookupContext _context;
-    uint64_t _deletions;
-    uint64_t _documents;
-    uint64_t _operations;
-    int64_t _initialCount;
+    uint64_t _deletions{0};
+    uint64_t _documents{0};
+    uint64_t _operations{0};
+    int64_t _initialCount{-1};
+    bool _hasAllPersistentLocalIds{true};
 
     OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
         : _collection(collection),
           _primaryIndex(
               static_cast<MMFilesCollection*>(collection->getPhysical())
                   ->primaryIndex()),
-          _tid(0),
-          _fid(0),
           _stats(),
-          _dfi(nullptr),
           _trx(trx),
           _mmdr(),
-          _context(trx, collection, &_mmdr, 1),
-          _deletions(0),
-          _documents(0),
-          _operations(0),
-          _initialCount(-1) {
+          _context(trx, collection, &_mmdr, 1) {
       TRI_ASSERT(collection != nullptr);
       TRI_ASSERT(trx != nullptr);
     }
@@ -415,6 +409,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
+  Result persistLocalDocumentIds();
+
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -539,6 +535,11 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
+  bool hasAllPersistentLocalIds() const { return _hasAllPersistentLocalIds.load(); }
+
+  static Result persistLocalDocumentIdsForDatafile(
+      MMFilesCollection& collection, MMFilesDatafile& file);
+
  private:
   mutable arangodb::MMFilesDitches _ditches;
 
@@ -582,6 +583,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool _doCompact;
   TRI_voc_tick_t _maxTick;
+
+  // whether or not all documents are stored with a persistent LocalDocumentId
+  std::atomic<bool> _hasAllPersistentLocalIds{true};
 };
 }
 
