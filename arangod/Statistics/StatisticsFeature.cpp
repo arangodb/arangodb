@@ -124,7 +124,7 @@ StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server
 )
     : ApplicationFeature(server, "Statistics"),
-      _statistics(false),
+      _statistics(true),
       _descriptions(new stats::Descriptions()) {
   startsAfter("AQLPhase");
   setOptional(true);

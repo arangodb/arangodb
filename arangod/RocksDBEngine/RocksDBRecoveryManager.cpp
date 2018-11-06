@@ -167,7 +167,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
-    LOG_DEVEL << "starting batch " << startSequence;
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -458,14 +457,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         hash = RocksDBEdgeIndex::HashForKey(key);
       }
 
-      static int ss = 0;
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est != nullptr && est->commitSeq() < _currentSequence) {
           // We track estimates for this index
           est->insert(hash);
-          LOG_DEVEL << "insert nr " << ++ss << " into index " << objectId;
         }
       }
     }
@@ -508,14 +505,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         hash = RocksDBEdgeIndex::HashForKey(key);
       }
 
-      static int ss = 0;
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est != nullptr && est->commitSeq() < _currentSequence) {
           // We track estimates for this index
           est->remove(hash);
-          LOG_DEVEL << "removal nr " << ++ss;
         }
       }
     }
