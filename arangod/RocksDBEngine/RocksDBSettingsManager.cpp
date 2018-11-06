@@ -441,10 +441,12 @@ Result RocksDBSettingsManager::sync(bool force) {
     copy = _counters;
   }
 
-#warning use lastTick - 1
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto maxSeqNr = _db->GetLatestSequenceNumber();
+  if (maxSeqNr > 0) {
+    maxSeqNr--; // use - 1 to not skip the latest writes
+  }
   auto minSeqNr = maxSeqNr;
   LOG_DEVEL << "starting sync with latestSeqNr: " << maxSeqNr;
 

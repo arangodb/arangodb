@@ -423,13 +423,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   
   // tick function that is called before each new WAL entry
   void incTick() {
-//    if (_startOfBatch) {
-//      // we are at the start of a batch. do NOT increase sequence number
-//      _startOfBatch = false;
-//    } else {
-//      // we are inside a batch already. now increase sequence number
-//      ++_currentSequence;
-//    }
+    if (_startOfBatch) {
+      // we are at the start of a batch. do NOT increase sequence number
+      _startOfBatch = false;
+    } else {
+      // we are inside a batch already. now increase sequence number
+      ++_currentSequence;
+    }
   }
   
  public:

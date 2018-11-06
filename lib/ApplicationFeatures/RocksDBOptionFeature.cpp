@@ -80,7 +80,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false),
       _dynamicLevelBytes(true),
-      _enableStatistics(false),
+      _enableStatistics(true),
       _useFileLogging(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
