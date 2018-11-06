@@ -25,6 +25,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_BLOCK_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_BLOCK_H 1
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/QueryExpressionContext.h"
@@ -80,6 +81,7 @@ class ViewExpressionContext final : public aql::QueryExpressionContext {
   aql::AqlItemBlock const* _data{};
   IResearchViewNode const* _node;
   size_t _pos{};
+  aql::AstNode const* _expr{}; // for troubleshooting
 }; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
