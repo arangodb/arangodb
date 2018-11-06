@@ -963,7 +963,7 @@ std::pair<Node&, bool> Node::hasAsWritableNode(
   // retrieve node, throws if does not exist
   try {
     Node & target(operator()(url));
-    std::pair<Node &, bool> good_pair = {target, true};
+    std::pair<Node&, bool> good_pair = {target, true};
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
@@ -1104,7 +1104,7 @@ std::pair<Node::Children, bool> Node::hasAsChildren(
 
 
 std::pair<void*, bool> Node::hasAsBuilder(
-  std::string const& url, Builder &builder, bool showHidden) const {
+  std::string const& url, Builder& builder, bool showHidden) const {
   std::pair<void*, bool> ret_pair(nullptr, false);
 
   // retrieve node, throws if does not exist
