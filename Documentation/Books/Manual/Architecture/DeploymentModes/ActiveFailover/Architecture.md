@@ -11,10 +11,12 @@ An _Active Failover_ is defined as:
 
 ![ArangoDB Active Failover](leader-follower.png)
 
-The advantage of the _Active Failover_ compared to a traditional _Master-Slave_
+The advantage of the _Active Failover_ compared to the traditional [_Master/Slave_](../MasterSlave/README.md)
 setup is that there is an active third party, the _Agency_ which observes and supervises
 all involved server processes. _Follower_ instances can rely on the _Agency_ to
-determine the correct _leader_ server.
+determine the correct _Leader_ server. From an operational point of view, one advantage is that
+the failover, in case the _Leader_ goes down, is automatic. An additional operational
+advantage is that there is no need to start a _replication applier_ manually.
 
 The _Active Failover_ setup is made **resilient** by the fact that all the official
 ArangoDB drivers can automatically determine the correct _leader_ server and
