@@ -1,3 +1,28 @@
+v3.2.18 (XXXX-XX-XX)
+--------------------
+
+* disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
+  values of 0 or 1.
+  Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
+  related issues with the default memory allocator used in ArangoDB release builds on 
+  64bit Linux. 
+  The issues will remain when running with an `overcommit_memory` settings value of 2,
+  so this is now discouraged.
+  Setting `overcommit_memory` to 0 or 1 (0 is the Linux kernel's default) fixes issues
+  with increasing numbers of memory mappings for the arangod process (which may lead
+  to an out-of-memory situation if the kernel's maximum number of mappings threshold
+  is hit) and an increasing amount of memory that the kernel counts as "committed".
+  With an `overcommit_memory` setting of 0 or 1, an arangod process may either be 
+  killed by the kernel's OOM killer or will die with a segfault when accessing memory
+  it has allocated before but the kernel could not provide later on. This is still 
+  more acceptable than the kernel not providing any more memory to the process when
+  there is still physical memory left, which may have occurred with an `overcommit_memory`
+  setting of 2 after the arangod process had done lots of allocations.
+
+  In summary, the recommendation for the `overcommit_memory` setting is now to set it
+  to 0 or 1 (0 is kernel default) and not use 2.
+
+
 v3.2.17 (2018-10-24)
 --------------------
 
