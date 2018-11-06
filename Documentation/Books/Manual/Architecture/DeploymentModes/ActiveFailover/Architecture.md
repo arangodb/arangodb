@@ -73,8 +73,7 @@ on _Leader_ and _Followers_ alike.
 Reading from Followers
 ----------------------
 
-Before 3.4.0, _Followers_ in the _Active Failover_ setup are in a read-only mode.
-Starting from ArangoDB 3.4.0 it is possible to read from these _Followers_ by adding
+Starting from ArangoDB 3.4.0 it is possible to read from _Followers_ by adding
 a `X-Arango-Allow-Dirty-Read` header on each request. Responses will then automatically
 contain the `X-Arango-Potential-Dirty-Read` header so that clients can reject accidental
 dirty reads.
