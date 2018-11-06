@@ -75,7 +75,7 @@ void EnvironmentFeature::prepare() {
     }
   }
 
-  // check overcommit_memory & overcommit_ration
+  // check overcommit_memory & overcommit_ratio
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
