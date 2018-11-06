@@ -120,7 +120,7 @@ LogicalView::LogicalView(
 ) {
   TRI_ASSERT(callback);
 
-  if (ServerState::instance()->isSingleServer()) {
+  if (!ServerState::instance()->isCoordinator()) {
     for (auto& view: vocbase.views()) {
       if (!callback(view)) {
         return false;
