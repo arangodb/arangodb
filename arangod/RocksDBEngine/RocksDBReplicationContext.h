@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
@@ -49,7 +48,6 @@ namespace rocksdb {
 }
 
 namespace arangodb {
-class DatabaseGuard;
 
 class RocksDBReplicationContext {
  private:
@@ -62,8 +60,9 @@ class RocksDBReplicationContext {
     CollectionIterator(TRI_vocbase_t&,
                        std::shared_ptr<LogicalCollection> const&,
                        bool sorted, rocksdb::Snapshot const*);
+    ~CollectionIterator();
     
-    DatabaseGuard dbGuard;
+    TRI_vocbase_t& vocbase;
     std::shared_ptr<LogicalCollection> logical;
 
     /// Iterator over primary index or documents

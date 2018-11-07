@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER 1
 
 #include "Aql/Expression.h"
+#include "IResearch/IResearchExpressionContext.h"
 
 #include "search/filter.hpp"
 
@@ -71,22 +72,27 @@ struct ExpressionExecutionContext : irs::attribute {
 
   ExpressionExecutionContext() = default;
 
-  explicit ExpressionExecutionContext(arangodb::transaction::Methods& trx)
+  explicit ExpressionExecutionContext(
+      arangodb::transaction::Methods& trx
+  ) noexcept
     : trx(&trx) {
   }
 
   ExpressionExecutionContext(
       arangodb::transaction::Methods& trx,
-      arangodb::aql::ExpressionContext& ctx
-  ) : trx(&trx), ctx(&ctx) {
+      arangodb::iresearch::ViewExpressionContextBase& ctx
+  ) noexcept : ctx(&ctx), trx(&trx) {
   }
 
   explicit operator bool() const noexcept {
     return trx && ctx;
   }
 
+  // FIXME change 'ctx' to be 'arangodb::aql::ExpressionContext'
+  // once IResearchView will be able to evaluate epxressions
+  // with loop variable in SEARCH expressions
+  arangodb::iresearch::ViewExpressionContextBase* ctx{};
   arangodb::transaction::Methods* trx{};
-  arangodb::aql::ExpressionContext* ctx{};
 }; // ExpressionFilterContext
 
 ///////////////////////////////////////////////////////////////////////////////

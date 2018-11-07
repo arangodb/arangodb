@@ -220,7 +220,7 @@ LogicalCollection* ShardingInfo::collection() const {
 }
 
 void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
-  result.add("numberOfShards", VPackValue(_numberOfShards));
+  result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
   result.add(VPackValue("shards"));
   result.openObject();
@@ -240,9 +240,9 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
   result.close();  // shards
 
   if (isSatellite()) {
-    result.add("replicationFactor", VPackValue("satellite"));
+    result.add(StaticStrings::ReplicationFactor, VPackValue("satellite"));
   } else {
-    result.add("replicationFactor", VPackValue(_replicationFactor));
+    result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }
 
   if (!_distributeShardsLike.empty() &&
@@ -251,7 +251,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
     if (translateCids) {
       CollectionNameResolver resolver(_collection->vocbase());
 
-      result.add("distributeShardsLike",
+      result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
                          distributeShardsLike())))));
