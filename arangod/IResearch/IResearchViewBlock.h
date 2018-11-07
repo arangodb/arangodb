@@ -27,59 +27,23 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExpressionContext.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 class score;
-NS_END // iresearch
+} // iresearch
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
-class AqlItemBlock;
-class ExecutionEngine;
-NS_END // aql
-
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class IResearchViewNode;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class ViewExpressionContext
-///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public aql::ExpressionContext {
- public:
-  explicit ViewExpressionContext(IResearchViewNode const& node)
-    : _node(&node) {
-    TRI_ASSERT(_node);
-  }
-
-  virtual size_t numRegisters() const override;
-
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::AqlValue getVariableValue(
-    aql::Variable const* variable,
-    bool doCopy,
-    bool& mustDestroy
-  ) const override;
-
-  aql::AqlItemBlock const* _data{};
-  IResearchViewNode const* _node;
-  size_t _pos{};
-}; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewBlockBase
@@ -223,7 +187,7 @@ class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
   size_t _skip{};
 }; // IResearchViewOrderedBlock
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 
