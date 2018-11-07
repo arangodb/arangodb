@@ -112,6 +112,7 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
       LOG_TOPIC(DEBUG, Logger::COMPACTOR)
           << "renamed obsolete datafile '" << copy << "' to '"
           << filename << "': " << TRI_errno_string(res);
+    }
   }
 
   LOG_TOPIC(DEBUG, Logger::COMPACTOR)
