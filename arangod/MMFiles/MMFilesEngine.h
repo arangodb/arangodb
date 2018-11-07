@@ -622,7 +622,7 @@ class MMFilesEngine final : public StorageEngine {
   std::atomic<uint64_t> _compactionDisabled;
 
   // whether the engine is currently running an upgrade procedure
-  std::atomic<bool> _upgrading;
+  std::atomic<bool> _upgrading{false};
 };
 
 }
