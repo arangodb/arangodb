@@ -61,7 +61,7 @@ struct HealthRecord {
     std::string const& sn, std::string const& ep, std::string const& ho) :
     shortName(sn), endpoint(ep), hostId(ho), version(0) {}
 
-  HealthRecord(Node const& node) {
+  explicit HealthRecord(Node const& node) {
     *this = node;
   }
 
@@ -1016,7 +1016,7 @@ void Supervision::workJobs() {
 }
 
 
-void Supervision::readyOrphanedIndexCreations() {
+static void Supervision::readyOrphanedIndexCreations() {
   _lock.assertLockedByCurrentThread();
   
   if (_snapshot.has(planColPrefix) && _snapshot.has(curColPrefix)) {
