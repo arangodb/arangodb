@@ -30,6 +30,7 @@
 #include "IResearchView.h"
 #include "IResearchViewBlock.h"
 #include "IResearchViewNode.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
@@ -47,82 +48,10 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-NS_LOCAL
-
-inline arangodb::aql::RegisterId getRegister(
-    arangodb::aql::Variable const& var,
-    arangodb::aql::ExecutionNode const& node
-) noexcept {
-  auto const& vars = node.getRegisterPlan()->varInfo;
-  auto const it = vars.find(var.id);
-
-  return vars.end() == it
-    ? arangodb::aql::ExecutionNode::MaxRegisterId
-    : it->second.registerId;
-  }
-
-NS_END // NS_LOCAL
-
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 using namespace arangodb::aql;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                              ViewExpressionContext implementation
-// -----------------------------------------------------------------------------
-
-size_t ViewExpressionContext::numRegisters() const {
-  return _data->getNrRegs();
-}
-
-AqlValue ViewExpressionContext::getVariableValue(
-    Variable const* var, bool doCopy, bool& mustDestroy
-) const {
-  TRI_ASSERT(var);
-
-  if (var == &_node->outVariable()) {
-    // self-reference
-    if (_expr) {
-      std::string expr;
-
-      try {
-        expr = _expr->toString();
-      } catch (...) { }
-
-      if (!expr.empty()) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "Unable to evaluate loop variable '%s' as a part of ArangoSearch noncompliant expression '%s'",
-          var->name.c_str(),
-          expr.c_str()
-        );
-      }
-    }
-
-    THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "Unable to evaluate loop variable '%s' as a part of ArangoSearch noncompliant expression",
-      var->name.c_str()
-    );
-  }
-
-  mustDestroy = false;
-  auto const reg = getRegister(*var, *_node);
-
-  if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  auto& value = _data->getValueReference(_pos, reg);
-
-  if (doCopy) {
-    mustDestroy = true;
-    return value.clone();
-  }
-
-  return value;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             IResearchViewBlockBase implementation

@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "IResearch/IResearchExpressionContext.h"
 
 #include <unordered_map>
 
@@ -38,8 +39,12 @@ struct Variable; // forward decl
 } // aql
 } // arangodb
 
-struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
+struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextBase {
   static ExpressionContextMock EMPTY;
+
+  ExpressionContextMock() noexcept
+    : arangodb::iresearch::ViewExpressionContextBase(nullptr) {
+  }
 
   virtual ~ExpressionContextMock();
 
@@ -88,14 +93,14 @@ struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
     return nullptr;
   }
 
-  bool killed() const override { 
-    TRI_ASSERT(false);
-    return false;
-  }
-
-  TRI_vocbase_t& vocbase() const override;
-  
-  arangodb::aql::Query* query() const override;
+//  bool killed() const override {
+//    TRI_ASSERT(false);
+//    return false;
+//  }
+//
+//  TRI_vocbase_t& vocbase() const override;
+//
+//  arangodb::aql::Query* query() const override;
 
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock

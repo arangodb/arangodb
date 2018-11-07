@@ -23,6 +23,7 @@
 
 #include "ExpressionFilter.h"
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
 
@@ -37,20 +38,6 @@
 #include <type_traits>
 
 namespace {
-
-inline void setExpression(
-    arangodb::iresearch::ExpressionExecutionContext& ctx,
-    arangodb::aql::AstNode const* expr
-) noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* exprCtx = dynamic_cast<arangodb::iresearch::ViewExpressionContext*>(ctx.ctx);
-#else
-  auto* exprCtx = static_cast<arangodb::iresearch::ViewExpressionContext*>(ctx.ctx);
-#endif
-
-  TRI_ASSERT(exprCtx);
-  exprCtx->_expr = expr;
-}
 
 template<typename T>
 inline irs::filter::prepared::ptr compileQuery(
@@ -185,7 +172,7 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
     }
 
     // set expression for troubleshooting purposes
-    setExpression(*execCtx, _ctx.node.get());
+    execCtx->ctx->_expr = _ctx.node.get();
 
     return irs::doc_iterator::make<NondeterministicExpressionIterator>(
       rdr,
@@ -227,7 +214,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     }
 
     // set expression for troubleshooting purposes
-    setExpression(*execCtx, _ctx.node.get());
+    execCtx->ctx->_expr = _ctx.node.get();
 
     arangodb::aql::Expression expr(_ctx.plan, _ctx.ast, _ctx.node.get());
     bool mustDestroy = false;
@@ -324,7 +311,7 @@ irs::filter::prepared::ptr ByExpression::prepare(
   }
 
   // set expression for troubleshooting purposes
-  setExpression(*execCtx, _ctx.node.get());
+  execCtx->ctx->_expr = _ctx.node.get();
 
   // evaluate expression
   bool mustDestroy = false;
