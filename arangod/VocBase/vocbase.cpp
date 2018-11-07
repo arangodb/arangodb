@@ -1533,56 +1533,48 @@ int TRI_vocbase_t::useCollection(arangodb::LogicalCollection* collection,
 }
 
 /// @brief locks a (document) collection for usage by id
-arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
     TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status) {
-  auto collection = lookupCollection(cid);
-
-  return useCollectionInternal(collection.get(), status);
+  return useCollectionInternal(lookupCollection(cid), status);
 }
 
 /// @brief locks a collection for usage by name
-arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(
     std::string const& name, TRI_vocbase_col_status_e& status) {
   // check that we have an existing name
-  arangodb::LogicalCollection* collection = nullptr;
-
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
     auto it = _dataSourceByName.find(name);
-
     if (it != _dataSourceByName.end()
         && it->second->category() == LogicalCollection::category()) {
       TRI_ASSERT(std::dynamic_pointer_cast<LogicalCollection>(it->second));
-      collection = static_cast<LogicalCollection*>(it->second.get());
+      collection = std::static_pointer_cast<LogicalCollection>(it->second);
     }
   }
 
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(std::move(collection), status);
 }
 
 /// @brief locks a collection for usage by name
-arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionByUuid(
     std::string const& uuid, TRI_vocbase_col_status_e& status) {
-  auto collection = lookupCollectionByUuid(uuid);
-
-  return useCollectionInternal(collection.get(), status);
+  return useCollectionInternal(lookupCollectionByUuid(uuid), status);
 }
 
-arangodb::LogicalCollection* TRI_vocbase_t::useCollectionInternal(
-    arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status) {
-  if (collection == nullptr) {
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInternal(
+    std::shared_ptr<arangodb::LogicalCollection> coll, TRI_vocbase_col_status_e& status) {
+  if (!coll) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return nullptr;
   }
 
   // try to load the collection
-  int res = loadCollection(collection, status);
-
+  int res = loadCollection(coll.get(), status);
   if (res == TRI_ERROR_NO_ERROR) {
-    return collection;
+    return coll;
   }
-
   TRI_set_errno(res);
   return nullptr;
 }
