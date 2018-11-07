@@ -23,6 +23,7 @@
 #include "UpgradeTasks.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
@@ -31,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -478,4 +480,18 @@ bool UpgradeTasks::setupAppBundles(
     arangodb::velocypack::Slice const& slice
 ) {
   return ::createSystemCollection(&vocbase, "_appbundles");
+}
+
+bool UpgradeTasks::persistLocalDocumentIds(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
+    Result res = basics::catchToResult([&vocbase]() -> Result {
+      MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+      return engine->persistLocalDocumentIds(vocbase);
+    });
+    return res.ok();
+  }
+  return true;
 }

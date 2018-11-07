@@ -128,6 +128,10 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
       return false;
     }
     
+    TRI_IF_FAILURE("MMFilesCompatibility33") {
+      return false;
+    }
+    
     // size is header size + vpack size + LocalDocumentId size -> LocalDocumentId contained!
     // size is not header size + vpack size + LocalDocumentId size -> no LocalDocumentId contained!
     return (size() == MMFilesDatafileHelper::VPackOffset(type()) + 
@@ -136,9 +140,10 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
   }
   
   LocalDocumentId getLocalDocumentId() const override {
-    uint8_t const* ptr = reinterpret_cast<uint8_t const*>(mem()) + 
-                         MMFilesDatafileHelper::VPackOffset(type()) + 
-                         arangodb::velocypack::Slice(vpack()).byteSize(); 
+    TRI_ASSERT(hasLocalDocumentId());
+    uint8_t const* ptr = reinterpret_cast<uint8_t const*>(mem()) +
+                         MMFilesDatafileHelper::VPackOffset(type()) +
+                         arangodb::velocypack::Slice(vpack()).byteSize();
     return LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
   }
 
@@ -173,6 +178,9 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
  
   /// @brief returns the marker size 
   uint32_t size() const override final { 
+    TRI_IF_FAILURE("MMFilesCompatibility33") { // don't store local id
+      return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+    }
     if (_localDocumentId.isSet()) {
       // we have to take localDocumentId into account
       return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize()) + sizeof(LocalDocumentId::BaseType);
@@ -188,6 +196,9 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
     size_t const vpackOffset = MMFilesDatafileHelper::VPackOffset(_type);
     size_t const vpackLength = static_cast<size_t>(_data.byteSize());
     memcpy(mem + vpackOffset, _data.begin(), vpackLength);
+    TRI_IF_FAILURE("MMFilesCompatibility33") { // don't store local id
+      return;
+    }
     if (_localDocumentId.isSet()) {
       // also store localDocumentId
       encoding::storeNumber<LocalDocumentId::BaseType>(reinterpret_cast<uint8_t*>(mem) + vpackOffset + vpackLength, _localDocumentId.id(), sizeof(LocalDocumentId::BaseType));

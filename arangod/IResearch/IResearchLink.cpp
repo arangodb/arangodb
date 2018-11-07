@@ -198,7 +198,7 @@ TRI_idx_iid_t IResearchLink::id() const noexcept {
 
 bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   // disassociate from view if it has not been done yet
-  if (TRI_ERROR_NO_ERROR != unload()) {
+  if (!unload().ok()) {
     return false;
   }
 
@@ -498,7 +498,7 @@ char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
 }
 
-int IResearchLink::unload() {
+arangodb::Result IResearchLink::unload() {
   WriteMutex mutex(_mutex); // '_view' can be asynchronously read
   SCOPED_LOCK(mutex);
 
@@ -511,7 +511,7 @@ int IResearchLink::unload() {
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (_collection.deleted()
       || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
-    return drop().errorNumber();
+    return drop();
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped

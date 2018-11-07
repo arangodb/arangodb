@@ -950,6 +950,8 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection updated OK
 }
 
+bool PhysicalCollectionMock::hasAllPersistentLocalIds() const { return true; }
+
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
 
@@ -1447,7 +1449,7 @@ int TransactionCollectionMock::lockRecursive(arangodb::AccessMode::Type type, in
 
 void TransactionCollectionMock::release() {
   if (_collection) {
-    _transaction->vocbase().releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection.get());
     _collection = nullptr;
   }
 }

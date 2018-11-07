@@ -713,6 +713,52 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
   return true;
 }
 
+Result TRI_IterateDatafile(MMFilesDatafile* datafile,
+                           Result (*iterator)(MMFilesMarker const*, void*,
+                                              MMFilesDatafile*),
+                           void* data) {
+  TRI_ASSERT(iterator != nullptr);
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "iterating over datafile '" << datafile->getName() << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
+
+  char const* ptr = datafile->data();
+  char const* end = ptr + datafile->currentSize();
+
+  if (datafile->state() != TRI_DF_STATE_READ &&
+      datafile->state() != TRI_DF_STATE_WRITE) {
+    return TRI_ERROR_ARANGO_ILLEGAL_STATE;
+  }
+
+  TRI_voc_tick_t maxTick = 0;
+  TRI_DEFER(TRI_UpdateTickServer(maxTick));
+
+  while (ptr < end) {
+    auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
+
+    if (marker->getSize() == 0) {
+      return Result();
+    }
+
+    TRI_voc_tick_t tick = marker->getTick();
+
+    if (tick > maxTick) {
+      maxTick = tick;
+    }
+
+    // update the tick statistics
+    TRI_UpdateTicksDatafile(datafile, marker);
+
+    Result res = iterator(marker, data, datafile);
+    if (res.fail()) {
+      return res;
+    }
+
+    ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
+  }
+
+  return Result();
+}
+
 /// @brief iterates over a datafile
 /// also may set datafile's min/max tick values
 bool TRI_IterateDatafile(MMFilesDatafile* datafile,

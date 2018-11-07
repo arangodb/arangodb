@@ -48,61 +48,10 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-NS_LOCAL
-
-inline arangodb::aql::RegisterId getRegister(
-    arangodb::aql::Variable const& var,
-    arangodb::aql::ExecutionNode const& node
-) noexcept {
-  auto const& vars = node.getRegisterPlan()->varInfo;
-  auto const it = vars.find(var.id);
-
-  return vars.end() == it
-    ? arangodb::aql::ExecutionNode::MaxRegisterId
-    : it->second.registerId;
-  }
-
-NS_END // NS_LOCAL
-
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 using namespace arangodb::aql;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                              ViewExpressionContext implementation
-// -----------------------------------------------------------------------------
-
-size_t ViewExpressionContext::numRegisters() const {
-  return _data->getNrRegs();
-}
-
-AqlValue ViewExpressionContext::getVariableValue(
-    Variable const* var, bool doCopy, bool& mustDestroy
-) const {
-  TRI_ASSERT(var);
-
-  if (var == &_node->outVariable()) {
-    // self-reference
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  mustDestroy = false;
-  auto const reg = getRegister(*var, *_node);
-
-  if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  auto& value = _data->getValueReference(_pos, reg);
-
-  if (doCopy) {
-    mustDestroy = true;
-    return value.clone();
-  }
-
-  return value;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             IResearchViewBlockBase implementation

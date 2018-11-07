@@ -711,7 +711,7 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
     }
 
     if (offs) {
-      assert(features_.payload() && pay_ && pay_->out);
+      assert(features_.offset() && pay_ && pay_->out);
       pay_->flush_offsets(buf);
     }
   }
