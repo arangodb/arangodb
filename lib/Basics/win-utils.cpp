@@ -65,12 +65,6 @@ using namespace arangodb::basics;
 _invalid_parameter_handler oldInvalidHandleHandler;
 _invalid_parameter_handler newInvalidHandleHandler;
 
-// Windows variant for unistd.h's ftruncate()
-int ftruncate(int fd, long newSize) {
-  int result = _chsize(fd, newSize);
-  return result;
-}
-
 // Windows variant for getpagesize()
 int getpagesize(void) {
   static int pageSize = 0;  // only define it once

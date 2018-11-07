@@ -725,7 +725,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code); // can't handle self-referenced variable now
+    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code); // can't handle self-referenced variable now
 
 //    auto result = queryResult.result->slice();
 //    CHECK(result.isArray());

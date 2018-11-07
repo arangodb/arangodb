@@ -186,6 +186,7 @@ struct MMFilesWalRecoverState {
   bool ignoreRecoveryErrors;
   int64_t errorCount;
   TRI_voc_rid_t maxRevisionId;
+  LocalDocumentId maxLocalDocumentId;
 
  private:
   TRI_voc_tick_t lastDatabaseId;

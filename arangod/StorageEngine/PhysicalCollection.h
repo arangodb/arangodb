@@ -207,6 +207,10 @@ class PhysicalCollection {
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
 
+  // returns true all documents have a persistent LocalDocumentId or false if it
+  // can change after a server restart
+  virtual bool hasAllPersistentLocalIds() const = 0;
+
  protected:
   PhysicalCollection(
     LogicalCollection& collection,

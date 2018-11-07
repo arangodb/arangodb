@@ -23,8 +23,11 @@
 
 #include "ExpressionFilter.h"
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
+
+#include "IResearch/IResearchViewBlock.h"
 
 #include "search/score_doc_iterators.hpp"
 #include "search/all_filter.hpp"
@@ -34,7 +37,7 @@
 
 #include <type_traits>
 
-NS_LOCAL
+namespace {
 
 template<typename T>
 inline irs::filter::prepared::ptr compileQuery(
@@ -168,6 +171,9 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
+    // set expression for troubleshooting purposes
+    execCtx->ctx->_expr = _ctx.node.get();
+
     return irs::doc_iterator::make<NondeterministicExpressionIterator>(
       rdr,
       attributes(), // prepared_filter attributes
@@ -207,6 +213,9 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
+    // set expression for troubleshooting purposes
+    execCtx->ctx->_expr = _ctx.node.get();
+
     arangodb::aql::Expression expr(_ctx.plan, _ctx.ast, _ctx.node.get());
     bool mustDestroy = false;
     auto value = expr.execute(execCtx->trx, execCtx->ctx, mustDestroy);
@@ -225,10 +234,10 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
   arangodb::iresearch::ExpressionCompilationContext _ctx;
 }; // DeterministicExpressionQuery
 
-NS_END // LOCAL
+}
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                     ExpressionCompilationContext implementation
@@ -292,7 +301,7 @@ irs::filter::prepared::ptr ByExpression::prepare(
     );
   }
 
-  auto const* execCtx = ctx.get<arangodb::iresearch::ExpressionExecutionContext>().get();
+  auto* execCtx = ctx.get<arangodb::iresearch::ExpressionExecutionContext>().get();
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query
@@ -300,6 +309,9 @@ irs::filter::prepared::ptr ByExpression::prepare(
       _ctx, index, order, filter_boost
     );
   }
+
+  // set expression for troubleshooting purposes
+  execCtx->ctx->_expr = _ctx.node.get();
 
   // evaluate expression
   bool mustDestroy = false;
@@ -312,5 +324,5 @@ irs::filter::prepared::ptr ByExpression::prepare(
     : irs::filter::prepared::empty();
 }
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb

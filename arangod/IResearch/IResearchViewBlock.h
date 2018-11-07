@@ -27,13 +27,13 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/QueryExpressionContext.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchDocument.h"
 
@@ -42,47 +42,9 @@ class score;
 } // iresearch
 
 namespace arangodb {
-
-namespace aql {
-class AqlItemBlock;
-class ExecutionEngine;
-} // aql
-
 namespace iresearch {
 
 class IResearchViewNode;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @class ViewExpressionContext
-///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public aql::QueryExpressionContext {
- public:
-  explicit ViewExpressionContext(arangodb::aql::Query* query, IResearchViewNode const& node)
-    : QueryExpressionContext(query),
-      _node(&node) {
-    TRI_ASSERT(_node);
-  }
-
-  virtual size_t numRegisters() const override;
-
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::AqlValue getVariableValue(
-    aql::Variable const* variable,
-    bool doCopy,
-    bool& mustDestroy
-  ) const override;
-
-  aql::AqlItemBlock const* _data{};
-  IResearchViewNode const* _node;
-  size_t _pos{};
-}; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewBlockBase
