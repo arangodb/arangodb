@@ -664,7 +664,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto& view = *this->view();
-  PrimaryKeyIndexReader* reader;
+  irs::composite_reader const* reader;
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
     << "Start getting snapshot for view '" << view.name() << "'";

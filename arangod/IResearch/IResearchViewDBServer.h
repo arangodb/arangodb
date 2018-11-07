@@ -50,7 +50,6 @@ namespace arangodb {
 namespace iresearch {
 
 class AsyncMeta;
-class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
@@ -94,7 +93,7 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(
+  irs::composite_reader* snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
     IResearchView::Snapshot mode = IResearchView::Snapshot::Find

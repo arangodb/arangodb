@@ -52,7 +52,7 @@ class IResearchViewNode;
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    arangodb::iresearch::PrimaryKeyIndexReader const& reader,
+    irs::composite_reader const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
@@ -99,7 +99,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   std::vector<DocumentPrimaryKey> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  iresearch::PrimaryKeyIndexReader const& _reader;
+  irs::composite_reader const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
@@ -115,7 +115,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    PrimaryKeyIndexReader const& reader,
+    irs::composite_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -150,7 +150,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    PrimaryKeyIndexReader const& reader,
+    irs::composite_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );

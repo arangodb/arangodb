@@ -49,35 +49,27 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 std::string const VIEW_NAME_PREFIX("_iresearch_");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple PrimaryKeyIndexReaders
+/// @brief index reader implementation over multiple irs::composite_reader
 ////////////////////////////////////////////////////////////////////////////////
-class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
+class CompoundReader final: public irs::composite_reader {
  public:
   irs::sub_reader const& operator[](
       size_t subReaderId
   ) const noexcept override {
-    return *(_subReaders[subReaderId].first);
+    return *(_subReaders[subReaderId]);
   }
 
-  void add(arangodb::iresearch::PrimaryKeyIndexReader const& reader);
+  void add(irs::composite_reader const& reader);
   virtual reader_iterator begin() const override;
   void clear() noexcept { _subReaders.clear(); }
   virtual uint64_t docs_count() const override;
   virtual reader_iterator end() const override;
   virtual uint64_t live_docs_count() const override;
 
-  irs::columnstore_reader::values_reader_f const& pkColumn(
-      size_t subReaderId
-  ) const noexcept override {
-    return _subReaders[subReaderId].second;
-  }
-
   virtual size_t size() const noexcept override { return _subReaders.size(); }
 
  private:
-  typedef std::vector<
-    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
-  > SubReadersType;
+  typedef std::vector<irs::sub_reader*> SubReadersType;
 
   class IteratorImpl final: public irs::index_reader::reader_iterator_impl {
    public:
@@ -86,10 +78,10 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
     }
 
     virtual void operator++() noexcept override { ++_itr; }
-    virtual reference operator*() noexcept override { return *(_itr->first); }
+    virtual reference operator*() noexcept override { return **(_itr); }
 
     virtual const_reference operator*() const noexcept override {
-      return *(_itr->first);
+      return **(_itr);
     }
 
     virtual bool operator==(
@@ -106,20 +98,10 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
 };
 
 void CompoundReader::add(
-    arangodb::iresearch::PrimaryKeyIndexReader const& reader
+    irs::composite_reader const& reader
 ) {
   for(auto& entry: reader) {
-    const auto* pkColumn =
-      entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkColumn) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "encountered a sub-reader without a primary key column while creating a reader for arangosearch view, ignoring";
-
-      continue;
-    }
-
-    _subReaders.emplace_back(&entry, pkColumn->values());
+    _subReaders.emplace_back(&entry);
   }
 }
 
@@ -131,7 +113,7 @@ uint64_t CompoundReader::docs_count() const {
   uint64_t count = 0;
 
   for (auto& entry: _subReaders) {
-    count += entry.first->docs_count();
+    count += entry->docs_count();
   }
 
   return count;
@@ -145,7 +127,7 @@ uint64_t CompoundReader::live_docs_count() const {
   uint64_t count = 0;
 
   for (auto& entry: _subReaders) {
-    count += entry.first->live_docs_count();
+    count += entry->live_docs_count();
   }
 
   return count;
@@ -623,7 +605,7 @@ void IResearchViewDBServer::open() {
   }
 }
 
-PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
+irs::composite_reader* IResearchViewDBServer::snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
     IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
