@@ -77,8 +77,8 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   }; // ReadContext
 
   bool readDocument(
-    size_t segmentId,
     irs::doc_id_t docId,
+    irs::columnstore_reader::values_reader_f const& pkValues,
     IndexIterator::DocumentCallback const& callback
   );
 
@@ -136,6 +136,10 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 
   virtual size_t skip(size_t count) override;
 
+  // resets _itr and _pkReader
+  virtual bool resetIterator();
+
+  irs::columnstore_reader::values_reader_f _pkReader; // current primary key reader
   irs::doc_iterator::ptr _itr;
   size_t _readerOffset;
 }; // IResearchViewUnorderedBlock
@@ -160,7 +164,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
   virtual size_t skip(size_t count) override;
 
  private:
-  void resetIterator();
+  virtual bool resetIterator() override;
 
   irs::score const* _scr;
   irs::bytes_ref _scrVal;

@@ -75,6 +75,18 @@ pks_t::iterator readPKs(
   return begin;
 }
 
+inline irs::columnstore_reader::values_reader_f pkColumn(
+    irs::sub_reader const& segment
+) {
+  auto const* reader = segment.column_reader(
+    arangodb::iresearch::DocumentPrimaryKey::PK()
+  );
+
+  return reader
+    ? reader->values()
+    : irs::columnstore_reader::values_reader_f{};
+}
+
 }
 
 namespace arangodb {
@@ -203,11 +215,12 @@ bool IResearchViewBlockBase::readDocument(
 }
 
 bool IResearchViewBlockBase::readDocument(
-    size_t subReaderId,
     irs::doc_id_t const docId,
+    irs::columnstore_reader::values_reader_f const& pkValues,
     IndexIterator::DocumentCallback const& callback
 ) {
-  const auto& pkValues = _reader.pkColumn(subReaderId);
+  TRI_ASSERT(pkValues);
+
   arangodb::iresearch::DocumentPrimaryKey docPk;
   irs::bytes_ref tmpRef;
 
@@ -413,12 +426,11 @@ IResearchViewBlock::IResearchViewBlock(
   _volatileSort = true;
 }
 
-void IResearchViewBlock::resetIterator() {
-  auto& segmentReader = _reader[_readerOffset];
-
-  _itr = segmentReader.mask(_filter->execute(
-    segmentReader, _order, _filterCtx
-  ));
+bool IResearchViewBlock::resetIterator() {
+  // refresh _pkReader and _itr first
+  if (!IResearchViewUnorderedBlock::resetIterator()) {
+    return false;
+  }
 
   _scr = _itr->attributes().get<irs::score>().get();
 
@@ -428,6 +440,8 @@ void IResearchViewBlock::resetIterator() {
     _scr = &irs::score::no_score();
     _scrVal = irs::bytes_ref::NIL;
   }
+
+  return true;
 }
 
 bool IResearchViewBlock::next(
@@ -446,12 +460,14 @@ bool IResearchViewBlock::next(
   };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
-    if (!_itr) {
-      resetIterator();
+    if (!_itr && !resetIterator()) {
+      continue;
     }
 
+    TRI_ASSERT(_pkReader);
+
     while (limit && _itr->next()) {
-      if (!readDocument(_readerOffset, _itr->value(), copyDocument)) {
+      if (!readDocument(_itr->value(), _pkReader, copyDocument)) {
         continue;
       }
 
@@ -505,8 +521,8 @@ size_t IResearchViewBlock::skip(size_t limit) {
   size_t skipped{};
 
   for (size_t count = _reader.size(); _readerOffset < count;) {
-    if (!_itr) {
-      resetIterator();
+    if (!_itr && !resetIterator()) {
+      continue;
     }
 
     while (limit && _itr->next()) {
@@ -537,6 +553,26 @@ IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
   _volatileSort = false; // do not evaluate sort
 }
 
+bool IResearchViewUnorderedBlock::resetIterator() {
+  TRI_ASSERT(!_itr);
+
+  auto& segmentReader = _reader[_readerOffset];
+
+  _pkReader = ::pkColumn(segmentReader);
+
+  if (!_pkReader) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "encountered a sub-reader without a primary key column while executing a query, ignoring";
+    return false;
+  }
+
+  _itr = segmentReader.mask(_filter->execute(
+    segmentReader, _order, _filterCtx
+  ));
+
+  return true;
+}
+
 bool IResearchViewUnorderedBlock::next(
     ReadContext& ctx,
     size_t limit) {
@@ -551,16 +587,14 @@ bool IResearchViewUnorderedBlock::next(
   };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
-    if (!_itr) {
-      auto& segmentReader = _reader[_readerOffset];
-
-      _itr = segmentReader.mask(_filter->execute(
-        segmentReader, _order, _filterCtx
-      ));
+    if (!_itr && !resetIterator()) {
+      continue;
     }
 
+    TRI_ASSERT(_pkReader);
+
     // read document PKs from iresearch
-    auto end = readPKs(*_itr, _reader.pkColumn(_readerOffset), _keys, limit);
+    auto end = readPKs(*_itr, _pkReader, _keys, limit);
 
     // read documents from underlying storage engine
     for (auto begin = _keys.begin(); begin != end; ++begin) {
@@ -603,12 +637,8 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
   size_t skipped{};
 
   for (size_t count = _reader.size(); _readerOffset < count;) {
-    if (!_itr) {
-      auto& segmentReader = _reader[_readerOffset];
-
-      _itr = segmentReader.mask(_filter->execute(
-        segmentReader, _order, _filterCtx
-      ));
+    if (!_itr && !resetIterator()) {
+      continue;
     }
 
     while (limit && _itr->next()) {
