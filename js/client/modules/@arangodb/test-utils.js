@@ -485,17 +485,21 @@ function splitBuckets (options, cases) {
   return result;
 }
 
-function doOnePathInner (path) {
-  return _.filter(fs.list(makePathUnix(path)),
+function doOnePathInner (path, skipTest) {
+  let res = _.filter(fs.list(makePathUnix(path)),
                   function (p) {
                     return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');;
                   })
     .map(function (x) {
       return fs.join(makePathUnix(path), x);
     }).sort();
+  if (skipTest) {
+    res = _.filter(res, function(n) {return !skipTest(n);});
+  }
+  return res;
 }
 
-function scanTestPaths (paths) {
+function scanTestPaths (paths, skipTest) {
   // add enterprise tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
@@ -505,7 +509,7 @@ function scanTestPaths (paths) {
 
   let allTestCases = [];
   paths.forEach(function(p) {
-    allTestCases = allTestCases.concat(doOnePathInner(p));
+    allTestCases = allTestCases.concat(doOnePathInner(p, skipTest));
   });
   return allTestCases;
 }
