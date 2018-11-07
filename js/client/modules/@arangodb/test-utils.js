@@ -351,6 +351,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 // //////////////////////////////////////////////////////////////////////////////
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
+  if (options.skipTest(testname, options)) {
+    whichFilter.filter = 'blacklist';
+    return false;
+  }
+
   // These filters require a proper setup, Even if we filter by testcase:
   if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
     whichFilter.filter = 'skip when running as rocksdb';
@@ -415,6 +420,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf('-nondeterministic') !== -1 && options.skipNondeterministic) {
     whichFilter.filter = 'nondeterministic';
+    return false;
+  }
+
+  if (testname.indexOf('-grey') !== -1 && options.skipGrey) {
+    whichFilter.filter = 'grey';
     return false;
   }
 
@@ -485,21 +495,17 @@ function splitBuckets (options, cases) {
   return result;
 }
 
-function doOnePathInner (path, skipTest) {
-  let res = _.filter(fs.list(makePathUnix(path)),
+function doOnePathInner (path) {
+  return _.filter(fs.list(makePathUnix(path)),
                   function (p) {
                     return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');;
                   })
     .map(function (x) {
       return fs.join(makePathUnix(path), x);
     }).sort();
-  if (skipTest) {
-    res = _.filter(res, function(n) {return !skipTest(n);});
-  }
-  return res;
 }
 
-function scanTestPaths (paths, skipTest) {
+function scanTestPaths (paths) {
   // add enterprise tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
@@ -508,9 +514,11 @@ function scanTestPaths (paths, skipTest) {
   }
 
   let allTestCases = [];
+
   paths.forEach(function(p) {
-    allTestCases = allTestCases.concat(doOnePathInner(p, skipTest));
+    allTestCases = allTestCases.concat(doOnePathInner(p));
   });
+
   return allTestCases;
 }
 

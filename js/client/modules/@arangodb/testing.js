@@ -49,6 +49,7 @@ let optionsDocumentation = [
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
+  '   - `skipGrey`: if set, grey tests are skipped.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
   '',
@@ -156,6 +157,7 @@ const optionsDefaults = {
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
+  'skipGrey': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -207,9 +209,9 @@ let useBlacklist = false;
 
 let blacklistTests = {};
 
-function skipTest(name) {
-  let res = useBlacklist && !!blacklistTests[name];
-  return res;
+function skipTest(type, name) {
+  let ntype = type.toUpperCase();
+  return useBlacklist && !!blacklistTests[ntype + ":" + name];
 }
 
 function loadBlacklist(name) {
@@ -660,7 +662,7 @@ function iterateTests(cases, options, jsonReply) {
     let result;
     let status = true;
 
-    if (skipTest(currentTest)) {
+    if (skipTest("SUITE", currentTest)) {
       result = {
         failed: 0,
         status: true,
