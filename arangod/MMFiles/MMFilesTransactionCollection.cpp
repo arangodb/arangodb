@@ -218,7 +218,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       }
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -300,7 +300,7 @@ void MMFilesTransactionCollection::release() {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
-    _transaction->vocbase().releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection.get());
     _collection = nullptr;
   }
 }
@@ -323,11 +323,9 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   }
 
   TRI_ASSERT(!isLocked());
-
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(_collection);
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -400,10 +398,8 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   bool const useDeadlockDetector = (!_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) &&
                                     !_transaction->hasHint(transaction::Hints::Hint::NO_DLD));
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(_collection);
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   if (!AccessMode::isWriteOrExclusive(_lockType)) {
