@@ -32,7 +32,6 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
 
  public:
   void prepare() override final;
-  void start() override final;
 };
 }
 
