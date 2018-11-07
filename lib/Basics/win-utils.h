@@ -45,13 +45,6 @@ void ADB_WindowsEntryFunction();
 void ADB_WindowsExitFunction(int exitCode, void* data);
 
 // .............................................................................
-// windows equivalent of ftruncate (the truncation of an open file) is
-// _chsize
-// .............................................................................
-
-int ftruncate(int, long);
-
-// .............................................................................
 // windows does not have a function called getpagesize -- create one here
 // .............................................................................
 

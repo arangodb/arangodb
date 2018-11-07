@@ -59,15 +59,15 @@ class ClusterCollection final : public PhysicalCollection {
   ClusterCollection(LogicalCollection& collection, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~ClusterCollection();
-  
+
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
   /// fetch current values!
   std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const override;
-  
+
   /// @brief sets the current index selectivity estimates
   void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) override;
-  
+
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
 
@@ -181,6 +181,8 @@ class ClusterCollection final : public PhysicalCollection {
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev,
                 TRI_voc_rid_t& revisionId) override;
+
+  bool hasAllPersistentLocalIds() const { return false; }
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
