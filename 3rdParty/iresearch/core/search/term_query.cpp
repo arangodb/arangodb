@@ -86,7 +86,7 @@ term_query::ptr term_query::make(
   // apply boost
   irs::boost::apply(attrs, boost);
 
-  return std::make_shared<term_query>(
+  return memory::make_shared<term_query>(
     std::move(states), std::move(attrs)
   );
 }

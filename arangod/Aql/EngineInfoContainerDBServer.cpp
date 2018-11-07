@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -849,11 +849,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& it : edges) {
         knownEdges.emplace(it->name());
       }
+
+      TRI_ASSERT(_query);
+      auto& resolver = _query->resolver();
+
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*>* cs =
+      std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
+        if (!resolver.getCollection(collection.first)) {
+          // not a collection, filter out
+          continue;
+        }
+
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
@@ -957,8 +966,9 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
   
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  if (QueryRegistryFeature::QUERY_REGISTRY != nullptr) {
-    ttl = QueryRegistryFeature::QUERY_REGISTRY->defaultTTL();
+  auto* registry = QueryRegistryFeature::registry();
+  if (registry != nullptr) {
+    ttl = registry->defaultTTL();
   }
   TRI_ASSERT(ttl > 0);
 
@@ -1076,11 +1086,19 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // Add all Vertex Collections to the Transactions, Traversals do never write
   auto& vCols = node->vertexColls();
   if (vCols.empty()) {
+    TRI_ASSERT(_query);
+    auto& resolver = _query->resolver();
+
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*>* cs =
+    std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
+      if (!resolver.getCollection(col.first)) {
+        // not a collection, filter out
+        continue;
+      }
+
       handleCollection(col.second, AccessMode::Type::READ);
     }
   } else {

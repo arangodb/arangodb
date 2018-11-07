@@ -27,11 +27,13 @@
 #include "IResearchFeature.h"
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterInfo.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
@@ -63,7 +65,7 @@ namespace iresearch {
 IResearchLinkCoordinator::IResearchLinkCoordinator(
     TRI_idx_iid_t id,
     LogicalCollection& collection
-): arangodb::Index(id, collection, IResearchLinkHelper::emptyIndexSlice()) {
+): arangodb::ClusterIndex(id, collection, static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType(), arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, IResearchLinkHelper::emptyIndexSlice()) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse
@@ -123,7 +125,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   if (!view->emplace(_collection.id(), _collection.name(), definition)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error emplacing link to collection '" << _collection.name() << "' into IResearch view '" << viewId << "' link '" << id() << "'";
+        << "error emplacing link to collection '" << _collection.name() << "' into arangosearch view '" << viewId << "' link '" << id() << "'";
 
     return false;
   }
@@ -151,15 +153,15 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return link && link->init(definition) ? ptr : nullptr;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
+      << "caught exception while creating arangosearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.what();
+      << "caught exception while creating arangosearch view Coordinator link '" << id << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "'";
+      << "caught exception while creating arangosearch view Coordinator link '" << id << "'";
     IR_LOG_EXCEPTION();
   }
 

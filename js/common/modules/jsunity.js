@@ -62,8 +62,8 @@ jsUnity.results.pass = function (index, testName) {
   RESULTS[testName].status = true;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_GREEN + ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s');
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
+    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's');
 
   STARTTEST = newtime;
 };
@@ -76,8 +76,8 @@ jsUnity.results.fail = function (index, testName, message) {
   RESULTS[testName].message = message;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + ((newtime - STARTTEST) / 1000).toFixed(3) + ' s: ' +
+  print(newtime.toISOString() + internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
+    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's: ' +
     internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
@@ -130,7 +130,7 @@ function Run (testsuite) {
   scope.tearDownAll = tearDownAll;
 
   for (var key in definition) {
-    if ((testFilter !== "undefined") && (key !== testFilter)) {
+    if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
       // print(`test "${key}" doesn't match "${testFilter}", skipping`);
       continue;
     }
@@ -209,6 +209,17 @@ function Done (suiteName) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief done with all tests
+// //////////////////////////////////////////////////////////////////////////////
+
+function WriteDone (suiteName) {
+  var ret = Done(suiteName);
+  let outPath = fs.join(require("internal").options()['temp.path'], 'testresult.json');
+  fs.write(outPath, JSON.stringify(ret));
+  return ret;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a JSUnity test file
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -238,4 +249,5 @@ exports.setTestFilter = setTestFilter;
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;
+exports.writeDone = WriteDone;
 exports.runTest = RunTest;

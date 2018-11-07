@@ -1020,9 +1020,9 @@ constexpr int TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             
 constexpr int TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            = 1521;
 
 /// 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
-/// "too many collections"
-/// Will be raised when the number of collections in a query is beyond the
-/// allowed value.
+/// "too many collections/shards"
+/// Will be raised when the number of collections or shards in a query is
+/// beyond the allowed value.
 constexpr int TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = 1522;
 
 /// 1530: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED

@@ -48,61 +48,10 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-NS_LOCAL
-
-inline arangodb::aql::RegisterId getRegister(
-    arangodb::aql::Variable const& var,
-    arangodb::aql::ExecutionNode const& node
-) noexcept {
-  auto const& vars = node.getRegisterPlan()->varInfo;
-  auto const it = vars.find(var.id);
-
-  return vars.end() == it
-    ? arangodb::aql::ExecutionNode::MaxRegisterId
-    : it->second.registerId;
-  }
-
-NS_END // NS_LOCAL
-
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 using namespace arangodb::aql;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                              ViewExpressionContext implementation
-// -----------------------------------------------------------------------------
-
-size_t ViewExpressionContext::numRegisters() const {
-  return _data->getNrRegs();
-}
-
-AqlValue ViewExpressionContext::getVariableValue(
-    Variable const* var, bool doCopy, bool& mustDestroy
-) const {
-  TRI_ASSERT(var);
-
-  if (var == &_node->outVariable()) {
-    // self-reference
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  mustDestroy = false;
-  auto const reg = getRegister(*var, *_node);
-
-  if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  auto& value = _data->getValueReference(_pos, reg);
-
-  if (doCopy) {
-    mustDestroy = true;
-    return value.clone();
-  }
-
-  return value;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             IResearchViewBlockBase implementation
@@ -163,7 +112,7 @@ void IResearchViewBlockBase::reset() {
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx, viewNode.filterCondition())) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to build filter while querying iResearch view , query '"
+          << "failed to build filter while querying arangosearch view , query '"
           << viewNode.filterCondition().toVelocyPack(true)->toJson() << "'";
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -208,7 +157,7 @@ bool IResearchViewBlockBase::readDocument(
 
   if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
+      << "failed to read document primary key while reading document from arangosearch view, doc_id '" << docId << "'";
 
     return false; // not a valid document reference
   }
@@ -223,7 +172,7 @@ bool IResearchViewBlockBase::readDocument(
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid()
+      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.cid()
       << "', rid '" << docPk.rid() << "'";
 
     return false; // not a valid collection reference
@@ -334,6 +283,8 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (_done) {
+    // aggregate stats
+    _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
     size_t skipped = _inflight;
     _inflight = 0;
     traceSkipSomeEnd(skipped, ExecutionState::DONE);
@@ -351,6 +302,8 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
       _upstreamState = upstreamRes.first;
       if (!upstreamRes.second) {
         _done = true;
+        // aggregate stats
+        _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
         size_t skipped = _inflight;
         _inflight = 0;
         traceSkipSomeEnd(skipped, ExecutionState::DONE);
@@ -645,7 +598,7 @@ bool IResearchViewOrderedBlock::next(
 
     if (!score) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
+        << "failed to retrieve document score attribute while iterating arangosearch view, ignoring: reader_id '" << i << "'";
       IR_LOG_STACK_TRACE();
 
       continue; // if here then there is probably a bug in IResearchView while querying
@@ -680,7 +633,7 @@ bool IResearchViewOrderedBlock::next(
   for (size_t i = _skip; i; --i, ++tokenItr) {
     if (tokenItr == tokenEnd) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
+        << "document count less than the document count during the previous iteration on the same query while iterating arangosearch view'";
 
       break; // if here then there is probably a bug in the iResearch library
     }

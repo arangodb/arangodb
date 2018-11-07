@@ -91,7 +91,7 @@ set(ARANGODB_VERSION_MINOR "4")
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
   set(ARANGODB_VERSION_PATCH "0")
   set(ARANGODB_VERSION_RELEASE_TYPE "rc")
-  set(ARANGODB_VERSION_RELEASE_NUMBER "2")
+  set(ARANGODB_VERSION_RELEASE_NUMBER "4")
 else()
   unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
   unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
@@ -560,6 +560,16 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
 endif ()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  if (MSVC_VERSION VERSION_LESS 1915)
+    message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
+  endif()
+
+  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
+  # MSVC2018.8 requires the following define
+  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
   if (APPLE)

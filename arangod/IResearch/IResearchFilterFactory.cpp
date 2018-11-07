@@ -47,6 +47,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchDocument.h"
 #include "IResearchKludge.h"
+#include "IResearchPrimaryKeyFilter.h"
 #include "Aql/Function.h"
 #include "Aql/Ast.h"
 #include "Logger/LogMacros.h"
@@ -2080,32 +2081,7 @@ namespace iresearch {
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid
 ) {
-  auto filter = irs::And::make();
-
-  FilterFactory::filter(static_cast<irs::And&>(*filter), cid, rid);
-
-  return filter;
-}
-
-/*static*/ irs::filter& FilterFactory::filter(
-    irs::boolean_filter& buf,
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid
-) {
-  // filter matching on cid and rid
-  auto& filter = buf.add<irs::And>();
-
-  // filter matching on cid
-  filter.add<irs::by_term>()
-    .field(DocumentPrimaryKey::CID()) // set field
-    .term(DocumentPrimaryKey::encode(cid)); // set value
-
-  // filter matching on rid
-  filter.add<irs::by_term>()
-    .field(DocumentPrimaryKey::RID()) // set field
-    .term(DocumentPrimaryKey::encode(rid)); // set value
-
-  return filter;
+  return std::make_unique<PrimaryKeyFilter>(cid, rid);
 }
 
 /*static*/ bool FilterFactory::filter(

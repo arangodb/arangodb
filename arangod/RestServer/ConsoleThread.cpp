@@ -182,7 +182,7 @@ start_color_print('arangodb', true);
 
       {
         MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
-        input = console.prompt("arangod> ", "arangod", eof);
+        input = console.prompt("arangod> ", "arangod>", eof);
       }
 
       if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {

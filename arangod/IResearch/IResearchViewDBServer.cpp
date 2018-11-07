@@ -32,8 +32,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 namespace {
@@ -61,7 +63,6 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
   virtual reader_iterator begin() const override;
   void clear() noexcept { _subReaders.clear(); }
   virtual uint64_t docs_count() const override;
-  virtual uint64_t docs_count(const irs::string_ref& field) const override;
   virtual reader_iterator end() const override;
   virtual uint64_t live_docs_count() const override;
 
@@ -113,7 +114,7 @@ void CompoundReader::add(
 
     if (!pkColumn) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "encountered a sub-reader without a primary key column while creating a reader for IResearch view, ignoring";
+        << "encountered a sub-reader without a primary key column while creating a reader for arangosearch view, ignoring";
 
       continue;
     }
@@ -131,16 +132,6 @@ uint64_t CompoundReader::docs_count() const {
 
   for (auto& entry: _subReaders) {
     count += entry.first->docs_count();
-  }
-
-  return count;
-}
-
-uint64_t CompoundReader::docs_count(const irs::string_ref& field) const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->docs_count(field);
   }
 
   return count;
@@ -186,6 +177,240 @@ std::string generateName(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId) {
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResearchView-specific implementation of a ViewFactory
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchViewDBServer::ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    auto* ci = ClusterInfo::instance();
+
+    if (!ci) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure to find 'ClusterInfo' instance while creating arangosearch View in database '") + vocbase.name() + "'"
+      );
+    }
+
+    arangodb::LogicalView::ptr impl;
+    auto res = instantiate(impl, vocbase, definition, 0);
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    if (!impl) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure during instantiation while creating arangosearch View in database '") + vocbase.name() + "'"
+      );
+    }
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    res = impl->properties(builder, true, true); // include links so that Agency will always have a full definition
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    builder.close();
+
+    std::string error;
+    auto resNum = ci->createViewCoordinator(
+      vocbase.name(), std::to_string(impl->id()), builder.slice(), error
+    );
+
+    if (TRI_ERROR_NO_ERROR != resNum) {
+      return arangodb::Result(
+        resNum,
+        std::string("failure during ClusterInfo persistance of created view while creating arangosearch View in database '") + vocbase.name() + "', error: " + error
+      );
+    }
+
+    // NOTE: link creation is ignored since on the db-server links are created
+    //       by their LogicalCollections themselves
+
+    view = ci->getView(vocbase.name(), std::to_string(impl->id())); // refresh view from Agency
+
+    if (view) {
+      view->open(); // open view to match the behaviour in StorageEngine::openExistingDatabase(...) and original behaviour of TRI_vocbase_t::createView(...)
+    }
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    irs::string_ref name;
+    bool seen;
+
+    if (!getString(name, definition, arangodb::StaticStrings::DataSourceName, seen, irs::string_ref::EMPTY)
+        || !seen) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("definition supplied without a 'name' while instantiating arangosearch View in database '") + vocbase.name() + "'"
+      );
+    }
+
+    // not a per-cid view instance (get here from ClusterInfo)
+    if (!irs::starts_with(name, VIEW_NAME_PREFIX)) {
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::DatabasePathFeature
+      >("DatabasePath");
+
+      if (!feature) {
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failure to find feature 'DatabasePath' while constructing arangosearch View in database '") + vocbase.name() + "'"
+        );
+      }
+
+      auto* ci = ClusterInfo::instance();
+
+      if (!ci) {
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failure to find 'ClusterInfo' instance while constructing arangosearch View in database '") + vocbase.name() + "'"
+        );
+      }
+
+      auto wiew = std::shared_ptr<IResearchViewDBServer>(
+        new IResearchViewDBServer(vocbase, definition, *feature, planVersion)
+      );
+
+      std::string error;
+      IResearchViewMeta meta;
+
+      if (!meta.init(definition, error)) {
+        return arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          error.empty()
+          ? (std::string("failed to initialize arangosearch View '") + wiew->name() + "' from definition: " + definition.toString())
+          : (std::string("failed to initialize arangosearch View '") + wiew->name() + "' from definition, error in attribute '" + error + "': " + definition.toString())
+        );
+      }
+
+      // search for the previous view instance and check if it's meta is the same
+      {
+        auto oldLogicalWiew =
+          ci->getViewCurrent(vocbase.name(), std::to_string(wiew->id()));
+        auto* oldWiew = arangodb::LogicalView::cast<IResearchViewDBServer>(
+          oldLogicalWiew.get()
+        );
+
+        if (oldWiew && *(oldWiew->_meta) == meta) {
+          wiew->_meta = oldWiew->_meta;
+        }
+      }
+
+      if (!(wiew->_meta)) {
+        wiew->_meta = std::make_shared<AsyncMeta>();
+        static_cast<IResearchViewMeta&>(*(wiew->_meta)) = std::move(meta);
+      }
+
+      view = wiew;
+
+      return arangodb::Result();
+    }
+
+    // .........................................................................
+    // a per-cid view instance
+    // get here only from StorageEngine startup or WAL recovery
+    // .........................................................................
+
+    view = vocbase.lookupView(name);
+
+    if (view) {
+      return arangodb::Result(); // resuse view from vocbase
+    }
+
+    auto* ci = ClusterInfo::instance();
+    std::shared_ptr<AsyncMeta> meta;
+
+    // reference meta from cluster-wide view if available to
+    // avoid memory and thread allocation
+    // if not availble then the meta will be reassigned when
+    // the per-cid instance is associated with the cluster-wide view
+    if (ci) {
+      auto planId = arangodb::basics::VelocyPackHelper::stringUInt64(
+        definition.get(arangodb::StaticStrings::DataSourcePlanId)
+      ); // planId set in ensure(...)
+      auto wiewId = std::to_string(planId);
+      auto logicalWiew = ci->getView(vocbase.name(), wiewId); // here if creating per-cid view during loadPlan()
+      auto* wiew = arangodb::LogicalView::cast<IResearchViewDBServer>(
+        logicalWiew.get()
+      );
+
+      // if not found in 'Plan' then search in 'Current'
+      if (!wiew) {
+        logicalWiew = ci->getViewCurrent(vocbase.name(), wiewId); // here if creating per-cid view outisde of loadPlan()
+        wiew = arangodb::LogicalView::cast<IResearchViewDBServer>(
+          logicalWiew.get()
+        );
+      }
+
+      if (wiew) {
+        meta = wiew->_meta;
+      }
+    }
+
+    // no view for shard
+    arangodb::LogicalView::ptr impl;
+    auto res = IResearchView::factory().instantiate(
+      impl, vocbase, definition, planVersion
+    );
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    if (!impl) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure during instantiation while creating an arangosearch View '") + std::string(name) + "' in database '" + vocbase.name() + "'"
+      );
+    }
+
+    if (meta) {
+      res = arangodb::LogicalView::cast<IResearchView>(*impl).updateProperties(meta);
+
+      if (!res.ok()) {
+        return res;
+      }
+    }
+
+    // a wrapper to remove the view from vocbase if it no longer has any links
+    // hold a reference to the original view in the deleter so that the view is
+    // still valid for the duration of the pointer wrapper
+    view = std::shared_ptr<arangodb::LogicalView>(
+      impl.get(),
+      [impl](arangodb::LogicalView*)->void {
+        static const auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+        auto& vocbase = impl->vocbase();
+
+        // same view in vocbase and with no collections
+        if (impl.get() == vocbase.lookupView(impl->id()).get() // avoid double dropView(...)
+            && impl->visitCollections(visitor)
+            && !impl->drop().ok()) { // per-cid collections always system
+          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "failure to drop stale arangosearch View '" << impl->name() << "' while from database '" << vocbase.name() << "'";
+        }
+      }
+    );
+
+    return arangodb::Result();
+  }
+};
+
 IResearchViewDBServer::IResearchViewDBServer(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
@@ -215,7 +440,7 @@ arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
     if (!_meta->json(builder)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
+        std::string("failure to generate definition while generating properties jSON for arangosearch view in database '") + vocbase().name() + "'"
       );
     }
   }
@@ -224,12 +449,12 @@ arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
 }
 
 
-arangodb::Result IResearchViewDBServer::drop() {
+arangodb::Result IResearchViewDBServer::dropImpl() {
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // 'collections_' can be asynchronously read
 
   for (auto itr = _collections.begin(); itr != _collections.end();) {
-    auto res = vocbase().dropView(itr->second->id(), true); // per-cid collections always system
+    auto res = itr->second->drop();
 
     if (!res.ok()) {
       return res; // fail on first failure
@@ -251,7 +476,7 @@ arangodb::Result IResearchViewDBServer::drop(TRI_voc_cid_t cid) noexcept {
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto res = vocbase().dropView(itr->second->id(), true); // per-cid collections always system
+    auto res = itr->second->drop();
 
     if (res.ok()) {
       _collections.erase(itr);
@@ -260,30 +485,30 @@ arangodb::Result IResearchViewDBServer::drop(TRI_voc_cid_t cid) noexcept {
     return res;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "': " << e.code() << " " << e.what();
+      << "caught exception while dropping collection '" << cid << "' from arangosearch view'" << name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       e.code(),
-      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+      std::string("error dropping collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "': " << e.what();
+      << "caught exception while dropping collection '" << cid << "' from arangosearch view '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+      std::string("error dropping collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
     );
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "'";
+      << "caught exception while dropping collection '" << cid << "' from arangosearch view '" << name() << "'";
     IR_LOG_EXCEPTION();
 
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+      std::string("error dropping collection '") + std::to_string(cid) + "' from arangosearch view '" + name() + "'"
     );
   }
 
@@ -343,7 +568,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     if (!_meta->json(builder)) {
       builder.close(); // close StaticStrings::PropertiesField
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().name() << "'";
+        << "failure to generate properties definition while constructing arangosearch view in database '" << vocbase().name() << "'";
 
       return nullptr;
     }
@@ -355,7 +580,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   if (!impl) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure while creating an IResearch View for collection '" << cid << "' in database '" << vocbase().name() << "'";
+      << "failure while creating an arangosearch view for collection '" << cid << "' in database '" << vocbase().name() << "'";
 
     return nullptr;
   }
@@ -383,161 +608,10 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   );
 }
 
-/*static*/ std::shared_ptr<LogicalView> IResearchViewDBServer::make(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit /*= {}*/
-) {
-  if (!info.isObject()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "non-object definition supplied while instantiating IResearch View in database '" << vocbase.name() << "'";
+/*static*/ arangodb::ViewFactory const& IResearchViewDBServer::factory() {
+  static const ViewFactory factory;
 
-    return nullptr;
-  }
-
-  irs::string_ref name;
-  bool seen;
-
-  if (!getString(name, info, arangodb::StaticStrings::DataSourceName, seen, std::string())
-      || !seen) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "definition supplied without a 'name' while instantiating IResearch View in database '" << vocbase.name() << "'";
-
-    return nullptr;
-  }
-
-  // not a per-cid view instance (get here from ClusterInfo)
-  if (!irs::starts_with(name, VIEW_NAME_PREFIX)) {
-    auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::DatabasePathFeature
-    >("DatabasePath");
-
-    if (!feature) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'DatabasePath' while constructing IResearch View in database '" << vocbase.id() << "'";
-
-      return nullptr;
-    }
-
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find ClusterInfo instance while constructing IResearch View in database '" << vocbase.id() << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return nullptr;
-    }
-
-    auto wiew = std::shared_ptr<IResearchViewDBServer>(
-      new IResearchViewDBServer(vocbase, info, *feature, planVersion)
-    );
-
-    auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-    std::string error;
-    IResearchViewMeta meta;
-
-    if (!meta.init(properties, error)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to initialize IResearch view from definition, error: " << error;
-
-      return nullptr;
-    }
-
-    // search for the previous view instance and check if it's meta is the same
-    {
-      auto oldLogicalWiew =
-        ci->getViewCurrent(vocbase.name(), std::to_string(wiew->id()));
-      auto* oldWiew =
-        LogicalView::cast<IResearchViewDBServer>(oldLogicalWiew.get());
-
-      if (oldWiew && *(oldWiew->_meta) == meta) {
-        wiew->_meta = oldWiew->_meta;
-      }
-    }
-
-    if (!(wiew->_meta)) {
-      wiew->_meta = std::make_shared<AsyncMeta>();
-      static_cast<IResearchViewMeta&>(*(wiew->_meta)) = std::move(meta);
-    }
-
-    if (preCommit && !preCommit(wiew)) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
-
-      return nullptr;
-    }
-
-    return wiew;
-  }
-
-  // ...........................................................................
-  // a per-cid view instance (get here only from StorageEngine startup or WAL recovery)
-  // ...........................................................................
-
-  auto view = vocbase.lookupView(name);
-
-  if (view) {
-    return view;
-  }
-
-  auto* ci = ClusterInfo::instance();
-  std::shared_ptr<AsyncMeta> meta;
-
-  // reference meta from cluster-wide view if available to
-  // avoid memory and thread allocation
-  // if not availble then the meta will be reassigned when
-  // the per-cid instance is associated with the cluster-wide view
-  if (ci) {
-    auto planId = arangodb::basics::VelocyPackHelper::stringUInt64(
-      info.get(arangodb::StaticStrings::DataSourcePlanId)
-    ); // planId set in ensure(...)
-    auto wiewId = std::to_string(planId);
-    auto logicalWiew = ci->getView(vocbase.name(), wiewId); // here if creating per-cid view during loadPlan()
-    auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
-
-    // if not found in 'Plan' then search in 'Current'
-    if (!wiew) {
-      logicalWiew = ci->getViewCurrent(vocbase.name(), wiewId); // here if creating per-cid view outisde of loadPlan()
-      wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
-    }
-
-    if (wiew) {
-      meta = wiew->_meta;
-    }
-  }
-
-  // no view for shard
-  view = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
-
-  if (!view
-      || (meta && !LogicalView::cast<IResearchView>(*view).updateProperties(meta).ok())) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure while creating an IResearch View '" << name << "' in database '" << vocbase.name() << "'";
-
-    return nullptr;
-  }
-
-  // a wrapper to remove the view from vocbase if it no longer has any links
-  // hold a reference to the original view in the deleter so that the view is
-  // still valid for the duration of the pointer wrapper
-  return std::shared_ptr<arangodb::LogicalView>(
-    view.get(),
-    [view](arangodb::LogicalView*)->void {
-      static const auto visitor = [](TRI_voc_cid_t)->bool { return false; };
-      auto& vocbase = view->vocbase();
-
-      // same view in vocbase and with no collections
-      if (view.get() == vocbase.lookupView(view->id()).get() // avoid double dropView(...)
-          && view->visitCollections(visitor)
-          && !vocbase.dropView(view->id(), true).ok()) { // per-cid collections always system
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failure to drop stale IResearchView '" << view->name() << "' while from database '" << vocbase.name() << "'";
-      }
-    }
-  );
+  return factory;
 }
 
 void IResearchViewDBServer::open() {
@@ -549,15 +623,6 @@ void IResearchViewDBServer::open() {
   }
 }
 
-arangodb::Result IResearchViewDBServer::rename(
-    std::string&& newName,
-    bool /*doSync*/
-) {
-  name(std::move(newName));
-
-  return arangodb::Result();
-}
-
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
@@ -567,7 +632,7 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
 
   if (!state) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction state while creating IResearchView snapshot";
+      << "failed to get transaction state while creating arangosearch view snapshot";
 
     return nullptr;
   }
@@ -618,14 +683,15 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
 
   try {
     for (auto& shardId : shards) {
-      auto const cid = resolver->getCollectionIdLocal(shardId);
+      auto shard = resolver->getCollection(shardId);
 
-      if (0 == cid) {
+      if (!shard) {
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failed to find shard by id '" << shardId << "', skipping it";
         continue;
       }
 
+      auto cid = shard->id();
       auto const shardView = _collections.find(cid);
 
       if (shardView == _collections.end()) {
@@ -642,21 +708,21 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id()
+      << "caught exception while collecting readers for snapshot of DBServer arangosearch view '" << id()
       << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id()
+      << "caught exception while collecting readers for snapshot of DBServer arangosearch view '" << id()
       << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id() << "'";
+      << "caught exception while collecting readers for snapshot of DBServer arangosearch view '" << id() << "'";
     IR_LOG_EXCEPTION();
 
     return nullptr;
@@ -669,15 +735,14 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
   return reader;
 }
 
-arangodb::Result IResearchViewDBServer::updateProperties(
+arangodb::Result IResearchViewDBServer::properties(
   arangodb::velocypack::Slice const& slice,
-  bool partialUpdate,
-  bool doSync
+  bool partialUpdate
 ) {
   if (!slice.isObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid properties supplied while updating IResearch View in database '") + vocbase().name() + "'"
+      std::string("invalid properties supplied while updating arangosearch view in database '") + vocbase().name() + "'"
     );
   }
 
@@ -697,7 +762,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   if (!mergeSliceSkipKeys(props, slice, propsAcceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failure to generate definition while updating IResearch View in database '") + vocbase().name() + "'"
+      std::string("failure to generate definition while updating arangosearch view in database '") + vocbase().name() + "'"
     );
   }
 
@@ -712,13 +777,13 @@ arangodb::Result IResearchViewDBServer::updateProperties(
     if (!meta.init(props.slice(), error, *_meta)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("failure parsing properties while updating IResearch View in database '") + vocbase().name() + "'"
+        std::string("failure parsing properties while updating arangosearch view in database '") + vocbase().name() + "'"
       );
     }
   } else if (!meta.init(props.slice(), error)) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("failure parsing properties while updating IResearch View in database '") + vocbase().name() + "'"
+      std::string("failure parsing properties while updating arangosearch view in database '") + vocbase().name() + "'"
     );
   }
 

@@ -34,11 +34,9 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -242,7 +240,8 @@ void ClusterFeature::prepare() {
   if (_enableCluster &&
       _requirePersistedId &&
       !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename()
+    << "' not found. Please make sure this instance is started using an already existing database directory";
     FATAL_ERROR_EXIT();
   }
 
@@ -256,14 +255,7 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-#ifdef DEBUG_SYNC_REPLICATION
-  bool startClusterComm = true;
-#else
-  bool startClusterComm = false;
-#endif
-
   if (ServerState::instance()->isAgent() || _enableCluster) {
-    startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
@@ -271,11 +263,6 @@ void ClusterFeature::prepare() {
                                                   << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (startClusterComm) {
-    // initialize ClusterComm library, must call initialize only once
-    ClusterComm::initialize();
   }
 
   // return if cluster is disabled
@@ -362,6 +349,11 @@ void ClusterFeature::prepare() {
 }
 
 void ClusterFeature::start() {
+
+  if (ServerState::instance()->isAgent() || _enableCluster) {
+    ClusterComm::initialize();
+  }
+
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -416,34 +408,6 @@ void ClusterFeature::start() {
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
-  while (true) {
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      builder.add("endpoint", VPackValue(_myEndpoint));
-      builder.add("advertisedEndpoint", VPackValue(_myAdvertisedEndpoint));
-      builder.add("host", VPackValue(ServerState::instance()->getHost()));
-      builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
-      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
-    } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
-      FATAL_ERROR_EXIT();
-    }
-
-    result = comm.setValue("Current/ServersRegistered/" + myId,
-                           builder.slice(), 0.0);
-
-    if (result.successful()) {
-      break;
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-        << "failed to register server in agency: http code: "
-        << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-
   comm.increment("Current/Version");
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
@@ -469,40 +433,19 @@ void ClusterFeature::stop() {
       }
     }
   }
+
+  ClusterComm::instance()->stopBackgroundThreads();
 }
 
 
 void ClusterFeature::unprepare() {
-  if (_enableCluster) {
-    if (_heartbeatThread != nullptr) {
-      _heartbeatThread->beginShutdown();
-    }
-
-    // change into shutdown state
-    ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-
-    AgencyComm comm;
-    comm.sendServerState(0.0);
-
-    if (_heartbeatThread != nullptr) {
-      int counter = 0;
-      while (_heartbeatThread->isRunning()) {
-        std::this_thread::sleep_for(std::chrono::microseconds(100000));
-        // emit warning after 5 seconds
-        if (++counter == 10 * 5) {
-          LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
-        }
-      }
-    }
-
-    if (_unregisterOnShutdown) {
-      ServerState::instance()->unregister();
-    }
-  }
-
   if (!_enableCluster) {
     ClusterComm::cleanup();
     return;
+  }
+
+  if (_heartbeatThread != nullptr) {
+    _heartbeatThread->beginShutdown();
   }
 
   // change into shutdown state
@@ -511,9 +454,25 @@ void ClusterFeature::unprepare() {
   AgencyComm comm;
   comm.sendServerState(0.0);
 
+  if (_heartbeatThread != nullptr) {
+    int counter = 0;
+    while (_heartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
+      }
+    }
+  }
+
+  if (_unregisterOnShutdown) {
+    ServerState::instance()->unregister();
+  }
+
+  comm.sendServerState(0.0);
+
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
-
 
   // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -536,7 +495,6 @@ void ClusterFeature::unprepare() {
   }
 
   AgencyCommManager::MANAGER->stop();
-  ClusterComm::cleanup();
 
   ClusterInfo::cleanup();
 }

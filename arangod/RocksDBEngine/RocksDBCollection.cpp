@@ -640,30 +640,37 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
-
-    rocksdb::WriteBatch batch;
-    // add the assertion again here, so we are sure we can use RangeDeletes
-    TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal());
-
-    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
-                                                   _logicalCollection.id(), _objectId);
-    rocksdb::Status s = batch.PutLogData(log.slice());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
-
+    TRI_ASSERT(!state->hasOperations()); // not allowed
+    
     TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
       return Result(TRI_ERROR_DEBUG);
     }
+    
+    RocksDBEngine* engine = rocksutils::globalRocksEngine();
+    // add the assertion again here, so we are sure we can use RangeDeletes
+    TRI_ASSERT(engine->canUseRangeDeleteInWal());
 
+    rocksdb::WriteBatch batch;
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+    rocksdb::Status s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes
+    // pre commit sequence needed to place a blocker
+    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
+    auto guard = scopeGuard([&] { // remove blocker afterwards
+      READ_LOCKER(guard, _indexesLock);
+      for (std::shared_ptr<Index> const& idx : _indexes) {
+        auto* est = static_cast<RocksDBIndex*>(idx.get())->estimator();
+        if (est) {
+          est->removeBlocker(state->id());
+        }
+      }
+    });
+    
+    // delete indexes, place estimator blockers
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -673,23 +680,46 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
-        idx->afterTruncate(); // clears caches / clears links (if applicable)
+        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        if (est) {
+          est->placeBlocker(state->id(), seq);
+        }
       }
     }
-
-    state->addTruncateOperation(_logicalCollection.id());
+    
+    // now add the log entry so we can recover the correct count
+    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
+                                                   _logicalCollection.id(), _objectId);
+    s = batch.PutLogData(log.slice());
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
 
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    TRI_ASSERT(state->numRemoves() == _numberDocuments);
+    seq = rocksutils::latestSequenceNumber(); // post commit sequence
+    
+    {
+      READ_LOCKER(guard, _indexesLock);
+      for (std::shared_ptr<Index> const& idx : _indexes) {
+        idx->afterTruncate(seq); // clears caches / clears links (if applicable)
+      }
+    }
+    guard.fire(); // remove blocker
+    
+    uint64_t numDocs = _numberDocuments.exchange(0);
+    RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
+                                                     /*numRemoves*/numDocs, /*rev*/0);
+    engine->settingsManager()->updateCounter(_objectId, update);
 
-    if (_numberDocuments > 64 * 1024) {
+    if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
+    TRI_ASSERT(!state->hasOperations()); // not allowed
     return Result{};
   }
 
@@ -1879,6 +1909,8 @@ RocksDBCollection::serializeIndexEstimates(
     rocksdb::Transaction* rtrx, rocksdb::SequenceNumber inputSeq) const {
   auto outputSeq = inputSeq;
   std::string output;
+  RocksDBKey key;
+  
   for (auto index : getIndexes()) {
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
@@ -1893,7 +1925,6 @@ RocksDBCollection::serializeIndexEstimates(
         << "serialized estimate for index '" << cindex->objectId()
         << "' valid through seq " << outputSeq;
       if (output.size() > sizeof(uint64_t)) {
-        RocksDBKey key;
         key.constructIndexEstimateValue(cindex->objectId());
         rocksdb::Slice value(output);
         rocksdb::Status s =

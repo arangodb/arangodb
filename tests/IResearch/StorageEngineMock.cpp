@@ -177,7 +177,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
-  void afterTruncate() override {
+  void afterTruncate(TRI_voc_tick_t) override {
     _edgesFrom.clear();
     _edgesTo.clear();
   }
@@ -950,6 +950,8 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection updated OK
 }
 
+bool PhysicalCollectionMock::hasAllPersistentLocalIds() const { return true; }
+
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
 
@@ -1004,7 +1006,7 @@ arangodb::Result StorageEngineMock::changeView(
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+  view.properties(builder, true, true);
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
   return {};
@@ -1027,8 +1029,8 @@ std::string StorageEngineMock::createCollection(
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
-    TRI_voc_tick_t id, 
-    arangodb::velocypack::Slice const& args, 
+    TRI_voc_tick_t id,
+    arangodb::velocypack::Slice const& args,
     int& status
 ) {
   if (!args.get("name").isString()) {
@@ -1036,7 +1038,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
   }
 
   status = TRI_ERROR_NO_ERROR;
-  
+
   std::string cname = args.get("name").copyString();
   if (arangodb::ServerState::instance()->isCoordinator()) {
     return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, id, cname);
@@ -1104,12 +1106,12 @@ arangodb::Result StorageEngineMock::createView(
   before();
   TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) == views.end()); // called after createView()
   arangodb::velocypack::Builder builder;
-  
+
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+  view.properties(builder, true, true);
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
-  
+
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view persisted OK
 }
 
@@ -1307,7 +1309,7 @@ void StorageEngineMock::prepareDropDatabase(
     bool useWriteMarker,
     int& status
 ) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
@@ -1390,9 +1392,9 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
 }
-  
+
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {
-  return std::vector<std::string>(); 
+  return std::vector<std::string>();
 }
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {
@@ -1401,7 +1403,7 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
 }
 
 void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
@@ -1447,7 +1449,7 @@ int TransactionCollectionMock::lockRecursive(arangodb::AccessMode::Type type, in
 
 void TransactionCollectionMock::release() {
   if (_collection) {
-    _transaction->vocbase().releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection.get());
     _collection = nullptr;
   }
 }
@@ -1500,8 +1502,8 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   static std::atomic<TRI_voc_tid_t> lastId(0);
-
   ++beginTransactionCount;
+  _hints = hints;
 
   auto res = useCollections(_nestingLevel);
 
@@ -1530,6 +1532,7 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
 bool TransactionStateMock::hasFailedOperations() const {
   return false; // assume no failed operations
 }
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

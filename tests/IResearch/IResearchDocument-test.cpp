@@ -243,30 +243,6 @@ SECTION("Field_setCid") {
     CHECK(stream->next());
     CHECK(!stream->next());
   }
-
-  // reset field
-  field._features = &features;
-  field._analyzer = nullptr;
-
-  // check RID value
-  {
-    TRI_voc_rid_t rid = 10;
-    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-    CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
-    CHECK(&irs::flags::empty_instance() == field._features);
-
-    auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
-    REQUIRE(nullptr != stream);
-    CHECK(stream->next());
-    CHECK(!stream->next());
-
-    arangodb::iresearch::Field::setRidValue(field, rid);
-    CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
-    CHECK(&irs::flags::empty_instance() == field._features);
-    CHECK(stream == field._analyzer.get());
-    CHECK(stream->next());
-    CHECK(!stream->next());
-  }
 }
 
 SECTION("FieldIterator_static_checks") {
@@ -1523,16 +1499,6 @@ SECTION("test_cid_rid_encoding") {
   TRI_voc_cid_t cid;
   uint64_t rid;
 
-  auto inserter = [&field, &cid, &rid](irs::segment_writer::document& doc)->bool {
-     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-     CHECK((doc.insert(irs::action::index, field)));
-     arangodb::iresearch::Field::setRidValue(field, rid);
-     CHECK((doc.insert(irs::action::index, field)));
-     arangodb::iresearch::DocumentPrimaryKey const primaryKey(cid, rid);
-     CHECK(doc.insert(irs::action::store, primaryKey));
-     return false; // break the loop
-  };
-
   size_t size = 0;
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const cidSlice = docSlice.get("cid");
@@ -1543,9 +1509,19 @@ SECTION("test_cid_rid_encoding") {
     cid = cidSlice.getNumber<TRI_voc_cid_t>();
     rid = ridSlice.getNumber<uint64_t>();
 
+    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+
     auto& writer = store0.writer;
 
-    CHECK(writer->insert(inserter));
+    // insert document
+    {
+      auto doc = writer->documents().insert();
+      arangodb::iresearch::Field::setCidValue(field, pk.cid(), arangodb::iresearch::Field::init_stream_t());
+      CHECK((doc.insert(irs::action::index, field)));
+      arangodb::iresearch::Field::setPkValue(field, pk);
+      CHECK(doc.insert(irs::action::index_store, field));
+      CHECK(doc);
+    }
     writer->commit();
 
     ++size;
@@ -1578,9 +1554,9 @@ SECTION("test_cid_rid_encoding") {
     CHECK(cidField);
     CHECK(size == cidField->docs_count());
 
-    auto* ridField = segment.field(arangodb::iresearch::DocumentPrimaryKey::RID());
-    CHECK(ridField);
-    CHECK(size == ridField->docs_count());
+    auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
+    CHECK(pkField);
+    CHECK(size == pkField->docs_count());
 
     auto filter = arangodb::iresearch::FilterFactory::filter(cid, rid);
     REQUIRE(filter);
@@ -1644,14 +1620,16 @@ SECTION("test_appendKnownCollections") {
     );
     REQUIRE(writer);
 
-    TRI_voc_rid_t rid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(42, 42);
     arangodb::iresearch::Field field;
 
-    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-     writer->insert([&field](irs::segment_writer::document& doc)->bool {
-       CHECK((doc.insert(irs::action::index, field)));
-       return false; // break the loop
-    });
+    arangodb::iresearch::Field::setPkValue(field, pk, arangodb::iresearch::Field::init_stream_t());
+
+    {
+      auto doc = writer->documents().insert();
+      CHECK(doc.insert(irs::action::index, field));
+      CHECK(doc);
+    }
     writer->commit();
 
     // check failure for empty since no such field
@@ -1676,10 +1654,11 @@ SECTION("test_appendKnownCollections") {
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-    writer->insert([&field](irs::segment_writer::document& doc)->bool {
-      CHECK((doc.insert(irs::action::index, field)));
-      return false; // break the loop
-    });
+    {
+      auto doc = writer->documents().insert();
+      CHECK(doc.insert(irs::action::index, field));
+      CHECK(doc);
+    }
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir);
@@ -1728,14 +1707,14 @@ SECTION("test_visitReaderCollections") {
     );
     REQUIRE(writer);
 
-    TRI_voc_rid_t rid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(42, 42);
     arangodb::iresearch::Field field;
-
-    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-     writer->insert([&field](irs::segment_writer::document& doc)->bool {
-       CHECK((doc.insert(irs::action::index, field)));
-       return false; // break the loop
-    });
+    arangodb::iresearch::Field::setPkValue(field, pk, arangodb::iresearch::Field::init_stream_t());
+    {
+      auto doc = writer->documents().insert();
+      CHECK(doc.insert(irs::action::index, field));
+      CHECK(doc);
+    }
     writer->commit();
 
     // check failure for empty since no such field
@@ -1761,10 +1740,11 @@ SECTION("test_visitReaderCollections") {
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-    writer->insert([&field](irs::segment_writer::document& doc)->bool {
-      CHECK((doc.insert(irs::action::index, field)));
-      return false; // break the loop
-    });
+    {
+      auto doc = writer->documents().insert();
+      CHECK(doc.insert(irs::action::index, field));
+      CHECK(doc);
+    }
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir);

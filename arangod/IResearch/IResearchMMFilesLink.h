@@ -34,9 +34,13 @@ NS_BEGIN(iresearch)
 class IResearchMMFilesLink final
   : public arangodb::Index, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchMMFilesLink();
+
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual void batchInsert(
     transaction::Methods* trx,
@@ -51,12 +55,8 @@ class IResearchMMFilesLink final
   }
 
   virtual int drop() override {
-    return IResearchLink::drop();
+    return IResearchLink::drop().errorNumber();
   }
-    
-  void afterTruncate() override {
-    IResearchLink::afterTruncate();
-  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -136,8 +136,9 @@ class IResearchMMFilesLink final
   }
 
   virtual void unload() override {
-    int res = IResearchLink::unload();
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }

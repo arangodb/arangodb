@@ -25,7 +25,8 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
 #include "Indexes/Index.h"
-#include "IResearchLinkMeta.h"
+#include "ClusterEngine/ClusterIndex.h"
+#include "IResearch/IResearchLinkMeta.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -36,9 +37,9 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final: public arangodb::Index {
+class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destructor
@@ -75,8 +76,6 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   virtual bool canBeDropped() const override { return true; }
 
   virtual int drop() override { return TRI_ERROR_NO_ERROR; }
-  
-  virtual void afterTruncate() override {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view

@@ -186,8 +186,8 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
   // add collection_1
   {
@@ -217,12 +217,12 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
         "\"collection_2\" : { \"includeAllFields\" : true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -260,7 +260,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 
@@ -273,7 +273,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // invalid field

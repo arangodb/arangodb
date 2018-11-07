@@ -24,6 +24,7 @@
 #include "composite_reader_impl.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "store/store_utils.hpp"
+#include "utils/string_utils.hpp"
 
 #include "transaction_store.hpp"
 
@@ -157,8 +158,6 @@ struct empty_seek_term_iterator: public irs::seek_term_iterator {
 class single_reader_iterator_impl final
     : public irs::index_reader::reader_iterator_impl {
  public:
-  DECLARE_PTR(single_reader_iterator_impl); // required for PTR_NAMED(...)
-
   explicit single_reader_iterator_impl(
       const irs::sub_reader* reader = nullptr
   ) NOEXCEPT: reader_(reader) {
@@ -257,7 +256,7 @@ class store_reader_impl final: public irs::sub_reader {
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override;
   using irs::sub_reader::docs_count;
   virtual uint64_t docs_count() const override { return documents_.size(); } // +1 for invalid doc if non empty
-  virtual docs_iterator_t::ptr docs_iterator() const override;
+  virtual irs::doc_iterator::ptr docs_iterator() const override;
   virtual index_reader::reader_iterator end() const override;
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;
   virtual irs::field_iterator::ptr fields() const override;
@@ -446,6 +445,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
       const irs::flags& field_features,
       const irs::flags& requested_features
   ): store_doc_iterator_base(entries, 3), // +1 for document, +1 for frequency, +1 for position
+     doc_pos_(field_features, requested_features, entry_),
      load_frequency_(requested_features.check<irs::frequency>()) {
 
     attrs_.emplace(doc_);
@@ -457,15 +457,12 @@ class store_doc_iterator final: public store_doc_iterator_base {
     if (requested_features.check<irs::position>()
         && field_features.check<irs::position>()) {
       attrs_.emplace(doc_pos_);
-      doc_pos_.reset(irs::memory::make_unique<position_t>(
-        field_features, requested_features, entry_
-      ));
     }
   }
 
  protected:
   bool load_attributes() override {
-    if (!load_frequency_ && !doc_pos_) {
+    if (!load_frequency_) {
       return true; // nothing to do
     }
 
@@ -487,15 +484,13 @@ class store_doc_iterator final: public store_doc_iterator_base {
       next_offset = irs::read<uint64_t>(ptr);
     } while (next_offset);
 
-    if (doc_pos_) {
-      doc_pos_.clear(); // reset impl to new doc
-    }
+    doc_pos_.clear(); // reset impl to new doc
 
     return true;
   }
 
  private:
-  struct position_t: public irs::position::impl {
+  struct position_t: public irs::position {
     const store_reader_impl::document_entry_t*& entry_;
     bool has_offs_;
     bool has_pay_;
@@ -508,7 +503,8 @@ class store_doc_iterator final: public store_doc_iterator_base {
         const irs::flags& field_features,
         const irs::flags& requested_features,
         const store_reader_impl::document_entry_t*& entry
-    ): entry_(entry),
+    ): position(2), // offset + payload
+       entry_(entry),
        has_offs_(field_features.check<irs::offset>()),
        has_pay_(field_features.check<irs::payload>()) {
       if (has_offs_ && requested_features.check<irs::offset>()) {
@@ -525,7 +521,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
     virtual void clear() override {
       next_ = entry_ ? entry_->offset_ : 0; // 0 indicates end of list in format definition
       offs_.clear();
-      pos_ = irs::position::INVALID;
+      pos_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       pay_.clear();
     }
 
@@ -535,7 +531,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
       if (!next_ || !entry_ || !entry_->buf_ || next_ >= entry_->buf_->size()) {
         next_ = 0; // 0 indicates end of list in format definition
         offs_.clear();
-        pos_ = irs::position::INVALID;
+        pos_ = irs::type_limits<irs::type_t::pos_t>::eof();
         pay_.clear();
 
         return false;
@@ -563,7 +559,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
   };
 
   irs::frequency doc_freq_;
-  irs::position doc_pos_;
+  position_t doc_pos_;
   bool load_frequency_; // should the frequency attribute be updated (optimization)
 };
 
@@ -854,7 +850,9 @@ store_reader_impl::store_reader_impl(
 }
 
 irs::index_reader::reader_iterator store_reader_impl::begin() const {
-  PTR_NAMED(single_reader_iterator_impl, itr, this);
+  auto itr = irs::memory::make_unique<single_reader_iterator_impl>(
+    this
+  );
 
   return index_reader::reader_iterator(itr.release());
 }
@@ -881,20 +879,12 @@ const irs::columnstore_reader::column_reader* store_reader_impl::column_reader(
   return itr == column_by_id_.end() ? nullptr : itr->second;
 }
 
-irs::sub_reader::docs_iterator_t::ptr store_reader_impl::docs_iterator() const {
-  auto ptr =
-    irs::memory::make_unique<irs::bitset_doc_iterator>(
-      *this,
-      irs::attribute_store::empty_instance(),
-      documents_,
-      irs::order::prepared::unordered()
-    );
-
-  return irs::sub_reader::docs_iterator_t::ptr(ptr.release());
+irs::doc_iterator::ptr store_reader_impl::docs_iterator() const {
+  return irs::memory::make_shared<irs::bitset_doc_iterator>(documents_);
 }
 
 irs::index_reader::reader_iterator store_reader_impl::end() const {
-  PTR_NAMED(single_reader_iterator_impl, itr);
+  auto itr = irs::memory::make_unique<single_reader_iterator_impl>();
 
   return index_reader::reader_iterator(itr.release());
 }
@@ -1058,9 +1048,9 @@ store_reader store_reader::reopen() const {
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
   #ifdef IRESEARCH_DEBUG
-    auto& reader_impl = dynamic_cast<store_reader_impl&>(*impl);
+    auto& reader_impl = dynamic_cast<const store_reader_impl&>(*impl);
   #else
-    auto& reader_impl = static_cast<store_reader_impl&>(*impl);
+    auto& reader_impl = static_cast<const store_reader_impl&>(*impl);
   #endif
 
   {
@@ -1077,7 +1067,7 @@ store_reader store_reader::reopen() const {
 
 void store_writer::bstring_output::ensure(size_t pos) {
   if (pos >= buf_.size()) {
-    oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
+    irs::string_utils::oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
   }
 }
 
@@ -1371,7 +1361,7 @@ bool store_writer::index(
     }
 
     if (0 == ++(document_state.term_count)) {
-      IR_FRMT_ERROR("too many token in field, document '" IR_UINT64_T_SPECIFIER "'", doc.doc_id_);
+      IR_FRMT_ERROR("too many token in field, document '" IR_UINT32_T_SPECIFIER "'", doc.doc_id_);
       return false; // doc_id will be marked not valid by caller, hence in rollback state
     }
 
@@ -1515,15 +1505,15 @@ bool store_writer::store(
 }
 
 /*static*/ transaction_store::bstring_builder::ptr transaction_store::bstring_builder::make() {
-  return irs::memory::make_unique<bstring>(DEFAULT_BUFFER_SIZE, '\0');
+  return irs::memory::make_shared<bstring>(DEFAULT_BUFFER_SIZE, '\0');
 }
 
 /*static*/ transaction_store::column_meta_builder::ptr transaction_store::column_meta_builder::make() {
-  return irs::memory::make_unique<column_meta>();
+  return irs::memory::make_shared<column_meta>();
 }
 
 /*static*/ transaction_store::field_meta_builder::ptr transaction_store::field_meta_builder::make() {
-  return irs::memory::make_unique<field_meta>();
+  return irs::memory::make_shared<field_meta>();
 }
 
 transaction_store::transaction_store(size_t pool_size /*= DEFAULT_POOL_SIZE*/)
@@ -1531,7 +1521,7 @@ transaction_store::transaction_store(size_t pool_size /*= DEFAULT_POOL_SIZE*/)
     column_meta_pool_(pool_size),
     field_meta_pool_(pool_size),
     generation_(0),
-    reusable_(memory::make_unique<bool>(true)),
+    reusable_(memory::make_shared<bool>(true)),
     used_doc_ids_(type_limits<type_t::doc_id_t>::invalid() + 1),
     visible_docs_(type_limits<type_t::doc_id_t>::invalid() + 1) { // same size as used_doc_ids_
   used_doc_ids_.set(type_limits<type_t::doc_id_t>::invalid()); // mark as always in-use
@@ -1635,7 +1625,7 @@ void transaction_store::cleanup() {
 void transaction_store::clear() {
   async_utils::read_write_mutex::write_mutex mutex(mutex_);
   SCOPED_LOCK(mutex);
-  auto reusable = memory::make_unique<bool>(true); // create marker for next generation
+  auto reusable = memory::make_shared<bool>(true); // create marker for next generation
 
   *reusable_ = false; // prevent existing writers from commiting into the store
   reusable_ = std::move(reusable); // mark new generation

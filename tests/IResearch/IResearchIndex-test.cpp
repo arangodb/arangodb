@@ -39,6 +39,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -149,6 +150,7 @@ struct IResearchIndexSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(server), true); // required for arangodb::aql::Query(...)
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for LogicalViewStorageEngine::modify(...)
     features.emplace_back(new arangodb::DatabasePathFeature(server), false); // requires for IResearchView::open()
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true); // required by TRI_vocbase_t::createView(...)
@@ -228,9 +230,9 @@ SECTION("test_analyzer") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -267,10 +269,10 @@ SECTION("test_analyzer") {
       } } \
     } }");
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -293,7 +295,7 @@ SECTION("test_analyzer") {
     CHECK((i == expected.size()));
   }
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -316,7 +318,7 @@ SECTION("test_analyzer") {
     CHECK((i == expected.size()));
   }
 
-    // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+    // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -478,9 +480,9 @@ SECTION("test_async_index") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -498,7 +500,7 @@ SECTION("test_async_index") {
       } } \
     } }");
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -834,9 +836,9 @@ SECTION("test_fields") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -872,7 +874,7 @@ SECTION("test_fields") {
       } } \
     } }");
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // docs match from both collections

@@ -212,7 +212,11 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
-        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        if (_auth->userManager() != nullptr) {
+          lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        } else {
+          lvl = auth::Level::RW;
+        }
       }
       if (lvl == auth::Level::NONE) {
         addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
@@ -433,10 +437,10 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  auto const lane = handler->lane();
+  auto const prio = handler->priority();
   auto self = shared_from_this();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(PriorityRequestLane(lane), [self, this, handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock,
                           std::move(handler));
   });
@@ -485,7 +489,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(
-        PriorityRequestLane(handler->lane()), [self, handler] {
+        handler->priority(), [self, handler] {
           handler->runHandler([](RestHandler* h) {
             GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
           });
@@ -493,7 +497,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(
-      PriorityRequestLane(handler->lane()),
+        handler->priority(),
         [self, handler] { handler->runHandler([](RestHandler*) {}); });
   }
 }

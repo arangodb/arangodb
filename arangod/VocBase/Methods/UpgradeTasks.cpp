@@ -23,6 +23,7 @@
 #include "UpgradeTasks.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
@@ -31,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -59,8 +61,9 @@ namespace {
 /// create a collection if it does not exists.
 bool createSystemCollection(TRI_vocbase_t* vocbase,
                             std::string const& name) {
-  auto res =
-    methods::Collections::lookup(vocbase, name, [](LogicalCollection& coll) {});
+  auto res = methods::Collections::lookup(
+    vocbase, name, [](std::shared_ptr<LogicalCollection> const&)->void {}
+  );
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     uint32_t defaultReplFactor = 1;
@@ -84,15 +87,21 @@ bool createSystemCollection(TRI_vocbase_t* vocbase,
     }
 
     bb.close();
-    res =
-        Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
-                            /*waitsForSyncReplication*/ true,
-                            /*enforceReplicationFactor*/ true,
-                            [](LogicalCollection& coll)->void {});
+    res = Collections::create(
+      vocbase,
+      name,
+      TRI_COL_TYPE_DOCUMENT,
+      bb.slice(),
+      /*waitsForSyncReplication*/ true,
+      /*enforceReplicationFactor*/ true,
+      [](std::shared_ptr<LogicalCollection> const&)->void {}
+    );
   }
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return true;
 }
 
@@ -107,8 +116,10 @@ bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
   res1 = methods::Collections::lookup(
     vocbase,
     name,
-    [&](LogicalCollection& coll)->void {
-      res2 = methods::Indexes::createIndex(&coll, type, fields, unique, sparse);
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+      res2 =
+        methods::Indexes::createIndex(coll.get(), type, fields, unique, sparse);
     }
   );
 
@@ -469,4 +480,18 @@ bool UpgradeTasks::setupAppBundles(
     arangodb::velocypack::Slice const& slice
 ) {
   return ::createSystemCollection(&vocbase, "_appbundles");
+}
+
+bool UpgradeTasks::persistLocalDocumentIds(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
+    Result res = basics::catchToResult([&vocbase]() -> Result {
+      MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+      return engine->persistLocalDocumentIds(vocbase);
+    });
+    return res.ok();
+  }
+  return true;
 }

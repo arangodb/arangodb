@@ -35,6 +35,7 @@ namespace arangodb {
 
 class DatabasePathFeature;
 class TransactionState;
+struct ViewFactory; // forward declaration
 class CollectionNameResolver;
 
 namespace transaction {
@@ -55,8 +56,7 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
   virtual ~IResearchViewDBServer();
 
-  /// @return success
-  virtual arangodb::Result drop() override;
+  using LogicalView::drop;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop the view association for the specified 'cid'
@@ -76,20 +76,17 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
       bool create = true
   );
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief view factory
-  /// @returns initialized view object
-  ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = {}
-  );
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of view
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::ViewFactory const& factory();
 
   virtual void open() override;
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
+
+  virtual arangodb::Result properties(
+    arangodb::velocypack::Slice const& properties,
+    bool partialUpdate
+  ) override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return pointer to an index reader containing the datastore record snapshot
@@ -103,11 +100,6 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
     IResearchView::Snapshot mode = IResearchView::Snapshot::Find
   ) const;
 
-  virtual arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
-  ) override;
   virtual bool visitCollections(
     CollectionVisitor const& visitor
   ) const override;
@@ -118,7 +110,11 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
     bool forPersistence
   ) const override;
 
+  virtual arangodb::Result dropImpl() override;
+
  private:
+  struct ViewFactory; // forward declaration
+
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members

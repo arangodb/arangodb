@@ -27,20 +27,16 @@
 #include "error/error.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
+#include "utils/crc.hpp"
 
 #ifdef _WIN32
   #include <Windows.h> // for GetLastError()
 #endif
 
 #include <boost/locale/encoding.hpp>
-
-MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable:4244)))
-MSVC_ONLY(__pragma(warning(disable:4245)))
-#include <boost/crc.hpp>
-MSVC_ONLY(__pragma(warning(pop)))
 
 NS_LOCAL
 
@@ -228,14 +224,15 @@ class fs_index_output : public buffered_index_output {
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
-      throw detailed_io_error("Failed to write buffer, written ")
-              << std::to_string(len_written) << " out of "
-              << std::to_string(len) << " bytes.";
+      throw detailed_io_error(string_utils::to_string(
+        "failed to write buffer, written '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
+        len_written, len
+      ));
     }
   }
 
  private:
-  DECLARE_FACTORY(index_output);
+  DEFINE_FACTORY_INLINE(index_output);
 
   fs_index_output(file_utils::handle_t&& handle, size_t buf_size) NOEXCEPT
     : buffered_index_output(buf_size),
@@ -243,7 +240,7 @@ class fs_index_output : public buffered_index_output {
   }
 
   file_utils::handle_t handle;
-  boost::crc_32_type crc;
+  crc32c crc;
 }; // fs_index_output
 
 //////////////////////////////////////////////////////////////////////////////
@@ -256,7 +253,7 @@ class fs_index_input : public buffered_index_input {
     const auto begin = handle_->pos;
     const auto end = (std::min)(begin + offset, handle_->size);
 
-    boost::crc_32_type crc;
+    crc32c crc;
     byte_type buf[1024];
 
     for (auto pos = begin; pos < end; ) {
@@ -333,9 +330,10 @@ class fs_index_input : public buffered_index_input {
  protected:
   virtual void seek_internal(size_t pos) override {
     if (pos >= handle_->size) {
-      throw detailed_io_error("Seek out of range for input file, length ")
-              << std::to_string(handle_->size)
-              << ", position " << std::to_string(pos);
+      throw detailed_io_error(string_utils::to_string(
+        "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
+        handle_->size, pos
+      ));
     }
 
     pos_ = pos;
@@ -349,9 +347,10 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
-        throw detailed_io_error("Failed to seek to ")
-                << std::to_string(pos_)
-                << " for input file, error " << std::to_string(ferror(stream));
+        throw detailed_io_error(string_utils::to_string(
+          "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
+          pos_, ferror(stream)
+        ));
       }
 
       handle_->pos = pos_;
@@ -368,10 +367,10 @@ class fs_index_input : public buffered_index_input {
       }
 
       // read error
-      throw detailed_io_error("Failed to read from input file, read ")
-              << std::to_string(read)
-              << " out of " << std::to_string(len)
-              << " bytes, error " << std::to_string(ferror(stream));
+      throw detailed_io_error(string_utils::to_string(
+        "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
+        read, len, ferror(stream)
+      ));
     }
 
     assert(handle_->pos == pos_);
@@ -385,8 +384,8 @@ class fs_index_input : public buffered_index_input {
   * call "ftell" every time we need to know current 
   * position */
   struct file_handle {
-    DECLARE_SPTR(file_handle);
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_SHARED_PTR(file_handle);
+    DECLARE_FACTORY();
 
     operator FILE*() const { return handle.get(); }
 
@@ -395,7 +394,7 @@ class fs_index_input : public buffered_index_input {
     size_t pos{}; /* current file position*/
   }; // file_handle
 
-  DECLARE_FACTORY(index_input);
+  DEFINE_FACTORY_INLINE(index_input);
 
   fs_index_input(
       file_handle::ptr&& handle,
@@ -411,19 +410,21 @@ class fs_index_input : public buffered_index_input {
   fs_index_input(const fs_index_input&) = default;
   fs_index_input& operator=(const fs_index_input&) = delete;
 
-  file_handle::ptr handle_; /* shared file handle */
+  file_handle::ptr handle_; // shared file handle
   size_t pool_size_; // size of pool for instances of pooled_fs_index_input
-  size_t pos_; /* current input stream position */
+  size_t pos_; // current input stream position
 }; // fs_index_input
 
 DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
 
 class pooled_fs_index_input final : public fs_index_input {
  public:
+  DECLARE_UNIQUE_PTR(pooled_fs_index_input); // allow private construction
+
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input();
-  virtual ptr dup() const NOEXCEPT override;
-  virtual ptr reopen() const NOEXCEPT override;
+  virtual index_input::ptr dup() const NOEXCEPT override;
+  virtual index_input::ptr reopen() const NOEXCEPT override;
 
  private:
   typedef unbounded_object_pool<file_handle> fd_pool_t;
@@ -431,12 +432,11 @@ class pooled_fs_index_input final : public fs_index_input {
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
   file_handle::ptr reopen(const file_handle& src) const NOEXCEPT;
-};
+}; // pooled_fs_index_input
 
 index_input::ptr fs_index_input::dup() const NOEXCEPT {
   try {
-    PTR_NAMED(fs_index_input, ptr, *this);
-    return ptr;
+    return index_input::make<fs_index_input>(*this);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }
@@ -457,7 +457,7 @@ index_input::ptr fs_index_input::reopen() const NOEXCEPT {
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in), fd_pool_(memory::make_unique<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
 }
 
@@ -467,8 +467,7 @@ pooled_fs_index_input::~pooled_fs_index_input() {
 
 index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
   try {
-    PTR_NAMED(pooled_fs_index_input, ptr, *this);
-    return ptr;
+    return index_input::make<pooled_fs_index_input>(*this);
   } catch(...) {
     IR_LOG_EXCEPTION();
   }
@@ -494,7 +493,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   const file_handle& src
 ) const NOEXCEPT {
   // reserve a new handle from the pool
-  auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace();
+  auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
     handle->handle = file_open(src, "rb"); // same permission as in fs_index_input::open(...)

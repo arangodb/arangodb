@@ -194,7 +194,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   // create collection0
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
-    auto* collection = vocbase.createCollection(createJson->slice());
+    auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
@@ -227,7 +227,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   // create collection1
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-    auto* collection = vocbase.createCollection(createJson->slice());
+    auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
 
     irs::utf8_path resource;
@@ -272,11 +272,11 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    impl->sync();
+    CHECK(impl->commit().ok());
   }
 
   // test missing field

@@ -94,7 +94,8 @@ void RocksDBRecoveryManager::start() {
 
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
-  _inRecovery = false;
+  // synchronizes with acquire inRecovery()
+  _inRecovery.store(false, std::memory_order_release);
 
   // notify everyone that recovery is now done
   auto databaseFeature =
@@ -115,8 +116,6 @@ void RocksDBRecoveryManager::runRecovery() {
   
   // now restore collection counts into collections
 }
-
-bool RocksDBRecoveryManager::inRecovery() const { return _inRecovery; }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
@@ -282,7 +281,41 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       (*it).second = keyValue;
     }
   }
+  
+  /// Truncate indexes of collection with objectId
+  bool truncateIndexes(uint64_t objectId) {
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    RocksDBEngine::CollectionPair pair = engine->mapObjectToCollection(objectId);
+    if (pair.first == 0 || pair.second == 0) {
+      return false;
+    }
 
+    DatabaseFeature* df = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vb = df->useDatabase(pair.first);
+    if (vb == nullptr) {
+      return false;
+    }
+    TRI_DEFER(vb->release());
+
+    auto coll = vb->lookupCollection(pair.second);
+    if (coll == nullptr) {
+      return false;
+    }
+    
+    for (auto const& idx : coll->getIndexes()) {
+      LOG_DEVEL << "truncating index: " << idx->typeName();
+      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+      RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+      if (est && est->commitSeq() < currentSeqNum) {
+        est->bufferTruncate(currentSeqNum);
+      }
+    }
+
+    return true;
+  }
+
+  // find estimator for index
   RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -505,11 +538,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           ops->removed = 0;
           ops->added = 0;
           ops->mustTruncate = true;
-          auto est = findEstimator(objectId);
-          if (est != nullptr && est->commitSeq() < currentSeqNum) {
-            // We track estimates for this index
-            est->bufferTruncate(currentSeqNum + 1);
-          }
+        }
+        // index estimates have their own commitSeq
+        if (!truncateIndexes(objectId)) {
+          // unable to truncate indexes of the collection.
+          // may be due to collection having been deleted etc.
+          LOG_TOPIC(WARN, Logger::ENGINES) << "unable to truncate indexes for objectId " << objectId;
         }
 
         _lastRemovedDocRid = 0; // reset in any other case

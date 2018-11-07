@@ -145,7 +145,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 19609898188,
+    "default" : 19609896960,
     "description" : "size of cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -824,6 +824,14 @@
     "section" : "log",
     "type" : "string"
   },
+  "log.request-parameters" : {
+    "default" : true,
+    "description" : "include full URLs and HTTP request parameters in trace logs",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.role" : {
     "default" : false,
     "description" : "log server role",
@@ -960,6 +968,14 @@
     "section" : "query",
     "type" : "double"
   },
+  "query.slow-streaming-threshold" : {
+    "default" : 10,
+    "description" : "threshold for slow streaming AQL queries (in seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "double"
+  },
   "query.slow-threshold" : {
     "default" : 10,
     "description" : "threshold for slow AQL queries (in seconds)",
@@ -1034,7 +1050,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 19609898188,
+    "default" : 19609896960,
     "description" : "size of block cache in bytes",
     "enterpriseOnly" : false,
     "hidden" : false,
@@ -1264,6 +1280,14 @@
     "hidden" : false,
     "section" : "rocksdb",
     "type" : "boolean"
+  },
+  "rocksdb.total-write-buffer-size" : {
+    "default" : 0,
+    "description" : "maximum total size of in-memory write buffers (0 = unbounded)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
   },
   "rocksdb.transaction-lock-timeout" : {
     "default" : 1000,

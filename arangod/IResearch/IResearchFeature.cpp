@@ -43,7 +43,6 @@
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
 #include "IResearchViewDBServer.h"
-#include "IResearchViewSingleServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
@@ -170,7 +169,7 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     ),
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
       auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
       auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
       return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
@@ -346,11 +345,11 @@ void registerViewFactory() {
 
   // DB server in custer or single-server
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewSingleServer::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_FAILED,
@@ -361,7 +360,7 @@ void registerViewFactory() {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       res.errorNumber(),
-      std::string("failure registering IResearch view factory: ") + res.errorMessage()
+      std::string("failure registering arangosearch view factory: ") + res.errorMessage()
     );
   }
 }
@@ -737,7 +736,7 @@ void IResearchFeature::asyncNotify() const {
 }
 
 void IResearchFeature::beginShutdown() {
-  _running = false;
+  _running.store(false);
   ApplicationFeature::beginShutdown();
 }
 
@@ -746,7 +745,7 @@ void IResearchFeature::collectOptions(
 ) {
   auto section = FEATURE_NAME;
 
-  _running = false;
+  _running.store(false);
   std::transform(section.begin(), section.end(), section.begin(), ::tolower);
   ApplicationFeature::collectOptions(options);
   options->addSection(section, std::string("Configure the ") + FEATURE_NAME + " feature");
@@ -771,7 +770,7 @@ void IResearchFeature::prepare() {
     return;
   }
 
-  _running = false;
+  _running.store(false);
   ApplicationFeature::prepare();
 
   // load all known codecs
@@ -823,19 +822,19 @@ void IResearchFeature::start() {
       registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+        << "failure to find feature 'AQLFunctions' while registering arangosearch filters";
     }
 
   }
 
-  _running = true;
+  _running.store(true);
 }
 
 void IResearchFeature::stop() {
   if (!isEnabled()) {
     return;
   }
-  _running = false;
+  _running.store(false);
   ApplicationFeature::stop();
 }
 
@@ -844,14 +843,14 @@ void IResearchFeature::unprepare() {
     return;
   }
 
-  _running = false;
+  _running.store(false);
   ApplicationFeature::unprepare();
 }
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options
 ) {
-  _running = false;
+  _running.store(false);
   ApplicationFeature::validateOptions(options);
 }
 

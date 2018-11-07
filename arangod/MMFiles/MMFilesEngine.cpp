@@ -355,6 +355,59 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   _deleted.clear();
 }
 
+Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
+  Result result;
+
+  LOG_TOPIC(DEBUG, Logger::ENGINES)
+      << "beginning upgrade task to persist LocalDocumentIds";
+
+  // ensure we are not in recovery
+  TRI_ASSERT(!inRecovery());
+
+  auto guard = scopeGuard([this]() -> void {
+    _upgrading.store(false);
+  });
+  _upgrading.store(true);
+
+  // flush the wal and wait for compactor just to be sure
+  result = flushWal(true, true, false);
+  if (result.fail()) {
+    return result;
+  }
+
+  result = catchToResult([this, &result, &vocbase]() -> Result {
+    // stop the compactor so we can make sure there's no other interference
+    stopCompactor(&vocbase);
+
+    auto collections = vocbase.collections(false);
+    for (auto c : collections) {
+      auto collection = static_cast<MMFilesCollection*>(c->getPhysical());
+      LOG_TOPIC(DEBUG, Logger::ENGINES)
+          << "processing collection '" << c->name() << "'";
+      collection->open(false);
+      auto guard = scopeGuard([this, &collection]() -> void {
+        collection->close();
+      });
+
+      result = collection->persistLocalDocumentIds();
+      if (result.fail()) {
+        return result;
+      }
+    }
+    return Result();
+  });
+
+  if (result.fail()) {
+    LOG_TOPIC(ERR, Logger::ENGINES)
+        << "failure in persistence: " << result.errorMessage();
+  }
+
+  LOG_TOPIC(DEBUG, Logger::ENGINES)
+      << "done with upgrade task to persist LocalDocumentIds";
+
+  return result;
+}
+
 // fill the Builder object with an array of databases that were detected
 // by the storage engine. this method must sort out databases that were not
 // fully created (see "createDatabase" below). called at server start only
@@ -874,6 +927,7 @@ std::string MMFilesEngine::createCollection(
     LogicalCollection const& collection
 ) {
   auto path = databasePath(&vocbase);
+  TRI_ASSERT(!path.empty());
 
   // sanity check
   if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >
@@ -1355,14 +1409,16 @@ Result MMFilesEngine::createView(
   }
 
   VPackBuilder builder;
+
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   TRI_ASSERT(id != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
   res = TRI_ERROR_NO_ERROR;
+
   try {
     MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CREATE_VIEW, vocbase.id(),
                              view.id(), builder.slice());
@@ -1462,10 +1518,10 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase,
                                  arangodb::LogicalView const* view,
                                  bool forceSync) const {
   std::string const filename = viewParametersFilename(vocbase->id(), view->id());
-
   VPackBuilder builder;
+
   builder.openObject();
-  view->toVelocyPack(builder, true, true);
+    view->properties(builder, true, true);
   builder.close();
 
   LOG_TOPIC(TRACE, Logger::VIEWS)
@@ -1498,8 +1554,9 @@ Result MMFilesEngine::changeView(
 ) {
   if (!inRecovery()) {
     VPackBuilder infoBuilder;
+
     infoBuilder.openObject();
-    view.toVelocyPack(infoBuilder, true, true);
+      view.properties(infoBuilder, true, true);
     infoBuilder.close();
 
     MMFilesViewMarker marker(
@@ -2089,9 +2146,10 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
         );
       }
 
-      auto const view = LogicalView::create(*vocbase, it, false);
+      LogicalView::ptr view;
+      auto res = LogicalView::instantiate(view, *vocbase, it);
 
-      if (!view) {
+      if (!res.ok() || !view) {
         auto const message = "failed to instantiate view '" + name + "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
@@ -3641,3 +3699,5 @@ void MMFilesEngine::enableCompaction() {
 bool MMFilesEngine::isCompactionDisabled() const {
   return _compactionDisabled.load() > 0;
 }
+
+bool MMFilesEngine::upgrading() const { return _upgrading.load(); }

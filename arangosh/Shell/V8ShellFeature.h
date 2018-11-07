@@ -50,15 +50,16 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
   void stop() override final;
 
-  std::string const& startupDirectory() {
+  std::string const& startupDirectory() const {
     return _startupDirectory;
   }
 
  private:
   std::string _startupDirectory;
+  std::string _nodeModulesDirectory;
   std::string _clientModule;
   std::string _copyDirectory;
-  std::vector<std::string> _moduleDirectory;
+  std::vector<std::string> _moduleDirectories;
   bool _currentModuleDirectory;
   bool _copyInstallation;
   bool _removeCopyInstallation;

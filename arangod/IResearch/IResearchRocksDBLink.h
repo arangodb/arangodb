@@ -34,9 +34,13 @@ NS_BEGIN(iresearch)
 class IResearchRocksDBLink final
   : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  DECLARE_SPTR(Index);
+  DECLARE_SHARED_PTR(Index);
 
   virtual ~IResearchRocksDBLink();
+
+  virtual void afterTruncate(TRI_voc_tick_t/*tick*/) override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual void batchInsert(
     transaction::Methods* trx,
@@ -52,12 +56,9 @@ class IResearchRocksDBLink final
 
   virtual int drop() override {
     writeRocksWalMarker();
-    return IResearchLink::drop();
+
+    return IResearchLink::drop().errorNumber();
   }
-    
-  virtual void afterTruncate() override {
-    IResearchLink::afterTruncate();
-  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -135,8 +136,9 @@ class IResearchRocksDBLink final
   }
 
   virtual void unload() override {
-    int res = IResearchLink::unload();
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = IResearchLink::unload();
+
+    if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }

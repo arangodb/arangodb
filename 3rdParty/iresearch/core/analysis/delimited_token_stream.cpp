@@ -131,9 +131,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 /// @brief args is a delimiter to use for tokenization
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
-  PTR_NAMED(irs::analysis::delimited_token_stream, ptr, args);
-
-  return ptr;
+  return irs::memory::make_shared<irs::analysis::delimited_token_stream>(
+    args
+  );
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json);

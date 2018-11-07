@@ -38,6 +38,8 @@
 #include <vector>
 
 namespace arangodb {
+class StringRef;
+
 namespace velocypack {
 class Slice;
 }
@@ -234,7 +236,8 @@ class Ast {
                                 AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(char const* name, size_t nameLength, AccessMode::Type accessType);
+  AstNode* createNodeCollection(arangodb::CollectionNameResolver const& resolver,
+                                char const* name, size_t nameLength, AccessMode::Type accessType);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(char const* name, size_t nameLength);
@@ -343,10 +346,10 @@ class Ast {
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
 
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections (AstNode const*);
+  AstNode* createNodeWithCollections(AstNode const*, arangodb::CollectionNameResolver const& resolver);
 
   /// @brief create an AST collection list node
-  AstNode* createNodeCollectionList(AstNode const*);
+  AstNode* createNodeCollectionList(AstNode const*, arangodb::CollectionNameResolver const& resolver);
 
   /// @brief create an AST direction node
   AstNode* createNodeDirection(uint64_t, uint64_t);
@@ -565,12 +568,14 @@ class Ast {
   AstNode* createNode(AstNodeType);
 
   /// @brief validate the name of the given datasource
-  std::string validateDataSourceName(char const* name, size_t nameLength, bool validateStrict);
+  /// in case validation fails, will throw an exception
+  void validateDataSourceName(arangodb::StringRef const& name, bool validateStrict);
   
   /// @brief create an AST collection node
   /// private function, does no validation
-  AstNode* createNodeCollectionNoValidation(char const* name, size_t nameLength, 
-                                            std::string const& nameString, AccessMode::Type accessType);
+  AstNode* createNodeCollectionNoValidation(arangodb::StringRef const& name, AccessMode::Type accessType);
+
+  void extractCollectionsFromGraph(AstNode const* graphNode);
 
  public:
   /// @brief negated comparison operators
@@ -606,6 +611,9 @@ class Ast {
 
   /// @brief whether or not the query contains a traversal
   bool _containsTraversal;
+  
+  /// @brief whether or not the query contains bind parameters
+  bool _containsBindParameters;
 
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;

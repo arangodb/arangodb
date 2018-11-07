@@ -179,7 +179,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
       // check single word phrase optimization
-      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+      ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 #endif
       irs::bytes_ref actual_value;
       auto sub = rdr.begin();
@@ -215,7 +215,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
       // check single word phrase optimization
-      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+      ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 #endif
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");
@@ -903,8 +903,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 
@@ -927,8 +926,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 

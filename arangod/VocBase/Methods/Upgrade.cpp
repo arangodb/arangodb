@@ -291,6 +291,11 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::setupAppBundles);
+  addTask("persistLocalDocumentIds", "convert collection data from old format",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE,
+          &UpgradeTasks::persistLocalDocumentIds);
 }
 
 UpgradeResult methods::Upgrade::runTasks(

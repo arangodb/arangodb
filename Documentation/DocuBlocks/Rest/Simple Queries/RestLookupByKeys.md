@@ -3,6 +3,13 @@
 
 @RESTHEADER{PUT /_api/simple/lookup-by-keys, Find documents by their keys}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to look in for the documents
 
@@ -16,6 +23,10 @@ key was specified in the *keys* array and that exist in the collection
 will be returned.  Keys for which no document can be found in the
 underlying collection are ignored, and no exception will be thrown for
 them.
+
+Equivalent AQL query:
+
+    FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc
 
 The body of the response contains a JSON object with a *documents*
 attribute. The *documents* attribute is an array containing the

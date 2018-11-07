@@ -124,9 +124,18 @@ class index_test_base : public virtual test_base {
   const index_t& index() const { return index_; }
 
   irs::index_writer::ptr open_writer(
-      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+      irs::directory& dir,
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::options& options = {}
   ) {
-    return irs::index_writer::make(*dir_, codec_, mode);
+    return irs::index_writer::make(dir, codec_, mode, options);
+  }
+
+  irs::index_writer::ptr open_writer(
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::options& options = {}
+  ) {
+    return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
   irs::directory_reader open_reader() {
@@ -142,12 +151,11 @@ class index_test_base : public virtual test_base {
 
     // set directory
     dir_.reset(get_directory());
+    ASSERT_NE(nullptr, dir_);
 
     // set codec
     codec_ = get_codec();
-
-    assert(dir_);
-    assert(codec_);
+    ASSERT_NE(nullptr, codec_);
   }
 
   virtual void TearDown() {
@@ -165,11 +173,11 @@ class index_test_base : public virtual test_base {
 
     while ((src = gen.next())) {
       segment.add(src->indexed.begin(), src->indexed.end());
-      ASSERT_TRUE(writer.insert([src](irs::segment_writer::document& doc)->bool {
-        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
-        return false;
-      }));
+      ASSERT_TRUE(insert(
+        writer,
+        src->indexed.begin(), src->indexed.end(),
+        src->stored.begin(), src->stored.end()
+      ));
     }
   }
 
@@ -191,7 +199,7 @@ class index_test_base : public virtual test_base {
 
   void add_segment(
       tests::doc_generator_base& gen,
-      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE
   ) {
     auto writer = open_writer(mode);
     add_segment(*writer, gen);
@@ -284,11 +292,6 @@ class text_field : public tests::field_base {
 
  private:
   virtual bool write(irs::data_output&) const { return false; }
-
-  static std::locale& get_locale() {
-    static auto locale = iresearch::locale_utils::locale(nullptr, true);
-    return locale;
-  }
 
   std::unique_ptr<token_stream_payload> pay_stream_;
   irs::analysis::analyzer::ptr token_stream_;

@@ -6,6 +6,7 @@
 
   window.ViewView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('viewView.ejs'),
 
@@ -27,12 +28,19 @@
       'click #deleteViewButton': 'deleteView'
     },
 
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('.bottomButtonBar button').attr('disabled', true);
+      console.log('need to disable');
+    },
+
     render: function () {
       this.breadcrumb();
       this.$el.html(this.template.render({}));
       $('#propertiesEditor').height($('.centralRow').height() - 300 + 70);
       this.initAce();
       this.getView();
+      arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
     },
 
     jsonContentChanged: function () {
@@ -40,9 +48,11 @@
     },
 
     enableSaveButton: function () {
-      $('#savePropertiesButton').prop('disabled', false);
-      $('#savePropertiesButton').addClass('button-success');
-      $('#savePropertiesButton').removeClass('button-close');
+      if (!this.readOnly) {
+        $('#savePropertiesButton').prop('disabled', false);
+        $('#savePropertiesButton').addClass('button-success');
+        $('#savePropertiesButton').removeClass('button-close');
+      }
     },
 
     disableSaveButton: function () {

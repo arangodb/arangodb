@@ -24,6 +24,9 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_COMM_H
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
+#include <atomic>
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
@@ -403,21 +406,21 @@ struct ClusterCommRequest {
     }
     return *headerFields;
   }
-  
+
   void setHeaders(
       std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
   }
- 
-  /// @brief "safe" accessor for body 
+
+  /// @brief "safe" accessor for body
   std::string const& getBody() const {
     if (body == nullptr) {
       return noBody;
     }
     return *body;
   }
-  
-  /// @brief "safe" accessor for body 
+
+  /// @brief "safe" accessor for body
   std::shared_ptr<std::string const> getBodyShared() const {
     if (body == nullptr) {
       return sharedNoBody;
@@ -493,7 +496,8 @@ class ClusterComm {
   /// @brief start the communication background thread
   //////////////////////////////////////////////////////////////////////////////
 
-  void startBackgroundThread();
+  void startBackgroundThreads();
+  void stopBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.
@@ -545,13 +549,6 @@ class ClusterComm {
                     OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief send an answer HTTP request to a coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  void asyncAnswer(std::string& coordinatorHeader,
-                   GeneralResponse* responseToSend);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
   /// of ClusterCommRequest structs in the following way: all requests are
   /// tried and the result is stored in the result component. Each request is
@@ -581,7 +578,7 @@ class ClusterComm {
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
-  /// of ClusterCommRequest structs in the following way: 
+  /// of ClusterCommRequest structs in the following way:
   /// Each request is done with asyncRequest.
   /// After each request is successfully send out we drop all requests.
   /// Hence it is guaranteed that all requests are send, but
@@ -592,10 +589,6 @@ class ClusterComm {
   /// instead.
   ////////////////////////////////////////////////////////////////////////////////
   void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
- 
-  std::shared_ptr<communicator::Communicator> communicator() {
-    return _communicator;
-  }
 
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
@@ -604,6 +597,13 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   void disable();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief push all libcurl callback work to Scheduler threads.  It is a
+  ///  public static function that any object can use.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void scheduleMe(std::function<void()> task);
 
  protected:  // protected members are for unit test purposes
 
@@ -709,18 +709,26 @@ class ClusterComm {
 
   void cleanupAllQueues();
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<communicator::Ticket> activeServerTickets(std::vector<std::string> const& servers);
 
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief logs a connection error (backend unavailable)
+  //////////////////////////////////////////////////////////////////////////////
+  static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result, double timeout, int line);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommThread* _backgroundThread;
+  std::atomic_uint _roundRobin;
+  std::vector<ClusterCommThread*> _backgroundThreads;
+
+  std::shared_ptr<communicator::Communicator> communicator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not connection errors should be logged as errors
@@ -728,7 +736,6 @@ class ClusterComm {
 
   bool _logConnectionErrors;
 
-  std::shared_ptr<communicator::Communicator> _communicator;
   bool _authenticationEnabled;
   std::string _jwtAuthorization;
 
@@ -751,11 +758,16 @@ class ClusterCommThread : public Thread {
   void beginShutdown() override;
   bool isSystem() override final { return true; }
 
+  std::shared_ptr<communicator::Communicator> communicator() {
+    return _communicator;
+  }
+
  private:
   void abortRequestsToFailedServers();
 
  protected:
   void run() override final;
+  std::shared_ptr<communicator::Communicator> _communicator;
 
  private:
   ClusterComm* _cc;

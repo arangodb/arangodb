@@ -87,7 +87,8 @@ router.get('/config.js', function (req, res) {
       authenticationEnabled: internal.authenticationEnabled(),
       ldapEnabled: ldapEnabled,
       isCluster: cluster.isCluster(),
-      engine: db._engine().name
+      engine: db._engine().name,
+      statisticsEnabled: internal.enabledStatistics()
     })}`
   );
 })
@@ -363,7 +364,17 @@ authRouter.post('/graph-examples/create/:name', function (req, res) {
 `);
 
 authRouter.post('/job', function (req, res) {
-  db._frontend.save(Object.assign(req.body, {model: 'job'}));
+  let frontend = db._collection('_frontend');
+  if (!frontend) {
+    frontend = db._create('_frontend', { 
+      isSystem: true,
+      waitForSync: false,
+      journalSize: 1024 * 1024, 
+      replicationFactor: internal.DEFAULT_REPLICATION_FACTOR_SYSTEM,
+      distributeShardsLike: '_graphs' 
+    });
+  }
+  frontend.save(Object.assign(req.body, {model: 'job'}));
   res.json(true);
 })
 .body(joi.object({

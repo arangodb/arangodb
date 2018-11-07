@@ -155,6 +155,7 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
+std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(
@@ -164,9 +165,11 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // collection attributes
+std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
-std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::ShardKeys("shardKeys");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -187,6 +190,9 @@ std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
+
+// Replication
+std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");

@@ -92,11 +92,11 @@
   delete global.ArangoDatabase;
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief ShapedJson stub object - only here for compatibility with 2.8
+  // / @brief ArangoQueryStreamCursor
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.ShapedJson = function () {};
-  delete global.ShapedJson;
+  exports.ArangoQueryStreamCursor = global.ArangoQueryStreamCursor;
+  delete global.ArangoQueryStreamCursor;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief dispatcherThreads
@@ -175,37 +175,41 @@
   // autoload specific modules
   exports.autoloadModules = function () {
     console.debug('autoloading actions');
-    var modules = exports.db._collection('_modules');
 
-    if (modules !== null) {
-      modules = modules.byExample({ autoload: true }).toArray();
-      modules.forEach(function (module) {
+    try {
+      var modules = exports.db._collection('_modules');
 
-        // this module is only meant to be executed in one thread
-        if (exports.threadNumber !== 0 && !module.perThread) {
-          return;
-        }
-
-        console.debug('autoloading module: %s', module.path);
-
-        try {
-
-          // require a module
-          if (module.path !== undefined) {
-            require(module.path);
+      if (modules !== null) {
+        modules = modules.byExample({ autoload: true }).toArray();
+        
+        modules.forEach(function (module) {
+          // this module is only meant to be executed in one thread
+          if (exports.threadNumber !== 0 && !module.perThread) {
+            return;
           }
 
-          // execute a user function
-          else if (module.func !== undefined) {
-            /*eslint-disable */
-            var func = new Function(module.func)
-            /*eslint-enable */
-            func();
+          console.debug('autoloading module: %s', module.path);
+
+          try {
+            // require a module
+            if (module.path !== undefined) {
+              require(module.path);
+            }
+
+            // execute a user function
+            else if (module.func !== undefined) {
+              /*eslint-disable */
+              var func = new Function(module.func)
+              /*eslint-enable */
+              func();
+            }
+          } catch (err) {
+            console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
           }
-        } catch (err) {
-          console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
-        }
-      });
+        });
+      }
+    } catch (err) {
+      console.error('error while loading startup modules: %s', String(err));
     }
 
     console.debug('autoloading actions finished');

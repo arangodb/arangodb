@@ -59,12 +59,6 @@ using namespace arangodb::basics;
 _invalid_parameter_handler oldInvalidHandleHandler;
 _invalid_parameter_handler newInvalidHandleHandler;
 
-// Windows variant for unistd.h's ftruncate()
-int ftruncate(int fd, long newSize) {
-  int result = _chsize(fd, newSize);
-  return result;
-}
-
 // Windows variant for getpagesize()
 int getpagesize(void) {
   static int pageSize = 0;  // only define it once
@@ -96,7 +90,7 @@ static void InvalidParameterHandler(
   std::string exp;
   std::string func;
   std::string fileName;
-  
+
   UnicodeString uStr;
   uStr = expression;
   uStr.toUTF8String(exp);
@@ -104,7 +98,7 @@ static void InvalidParameterHandler(
   uStr.toUTF8String(func);
   uStr = file;
   uStr.toUTF8String(fileName);
-  
+
   std::string bt;
   TRI_GetBacktrace(bt);
 #endif
@@ -190,7 +184,7 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int fileDescriptor;
   UnicodeString fn(filename);
-  
+
   fileHandle =
     CreateFileW(fn.getTerminatedBuffer(),
                 GENERIC_READ | GENERIC_WRITE,
@@ -290,7 +284,7 @@ char *TRI_GETCWD(char* buffer, int maxlen){
 
   if (rcw != nullptr) {
     std::string rcs;
-    
+
     UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
     d.toUTF8String<std::string>(rcs);
     if (rcs.length() + 1 < maxlen) {
@@ -306,7 +300,7 @@ int TRI_MKDIR_WIN32(char const* dirname) {
   UnicodeString dir(dirname);
   return ::_wmkdir(dir.getTerminatedBuffer());
 }
-  
+
 int TRI_RMDIR(char const* dirname) {
   UnicodeString dir(dirname);
   return ::_wrmdir(dir.getTerminatedBuffer());
@@ -525,7 +519,7 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
     ubufs[0].getTerminatedBuffer(),
     ubufs[1].getTerminatedBuffer(),
     ubufs[2].getTerminatedBuffer(),
-    ubufs[3].getTerminatedBuffer(), 
+    ubufs[3].getTerminatedBuffer(),
     nullptr
   };
   // Try to get messages through to windows syslog...
@@ -563,7 +557,7 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
     ubufs[0].getTerminatedBuffer(),
     ubufs[1].getTerminatedBuffer(),
     ubufs[2].getTerminatedBuffer(),
-    ubufs[3].getTerminatedBuffer(), 
+    ubufs[3].getTerminatedBuffer(),
     nullptr
   };
   // Try to get messages through to windows syslog...
@@ -649,7 +643,7 @@ int _cyg_isatty(int fd) {
   if (forcetty != nullptr) {
     return strcmp(forcetty, "1") == 0;
   }
-  
+
   HANDLE fh;
 
   char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
@@ -696,7 +690,7 @@ int _is_cyg_tty(int fd)
   if (_isatty (fd)) {
     return 0;
   }
-  
+
   HANDLE fh;
 
   char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
@@ -741,7 +735,7 @@ bool terminalKnowsANSIColors() {
     // Its a cygwin shell, expected to understand ANSI color codes.
     return true;
   }
-  
+
   // Windows 8 onwards the CMD window understands ANSI-Colorcodes.
   return IsWindows8OrGreater();
 }
@@ -764,8 +758,8 @@ static std::vector<std::string> argVec;
 void TRI_GET_ARGV_WIN(int& argc, char** argv) {
   auto wargStr = GetCommandLineW();
 
-  // if you want your argc in unicode, all you gonna do 
-  // is ask: 
+  // if you want your argc in unicode, all you gonna do
+  // is ask:
   auto wargv = CommandLineToArgvW(wargStr, &argc);
 
   argVec.reserve(argc);

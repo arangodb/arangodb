@@ -35,7 +35,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
+std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 QueryRegistryFeature::QueryRegistryFeature(
     application_features::ApplicationServer& server
@@ -47,6 +47,7 @@ QueryRegistryFeature::QueryRegistryFeature(
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
+      _slowStreamingQueryThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
@@ -85,6 +86,9 @@ void QueryRegistryFeature::collectOptions(
   
   options->addOption("--query.slow-threshold", "threshold for slow AQL queries (in seconds)",
                      new DoubleParameter(&_slowQueryThreshold));
+  
+  options->addOption("--query.slow-streaming-threshold", "threshold for slow streaming AQL queries (in seconds)",
+                     new DoubleParameter(&_slowStreamingQueryThreshold));
 
   options->addOption("--query.cache-mode",
                      "mode for the AQL query result cache (on, off, demand)",
@@ -148,14 +152,14 @@ void QueryRegistryFeature::prepare() {
 
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
-  QUERY_REGISTRY = _queryRegistry.get();
+  QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 }
 
 void QueryRegistryFeature::start() {}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
-  QUERY_REGISTRY = nullptr;
+  QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
 } // arangodb

@@ -27,8 +27,8 @@
 
 #include <string>
 #include <unordered_map>
+#include <mutex>
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "VocBase/ticks.h"
 
@@ -53,8 +53,6 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  /// @brief the http client we're using
-  std::unique_ptr<httpclient::SimpleHttpClient> client;
 
   Connection(Syncer* syncer,
              ReplicationApplierConfiguration const& applierConfig);
@@ -68,14 +66,33 @@ struct Connection {
   /// @brief identifier for local server
   std::string const& localServerId() const;
 
+  /// @brief Thread-safe aborted status
   void setAborted(bool value);
 
+  /// @brief Thread-safe check aborted
   bool isAborted() const;
+  
+  /// @brief get an exclusive connection 
+  template<typename F>
+  void lease(F&& func) & {
+    std::lock_guard<std::mutex> guard(_mutex);
+    std::forward<F>(func)(_client.get());
+  }
+  
+  template<typename F>
+  void lease(F&& func) const& {
+    std::lock_guard<std::mutex> guard(_mutex);
+    std::forward<F>(func)(_client.get());
+  }
 
  private:
-  std::string _endpointString;
+  std::string const _endpointString;
   std::string const _localServerId;
-  mutable Mutex _mutex;
+  
+  /// lock to protect client connection
+  mutable std::mutex _mutex;
+  /// @brief the http client we're using
+  std::unique_ptr<httpclient::SimpleHttpClient> _client;
 };
 
 struct ProgressInfo {
@@ -96,7 +113,7 @@ struct ProgressInfo {
   void set(std::string const& msg);
 
  private:
-  Mutex _mutex;
+  std::mutex _mutex;
   Setter _setter;
 };
 
@@ -111,10 +128,12 @@ struct BarrierInfo {
 
   /// @brief send a "create barrier" command
   Result create(Connection&, TRI_voc_tick_t);
-
+  
   /// @brief send an "extend barrier" command
-  // TODO worker-safety
   Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
+  
+  /// @brief send remove barrier command
+  Result remove(Connection&) noexcept;
 };
 
 struct BatchInfo {
@@ -128,12 +147,13 @@ struct BatchInfo {
   double updateTime{0};
 
   /// @brief send a "start batch" command
-  Result start(Connection& connection, ProgressInfo& progress);
+  /// @param patchCount try to patch count of this collection
+  ///        only effective with the incremental sync
+  Result start(Connection& connection, ProgressInfo& progress,
+               std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  // TODO worker-safety
-  Result extend(Connection& connection,
-                ProgressInfo& progress);  // TODO worker safety
+  Result extend(Connection& connection, ProgressInfo& progress);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety

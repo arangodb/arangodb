@@ -11,9 +11,9 @@ Query String:
 Execution plan:
  Id   NodeType                  Calls   Items   Runtime [s]   Comment
   1   SingletonNode                 1       1       0.00000   * ROOT
-  2   EnumerateCollectionNode      11   10000       0.00085     - FOR doc IN acollection   /* full collection scan */
-  3   CalculationNode              11   10000       0.00254       - LET #1 = (doc.`value` &lt; 10)   /* simple expression */   /* collections used: doc : acollection */
-  4   FilterNode                    1      10       0.00008       - FILTER #1
+  2   EnumerateCollectionNode      11   10000       0.00199     - FOR doc IN acollection   /* full collection scan */
+  3   CalculationNode              11   10000       0.00458       - LET #1 = (doc.`value` &lt; 10)   /* simple expression */   /* collections used: doc : acollection */
+  4   FilterNode                    1      10       0.00019       - FILTER #1
   5   ReturnNode                    1      10       0.00000       - RETURN doc
 
 Indexes used:
@@ -24,17 +24,17 @@ Optimization rules applied:
 
 Query Statistics:
  Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
-           0            0       10000            0       9990         0.00374
+           0            0       10000            0       9990         0.00733
 
 Query Profile:
  Query Stage           Duration [s]
  initializing               0.00001
- parsing                    0.00004
- optimizing ast             0.00001
- loading collections        0.00000
- instantiating plan         0.00002
- optimizing plan            0.00007
- executing                  0.00350
- finalizing                 0.00008
+ parsing                    0.00007
+ optimizing ast             0.00003
+ loading collections        0.00001
+ instantiating plan         0.00004
+ optimizing plan            0.00017
+ executing                  0.00683
+ finalizing                 0.00014
 
 

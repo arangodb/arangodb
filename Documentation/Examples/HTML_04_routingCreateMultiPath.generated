@@ -2,32 +2,32 @@ arangosh&gt; db._routing.save({
 ........&gt;  url: { <span class="hljs-attr">match</span>: <span class="hljs-string">"/hello/world"</span> },
 ........&gt; content: { <span class="hljs-attr">contentType</span>: <span class="hljs-string">"text/plain"</span>, <span class="hljs-attr">body</span>: <span class="hljs-string">"Match No 1"</span>} });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100906"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100906"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Wym--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100909"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100909"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrVWy--_"</span> 
 }
 arangosh&gt; db._routing.save({ 
 ........&gt;  url: { <span class="hljs-attr">match</span>: <span class="hljs-string">"/hello/:name"</span>, <span class="hljs-attr">constraint</span>: { <span class="hljs-attr">name</span>: <span class="hljs-string">"/[a-z]+/"</span> } },
 ........&gt; content: { <span class="hljs-attr">contentType</span>: <span class="hljs-string">"text/plain"</span>, <span class="hljs-attr">body</span>: <span class="hljs-string">"Match No 2"</span>} });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100910"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100910"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Wyq---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100913"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100913"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrVW2--_"</span> 
 }
 arangosh&gt; db._routing.save({ 
 ........&gt;  url: { <span class="hljs-attr">match</span>: <span class="hljs-string">"/:something/world"</span> },
 ........&gt; content: { <span class="hljs-attr">contentType</span>: <span class="hljs-string">"text/plain"</span>, <span class="hljs-attr">body</span>: <span class="hljs-string">"Match No 3"</span>} });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100913"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100913"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Wyq--A"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100916"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100916"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrVW6--_"</span> 
 }
 arangosh&gt; db._routing.save({ 
 ........&gt;  url: { <span class="hljs-attr">match</span>: <span class="hljs-string">"/hi/*"</span> },
 ........&gt; content: { <span class="hljs-attr">contentType</span>: <span class="hljs-string">"text/plain"</span>, <span class="hljs-attr">body</span>: <span class="hljs-string">"Match No 4"</span>} });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100916"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100916"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xgn2Wyq--C"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/100919"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100919"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XsBrVW6--B"</span> 
 }
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/utilities.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 struct TRI_vocbase_t;
 
@@ -138,7 +139,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   bool isAborted() const override;
 
   /// @brief insert the batch id and barrier ID.
-  ///        For use in globalinitalsyncer
+  ///        For use in globalinitialsyncer
   // TODO worker safety
   void useAsChildSyncer(replutils::MasterInfo const& info, uint64_t barrierId,
                         double barrierUpdateTime, uint64_t batchId,
@@ -161,7 +162,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   double batchUpdateTime() const { return _config.batch.updateTime; }
 
   /// @brief fetch the server's inventory, public method
-  Result inventory(arangodb::velocypack::Builder& builder);
+  Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
   /// @brief order a new chunk from the /dump API

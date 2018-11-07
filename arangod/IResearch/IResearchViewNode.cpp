@@ -49,7 +49,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
-aql::AstNode const ALL(true, aql::VALUE_TYPE_BOOL);
+aql::AstNode const ALL(arangodb::aql::AstNodeValue(true));
 
 inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
   return filterCondition == &ALL;
@@ -356,6 +356,7 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+  TRI_ASSERT(LogicalView::category() == _view->category());
 
   // FIXME any other way to validate options before object creation???
   std::string error;
@@ -665,6 +666,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto& view = *this->view();
   PrimaryKeyIndexReader* reader;
 
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+    << "Start getting snapshot for view '" << view.name() << "'";
+
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
@@ -689,13 +693,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '";
+      << "failed to get snapshot while creating arangosearch view ExecutionBlock for view '" << view.name() << "' tid '";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
-      "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView"
+      "failed to get snapshot while creating arangosearch view ExecutionBlock"
     );
   }
+
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+    << "Finish getting snapshot for view '" << view.name() << "'";
 
   if (_sortCondition.empty()) {
     // unordered case

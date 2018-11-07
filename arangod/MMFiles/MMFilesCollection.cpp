@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ReadUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -39,6 +40,7 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionWriteLocker.h"
+#include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
@@ -110,6 +112,88 @@ static MMFilesDatafileStatisticsContainer* FindDatafileStats(
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   state->_stats.emplace(fid, stats.get());
   return stats.release();
+}
+
+bool countDocumentsIterator(MMFilesMarker const* marker,
+                            void* counter, MMFilesDatafile*) {
+  TRI_ASSERT(nullptr != counter);
+  if (marker->getType() == TRI_DF_MARKER_VPACK_DOCUMENT) {
+    (*static_cast<int*>(counter))++;
+  }
+  return true;
+}
+
+Result persistLocalDocumentIdIterator(
+    MMFilesMarker const* marker, void* data, MMFilesDatafile* inputFile) {
+  Result res;
+  auto outputFile = static_cast<MMFilesDatafile*>(data);
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
+      auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
+
+      VPackSlice const slice(
+          reinterpret_cast<char const*>(marker) +
+          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      uint8_t const* vpack = slice.begin();
+
+      LocalDocumentId localDocumentId;
+      if (marker->getSize() ==
+          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)
+          + slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
+        // we do have a LocalDocumentId stored at the end of the marker
+        uint8_t const* ptr = vpack + slice.byteSize();
+        localDocumentId = LocalDocumentId(
+            encoding::readNumber<LocalDocumentId::BaseType>(
+                ptr, sizeof(LocalDocumentId::BaseType)));
+      } else {
+        localDocumentId = LocalDocumentId::create();
+      }
+
+      MMFilesCrudMarker updatedMarker(TRI_DF_MARKER_VPACK_DOCUMENT,
+                                      transactionId, localDocumentId, slice);
+
+      std::unique_ptr<char[]> buffer(new char[updatedMarker.size()]);
+      MMFilesMarker* outputMarker =
+          reinterpret_cast<MMFilesMarker*>(buffer.get());
+      MMFilesDatafileHelper::InitMarker(outputMarker, updatedMarker.type(),
+                                        updatedMarker.size(),
+                                        marker->getTick());
+      updatedMarker.store(buffer.get());
+
+      MMFilesMarker* result;
+      res = outputFile->reserveElement(outputMarker->getSize(), &result, 0);
+      if (res.fail()) {
+        return res;
+      }
+      res = outputFile->writeCrcElement(result, outputMarker);
+      if (res.fail()) {
+        return res;
+      }
+      break;
+    }
+    case TRI_DF_MARKER_HEADER:
+    case TRI_DF_MARKER_COL_HEADER:
+    case TRI_DF_MARKER_FOOTER: {
+      // skip marker, either already written by createCompactor or will be
+      // written by closeCompactor
+      break;
+    }
+    default: {
+      // direct copy
+      MMFilesMarker* result;
+      res = outputFile->reserveElement(marker->getSize(), &result, 0);
+      if (res.fail()) {
+        return res;
+      }
+      res = outputFile->writeElement(result, marker);
+      if (res.fail()) {
+        return res;
+      }
+      break;
+    }
+  }
+
+  return res;
 }
 
 }  // namespace
@@ -236,6 +320,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
     localDocumentId = LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
   } else {
     localDocumentId = LocalDocumentId::create();
+    state->_hasAllPersistentLocalIds = false;
   }
 
   VPackSlice keySlice;
@@ -587,6 +672,7 @@ bool MMFilesCollection::isVolatile() const { return _isVolatile; }
 
 /// @brief closes an open collection
 int MMFilesCollection::close() {
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "closing '" << _logicalCollection.name() << "'";
   if (!_logicalCollection.deleted() &&
       !_logicalCollection.vocbase().isDropped()) {
     auto primIdx = primaryIndex();
@@ -1086,6 +1172,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   // name
   if (!isCompactor && datafile->isPhysical()) {
     // and use the correct name
+    std::string oldName = datafile->getName();
     std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
     std::string filename =
         arangodb::basics::FileUtils::buildFilename(path(), jname);
@@ -1105,7 +1192,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     }
 
     LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "renamed journal from '"
-                                                  << datafile->getName() << "' to '"
+                                                  << oldName << "' to '"
                                                   << filename << "'";
   }
 
@@ -1595,7 +1682,7 @@ int MMFilesCollection::fillIndexes(
       " }, indexes: " + std::to_string(n - 1));
 
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn, false);
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, fn);
   };
   auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
@@ -1741,7 +1828,7 @@ int MMFilesCollection::openWorker(bool ignoreErrors) {
 
 void MMFilesCollection::open(bool ignoreErrors) {
   VPackBuilder builder;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  auto engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   auto& vocbase = _logicalCollection.vocbase();
   auto cid = _logicalCollection.id();
 
@@ -1829,7 +1916,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
     }
   }
 
-  if (!engine->inRecovery()) {
+  if (!engine->inRecovery() && !engine->upgrading()) {
     // build the index structures, and fill the indexes
     fillAllIndexes(&trx);
   }
@@ -1876,6 +1963,13 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
       << "found " << openState._documents << " document markers, "
       << openState._deletions << " deletion markers for collection '"
       << _logicalCollection.name() << "'";
+
+  // pick up persistent id flag from state
+  _hasAllPersistentLocalIds.store(openState._hasAllPersistentLocalIds);
+  LOG_TOPIC_IF(WARN, arangodb::Logger::ENGINES,
+               !openState._hasAllPersistentLocalIds)
+     << "collection '" << _logicalCollection.name() << "' does not have all "
+     << "persistent LocalDocumentIds; cannot be linked to an arangosearch view";
 
   // update the real statistics for the collection
   try {
@@ -2154,15 +2248,11 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   addIndexLocal(idx);
 
   {
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
     auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, true
     );
 
-    _logicalCollection.updateProperties(builder.slice(), doSync);
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   created = true;
@@ -2353,15 +2443,11 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   engine->dropIndex(&vocbase, cid, iid);
 
   {
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
     auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, true
     );
 
-    _logicalCollection.updateProperties(builder.slice(), doSync);
+    _logicalCollection.properties(builder.slice(), false); // always a full-update
   }
 
   if (!engine->inRecovery()) {
@@ -2779,10 +2865,11 @@ Result MMFilesCollection::truncate(transaction::Methods* trx,
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
+  TRI_voc_tick_t tick = TRI_NewTickServer();
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-    idx->afterTruncate();
+    idx->afterTruncate(tick);
   }
   return Result();
 }
@@ -3052,6 +3139,79 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
   } else {
     _revisionsCache.remove(documentId);
   }
+}
+
+Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
+    MMFilesCollection& collection, MMFilesDatafile& file) {
+  Result res;
+  // make a first pass to count documents and determine output size
+  size_t numDocuments = 0;
+  bool ok = TRI_IterateDatafile(&file, ::countDocumentsIterator, &numDocuments);
+  if (!ok) {
+    res.reset(TRI_ERROR_INTERNAL, "could not count documents");
+    return res;
+  }
+
+  size_t outputSizeLimit = file.currentSize() +
+                           (numDocuments * sizeof(LocalDocumentId));
+  MMFilesDatafile* outputFile = nullptr;
+  {
+    READ_UNLOCKER(unlocker, collection._filesLock);
+    outputFile = collection.createCompactor(file.fid(), outputSizeLimit);
+  }
+  if (nullptr == outputFile) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+
+  res = TRI_IterateDatafile(&file, ::persistLocalDocumentIdIterator,
+                            outputFile);
+  if (res.fail()) {
+    return res;
+  }
+
+  {
+    READ_UNLOCKER(unlocker, collection._filesLock);
+    res = collection.closeCompactor(outputFile);
+
+    if (res.fail()) {
+      return res;
+    }
+
+    // TODO detect error in replacement?
+    MMFilesCompactorThread::RenameDatafileCallback(
+        &file, outputFile, &collection._logicalCollection);
+  }
+
+  return res;
+}
+
+Result MMFilesCollection::persistLocalDocumentIds() {
+  WRITE_LOCKER(dataLocker, _dataLock);
+  TRI_ASSERT(_compactors.empty());
+
+  // convert journal to datafile first
+  int res = rotateActiveJournal();
+  if (TRI_ERROR_NO_ERROR != res && TRI_ERROR_ARANGO_NO_JOURNAL != res) {
+    return Result(res);
+  }
+
+  // now handle datafiles
+  {
+    READ_LOCKER(locker, _filesLock);
+    for (auto file : _datafiles) {
+      Result result = persistLocalDocumentIdsForDatafile(*this, *file);
+      if (result.fail()) {
+        return result;
+      }
+    }
+  }
+
+  _hasAllPersistentLocalIds.store(true);
+
+  TRI_ASSERT(_compactors.empty());
+  TRI_ASSERT(_journals.empty());
+
+  return Result();
 }
 
 /// @brief creates a new entry in the primary index

@@ -72,8 +72,10 @@
 
     redirectToGraphViewer: function (e) {
       var name = $(e.currentTarget).attr('id');
-      name = name.substr(0, name.length - 5);
-      window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '/' + encodeURIComponent(name);
+      if (name) {
+        name = name.substr(0, name.length - 5);
+        window.App.navigate('graph/' + encodeURIComponent(name), {trigger: true});
+      }
     },
 
     loadGraphViewer: function (graphName, refetch) {
@@ -184,12 +186,24 @@
       $('#' + clicked).click();
     },
 
+    checkVisibility: function () {
+      if ($('#graphManagementDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#graphManagementDropdown');
+    },
+
     toggleGraphDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#graphManagementToggle').toggleClass('activated');
-      $('#graphManagementDropdown2').slideToggle(200);
+      $('#graphManagementDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     sorting: function () {
@@ -199,12 +213,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#graphManagementDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 

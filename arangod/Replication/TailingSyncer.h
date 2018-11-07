@@ -134,13 +134,19 @@ class TailingSyncer : public Syncer {
   arangodb::Result runInternal();
 
   /// @brief fetch data for the continuous synchronization
+  /// @param fetchTick tick from which we want results
+  /// @param lastScannedTick tick which the server MAY start scanning from
+  /// @param firstRegularTick if we got openTransactions server will return the
+  ///                         only operations belonging to these for smaller ticks
   void fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       TRI_voc_tick_t fetchTick,
+                      TRI_voc_tick_t lastScannedTick,
                       TRI_voc_tick_t firstRegularTick);
 
   /// @brief apply continuous synchronization data from a batch
   arangodb::Result processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                                     TRI_voc_tick_t& fetchTick,
+                                    TRI_voc_tick_t& lastScannedTick,
                                     TRI_voc_tick_t firstRegularTick,
                                     uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch);
 
@@ -190,6 +196,10 @@ class TailingSyncer : public Syncer {
 
   /// @brief whether or not master & slave can work in parallel
   bool _workInParallel;
+
+  /// @brief max parallel open transactions
+  /// this will be set to false for RocksDB, and to true for MMFiles
+  bool _supportsMultipleOpenTransactions;
 
   /// @brief which transactions were open and need to be treated specially
   std::unordered_map<TRI_voc_tid_t, std::unique_ptr<ReplicationTransaction>>
