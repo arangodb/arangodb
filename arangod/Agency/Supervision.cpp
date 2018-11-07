@@ -1016,7 +1016,7 @@ void Supervision::workJobs() {
 }
 
 
-static void Supervision::readyOrphanedIndexCreations() {
+void Supervision::readyOrphanedIndexCreations() {
   _lock.assertLockedByCurrentThread();
   
   if (_snapshot.has(planColPrefix) && _snapshot.has(curColPrefix)) {

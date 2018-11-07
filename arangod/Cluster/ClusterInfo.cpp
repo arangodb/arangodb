@@ -2619,6 +2619,12 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     }
   }
 
+  // no existing index found.	
+  if (!create) {	
+    TRI_ASSERT(resultBuilder.isEmpty());	
+    return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);	
+  }
+
   // will contain the error number and message
   std::shared_ptr<std::atomic<int>> dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
