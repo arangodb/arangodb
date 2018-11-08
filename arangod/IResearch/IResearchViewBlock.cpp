@@ -99,7 +99,7 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 IResearchViewBlockBase::IResearchViewBlockBase(
-    irs::composite_reader const& reader,
+    irs::index_reader const& reader,
     ExecutionEngine& engine,
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
@@ -418,7 +418,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 // -----------------------------------------------------------------------------
 
 IResearchViewBlock::IResearchViewBlock(
-    irs::composite_reader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
 ): IResearchViewUnorderedBlock(reader, engine, node),
@@ -546,7 +546,7 @@ size_t IResearchViewBlock::skip(size_t limit) {
 // -----------------------------------------------------------------------------
 
 IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
-    irs::composite_reader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
 ): IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {

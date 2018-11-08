@@ -253,7 +253,7 @@ class IResearchView final
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  irs::composite_reader const* snapshot(
+  irs::index_reader const* snapshot(
     transaction::Methods& trx,
     Snapshot mode = Snapshot::Find
   ) const;

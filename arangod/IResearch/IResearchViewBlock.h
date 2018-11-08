@@ -52,7 +52,7 @@ class IResearchViewNode;
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    irs::composite_reader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
@@ -99,7 +99,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   std::vector<DocumentPrimaryKey> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  irs::composite_reader const& _reader;
+  irs::index_reader const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
@@ -115,7 +115,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    irs::composite_reader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -150,7 +150,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    irs::composite_reader const& reader,
+    irs::index_reader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );

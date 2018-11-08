@@ -714,7 +714,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -723,7 +723,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field").push_back("quick");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -732,7 +732,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field").push_back("quick").push_back("brown");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
   }
@@ -747,7 +747,7 @@ TEST(by_phrase_test, boost) {
       q.field("field");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -757,7 +757,7 @@ TEST(by_phrase_test, boost) {
       q.field("field").push_back("quick");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
     
@@ -767,7 +767,7 @@ TEST(by_phrase_test, boost) {
       q.field("field").push_back("quick").push_back("brown");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
   }

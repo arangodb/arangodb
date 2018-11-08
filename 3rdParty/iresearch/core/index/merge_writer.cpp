@@ -51,11 +51,6 @@ typedef std::vector<irs::field_id> id_map_t;
 
 typedef std::unordered_map<irs::string_ref, const irs::field_meta*> field_meta_map_t;
 
-enum class ConsolidationError : uint32_t {
-  NO_ERROR = 0,
-  ABORTED
-};
-
 class noop_directory : public irs::directory {
  public:
   static noop_directory& instance() NOEXCEPT {

@@ -74,54 +74,6 @@ typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                               utility constructs
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief empty index reader
-////////////////////////////////////////////////////////////////////////////////
-class EmptyReader final : public irs::composite_reader {
- public:
-  static EmptyReader const& instance() noexcept {
-    static EmptyReader const INSTANCE;
-    return INSTANCE;
-  }
-  virtual irs::sub_reader const& operator[](size_t ) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-  virtual reader_iterator begin() const override {
-    return reader_iterator(new IteratorImpl());
-  }
-  virtual reader_iterator end() const override {
-    return reader_iterator(new IteratorImpl());
-  }
-  virtual uint64_t docs_count() const override { return 0; }
-  virtual uint64_t live_docs_count() const override { return 0; }
-  virtual size_t size() const noexcept override { return 0; }
-
- private:
-  EmptyReader() = default;
-
-  class IteratorImpl final: public irs::index_reader::reader_iterator_impl {
-   public:
-    virtual void operator++() override {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    virtual reference operator*() override {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    virtual const_reference operator*() const override {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    virtual bool operator==(
-        const reader_iterator_impl& other
-    ) noexcept override {
-      return true;
-    }
-  };
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates user-friendly description of the specified view
 ////////////////////////////////////////////////////////////////////////////////
 std::string toString(arangodb::iresearch::IResearchView const& view) {
@@ -589,7 +541,7 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewStateRead final
     : public arangodb::TransactionState::Cookie {
-  irs::directory_reader _snapshot;
+  irs::index_reader::ptr _snapshot;
   std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
 
   explicit ViewStateRead(ReadMutex& mutex) noexcept
@@ -1774,7 +1726,7 @@ int IResearchView::remove(
   return TRI_ERROR_INTERNAL;
 }
 
-irs::composite_reader const* IResearchView::snapshot(
+irs::index_reader const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
@@ -1791,10 +1743,10 @@ irs::composite_reader const* IResearchView::snapshot(
 
   switch (mode) {
     case Snapshot::Find:
-      return cookie ? &cookie->_snapshot : nullptr;
+      return cookie ? cookie->_snapshot.get() : nullptr;
     case Snapshot::FindOrCreate:
       if (cookie) {
-        return &cookie->_snapshot;
+        return cookie->_snapshot.get();
       }
       break;
     case Snapshot::SyncAndReplace: {
@@ -1830,7 +1782,13 @@ irs::composite_reader const* IResearchView::snapshot(
   try {
     // '_storePersisted' protected by '_asyncSelf' held by ViewStateRead
     if (_storePersisted) {
-      cookie->_snapshot = _storePersisted._reader;
+      cookie->_snapshot = static_cast<irs::index_reader::ptr>(
+        _storePersisted._reader
+      );
+    } else {
+      cookie->_snapshot = irs::index_reader::ptr(
+        irs::index_reader::ptr(), &irs::sub_reader::empty()
+      );
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1863,11 +1821,9 @@ irs::composite_reader const* IResearchView::snapshot(
     return nullptr;
   }
 
-  if (!cookie->_snapshot) {
-    return &EmptyReader::instance();
-  }
+  TRI_ASSERT(cookie->_snapshot);
 
-  return &cookie->_snapshot;
+  return cookie->_snapshot.get();
 }
 
 IResearchView::AsyncSelf::ptr IResearchView::self() const {
