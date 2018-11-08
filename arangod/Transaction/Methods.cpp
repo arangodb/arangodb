@@ -1631,13 +1631,12 @@ OperationResult transaction::Methods::insertLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      
-      // fetch followers
-      followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
-        options.silent = false;
-      }
+
+      replicationType = ReplicationType::LEADER;
+      // We may have to replicate later, so we cannot be silent. This holds at
+      // least for MMFiles single-document-operations. Otherwise, we could
+      // check if the list of followers is empty to avoid this.
+      options.silent = false;
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
@@ -1738,104 +1737,117 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
+    // TODO get the followers during the transaction, which for MMFiles single-
+    // document-operations means during insert().
+    followers = collection->followers()->get();
     TRI_ASSERT(followers != nullptr);
 
-    // Now replicate the same operation on all followers:
+    if (!followers->empty()) {
+      // TODO extract the code in this block to a separate replication method
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // Now replicate the same operation on all followers:
 
-    // Now replicate the good operations on all followers:
-    std::string path =
-      "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-      "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
-      "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
-      "&" + StaticStrings::SilentString + "=true" + 
-      "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    transaction::BuilderLeaser payload(this);
+      // Now replicate the good operations on all followers:
+      std::string path =
+          "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
+          "/_api/document/" +
+          arangodb::basics::StringUtils::urlEncode(collection->name()) +
+          "?isRestore=true&isSynchronousReplication=" +
+          ServerState::instance()->getId() + "&" + StaticStrings::SilentString +
+          "=true" + "&" + StaticStrings::OverWrite + "=" +
+          (options.overwrite ? "true" : "false");
 
-    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-      VPackObjectBuilder guard(payload.get());
-      VPackSlice s = result.get(StaticStrings::KeyString);
-      payload->add(StaticStrings::KeyString, s);
-      s = result.get(StaticStrings::RevString);
-      payload->add(StaticStrings::RevString, s);
-      TRI_SanitizeObject(doc, *payload.get());
-    };
+      transaction::BuilderLeaser payload(this);
 
-    VPackSlice ourResult = resultBuilder.slice();
-    size_t count = 0;
-    if (value.isArray()) {
-      VPackArrayBuilder guard(payload.get());
-      VPackArrayIterator itValue(value);
-      VPackArrayIterator itResult(ourResult);
-      while (itValue.valid() && itResult.valid()) {
-        TRI_ASSERT((*itResult).isObject());
-        if (!(*itResult).hasKey(StaticStrings::Error)) {
-          doOneDoc(itValue.value(), itResult.value());
-          count++;
-        }
-        itValue.next();
-        itResult.next();
-      }
-    } else {
-      doOneDoc(value, ourResult);
-      count++;
-    }
-    if (count > 0) {
-      auto body = std::make_shared<std::string>();
-      *body = payload->slice().toJson();
+      auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
+        VPackObjectBuilder guard(payload.get());
+        VPackSlice s = result.get(StaticStrings::KeyString);
+        payload->add(StaticStrings::KeyString, s);
+        s = result.get(StaticStrings::RevString);
+        payload->add(StaticStrings::RevString, s);
+        TRI_SanitizeObject(doc, *payload.get());
+      };
 
-      // Now prepare the requests:
-      std::vector<ClusterCommRequest> requests;
-      requests.reserve(followers->size());
-      
-      for (auto const& f : *followers) {
-        requests.emplace_back("server:" + f, arangodb::rest::RequestType::POST,
-            path, body);
-      }
-      auto cc = arangodb::ClusterComm::instance();
-      if (cc != nullptr) {
-        // nullptr only happens on controlled shutdown
-        size_t nrDone = 0;
-        cc->performRequests(requests, chooseTimeout(count, body->size()*followers->size()),
-                            nrDone, Logger::REPLICATION, false);
-        // If any would-be-follower refused to follow there must be a
-        // new leader in the meantime, in this case we must not allow
-        // this operation to succeed, we simply return with a refusal
-        // error (note that we use the follower version, since we have
-        // lost leadership):
-        if (findRefusal(requests)) {
-          return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
-        }
-
-        // Otherwise we drop all followers that were not successful:
-        for (size_t i = 0; i < followers->size(); ++i) {
-          bool replicationWorked =
-            requests[i].done &&
-            requests[i].result.status == CL_COMM_RECEIVED &&
-            (requests[i].result.answer_code ==
-              rest::ResponseCode::ACCEPTED ||
-              requests[i].result.answer_code == rest::ResponseCode::CREATED);
-          if (replicationWorked) {
-            bool found;
-            requests[i].result.answer->header(StaticStrings::ErrorCodes,
-                found);
-            replicationWorked = !found;
+      VPackSlice ourResult = resultBuilder.slice();
+      size_t count = 0;
+      if (value.isArray()) {
+        VPackArrayBuilder guard(payload.get());
+        VPackArrayIterator itValue(value);
+        VPackArrayIterator itResult(ourResult);
+        while (itValue.valid() && itResult.valid()) {
+          TRI_ASSERT((*itResult).isObject());
+          if (!(*itResult).hasKey(StaticStrings::Error)) {
+            doOneDoc(itValue.value(), itResult.value());
+            count++;
           }
-          if (!replicationWorked) {
-            auto const& followerInfo = collection->followers();
-            if (followerInfo->remove((*followers)[i])) {
-              LOG_TOPIC(WARN, Logger::REPLICATION)
-                << "insertLocal: dropping follower " << (*followers)[i]
-                << " for shard " << collectionName;
-            } else {
-              LOG_TOPIC(ERR, Logger::REPLICATION)
-                << "insertLocal: could not drop follower "
-                << (*followers)[i] << " for shard " << collectionName;
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+          itValue.next();
+          itResult.next();
+        }
+      } else {
+        doOneDoc(value, ourResult);
+        count++;
+      }
+
+      if (count > 0) {
+        auto body = std::make_shared<std::string>();
+        *body = payload->slice().toJson();
+
+        // Now prepare the requests:
+        std::vector<ClusterCommRequest> requests;
+        requests.reserve(followers->size());
+
+        for (auto const& f : *followers) {
+          requests.emplace_back("server:" + f,
+                                arangodb::rest::RequestType::POST, path, body);
+        }
+        auto cc = arangodb::ClusterComm::instance();
+        if (cc != nullptr) {
+          // nullptr only happens on controlled shutdown
+          size_t nrDone = 0;
+          cc->performRequests(
+              requests, chooseTimeout(count, body->size() * followers->size()),
+              nrDone, Logger::REPLICATION, false);
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,
+                                   options);
+          }
+
+          // Otherwise we drop all followers that were not successful:
+          for (size_t i = 0; i < followers->size(); ++i) {
+            bool replicationWorked =
+                requests[i].done &&
+                requests[i].result.status == CL_COMM_RECEIVED &&
+                (requests[i].result.answer_code ==
+                     rest::ResponseCode::ACCEPTED ||
+                 requests[i].result.answer_code == rest::ResponseCode::CREATED);
+            if (replicationWorked) {
+              bool found;
+              requests[i].result.answer->header(StaticStrings::ErrorCodes,
+                                                found);
+              replicationWorked = !found;
+            }
+            if (!replicationWorked) {
+              auto const& followerInfo = collection->followers();
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                    << "insertLocal: dropping follower " << (*followers)[i]
+                    << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                    << "insertLocal: could not drop follower "
+                    << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(
+                    TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
             }
           }
         }

@@ -344,10 +344,6 @@ class LogicalCollection : public LogicalDataSource {
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
-  // SECTION: Indexes (local only)
-  // @brief create index with the given definition.
-  bool openIndex(velocypack::Slice const&, transaction::Methods*);
-
   void increaseInternalVersion();
 
   transaction::CountCache _countCache;
