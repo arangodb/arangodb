@@ -3218,7 +3218,9 @@ if (_logicalCollection.version() >=
 }
 
 void MMFilesCollection::setCurrentVersion() {
-  _logicalCollection.setVersion(LogicalCollection::currentVersion());
+_logicalCollection.setVersion(
+    static_cast<LogicalCollection::CollectionVersions>(
+        LogicalCollection::currentVersion()));
 
   bool const doSync =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
