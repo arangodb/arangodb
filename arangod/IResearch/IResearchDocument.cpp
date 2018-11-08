@@ -679,7 +679,11 @@ DocumentPrimaryKey::DocumentPrimaryKey(
     TRI_voc_rid_t rid
 ) noexcept
   : _keys{ cid, rid } {
-  static_assert(sizeof(_keys) == sizeof(cid) + sizeof(rid), "Invalid size");
+
+  static_assert(
+    sizeof(_keys) == sizeof(cid) + sizeof(rid),
+    "Invalid size"
+  );
 
   // ensure little endian
   if (irs::numeric_utils::is_big_endian()) {
@@ -693,7 +697,15 @@ bool DocumentPrimaryKey::read(irs::bytes_ref const& in) noexcept {
     return false;
   }
 
-  std::memcpy(_keys, in.c_str(), sizeof(_keys));
+  static_assert(
+    sizeof(TRI_voc_cid_t) == sizeof(TRI_voc_rid_t),
+    "sizeof(TRI_voc_cid_t) != sizeof(TRI_voc_rid_t)"
+  );
+
+  auto* begin = reinterpret_cast<TRI_voc_cid_t const*>(in.c_str());
+
+  _keys[0] = *begin++;
+  _keys[1] = *begin;
 
   return true;
 }
