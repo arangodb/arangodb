@@ -1965,6 +1965,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   if (LogicalCollection::currentVersion() != _logicalCollection.version()
       && !engine->upgrading()) {
     setCurrentVersion();
+    // updates have already happened elsewhere, it is safe to bump the number
   }
 }
 
