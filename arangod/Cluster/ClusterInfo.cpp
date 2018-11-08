@@ -2458,6 +2458,10 @@ int ClusterInfo::ensureIndexCoordinator(
     errorCode = TRI_ERROR_INTERNAL;
   }
   
+  if (application_features::ApplicationServer::isStopping()) {
+    return errorCode;
+  }
+
   std::shared_ptr<LogicalCollection> c;
   // Index is created in current, let's remove 'building' key so that
   // it is ready for use.
@@ -2540,10 +2544,6 @@ int ClusterInfo::ensureIndexCoordinator(
     }
   }
   
-  if (application_features::ApplicationServer::isStopping()) {
-    return errorCode;
-  }
-
   std::shared_ptr<VPackBuilder> planValue;
   std::shared_ptr<VPackBuilder> oldPlanIndexes;
 
