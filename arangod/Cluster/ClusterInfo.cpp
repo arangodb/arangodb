@@ -2469,12 +2469,6 @@ int ClusterInfo::ensureIndexCoordinator(
         arangodb::StaticStrings::IndexType).isEqualString("arangosearch")) {
     if (errorCode == TRI_ERROR_NO_ERROR) {
 
-      loadPlan();
-      // find index in plan
-      VPackBuilder newPlanIndexes;
-      VPackBuilder oldPlanIndexes;
-      bool found = false;
-
       c = getCollection(databaseName, collectionID);
 
       std::string idStr;
