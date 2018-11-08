@@ -3130,9 +3130,9 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 }
 
 bool MMFilesCollection::hasAllPersistentLocalIds() const {
-TRI_ASSERT(_hasAllPersistentLocalIds.load() !=
-           (_logicalCollection.version() <
-            LogicalCollection::CollectionVersions::VERSION_34));
+  TRI_ASSERT(_hasAllPersistentLocalIds.load() !=
+             (_logicalCollection.version() <
+              LogicalCollection::CollectionVersions::VERSION_34));
   return _hasAllPersistentLocalIds.load();
 }
 
@@ -3181,12 +3181,12 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
 }
 
 Result MMFilesCollection::persistLocalDocumentIds() {
-if (_logicalCollection.version() >=
-    LogicalCollection::CollectionVersions::VERSION_34) {
-  // already good, just continue
-  return Result();
+  if (_logicalCollection.version() >=
+      LogicalCollection::CollectionVersions::VERSION_34) {
+    // already good, just continue
+    return Result();
   }
-  
+
   WRITE_LOCKER(dataLocker, _dataLock);
   TRI_ASSERT(_compactors.empty());
 
@@ -3211,7 +3211,7 @@ if (_logicalCollection.version() >=
 
   TRI_ASSERT(_compactors.empty());
   TRI_ASSERT(_journals.empty());
-  
+
   // mark collection as upgraded so we can avoid re-checking
   setCurrentVersion();
 
@@ -3219,9 +3219,9 @@ if (_logicalCollection.version() >=
 }
 
 void MMFilesCollection::setCurrentVersion() {
-_logicalCollection.setVersion(
-    static_cast<LogicalCollection::CollectionVersions>(
-        LogicalCollection::currentVersion()));
+  _logicalCollection.setVersion(
+      static_cast<LogicalCollection::CollectionVersions>(
+          LogicalCollection::currentVersion()));
 
   bool const doSync =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
