@@ -704,8 +704,8 @@ bool DocumentPrimaryKey::read(irs::bytes_ref const& in) noexcept {
 
   auto* begin = reinterpret_cast<TRI_voc_cid_t const*>(in.c_str());
 
-  _keys[0] = *begin++;
-  _keys[1] = *begin;
+  _keys[0] = begin[0];
+  _keys[1] = begin[1];
 
   return true;
 }
