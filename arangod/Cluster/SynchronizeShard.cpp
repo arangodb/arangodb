@@ -148,7 +148,7 @@ arangodb::Result getReadLockId(
 
   auto result = comres->result;
 
-  if (result != nullptr || result->getHttpReturnCode() == 200) {
+  if (result != nullptr && result->getHttpReturnCode() == 200) {
     auto const idv = comres->result->getBodyVelocyPack();
     auto const& idSlice = idv->slice();
     TRI_ASSERT(idSlice.isObject());
@@ -387,7 +387,7 @@ arangodb::Result cancelBarrier(
 
   if (comres->status == CL_COMM_SENT) {
     auto result = comres->result;
-    if (result != nullptr || result->getHttpReturnCode() != 200 &&
+    if (result != nullptr && result->getHttpReturnCode() != 200 &&
         result->getHttpReturnCode() != 204) {
       auto errorMessage = comres->stringifyErrorMessage();
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
@@ -443,7 +443,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       std::unordered_map<std::string, std::string>(), timeout);
 
     auto result = putres->result;
-    if (result != nullptr || result->getHttpReturnCode() == 200) {
+    if (result != nullptr && result->getHttpReturnCode() == 200) {
       auto const vp = putres->result->getBodyVelocyPack();
       auto const& slice = vp->slice();
       TRI_ASSERT(slice.isObject());
