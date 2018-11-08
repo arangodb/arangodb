@@ -486,12 +486,6 @@ bool IResearchViewBlock::next(
         );
       }
 
-      // The result is in the first variable of this depth,
-      // we do not need to do a lookup in
-      // getPlanNode()->_registerPlan->varInfo,
-      // but can just take cur->getNrRegs() as registerId:
-
-      // FIXME why?
       if (ctx.pos > 0) {
         // re-use already copied AQLValues
         ctx.res->copyValuesFromFirstRow(ctx.pos, static_cast<RegisterId>(ctx.curRegs));
@@ -602,12 +596,6 @@ bool IResearchViewUnorderedBlock::next(
         continue;
       }
 
-      // The result is in the first variable of this depth,
-      // we do not need to do a lookup in
-      // getPlanNode()->_registerPlan->varInfo,
-      // but can just take cur->getNrRegs() as registerId:
-
-      // FIXME why?
       if (ctx.pos > 0) {
         // re-use already copied AQLValues
         ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
