@@ -3224,7 +3224,8 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
 }
 
 Result MMFilesCollection::persistLocalDocumentIds() {
-  if (_logicalCollection.version() >= VERSION_34) {
+if (_logicalCollection.version() >=
+    LogicalCollection::CollectionVersions::VERSION_34) {
     // already good, just continue
     return Result();
   }
