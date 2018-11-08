@@ -165,6 +165,14 @@ These tests are ran using the jasmine framework instead of jsunity.
 --------
 These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 
+-grey
+-----
+These tests are currently listed as "grey", which means that they are
+known to be unstable or broken. These tests will not be executed by the
+testing framework if the option `--skipGrey` is given. See
+`tests/Greylist.txt` for up-to-date information about greylisted tests.
+Please help to keep this file up to date.
+
 Test frameworks used
 ====================
 There are several major places where unittests live: 
