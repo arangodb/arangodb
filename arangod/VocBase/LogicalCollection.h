@@ -303,20 +303,33 @@ class LogicalCollection {
   /// NOTE: This function throws on error
   Result truncate(transaction::Methods* trx, OperationOptions&);
 
-  Result insert(transaction::Methods*, velocypack::Slice const,
+  /**
+  * @param callbackDuringLock Called immediately after a successful insert. If
+  * it returns a failure, the insert will be rolled back. If the insert wasn't
+  * successful, it isn't called. May be nullptr.
+  */
+  Result insert(transaction::Methods* trx, velocypack::Slice slice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock);
+
+  Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_tick_t& revisionId);
-  Result update(transaction::Methods*, velocypack::Slice const,
-                ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous);
-  Result replace(transaction::Methods*, velocypack::Slice const,
+                TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
+
+  Result replace(transaction::Methods*, velocypack::Slice,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                 ManagedDocumentResult& previous);
-  Result remove(transaction::Methods*, velocypack::Slice const,
-                OperationOptions&, TRI_voc_tick_t&, bool,
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+                 TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                 ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock);
+
+  Result remove(transaction::Methods*, velocypack::Slice,
+                OperationOptions&, TRI_voc_tick_t&, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
@@ -359,10 +372,6 @@ class LogicalCollection {
   }
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
-
-  // SECTION: Indexes (local only)
-  // @brief create index with the given definition.
-  bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
   void increaseInternalVersion();
 

@@ -47,6 +47,9 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
   static char const* engineName();
 
+  static bool isMMFiles();
+  static bool isRocksDB();
+
  public:
   // selected storage engine. this will contain a pointer to the storage engine after
   // prepare() and before unprepare()

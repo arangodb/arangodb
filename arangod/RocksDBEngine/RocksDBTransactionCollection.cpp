@@ -38,7 +38,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
     TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
-      _lockType(AccessMode::Type::NONE),
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
@@ -48,7 +47,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _numRemoves(0),
       _usageLocked(false) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
 /// @brief request a main-level lock for a collection
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired

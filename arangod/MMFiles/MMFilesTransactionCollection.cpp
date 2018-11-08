@@ -34,7 +34,9 @@
 
 using namespace arangodb;
 
-MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
+MMFilesTransactionCollection::MMFilesTransactionCollection(
+    TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
+    int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _operations{_arena},
       _originalRevision(0), 

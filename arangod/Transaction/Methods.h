@@ -594,6 +594,12 @@ class Methods {
   /// @brief optional callback function that will be called on transaction
   /// commit or abort
   std::function<void(arangodb::transaction::Methods* trx)> _onFinish;
+
+  Result replicateOperations(
+      LogicalCollection const& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options, VPackSlice value,
+      TRI_voc_document_operation_e operation, VPackBuilder& resultBuilder);
 };
 
 class CallbackInvoker {

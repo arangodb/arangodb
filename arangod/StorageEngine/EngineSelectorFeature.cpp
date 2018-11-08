@@ -147,3 +147,13 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
 char const* EngineSelectorFeature::engineName() {
   return ENGINE->typeName();
 }
+
+bool EngineSelectorFeature::isMMFiles() {
+  return engineName() == MMFilesEngine::EngineName;
+}
+
+bool EngineSelectorFeature::isRocksDB() {
+  return engineName() == RocksDBEngine::EngineName;
+}
+
+} // arangodb

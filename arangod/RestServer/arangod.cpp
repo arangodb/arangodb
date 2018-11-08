@@ -231,7 +231,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
         << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangod terminated because of an xception of "
+        << "arangod terminated because of an exception of "
            "unknown type";
   }
   exit(EXIT_FAILURE);
