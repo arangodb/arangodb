@@ -1962,21 +1962,9 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   // successfully opened collection. now adjust version number
-  if (LogicalCollection::VERSION_33 != _logicalCollection.version()) {
-    _logicalCollection.setVersion(LogicalCollection::VERSION_33);
-
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-    engine->changeCollection(
-      _logicalCollection.vocbase(),
-      _logicalCollection.id(),
-      _logicalCollection,
-      doSync
-    );
+  if (LogicalCollection::currentVersion() != _logicalCollection.version()
+      && !engine->upgrading()) {
+    setCurrentVersion();
   }
 }
 
@@ -3184,6 +3172,13 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
   }
 }
 
+bool MMFilesCollection::hasAllPersistentLocalIds() const {
+TRI_ASSERT(_hasAllPersistentLocalIds.load() !=
+           (_logicalCollection.version() <=
+            LogicalCollection::CollectionVersions::VERSION_34));
+  return _hasAllPersistentLocalIds.load();
+}
+
 Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     MMFilesCollection& collection, MMFilesDatafile& file) {
   Result res;
@@ -3229,6 +3224,11 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
 }
 
 Result MMFilesCollection::persistLocalDocumentIds() {
+  if (_logicalCollection.version() >= VERSION_34) {
+    // already good, just continue
+    return Result();
+  }
+
   WRITE_LOCKER(dataLocker, _dataLock);
   TRI_ASSERT(_compactors.empty());
 
@@ -3254,7 +3254,23 @@ Result MMFilesCollection::persistLocalDocumentIds() {
   TRI_ASSERT(_compactors.empty());
   TRI_ASSERT(_journals.empty());
 
+  // mark collection as upgraded so we can avoid re-checking
+  setCurrentVersion();
+
   return Result();
+}
+
+void MMFilesCollection::setCurrentVersion() {
+  _logicalCollection.setVersion(LogicalCollection::currentVersion());
+
+  bool const doSync =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database")
+          ->forceSyncProperties();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+  engine->changeCollection(_logicalCollection.vocbase(),
+                           _logicalCollection.id(), _logicalCollection, doSync);
 }
 
 /// @brief creates a new entry in the primary index
