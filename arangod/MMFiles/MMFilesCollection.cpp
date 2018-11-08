@@ -3174,9 +3174,9 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 }
 
 bool MMFilesCollection::hasAllPersistentLocalIds() const {
-TRI_ASSERT(_hasAllPersistentLocalIds.load() !=
-           (_logicalCollection.version() <
-            LogicalCollection::CollectionVersions::VERSION_34));
+  TRI_ASSERT(_hasAllPersistentLocalIds.load() !=
+             (_logicalCollection.version() <
+              LogicalCollection::CollectionVersions::VERSION_34));
   return _hasAllPersistentLocalIds.load();
 }
 
@@ -3191,8 +3191,8 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     return res;
   }
 
-  size_t outputSizeLimit = file.currentSize() +
-                           (numDocuments * sizeof(LocalDocumentId));
+  size_t outputSizeLimit =
+      file.currentSize() + (numDocuments * sizeof(LocalDocumentId));
   MMFilesDatafile* outputFile = nullptr;
   {
     READ_UNLOCKER(unlocker, collection._filesLock);
@@ -3202,8 +3202,8 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  res = TRI_IterateDatafile(&file, ::persistLocalDocumentIdIterator,
-                            outputFile);
+  res =
+      TRI_IterateDatafile(&file, ::persistLocalDocumentIdIterator, outputFile);
   if (res.fail()) {
     return res;
   }
@@ -3225,8 +3225,8 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(
 }
 
 Result MMFilesCollection::persistLocalDocumentIds() {
-if (_logicalCollection.version() >=
-    LogicalCollection::CollectionVersions::VERSION_34) {
+  if (_logicalCollection.version() >=
+      LogicalCollection::CollectionVersions::VERSION_34) {
     // already good, just continue
     return Result();
   }
@@ -3263,9 +3263,9 @@ if (_logicalCollection.version() >=
 }
 
 void MMFilesCollection::setCurrentVersion() {
-_logicalCollection.setVersion(
-    static_cast<LogicalCollection::CollectionVersions>(
-        LogicalCollection::currentVersion()));
+  _logicalCollection.setVersion(
+      static_cast<LogicalCollection::CollectionVersions>(
+          LogicalCollection::currentVersion()));
 
   bool const doSync =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
