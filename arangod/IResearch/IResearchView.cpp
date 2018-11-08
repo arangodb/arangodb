@@ -78,94 +78,48 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple directory readers
+/// @brief empty index reader
 ////////////////////////////////////////////////////////////////////////////////
-class CompoundReader final: public irs::composite_reader {
+class EmptyReader final : public irs::composite_reader {
  public:
-  explicit CompoundReader(ReadMutex& viewMutex) noexcept
-    : _viewLock(viewMutex) {
+  static EmptyReader const& instance() noexcept {
+    static EmptyReader const INSTANCE;
+    return INSTANCE;
   }
-  irs::sub_reader const& operator[](
-      size_t subReaderId
-  ) const noexcept override {
-    return *_subReaders[subReaderId];
+  virtual irs::sub_reader const& operator[](size_t ) const override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-
-  void add(irs::directory_reader const& reader);
   virtual reader_iterator begin() const override {
-    return reader_iterator(new IteratorImpl(_subReaders.begin()));
+    return reader_iterator(new IteratorImpl());
   }
-  virtual uint64_t docs_count() const override;
   virtual reader_iterator end() const override {
-    return reader_iterator(new IteratorImpl(_subReaders.end()));
+    return reader_iterator(new IteratorImpl());
   }
-  virtual uint64_t live_docs_count() const override;
-
-  virtual size_t size() const noexcept override { return _subReaders.size(); }
-
-  void clear() noexcept {
-    _subReaders.clear();
-    _readers.clear();
-  }
+  virtual uint64_t docs_count() const override { return 0; }
+  virtual uint64_t live_docs_count() const override { return 0; }
+  virtual size_t size() const noexcept override { return 0; }
 
  private:
-  typedef std::vector<irs::sub_reader*> SubReadersType;
+  EmptyReader() = default;
 
   class IteratorImpl final: public irs::index_reader::reader_iterator_impl {
    public:
-    explicit IteratorImpl(SubReadersType::const_iterator const& itr) noexcept
-      : _itr(itr) {
+    virtual void operator++() override {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-
-    virtual void operator++() noexcept override { ++_itr; }
-    virtual reference operator*() noexcept override { return **(_itr); }
-
-    virtual const_reference operator*() const noexcept override {
-      return **(_itr);
+    virtual reference operator*() override {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-
+    virtual const_reference operator*() const override {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
     virtual bool operator==(
         const reader_iterator_impl& other
     ) noexcept override {
-      return static_cast<IteratorImpl const&>(other)._itr == _itr;
+      return true;
     }
-
-   private:
-    SubReadersType::const_iterator _itr;
   };
-
-  std::vector<irs::directory_reader> _readers;
-  SubReadersType _subReaders;
-  std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
 };
-
-void CompoundReader::add(irs::directory_reader const& reader) {
-  _readers.emplace_back(reader);
-
-  for(auto& entry: _readers.back()) {
-    _subReaders.emplace_back(&entry);
-  }
-}
-
-uint64_t CompoundReader::docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry->docs_count();
-  }
-
-  return count;
-}
-
-uint64_t CompoundReader::live_docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry->live_docs_count();
-  }
-
-  return count;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates user-friendly description of the specified view
@@ -635,10 +589,11 @@ struct IResearchView::ViewFactory: public arangodb::ViewFactory {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewStateRead final
     : public arangodb::TransactionState::Cookie {
-  CompoundReader _snapshot;
+  irs::directory_reader _snapshot;
+  std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
 
   explicit ViewStateRead(ReadMutex& mutex) noexcept
-    : _snapshot(mutex) {
+    : _viewLock(mutex) {
   }
 };
 
@@ -1856,18 +1811,14 @@ irs::composite_reader const* IResearchView::snapshot(
   }
 
   std::unique_ptr<ViewStateRead> cookiePtr;
-  CompoundReader* reader = nullptr;
 
   if (!cookie) {
     // will acquire read-lock to prevent data-store deallocation
     cookiePtr = irs::memory::make_unique<ViewStateRead>(_asyncSelf->mutex());
-    reader = &cookiePtr->_snapshot;
-  } else {
-    reader = &cookie->_snapshot;
-    reader->clear();
+    cookie = cookiePtr.get();
   }
 
-  TRI_ASSERT(reader);
+  TRI_ASSERT(cookie);
 
   if (!_asyncSelf->get()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1879,7 +1830,7 @@ irs::composite_reader const* IResearchView::snapshot(
   try {
     // '_storePersisted' protected by '_asyncSelf' held by ViewStateRead
     if (_storePersisted) {
-      reader->add(_storePersisted._reader);
+      cookie->_snapshot = _storePersisted._reader;
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1912,7 +1863,11 @@ irs::composite_reader const* IResearchView::snapshot(
     return nullptr;
   }
 
-  return reader;
+  if (!cookie->_snapshot) {
+    return &EmptyReader::instance();
+  }
+
+  return &cookie->_snapshot;
 }
 
 IResearchView::AsyncSelf::ptr IResearchView::self() const {
