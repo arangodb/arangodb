@@ -381,41 +381,6 @@
     return [id, [path.dirname(parent.filename)]];
   };
 
-  Module._resolveDbModule = function (request) {
-    if (request.charAt(0) !== '/') {
-      request = '/' + request;
-    }
-
-    try {
-      var dbModule = Module._dbCache[request];
-
-      // _modules is an optional collection. only use it if it is present.
-      if (!dbModule && internal.db !== undefined && internal.db._modules) {
-        dbModule = internal.db._modules.firstExample({path: request});
-
-        if (!dbModule) {
-          // try again, but prefix module with '/db' as some modules seem
-          // to have been saved with that prefix...
-          dbModule = internal.db._modules.firstExample({path: '/db:' + request});
-
-          if (!dbModule) {
-            return null;
-          }
-        }
-
-        Module._dbCache[request] = dbModule;
-      }
-
-      return dbModule;
-    } catch (err) {
-      // something went wrong while accessing _modules collection
-      // ArangoDB will continue to run without it, so just log a message and
-      // continue operations
-      console.debug("unable to load module '%s': %s", request, String(err));
-      return null;
-    }
-  };
-
   function isGlobalModule (filename) {
     return modulePaths.some(function (modulePath) {
       return filename.indexOf(modulePath) === 0;
@@ -434,35 +399,11 @@
     request = (parent && parent.require.aliases.get(request)) || request;
 
     var filename = request;
-    var dbModule = false;
-    var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
 
-    if (match) {
-      dbModule = Module._resolveDbModule(match[3]);
-      if (!dbModule) {
-        throw new internal.ArangoError({
-          errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
-          errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
-            + '\nFile: ' + request
-        });
-      }
-    } else {
-      try {
-        filename = Module._resolveFilename(request, parent);
-      } catch (e) {
-        dbModule = Module._resolveDbModule(request);
-        if (!dbModule) {
-          throw e;
-        }
-      }
-    }
-
-    if (dbModule) {
-      filename = dbModule.path;
-    }
+    filename = Module._resolveFilename(request, parent);
 
     var cache;
-    if (parent && (dbModule || !isGlobalModule(filename))) {
+    if (parent &&  !isGlobalModule(filename)) {
       cache = parent.require.cache;
     } else {
       cache = Module._cache;
@@ -490,11 +431,7 @@
     var hadException = true;
 
     try {
-      if (dbModule) {
-        module._loadDbModule(dbModule);
-      } else {
-        module.load(filename);
-      }
+      module.load(filename);
       hadException = false;
     } finally {
       if (hadException) {
@@ -575,14 +512,6 @@
       throw e;
     }
 
-    this.loaded = true;
-  };
-
-  Module.prototype._loadDbModule = function (dbModule) {
-    assert(!this.loaded);
-    const filename = `db://_modules${dbModule.path}`;
-    this.filename = filename;
-    this._compile(dbModule.content, filename);
     this.loaded = true;
   };
 
