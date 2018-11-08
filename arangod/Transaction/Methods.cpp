@@ -1621,14 +1621,46 @@ OperationResult transaction::Methods::insertLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  std::shared_ptr<std::vector<ServerID> const> followers;
-
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
   // Assert my assumption that we don't have a lock only with mmfiles single
-  // document operations
-  auto* ce = dynamic_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(!needsLock || ce->isMMFiles() && !value.isArray());
+  // document operations.
+
+  bool isMMFiles = EngineSelectorFeature::isMMFiles();
+  TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+
+  // If we're not on a single server (i.e. maybe replicating), are using the
+  // MMFiles storage engine, and are doing a single document operation, we have
+  // to:
+  // - Use additional per-document locks that hold until the replication is
+  //   done. This is to avoid conflicting updates possibly arriving at a
+  //   follower in an undeterministic order.
+  // - Get the list of followers during the time span we actually do hold a
+  //   collection level lock. This is to avoid races with the replication where
+  //   a follower may otherwise be added between the actual document operation
+  //   and the point where we get our copy of the followers, regardless of the
+  //   latter happens before or after the document operation.
+  bool const needsDocumentLocks =
+      needsLock && _state->isDBServer();
+  bool const needsToGetFollowersUnderLock = needsDocumentLocks;
+
+  std::shared_ptr<std::vector<ServerID> const> followers;
+
+  std::function<Result(void)> updateFollowers = nullptr;
+
+  if (needsToGetFollowersUnderLock) {
+    auto const& followerInfo = *collection->followers();
+
+    updateFollowers = [&followerInfo, &followers]() -> Result {
+      TRI_ASSERT(followers == nullptr);
+      followers = followerInfo.get();
+
+      return Result{};
+    };
+  } else if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -1641,10 +1673,15 @@ OperationResult transaction::Methods::insertLocal(
       }
 
       replicationType = ReplicationType::LEADER;
-      // We may have to replicate later, so we cannot be silent. This holds at
-      // least for MMFiles single-document-operations. Otherwise, we could
-      // check if the list of followers is empty to avoid this.
-      options.silent = false;
+      // We cannot be silent if we may have to replicate later.
+      // If we need to get the followers under the single document operation's
+      // lock, we don't know yet if we will have followers later and thus cannot
+      // be silent.
+      // Otherwise, if we already know the followers, to replicate to, we can
+      // just check if they're empty.
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
+        options.silent = false;
+      }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
@@ -1672,9 +1709,9 @@ OperationResult transaction::Methods::insertLocal(
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
 
-    Result res =
-        collection->insert(this, value, documentResult, options,
-                           resultMarkerTick, needsLock, revisionId, nullptr);
+    Result res = collection->insert(this, value, documentResult, options,
+                                    resultMarkerTick, needsLock, revisionId,
+                                    updateFollowers);
 
     ManagedDocumentResult previousDocumentResult; // return OLD
     TRI_voc_rid_t previousRevisionId = 0;
@@ -1743,9 +1780,6 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
-    // TODO get the followers during the transaction, which for MMFiles single-
-    // document-operations means during insert().
-    followers = collection->followers()->get();
     TRI_ASSERT(followers != nullptr);
 
     if (!followers->empty()) {
