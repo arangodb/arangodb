@@ -362,9 +362,9 @@ class MMFilesCollection final : public PhysicalCollection {
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
-                OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId) override;
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,

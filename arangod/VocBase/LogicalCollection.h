@@ -273,9 +273,14 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods* trx, OperationOptions&);
 
-  Result insert(transaction::Methods*, velocypack::Slice const,
-                ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool lock, TRI_voc_tick_t& revisionId);
+  // convenience function for downwards-compatibility
+  Result insert(transaction::Methods* trx, velocypack::Slice const slice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_tick_t& revisionId) {
+    return insert(trx, slice, result, options, resultMarkerTick, lock,
+                  revisionId, nullptr);
+  }
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
@@ -283,6 +288,17 @@ class LogicalCollection : public LogicalDataSource {
     TRI_voc_tick_t unused;
     return insert(trx, slice, result, options, resultMarkerTick, lock, unused);
   }
+
+  /**
+  * @param callbackDuringLock Called immediately after a successful insert. If
+  * it returns a failure, the insert will be rolled back. If the insert wasn't
+  * successful, it isn't called. May be nullptr.
+  */
+  Result insert(transaction::Methods* trx, velocypack::Slice slice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,

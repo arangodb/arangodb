@@ -517,12 +517,11 @@ bool ClusterCollection::readDocumentWithCallback(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::insert(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
-                                 arangodb::ManagedDocumentResult& mdr,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& revisionId) {
+Result ClusterCollection::insert(arangodb::transaction::Methods*,
+                                 arangodb::velocypack::Slice const,
+                                 arangodb::ManagedDocumentResult&,
+                                 OperationOptions&, TRI_voc_tick_t&, bool,
+                                 TRI_voc_tick_t&, std::function<Result(void)>) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

@@ -157,10 +157,11 @@ class ClusterCollection final : public PhysicalCollection {
       IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+                arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,

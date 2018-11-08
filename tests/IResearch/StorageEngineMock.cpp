@@ -633,7 +633,14 @@ void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) 
   before();
 }
 
-arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId) {
+arangodb::Result PhysicalCollectionMock::insert(
+    arangodb::transaction::Methods* trx,
+    arangodb::velocypack::Slice const newSlice,
+    arangodb::ManagedDocumentResult& result,
+    arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+    bool lock, TRI_voc_tick_t& revisionId,
+    std::function<arangodb::Result(void)>
+        callbackDuringLock) {  // TODO call callback
   before();
 
   arangodb::velocypack::Builder builder;
@@ -912,7 +919,8 @@ arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* 
         prevRev = revId;
 
         TRI_voc_rid_t unused;
-        return insert(trx, newSlice, result, options, resultMarkerTick, lock, unused);
+        return insert(trx, newSlice, result, options, resultMarkerTick, lock,
+                      unused, nullptr);
       }
 
       arangodb::velocypack::Builder builder;
@@ -937,7 +945,8 @@ arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* 
       prevRev = revId;
 
       TRI_voc_rid_t unused;
-      return insert(trx, builder.slice(), result, options, resultMarkerTick, lock, unused);
+      return insert(trx, builder.slice(), result, options, resultMarkerTick,
+                    lock, unused, nullptr);
     }
   }
 

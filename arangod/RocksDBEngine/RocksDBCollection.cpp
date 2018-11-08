@@ -876,12 +876,12 @@ bool RocksDBCollection::readDocumentWithCallback(
   return false;
 }
 
-Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
-                                 arangodb::ManagedDocumentResult& mdr,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& revisionId) {
+Result RocksDBCollection::insert(
+    arangodb::transaction::Methods* trx,
+    arangodb::velocypack::Slice const slice,
+    arangodb::ManagedDocumentResult& mdr, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_tick_t& revisionId,
+    std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -948,6 +948,10 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT,
       hasPerformedIntermediateCommit
     );
+
+    if (result.ok() && callbackDuringLock != nullptr) {
+      result = callbackDuringLock();
+    }
 
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);

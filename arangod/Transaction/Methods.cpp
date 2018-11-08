@@ -40,6 +40,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -1622,6 +1623,13 @@ OperationResult transaction::Methods::insertLocal(
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+  // Assert my assumption that we don't have a lock only with mmfiles single
+  // document operations
+  auto* ce = dynamic_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  TRI_ASSERT(!needsLock || ce->isMMFiles() && !value.isArray());
+
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1664,11 +1672,9 @@ OperationResult transaction::Methods::insertLocal(
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
 
-    auto const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
-
-    Result res = collection->insert( this, value, documentResult, options
-                                   , resultMarkerTick, needsLock, revisionId
-                                   );
+    Result res =
+        collection->insert(this, value, documentResult, options,
+                           resultMarkerTick, needsLock, revisionId, nullptr);
 
     ManagedDocumentResult previousDocumentResult; // return OLD
     TRI_voc_rid_t previousRevisionId = 0;

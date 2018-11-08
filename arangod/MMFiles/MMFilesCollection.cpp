@@ -2887,12 +2887,12 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
   return LocalDocumentId::create();
 }
 
-Result MMFilesCollection::insert(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_tick_t& revisionId) {
+Result MMFilesCollection::insert(
+    arangodb::transaction::Methods* trx,
+    arangodb::velocypack::Slice const slice,
+    arangodb::ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    std::function<Result(void)> callbackDuringLock) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -3007,6 +3007,10 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
         res = Result(TRI_ERROR_INTERNAL, ex.what());
       } catch (...) {
         res = Result(TRI_ERROR_INTERNAL);
+      }
+
+      if (res.ok() && callbackDuringLock != nullptr) {
+        res = callbackDuringLock();
       }
     } catch (...) {
       // the collectionLocker may have thrown in its constructor...
