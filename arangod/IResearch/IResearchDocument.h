@@ -275,6 +275,7 @@ class DocumentPrimaryKey {
     };
   }
 
+  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   bool read(irs::bytes_ref const& in) noexcept;
 
  private:
