@@ -12,8 +12,7 @@ three hosts named `h01`, `h02`, and `h03`:
     arangodb@h01 ~> arangodb --starter.address h01 --starter.port 4000
     2018-11-09T07:18:45-05:00 |INFO| Starting arangodb version 0.13.7, build bdac926 component=arangodb
     2018-11-09T07:18:45-05:00 |INFO| Serving as master with ID '0191e3d2' on h01:4000... component=arangodb
-    2018-11-09T07:18:45-05:00 |INFO| Waiting for 3 servers to show up.
-	component=arangodb
+    2018-11-09T07:18:45-05:00 |INFO| Waiting for 3 servers to show up. component=arangodb
     2018-11-09T07:18:45-05:00 |INFO| Use the following commands to start other servers: component=arangodb
 
     arangodb --starter.data-dir=./db2 --starter.join h01:4000
