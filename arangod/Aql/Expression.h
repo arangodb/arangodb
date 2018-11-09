@@ -229,12 +229,12 @@ class Expression {
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
   AqlValue executeSimpleExpressionAttributeAccess(
-      AstNode const*, transaction::Methods*, bool& mustDestroy);
+      AstNode const*, transaction::Methods*, bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   AqlValue executeSimpleExpressionIndexedAccess(
       AstNode const*, transaction::Methods*,
-      bool& mustDestroy);
+      bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with ARRAY
   AqlValue executeSimpleExpressionArray(AstNode const*,
