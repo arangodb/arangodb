@@ -97,67 +97,11 @@ template<
   const_pointer begin_;
   const_pointer cur_;
   const_pointer end_;
-}; // field_iterator
+}; // iterator_adaptor
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                              C++ style iterators 
 // ----------------------------------------------------------------------------
-
-template< typename _T >
-struct forward_iterator_impl {
-  typedef _T value_type;
-  typedef _T& reference;
-  typedef const _T& const_reference;
-
-  virtual ~forward_iterator_impl() {}
-  virtual void operator++( ) = 0;
-  virtual reference operator*() = 0;
-  virtual const_reference operator*() const = 0;
-  virtual bool operator==( const forward_iterator_impl& ) = 0;
-};
-
-template< typename _IteratorImpl >
-class forward_iterator 
-  : private util::noncopyable,
-    public ::boost::iterator_facade<forward_iterator<_IteratorImpl>,
-            typename _IteratorImpl::value_type, 
-            ::boost::forward_traversal_tag> {
- public:
-  typedef _IteratorImpl iterator_impl;
-  typedef typename iterator_impl::value_type value_type;
-  typedef typename iterator_impl::reference reference;
-
-  explicit forward_iterator(iterator_impl* impl = nullptr) NOEXCEPT
-    : impl_(impl) {
-  }
-
-  forward_iterator(forward_iterator&& rhs) NOEXCEPT
-    : impl_(rhs.impl_) {
-    rhs.impl_ = nullptr;
-  }
-
-  ~forward_iterator() NOEXCEPT { delete impl_; }
-
-  forward_iterator& operator=(forward_iterator&& rhs) NOEXCEPT {
-    if (this != &rhs) {
-      impl_ = rhs.impl_;
-      rhs.impl_ = nullptr;
-    }
-
-    return *this;
-  }
-
-private:
-  friend class ::boost::iterator_core_access;
-
-  reference dereference() const { return **impl_; }
-  void increment() { ++(*impl_); }
-  bool equal(const forward_iterator& rhs) const {
-    return (!impl_ && !rhs.impl_) || (impl_ && rhs.impl_ && *impl_ == *rhs.impl_);
-  }
-
-  iterator_impl* impl_;
-};
 
 NS_BEGIN(detail)
 
