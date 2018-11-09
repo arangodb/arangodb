@@ -2163,8 +2163,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   const std::string followerId = followerIdSlice.copyString();
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to Add Follower: " << followerId << " to shard " << col->name() << " in database: " << _vocbase.name();
   // Short cut for the case that the collection is empty
   if (readLockIdSlice.isNone()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Try add follower fast-path (no documents)";
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
@@ -2175,6 +2177,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Compare fast-path Leader: " << nr << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           col->followers()->add(followerId);
 
@@ -2185,6 +2188,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
+          LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is now following on shard " << _vocbase.name() << "/" << col->name();
           return;
         }
       }
@@ -2193,6 +2197,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
                   "shard not empty");
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with " << _vocbase.name() << "/" << col->name();
     return;
   }
 
@@ -2201,6 +2206,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
@@ -2214,7 +2220,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Compare Leader: " << referenceChecksum.get() << " == Follower: " << checksumSlice.copyString();
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with " << _vocbase.name() << "/" << col->name();
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
      << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
@@ -2233,6 +2241,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << followerId << " is now following on shard " << _vocbase.name() << "/" << col->name();
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2347,6 +2356,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     lockType = AccessMode::Type::EXCLUSIVE;
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name() << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard") ;
   Result res = createBlockingTransaction(id, *col, ttl, lockType);
   if (!res.ok()) {
     generateError(res);
@@ -2362,6 +2372,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Shard: " << _vocbase.name() << "/" << col->name() << " is not locked with type: " << (doSoftLock ? "soft" : "hard") << " lock id: " << id;
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2391,6 +2402,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
     return;
   }
   aql::QueryId id = ExtractReadlockId(idSlice);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
     generateError(res);
@@ -2403,6 +2415,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(res.get()));
   }
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Lock " << id << " is " << (res.get() ? "still active." : "gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2432,6 +2445,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     return;
   }
   aql::QueryId id = ExtractReadlockId(idSlice);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
 
   auto res = cancelBlockingTransaction(id);
   if (!res.ok()) {
@@ -2446,6 +2460,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     b.add("lockHeld", VPackValue(res.get()));
   }
 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Lock: " << id << " is now canceled, " << (res.get() ? "it is still in use.": "it is gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
