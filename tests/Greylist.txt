@@ -9,3 +9,8 @@ or PRs.
    the MoveShard operation from one leader to a different one does not
    reliably drop the old leader as a follower from the Plan in the end.
    See https://github.com/arangodb/release-3.4/issues/125
+
+ - `./tests/js/server/recovery/nosync-rangedelete-truncate-multi-rocksdb-grey.js`
+   this suffers from multiple bugs in the recovery and regularly renders
+   this test red. Simon is working on it:
+
