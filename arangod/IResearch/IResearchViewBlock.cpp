@@ -104,23 +104,29 @@ using namespace arangodb::aql;
     IResearchViewBlockBase::ReadContext& ctx
 ) {
   auto* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
 
-  if (!engine) {
-    TRI_ASSERT(false); // should never get there
-    return [] (LocalDocumentId /*id*/, VPackSlice /*doc*/) { };
-  }
+  typedef std::function<
+    IndexIterator::DocumentCallback(IResearchViewBlockBase::ReadContext&)
+  > CallbackFactory;
 
-  if (engine->useRawDocumentPointers()) {
-    // capture only one reference to potentially avoid heap allocation
-    return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
-      ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintDocumentNoCopy(doc.begin()));
-    };
-  }
+  static CallbackFactory const callbackFactories[] {
+    [](ReadContext& ctx) {
+      // capture only one reference to potentially avoid heap allocation
+      return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
+        ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintCopy(doc.begin()));
+      };
+    },
 
-  // capture only one reference to potentially avoid heap allocation
-  return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
-    ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintCopy(doc.begin()));
+    [](ReadContext& ctx) {
+      // capture only one reference to potentially avoid heap allocation
+      return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
+        ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintDocumentNoCopy(doc.begin()));
+      };
+    }
   };
+
+  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
 IResearchViewBlockBase::IResearchViewBlockBase(
