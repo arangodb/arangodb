@@ -312,12 +312,9 @@ static arangodb::Result cancelReadLockOnLeader (
   { VPackObjectBuilder b(&body);
     body.add(ID, VPackValue(std::to_string(lockJobId))); }
 
-  // Note that we always use the _system database here because the actual
-  // database might be gone already on the leader and we need to cancel
-  // the read lock under all circumstances.
   auto comres = cc->syncRequest(
     clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
-    DB + StaticStrings::SystemDatabase + REPL_HOLD_READ_LOCK, body.toJson(),
+    DB + database + REPL_HOLD_READ_LOCK, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
   auto result = comres->result;
