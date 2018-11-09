@@ -55,11 +55,11 @@ class WalkerWorker {
 
   bool done(T* en) {
     // make sure a node is only processed once
-    if (_done.find(en) == _done.end()) {
-      _done.emplace(en);
+    if (_done.emplace(en).second) {
       return false;
     }
 
+    // should never happen
     TRI_ASSERT(false);
 
     return true;
