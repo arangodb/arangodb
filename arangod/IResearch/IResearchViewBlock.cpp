@@ -39,6 +39,8 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/LocalDocumentId.h"
@@ -97,6 +99,29 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 // --SECTION--                             IResearchViewBlockBase implementation
 // -----------------------------------------------------------------------------
+
+/*static*/ IndexIterator::DocumentCallback IResearchViewBlockBase::ReadContext::copyDocumentCallback(
+    IResearchViewBlockBase::ReadContext& ctx
+) {
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    TRI_ASSERT(false); // should never get there
+    return [] (LocalDocumentId /*id*/, VPackSlice /*doc*/) { };
+  }
+
+  if (engine->useRawDocumentPointers()) {
+    // capture only one reference to potentially avoid heap allocation
+    return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
+      ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintDocumentNoCopy(doc.begin()));
+    };
+  }
+
+  // capture only one reference to potentially avoid heap allocation
+  return [&ctx] (LocalDocumentId /*id*/, VPackSlice doc) {
+    ctx.res->emplaceValue(ctx.pos, ctx.curRegs, AqlValueHintCopy(doc.begin()));
+  };
+}
 
 IResearchViewBlockBase::IResearchViewBlockBase(
     irs::index_reader const& reader,
@@ -451,14 +476,6 @@ bool IResearchViewBlock::next(
   auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto const numSorts = viewNode.sortCondition().size();
 
-  // capture only one reference
-  // to potentially avoid heap allocation
-  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
-      LocalDocumentId /*id*/, VPackSlice doc
-  ) {
-    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
-  };
-
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     if (!_itr && !resetIterator()) {
       continue;
@@ -467,7 +484,7 @@ bool IResearchViewBlock::next(
     TRI_ASSERT(_pkReader);
 
     while (limit && _itr->next()) {
-      if (!readDocument(_itr->value(), _pkReader, copyDocument)) {
+      if (!readDocument(_itr->value(), _pkReader, ctx.callback)) {
         continue;
       }
 
@@ -572,14 +589,6 @@ bool IResearchViewUnorderedBlock::next(
     size_t limit) {
   TRI_ASSERT(_filter);
 
-  // capture only one reference
-  // to potentially avoid heap allocation
-  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
-      LocalDocumentId /*id*/, VPackSlice doc
-  ) {
-    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
-  };
-
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     if (!_itr && !resetIterator()) {
       continue;
@@ -592,7 +601,7 @@ bool IResearchViewUnorderedBlock::next(
 
     // read documents from underlying storage engine
     for (auto begin = _keys.begin(); begin != end; ++begin) {
-      if (!readDocument(*begin, copyDocument)) {
+      if (!readDocument(*begin, ctx.callback)) {
         continue;
       }
 

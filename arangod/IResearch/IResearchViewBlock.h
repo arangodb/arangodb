@@ -66,14 +66,20 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
-  struct ReadContext {
+  class ReadContext {
+   private:
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+
+   public:
     explicit ReadContext(aql::RegisterId curRegs)
-      : curRegs(curRegs) {
+      : curRegs(curRegs),
+        callback(copyDocumentCallback(*this)) {
     }
 
-    std::unique_ptr<aql::AqlItemBlock> res;
+    aql::RegisterId const curRegs;
     size_t pos{};
-    const aql::RegisterId curRegs;
+    std::unique_ptr<aql::AqlItemBlock> res;
+    IndexIterator::DocumentCallback const callback;
   }; // ReadContext
 
   bool readDocument(

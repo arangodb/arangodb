@@ -702,6 +702,7 @@ bool DocumentPrimaryKey::read(irs::bytes_ref const& in) noexcept {
     "sizeof(TRI_voc_cid_t) != sizeof(TRI_voc_rid_t)"
   );
 
+  // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   auto* begin = reinterpret_cast<TRI_voc_cid_t const*>(in.c_str());
 
   _keys[0] = begin[0];
