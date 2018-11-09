@@ -54,9 +54,10 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   
  private:
   std::string _startupDirectory;
+  std::string _nodeModulesDirectory;
   std::string _clientModule;
   std::string _copyDirectory;
-  std::vector<std::string> _moduleDirectory;
+  std::vector<std::string> _moduleDirectories;
   bool _currentModuleDirectory;
   bool _copyInstallation;
   bool _removeCopyInstallation;
