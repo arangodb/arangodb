@@ -207,9 +207,13 @@ Scheduler::~Scheduler() {
 
 // do not pass callback by reference, might get deleted before execution
 void Scheduler::post(std::function<void()> const callback) {
-  if (_ioContext) {  // not thread safe, but not expected to be needed either.
-    // increment number of queued and guard against exceptions
-    incQueued();
+  // increment number of queued and guard against exceptions
+  //  (this incQueued() manipulates the atomic _counters in a sequentially-consistent
+  //   manner so that we can make assumptions about threaded changes _ioContext)
+  incQueued();
+
+  // see if _ioContext still valid (defense against shutdown races)
+  if (_ioContext) {
 
     auto guardQueue = scopeGuard([this]() { decQueued(); });
 
@@ -228,6 +232,9 @@ void Scheduler::post(std::function<void()> const callback) {
     // no exception happened, cancel guard
     guardQueue.cancel();
   } else {
+    // reduce number of queued now
+    decQueued();
+
     // this post is coming late in application shutdown,
     //  might be essential ... process in-line after heavy complaining
     LOG_TOPIC(WARN, Logger::THREADS)
@@ -521,6 +528,10 @@ void Scheduler::beginShutdown() {
 }
 
 void Scheduler::shutdown() {
+
+  // Scheduler::post() assumes atomic _counters is manipulated in a
+  //  sequentially-consistent manner so that state of _ioContext can be implied
+  //  via _counters.
   while (true) {
     uint64_t const counters = _counters.load();
 

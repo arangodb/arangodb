@@ -169,6 +169,7 @@ class Scheduler {
   // the highest bytes (AA) are used only to encode a stopping bit. when this
   // bit is set, the scheduler is stopping (or already stopped)
 
+  // warning: _ioContext usage assumes _counters used in sequentially-consistent manner
   std::atomic<uint64_t> _counters;
 
   inline uint64_t getCounters() const noexcept { return _counters; }
