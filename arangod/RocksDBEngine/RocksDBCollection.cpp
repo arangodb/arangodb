@@ -278,12 +278,15 @@ size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
-  RocksDBEngine* engine =
-  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(engine != nullptr);
-  if (!engine->inRecovery()) {
-    loadInitialNumberDocuments();
-  }
+//  RocksDBEngine* engine =
+//  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+//  TRI_ASSERT(engine != nullptr);
+//  if (!engine->inRecovery()) {
+  LOG_DEVEL << "open collection " << _logicalCollection.name();
+    RocksDBCollectionMeta::DocCount count = _meta.currentCount();
+    _numberDocuments = count._added - count._removed;
+    _revisionId = count._revisionId;
+//  }
 }
 
 void RocksDBCollection::prepareIndexes(
@@ -662,14 +665,9 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     rocksdb::SequenceNumber seq = engine->db()->GetLatestSequenceNumber();
     LOG_DEVEL << "truncate lastestSeq: " << seq;
     auto guard = scopeGuard([&] { // remove blocker afterwards
-      READ_LOCKER(guard, _indexesLock);
-      for (std::shared_ptr<Index> const& idx : _indexes) {
-        auto* est = static_cast<RocksDBIndex*>(idx.get())->estimator();
-        if (est) {
-          est->removeBlocker(state->id());
-        }
-      }
+      _meta.removeBlocker(state->id());
     });
+    _meta.placeBlocker(state->id(), seq);
 
     rocksdb::WriteBatch batch;
     // add the log entry so we can recover the correct count
@@ -697,10 +695,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
-        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-        if (est) {
-          est->placeBlocker(state->id(), seq);
-        }
       }
     }
 
@@ -712,9 +706,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     seq = rocksutils::latestSequenceNumber(); // post commit sequence
     
     uint64_t numDocs = _numberDocuments.exchange(0);
-    RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
-                                                     /*numRemoves*/numDocs, /*rev*/0);
-    engine->settingsManager()->updateCounter(_objectId, update);
+    _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), -numDocs);
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -722,12 +714,12 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       }
     }
     
+    guard.fire(); // remove blocker
+
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
       engine->settingsManager()->sync(false);
     }
     
-    guard.fire(); // remove blocker
-
     if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();
@@ -1708,12 +1700,12 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 /// may never be called unless recovery is finished
 void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
                                               int64_t adjustment) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  RocksDBEngine* engine =
-  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(engine != nullptr);
-  TRI_ASSERT(!engine->inRecovery());
-#endif
+//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//  RocksDBEngine* engine =
+//  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+//  TRI_ASSERT(engine != nullptr);
+//  TRI_ASSERT(!engine->inRecovery());
+//#endif
   if (revId != 0) {
     _revisionId = revId;
   }
@@ -1722,14 +1714,6 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
   } else if (adjustment > 0) {
     _numberDocuments += static_cast<uint64_t>(adjustment);
   }
-}
-
-/// load the number of docs from storage, use careful
-void RocksDBCollection::loadInitialNumberDocuments() {
-  auto* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  auto counterValue = engine->settingsManager()->loadCounter(_objectId);
-  _numberDocuments = counterValue.added() - counterValue.removed();
-  _revisionId = counterValue.revisionId();
 }
 
 /// @brief write locks a collection, with a timeout
@@ -1841,32 +1825,35 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
-  auto ctx =
-    transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  SingleCollectionTransaction trx(
-    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
-  );
-  auto res = trx.begin();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  // count documents
-  auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-  _numberDocuments =
-      rocksutils::countKeyRange(engine->db(), documentBounds, true);
-
-  // update counter manager value
-  res = engine->settingsManager()->setAbsoluteCounter(_objectId, engine->currentTick(),
-                                                      _numberDocuments);
-  if (res.ok()) {
-    // in case of fail the counter has never been written and hence does not
-    // need correction. The value is not changed and does not need to be synced
-    engine->settingsManager()->sync(true);
-  }
-  trx.commit();
+#warning FIX THIS
+//  auto ctx =
+//    transaction::StandaloneContext::Create(_logicalCollection.vocbase());
+//  SingleCollectionTransaction trx(
+//    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
+//  );
+//  auto res = trx.begin();
+//
+//  if (res.fail()) {
+//    THROW_ARANGO_EXCEPTION(res);
+//  }
+//
+//  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+//  // count documents
+//  auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+//  _numberDocuments =
+//      rocksutils::countKeyRange(engine->db(), documentBounds, true);
+//
+//
+//
+//  // update counter manager value
+//  res = engine->settingsManager()->setAbsoluteCounter(_objectId, engine->currentTick(),
+//                                                      _numberDocuments);
+//  if (res.ok()) {
+//    // in case of fail the counter has never been written and hence does not
+//    // need correction. The value is not changed and does not need to be synced
+//    engine->settingsManager()->sync(true);
+//  }
+//  trx.commit();
 
   return _numberDocuments;
 }
@@ -1913,125 +1900,6 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
   builder.close();
   builder.add("total", VPackValue(total));
   builder.close();
-}
-
-std::pair<arangodb::Result, rocksdb::SequenceNumber>
-RocksDBCollection::serializeIndexEstimates(
-    rocksdb::Transaction* rtrx, rocksdb::SequenceNumber inputSeq) const {
-  auto outputSeq = inputSeq;
-  std::string output;
-  RocksDBKey key;
-  
-  for (auto index : getIndexes()) {
-    output.clear();
-    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
-    TRI_ASSERT(cindex != nullptr);
-
-    if (cindex->needToPersistEstimate()) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
-        << "beginning estimate serialization for index '"
-        << cindex->objectId() << "', inputSeq: " << inputSeq;
-      auto committedSeq = cindex->serializeEstimate(output, inputSeq);
-      outputSeq = std::min(outputSeq, committedSeq);
-
-      if (output.size() > sizeof(uint64_t)) {
-        LOG_TOPIC(ERR, Logger::ENGINES)
-          << "serialized estimate for index '" << cindex->objectId()
-          << "' valid through seq " << outputSeq;
-        
-        key.constructIndexEstimateValue(cindex->objectId());
-        rocksdb::Slice value(output);
-        rocksdb::Status s =
-            rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
-
-        if (!s.ok()) {
-          LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
-          rtrx->Rollback();
-          return std::make_pair(rocksutils::convertStatus(s), outputSeq);
-        }
-      }
-    }
-  }
-  return std::make_pair(Result(), outputSeq);
-}
-
-void RocksDBCollection::deserializeIndexEstimates(RocksDBSettingsManager* mgr) {
-  std::vector<std::shared_ptr<Index>> toRecalculate;
-  for (auto const& it : getIndexes()) {
-    auto idx = static_cast<RocksDBIndex*>(it.get());
-    if (!idx->deserializeEstimate(mgr)) {
-      toRecalculate.push_back(it);
-    }
-  }
-  if (!toRecalculate.empty()) {
-    recalculateIndexEstimates(toRecalculate);
-  }
-}
-
-void RocksDBCollection::recalculateIndexEstimates() {
-  auto idxs = getIndexes();
-  recalculateIndexEstimates(idxs);
-}
-
-void RocksDBCollection::recalculateIndexEstimates(
-    std::vector<std::shared_ptr<Index>> const& indexes) {
-  // IMPORTANT if this method is called outside of startup/recovery, we may have
-  // issues with estimate integrity; please do not expose via a user-facing
-  // method or endpoint unless the implementation changes
-
-  // intentionally do not use transactions here, as we will only be called
-  // during recovery
-  RocksDBEngine* engine =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(engine != nullptr);
-  TRI_ASSERT(engine->inRecovery());
-
-  for (auto const& it : indexes) {
-    auto idx = static_cast<RocksDBIndex*>(it.get());
-
-    TRI_ASSERT(idx != nullptr);
-    idx->recalculateEstimates();
-  }
-}
-
-arangodb::Result RocksDBCollection::serializeKeyGenerator(
-    rocksdb::Transaction* rtrx) const {
-  if (!_logicalCollection.keyGenerator()->hasDynamicState()) {
-    // the key generator will not produce any dynamic data,
-    // so it does not need to be serialized (nor recovered)
-    return Result();
-  }
-
-  VPackBuilder builder;
-
-  builder.openObject();
-  _logicalCollection.keyGenerator()->toVelocyPack(builder);
-  builder.close();
-
-  RocksDBKey key;
-
-  key.constructKeyGeneratorValue(_objectId);
-
-  RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
-  rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
-                                key.string(), value.string());
-
-  if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
-    rtrx->Rollback();
-    return rocksutils::convertStatus(s);
-  }
-
-  return Result();
-}
-
-void RocksDBCollection::deserializeKeyGenerator(RocksDBSettingsManager* mgr) {
-  uint64_t value = mgr->stealKeyGenerator(_objectId);
-
-  if (value > 0) {
-    std::string k(basics::StringUtils::itoa(value));
-    _logicalCollection.keyGenerator()->track(k.data(), k.size());
-  }
 }
 
 void RocksDBCollection::createCache() const {

@@ -1221,37 +1221,22 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   return lookup(trx, searchSlice, !opts.ascending);
 }
 
-rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
-    std::string& output, rocksdb::SequenceNumber seq) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (!_unique) {
-    TRI_ASSERT(_estimator != nullptr);
-    LOG_DEVEL << "serializing index estimator for objectId '" << _objectId
-              <<  "' with estimate " << _estimator->computeEstimate();
-    return _estimator->serialize(output, seq);
+void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {
+  if (unique()) {
+    return;
   }
-  return seq;
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(tick);
+  RocksDBIndex::afterTruncate(tick);
 }
 
-bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_unique) {
-    return true;
-  }
-  // We simply drop the current estimator and steal the one from recovery
-  // We are then safe for resizing issues in our _estimator format
-  // and will use the old size.
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
+  return _estimator.get();
+}
 
-  TRI_ASSERT(mgr != nullptr);
-  auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
-    // We expected to receive a stored index estimate, however we got none.
-    // We use the freshly created estimator but have to recompute it.
-    return false;
-  }
-  _estimator.swap(tmp);
-  TRI_ASSERT(_estimator != nullptr);
-  return true;
+void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+  TRI_ASSERT(!_unique);
+  _estimator = std::move(est);
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
@@ -1277,26 +1262,5 @@ void RocksDBVPackIndex::recalculateEstimates() {
     uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  std::string ignore;
-  _estimator->serialize(ignore, seq); // update committed sequence nr
-}
-
-void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {
-  if (unique()) {
-    return;
-  }
-  TRI_ASSERT(_estimator != nullptr);
-  _estimator->bufferTruncate(tick);
-  RocksDBIndex::afterTruncate(tick);
-}
-
-RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
-  return _estimator.get();
-}
-
-bool RocksDBVPackIndex::needToPersistEstimate() const {
-  if (_estimator) {
-    return _estimator->needToPersist();
-  }
-  return false;
+  _estimator->setCommitSeq(seq);
 }

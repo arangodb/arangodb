@@ -77,7 +77,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testNosyncRangeDeleteTruncate3: function () {
+    testNosyncRangeDeleteTruncateMulti3: function () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(1, c.count());
     }

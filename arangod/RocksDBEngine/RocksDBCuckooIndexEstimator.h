@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/ReadWriteLock.h"
+#include "Basics/ReadWriteSpinLock.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
@@ -246,23 +246,27 @@ class RocksDBCuckooIndexEstimator {
    * Applies any buffered updates and updates the "committed" seq/tick state.
    *
    * @param  serialized String for output
-   * @param  inputSeq   The current seq/tick at beginning of sync
-   * @return            The committed seq/tick
+   * @param  commitSeq  Above that are still uncommited operations
+   * @return            The committed seq/tick (safe tick to keep in WAL)
    */
   rocksdb::SequenceNumber serialize(std::string& serialized,
-                                    rocksdb::SequenceNumber inputSeq) {
+                                    rocksdb::SequenceNumber commitSeq) {
     // We always have to start with the commit seq, type and then the length
 
-    // commit seq
-    auto outputSeq = committableSeq(inputSeq);
-    rocksutils::uint64ToPersistent(serialized, outputSeq);
-
-    // must apply updates first to be valid
-    applyUpdates(outputSeq);
-
+    // commit seq, above that is an uncommited operations
+//    rocksdb::SequenceNumber commitSeq = committableSeq();
+    // must apply updates first to be valid, WAL needs to preserve
+    rocksdb::SequenceNumber appliedSeq = applyUpdates(commitSeq);
+    TRI_ASSERT(appliedSeq <= commitSeq);
+    
     {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
+
+      /// appliedSeq might be 0 if we did not applie any operations
+      appliedSeq = std::max(appliedSeq, this->committedSeq());
+      TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
+      rocksutils::uint64ToPersistent(serialized, appliedSeq);
 
       // type
       serialized += SerializeFormat::NOCOMPRESSION;
@@ -305,17 +309,13 @@ class RocksDBCuckooIndexEstimator {
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
 
-      bool havePendingUpdates = !_blockers.empty() || !_insertBuffers.empty() ||
+      bool havePendingUpdates = /*!_blockers.empty() ||*/ !_insertBuffers.empty() ||
                                 !_removalBuffers.empty() || !_truncateBuffer.empty();
       _needToPersist.store(havePendingUpdates);
     }
 
-    {
-      WRITE_LOCKER(locker, _lock);
-      _committedSeq = outputSeq;
-    }
-
-    return outputSeq;
+    _committedSeq.store(appliedSeq, std::memory_order_release);
+    return appliedSeq;
   }
 
   /// @brief only call directly during startup/recovery; otherwise buffer
@@ -476,58 +476,58 @@ class RocksDBCuckooIndexEstimator {
     READ_LOCKER(locker, _lock);
     return _needToPersist.load();
   }
-
-  /**
-   * @brief Place a blocker to allow proper commit/serialize semantics
-   *
-   * Should be called immediately prior to internal RocksDB commit. If the
-   * commit succeeds, any inserts/removals should be buffered, then the blocker
-   * removed; otherwise simply remove the blocker.
-   *
-   * @param  trxId The identifier for the active transaction
-   * @param  seq   The sequence number immediately prior to call
-   * @return       May return error if we fail to allocate and place blocker
-   */
-  Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
-    Result res = basics::catchToResult([&]() -> Result {
-      TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
-      TRI_ASSERT(_blockersBySeq.end() ==
-                 _blockersBySeq.find(std::make_pair(seq, trxId)));
-      Result res;
-      WRITE_LOCKER(locker, _lock);
-      auto insert = _blockers.emplace(trxId, seq);
-      auto crosslist = _blockersBySeq.emplace(seq, trxId);
-      if (!insert.second || !crosslist.second) {
-        return {TRI_ERROR_INTERNAL};
-      }
-      _needToPersist.store(true);
-      return {TRI_ERROR_NO_ERROR};
-    });
-    return res;
-  }
-
-  /**
-   * @brief Removes an existing transaction blocker
-   *
-   * Should be called after transaction abort/rollback, or after buffering any
-   * updates in case of successful commit. If no blocker exists with the
-   * specified transaction identifier, then this will simply do nothing.
-   *
-   * @param trxId Identifier for active transaction (should match input to
-   *              earlier `placeBlocker` call)
-   */
-  void removeBlocker(uint64_t trxId) {
-    WRITE_LOCKER(locker, _lock);
-    auto it = _blockers.find(trxId);
-    if (ADB_LIKELY(_blockers.end() != it)) {
-      auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
-      TRI_ASSERT(_blockersBySeq.end() != cross);
-      if (ADB_LIKELY(_blockersBySeq.end() != cross)) {
-        _blockersBySeq.erase(cross);
-      }
-      _blockers.erase(it);
-    }
-  }
+//
+//  /**
+//   * @brief Place a blocker to allow proper commit/serialize semantics
+//   *
+//   * Should be called immediately prior to internal RocksDB commit. If the
+//   * commit succeeds, any inserts/removals should be buffered, then the blocker
+//   * removed; otherwise simply remove the blocker.
+//   *
+//   * @param  trxId The identifier for the active transaction
+//   * @param  seq   The sequence number immediately prior to call
+//   * @return       May return error if we fail to allocate and place blocker
+//   */
+//  Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
+//    Result res = basics::catchToResult([&]() -> Result {
+//      TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
+//      TRI_ASSERT(_blockersBySeq.end() ==
+//                 _blockersBySeq.find(std::make_pair(seq, trxId)));
+//      Result res;
+//      WRITE_LOCKER(locker, _lock);
+//      auto insert = _blockers.emplace(trxId, seq);
+//      auto crosslist = _blockersBySeq.emplace(seq, trxId);
+//      if (!insert.second || !crosslist.second) {
+//        return {TRI_ERROR_INTERNAL};
+//      }
+//      _needToPersist.store(true);
+//      return {TRI_ERROR_NO_ERROR};
+//    });
+//    return res;
+//  }
+//
+//  /**
+//   * @brief Removes an existing transaction blocker
+//   *
+//   * Should be called after transaction abort/rollback, or after buffering any
+//   * updates in case of successful commit. If no blocker exists with the
+//   * specified transaction identifier, then this will simply do nothing.
+//   *
+//   * @param trxId Identifier for active transaction (should match input to
+//   *              earlier `placeBlocker` call)
+//   */
+//  void removeBlocker(uint64_t trxId) {
+//    WRITE_LOCKER(locker, _lock);
+//    auto it = _blockers.find(trxId);
+//    if (ADB_LIKELY(_blockers.end() != it)) {
+//      auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
+//      TRI_ASSERT(_blockersBySeq.end() != cross);
+//      if (ADB_LIKELY(_blockersBySeq.end() != cross)) {
+//        _blockersBySeq.erase(cross);
+//      }
+//      _blockers.erase(it);
+//    }
+//  }
 
   /**
    * @brief Buffer updates to this estimator to be applied when appropriate
@@ -543,6 +543,7 @@ class RocksDBCuckooIndexEstimator {
    */
   Result bufferUpdates(rocksdb::SequenceNumber seq, std::vector<Key>&& inserts,
                        std::vector<Key>&& removals) {
+    TRI_ASSERT(!inserts.empty() || !removals.empty());
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
       bool foundSomething = false;
@@ -570,18 +571,24 @@ class RocksDBCuckooIndexEstimator {
    *
    * @return The latest seq/tick through which the estimate is valid
    */
-  rocksdb::SequenceNumber commitSeq() const {
-    READ_LOCKER(locker, _lock);
-    return _committedSeq;
+  rocksdb::SequenceNumber committedSeq() const {
+    return _committedSeq.load(std::memory_order_acquire);
   }
 
+  /// @brief set the most recently set "committed" seq/tick
+  /// only set when recalculating the index estimate
+  void setCommitSeq(rocksdb::SequenceNumber seq) {
+    _committedSeq.store(seq, std::memory_order_release);
+  }
+  
  private:  // methods
   /// @brief call with output from committableSeq(current), and before serialize
-  Result applyUpdates(rocksdb::SequenceNumber commitSeq) {
+  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
+    rocksdb::SequenceNumber appliedSeq = 0;
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
-
+      
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
@@ -596,6 +603,7 @@ class RocksDBCuckooIndexEstimator {
             ignoreSeq = *it;
             TRI_ASSERT(ignoreSeq != 0);
             foundTruncate = true;
+            appliedSeq = std::max(appliedSeq, ignoreSeq);
             it = _truncateBuffer.erase(it);
           }
             
@@ -607,6 +615,7 @@ class RocksDBCuckooIndexEstimator {
                 inserts = std::move(it->second);
                 TRI_ASSERT(!inserts.empty());
               }
+              appliedSeq = std::max(appliedSeq, it->first);
               _insertBuffers.erase(it);
             }
           }
@@ -619,6 +628,7 @@ class RocksDBCuckooIndexEstimator {
                 removals = std::move(it->second);
                 TRI_ASSERT(!removals.empty());
               }
+              appliedSeq = std::max(appliedSeq, it->first);
               _removalBuffers.erase(it);
             }
           }
@@ -650,22 +660,20 @@ class RocksDBCuckooIndexEstimator {
         }
       } // </while(true)>
     });
-    return res;
+    return appliedSeq;
   }
 
-  /// @brief updates and returns the largest safe seq to consider committed
-  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber current) {
-    WRITE_LOCKER(locker, _lock);
-    auto minSeq = current;
-
-    // if we have a blocker with a lower value than current, compare it
-    if (!_blockersBySeq.empty()) {
-      auto it = _blockersBySeq.begin();
-      minSeq = std::min(minSeq, it->first);
-    }
-
-    return minSeq;
-  }
+//  /// @brief updates and returns the largest safe seq to consider committed
+//  rocksdb::SequenceNumber committableSeq() {
+//    WRITE_LOCKER(locker, _lock);
+//
+//    // if we have a blocker with a lower value than current, compare it
+//    if (!_blockersBySeq.empty()) {
+//      auto it = _blockersBySeq.begin();
+//      return it->first;
+//    }
+//    return std::numeric_limits<rocksdb::SequenceNumber>::max();
+//  }
 
   uint64_t memoryUsage() const {
     return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
@@ -994,11 +1002,11 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _nrCuckood;  // number of elements that have been removed by cuckoo
   uint64_t _nrTotal;    // number of elements included in total (not cuckood)
 
-  rocksdb::SequenceNumber mutable _committedSeq;
+  std::atomic<rocksdb::SequenceNumber> _committedSeq;
   std::atomic<bool> _needToPersist;
 
-  std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
-  std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
+//  std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
+//  std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
   std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
   std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
@@ -1007,7 +1015,7 @@ class RocksDBCuckooIndexEstimator {
   Fingerprint _fingerprint;  // Instance to compute a fingerprint of a key
   HashShort _hasherShort;    // Instance to compute the second hash function
 
-  arangodb::basics::ReadWriteLock mutable _lock;
+  arangodb::basics::ReadWriteSpinLock mutable _lock;
 };  // namespace arangodb
 
 }  // namespace arangodb

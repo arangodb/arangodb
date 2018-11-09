@@ -642,14 +642,6 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   }
 }
 
-RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
-  return _estimator.get();
-}
-
-bool RocksDBEdgeIndex::needToPersistEstimate() const {
-  return _estimator->needToPersist();
-}
-
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
@@ -1057,35 +1049,20 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-rocksdb::SequenceNumber RocksDBEdgeIndex::serializeEstimate(
-    std::string& output, rocksdb::SequenceNumber seq) const {
-  TRI_ASSERT(_estimator != nullptr);
-  return _estimator->serialize(output, seq);
-}
-
-bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // We simply drop the current estimator and steal the one from recovery
-  // We are than save for resizing issues in our _estimator format
-  // and will use the old size.
-
-  TRI_ASSERT(mgr != nullptr);
-  auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
-    // We expected to receive a stored index estimate, however we got none.
-    // We use the freshly created estimator but have to recompute it.
-    return false;
-  }
-  _estimator.swap(tmp);
-  TRI_ASSERT(_estimator != nullptr);
-  return true;
-}
-
 void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick) {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick);
 }
+
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
+  return _estimator.get();
+}
+
+void RocksDBEdgeIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+  _estimator = std::move(est);
+}
+
 
 void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
@@ -1093,7 +1070,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
-
+  
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;
@@ -1107,6 +1084,5 @@ void RocksDBEdgeIndex::recalculateEstimates() {
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
     _estimator->insert(hash);
   }
-  std::string ignore;
-  _estimator->serialize(ignore, seq); // update committed sequence nr
+  _estimator->setCommitSeq(seq);
 }

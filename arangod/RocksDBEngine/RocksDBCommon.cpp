@@ -95,8 +95,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   return rocks->mapObjectToCollection(objectId);
 }
 
-std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(
-                                                              uint64_t objectId) {
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t objectId) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);

@@ -1175,9 +1175,6 @@ bool RocksDBEngine::inRecovery() {
 }
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
-  // nothing to do here
-  settingsManager()->clearIndexEstimators();
-  settingsManager()->clearKeyGenerators();
 }
 
 std::string RocksDBEngine::createCollection(
@@ -1259,24 +1256,48 @@ arangodb::Result RocksDBEngine::dropCollection(
   key.constructCollection(vocbase.id(), collection.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
-  rocksdb::Status res = _db->Write(wo, &batch);
+  rocksdb::Status s = _db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
-  if (!res.ok()) {
+  if (!s.ok()) {
     // Persisting the drop failed. Do NOT drop collection.
-    return rocksutils::convertStatus(res);
+    return rocksutils::convertStatus(s);
   }
 
   // Now Collection is gone.
   // Cleanup data-mess
 
-  // Unregister counter
-  _settingsManager->removeCounter(coll->objectId());
-
+  // Unregister collection metadata
+  Result res = RocksDBCollectionMeta::deleteCollectionMeta(_db, coll->objectId());
+  if (res.fail()) {
+    return res;
+  }
+  
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
     _collectionMap.erase(collection.id());
+  }
+  
+  // delete indexes, RocksDBIndex::drop() has its own check
+  std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
+  TRI_ASSERT(!vecShardIndex.empty());
+  for (auto& index : vecShardIndex) {
+    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
+    res = RocksDBCollectionMeta::deleteIndexEstimate(_db, ridx->objectId());
+    if (res.fail()) {
+      return res;
+    }
+    
+    int dropRes = index->drop();
+    if (dropRes != TRI_ERROR_NO_ERROR) {
+      // We try to remove all indexed values.
+      // If it does not work they cannot be accessed any more and leaked.
+      // User View remains consistent.
+      LOG_TOPIC(ERR, Logger::ENGINES) << "unable to drop index: "
+      << TRI_errno_string(dropRes);
+      return TRI_ERROR_NO_ERROR;
+    }
   }
 
   // delete documents
@@ -1304,22 +1325,6 @@ arangodb::Result RocksDBEngine::dropCollection(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
-
-  // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
-  TRI_ASSERT(!vecShardIndex.empty());
-  for (auto& index : vecShardIndex) {
-    int dropRes = index->drop();
-
-    if (dropRes != TRI_ERROR_NO_ERROR) {
-      // We try to remove all indexed values.
-      // If it does not work they cannot be accessed any more and leaked.
-      // User View remains consistent.
-      LOG_TOPIC(ERR, Logger::ENGINES) << "unable to drop index: "
-                                    << TRI_errno_string(dropRes);
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
 
   // run compaction for data only if collection contained a considerable
   // amount of documents. otherwise don't run compaction, because it will
@@ -1742,7 +1747,7 @@ void RocksDBEngine::pruneWalFiles() {
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
-  Result res;
+  arangodb::Result res;
   rocksdb::WriteOptions wo;
 
   // remove view definitions
@@ -1772,8 +1777,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
     uint64_t const objectId =
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
-    auto const cnt = _settingsManager->loadCounter(objectId);
-    uint64_t const numberDocuments = cnt.added() - cnt.removed();
+    
+    auto const cnt = RocksDBCollectionMeta::loadCollectionCount(_db, objectId);
+    uint64_t const numberDocuments = cnt._added - cnt._removed;
     bool const useRangeDelete = numberDocuments >= 32 * 1024;
 
     // remove indexes
@@ -1783,6 +1789,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
+        res = RocksDBCollectionMeta::deleteIndexEstimate(_db, objectId);
+        if (res.fail()) {
+          return;
+        }
+        
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
         auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
@@ -1806,7 +1817,6 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       }
     }
 
-
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds, true, useRangeDelete);
@@ -1814,7 +1824,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       return;
     }
     // delete collection meta-data
-    _settingsManager->removeCounter(objectId);
+    RocksDBCollectionMeta::deleteCollectionMeta(_db, objectId);
+    // remove collection entry
     res = globalRocksDBRemove(RocksDBColumnFamily::definitions(), value.string(), wo);
     if (res.fail()) {
       return;
@@ -1976,13 +1987,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(*vocbase, uniqCol);
-      auto physical =
-          static_cast<RocksDBCollection*>(collection->getPhysical());
-      TRI_ASSERT(physical != nullptr);
 
-      physical->deserializeIndexEstimates(settingsManager());
-      physical->deserializeKeyGenerator(settingsManager());
+      auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
+      TRI_ASSERT(phy != nullptr);
+      phy->meta().deserializeMeta(_db, *collection);
+      
+      StorageEngine::registerCollection(*vocbase, uniqCol);
       LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
           << "added document collection '" << collection->name() << "'";
     }

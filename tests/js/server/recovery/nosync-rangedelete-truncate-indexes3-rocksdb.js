@@ -51,10 +51,9 @@ function runSetup () {
     }
   }
 
-  // turn off any background op like sync
+  // make sure the estimate is synced once
   internal.waitForEstimatorSync();
-  print(c.getIndexes(true));
-
+  // turn off any background op like sync
   internal.debugSetFailAt("RocksDBBackgroundThread::run"); 
   // force a sync right before truncate
   internal.debugSetFailAt("RocksDBCollection::truncate::forceSync"); 
@@ -78,7 +77,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testNosyncRangeDeleteTruncateMulti: function () {
+    testNosyncRangeDeleteTruncateIndexes3: function () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(0, c.count());
       assertNotNull(db._collection('UnitTestsRecovery2'));
