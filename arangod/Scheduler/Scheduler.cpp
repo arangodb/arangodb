@@ -209,11 +209,11 @@ Scheduler::~Scheduler() {
 void Scheduler::post(std::function<void()> const callback) {
   // increment number of queued and guard against exceptions
   //  (this incQueued() manipulates the atomic _counters in a sequentially-consistent
-  //   manner so that we can make assumptions about threaded changes _ioContext)
+  //   manner.  isStopping() uses same atomic _counters)
   incQueued();
 
-  // see if _ioContext still valid (defense against shutdown races)
-  if (_ioContext) {
+  // implies if _ioContext still valid (defense against shutdown races)
+  if (!isStopping()) {
 
     auto guardQueue = scopeGuard([this]() { decQueued(); });
 
@@ -238,7 +238,7 @@ void Scheduler::post(std::function<void()> const callback) {
     // this post is coming late in application shutdown,
     //  might be essential ... process in-line after heavy complaining
     LOG_TOPIC(WARN, Logger::THREADS)
-      << "Scheduler::post() called after io_context closed.";
+      << "Scheduler::post() called after isStopping() set.";
     TRI_ASSERT(false);
 
     callback();
