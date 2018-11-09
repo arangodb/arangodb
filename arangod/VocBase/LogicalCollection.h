@@ -276,17 +276,10 @@ class LogicalCollection : public LogicalDataSource {
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId) {
-    return insert(trx, slice, result, options, resultMarkerTick, lock,
-                  revisionId, nullptr);
-  }
-  // convenience function for downwards-compatibility
-  Result insert(transaction::Methods* trx, velocypack::Slice const slice,
-                ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
     TRI_voc_tick_t unused;
-    return insert(trx, slice, result, options, resultMarkerTick, lock, unused);
+    return insert(trx, slice, result, options, resultMarkerTick, lock, unused,
+                  nullptr);
   }
 
   /**

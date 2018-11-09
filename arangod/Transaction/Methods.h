@@ -617,6 +617,12 @@ class Methods {
     std::string name;
   }
   _collectionCache;
+
+  Result replicateInserts(
+      LogicalCollection const& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options, VPackSlice value,
+      VPackBuilder& resultBuilder);
 };
 
 }
