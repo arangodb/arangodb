@@ -88,18 +88,33 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual arangodb::Result read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const& key, arangodb::ManagedDocumentResult& result, bool) override;
   virtual bool readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const override;
   virtual bool readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) const override;
-  virtual arangodb::Result remove(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const slice,
-                        arangodb::ManagedDocumentResult& previous,
-                        arangodb::OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
-  virtual arangodb::Result replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous) override;
+  virtual arangodb::Result remove(
+      arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
+      arangodb::ManagedDocumentResult& previous,
+      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+      bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+      std::function<arangodb::Result(void)> callbackDuringLock) override;
+  virtual arangodb::Result replace(
+      arangodb::transaction::Methods* trx,
+      arangodb::velocypack::Slice const newSlice,
+      arangodb::ManagedDocumentResult& result,
+      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+      bool lock, TRI_voc_rid_t& prevRev,
+      arangodb::ManagedDocumentResult& previous,
+      std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual int restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
   virtual arangodb::Result truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions&) override;
-  virtual arangodb::Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, arangodb::velocypack::Slice const key) override;
+  virtual arangodb::Result update(
+      arangodb::transaction::Methods* trx,
+      arangodb::velocypack::Slice const newSlice,
+      arangodb::ManagedDocumentResult& result,
+      arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+      bool lock, TRI_voc_rid_t& prevRev,
+      arangodb::ManagedDocumentResult& previous,
+      arangodb::velocypack::Slice const key,
+      std::function<arangodb::Result(void)> callbackDuringLock) override;
   virtual void load() override {}
   virtual void unload() override {}
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) override;

@@ -293,19 +293,22 @@ class LogicalCollection : public LogicalDataSource {
                 TRI_voc_tick_t& revisionId,
                 std::function<Result(void)> callbackDuringLock);
 
-  Result update(transaction::Methods*, velocypack::Slice const,
+  Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous);
+                TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
 
-  Result replace(transaction::Methods*, velocypack::Slice const,
+  Result replace(transaction::Methods*, velocypack::Slice,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
-                 ManagedDocumentResult& previous);
+                 TRI_voc_tick_t&, bool lock, TRI_voc_rid_t& prevRev,
+                 ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock);
 
-  Result remove(transaction::Methods*, velocypack::Slice const,
-                OperationOptions&, TRI_voc_tick_t&, bool,
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  Result remove(transaction::Methods*, velocypack::Slice,
+                OperationOptions&, TRI_voc_tick_t&, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                std::function<Result(void)> callbackDuringLock);
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,

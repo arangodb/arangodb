@@ -525,34 +525,27 @@ Result ClusterCollection::insert(arangodb::transaction::Methods*,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
-                                 arangodb::ManagedDocumentResult& mdr,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key) {
+Result ClusterCollection::update(
+  arangodb::transaction::Methods *trx, arangodb::velocypack::Slice const newSlice, ManagedDocumentResult &mdr,
+  OperationOptions &options, TRI_voc_tick_t &resultMarkerTick, bool, TRI_voc_rid_t &prevRev,
+  ManagedDocumentResult &previous, arangodb::velocypack::Slice const key, std::function<Result(void)> callbackDuringLock
+) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
-                                  ManagedDocumentResult& mdr,
-                                  OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick,
-                                  bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous) {
+Result ClusterCollection::replace(
+  transaction::Methods *trx, arangodb::velocypack::Slice const newSlice, ManagedDocumentResult &mdr,
+  OperationOptions &options, TRI_voc_tick_t &resultMarkerTick, bool, TRI_voc_rid_t &prevRev,
+  ManagedDocumentResult &previous, std::function<Result(void)> callbackDuringLock
+) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::remove(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
-                                 arangodb::ManagedDocumentResult& previous,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                 TRI_voc_rid_t& revisionId) {
+Result ClusterCollection::remove(
+  arangodb::transaction::Methods *trx, arangodb::velocypack::Slice slice, arangodb::ManagedDocumentResult &previous,
+  OperationOptions &options, TRI_voc_tick_t &resultMarkerTick, bool, TRI_voc_rid_t &prevRev, TRI_voc_rid_t &revisionId,
+  std::function<Result(void)> callbackDuringLock
+) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

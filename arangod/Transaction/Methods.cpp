@@ -1718,9 +1718,9 @@ OperationResult transaction::Methods::insertLocal(
     if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
       // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
       resultMarkerTick = 0;
-      res = collection->replace( this, value, documentResult, options
-                               , resultMarkerTick, needsLock, previousRevisionId
-                               , previousDocumentResult);
+      res = collection->replace(this, value, documentResult, options,
+                                resultMarkerTick, needsLock, previousRevisionId,
+                                previousDocumentResult, nullptr);
       if(res.ok() && !options.silent){
         // If we are silent, then revisionId will not be looked at further
         // down. In the silent case, documentResult is empty, so nobody
@@ -2109,11 +2109,11 @@ OperationResult transaction::Methods::modifyLocal(
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
                                 !isLocked(collection, AccessMode::Type::WRITE),
-                                actualRevision, previous);
+                                actualRevision, previous, nullptr);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
                                !isLocked(collection, AccessMode::Type::WRITE),
-                               actualRevision, previous);
+                               actualRevision, previous, nullptr);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2420,9 +2420,11 @@ OperationResult transaction::Methods::removeLocal(
 
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    Result res = collection->remove(this, value, options, resultMarkerTick,
-                                 !isLocked(collection, AccessMode::Type::WRITE),
-                                 actualRevision, previous);
+    Result res = collection->remove(
+      this, value, options, resultMarkerTick,
+      !isLocked(collection, AccessMode::Type::WRITE),
+      actualRevision, previous, 0
+    );
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
