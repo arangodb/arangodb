@@ -10,17 +10,17 @@ into the other nodes. Let's review the process of such a startup on
 three hosts named `h01`, `h02`, and `h03`: 
 
     arangodb@h01 ~> arangodb --starter.address h01 --starter.port 4000
-	2018-11-09T07:18:45-05:00 |INFO| Starting arangodb version 0.13.7, build bdac926 component=arangodb
-	2018-11-09T07:18:45-05:00 |INFO| Serving as master with ID '0191e3d2' on h01:4000... component=arangodb
-	2018-11-09T07:18:45-05:00 |INFO| Waiting for 3 servers to show up.
+    2018-11-09T07:18:45-05:00 |INFO| Starting arangodb version 0.13.7, build bdac926 component=arangodb
+    2018-11-09T07:18:45-05:00 |INFO| Serving as master with ID '0191e3d2' on h01:4000... component=arangodb
+    2018-11-09T07:18:45-05:00 |INFO| Waiting for 3 servers to show up.
 	component=arangodb
-	2018-11-09T07:18:45-05:00 |INFO| Use the following commands to start other servers: component=arangodb
+    2018-11-09T07:18:45-05:00 |INFO| Use the following commands to start other servers: component=arangodb
 
-	arangodb --starter.data-dir=./db2 --starter.join h01:4000
+    arangodb --starter.data-dir=./db2 --starter.join h01:4000
 
-	arangodb --starter.data-dir=./db3 --starter.join h01:4000
+    arangodb --starter.data-dir=./db3 --starter.join h01:4000
 
-	2018-11-09T07:18:45-05:00 |INFO| ArangoDB Starter listening on 0.0.0.0:4000 (h01:4000) component=arangodb
+    2018-11-09T07:18:45-05:00 |INFO| ArangoDB Starter listening on 0.0.0.0:4000 (h01:4000) component=arangodb
 
 So you cut the lines `arangodb --data.dir=./db2 --starter.join
 127.0.0.1` and execute them for the other nodes. If you run it on
@@ -29,15 +29,15 @@ by the public IP of the first host.
 
     arangodbh02 ~> arangodb --starter.data-dir=./db2 --starter.join h01:4000
     2018-11-09T09:04:07-05:00 |INFO| Starting arangodb version 0.13.7, build bdac926 component=arangodb
-	2018-11-09T09:04:08-05:00 |INFO| Contacting master http://h01:4000... component=arangodb
-	2018-11-09T09:04:08-05:00 |INFO| Waiting for 3 servers to show up... component=arangodb
-	2018-11-09T09:04:08-05:00 |INFO| ArangoDB Starter listening on 0.0.0.0:4000 (:4000) component=arangodb
+    2018-11-09T09:04:08-05:00 |INFO| Contacting master http://h01:4000... component=arangodb
+    2018-11-09T09:04:08-05:00 |INFO| Waiting for 3 servers to show up... component=arangodb
+    2018-11-09T09:04:08-05:00 |INFO| ArangoDB Starter listening on 0.0.0.0:4000 (:4000) component=arangodb
 
     arangodbh03 ~> arangodb --starter.data-dir=./db3 --starter.join h01:4000
     2018-11-09T09:04:07-05:00 |INFO| Starting arangodb version 0.13.7, build bdac926 component=arangodb
-	2018-11-09T09:04:08-05:00 |INFO| Contacting master http://h01:4000... component=arangodb
-	2018-11-09T09:04:08-05:00 |INFO| Waiting for 3 servers to show up... component=arangodb
-	2018-11-09T09:04:08-05:00 |INFO| ArangoDB Starter listening on 0.0.0.0:4000 (:4000) component=arangodb
+    2018-11-09T09:04:08-05:00 |INFO| Contacting master http://h01:4000... component=arangodb
+    2018-11-09T09:04:08-05:00 |INFO| Waiting for 3 servers to show up... component=arangodb
+    2018-11-09T09:04:08-05:00 |INFO| ArangoDB Starter listening on 0.0.0.0:4000 (:4000) component=arangodb
 
 Once the two other processes joined the cluster, and started their ArangoDB server processes (this may take a while depending on your system), it will inform you where to connect the Cluster from a Browser, shell or your programm:
 
