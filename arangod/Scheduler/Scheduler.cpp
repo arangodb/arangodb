@@ -207,25 +207,35 @@ Scheduler::~Scheduler() {
 
 // do not pass callback by reference, might get deleted before execution
 void Scheduler::post(std::function<void()> const callback) {
-  // increment number of queued and guard against exceptions
-  incQueued();
+  if (_ioContext) {  // not thread safe, but not expected to be needed either.
+    // increment number of queued and guard against exceptions
+    incQueued();
 
-  auto guardQueue = scopeGuard([this]() { decQueued(); });
+    auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-  // capture without self, ioContext will not live longer than scheduler
-  _ioContext->post([this, callback]() {
-    // start working
-    JobGuard jobGuard(this);
-    jobGuard.work();
+    // capture without self, ioContext will not live longer than scheduler
+    _ioContext->post([this, callback]() {
+        // start working
+        JobGuard jobGuard(this);
+        jobGuard.work();
 
-    // reduce number of queued now
-    decQueued();
+        // reduce number of queued now
+        decQueued();
+
+        callback();
+      });
+
+    // no exception happened, cancel guard
+    guardQueue.cancel();
+  } else {
+    // this post is coming late in application shutdown,
+    //  might be essential ... process in-line after heavy complaining
+    LOG_TOPIC(WARN, Logger::THREADS)
+      << "Scheduler::post() called after io_context closed.";
+    TRI_ASSERT(false);
 
     callback();
-  });
-
-  // no exception happened, cancel guard
-  guardQueue.cancel();
+  } // else
 }
 
 // do not pass callback by reference, might get deleted before execution
