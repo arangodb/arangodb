@@ -2372,7 +2372,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Shard: " << _vocbase.name() << "/" << col->name() << " is not locked with type: " << (doSoftLock ? "soft" : "hard") << " lock id: " << id;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Shard: " << _vocbase.name() << "/" << col->name() << " is now locked with type: " << (doSoftLock ? "soft" : "hard") << " lock id: " << id;
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2449,6 +2449,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 
   auto res = cancelBlockingTransaction(id);
   if (!res.ok()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Lock " << id << " not canceled because of: " << res.errorMessage();
     generateError(res);
     return;
   }
