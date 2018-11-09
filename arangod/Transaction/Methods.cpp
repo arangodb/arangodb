@@ -1626,8 +1626,10 @@ OperationResult transaction::Methods::insertLocal(
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
-  bool isMMFiles = EngineSelectorFeature::isMMFiles();
-  TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+  {
+    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+  }
 
   // If we're not on a single server (i.e. maybe replicating), are using the
   // MMFiles storage engine, and are doing a single document operation, we have
@@ -1640,8 +1642,7 @@ OperationResult transaction::Methods::insertLocal(
   //   a follower may otherwise be added between the actual document operation
   //   and the point where we get our copy of the followers, regardless of the
   //   latter happens before or after the document operation.
-  bool const needsDocumentLocks =
-      needsLock && _state->isDBServer();
+  bool const needsDocumentLocks = needsLock && _state->isDBServer();
   bool const needsToGetFollowersUnderLock = needsDocumentLocks;
 
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1720,7 +1721,7 @@ OperationResult transaction::Methods::insertLocal(
       resultMarkerTick = 0;
       res = collection->replace(this, value, documentResult, options,
                                 resultMarkerTick, needsLock, previousRevisionId,
-                                previousDocumentResult, nullptr);
+                                previousDocumentResult, updateFollowers);
       if(res.ok() && !options.silent){
         // If we are silent, then revisionId will not be looked at further
         // down. In the silent case, documentResult is empty, so nobody
@@ -2048,7 +2049,47 @@ OperationResult transaction::Methods::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+  // Assert my assumption that we don't have a lock only with mmfiles single
+  // document operations.
+
+  {
+    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    TRI_ASSERT(!needsLock || (isMMFiles && !newValue.isArray()));
+  }
+
+  // If we're not on a single server (i.e. maybe replicating), are using the
+  // MMFiles storage engine, and are doing a single document operation, we have
+  // to:
+  // - Use additional per-document locks that hold until the replication is
+  //   done. This is to avoid conflicting updates possibly arriving at a
+  //   follower in an undeterministic order.
+  // - Get the list of followers during the time span we actually do hold a
+  //   collection level lock. This is to avoid races with the replication where
+  //   a follower may otherwise be added between the actual document operation
+  //   and the point where we get our copy of the followers, regardless of the
+  //   latter happens before or after the document operation.
+  bool const needsDocumentLocks = needsLock && _state->isDBServer();
+  bool const needsToGetFollowersUnderLock = needsDocumentLocks;
+
   std::shared_ptr<std::vector<ServerID> const> followers;
+
+  std::function<Result(void)> updateFollowers = nullptr;
+
+  if (needsToGetFollowersUnderLock) {
+    auto const& followerInfo = *collection->followers();
+
+    updateFollowers = [&followerInfo, &followers]() -> Result {
+      TRI_ASSERT(followers == nullptr);
+      followers = followerInfo.get();
+
+      return Result{};
+    };
+  } else if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -2059,11 +2100,15 @@ OperationResult transaction::Methods::modifyLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      
-      // fetch followers
-      followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+
+      replicationType = ReplicationType::LEADER;
+      // We cannot be silent if we may have to replicate later.
+      // If we need to get the followers under the single document operation's
+      // lock, we don't know yet if we will have followers later and thus cannot
+      // be silent.
+      // Otherwise, if we already know the followers, to replicate to, we can
+      // just check if they're empty.
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2094,8 +2139,9 @@ OperationResult transaction::Methods::modifyLocal(
 
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
-                             &resultBuilder, &cid](VPackSlice const newVal,
-                                                   bool isBabies) -> Result {
+                             &resultBuilder, &cid, needsLock,
+                             &updateFollowers](VPackSlice const newVal,
+                                               bool isBabies) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -2109,12 +2155,12 @@ OperationResult transaction::Methods::modifyLocal(
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
-                                !isLocked(collection, AccessMode::Type::WRITE),
-                                actualRevision, previous, nullptr);
+                                needsLock, actualRevision, previous,
+                                updateFollowers);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
-                               !isLocked(collection, AccessMode::Type::WRITE),
-                               actualRevision, previous, nullptr);
+                               needsLock, actualRevision, previous,
+                               updateFollowers);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2377,8 +2423,48 @@ OperationResult transaction::Methods::removeLocal(
     OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-      
+
+  bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+  // Assert my assumption that we don't have a lock only with mmfiles single
+  // document operations.
+
+  {
+    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+  }
+
+  // If we're not on a single server (i.e. maybe replicating), are using the
+  // MMFiles storage engine, and are doing a single document operation, we have
+  // to:
+  // - Use additional per-document locks that hold until the replication is
+  //   done. This is to avoid conflicting updates possibly arriving at a
+  //   follower in an undeterministic order.
+  // - Get the list of followers during the time span we actually do hold a
+  //   collection level lock. This is to avoid races with the replication where
+  //   a follower may otherwise be added between the actual document operation
+  //   and the point where we get our copy of the followers, regardless of the
+  //   latter happens before or after the document operation.
+  bool const needsDocumentLocks = needsLock && _state->isDBServer();
+  bool const needsToGetFollowersUnderLock = needsDocumentLocks;
+
   std::shared_ptr<std::vector<ServerID> const> followers;
+
+  std::function<Result(void)> updateFollowers = nullptr;
+
+  if (needsToGetFollowersUnderLock) {
+    auto const& followerInfo = *collection->followers();
+
+    updateFollowers = [&followerInfo, &followers]() -> Result {
+      TRI_ASSERT(followers == nullptr);
+      followers = followerInfo.get();
+
+      return Result{};
+    };
+  } else if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -2389,11 +2475,15 @@ OperationResult transaction::Methods::removeLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-  
-      // fetch followers
-      followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+
+      replicationType = ReplicationType::LEADER;
+      // We cannot be silent if we may have to replicate later.
+      // If we need to get the followers under the single document operation's
+      // lock, we don't know yet if we will have followers later and thus cannot
+      // be silent.
+      // Otherwise, if we already know the followers, to replicate to, we can
+      // just check if they're empty.
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2440,11 +2530,9 @@ OperationResult transaction::Methods::removeLocal(
 
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    Result res = collection->remove(
-      this, value, options, resultMarkerTick,
-      !isLocked(collection, AccessMode::Type::WRITE),
-      actualRevision, previous, 0
-    );
+    Result res =
+        collection->remove(this, value, options, resultMarkerTick, needsLock,
+                           actualRevision, previous, updateFollowers);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
