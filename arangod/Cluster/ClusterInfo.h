@@ -477,7 +477,8 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg,
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -670,8 +671,10 @@ class ClusterInfo {
 
   int ensureIndexCoordinatorWithoutRollback(
       std::string const& databaseName, std::string const& collectionID,
-      std::string const& idSlice, arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      std::string const& idSlice, arangodb::velocypack::Slice const& slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder,
+      arangodb::velocypack::Builder& newIndexBuilder, std::string& errorMsg,
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
