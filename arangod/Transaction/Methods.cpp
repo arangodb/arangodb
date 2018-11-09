@@ -1782,21 +1782,16 @@ OperationResult transaction::Methods::insertLocal(
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(followers != nullptr);
 
-    if (!followers->empty()) {
-      // TODO extract the code in this block to a separate replication method
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
 
-      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-      // get here, in the single document case, we do not try to replicate
-      // in case of an error.
+    // Now replicate the good operations on all followers:
+    res =
+        replicateInserts(*collection, followers, options, value, resultBuilder);
 
-      // Now replicate the good operations on all followers:
-
-      res = replicateInserts(*collection, followers, options, value,
-                             resultBuilder);
-
-      if (!res.ok()) {
-        return OperationResult{res, options};
-      }
+    if (!res.ok()) {
+      return OperationResult{res, options};
     }
   }
   
@@ -1819,6 +1814,11 @@ Result Methods::replicateInserts(
   std::shared_ptr<const std::vector<std::string>> const& followers,
   OperationOptions const& options, VPackSlice value,
   VPackBuilder& resultBuilder) {
+
+  if (followers->empty()) {
+    return Result{};
+  }
+
   std::string path =
     "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
     "/_api/document/" +
@@ -1916,6 +1916,8 @@ Result Methods::replicateInserts(
       }
     }
   }
+
+  return Result{};
 }
 
 /// @brief update/patch one or multiple documents in a collection
