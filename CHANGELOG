@@ -1,6 +1,15 @@
 devel
 -----
 
+* do not create `_modules` collection for new databases/installations
+
+  `_modules` is only needed for custom modules, and in case a custom
+  module is defined via `defineModule`, the _modules collection will
+  be created lazily automatically.
+
+  Existing modules in existing `_modules` collections will remain
+  functional even after this change
+
 * force connection timeout to be 7 seconds to allow libcurl time to retry lost DNS
   queries.
 
