@@ -105,23 +105,36 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
     int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR)
+          << "cannot rename obsolete datafile '" << copy << "' to '"
+          << filename << "': " << TRI_errno_string(res);
+    } else {
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+          << "renamed obsolete datafile '" << copy << "' to '"
+          << filename << "': " << TRI_errno_string(res);
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName() << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+      << "finished compacting datafile '" << datafile->getName() << "'";
 
   int res = datafile->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, Logger::COMPACTOR)
+        << "cannot close obsolete datafile '" << datafile->getName()
+        << "': " << TRI_errno_string(res);
   } else if (datafile->isPhysical()) {
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "wiping compacted datafile '" << datafile->getName() << "' from disk";
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR)
+        << "wiping compacted datafile '" << datafile->getName()
+        << "' from disk";
 
     res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR)
+          << "cannot wipe obsolete datafile '" << datafile->getName()
+          << "': " << TRI_errno_string(res);
     }
 
     // check for .dead files
@@ -158,6 +171,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
   TRI_ASSERT(collection != nullptr);
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
+  std::string compactorName = compactor->getName();
 
   bool ok = false;
   TRI_ASSERT(datafile->fid() == compactor->fid());
@@ -173,10 +187,18 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName() << "' to '" << tempFilename << "': " << TRI_errno_string(res);
     } else {
+      LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+        << "renamed datafile from '" << realName << "' to '"
+        << tempFilename << "'";
+
       res = compactor->rename(realName);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName() << "' to '" << realName << "': " << TRI_errno_string(res);
+      } else {
+        LOG_TOPIC(DEBUG, arangodb::Logger::COMPACTOR)
+          << "renamed datafile from '" << compactorName << "' to '"
+          << tempFilename << "'";
       }
     }
 

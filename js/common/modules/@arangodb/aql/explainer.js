@@ -1619,6 +1619,7 @@ function profileQuery(data, shouldPrint) {
     throw 'ArangoStatement needs initial data';
   }
   let options =  data.options || { };
+  options.silent = true;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();

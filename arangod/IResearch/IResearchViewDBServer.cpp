@@ -49,103 +49,47 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 std::string const VIEW_NAME_PREFIX("_iresearch_");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple PrimaryKeyIndexReaders
+/// @brief index reader implementation over multiple irs::index_reader
 ////////////////////////////////////////////////////////////////////////////////
-class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
+class CompoundReader final: public irs::index_reader {
  public:
   irs::sub_reader const& operator[](
       size_t subReaderId
   ) const noexcept override {
-    return *(_subReaders[subReaderId].first);
+    TRI_ASSERT(subReaderId < _subReaders.size());
+    return *(_subReaders[subReaderId]);
   }
 
-  void add(arangodb::iresearch::PrimaryKeyIndexReader const& reader);
-  virtual reader_iterator begin() const override;
+  void add(irs::index_reader const& reader) {
+    for(auto& entry: reader) {
+      _subReaders.emplace_back(&entry);
+    }
+  }
+
   void clear() noexcept { _subReaders.clear(); }
   virtual uint64_t docs_count() const override;
-  virtual reader_iterator end() const override;
   virtual uint64_t live_docs_count() const override;
-
-  irs::columnstore_reader::values_reader_f const& pkColumn(
-      size_t subReaderId
-  ) const noexcept override {
-    return _subReaders[subReaderId].second;
-  }
-
   virtual size_t size() const noexcept override { return _subReaders.size(); }
 
  private:
-  typedef std::vector<
-    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
-  > SubReadersType;
-
-  class IteratorImpl final: public irs::index_reader::reader_iterator_impl {
-   public:
-    explicit IteratorImpl(SubReadersType::const_iterator const& itr)
-      : _itr(itr) {
-    }
-
-    virtual void operator++() noexcept override { ++_itr; }
-    virtual reference operator*() noexcept override { return *(_itr->first); }
-
-    virtual const_reference operator*() const noexcept override {
-      return *(_itr->first);
-    }
-
-    virtual bool operator==(
-        const reader_iterator_impl& other
-    ) noexcept override {
-      return static_cast<IteratorImpl const&>(other)._itr == _itr;
-    }
-
-   private:
-    SubReadersType::const_iterator _itr;
-  };
-
-  SubReadersType _subReaders;
+  std::vector<irs::sub_reader const*> _subReaders;
 };
-
-void CompoundReader::add(
-    arangodb::iresearch::PrimaryKeyIndexReader const& reader
-) {
-  for(auto& entry: reader) {
-    const auto* pkColumn =
-      entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkColumn) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "encountered a sub-reader without a primary key column while creating a reader for arangosearch view, ignoring";
-
-      continue;
-    }
-
-    _subReaders.emplace_back(&entry, pkColumn->values());
-  }
-}
-
-irs::index_reader::reader_iterator CompoundReader::begin() const {
-  return reader_iterator(new IteratorImpl(_subReaders.begin()));
-}
 
 uint64_t CompoundReader::docs_count() const {
   uint64_t count = 0;
 
   for (auto& entry: _subReaders) {
-    count += entry.first->docs_count();
+    count += entry->docs_count();
   }
 
   return count;
-}
-
-irs::index_reader::reader_iterator CompoundReader::end() const {
-  return reader_iterator(new IteratorImpl(_subReaders.end()));
 }
 
 uint64_t CompoundReader::live_docs_count() const {
   uint64_t count = 0;
 
   for (auto& entry: _subReaders) {
-    count += entry.first->live_docs_count();
+    count += entry->live_docs_count();
   }
 
   return count;
@@ -623,7 +567,7 @@ void IResearchViewDBServer::open() {
   }
 }
 
-PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
+irs::index_reader const* IResearchViewDBServer::snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
     IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/

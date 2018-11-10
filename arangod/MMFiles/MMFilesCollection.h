@@ -369,6 +369,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
+  Result persistLocalDocumentIds();
+
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -493,6 +495,11 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
+  bool hasAllPersistentLocalIds() const override { return _hasAllPersistentLocalIds.load(); }
+
+  static Result persistLocalDocumentIdsForDatafile(
+      MMFilesCollection& collection, MMFilesDatafile& file);
+
  private:
   mutable arangodb::MMFilesDitches _ditches;
 
@@ -536,6 +543,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool _doCompact;
   TRI_voc_tick_t _maxTick;
+
+  // whether or not all documents are stored with a persistent LocalDocumentId
+  std::atomic<bool> _hasAllPersistentLocalIds{true};
 };
 }
 
