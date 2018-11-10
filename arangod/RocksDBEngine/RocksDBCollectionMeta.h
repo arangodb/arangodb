@@ -27,6 +27,8 @@
 #include "Basics/ReadWriteSpinLock.h"
 #include "VocBase/voc-types.h"
 
+#include <mutex>
+
 #include <rocksdb/types.h>
 #include <velocypack/Slice.h>
 
