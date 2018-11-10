@@ -283,9 +283,10 @@ void RocksDBCollection::open(bool /*ignoreErrors*/) {
 //  TRI_ASSERT(engine != nullptr);
 //  if (!engine->inRecovery()) {
   LOG_DEVEL << "open collection " << _logicalCollection.name();
-    RocksDBCollectionMeta::DocCount count = _meta.currentCount();
-    _numberDocuments = count._added - count._removed;
-    _revisionId = count._revisionId;
+  RocksDBCollectionMeta::DocCount count = _meta.currentCount();
+  TRI_ASSERT(count._added >= count._removed);
+  _numberDocuments = count._added - count._removed;
+  _revisionId = count._revisionId;
 //  }
 }
 

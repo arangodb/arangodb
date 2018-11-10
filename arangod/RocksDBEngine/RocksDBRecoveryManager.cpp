@@ -208,8 +208,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
         LOG_DEVEL << "found " << ops.added << " inserts for " << collection->name();
         if (ops.mustTruncate) { // first we must reset the counter
-          LOG_DEVEL << "resetting recovery count";
-          rcoll->meta().countRefUnsafe()._removed += rcoll->meta().countRefUnsafe()._added;
+          LOG_DEVEL << "truncating recovery count";
+          rcoll->meta().countRefUnsafe()._added = 0;
+          rcoll->meta().countRefUnsafe()._removed = 0;
         }
         rcoll->meta().countRefUnsafe()._added += ops.added;
         rcoll->meta().countRefUnsafe()._removed += ops.removed;
