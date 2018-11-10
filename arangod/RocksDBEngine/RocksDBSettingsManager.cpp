@@ -194,151 +194,13 @@ RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
     : _lastSync(0), 
       _syncing(false), 
       _db(db), 
-      _initialReleasedTick(0),
-      _maxUpdateSeqNo(1),
-      _lastSyncedSeqNo(0) {}
-
-/// bump up the value of the last rocksdb::SequenceNumber we have seen
-/// and that is pending a sync update
-void RocksDBSettingsManager::setMaxUpdateSequenceNumber(rocksdb::SequenceNumber seqNo) {
-  if (seqNo == 0) {
-    // we don't care about this
-    return;
-  }
-
-  auto current = _maxUpdateSeqNo.load(std::memory_order_acquire);
-
-  while (current < seqNo &&
-         !_maxUpdateSeqNo.compare_exchange_strong(current, seqNo, std::memory_order_release)) {
-    // someone else has updated the max sequence number, simply try again
-  }
-  
-  // current sequence number is now at least as high as we want it to be
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_maxUpdateSeqNo.load() >= seqNo);
-#endif
-}
+      _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
   loadSettings();
   EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
 }
-
-//RocksDBSettingsManager::CounterAdjustment RocksDBSettingsManager::loadCounter(
-//    uint64_t objectId) const {
-//  TRI_ASSERT(objectId != 0);  // TODO fix this
-//
-//  READ_LOCKER(guard, _rwLock);
-//
-//  auto const& it = _counters.find(objectId);
-//  if (it != _counters.end()) {
-//    return CounterAdjustment(it->second._sequenceNum,
-//                             it->second._added,
-//                             it->second._removed,
-//                             it->second._revisionId);
-//  }
-//
-//  return CounterAdjustment();  // do not create
-//}
-
-/// collections / views / indexes can call this method to update
-/// their total counts. Thread-Safe needs the snapshot so we know
-/// the sequence number used
-//void RocksDBSettingsManager::updateCounter(uint64_t objectId,
-//                                           CounterAdjustment const& update) {
-//  bool needsSync = false;
-//  auto seqNo = update.sequenceNumber();
-//  {
-//    WRITE_LOCKER(guard, _rwLock);
-//
-//    auto it = _counters.find(objectId);
-//    if (it != _counters.end()) {
-//      it->second._added += update.added();
-//      it->second._removed += update.removed();
-//      // just use the latest trx info
-//      if (seqNo > it->second._sequenceNum) {
-//        it->second._sequenceNum = seqNo;
-//        if (update.revisionId() != 0) {
-//          it->second._revisionId = update.revisionId();
-//        }
-//      }
-//    } else {
-//      // insert new counter
-//      _counters.emplace(std::make_pair(
-//          objectId,
-//          CMValue(update.sequenceNumber(), update.added(), update.removed(),
-//                  update.revisionId())));
-//      needsSync = true;  // only count values from WAL if they are in the DB
-//    }
-//  }
-//
-//  setMaxUpdateSequenceNumber(seqNo);
-//
-//  if (needsSync) {
-//    LOG_DEVEL << "force syncing document count for " << objectId;
-//    sync(true);
-//  }
-//}
-//
-//arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
-//                                                            rocksdb::SequenceNumber seq,
-//                                                            uint64_t value) {
-//  arangodb::Result res;
-//  rocksdb::SequenceNumber seqNo = 0;
-//
-//  {
-//    WRITE_LOCKER(guard, _rwLock);
-//
-//    auto it = _counters.find(objectId);
-//
-//    if (it != _counters.end()) {
-//      LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "resetting counter value to " << value;
-//      it->second._sequenceNum = std::max(seq, it->second._sequenceNum);
-//      it->second._added = value;
-//      it->second._removed = 0;
-//    } else {
-//      // nothing to do as the counter has never been written it can not be set to
-//      // a value that would require correction. but we use the return value to
-//      // signal that no sync is rquired
-//      res.reset(TRI_ERROR_INTERNAL, "counter value not found - no sync required");
-//    }
-//  }
-//
-//  setMaxUpdateSequenceNumber(seqNo);
-//
-//  return res;
-//}
-//
-//void RocksDBSettingsManager::removeCounter(uint64_t objectId) {
-//  WRITE_LOCKER(guard, _rwLock);
-//
-//  auto it = _counters.find(objectId);
-//
-//  if (it != _counters.end()) {
-//    RocksDBKey key;
-//    key.constructCounterValue(it->first);
-//    rocksdb::WriteOptions options;
-//    rocksdb::Status s =
-//        _db->Delete(options, RocksDBColumnFamily::definitions(), key.string());
-//    if (!s.ok()) {
-//      LOG_TOPIC(ERR, Logger::ENGINES) << "deleting counter failed";
-//    }
-//    _counters.erase(it);
-//  }
-//}
-//
-//std::unordered_map<uint64_t, rocksdb::SequenceNumber>
-//RocksDBSettingsManager::counterSeqs() {
-//  std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqs;
-//  {  // block all updates while we copy
-//    READ_LOCKER(guard, _rwLock);
-//    for (auto it : _counters) {
-//      seqs.emplace(it.first, it.second._sequenceNum);
-//    }
-//  }
-//  return seqs;
-//}
 
 bool RocksDBSettingsManager::lockForSync(bool force) {
   if (force) {
@@ -378,22 +240,6 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto guard = scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
   
 #warning fix maxUpdateSeqNo
-//  auto maxUpdateSeqNo = _maxUpdateSeqNo.load(std::memory_order_acquire);
-//  if (!force && maxUpdateSeqNo <= _lastSyncedSeqNo) {
-//    // if noone has updated any counters etc. since we were here last,
-//    // there is no need to do anything!
-//    return Result();
-//  }
-
-  // ok, when we are here, we will write out something back to the database
-
-  // collection counters
-//  std::unordered_map<uint64_t, CMValue> countersCpy;
-//  {  // block all updates
-//    WRITE_LOCKER(guard, _rwLock);
-//    countersCpy = _counters;
-//  }
-//  auto syncedSeqNumsCpy = _syncedSeqNums;
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
@@ -454,13 +300,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto s = rtrx->Commit();
   
   if (s.ok()) {
-#warning fix maxUpdateSeqNo
-//    _lastSyncedSeqNo = maxUpdateSeqNo;
-    {
-      WRITE_LOCKER(guard, _rwLock);
-      _lastSync = minSeqNr;
-    }
-//    _syncedSeqNums = syncedSeqNumsCpy;
+    WRITE_LOCKER(guard, _rwLock);
+    _lastSync = minSeqNr;
   }
 
   return rocksutils::convertStatus(s);

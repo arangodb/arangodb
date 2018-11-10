@@ -208,7 +208,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
         LOG_DEVEL << "found " << ops.added << " inserts for " << collection->name();
         if (ops.mustTruncate) { // first we must reset the counter
-          LOG_DEVEL << "truncating recovery count";
           rcoll->meta().countRefUnsafe()._added = 0;
           rcoll->meta().countRefUnsafe()._removed = 0;
         }
@@ -220,29 +219,38 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         int64_t adj = static_cast<int64_t>(ops.added) - static_cast<int64_t>(ops.removed);
         rcoll->adjustNumberDocuments(ops.lastRevisionId, adj);
         LOG_DEVEL << collection->name() << " now has " << rcoll->numberDocuments();
-      }
-      
-      for (auto gen : _generators) {
-        if (gen.second > 0) {
-          auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
-          if (dbColPair.second == 0 && dbColPair.first == 0) {
-            // collection with this objectID not known.Skip.
-            continue;
-          }
-          auto vocbase = dbfeature->useDatabase(dbColPair.first);
-          if (vocbase == nullptr) {
-            continue;
-          }
-          TRI_DEFER(vocbase->release());
-
-          auto collection = vocbase->lookupCollection(dbColPair.second);
-          if (collection == nullptr) {
-            continue;
-          }
-          std::string k(basics::StringUtils::itoa(gen.second));
+        
+        auto const& it = _generators.find(rcoll->objectId());
+        if (it != _generators.end()) {
+          LOG_DEVEL << "tracking key " << it->second << " for " << collection->name();
+          std::string k(basics::StringUtils::itoa(it->second));
           collection->keyGenerator()->track(k.data(), k.size());
+          _generators.erase(it);
         }
       }
+      TRI_ASSERT(_generators.empty());
+//
+//      for (auto gen : _generators) {
+//        if (gen.second > 0) {
+//          auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
+//          if (dbColPair.second == 0 && dbColPair.first == 0) {
+//            // collection with this objectID not known.Skip.
+//            continue;
+//          }
+//          auto vocbase = dbfeature->useDatabase(dbColPair.first);
+//          if (vocbase == nullptr) {
+//            continue;
+//          }
+//          TRI_DEFER(vocbase->release());
+//
+//          auto collection = vocbase->lookupCollection(dbColPair.second);
+//          if (collection == nullptr) {
+//            continue;
+//          }
+//          std::string k(basics::StringUtils::itoa(gen.second));
+//          collection->keyGenerator()->track(k.data(), k.size());
+//        }
+//      }
       
     });
     return rv;

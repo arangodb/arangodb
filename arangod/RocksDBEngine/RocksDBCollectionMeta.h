@@ -133,6 +133,8 @@ private:
   
 private:
 
+  // TODO we should probably use flat_map or abseils Swiss Tables
+  
   mutable arangodb::basics::ReadWriteSpinLock _blockerLock;
   /// @brief blocker identifies a transaction beeing committet
   std::map<uint64_t, rocksdb::SequenceNumber> _blockers;

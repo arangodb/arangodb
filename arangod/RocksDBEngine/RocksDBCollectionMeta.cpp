@@ -221,7 +221,8 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
     
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
     rocksdb::Status s = trx->Put(cf, key.string(), value.string());
-    
+    LOG_DEVEL << "writing key generator coll " << coll.name();
+
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
       return rocksutils::convertStatus(s);
@@ -282,9 +283,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   if (s.ok()) {
     VPackSlice countSlice = RocksDBValue::data(value);
     _count = RocksDBCollectionMeta::DocCount(countSlice);
-    LOG_DEVEL << "deserialized counter coll " << coll.name() << " added " << _count._added;
   } else if (!s.IsNotFound()) {
-    LOG_DEVEL << "counter not found";
     return rocksutils::convertStatus(s);
   }
   
@@ -299,11 +298,15 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
       VPackSlice keyGenProps = RocksDBValue::data(value);
       TRI_ASSERT(keyGenProps.isObject());
       // simon: wtf who decided this is a good deserialization routine ?!
-      VPackSlice lastValue = keyGenProps.get(StaticStrings::LastValue);
-      if (lastValue.isString()) {
+      VPackSlice val = keyGenProps.get(StaticStrings::LastValue);
+      if (val.isString()) {
         VPackValueLength size;
-        const char* data = lastValue.getString(size);
+        const char* data = val.getString(size);
         keyGen->track(data, size);
+      } else if (val.isInteger()) {
+        uint64_t lastValue = val.getUInt();
+        std::string str = std::to_string(lastValue);
+        keyGen->track(str.data(), str.size());
       }
       
     } else if (!s.IsNotFound()) {
@@ -348,80 +351,6 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   
   return Result();
 }
-
-//std::pair<arangodb::Result, rocksdb::SequenceNumber>
-//RocksDBCollection::serializeIndexEstimates(rocksdb::Transaction* rtrx,
-//                                           ) const {
-//  auto retPair = std::make_pair(Result{}, std::numeric_limits<rocksdb::SequenceNumber>::max());
-//  RocksDBKey key;
-//  std::string output;
-//
-//  for (auto index : getIndexes()) {
-//    output.clear();
-//    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
-//    TRI_ASSERT(cindex != nullptr);
-//
-//    if (cindex->needToPersistEstimate()) {
-//      LOG_TOPIC(ERR, Logger::ENGINES)
-//      << "beginning estimate serialization for index '" << cindex->objectId() << "'";
-//
-//      auto committedSeq = cindex->serializeEstimate(output);
-//      if (output.size() > sizeof(uint64_t)) { // nothing was written
-//        LOG_TOPIC(ERR, Logger::ENGINES)
-//        << "serialized estimate for index '" << cindex->objectId()
-//        << "' valid through seq " << committedSeq;
-//
-//        // calculate retention sequence number
-//        retPair.second = std::min(retPair.second, committedSeq);
-//
-//        key.constructIndexEstimateValue(cindex->objectId());
-//        rocksdb::Slice value(output);
-//        rocksdb::Status s =
-//        rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
-//
-//        if (!s.ok()) {
-//          LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
-//          retPair.first.reset(rocksutils::convertStatus(s));
-//          return retPair;
-//        }
-//      }
-//    }
-//  }
-//  return retPair;
-//}
-//
-//void RocksDBCollection::deserializeIndexEstimates(RocksDBSettingsManager* mgr) {
-//  std::vector<std::shared_ptr<Index>> toRecalculate;
-//  for (auto const& it : getIndexes()) {
-//    auto idx = static_cast<RocksDBIndex*>(it.get());
-//    if (!idx->deserializeEstimate(mgr)) {
-//      toRecalculate.push_back(it);
-//    }
-//  }
-//  if (!toRecalculate.empty()) {
-//    recalculateIndexEstimates(toRecalculate);
-//  }
-//}
-//
-//void RocksDBCollection::recalculateIndexEstimates(std::vector<std::shared_ptr<Index>> const& indexes) {
-//  // IMPORTANT if this method is called outside of startup/recovery, we may have
-//  // issues with estimate integrity; please do not expose via a user-facing
-//  // method or endpoint unless the implementation changes
-//
-//  // intentionally do not use transactions here, as we will only be called
-//  // during recovery
-//  RocksDBEngine* engine =
-//  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-//  TRI_ASSERT(engine != nullptr);
-//  TRI_ASSERT(engine->inRecovery());
-//
-//  for (auto const& it : indexes) {
-//    auto idx = static_cast<RocksDBIndex*>(it.get());
-//
-//    TRI_ASSERT(idx != nullptr);
-//    idx->recalculateEstimates();
-//  }
-//}
 
 /// @brief load collection
 /*static*/ RocksDBCollectionMeta::DocCount
