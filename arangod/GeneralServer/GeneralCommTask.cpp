@@ -138,7 +138,6 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -235,7 +234,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
-  const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
+  rest::ResponseCode const code = GeneralCommTask::canAccessPath(req);
   if (code == rest::ResponseCode::UNAUTHORIZED) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                      req.contentTypeResponse(), req.messageId(),

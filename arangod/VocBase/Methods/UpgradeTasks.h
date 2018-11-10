@@ -41,8 +41,6 @@ struct UpgradeTasks {
   static bool updateUserModels(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool createModules(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool setupAnalyzers(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createRouting(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool insertRedirections(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool setupAqlFunctions(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool createFrontend(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool setupQueues(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);

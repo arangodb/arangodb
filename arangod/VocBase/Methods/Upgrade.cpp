@@ -241,16 +241,6 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::setupAnalyzers);
-  addTask("createRouting", "setup _routing collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createRouting);
-  addTask("insertRedirectionsAll", "insert default routes for admin interface",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_EXISTING,
-          &UpgradeTasks::insertRedirections);
   addTask("setupAqlFunctions", "setup _aqlfunctions collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
