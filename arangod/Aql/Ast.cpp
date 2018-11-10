@@ -3804,13 +3804,8 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   auto node = new AstNode(type);
 
-  try {
-    // register the node so it gets freed automatically later
-    _query->addNode(node);
-  } catch (...) {
-    delete node;
-    throw;
-  }
+  // register the node so it gets freed automatically later
+  _query->addNode(node);
 
   return node;
 }
