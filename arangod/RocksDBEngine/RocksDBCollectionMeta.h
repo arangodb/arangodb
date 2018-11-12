@@ -129,7 +129,8 @@ private:
   rocksdb::SequenceNumber committableSeq();
   
   /// @brief apply counter adjustments, only call from sync thread
-  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq);
+  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq,
+                                           bool& didWork);
   
 private:
 

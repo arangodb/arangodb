@@ -135,7 +135,8 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() {
   return std::numeric_limits<rocksdb::SequenceNumber>::max();
 }
 
-rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
+rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
+                                                                bool& didWork) {
   rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
   { // TODO is this holding the lock too long ?
     std::lock_guard<std::mutex> guard(_countLock);
@@ -151,21 +152,12 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
         _count._revisionId = it->second.revisionId;
       }
       it = _bufferedAdjs.erase(it);
+      didWork = true;
     }
     _count._committedSeq = appliedSeq;
   }
   return appliedSeq;
 }
-
-/// @brief get the current count
-//RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::count() const {
-//  RocksDBCollectionMeta::DocCount ret(0,0,0,0);
-//  {
-//    READ_LOCKER(locker, _lock);
-//    ret = _count;
-//  }
-//  return ret;
-//}
 
 /// @brief get the current count
 RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() const {
@@ -185,10 +177,11 @@ void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCollection& coll,
                                             bool force, VPackBuilder& tmp,
                                             rocksdb::SequenceNumber& appliedSeq) {
+  Result res;
   
   rocksdb::SequenceNumber commitSeq = committableSeq();
-  appliedSeq = applyAdjustments(commitSeq);
-  LOG_DEVEL << "applied counter for " << coll.name() << " until " << appliedSeq;
+  bool didWork = false;
+  appliedSeq = applyAdjustments(commitSeq, didWork);
   
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
@@ -196,21 +189,23 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
   
   // Step 1. store the document count
   tmp.clear();
-  _count.toVelocyPack(tmp);
   
-  key.constructCounterValue(rcoll->objectId());
-  rocksdb::Slice value((char*)tmp.start(), tmp.size());
-  rocksdb::Status s = trx->Put(cf, key.string(), value);
-  if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES)
-    << "writing counter for collection with objectId '" << rcoll->objectId()
-    << "' failed: " << s.ToString();
-    return rocksutils::convertStatus(s);
+  if (didWork) {
+    _count.toVelocyPack(tmp);
+    key.constructCounterValue(rcoll->objectId());
+    rocksdb::Slice value((char*)tmp.start(), tmp.size());
+    rocksdb::Status s = trx->Put(cf, key.string(), value);
+    if (!s.ok()) {
+      LOG_TOPIC(WARN, Logger::ENGINES)
+      << "writing counter for collection with objectId '" << rcoll->objectId()
+      << "' failed: " << s.ToString();
+      return res.reset(rocksutils::convertStatus(s));
+    }
   }
-  
+
   // Step 2. store the key generator
   KeyGenerator* keyGen = coll.keyGenerator();
-  if (keyGen->hasDynamicState()) {
+  if (didWork && keyGen->hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
     
@@ -225,7 +220,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
 
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
-      return rocksutils::convertStatus(s);
+      return res.reset(rocksutils::convertStatus(s));
     }
   }
   
@@ -258,12 +253,12 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
       rocksdb::Status s = trx->Put(cf, key.string(), value);
       if (!s.ok()) {
         LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
-        return rocksutils::convertStatus(s);
+        return res.reset(rocksutils::convertStatus(s));
       }
     }
   }
   
-  return Result{};
+  return res;
 }
 
 /// @brief deserialize collection metadata, only called on startup
