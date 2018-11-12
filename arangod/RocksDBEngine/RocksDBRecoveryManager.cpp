@@ -228,29 +228,28 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           _generators.erase(it);
         }
       }
-      TRI_ASSERT(_generators.empty());
-//
-//      for (auto gen : _generators) {
-//        if (gen.second > 0) {
-//          auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
-//          if (dbColPair.second == 0 && dbColPair.first == 0) {
-//            // collection with this objectID not known.Skip.
-//            continue;
-//          }
-//          auto vocbase = dbfeature->useDatabase(dbColPair.first);
-//          if (vocbase == nullptr) {
-//            continue;
-//          }
-//          TRI_DEFER(vocbase->release());
-//
-//          auto collection = vocbase->lookupCollection(dbColPair.second);
-//          if (collection == nullptr) {
-//            continue;
-//          }
-//          std::string k(basics::StringUtils::itoa(gen.second));
-//          collection->keyGenerator()->track(k.data(), k.size());
-//        }
-//      }
+      // make sure we collect all the other generators
+      for (auto gen : _generators) {
+        if (gen.second > 0) {
+          auto dbColPair = rocksutils::mapObjectToCollection(gen.first);
+          if (dbColPair.second == 0 && dbColPair.first == 0) {
+            // collection with this objectID not known.Skip.
+            continue;
+          }
+          auto vocbase = dbfeature->useDatabase(dbColPair.first);
+          if (vocbase == nullptr) {
+            continue;
+          }
+          TRI_DEFER(vocbase->release());
+
+          auto collection = vocbase->lookupCollection(dbColPair.second);
+          if (collection == nullptr) {
+            continue;
+          }
+          std::string k(basics::StringUtils::itoa(gen.second));
+          collection->keyGenerator()->track(k.data(), k.size());
+        }
+      }
       
     });
     return rv;
