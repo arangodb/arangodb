@@ -182,8 +182,9 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
     
     RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-    rocksdb::SequenceNumber seq;
-    Result res = rcoll->meta().serializeMeta(_trx.get(), *coll, force, _tmpBuilder, seq);
+    rocksdb::SequenceNumber appliedSeq = minSeqNr;
+    Result res = rcoll->meta().serializeMeta(_trx.get(), *coll, force, _tmpBuilder, appliedSeq);
+    minSeqNr = std::min(minSeqNr, appliedSeq);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -257,7 +258,7 @@ void RocksDBSettingsManager::loadSettings() {
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC(ERR, Logger::ENGINES)
+          LOG_TOPIC(TRACE, Logger::ENGINES)
               << "last background settings sync: " << _lastSync;
         }
       } catch (...) {

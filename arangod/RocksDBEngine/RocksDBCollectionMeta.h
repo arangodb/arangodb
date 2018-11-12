@@ -69,7 +69,7 @@ struct RocksDBCollectionMeta final {
   
  public:
   
-  explicit RocksDBCollectionMeta();
+  RocksDBCollectionMeta();
   
  public:
   /**
@@ -98,10 +98,10 @@ struct RocksDBCollectionMeta final {
   void removeBlocker(uint64_t trxId);
   
   /// @brief updates and returns the largest safe seq to squash updated against
-  rocksdb::SequenceNumber committableSeq();
+  rocksdb::SequenceNumber committableSeq() const;
   
   /// @brief get the current count
-  DocCount currentCount() const;
+  DocCount currentCount();
   /// @brief get the current count, ONLY use in recovery
   DocCount& countRefUnsafe() { return _count; }
   
@@ -137,7 +137,7 @@ private:
   // TODO we should probably use flat_map or abseils Swiss Tables
   
   mutable arangodb::basics::ReadWriteSpinLock _blockerLock;
-  /// @brief blocker identifies a transaction beeing committet
+  /// @brief blocker identifies a transaction being committed
   std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
   

@@ -309,8 +309,8 @@ class RocksDBCuckooIndexEstimator {
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
 
-      bool havePendingUpdates = /*!_blockers.empty() ||*/ !_insertBuffers.empty() ||
-                                !_removalBuffers.empty() || !_truncateBuffer.empty();
+      bool havePendingUpdates = !_insertBuffers.empty() || !_removalBuffers.empty() ||
+                                !_truncateBuffer.empty();
       _needToPersist.store(havePendingUpdates);
     }
 

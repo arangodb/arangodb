@@ -1698,16 +1698,21 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 /// may never be called unless recovery is finished
 void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
                                               int64_t adjustment) {
-//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//  RocksDBEngine* engine =
-//  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-//  TRI_ASSERT(engine != nullptr);
-//  TRI_ASSERT(!engine->inRecovery());
-//#endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  RocksDBEngine* engine =
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  TRI_ASSERT(engine != nullptr);
+  TRI_ASSERT(!engine->inRecovery());
+#endif
   if (revId != 0) {
     _revisionId = revId;
   }
   if (adjustment < 0) {
+    if (_numberDocuments < static_cast<uint64_t>(-adjustment)) {
+      LOG_DEVEL << "errorr ";
+      std::this_thread::sleep_for(std::chrono::seconds(30));
+    }
+    
     TRI_ASSERT(_numberDocuments >= static_cast<uint64_t>(-adjustment));
     _numberDocuments -= static_cast<uint64_t>(-adjustment);
   } else if (adjustment > 0) {

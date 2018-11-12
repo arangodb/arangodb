@@ -343,5 +343,4 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
 
 void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {
   // Nothing to do.
-  return;
 }

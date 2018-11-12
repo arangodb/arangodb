@@ -1274,7 +1274,8 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Unregister collection metadata
   Result res = RocksDBCollectionMeta::deleteCollectionMeta(_db, coll->objectId());
   if (res.fail()) {
-    return res;
+    LOG_TOPIC(ERR, Logger::ENGINES) << "error removing collection meta-data: "
+      << res.errorMessage(); // continue regardless
   }
   
   // remove from map
@@ -1290,7 +1291,8 @@ arangodb::Result RocksDBEngine::dropCollection(
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
     res = RocksDBCollectionMeta::deleteIndexEstimate(_db, ridx->objectId());
     if (res.fail()) {
-      return res;
+      LOG_TOPIC(WARN, Logger::ENGINES) << "could not delete index estimate: "
+      << res.errorMessage();
     }
     
     int dropRes = index->drop();
@@ -1300,7 +1302,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       // User View remains consistent.
       LOG_TOPIC(ERR, Logger::ENGINES) << "unable to drop index: "
       << TRI_errno_string(dropRes);
-      return TRI_ERROR_NO_ERROR;
+//      return TRI_ERROR_NO_ERROR;
     }
   }
 

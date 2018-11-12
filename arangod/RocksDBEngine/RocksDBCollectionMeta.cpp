@@ -126,7 +126,7 @@ void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
 }
 
 /// @brief updates and returns the largest safe seq to squash updated against
-rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() {
+rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
   READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   if (!_blockersBySeq.empty()) {
@@ -156,9 +156,9 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
   auto it = _stagedAdjs.begin();
   while (it != _stagedAdjs.end() && it->first < commitSeq) {
     appliedSeq = std::max(appliedSeq, it->first);
-    if (it->second.adjustment >= 0) {
+    if (it->second.adjustment > 0) {
       _count._added += it->second.adjustment;
-    } else {
+    } else if (it->second.adjustment < 0) {
       _count._removed += -(it->second.adjustment);
     }
     if (it->second.revisionId != 0) {
@@ -172,8 +172,16 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 }
 
 /// @brief get the current count
-RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() const {
-  std::lock_guard<std::mutex> guard(_countLock);
+RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
+  
+  bool didWork = false;
+  const rocksdb::SequenceNumber commitSeq = committableSeq();
+  rocksdb::SequenceNumber seq = applyAdjustments(commitSeq, didWork);
+  if (didWork) { // make sure serializeMeta has something to do
+    std::lock_guard<std::mutex> guard(_countLock);
+    _bufferedAdjs.emplace(seq, Adjustment{0, 0});
+  }
+  
   return _count;
 }
 
@@ -191,9 +199,14 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
                                             rocksdb::SequenceNumber& appliedSeq) {
   Result res;
   
-  rocksdb::SequenceNumber commitSeq = committableSeq();
   bool didWork = false;
-  appliedSeq = applyAdjustments(commitSeq, didWork);
+  const rocksdb::SequenceNumber maxCommitSeq = committableSeq();
+  rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
+  if (didWork) {
+    appliedSeq = std::min(appliedSeq, seq);
+  } else { // maxCommitSeq is == UINT64_MAX without any blockers
+    appliedSeq = std::min(appliedSeq, maxCommitSeq);
+  }
   
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
@@ -251,7 +264,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
       << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
-      auto seq = est->serialize(output, commitSeq);
+      seq = est->serialize(output, maxCommitSeq);
       // calculate retention sequence number
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
@@ -355,6 +368,9 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
       << est->computeEstimate();
       
       idx->setEstimator(std::move(est));
+    } else {
+      LOG_TOPIC(ERR, Logger::ENGINES) << "unsupported index estimator format in index "
+      << "with objectId '" << idx->objectId() << "'";
     }
   }
   
@@ -389,18 +405,19 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   rocksdb::WriteOptions wo;
   wo.sync = true;
   
-  
   // Step 1. delete the document count
   RocksDBKey key;
   key.constructCounterValue(objectId);
-  rocksdb::Status s =db->Delete(wo, cf, key.string());
+  rocksdb::Status s = db->Delete(wo, cf, key.string());
   if (!s.ok()) {
-    return rocksutils::convertStatus(s);
+    LOG_TOPIC(ERR, Logger::ENGINES) << "could not delete counter value: " << s.ToString();
+    // try to remove the key generator value regardless
   }
   
   key.constructKeyGeneratorValue(objectId);
   s = db->Delete(wo, cf, key.string());
   if (!s.ok() && !s.IsNotFound()) {
+    LOG_TOPIC(ERR, Logger::ENGINES) << "could not delete key generator value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }
   
