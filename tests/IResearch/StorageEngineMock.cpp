@@ -1101,11 +1101,11 @@ arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
 std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransactionCollection(
     arangodb::TransactionState& state,
     TRI_voc_cid_t cid,
-    arangodb::AccessMode::Type,
+    arangodb::AccessMode::Type accessType,
     int nestingLevel
 ) {
   return std::unique_ptr<arangodb::TransactionCollection>(
-    new TransactionCollectionMock(&state, cid)
+      new TransactionCollectionMock(&state, cid, accessType)
   );
 }
 
@@ -1442,9 +1442,10 @@ int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice c
   return TRI_ERROR_NO_ERROR;
 }
 
-TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid)
-  : TransactionCollection(state, cid, arangodb::AccessMode::Type::NONE) {
-}
+TransactionCollectionMock::TransactionCollectionMock(
+    arangodb::TransactionState* state, TRI_voc_cid_t cid,
+    arangodb::AccessMode::Type accessType)
+    : TransactionCollection(state, cid, accessType) {}
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {
   return nullptr != _collection; // collection must have be opened previously
@@ -1467,6 +1468,24 @@ void TransactionCollectionMock::release() {
 }
 
 int TransactionCollectionMock::updateUsage(arangodb::AccessMode::Type accessType, int nestingLevel) {
+  if (arangodb::AccessMode::isWriteOrExclusive(accessType) &&
+      !arangodb::AccessMode::isWriteOrExclusive(_accessType)) {
+    if (nestingLevel > 0) {
+      // trying to write access a collection that is only marked with
+      // read-access
+      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+    }
+
+    TRI_ASSERT(nestingLevel == 0);
+
+    // upgrade collection type to write-access
+    _accessType = accessType;
+  }
+
+  // if (nestingLevel < _nestingLevel) {
+  //   _nestingLevel = nestingLevel;
+  // }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1476,6 +1495,22 @@ void TransactionCollectionMock::unuse(int nestingLevel) {
 
 int TransactionCollectionMock::use(int nestingLevel) {
   TRI_vocbase_col_status_e status;
+
+  bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
+
+  if (shouldLock && !isLocked()) {
+    // r/w lock the collection
+    int res = doLock(_accessType, nestingLevel);
+
+    if (res == TRI_ERROR_LOCKED) {
+      // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
+      // operation has actually acquired the lock (and that the lock has not
+      // been held before)
+      res = TRI_ERROR_NO_ERROR;
+    } else if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
 
   _collection = _transaction->vocbase().useCollection(_cid, status);
 

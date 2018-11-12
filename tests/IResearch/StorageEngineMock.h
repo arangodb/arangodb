@@ -126,7 +126,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
 
 class TransactionCollectionMock: public arangodb::TransactionCollection {
  public:
-  TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid);
+  TransactionCollectionMock(arangodb::TransactionState *state, TRI_voc_cid_t cid, arangodb::AccessMode::Type accessType);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual void freeOperations(arangodb::transaction::Methods* activeTrx, bool mustRollback) override;
   virtual bool hasOperations() const override;
