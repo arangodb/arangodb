@@ -1643,22 +1643,19 @@ OperationResult transaction::Methods::insertLocal(
   // - using the MMFiles storage engine, and
   // - doing a single document operation,
   // we have to:
-  // - Use additional per-document locks that hold until the replication is
-  //   done. This is to avoid conflicting updates possibly arriving at a
-  //   follower in an undeterministic order.
   // - Get the list of followers during the time span we actually do hold a
   //   collection level lock. This is to avoid races with the replication where
   //   a follower may otherwise be added between the actual document operation
   //   and the point where we get our copy of the followers, regardless of the
   //   latter happens before or after the document operation.
-  bool const needsDocumentLocks = needsLock && _state->isDBServer();
+
   // Note that getting the followers this way also doesn't do any harm in other
   // cases, except for babies because it would be done multiple times. Thus this
   // bool.
   // I suppose alternatively we could also do it via the updateFollowers
   // callback and set updateFollowers to nullptr afterwards, so we only do it
   // once.
-  bool const needsToGetFollowersUnderLock = needsDocumentLocks;
+  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2482,16 +2479,12 @@ OperationResult transaction::Methods::removeLocal(
   // - using the MMFiles storage engine, and
   // - doing a single document operation,
   // we have to:
-  // - Use additional per-document locks that hold until the replication is
-  //   done. This is to avoid conflicting updates possibly arriving at a
-  //   follower in an undeterministic order.
   // - Get the list of followers during the time span we actually do hold a
   //   collection level lock. This is to avoid races with the replication where
   //   a follower may otherwise be added between the actual document operation
   //   and the point where we get our copy of the followers, regardless of the
   //   latter happens before or after the document operation.
-  bool const needsDocumentLocks = needsLock && _state->isDBServer();
-  bool const needsToGetFollowersUnderLock = needsDocumentLocks;
+  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
