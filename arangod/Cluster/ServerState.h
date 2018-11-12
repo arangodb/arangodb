@@ -97,22 +97,22 @@ class ServerState {
 
   /// @brief convert a string representation to a mode
   static Mode stringToMode(std::string const&);
-  
+
   /// @brief atomically load current server mode
   static Mode mode();
-  
+
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
   static  Mode setServerMode(Mode mode);
-  
+
   /// @brief checks maintenance mode
   static bool isMaintenance() {
     return mode() == Mode::MAINTENANCE;
   }
-  
+
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
-  
+
   /// @brief set server read-only
   static bool setReadOnly(bool ro);
 
@@ -214,9 +214,6 @@ class ServerState {
   /// @brief get the server endpoint
   std::string getEndpoint();
 
-  /// @brief get the server advertised endpoint
-  std::string getAdvertisedEndpoint();
-
   /// @brief find a host identification string
   void findHost(std::string const& fallback);
 
@@ -269,24 +266,24 @@ class ServerState {
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
-  
+
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
 
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
-  
+
   /// @brief write the Current/ServersRegistered entry
   bool registerAtAgencyPhase2(AgencyComm&);
-  
+
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
-  
+
 private:
-  
+
   /// @brief server role
   std::atomic<RoleEnum> _role;
-  
+
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 

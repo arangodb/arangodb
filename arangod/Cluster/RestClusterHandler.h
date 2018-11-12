@@ -31,16 +31,21 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   RestClusterHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  
+
   virtual char const* name() const override { return "RestClusterHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
 private:
-  
-  /// _api/cluster/endpoints
+
+  /// GET _api/cluster/endpoints
   void handleCommandEndpoints();
-  
+
+  // PUT _api/cluster/endpoints
+  void handleCommandPutAdvEndpoint();
+  // GET _api/cluster/advertised-endpoint
+  void handleCommandGetAdvEndpoint();
+
   /// _api/cluster/serverInfo
   void handleCommandServerInfo();
 
