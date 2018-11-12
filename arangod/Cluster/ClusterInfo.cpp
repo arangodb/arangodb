@@ -935,7 +935,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
   auto DBServers =
       std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
@@ -1067,11 +1067,11 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isObject() && result.length() == 0) {
-          *dbServerResult = 0;
+        if (result.isNone() || (result.isObject() && result.length() == 0)) {
+          *dbServerResult = TRI_ERROR_NO_ERROR;
         }
         return true;
       };
@@ -1195,7 +1195,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // closure and the main thread executing this function. Note that it can
   // happen that the callback is called only after we return from this
   // function!
-  auto dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
 
@@ -1232,8 +1232,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                   plannedServers = (*it).second;
                 } else {
                   LOG_TOPIC(DEBUG, Logger::CLUSTER)
-                    << "Strange, did not find shard in _shardServers: "
-                    << p.key.copyString();
+                    << "Did not find shard in _shardServers: "
+                    << p.key.copyString() << ". Maybe the collection is already dropped.";
+                  *errMsg = "Error in creation of collection: " + p.key.copyString() + ". Collection already dropped. "
+                      + __FILE__ + std::to_string(__LINE__);
+                  *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+                  return true;
                 }
               }
               if (plannedServers.empty()) {
@@ -1475,12 +1479,12 @@ int ClusterInfo::dropCollectionCoordinator(
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  auto dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   auto errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isObject() && result.length() == 0) {
+        if (result.isNone() || (result.isObject() && result.length() == 0)) {
           *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
         }
         return true;
@@ -1512,8 +1516,9 @@ int ClusterInfo::dropCollectionCoordinator(
       numberOfShards = shards.length();
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER)
-          << "Missing shards information on dropping" << databaseName << "/"
+          << "Missing shards information on dropping " << databaseName << "/"
           << collectionID;
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
   }
 
@@ -1977,7 +1982,8 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
   }
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  // will contain the error number and message
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](
@@ -2151,7 +2157,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const interval = getPollInterval();
 
   auto numberOfShardsMutex = std::make_shared<Mutex>();
-  auto numberOfShards = std::make_shared<int>(0);
+  auto numberOfShards = std::make_shared<std::atomic<int>>(0);
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key =
