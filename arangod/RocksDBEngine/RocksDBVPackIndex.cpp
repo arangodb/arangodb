@@ -1253,7 +1253,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
   auto bounds = getBounds();
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;
-  options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
   options.prefix_same_as_start = true;  // key-prefix includes edge
   options.verify_checksums = false;
   options.fill_cache = false;

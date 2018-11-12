@@ -852,7 +852,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::Slice const end = upper;
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
   options.prefix_same_as_start = false; // key-prefix includes edge
   options.total_order_seek = true; // otherwise full-index-scan does not work
   options.verify_checksums = false;
@@ -1074,7 +1074,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;
-  options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
   options.prefix_same_as_start = false;  // key-prefix includes edge
   options.total_order_seek = true; // otherwise full scan fails
   options.verify_checksums = false;

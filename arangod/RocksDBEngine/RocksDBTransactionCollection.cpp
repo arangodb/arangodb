@@ -280,18 +280,6 @@ void RocksDBTransactionCollection::addOperation(
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
                                                  uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
-//  for (auto const& pair : _trackedIndexOperations) {
-//    auto idx = _collection->lookupIndex(pair.first);
-//    if (idx == nullptr) {
-//      TRI_ASSERT(false); // Index reported estimates, but does not exist
-//      continue;
-//    }
-//    auto ridx = static_cast<RocksDBIndex*>(idx.get());
-//    auto estimator = ridx->estimator();
-//    if (estimator) {
-//      estimator->placeBlocker(trxId, preCommitSeq);
-//    }
-//  }
   if (hasOperations() || !_trackedIndexOperations.empty()) {
     RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
     coll->meta().placeBlocker(trxId, preCommitSeq);
@@ -300,18 +288,6 @@ void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
-//  for (auto const& pair : _trackedIndexOperations) {
-//    auto idx = _collection->lookupIndex(pair.first);
-//    if (idx == nullptr) {
-//      TRI_ASSERT(false); // Index reported estimates, but does not exist
-//      continue;
-//    }
-//    auto ridx = static_cast<RocksDBIndex*>(idx.get());
-//    auto estimator = ridx->estimator();
-//    if (estimator) {
-//      estimator->removeBlocker(trxId);
-//    }
-//  }
   if (hasOperations() || !_trackedIndexOperations.empty()) {
     RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
     coll->meta().removeBlocker(trxId);

@@ -1826,8 +1826,10 @@ uint64_t RocksDBCollection::recalculateCounts() {
   const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
-  vocbase.use();
-  scopeGuard([&] {
+  if (!vocbase.use()) { // someone dropped the database
+    return numberDocuments();
+  }
+  auto useGuard = scopeGuard([&] {
     if (snapshot) {
       db->ReleaseSnapshot(snapshot);
     }

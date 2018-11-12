@@ -102,7 +102,7 @@ struct RocksDBCollectionMeta final {
   
   /// @brief get the current count
   DocCount currentCount() const;
-  /// @brief get the current count, ONLY use in recovey
+  /// @brief get the current count, ONLY use in recovery
   DocCount& countRefUnsafe() { return _count; }
   
   /// @brief buffer a counter adjustment

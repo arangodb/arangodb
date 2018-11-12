@@ -260,7 +260,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
-  /// @brieef collection lock used for write access
+  /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
