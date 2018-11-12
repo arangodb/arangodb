@@ -1231,8 +1231,6 @@ arangodb::Result RocksDBEngine::dropCollection(
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
-  rocksdb::WriteOptions wo;
-
   // If we get here the collection is safe to drop.
   //
   // This uses the following workflow:
@@ -1263,6 +1261,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   key.constructCollection(vocbase.id(), collection.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
+  rocksdb::WriteOptions wo;
   rocksdb::Status res = _db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
@@ -1807,7 +1806,6 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
       }
     }
-
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);

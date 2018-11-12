@@ -1333,30 +1333,21 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// non-transactional: fill index with existing documents
-/// from this collection
-arangodb::Result RocksDBCollection::fillIndexes(
-    transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  // FIXME: assert for an exclusive lock on this collection
-  TRI_ASSERT(trx->state()->collection(
-    _logicalCollection.id(), AccessMode::Type::EXCLUSIVE
-  ));
-
-  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+template<typename WriteBatchType, typename MethodsType>
+static arangodb::Result fillIndex(transaction::Methods* trx, 
+                                  RocksDBIndex* ridx, 
+                                  std::unique_ptr<IndexIterator> it,
+                                  WriteBatchType& batch, 
+                                  RocksDBCollection* rcol) {
   auto state = RocksDBTransactionState::toState(trx);
-  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
-    &_logicalCollection, trx, primaryIndex()
-  ));
-
+  
   // fillindex can be non transactional, we just need to clean up
   rocksdb::DB* db = rocksutils::globalRocksDB()->GetBaseDB();
   TRI_ASSERT(db != nullptr);
 
   uint64_t numDocsWritten = 0;
   // write batch will be reset every x documents
-  rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(),
-                                     32 * 1024 * 1024);
-  RocksDBBatchedMethods batched(state, &batch);
+  MethodsType batched(state, &batch);
 
   arangodb::Result res;
   auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
@@ -1370,14 +1361,18 @@ arangodb::Result RocksDBCollection::fillIndexes(
   };
 
   rocksdb::WriteOptions writeOpts;
+#warn TODO: check how much benefit setting this option provides
+  // writeOpts.disableWAL = true;
   bool hasMore = true;
 
   while (hasMore && res.ok()) {
     hasMore = it->nextDocument(cb, 250);
 
-    if (TRI_VOC_COL_STATUS_DELETED == _logicalCollection.status()
-        || _logicalCollection.deleted()) {
+    if (TRI_VOC_COL_STATUS_DELETED == it->collection()->status()
+        || it->collection()->deleted()) {
       res = TRI_ERROR_INTERNAL;
+    } else if (application_features::ApplicationServer::isStopping()) {
+      res = TRI_ERROR_SHUTTING_DOWN;
     }
 
     if (res.ok()) {
@@ -1400,7 +1395,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
     arangodb::Result res2;  // do not overwrite original error
     auto removeCb = [&](LocalDocumentId token) {
       if (res2.ok() && numDocsWritten > 0) {
-        readDocumentWithCallback(trx, token, [&](LocalDocumentId const& documentId, VPackSlice doc) {
+        rcol->readDocumentWithCallback(trx, token, [&](LocalDocumentId const& documentId, VPackSlice doc) {
           // we need to remove already inserted documents up to numDocsWritten
           res2 = ridx->removeInternal(trx, &batched, documentId, doc, Index::OperationMode::rollback);
           if (res2.ok()) {
@@ -1414,11 +1409,44 @@ arangodb::Result RocksDBCollection::fillIndexes(
     while (hasMore && numDocsWritten > 0) {
       hasMore = it->next(removeCb, 500);
     }
-    rocksdb::WriteOptions writeOpts;
     db->Write(writeOpts, batch.GetWriteBatch());
   }
 
+  // flushing is necessary because we were not writing index data into WAL
+  rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
+  if (!status.ok()) {
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
+  }
+
   return res;
+}
+
+/// non-transactional: fill index with existing documents
+/// from this collection
+arangodb::Result RocksDBCollection::fillIndexes(
+    transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
+  TRI_ASSERT(trx->state()->collection(
+    _logicalCollection.id(), AccessMode::Type::EXCLUSIVE
+  ));
+  
+  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
+    &_logicalCollection, trx, primaryIndex()
+  ));
+
+  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+
+  if (ridx->unique()) {
+    // unique index. we need to keep track of all our changes because we need to avoid
+    // duplicate index keys. must therefore use a WriteBatchWithIndex
+    rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(), 32 * 1024 * 1024);
+    return fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, ridx, std::move(it), batch, this);
+  } else {
+    // non-unique index. all index keys will be unique anyway because they contain the document id
+    // we can therefore get away with a cheap WriteBatch
+    rocksdb::WriteBatch batch(32 * 1024 * 1024);
+    return fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, ridx, std::move(it), batch, this);
+  }
 }
 
 Result RocksDBCollection::insertDocument(
