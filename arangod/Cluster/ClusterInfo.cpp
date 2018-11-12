@@ -2793,7 +2793,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       "Current/Collections/" + databaseName + "/" + collectionID;
 
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
-  auto errMsg = std::make_shared<std::string>();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& current) {
         if (numberOfShards  == 0) {
@@ -2830,7 +2829,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
           }
 
           if (!found) {
-            *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+            dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
           }
         }
         return true;
@@ -2878,8 +2877,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     while (true) {
       if (*dbServerResult >= 0) {
-        cbGuard.fire(); // unregister cb before accessing errMsg
-        errorMsg = *errMsg;
+        cbGuard.fire(); // unregister cb
+        errorMsg.clear();
         loadCurrent();
         events::DropIndex(collectionID, idString, *dbServerResult);
         return *dbServerResult;
