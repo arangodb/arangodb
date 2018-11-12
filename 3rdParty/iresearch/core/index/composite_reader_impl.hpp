@@ -40,7 +40,7 @@ struct context;
 ///        for use/inclusion into cpp files
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ReaderType>
-class composite_reader_impl: public composite_reader {
+class composite_reader_impl: public index_reader {
  public:
   typedef typename std::enable_if<
     std::is_base_of<index_reader, ReaderType>::value,
@@ -68,17 +68,9 @@ class composite_reader_impl: public composite_reader {
     return *(ctxs_[i].reader);
   }
 
-  virtual reader_iterator begin() const override {
-    return reader_iterator(new iterator_impl(ctxs_.begin()));
-  }
-
   // maximum number of documents
   virtual uint64_t docs_count() const override {
     return docs_max_;
-  }
-
-  virtual reader_iterator end() const override {
-    return reader_iterator(new iterator_impl(ctxs_.end()));
   }
 
   // number of live documents
@@ -104,28 +96,6 @@ class composite_reader_impl: public composite_reader {
   }
 
  private:
-  class iterator_impl: public index_reader::reader_iterator_impl {
-   public:
-    explicit iterator_impl(
-      const typename composite_reader_impl::ctxs_t::const_iterator& pos
-    ): pos_(pos) {
-    }
-    virtual void operator++() override { ++pos_; }
-    virtual reference operator*() override {
-      const_reference ref = *(pos_->reader);
-      return const_cast<reference>(ref);
-    }
-    virtual const_reference operator*() const override {
-      return *(pos_->reader);
-    }
-    virtual bool operator==(const reader_iterator_impl& rhs) override {
-      return pos_ == static_cast<const iterator_impl&>(rhs).pos_;
-    }
-
-   private:
-    typename composite_reader_impl::ctxs_t::const_iterator pos_;
-  };
-
   ctxs_t ctxs_;
   uint64_t docs_count_;
   uint64_t docs_max_;
