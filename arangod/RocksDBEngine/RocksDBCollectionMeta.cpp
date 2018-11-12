@@ -85,20 +85,21 @@ RocksDBCollectionMeta::RocksDBCollectionMeta()
  * @return       May return error if we fail to allocate and place blocker
  */
 Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
-  Result res = basics::catchToResult([&]() -> Result {
+  return basics::catchToResult([&]() -> Result {
+    Result res;
+    WRITE_LOCKER(locker, _blockerLock);
+    
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
     TRI_ASSERT(_blockersBySeq.end() ==
                _blockersBySeq.find(std::make_pair(seq, trxId)));
-    Result res;
-    WRITE_LOCKER(locker, _blockerLock);
+    
     auto insert = _blockers.emplace(trxId, seq);
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!insert.second || !crosslist.second) {
-      return {TRI_ERROR_INTERNAL};
+      return res.reset(TRI_ERROR_INTERNAL);
     }
-    return {TRI_ERROR_NO_ERROR};
+    return res;
   });
-  return res;
 }
 
 /**
@@ -345,6 +346,8 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     
     uint64_t committedSeq = rocksutils::uint64FromPersistent(value.data());
     if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {
+      TRI_ASSERT(committedSeq <= db->GetLatestSequenceNumber());
+      
       auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(committedSeq, estimateInput);
       LOG_TOPIC(ERR, Logger::ENGINES)
       << "found index estimator for objectId '" << idx->objectId()

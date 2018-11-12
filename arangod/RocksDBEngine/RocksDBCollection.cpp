@@ -657,7 +657,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
     
     // pre commit sequence needed to place a blocker
-    rocksdb::SequenceNumber seq = engine->db()->GetLatestSequenceNumber();
+    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
     LOG_DEVEL << "truncate lastestSeq: " << seq;
     auto guard = scopeGuard([&] { // remove blocker afterwards
       _meta.removeBlocker(state->id());
@@ -665,17 +665,10 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     _meta.placeBlocker(state->id(), seq);
 
     rocksdb::WriteBatch batch;
-    // add the log entry so we can recover the correct count
-    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
-                                                   _logicalCollection.id(), _objectId);
-    rocksdb::Status s = batch.PutLogData(log.slice());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
     
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+    rocksdb::Status s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -692,16 +685,24 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         }
       }
     }
+    
+    // add the log entry so we can recover the correct count
+    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
+                                                   _logicalCollection.id(), _objectId);
+    s = batch.PutLogData(log.slice());
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
 
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    seq = rocksutils::latestSequenceNumber(); // post commit sequence
+    seq = rocksutils::latestSequenceNumber() - 1; // post commit sequence
     
     uint64_t numDocs = _numberDocuments.exchange(0);
-    _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), -numDocs);
+    _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
