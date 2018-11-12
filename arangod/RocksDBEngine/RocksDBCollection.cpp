@@ -696,8 +696,9 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
+    rocksdb::DB* db = engine->db()->GetBaseDB();
     rocksdb::WriteOptions wo;
-    s = rocksutils::globalRocksDB()->Write(wo, &batch);
+    s = db->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -1707,12 +1708,7 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
   if (revId != 0) {
     _revisionId = revId;
   }
-  if (adjustment < 0) {
-    if (_numberDocuments < static_cast<uint64_t>(-adjustment)) {
-      LOG_DEVEL << "errorr ";
-      std::this_thread::sleep_for(std::chrono::seconds(30));
-    }
-    
+  if (adjustment < 0) {    
     TRI_ASSERT(_numberDocuments >= static_cast<uint64_t>(-adjustment));
     _numberDocuments -= static_cast<uint64_t>(-adjustment);
   } else if (adjustment > 0) {
