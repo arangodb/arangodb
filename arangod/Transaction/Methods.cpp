@@ -1623,6 +1623,10 @@ OperationResult transaction::Methods::insertLocal(
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
+  // If we maybe will overwrite, we cannot do single document operations, thus:
+  // options.overwrite => !needsLock
+  TRI_ASSERT(!options.overwrite || !needsLock);
+
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
@@ -1643,6 +1647,12 @@ OperationResult transaction::Methods::insertLocal(
   //   and the point where we get our copy of the followers, regardless of the
   //   latter happens before or after the document operation.
   bool const needsDocumentLocks = needsLock && _state->isDBServer();
+  // Note that getting the followers this way also doesn't do any harm in other
+  // cases, except for babies because it would be done multiple times. Thus this
+  // bool.
+  // I suppose alternatively we could also do it via the updateFollowers
+  // callback and set updateFollowers to nullptr afterwards, so we only do it
+  // once.
   bool const needsToGetFollowersUnderLock = needsDocumentLocks;
 
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1678,7 +1688,7 @@ OperationResult transaction::Methods::insertLocal(
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
-      // Otherwise, if we already know the followers, to replicate to, we can
+      // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
@@ -1719,9 +1729,14 @@ OperationResult transaction::Methods::insertLocal(
     if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
       // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
       resultMarkerTick = 0;
+      // If we're overwriting, we already have a lock. Therefore we also don't
+      // need to get the followers under the lock.
+      TRI_ASSERT(!needsLock);
+      TRI_ASSERT(!needsToGetFollowersUnderLock);
+      TRI_ASSERT(updateFollowers == nullptr);
       res = collection->replace(this, value, documentResult, options,
-                                resultMarkerTick, needsLock, previousRevisionId,
-                                previousDocumentResult, updateFollowers);
+                                resultMarkerTick, false, previousRevisionId,
+                                previousDocumentResult, nullptr);
       if(res.ok() && !options.silent){
         // If we are silent, then revisionId will not be looked at further
         // down. In the silent case, documentResult is empty, so nobody
@@ -2062,16 +2077,14 @@ OperationResult transaction::Methods::modifyLocal(
   // If we're not on a single server (i.e. maybe replicating), are using the
   // MMFiles storage engine, and are doing a single document operation, we have
   // to:
-  // - Use additional per-document locks that hold until the replication is
-  //   done. This is to avoid conflicting updates possibly arriving at a
-  //   follower in an undeterministic order.
   // - Get the list of followers during the time span we actually do hold a
   //   collection level lock. This is to avoid races with the replication where
   //   a follower may otherwise be added between the actual document operation
   //   and the point where we get our copy of the followers, regardless of the
   //   latter happens before or after the document operation.
-  bool const needsDocumentLocks = needsLock && _state->isDBServer();
-  bool const needsToGetFollowersUnderLock = needsDocumentLocks;
+  // In update/replace we do NOT have to get document level locks as in insert
+  // or remove, as we still hold a lock during the replication in this case.
+  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2106,7 +2119,7 @@ OperationResult transaction::Methods::modifyLocal(
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
-      // Otherwise, if we already know the followers, to replicate to, we can
+      // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
@@ -2133,15 +2146,16 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
+  // Iff we didn't have a lock before, we got one now.
+  TRI_ASSERT(needsLock == lockResult.is(TRI_ERROR_LOCKED));
 
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
-                             &resultBuilder, &cid, needsLock,
-                             &updateFollowers](VPackSlice const newVal,
-                                               bool isBabies) -> Result {
+                             &resultBuilder, &cid](VPackSlice const newVal,
+                                                   bool isBabies) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -2153,14 +2167,16 @@ OperationResult transaction::Methods::modifyLocal(
     ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
 
+    // replace and update are two operations each, thus this can and must not be
+    // single document operations. We need to have a lock here already.
+    TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
+
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
-                                needsLock, actualRevision, previous,
-                                updateFollowers);
+                                false, actualRevision, previous, nullptr);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
-                               needsLock, actualRevision, previous,
-                               updateFollowers);
+                               false, actualRevision, previous, nullptr);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2218,6 +2234,15 @@ OperationResult transaction::Methods::modifyLocal(
 
   // Now see whether or not we have to do synchronous replication:
   if (res.ok() && replicationType == ReplicationType::LEADER) {
+
+    // We still hold a lock here, because this is update/replace and we're
+    // therefore not doing single document operations. But if we didn't hold it
+    // at the beginning of the method the followers may not be up-to-date.
+    TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
+    if (needsToGetFollowersUnderLock) {
+      followers = collection->followers()->get();
+    }
+
     TRI_ASSERT(followers != nullptr);
 
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -2232,7 +2257,7 @@ OperationResult transaction::Methods::modifyLocal(
       return OperationResult{std::move(res), options};
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -2481,7 +2506,7 @@ OperationResult transaction::Methods::removeLocal(
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
       // be silent.
-      // Otherwise, if we already know the followers, to replicate to, we can
+      // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
