@@ -1630,13 +1630,18 @@ OperationResult transaction::Methods::insertLocal(
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-    // needsLock => isMMFiles && !newValue.isArray()
-    TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
-    TRI_ASSERT(needsLock ==
-               (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (!isMock) {
+      // needsLock => isMMFiles && !value.isArray()
+      TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+      TRI_ASSERT(needsLock ==
+                 (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+    }
   }
+#endif
 
   // If we are
   // - not on a single server (i.e. maybe replicating),
@@ -1964,13 +1969,19 @@ OperationResult transaction::Methods::modifyLocal(
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-    // needsLock => isMMFiles && !newValue.isArray()
-    TRI_ASSERT(!needsLock || (isMMFiles && !newValue.isArray()));
-    TRI_ASSERT(needsLock ==
-               (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (!isMock) {
+      // needsLock => isMMFiles && !newValue.isArray()
+      TRI_ASSERT(!needsLock || (isMMFiles && !newValue.isArray()));
+      TRI_ASSERT(needsLock ==
+                 (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+    }
   }
+#endif
 
   // If we are
   // - not on a single server (i.e. maybe replicating),
@@ -2240,13 +2251,19 @@ OperationResult transaction::Methods::removeLocal(
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
-    // needsLock => isMMFiles && !newValue.isArray()
-    TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
-    TRI_ASSERT(needsLock ==
-               (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (!isMock) {
+      // needsLock => isMMFiles && !value.isArray()
+      TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+      TRI_ASSERT(needsLock ==
+                 (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+    }
   }
+#endif
 
   // If we are
   // - not on a single server (i.e. maybe replicating),

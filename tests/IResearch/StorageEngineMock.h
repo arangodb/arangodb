@@ -126,21 +126,17 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
 
 class TransactionCollectionMock: public arangodb::TransactionCollection {
  public:
-  arangodb::AccessMode::Type lockType;
-
   TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual void freeOperations(arangodb::transaction::Methods* activeTrx, bool mustRollback) override;
   virtual bool hasOperations() const override;
-  virtual bool isLocked() const override;
-  virtual bool isLocked(arangodb::AccessMode::Type type, int nestingLevel) const override;
-  virtual int lockRecursive() override;
-  virtual int lockRecursive(arangodb::AccessMode::Type type, int nestingLevel) override;
   virtual void release() override;
-  virtual int unlockRecursive(arangodb::AccessMode::Type, int nestingLevel) override;
   virtual int updateUsage(arangodb::AccessMode::Type accessType, int nestingLevel) override;
   virtual void unuse(int nestingLevel) override;
   virtual int use(int nestingLevel) override;
+ private:
+  int doLock(arangodb::AccessMode::Type type, int nestingLevel) override;
+  int doUnlock(arangodb::AccessMode::Type type, int nestingLevel) override;
 };
 
 class TransactionStateMock: public arangodb::TransactionState {
@@ -163,7 +159,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 
-  StorageEngineMock(arangodb::application_features::ApplicationServer& server);
+  explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
   virtual void addOptimizerRules() override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;

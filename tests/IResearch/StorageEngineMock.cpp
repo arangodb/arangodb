@@ -1459,41 +1459,11 @@ bool TransactionCollectionMock::hasOperations() const {
   return false;
 }
 
-bool TransactionCollectionMock::isLocked() const {
-  TRI_ASSERT(false);
-  return false;
-}
-
-bool TransactionCollectionMock::isLocked(arangodb::AccessMode::Type type, int nestingLevel) const {
-  return lockType == type;
-}
-
-int TransactionCollectionMock::lockRecursive() {
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
-}
-
-int TransactionCollectionMock::lockRecursive(arangodb::AccessMode::Type type, int nestingLevel) {
-  lockType = type;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 void TransactionCollectionMock::release() {
   if (_collection) {
     _transaction->vocbase().releaseCollection(_collection.get());
     _collection = nullptr;
   }
-}
-
-int TransactionCollectionMock::unlockRecursive(arangodb::AccessMode::Type type, int nestingLevel) {
-  if (lockType != type) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  lockType = arangodb::AccessMode::Type::NONE;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 int TransactionCollectionMock::updateUsage(arangodb::AccessMode::Type accessType, int nestingLevel) {
@@ -1510,6 +1480,26 @@ int TransactionCollectionMock::use(int nestingLevel) {
   _collection = _transaction->vocbase().useCollection(_cid, status);
 
   return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
+}
+
+int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type, int nestingLevel) {
+  if (_lockType > _accessType) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  _lockType = type;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+int TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type, int nestingLevel) {
+  if (_lockType != type) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  _lockType = arangodb::AccessMode::Type::NONE;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 size_t TransactionStateMock::abortTransactionCount;
