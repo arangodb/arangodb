@@ -58,17 +58,6 @@ From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 - When this flag is 2, the kernel uses a "never overcommit"
   policy that attempts to prevent any overcommit of memory.
 
-
-Note that then using an `overcommit_memory` setting of 2, this will by default allow 
-processes to use all swap space but only half of the available RAM. This can be changed 
-by adjusting the value of `overcommit_ratio` as well.
-
-From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
-
-- When overcommit_memory is set to 2, the committed address
-  space is not permitted to exceed swap plus this percentage
-  of physical RAM. 
-
 ### Zone Reclaim
 
 Execute
