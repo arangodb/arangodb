@@ -10,6 +10,8 @@ devel
   Existing modules in existing `_modules` collections will remain
   functional even after this change
 
+* fixed Foxx queues not retrying jobs with infinite `maxFailures`
+
 * force connection timeout to be 7 seconds to allow libcurl time to retry lost DNS
   queries.
 
