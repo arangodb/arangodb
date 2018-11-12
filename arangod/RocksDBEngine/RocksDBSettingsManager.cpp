@@ -269,24 +269,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   
   if (rtrx->GetNumKeys() == 0) {
     LOG_DEVEL << "nothing happened skipping settings up to " << minSeqNr;
+    WRITE_LOCKER(guard, _rwLock);
+    _lastSync = minSeqNr;
     return Result(); // nothing was written
   }
   
-//  for (std::pair<uint64_t, CMValue> const& pair : countersCpy) {
-//    Result res;
-//    rocksdb::SequenceNumber returnSeq;
-//
-//    const uint64_t objectId = pair.first; // collection objectId
-//    CMValue const& counterVal = pair.second;
-//    std::tie(res, returnSeq) = writeCollectionValues(rtrx.get(), _tmpBuilder,
-//                                                     syncedSeqNumsCpy, objectId,
-//                                                     counterVal, maxSeqNr);
-//    if (res.fail()) {
-//      return res;
-//    }
-//    minSeqNr = std::min(minSeqNr, returnSeq);
-//  }
-
   _tmpBuilder.clear();
   Result res = writeSettings(rtrx.get(), _tmpBuilder, minSeqNr);
   if (res.fail()) {

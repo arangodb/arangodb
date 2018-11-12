@@ -142,11 +142,13 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
   decltype(_bufferedAdjs) swapper;
   {
     std::lock_guard<std::mutex> guard(_countLock);
-    _bufferedAdjs.swap(swapper);
+    if (_stagedAdjs.empty()) {
+      _stagedAdjs.swap(_bufferedAdjs);
+    } else {
+      swapper.swap(_bufferedAdjs);
+    }
   }
-  if (_stagedAdjs.empty()) {
-    _stagedAdjs.swap(swapper);
-  } else {
+  if (!swapper.empty()) {
     _stagedAdjs.insert(swapper.begin(), swapper.end());
   }
   
@@ -199,7 +201,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
   // Step 1. store the document count
   tmp.clear();
   
-  if (didWork) {
+  if (didWork || force) {
     _count.toVelocyPack(tmp);
     key.constructCounterValue(rcoll->objectId());
     rocksdb::Slice value((char*)tmp.start(), tmp.size());
@@ -214,7 +216,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
 
   // Step 2. store the key generator
   KeyGenerator* keyGen = coll.keyGenerator();
-  if (didWork && keyGen->hasDynamicState()) {
+  if ((didWork || force) && keyGen->hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
     
@@ -243,7 +245,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
       continue;
     }
     
-    if (est->needToPersist()) {
+    if (est->needToPersist() || force) {
       LOG_TOPIC(ERR, Logger::ENGINES)
       << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
