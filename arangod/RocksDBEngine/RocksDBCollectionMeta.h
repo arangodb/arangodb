@@ -97,6 +97,9 @@ struct RocksDBCollectionMeta final {
    */
   void removeBlocker(uint64_t trxId);
   
+  /// @brief updates and returns the largest safe seq to squash updated against
+  rocksdb::SequenceNumber committableSeq();
+  
   /// @brief get the current count
   DocCount currentCount() const;
   /// @brief get the current count, ONLY use in recovey
@@ -125,9 +128,6 @@ struct RocksDBCollectionMeta final {
 
 private:
   
-  /// @brief updates and returns the largest safe seq to squash updated against
-  rocksdb::SequenceNumber committableSeq();
-  
   /// @brief apply counter adjustments, only call from sync thread
   rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq,
                                            bool& didWork);
@@ -151,8 +151,11 @@ private:
     /// @brief number of added / removed documents
     int64_t adjustment;
   };
+  
   /// @brief buffered counter adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
+  /// @brief internal buffer for adjustments
+  std::map<rocksdb::SequenceNumber, Adjustment> _stagedAdjs;
 };
 }
 

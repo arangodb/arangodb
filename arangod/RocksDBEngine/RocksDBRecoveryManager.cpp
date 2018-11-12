@@ -205,8 +205,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
         
         auto* rcoll = static_cast<RocksDBCollection*>(collection->getPhysical());
-
-        LOG_DEVEL << "found " << ops.added << " inserts for " << collection->name();
         if (ops.mustTruncate) { // first we must reset the counter
           rcoll->meta().countRefUnsafe()._added = 0;
           rcoll->meta().countRefUnsafe()._removed = 0;
@@ -222,7 +220,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         
         auto const& it = _generators.find(rcoll->objectId());
         if (it != _generators.end()) {
-          LOG_DEVEL << "tracking key " << it->second << " for " << collection->name();
           std::string k(basics::StringUtils::itoa(it->second));
           collection->keyGenerator()->track(k.data(), k.size());
           _generators.erase(it);

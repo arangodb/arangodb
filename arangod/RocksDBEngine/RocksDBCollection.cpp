@@ -278,16 +278,10 @@ size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
-//  RocksDBEngine* engine =
-//  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-//  TRI_ASSERT(engine != nullptr);
-//  if (!engine->inRecovery()) {
-  LOG_DEVEL << "open collection " << _logicalCollection.name();
   RocksDBCollectionMeta::DocCount count = _meta.currentCount();
   TRI_ASSERT(count._added >= count._removed);
   _numberDocuments = count._added - count._removed;
   _revisionId = count._revisionId;
-//  }
 }
 
 void RocksDBCollection::prepareIndexes(
@@ -1825,38 +1819,73 @@ int RocksDBCollection::unlockRead() {
 
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
+  
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  rocksdb::TransactionDB* db = engine->db();
+  const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
-#warning FIX THIS
-//  auto ctx =
-//    transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-//  SingleCollectionTransaction trx(
-//    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
-//  );
-//  auto res = trx.begin();
-//
-//  if (res.fail()) {
-//    THROW_ARANGO_EXCEPTION(res);
-//  }
-//
-//  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-//  // count documents
-//  auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-//  _numberDocuments =
-//      rocksutils::countKeyRange(engine->db(), documentBounds, true);
-//
-//
-//
-//  // update counter manager value
-//  res = engine->settingsManager()->setAbsoluteCounter(_objectId, engine->currentTick(),
-//                                                      _numberDocuments);
-//  if (res.ok()) {
-//    // in case of fail the counter has never been written and hence does not
-//    // need correction. The value is not changed and does not need to be synced
-//    engine->settingsManager()->sync(true);
-//  }
-//  trx.commit();
+  TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  vocbase.use();
+  scopeGuard([&] {
+    if (snapshot) {
+      db->ReleaseSnapshot(snapshot);
+    }
+    vocbase.release();
+  });
+  
+  TRI_vocbase_col_status_e status;
+  int res = vocbase.useCollection(&_logicalCollection, status);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  auto collGuard = scopeGuard([&] {
+    vocbase.releaseCollection(&_logicalCollection);
+  });
 
-  return _numberDocuments;
+  uint64_t snapNumberOfDocuments = 0;
+  {
+    // fetch number docs and snapshot under exclusive lock
+    // this should enable us to correct the count later
+    auto lockGuard = scopeGuard([this] { unlockWrite(); });
+    res = lockWrite(transaction::Options::defaultLockTimeout);
+    if (res != TRI_ERROR_NO_ERROR) {
+      lockGuard.cancel();
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    snapNumberOfDocuments = numberDocuments();
+    snapshot = engine->db()->GetSnapshot();
+    TRI_ASSERT(snapshot);
+  }
+  
+  // count documents
+  auto bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  rocksdb::Slice upper(bounds.end());
+  
+  rocksdb::ReadOptions ro;
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+  ro.verify_checksums = false;
+  ro.fill_cache = false;
+  
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
+  std::size_t count = 0;
+  
+  it->Seek(bounds.start());
+  while (it->Valid() && it->key().compare(upper) < 0) {
+    ++count;
+    it->Next();
+  }
+
+  int64_t adjustment = snapNumberOfDocuments - count;
+  if (adjustment != 0) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "inconsistent collection count detected, "
+    << "an offet of " << adjustment << " will be applied";
+    adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
+  }
+
+  return numberDocuments();
 }
 
 void RocksDBCollection::compact() {

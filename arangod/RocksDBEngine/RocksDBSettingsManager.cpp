@@ -239,8 +239,6 @@ Result RocksDBSettingsManager::sync(bool force) {
   // make sure we give up our lock when we exit this function
   auto guard = scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
   
-#warning fix maxUpdateSeqNo
-
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto maxSeqNr = _db->GetLatestSequenceNumber();

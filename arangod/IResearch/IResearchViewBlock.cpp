@@ -54,8 +54,6 @@ namespace {
 
 typedef std::vector<arangodb::iresearch::DocumentPrimaryKey> pks_t;
 
-constexpr size_t const BATCH_SIZE = 1024;
-
 pks_t::iterator readPKs(
     irs::doc_iterator& it,
     irs::columnstore_reader::values_reader_f const& values,

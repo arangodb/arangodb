@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertFalse, assertNull, assertNotNull */
+/* global assertEqual, assertFalse, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /

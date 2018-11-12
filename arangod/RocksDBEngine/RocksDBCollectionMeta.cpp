@@ -138,24 +138,33 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() {
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
                                                                 bool& didWork) {
   rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
-  { // TODO is this holding the lock too long ?
+  
+  decltype(_bufferedAdjs) swapper;
+  {
     std::lock_guard<std::mutex> guard(_countLock);
-    auto it = _bufferedAdjs.begin();
-    while (it != _bufferedAdjs.end() && it->first < commitSeq) {
-      appliedSeq = std::max(appliedSeq, it->first);
-      if (it->second.adjustment >= 0) {
-        _count._added += it->second.adjustment;
-      } else {
-        _count._removed += -(it->second.adjustment);
-      }
-      if (it->second.revisionId != 0) {
-        _count._revisionId = it->second.revisionId;
-      }
-      it = _bufferedAdjs.erase(it);
-      didWork = true;
-    }
-    _count._committedSeq = appliedSeq;
+    _bufferedAdjs.swap(swapper);
   }
+  if (_stagedAdjs.empty()) {
+    _stagedAdjs.swap(swapper);
+  } else {
+    _stagedAdjs.insert(swapper.begin(), swapper.end());
+  }
+  
+  auto it = _stagedAdjs.begin();
+  while (it != _stagedAdjs.end() && it->first < commitSeq) {
+    appliedSeq = std::max(appliedSeq, it->first);
+    if (it->second.adjustment >= 0) {
+      _count._added += it->second.adjustment;
+    } else {
+      _count._removed += -(it->second.adjustment);
+    }
+    if (it->second.revisionId != 0) {
+      _count._revisionId = it->second.revisionId;
+    }
+    it = _stagedAdjs.erase(it);
+    didWork = true;
+  }
+  _count._committedSeq = appliedSeq;
   return appliedSeq;
 }
 
