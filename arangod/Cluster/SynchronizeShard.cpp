@@ -937,12 +937,6 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       + res.errorMessage();
     return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
   }
-
-  auto start = TRI_microtime();
-  auto logGuard = arangodb::scopeGuard([&]() {
-      auto end = TRI_microtime();
-      LOG_DEVEL << "SOFTLOCK used for " << (end - start) << " seconds";
-  });
   auto readLockGuard = arangodb::scopeGuard([&]() {
     // Always cancel the read lock.
     // Reported seperately
@@ -1019,11 +1013,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
       + res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
-  auto start = TRI_microtime();
-  auto logGuard = arangodb::scopeGuard([&]() {
-      auto end = TRI_microtime();
-      LOG_DEVEL << "HARDLOCK used for " << (end - start) << " seconds";
-  });
   auto readLockGuard = arangodb::scopeGuard([&]() {
     // Always cancel the read lock.
     // Reported seperately

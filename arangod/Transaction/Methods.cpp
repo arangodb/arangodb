@@ -1617,15 +1617,8 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 OperationResult transaction::Methods::insertLocal(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
-  double trxTime = TRI_microtime();
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_DEVEL << "insert addAtRuntime after: " << trxTime << " seconds";
-  }
-
-
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1741,12 +1734,7 @@ OperationResult transaction::Methods::insertLocal(
     // With babies the reporting is handled in the body of the result
     res = Result(TRI_ERROR_NO_ERROR);
   } else {
-    trxTime = TRI_microtime();
     res = workForOneDocument(value);
-    trxTime = TRI_microtime() - trxTime;
-    if ((trxTime) >= 1.0) {
-      LOG_DEVEL << "insert work for one after: " << trxTime << " seconds";
-    }
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1810,16 +1798,10 @@ OperationResult transaction::Methods::insertLocal(
       }
       auto cc = arangodb::ClusterComm::instance();
       if (cc != nullptr) {
-        trxTime = TRI_microtime();
         // nullptr only happens on controlled shutdown
         size_t nrDone = 0;
         cc->performRequests(requests, chooseTimeout(count, body->size()*followers->size()),
                             nrDone, Logger::REPLICATION, false);
-        
-        trxTime = TRI_microtime() - trxTime;
-        if ((trxTime) >= 1.0) {
-          LOG_DEVEL << "insert perfRequests after: " << trxTime << " seconds";
-        }
         // If any would-be-follower refused to follow there must be a
         // new leader in the meantime, in this case we must not allow
         // this operation to succeed, we simply return with a refusal
@@ -1999,13 +1981,8 @@ OperationResult transaction::Methods::replaceCoordinator(
 OperationResult transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice const newValue,
     OperationOptions& options, TRI_voc_document_operation_e operation) {
-  double trxTime = TRI_microtime();
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_DEVEL << "replace addAtRuntime after: " << trxTime << " seconds";
-  }
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2040,14 +2017,9 @@ OperationResult transaction::Methods::modifyLocal(
     pinData(cid);  // will throw when it fails
   }
 
-  trxTime = TRI_microtime();
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_DEVEL << "replace internal lockRecursive after: " << trxTime << " seconds";
-  }
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
@@ -2131,12 +2103,7 @@ OperationResult transaction::Methods::modifyLocal(
     }
     res.reset();
   } else {
-    trxTime = TRI_microtime();
     res = workForOneDocument(newValue, false);
-    trxTime = TRI_microtime() - trxTime;
-    if ((trxTime) >= 1.0) {
-      LOG_DEVEL << "replace workForOne after: " << trxTime << " seconds";
-    }
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2207,15 +2174,9 @@ OperationResult transaction::Methods::modifyLocal(
               : arangodb::rest::RequestType::PATCH,
               path, body);
         }
-        trxTime = TRI_microtime();
         size_t nrDone = 0;
         cc->performRequests(requests, chooseTimeout(count, body->size()*followers->size()),
                             nrDone, Logger::REPLICATION, false);
-
-        trxTime = TRI_microtime() - trxTime;
-        if ((trxTime) >= 1.0) {
-          LOG_DEVEL << "replace perfRequests after: " << trxTime << " seconds";
-        }
         // If any would-be-follower refused to follow there must be a
         // new leader in the meantime, in this case we must not allow
         // this operation to succeed, we simply return with a refusal
