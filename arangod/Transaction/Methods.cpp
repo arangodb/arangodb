@@ -3313,7 +3313,7 @@ Result Methods::replicateOperations(
     return Result{};
   };
 
-  // path, requestType and methodName are different for insert/remove/modify.
+  // path and requestType are different for insert/remove/modify.
 
   std::string path =
     "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
@@ -3323,25 +3323,20 @@ Result Methods::replicateOperations(
     ServerState::instance()->getId() + "&" + StaticStrings::SilentString +
     "=true";
   arangodb::rest::RequestType requestType = RequestType::ILLEGAL;
-  std::string methodName;
 
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-      methodName = "insertLocal";
       requestType = arangodb::rest::RequestType::POST;
       path += "&" + StaticStrings::OverWrite + "=" +
               (options.overwrite ? "true" : "false");
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      methodName = "modifyLocal";
       requestType = arangodb::rest::RequestType::PATCH;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-      methodName = "modifyLocal";
       requestType = arangodb::rest::RequestType::PUT;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
-      methodName = "removeLocal";
       requestType = arangodb::rest::RequestType::DELETE_REQ;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
@@ -3428,11 +3423,11 @@ Result Methods::replicateOperations(
       auto const& followerInfo = collection.followers();
       if (followerInfo->remove((*followers)[i])) {
         LOG_TOPIC(WARN, Logger::REPLICATION)
-        << methodName << ": dropping follower " << (*followers)[i]
+        << "synchronous replication: dropping follower " << (*followers)[i]
         << " for shard " << collection.name();
       } else {
         LOG_TOPIC(ERR, Logger::REPLICATION)
-        << methodName << ": could not drop follower "
+        << "synchronous replication: could not drop follower "
         << (*followers)[i] << " for shard " << collection.name();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
