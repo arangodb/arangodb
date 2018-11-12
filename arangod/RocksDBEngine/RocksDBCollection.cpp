@@ -1360,9 +1360,8 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
     }
   };
 
-  rocksdb::WriteOptions writeOpts;
-#warn TODO: check how much benefit setting this option provides
-  // writeOpts.disableWAL = true;
+  rocksdb::WriteOptions wo;
+  wo.disableWAL = true;
   bool hasMore = true;
 
   while (hasMore && res.ok()) {
@@ -1376,7 +1375,7 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
     }
 
     if (res.ok()) {
-      rocksdb::Status s = db->Write(writeOpts, batch.GetWriteBatch());
+      rocksdb::Status s = db->Write(wo, batch.GetWriteBatch());
 
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
@@ -1389,34 +1388,20 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional
   if (!res.ok()) {
-    it->reset();
-    batch.Clear();
-
-    arangodb::Result res2;  // do not overwrite original error
-    auto removeCb = [&](LocalDocumentId token) {
-      if (res2.ok() && numDocsWritten > 0) {
-        rcol->readDocumentWithCallback(trx, token, [&](LocalDocumentId const& documentId, VPackSlice doc) {
-          // we need to remove already inserted documents up to numDocsWritten
-          res2 = ridx->removeInternal(trx, &batched, documentId, doc, Index::OperationMode::rollback);
-          if (res2.ok()) {
-            numDocsWritten--;
-          }
-        });
-      }
-    };
-
-    hasMore = true;
-    while (hasMore && numDocsWritten > 0) {
-      hasMore = it->next(removeCb, 500);
+    RocksDBKeyBounds bounds = ridx->getBounds();
+    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
+                                                         true, /*useRangeDel*/numDocsWritten > 25000);
+    if (res2.fail()) {
+      return res2;
     }
-    db->Write(writeOpts, batch.GetWriteBatch());
-  }
-
-  // flushing is necessary because we were not writing index data into WAL
-  rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
-  if (!status.ok()) {
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-        << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
+  } else {
+    // flushing is necessary because we were not writing index data into WAL
+    rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
+    if (!status.ok()) {
+      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+      << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
+    }
+    db->FlushWAL(false);    
   }
 
   return res;
