@@ -618,23 +618,11 @@ class Methods {
   }
   _collectionCache;
 
-  Result replicateInserts(
-      LogicalCollection const& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options, VPackSlice value,
-      VPackBuilder& resultBuilder);
-
-  Result replicateModify(
+  Result replicateOperations(
       LogicalCollection const& collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value,
       TRI_voc_document_operation_e operation, VPackBuilder& resultBuilder);
-
-  Result replicateRemoves(
-      LogicalCollection const& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options, VPackSlice value,
-      VPackBuilder& resultBuilder);
 };
 
 }
