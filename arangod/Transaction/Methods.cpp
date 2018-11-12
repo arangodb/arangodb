@@ -1632,12 +1632,17 @@ OperationResult transaction::Methods::insertLocal(
 
   {
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    // needsLock => isMMFiles && !newValue.isArray()
     TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+    TRI_ASSERT(needsLock ==
+               (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
   }
 
-  // If we're not on a single server (i.e. maybe replicating), are using the
-  // MMFiles storage engine, and are doing a single document operation, we have
-  // to:
+  // If we are
+  // - not on a single server (i.e. maybe replicating),
+  // - using the MMFiles storage engine, and
+  // - doing a single document operation,
+  // we have to:
   // - Use additional per-document locks that hold until the replication is
   //   done. This is to avoid conflicting updates possibly arriving at a
   //   follower in an undeterministic order.
@@ -1720,6 +1725,11 @@ OperationResult transaction::Methods::insertLocal(
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
 
+    // insert with overwrite may NOT be a single document operation, as we
+    // possibly need to do two separate operations (insert and replace).
+    TRI_ASSERT(!(options.overwrite && needsLock));
+
+    TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, documentResult, options,
                                     resultMarkerTick, needsLock, revisionId,
                                     updateFollowers);
@@ -2071,12 +2081,17 @@ OperationResult transaction::Methods::modifyLocal(
 
   {
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    // needsLock => isMMFiles && !newValue.isArray()
     TRI_ASSERT(!needsLock || (isMMFiles && !newValue.isArray()));
+    TRI_ASSERT(needsLock ==
+               (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
   }
 
-  // If we're not on a single server (i.e. maybe replicating), are using the
-  // MMFiles storage engine, and are doing a single document operation, we have
-  // to:
+  // If we are
+  // - not on a single server (i.e. maybe replicating),
+  // - using the MMFiles storage engine, and
+  // - doing a single document operation,
+  // we have to:
   // - Get the list of followers during the time span we actually do hold a
   //   collection level lock. This is to avoid races with the replication where
   //   a follower may otherwise be added between the actual document operation
@@ -2456,12 +2471,17 @@ OperationResult transaction::Methods::removeLocal(
 
   {
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    // needsLock => isMMFiles && !newValue.isArray()
     TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
+    TRI_ASSERT(needsLock ==
+               (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
   }
 
-  // If we're not on a single server (i.e. maybe replicating), are using the
-  // MMFiles storage engine, and are doing a single document operation, we have
-  // to:
+  // If we are
+  // - not on a single server (i.e. maybe replicating),
+  // - using the MMFiles storage engine, and
+  // - doing a single document operation,
+  // we have to:
   // - Use additional per-document locks that hold until the replication is
   //   done. This is to avoid conflicting updates possibly arriving at a
   //   follower in an undeterministic order.
@@ -2554,6 +2574,8 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_voc_tick_t resultMarkerTick = 0;
+
+    TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
 
     Result res =
         collection->remove(this, value, options, resultMarkerTick, needsLock,
