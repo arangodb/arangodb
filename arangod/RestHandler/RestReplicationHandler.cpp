@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -76,6 +77,12 @@ std::string const typeString("type");
 
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
+uint64_t const RestReplicationHandler::_tombstoneTimeout = 60 * 60 * 24; // ONE DAY
+
+
+basics::ReadWriteLock RestReplicationHandler::_tombLock;
+std::unordered_map<std::string, double> RestReplicationHandler::_tombstones = {};
+
 
 static aql::QueryId ExtractReadlockId(VPackSlice slice) {
   TRI_ASSERT(slice.isString());
@@ -2356,7 +2363,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     lockType = AccessMode::Type::EXCLUSIVE;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name() << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard") ;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name() << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
   Result res = createBlockingTransaction(id, *col, ttl, lockType);
   if (!res.ok()) {
     generateError(res);
@@ -2745,6 +2752,18 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   auto q = query.release();
   // Make sure to return the query after we are done
   TRI_DEFER(queryRegistry->close(&_vocbase, id));
+
+  if (isTombstoned(id)) {
+    try {
+      // Code does not matter, read only access, so we can roll back.
+      queryRegistry->destroy(&_vocbase, id, TRI_ERROR_QUERY_KILLED);
+    } catch (...) {
+      // Maybe thrown in shutdown.
+    }
+    // DO NOT LOCK in this case, pointless
+    return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
+  }
+
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == false);
 
@@ -2787,6 +2806,8 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
       // All errors that show up here can only be
       // triggered if the query is destroyed in between.
     }
+  } else {
+    registerTombstone(id);
   }
   return res;
 }
@@ -2812,4 +2833,65 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(aql::Quer
     // So in Locking phase
     return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL, "Read lock not yet acquired!");
   }
+}
+
+static std::string IdToTombstoneKey (TRI_vocbase_t& vocbase, aql::QueryId id) {
+  return vocbase.name() + "/" + StringUtils::itoa(id);
+}
+
+void RestReplicationHandler::timeoutTombstones() const {
+  std::unordered_set<std::string> toDelete;
+  { 
+    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
+    if (RestReplicationHandler::_tombstones.empty()) {
+      // Fast path
+      return;
+    }
+    double now = TRI_microtime();
+    for (auto const& it : RestReplicationHandler::_tombstones) {
+      if (it.second < now) {
+        toDelete.emplace(it.first);
+      }
+    }
+    // Release read lock.
+    // If someone writes now we do not realy care.
+  }
+  if (toDelete.empty()) {
+    // nothing todo
+    return;
+  }
+  WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+  for (auto const& it: toDelete) {
+    try {
+      RestReplicationHandler::_tombstones.erase(it);
+    } catch (...) {
+      // erase should not throw.
+    }
+  }
+}
+
+bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
+  std::string key = IdToTombstoneKey(_vocbase, id);
+  bool isDead = false;
+  {
+    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
+    isDead = RestReplicationHandler::_tombstones.find(key)
+          != RestReplicationHandler::_tombstones.end();
+  }
+  if (!isDead) {
+    // Clear Tombstone
+    WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+    try {
+      RestReplicationHandler::_tombstones.erase(key);
+    } catch (...) {
+      // Just ignore, tombstone will be removed by timeout, and IDs are unique anyways
+    }
+  }
+  return isDead;
+}
+
+void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
+  std::string key = IdToTombstoneKey(_vocbase, id);
+  WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
+  RestReplicationHandler::_tombstones.emplace(key, TRI_microtime() + RestReplicationHandler::_tombstoneTimeout); 
 }
