@@ -673,8 +673,7 @@ class ClusterInfo {
       std::string const& databaseName, std::string const& collectionID,
       std::string const& idSlice, arangodb::velocypack::Slice const& slice,
       bool create, arangodb::velocypack::Builder& resultBuilder,
-      arangodb::velocypack::Builder& newIndexBuilder, std::string& errorMsg,
-      double timeout);
+      std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

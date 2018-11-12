@@ -2415,8 +2415,8 @@ Result ClusterInfo::setCollectionStatusCoordinator(
 
 int ClusterInfo::ensureIndexCoordinator(
     std::string const& databaseName, std::string const& collectionID,
-    VPackSlice const& slice, bool create,
-    VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
+    VPackSlice const& slice, bool create, VPackBuilder& resultBuilder,
+    std::string& errorMsg, double timeout) {
 
   // check index id
   uint64_t iid = 0;
@@ -2433,15 +2433,14 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   int errorCode;
-  VPackBuilder newIndexBuilder;
   try {
     auto start = std::chrono::steady_clock::now();
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
     do {
       resultBuilder.clear();
       errorCode = ensureIndexCoordinatorWithoutRollback(
-        databaseName, collectionID, idString, slice, create,
-        resultBuilder, newIndexBuilder, errorMsg, timeout);
+        databaseName, collectionID, idString, slice, create, resultBuilder,
+        errorMsg, timeout);
       
       if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto diff = std::chrono::steady_clock::now() - start;
@@ -2482,7 +2481,7 @@ int ClusterInfo::ensureIndexCoordinator(
       return TRI_ERROR_INTERNAL;
     }
       
-    if (newIndexBuilder.slice().hasKey("isBuilding")) {
+    if (resultBuilder.slice().hasKey("isBuilding")) {
       std::uint64_t sleepFor = 50;
       while( // Wait for index to appear in current shards
         !getCollectionCurrent(databaseName, collectionID)->hasIndex(idStr)) {
@@ -2491,10 +2490,10 @@ int ClusterInfo::ensureIndexCoordinator(
         }
         std::this_thread::sleep_for(std::chrono::milliseconds());
       }
-        
+      
       VPackBuilder newPlanIndex;
       { VPackObjectBuilder b(&newPlanIndex);
-        for (auto const& entry : VPackObjectIterator(newIndexBuilder.slice())) {
+        for (auto const& entry : VPackObjectIterator(resultBuilder.slice())) {
           auto const key = entry.key.copyString();
           if (key != "isBuilding") {
             newPlanIndex.add(entry.key.copyString(), entry.value);
@@ -2508,7 +2507,7 @@ int ClusterInfo::ensureIndexCoordinator(
         std::vector<AgencyOperation>
         { AgencyOperation(
             indexPath, AgencyValueOperationType::REPLACE,
-            newPlanIndex.slice(), newIndexBuilder.slice()),
+            newPlanIndex.slice(), resultBuilder.slice()),
             AgencyOperation(
               "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
@@ -2516,8 +2515,6 @@ int ClusterInfo::ensureIndexCoordinator(
         AgencyCommResult update =
           _agency.sendTransactionWithFailover(trx, 0.0);
         if (update.successful()) {
-          resultBuilder.clear();
-          resultBuilder.add(newIndexBuilder.slice());
           return TRI_ERROR_NO_ERROR;
         }
       }
@@ -2529,12 +2526,20 @@ int ClusterInfo::ensureIndexCoordinator(
 
   }
 
+  /*
+ auto idPlanSlice = index.get(StaticStrings::IndexId);
+        if (idPlanSlice.isString() && idPlanSlice.isEqualString(idString)) {
+          planValue.reset(new VPackBuilder());
+          planValue->add(index);
+          break;
+        }
+  */
+  
   // Index creation failed roll back plan entry
-
   AgencyWriteTransaction trx(
     std::vector<AgencyOperation>
     { AgencyOperation(
-        indexPath, AgencyValueOperationType::ERASE, newIndexBuilder.slice()),
+        indexPath, AgencyValueOperationType::ERASE, resultBuilder.slice()),
         AgencyOperation(
           "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
@@ -2557,8 +2562,7 @@ int ClusterInfo::ensureIndexCoordinator(
 int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     std::string const& databaseName, std::string const& collectionID,
     std::string const& idString, VPackSlice const& slice, bool create,
-    VPackBuilder& resultBuilder, VPackBuilder& newIndexBuilder,
-    std::string& errorMsg, double timeout) {
+    VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
   AgencyComm ac;
 
   double const realTimeout = getTimeout(timeout);
@@ -2667,6 +2671,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     return true;
   };
 
+  VPackBuilder newIndexBuilder; 
   {
     VPackObjectBuilder ob(&newIndexBuilder);
     // Add the new index ignoring "id"
