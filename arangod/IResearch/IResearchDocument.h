@@ -267,6 +267,16 @@ struct DocumentPrimaryKey : std::pair<TRI_voc_cid_t, TRI_voc_rid_t> {
   /// @brief creates PK with properly encoded cid & rid
   ////////////////////////////////////////////////////////////////////////////////
   DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief coverts a PK to corresponding irs::bytes_ref
+  ////////////////////////////////////////////////////////////////////////////////
+  explicit operator irs::bytes_ref() const noexcept {
+    return irs::bytes_ref(
+      reinterpret_cast<irs::byte_type const*>(this),
+      sizeof(*this)
+    );
+  }
 }; // DocumentPrimaryKey
 
 bool appendKnownCollections(

@@ -63,9 +63,7 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
     irs::boost::boost_t /*boost*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  irs::bytes_ref const pkRef(
-    reinterpret_cast<irs::byte_type const*>(&_pk), sizeof(_pk)
-  );
+  auto const pkRef = static_cast<irs::bytes_ref>(_pk);
 
   for (auto& segment : index) {
     auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
