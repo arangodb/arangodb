@@ -1457,8 +1457,8 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isNone() || (result.isEmptyObject())) {
-          dbServerResult->store(0, std::memory_order_release);
+        if (result.isNone() || result.isEmptyObject()) {
+          dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
         return true;
       };
@@ -1906,13 +1906,13 @@ int ClusterInfo::dropCollectionCoordinator(
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  auto dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   auto errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isObject() && result.length() == 0) {
-          *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
+        if (result.isNone() || result.isEmptyObject()) {
+          dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
         return true;
       };
@@ -2754,7 +2754,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   }
 
   TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
-  const size_t numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(
+  size_t const numberOfShards = basics::VelocyPackHelper::readNumericValue<size_t>(
                                       collection, StaticStrings::NumberOfShards, 1);
   
   VPackSlice indexes = collection.get("indexes");
