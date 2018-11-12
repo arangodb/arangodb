@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
@@ -136,6 +137,9 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
 /// Thread-Safe force sync
 Result RocksDBSettingsManager::sync(bool force) {
   TRI_IF_FAILURE("RocksDBSettingsManagerSync") { return Result(); }
+  if (!_db) {
+    return Result();
+  }
 
   if (!lockForSync(force)) {
     return Result();
@@ -152,29 +156,40 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto minSeqNr = maxSeqNr;
   LOG_DEVEL << "starting sync with latestSeqNr: " << maxSeqNr;
 
+  rocksdb::TransactionOptions opts;
   rocksdb::WriteOptions wo;
-  std::unique_ptr<rocksdb::Transaction> rtrx(_db->BeginTransaction(wo));
-
-  
+  if (!_trx) {
+    _trx.reset(_db->BeginTransaction(wo, opts));
+  } else {
+    _db->BeginTransaction(wo, opts, _trx.get()); // recycle trx
+  }
   _tmpBuilder.clear(); // recycle our builder
+  
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-  dbfeature->enumerateDatabases([&](TRI_vocbase_t& vocbase) {
-    if (!vocbase.use()) {
+  engine->enumerateCollectionMappings([&](TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+    TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
+    if (!vocbase) {
       return;
     }
-    TRI_DEFER(vocbase.release());
-    // TODO do not use all databases
-    vocbase.processCollections([&](LogicalCollection* coll) {
-      RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
-      rocksdb::SequenceNumber seq;
-      Result res = rcoll->meta().serializeMeta(rtrx.get(), *coll, force, _tmpBuilder, seq);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-    }, /*includeDeleted*/false);
+    TRI_DEFER(vocbase->release());
+
+    TRI_vocbase_col_status_e status;
+    auto coll = vocbase->useCollection(cid, status);
+    if (!coll) {
+      return;
+    }
+    TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    
+    RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
+    rocksdb::SequenceNumber seq;
+    Result res = rcoll->meta().serializeMeta(_trx.get(), *coll, force, _tmpBuilder, seq);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   });
   
-  if (rtrx->GetNumKeys() == 0) {
+  if (_trx->GetNumKeys() == 0) {
     LOG_DEVEL << "nothing happened skipping settings up to " << minSeqNr;
     WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;
@@ -182,14 +197,14 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
   
   _tmpBuilder.clear();
-  Result res = writeSettings(rtrx.get(), _tmpBuilder, minSeqNr);
+  Result res = writeSettings(_trx.get(), _tmpBuilder, minSeqNr);
   if (res.fail()) {
     return res;
   }
 
   LOG_DEVEL << "commiting settings up to " << minSeqNr;
   // we have to commit all counters in one batch
-  auto s = rtrx->Commit();
+  auto s = _trx->Commit();
   
   if (s.ok()) {
     WRITE_LOCKER(guard, _rwLock);

@@ -327,6 +327,7 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+  void enumerateCollectionMappings(std::function<void(TRI_voc_tick_t, TRI_voc_cid_t)> const&) const;
   void addIndexMapping(uint64_t objectId, TRI_voc_tick_t,
                        TRI_voc_cid_t, TRI_idx_iid_t);
   void removeIndexMapping(uint64_t);

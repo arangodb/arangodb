@@ -728,6 +728,10 @@ void RocksDBEngine::stop() {
     }
     _backgroundThread.reset();
   }
+  
+  if (_settingsManager) {
+    _settingsManager->releaseResources();
+  }
 
   if (_syncThread) {
     // _syncThread may be a nullptr, in case automatic syncing is turned off
@@ -1559,6 +1563,14 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
     }
 #endif
     _collectionMap[objectId] = std::make_pair(did, cid);
+  }
+}
+  
+void RocksDBEngine::enumerateCollectionMappings(
+   std::function<void(TRI_voc_tick_t, TRI_voc_cid_t)> const& fn) const {
+  READ_LOCKER(guard, _mapLock);
+  for (auto const& it : _collectionMap) {
+    fn(it.second.first, it.second.second);
   }
 }
 

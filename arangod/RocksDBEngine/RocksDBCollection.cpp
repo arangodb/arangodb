@@ -278,10 +278,12 @@ size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::open(bool /*ignoreErrors*/) {
   TRI_ASSERT(_objectId != 0);
-  RocksDBCollectionMeta::DocCount count = _meta.currentCount();
-  TRI_ASSERT(count._added >= count._removed);
-  _numberDocuments = count._added - count._removed;
-  _revisionId = count._revisionId;
+  RocksDBEngine* engine =
+  static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  TRI_ASSERT(engine != nullptr);
+  if (!engine->inRecovery()) {
+    loadInitialNumberDocuments();
+  }
 }
 
 void RocksDBCollection::prepareIndexes(
@@ -1706,10 +1708,19 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
     _revisionId = revId;
   }
   if (adjustment < 0) {
+    TRI_ASSERT(_numberDocuments >= static_cast<uint64_t>(-adjustment));
     _numberDocuments -= static_cast<uint64_t>(-adjustment);
   } else if (adjustment > 0) {
     _numberDocuments += static_cast<uint64_t>(adjustment);
   }
+}
+
+/// load the number of docs from storage, use careful
+void RocksDBCollection::loadInitialNumberDocuments() {
+  RocksDBCollectionMeta::DocCount count = _meta.currentCount();
+  TRI_ASSERT(count._added >= count._removed);
+  _numberDocuments = count._added - count._removed;
+  _revisionId = count._revisionId;
 }
 
 /// @brief write locks a collection, with a timeout

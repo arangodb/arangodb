@@ -61,6 +61,12 @@ class RocksDBSettingsManager {
 
   // Earliest sequence number needed for recovery (don't throw out newer WALs)
   rocksdb::SequenceNumber earliestSeqNeeded() const;
+  
+  // remove resources before rocksdb instance is destroyed
+  void releaseResources() {
+    _trx.reset();
+    _db = nullptr;
+  }
 
  private:
 
@@ -84,6 +90,9 @@ class RocksDBSettingsManager {
 
   /// @brief rocksdb instance
   rocksdb::TransactionDB* _db;
+  
+  /// @brief recycled transaction
+  std::unique_ptr<rocksdb::Transaction> _trx;
 
   TRI_voc_tick_t _initialReleasedTick;
 };

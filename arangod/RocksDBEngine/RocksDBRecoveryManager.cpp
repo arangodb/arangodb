@@ -214,8 +214,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (ops.lastRevisionId) {
           rcoll->meta().countRefUnsafe()._revisionId = ops.lastRevisionId;
         }
-        int64_t adj = static_cast<int64_t>(ops.added) - static_cast<int64_t>(ops.removed);
-        rcoll->adjustNumberDocuments(ops.lastRevisionId, adj);
+        TRI_ASSERT(rcoll->meta().countRefUnsafe()._added >= rcoll->meta().countRefUnsafe()._removed);
+        rcoll->loadInitialNumberDocuments();
         LOG_DEVEL << collection->name() << " now has " << rcoll->numberDocuments();
         
         auto const& it = _generators.find(rcoll->objectId());

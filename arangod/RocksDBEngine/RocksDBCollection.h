@@ -177,6 +177,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// adjust the current number of docs
   void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
+  /// load the number of docs from storage
+  void loadInitialNumberDocuments();
+  
   uint64_t objectId() const { return _objectId; }
 
   int lockWrite(double timeout = 0.0);
