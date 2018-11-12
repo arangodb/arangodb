@@ -92,8 +92,7 @@ void RestClusterHandler::handleCommandPutAdvEndpoint() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isEnabled() && !_request->user().empty()) {
     // error forbidden!
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to modify the advertised endpoint");
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return ;
   }
 
