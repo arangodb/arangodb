@@ -174,12 +174,17 @@ Result RocksDBSettingsManager::sync(bool force) {
     }
     TRI_DEFER(vocbase->release());
 
-    TRI_vocbase_col_status_e status;
-    auto coll = vocbase->useCollection(cid, status);
+//    TRI_vocbase_col_status_e status;
+//    auto coll = vocbase->useCollection(cid, status);
+//    if (!coll) {
+//      return;
+//    }
+//    TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    // intentionally do not `useCollection`, tends to break CI tests
+    std::shared_ptr<LogicalCollection> coll = vocbase->lookupCollection(cid);
     if (!coll) {
       return;
     }
-    TRI_DEFER(vocbase->releaseCollection(coll.get()));
     
     RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = minSeqNr;
