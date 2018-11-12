@@ -1457,7 +1457,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isNone() || (result.isEmptyObject())) {
+        if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(0, std::memory_order_release);
         }
         return true;
@@ -1911,7 +1911,7 @@ int ClusterInfo::dropCollectionCoordinator(
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        if (result.isNone() || (result.isObject() && result.length() == 0)) {
+        if (result.isNone() || result.isEmptyObject()) {
           *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
         }
         return true;
