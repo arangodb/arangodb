@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
@@ -949,7 +949,7 @@ class RocksDBCuckooIndexEstimator {
   Fingerprint _fingerprint;  // Instance to compute a fingerprint of a key
   HashShort _hasherShort;    // Instance to compute the second hash function
 
-  arangodb::basics::ReadWriteSpinLock mutable _lock;
+  arangodb::basics::ReadWriteLock mutable _lock;
 };  // namespace arangodb
 
 }  // namespace arangodb
