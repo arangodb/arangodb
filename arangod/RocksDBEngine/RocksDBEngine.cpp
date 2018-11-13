@@ -1568,12 +1568,13 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 }
   
-void RocksDBEngine::enumerateCollectionMappings(
-   std::function<void(TRI_voc_tick_t, TRI_voc_cid_t)> const& fn) const {
+std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionMappings() const {
+  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> res;
   READ_LOCKER(guard, _mapLock);
   for (auto const& it : _collectionMap) {
-    fn(it.second.first, it.second.second);
+    res.emplace_back(it.second.first, it.second.second);
   }
+  return res;
 }
 
 void RocksDBEngine::addIndexMapping(uint64_t objectId, TRI_voc_tick_t did,

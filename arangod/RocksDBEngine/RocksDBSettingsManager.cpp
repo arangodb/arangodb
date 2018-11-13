@@ -167,23 +167,21 @@ Result RocksDBSettingsManager::sync(bool force) {
   
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-  engine->enumerateCollectionMappings([&](TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+  
+  auto mappings = engine->collectionMappings();
+  for (auto const& pair : mappings) {
+    TRI_voc_tick_t dbid = pair.first;
+    TRI_voc_cid_t cid = pair.second;
     TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
     if (!vocbase) {
-      return;
+      continue;
     }
     TRI_DEFER(vocbase->release());
 
-//    TRI_vocbase_col_status_e status;
-//    auto coll = vocbase->useCollection(cid, status);
-//    if (!coll) {
-//      return;
-//    }
-//    TRI_DEFER(vocbase->releaseCollection(coll.get()));
     // intentionally do not `useCollection`, tends to break CI tests
     std::shared_ptr<LogicalCollection> coll = vocbase->lookupCollection(cid);
     if (!coll) {
-      return;
+      continue;
     }
     
     RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
@@ -193,7 +191,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-  });
+  }
   
   if (_trx->GetNumKeys() == 0) {
     LOG_DEVEL << "nothing happened skipping settings up to " << minSeqNr;
