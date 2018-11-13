@@ -30,7 +30,10 @@ using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
 ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
-    : _resourceMonitor(resourceMonitor), _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
+    : _resourceMonitor(resourceMonitor), 
+      _blockSize(blockSize), 
+      _current(nullptr), 
+      _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
 

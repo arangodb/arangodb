@@ -262,7 +262,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void blackListKey(char const* data, std::size_t len) const;
   
-  bool hasAllPersistentLocalIds() const { return true; }
+  bool hasAllPersistentLocalIds() const override { return true; }
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
