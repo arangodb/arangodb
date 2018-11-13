@@ -1635,10 +1635,14 @@ OperationResult transaction::Methods::insertLocal(
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
-      // needsLock => isMMFiles && !value.isArray()
-      TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
-      TRI_ASSERT(needsLock ==
-                 (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+      // needsLock => isMMFiles
+      // needsLock => !value.isArray()
+      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
+      // However, due to nested transactions, there are mmfiles single
+      // operations that already have a lock.
+      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock || !value.isArray());
+      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
     }
   }
 #endif
@@ -1975,10 +1979,14 @@ OperationResult transaction::Methods::modifyLocal(
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
-      // needsLock => isMMFiles && !newValue.isArray()
-      TRI_ASSERT(!needsLock || (isMMFiles && !newValue.isArray()));
-      TRI_ASSERT(needsLock ==
-                 (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+      // needsLock => isMMFiles
+      // needsLock => !newValue.isArray()
+      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
+      // However, due to nested transactions, there are mmfiles single
+      // operations that already have a lock.
+      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock || !newValue.isArray());
+      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
     }
   }
 #endif
@@ -2257,10 +2265,14 @@ OperationResult transaction::Methods::removeLocal(
     bool const isMMFiles = EngineSelectorFeature::isMMFiles();
     bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
     if (!isMock) {
-      // needsLock => isMMFiles && !value.isArray()
-      TRI_ASSERT(!needsLock || (isMMFiles && !value.isArray()));
-      TRI_ASSERT(needsLock ==
-                 (isMMFiles && _localHints.has(Hints::Hint::SINGLE_OPERATION)));
+      // needsLock => isMMFiles
+      // needsLock => !value.isArray()
+      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
+      // However, due to nested transactions, there are mmfiles single
+      // operations that already have a lock.
+      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock || !value.isArray());
+      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
     }
   }
 #endif
