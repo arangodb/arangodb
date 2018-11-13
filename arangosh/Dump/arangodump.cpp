@@ -34,6 +34,7 @@
 #include "Dump/DumpFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
@@ -75,6 +76,12 @@ int main(int argc, char* argv[]) {
 #ifdef USE_ENTERPRISE
     server.addFeature(new EncryptionFeature(server));
 #endif
+
+    maskings::MaskingsResult m = maskings::Maskings::fromFile("TEST");
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      return context.exit(EXIT_FAILURE);
+    }
 
     try {
       server.run(argc, argv);
