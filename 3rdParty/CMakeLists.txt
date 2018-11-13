@@ -164,6 +164,7 @@ if (USE_IRESEARCH)
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
+  set(BFD_ROOT "invalid")
 
   if(MSVC)
     set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated

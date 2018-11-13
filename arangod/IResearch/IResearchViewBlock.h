@@ -89,7 +89,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   );
 
   bool readDocument(
-    DocumentPrimaryKey const& key,
+    DocumentPrimaryKey::type const& key,
     IndexIterator::DocumentCallback const& callback
   );
 
@@ -102,7 +102,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
   virtual size_t skip(size_t count) = 0;
 
-  std::vector<DocumentPrimaryKey> _keys; // buffer for primary keys
+  std::vector<DocumentPrimaryKey::type> _keys; // buffer for primary keys
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
   irs::index_reader const& _reader;
