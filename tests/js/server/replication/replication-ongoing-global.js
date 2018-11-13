@@ -801,7 +801,7 @@ function BaseTestConfig () {
           if (!state.arangoSearchEnabled) {
             return;
           }
-          // drop view on master
+          // rename view on master
           let view = db._view('UnitTestsSyncView');
           view.rename('UnitTestsSyncViewRenamed');
           view = db._view('UnitTestsSyncViewRenamed');
@@ -842,7 +842,7 @@ function BaseTestConfig () {
           if (!state.arangoSearchEnabled) {
             return;
           }
-          // rename view on master
+          // drop view on master
           let view = db._view('UnitTestsSyncView');
           view.drop();
         },

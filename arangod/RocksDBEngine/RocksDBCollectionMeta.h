@@ -24,12 +24,14 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
 
 #include "Basics/Result.h"
-#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
 #include <mutex>
 
 #include <rocksdb/types.h>
+
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
@@ -136,7 +138,7 @@ private:
 
   // TODO we should probably use flat_map or abseils Swiss Tables
   
-  mutable arangodb::basics::ReadWriteSpinLock _blockerLock;
+  mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
   std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;

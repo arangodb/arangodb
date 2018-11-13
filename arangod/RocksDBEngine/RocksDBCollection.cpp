@@ -702,7 +702,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    seq = rocksutils::latestSequenceNumber() - 1; // post commit sequence
+    seq += 3; // post commit sequence
     
     uint64_t numDocs = _numberDocuments.exchange(0);
     _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));
