@@ -2495,22 +2495,35 @@ int ClusterInfo::ensureIndexCoordinator(
       { VPackObjectBuilder b(&newPlanIndex);
         for (auto const& entry : VPackObjectIterator(resultBuilder.slice())) {
           auto const key = entry.key.copyString();
-          if (key != "isBuilding") {
+          if (key != "isBuilding" && key != "isNewlyCreated") {
             newPlanIndex.add(entry.key.copyString(), entry.value);
-          }
+          } 
         }
       }
 
+      VPackBuilder oldPlanIndex;
+      { VPackObjectBuilder b(&oldPlanIndex);
+        for (auto const& entry : VPackObjectIterator(resultBuilder.slice())) {
+          auto const key = entry.key.copyString();
+          if (key != "isNewlyCreated") {
+            oldPlanIndex.add(entry.key.copyString(), entry.value);
+          } 
+        }
+      }
+      
       std::string const indexPath =
         "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
       AgencyWriteTransaction trx(
         std::vector<AgencyOperation>
         { AgencyOperation(
             indexPath, AgencyValueOperationType::REPLACE,
-            newPlanIndex.slice(), resultBuilder.slice()),
-            AgencyOperation(
-              "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
+            newPlanIndex.slice(), oldPlanIndex.slice()),
+          AgencyOperation(
+            "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
+      VPackBuilder tmp;
+      trx.toVelocyPack(tmp);
+      
       while (true) {
         AgencyCommResult update =
           _agency.sendTransactionWithFailover(trx, 0.0);
@@ -2520,7 +2533,8 @@ int ClusterInfo::ensureIndexCoordinator(
       }
 
     } else {
-      // That's odd the key has gone already. Supervision was quicker. 
+      // That's odd the key has gone already. Supervision was quicker.
+      loadPlan();
       return TRI_ERROR_NO_ERROR;
     }
 
