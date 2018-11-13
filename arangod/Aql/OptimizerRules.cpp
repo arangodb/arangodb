@@ -4924,7 +4924,7 @@ void arangodb::aql::restrictToSingleShardRule(
           modNode->restrictToShard(shardId);
           modificationRestrictions[collection].emplace(shardId);
 
-          auto deps = current->getDependencies();
+          auto const& deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
             // if we can apply the single-shard optimization, but still have a
             // REMOTE node in front of us, we can probably move the remote parts
