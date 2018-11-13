@@ -61,7 +61,7 @@ struct PrimaryKeyEndianness<false> {
   static uint64_t pkToHost(uint64_t value) { return arangodb::basics::bigToHost(value); }
 }; // PrimaryKeyEndianness
 
-constexpr bool const Endianness = LittleEndian; // current PK endianness
+constexpr bool const Endianness = BigEndian; // current PK endianness
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                       FieldIterator dependencies
