@@ -152,6 +152,7 @@ exports.defineModule = function(path, file) {
   let mc = internal.db._collection('_modules');
 
   if (mc === null) {
+    // lazily create _modules collection if it does not yet exist
     const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
     mc = internal.db._create('_modules', {
       isSystem: true,

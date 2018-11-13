@@ -1,4 +1,3 @@
-
 //////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -211,9 +210,14 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     [](arangodb::aql::ExpressionContext*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
-      auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
-      auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
-      return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+      if (args.empty()) {
+        // no such input parameter. return NaN
+        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
+      } else {
+        // unsafe
+        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().begin());
+        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+      }
     }
   });
 }

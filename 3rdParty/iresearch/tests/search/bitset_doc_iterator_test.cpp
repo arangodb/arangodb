@@ -27,28 +27,10 @@
 #include "utils/singleton.hpp"
 #include "search/bitset_doc_iterator.hpp"
 
-NS_LOCAL
-
-struct empty_sub_reader: irs::singleton<empty_sub_reader>, irs::sub_reader {
-  virtual reader_iterator begin() const override { return reader_iterator(); }
-  virtual const irs::column_meta* column(const irs::string_ref& name) const override { return nullptr; }
-  virtual irs::column_iterator::ptr columns() const override { return nullptr; }
-  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override { return nullptr; }
-  virtual uint64_t docs_count() const override { return 0; }
-  virtual irs::doc_iterator::ptr docs_iterator() const override { return nullptr; }
-  virtual reader_iterator end() const override { return reader_iterator(); }
-  virtual const irs::term_reader* field(const irs::string_ref& field) const override { return nullptr; }
-  virtual irs::field_iterator::ptr fields() const override { return nullptr; }
-  virtual uint64_t live_docs_count() const override { return 0; }
-  virtual size_t size() const override { return 0; }
-}; // index_reader
-
-NS_END
-
 #ifndef IRESEARCH_DLL
 
 TEST(bitset_iterator_test, next) {
-  auto& reader = empty_sub_reader::instance();
+  auto& reader = irs::sub_reader::empty();
   auto& filter_attrs = irs::attribute_store::empty_instance();
   irs::order order;
 
@@ -262,7 +244,7 @@ TEST(bitset_iterator_test, next) {
 }
 
 TEST(bitset_iterator_test, seek) {
-  auto& reader = empty_sub_reader::instance();
+  auto& reader = irs::sub_reader::empty();
   auto& filter_attrs = irs::attribute_store::empty_instance();
   irs::order order;
 
@@ -669,7 +651,7 @@ TEST(bitset_iterator_test, seek) {
 }
 
 TEST(bitset_iterator_test, seek_next) {
-  auto& reader = empty_sub_reader::instance();
+  auto& reader = irs::sub_reader::empty();
   auto& filter_attrs = irs::attribute_store::empty_instance();
   irs::order order;
 

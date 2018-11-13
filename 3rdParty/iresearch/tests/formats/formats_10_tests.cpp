@@ -968,6 +968,10 @@ TEST_F(memory_format_10_test_case, columns_rw_typed) {
   columns_read_write_typed();
 }
 
+TEST_F(memory_format_10_test_case, columns_rw_sparse_dense_offset_column_border_case) {
+  dense_or_sparse_fixed_offset_border_case();
+}
+
 TEST_F(memory_format_10_test_case, columns_rw) {
   columns_read_write();
 }
@@ -1037,6 +1041,10 @@ TEST_F(fs_format_10_test_case, columns_rw_dense_mask) {
 
 TEST_F(fs_format_10_test_case, columns_rw_bit_mask) {
   columns_bit_mask();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_sparse_dense_offset_column_border_case) {
+  dense_or_sparse_fixed_offset_border_case();
 }
 
 TEST_F(fs_format_10_test_case, columns_rw) {

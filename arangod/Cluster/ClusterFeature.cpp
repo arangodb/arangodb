@@ -255,14 +255,7 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-#ifdef DEBUG_SYNC_REPLICATION
-  bool startClusterComm = true;
-#else
-  bool startClusterComm = false;
-#endif
-
   if (ServerState::instance()->isAgent() || _enableCluster) {
-    startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
