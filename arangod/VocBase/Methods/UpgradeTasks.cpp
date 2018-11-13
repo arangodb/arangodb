@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UpgradeTasks.h"
@@ -289,22 +289,6 @@ bool UpgradeTasks::addDefaultUserOther(
     }
   }
   return true;
-}
-
-bool UpgradeTasks::updateUserModels(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& slice
-) {
-  TRI_ASSERT(vocbase.isSystem());
-  // TODO isn't this done on the fly ?
-  return true;
-}
-
-bool UpgradeTasks::createModules(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& slice
-) {
-  return ::createSystemCollection(&vocbase, "_modules");
 }
 
 bool UpgradeTasks::setupAnalyzers(

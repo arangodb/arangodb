@@ -955,6 +955,10 @@ However, streaming cursors are enabled automatically for the following parts of 
 * when exporting data from collections using the arangoexport binary
 * when using `db.<collection>.toArray()` from the Arango shell
 
+Please note that AQL queries consumed in a streaming fashion have their own, adjustable
+"slow query" threshold. That means the "slow query" threshold can be configured seperately for 
+regular queries and streaming queries.
+
 Native implementations
 ----------------------
 
