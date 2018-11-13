@@ -1733,7 +1733,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     }
   }
 
-  AgencyWriteTransaction transaction(opers,precs);
+  AgencyWriteTransaction transaction(opers, precs);
 
   { // we hold this mutex from now on until we have updated our cache
     // using loadPlan, this is necessary for the callback closure to
@@ -1770,12 +1770,16 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           }
         }
 
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency transaction: "
+          << transaction.toJson() << ", return code: "
+          << res.httpCode();
         if (ag.successful()) {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                           << ag.slice().toJson();
         } else {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
+        return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       } else {
         errorMsg += std::string("file: ") + __FILE__ +
                     " line: " + std::to_string(__LINE__);
