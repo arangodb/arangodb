@@ -561,10 +561,8 @@ bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-MMFilesCollection::MMFilesCollection(
-    LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info
-)
+MMFilesCollection::MMFilesCollection(LogicalCollection& collection,
+                                     VPackSlice const& info)
     : PhysicalCollection(collection, info),
       _ditches(&collection),
       _initialCount(0),
@@ -577,13 +575,13 @@ MMFilesCollection::MMFilesCollection(
           info, "maximalSize",  // Backwards compatibility. Agency uses
                                 // journalSize. paramters.json uses maximalSize
           Helper::readNumericValue<uint32_t>(info, "journalSize",
-                                                   TRI_JOURNAL_DEFAULT_SIZE))),
+                                             TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
       _persistentIndexes(0),
       _primaryIndex(nullptr),
-      _indexBuckets(Helper::readNumericValue<uint32_t>(
-          info, "indexBuckets", defaultIndexBuckets)),
+      _indexBuckets(Helper::readNumericValue<uint32_t>(info, "indexBuckets",
+                                                       defaultIndexBuckets)),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
@@ -2888,8 +2886,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
 }
 
 Result MMFilesCollection::insert(
-    arangodb::transaction::Methods* trx,
-    arangodb::velocypack::Slice const slice,
+    arangodb::transaction::Methods* trx, VPackSlice const slice,
     arangodb::ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
     std::function<Result(void)> callbackDuringLock) {
@@ -3402,10 +3399,10 @@ Result MMFilesCollection::insertDocument(
 
 Result MMFilesCollection::update(
     arangodb::transaction::Methods* trx,
-    arangodb::velocypack::Slice const newSlice, ManagedDocumentResult& result,
+    VPackSlice const newSlice, ManagedDocumentResult& result,
     OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock,
     TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-    arangodb::velocypack::Slice const key,
+    VPackSlice const key,
     std::function<Result(void)> callbackDuringLock) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -3547,7 +3544,7 @@ Result MMFilesCollection::update(
 }
 
 Result MMFilesCollection::replace(
-    transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous,
@@ -3686,7 +3683,7 @@ Result MMFilesCollection::replace(
 }
 
 Result MMFilesCollection::remove(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
+    arangodb::transaction::Methods* trx, VPackSlice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
