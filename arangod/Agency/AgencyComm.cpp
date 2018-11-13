@@ -1504,8 +1504,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
       // Inquire returns a body like write, if the transactions are not known,
       // the list of results is empty.
-      // _statusCode can be 200 or 412
-      if (result.successful() || result._statusCode == 412) {
+      // _statusCode can be 200 or 404 (if nothing was found)
+      if (result.successful()) {
         std::shared_ptr<VPackBuilder> resultBody
           = VPackParser::fromJson(result._body);
         VPackSlice outer = resultBody->slice();
@@ -1532,6 +1532,10 @@ AgencyCommResult AgencyComm::sendWithFailover(
           isInquiry = false;
           continue;
         }
+      } else if (result._statusCode == 404) {
+        // clientId was not found, agency has never heard of this trx, retry:
+        isInquiry = false;
+        continue;
       }
       // This can still be a timeout or 503 case, both are handled below
     } // end of inquiry case
