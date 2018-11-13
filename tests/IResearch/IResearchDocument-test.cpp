@@ -1603,7 +1603,7 @@ SECTION("test_appendKnownCollections") {
     );
     REQUIRE(writer);
 
-    arangodb::iresearch::DocumentPrimaryKey pk(42, 42);
+    arangodb::iresearch::DocumentPrimaryKey pk(42, 42); // ensure cid is properly encoded
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setPkValue(field, pk, arangodb::iresearch::Field::init_stream_t());
@@ -1634,7 +1634,8 @@ SECTION("test_appendKnownCollections") {
     REQUIRE(writer);
 
     TRI_voc_cid_t cid = 42;
-    arangodb::iresearch::DocumentPrimaryKey::type pk(cid, 0);
+    arangodb::iresearch::DocumentPrimaryKey pk(cid, 0); // ensure cid is properly encoded
+
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
