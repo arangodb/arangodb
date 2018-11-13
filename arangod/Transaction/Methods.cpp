@@ -3344,20 +3344,27 @@ Result Methods::replicateOperations(
 
   // path and requestType are different for insert/remove/modify.
 
-  std::string path =
-    "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-    "/_api/document/" +
-    arangodb::basics::StringUtils::urlEncode(collection.name()) +
-    "?isRestore=true&isSynchronousReplication=" +
-    ServerState::instance()->getId() + "&" + StaticStrings::SilentString +
-    "=true";
+  std::stringstream pathStream;
+  pathStream << "/_db/"
+             << arangodb::basics::StringUtils::urlEncode(vocbase().name())
+             << "/_api/document/"
+             << arangodb::basics::StringUtils::urlEncode(collection.name());
+  if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
+    TRI_ASSERT(value.isObject());
+    TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
+    pathStream << "/" << value.get(StaticStrings::KeyString).copyString();
+  }
+  pathStream << "?isRestore=true&isSynchronousReplication="
+             << ServerState::instance()->getId() << "&"
+             << StaticStrings::SilentString << "=true";
+
   arangodb::rest::RequestType requestType = RequestType::ILLEGAL;
 
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::rest::RequestType::POST;
-      path += "&" + StaticStrings::OverWrite + "=" +
-              (options.overwrite ? "true" : "false");
+      pathStream << "&" << StaticStrings::OverWrite << "="
+                 << (options.overwrite ? "true" : "false");
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::rest::RequestType::PATCH;
@@ -3372,6 +3379,8 @@ Result Methods::replicateOperations(
     default:
       TRI_ASSERT(false);
   }
+
+  std::string const path {pathStream.str()};
 
   transaction::BuilderLeaser payload(this);
 
@@ -3402,9 +3411,6 @@ Result Methods::replicateOperations(
       itResult.next();
     }
   } else {
-    // Note that earlier, for remove and modify, the following line was executed
-    // as well. TODO Make sure this works and remove the comment.
-    // VPackArrayBuilder guard(payload.get());
     doOneDoc(value, ourResult);
     count++;
   }
