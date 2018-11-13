@@ -40,7 +40,7 @@ configTypes.int = configTypes.integer;
 configTypes.bool = configTypes.boolean;
 
 const manifestSchema = {
-  $schema: joi.forbidden().allow(CANONICAL_SCHEMA).default(CANONICAL_SCHEMA),
+  $schema: joi.only(CANONICAL_SCHEMA).default(CANONICAL_SCHEMA),
   // FoxxStore metadata
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).optional(),
   version: joi.string().optional(),
