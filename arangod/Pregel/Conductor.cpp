@@ -497,23 +497,25 @@ static void resolveInfo(
   } else if (ss->isCoordinator()) {  // we are in the cluster
 
     ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<LogicalCollection> lc =
-        ci->getCollection(vocbase->name(), collectionID);
-    if (lc->deleted()) {
+    auto lc = ci->getCollection(vocbase->name(), collectionID);
+    if (lc.fail()) {
+      THROW_ARANGO_EXCEPTION(lc.copy_result());
+    }
+    if (lc.get()->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                      collectionID);
     }
-    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.emplace(collectionID, std::to_string(lc.get()->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-      ci->getShardList(std::to_string(lc->id()));
+      ci->getShardList(std::to_string(lc.get()->id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
       std::shared_ptr<std::vector<ServerID>> servers =
           ci->getResponsibleServer(shard);
       if (servers->size() > 0) {
-        serverMap[(*servers)[0]][lc->name()].push_back(shard);
+        serverMap[(*servers)[0]][lc.get()->name()].push_back(shard);
       }
     }
   } else {

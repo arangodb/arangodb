@@ -2489,14 +2489,12 @@ OperationResult transaction::Methods::countCoordinator(
   }
   
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(vocbase().name(), collectionName);
-  } catch (...) {
+  auto collinfo = ci->getCollection(vocbase().name(), collectionName);
+  if (collinfo.fail()) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  return countCoordinatorHelper(collinfo, collectionName, type);
+  return countCoordinatorHelper(collinfo.get(), collectionName, type);
 }
 
 #endif
@@ -3019,7 +3017,10 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(vocbase().name(), name);
-  auto idxs = collectionInfo->getIndexes();
+  if (collectionInfo.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionInfo.copy_result());
+  }
+  auto idxs = collectionInfo.get()->getIndexes();
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
 
   for (auto const& it : idxs) {
@@ -3037,10 +3038,14 @@ transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collection = clusterInfo->getCollection(vocbase().name(), name);
-  
+
+  if (collection.fail()) {
+    THROW_ARANGO_EXCEPTION(collection.copy_result());
+  }
+
   // update selectivity estimates if they were expired
-  collection->clusterIndexEstimates(true);
-  return collection->getIndexes();
+  collection.get()->clusterIndexEstimates(true);
+  return collection.get()->getIndexes();
 }
 
 /// @brief get the index by it's identifier. Will either throw or

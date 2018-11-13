@@ -38,6 +38,7 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ResultT.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -319,8 +320,9 @@ class ClusterInfo {
   /// exception
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
-                                                   CollectionID const&);
+  virtual ResultT<std::shared_ptr<LogicalCollection>> getCollection(
+                                               DatabaseID const& databaseID,
+                                               CollectionID const& collectionID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all collections of a database

@@ -1229,16 +1229,15 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections, arangodb::Co
 
           // We want to tolerate that a collection name is given here
           // which does not exist, if only for some unit tests:
-          try {
-            auto coll = ci->getCollection(_query->vocbase().name(), name);
-            auto names = coll->realNames();
+          auto coll = ci->getCollection(_query->vocbase().name(), name);
+          if (coll.ok()) {
+            auto names = coll.get()->realNames();
 
             for (auto const& n : names) {
               StringRef shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, shardsNameRef);
               TRI_ASSERT(shardsCategory == LogicalCollection::category());
             }
-          } catch (...) {
           }
         }
       }
@@ -1268,17 +1267,15 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections, Collectio
     LogicalDataSource::Category const* category = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
-        try {
-          auto c = ci->getCollection(_query->vocbase().name(), name);
-          auto const& names = c->realNames();
+        auto c = ci->getCollection(_query->vocbase().name(), name);
+        if (c.ok()) {
+          auto const& names = c.get()->realNames();
 
           for (auto const& n : names) {
             StringRef shardsNameRef(n);
             LogicalDataSource::Category const* shardsCategory = injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, shardsNameRef);
             TRI_ASSERT(shardsCategory == LogicalCollection::category());
           }
-        } catch (...) {
-          // TODO Should we really not react?
         }
       }
     } else {
@@ -1729,14 +1726,13 @@ void Ast::injectBindParameters(
 
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:
-        try {
-          auto coll = ci->getCollection(_query->vocbase().name(), name);
-          auto names = coll->realNames();
+        auto coll = ci->getCollection(_query->vocbase().name(), name);
+        if (coll.ok()) {
+          auto names = coll.get()->realNames();
 
           for (auto const& n : names) {
             _query->addCollection(n, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
           }
-        } catch (...) {
         }
       }
     }
@@ -3832,16 +3828,14 @@ AstNode* Ast::createNodeCollectionNoValidation(StringRef const& name,
     auto ci = ClusterInfo::instance();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
-    try {
-      auto coll = ci->getCollection(_query->vocbase().name(), name.toString());
-
-      if (coll->isSmart()) {
+    auto coll = ci->getCollection(_query->vocbase().name(), name.toString());
+    if (coll.ok()) {
+      if (coll.get()->isSmart()) {
         // add names of underlying smart-edge collections
-        for (auto const& n : coll->realNames()) {
+        for (auto const& n : coll.get()->realNames()) {
           _query->addCollection(n, accessType);
         }
       }
-    } catch (...) {
     }
   }
 
@@ -3876,14 +3870,13 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
       auto ci = ClusterInfo::instance();
 
       for (const auto& n : eColls) {
-        try {
-          auto c = ci->getCollection(_query->vocbase().name(), n);
-          auto names = c->realNames();
+        auto c = ci->getCollection(_query->vocbase().name(), n);
+        if (c.ok()) {
+          auto names = c.get()->realNames();
 
           for (auto const& name : names) {
             _query->addCollection(name, AccessMode::Type::READ);
           }
-        } catch (...) {
         }
       }
     }

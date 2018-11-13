@@ -74,9 +74,11 @@ void RecoveryManager::monitorCollections(
   ClusterInfo* ci = ClusterInfo::instance();
 
   for (CollectionID const& collname : collections) {
-    std::shared_ptr<LogicalCollection> coll =
-        ci->getCollection(database, collname);
-    CollectionID cid = std::to_string(coll->id());
+    auto coll = ci->getCollection(database, collname);
+    if (coll.fail()) {
+      THROW_ARANGO_EXCEPTION(coll.copy_result());
+    }
+    CollectionID cid = std::to_string(coll.get()->id());
     std::shared_ptr<std::vector<ShardID>> shards =
         ClusterInfo::instance()->getShardList(cid);
 
@@ -90,7 +92,7 @@ void RecoveryManager::monitorCollections(
         continue;
       }
       conductors.insert(listener);
-      //_monitorShard(coll->dbName(), cid, shard);
+      //_monitorShard(coll.get()->dbName(), cid, shard);
 
       std::shared_ptr<std::vector<ServerID>> servers =
           ClusterInfo::instance()->getResponsibleServer(shard);

@@ -356,12 +356,15 @@ arangodb::Result IResearchViewCoordinator::properties(
       for (auto& entry: _collections) {
         auto collection =
           engine->getCollection(vocbase().name(), std::to_string(entry.first));
+        if (collection.fail()) {
+          THROW_ARANGO_EXCEPTION(collection.copy_result());
+        }
 
-        if (collection
-            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+        if (collection.ok()
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection.get()->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(
             TRI_ERROR_FORBIDDEN,
-            std::string("while updating arangosearch definition, error: collection '") + collection->name() + "' not authorised for read access"
+            std::string("while updating arangosearch definition, error: collection '") + collection.get()->name() + "' not authorised for read access"
           );
         }
       }
@@ -499,8 +502,8 @@ Result IResearchViewCoordinator::dropImpl() {
         auto collection =
           engine->getCollection(vocbase().name(), std::to_string(entry));
 
-        if (collection
-            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+        if (collection.ok()
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection.get()->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
       }

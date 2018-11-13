@@ -259,7 +259,13 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
     try {
       if (arangodb::ServerState::instance()->isRunningInCluster()) {
         ClusterInfo* ci = ClusterInfo::instance();
-        return ci->getCollection(vocbase.name(), name);
+        auto cii = ci->getCollection(vocbase.name(), name);
+        if (cii.fail()) {
+          return nullptr;
+        }
+        else {
+          return cii.get();
+        }
       } else {
         return vocbase.lookupCollection(name);
       }

@@ -119,12 +119,15 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
+    if (c.fail()) {
+      THROW_ARANGO_EXCEPTION(c.copy_result());
+    }
 #ifdef USE_IRESEARCH
-    c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
+    c.get()->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
       return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
     });
 #else
-    c->getIndexesVPack(tmpInner, flags);
+    c.get()->getIndexesVPack(tmpInner, flags);
 #endif
 
     tmp.openArray();
@@ -404,10 +407,12 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
         auto c = ClusterInfo::instance()->getCollection(dbname, collname);
+        if (c.fail()) {
+          THROW_ARANGO_EXCEPTION(c.copy_result());
+        }
         auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
-
-        if (flds.isArray() && c->numberOfShards() > 1) {
-          std::vector<std::string> const& shardKeys = c->shardKeys();
+        if (flds.isArray() && c.get()->numberOfShards() > 1) {
+          std::vector<std::string> const& shardKeys = c.get()->shardKeys();
           std::unordered_set<std::string> indexKeys;
           size_t n = static_cast<size_t>(flds.length());
 

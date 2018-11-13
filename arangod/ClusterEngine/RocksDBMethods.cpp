@@ -52,21 +52,17 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname,
   }
   
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
-  
-  
+
   std::string const baseUrl = "/_db/" + basics::StringUtils::urlEncode(dbname)
                               + "/_api/collection/";
   std::shared_ptr<std::string> body;
 
   // now we notify all leader and follower shards
-  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::shared_ptr<ShardMap> shardList = collinfo.get()->shardIds();
   std::vector<ClusterCommRequest> requests;
   for (auto const& shard : *shardList) {
     for (ServerID const& server : shard.second) {

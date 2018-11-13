@@ -109,15 +109,17 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
       try {
         auto coll =
             ClusterInfo::instance()->getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
+        if (coll.fail()) {
+          THROW_ARANGO_EXCEPTION(coll.copy_result());
+        }
+        if (coll.get()->system()) {
           return std::make_pair(
               Result{TRI_ERROR_BAD_PARAMETER,
                      "Cannot use pregel on system collection"},
               0);
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+        if (coll.get()->status() == TRI_VOC_COL_STATUS_DELETED || coll.get()->deleted()) {
           return std::make_pair(
               Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
         }
@@ -146,16 +148,18 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
       try {
         auto coll =
             ClusterInfo::instance()->getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
+        if (coll.fail()) {
+          THROW_ARANGO_EXCEPTION(coll.copy_result());
+        }
+        if (coll.get()->system()) {
           return std::make_pair(
               Result{TRI_ERROR_BAD_PARAMETER,
                      "Cannot use pregel on system collection"},
               0);
         }
 
-        if (!coll->isSmart()) {
-          std::vector<std::string> eKeys = coll->shardKeys();
+        if (!coll.get()->isSmart()) {
+          std::vector<std::string> eKeys = coll.get()->shardKeys();
           if (eKeys.size() != 1 || eKeys[0] != "vertex") {
             return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
                                          "Edge collection needs to be sharded "
@@ -164,13 +168,13 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
           }
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+        if (coll.get()->status() == TRI_VOC_COL_STATUS_DELETED || coll.get()->deleted()) {
           return std::make_pair(
               Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
         }
 
         // smart edge collections contain multiple actual collections
-        std::vector<std::string> actual = coll->realNamesForRead();
+        std::vector<std::string> actual = coll.get()->realNamesForRead();
 
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {

@@ -108,25 +108,23 @@ int Utils::resolveShard(WorkerConfig const* config,
 
   auto const& planIDMap = config->collectionPlanIdMap();
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci->getCollection(config->database(), it->second);  // might throw
-    if (info == nullptr) {
+    auto info = ci->getCollection(config->database(), it->second);  // might throw
+    if (info.fail()) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
+
+    VPackBuilder partial;
+    partial.openObject();
+    partial.add(shardKey, VPackValue(vertexKey));
+    partial.close();
+  //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
+    return info.get()->getResponsibleShard(partial.slice(), false, responsibleShard);
   } else {
     LOG_TOPIC(ERR, Logger::PREGEL)
         << "The collection could not be translated to a planID";
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  TRI_ASSERT(info != nullptr);
-
-  VPackBuilder partial;
-  partial.openObject();
-  partial.add(shardKey, VPackValue(vertexKey));
-  partial.close();
-  //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
-  return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

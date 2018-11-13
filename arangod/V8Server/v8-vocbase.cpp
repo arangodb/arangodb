@@ -1396,18 +1396,24 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   std::shared_ptr<arangodb::LogicalCollection> collection;
 
-  try {
-    if (ServerState::instance()->isCoordinator()) {
-      auto* ci = arangodb::ClusterInfo::instance();
+  if (ServerState::instance()->isCoordinator()) {
+    auto* ci = arangodb::ClusterInfo::instance();
 
-      collection = ci
-        ? ci->getCollection(vocbase.name(), std::string(key)) : nullptr;
-    } else {
-      collection = vocbase.lookupCollection(std::string(key));
+    if (ci) {
+      auto cinfo = ci->getCollection(vocbase.name(), std::string(key));
+
+      if (cinfo.fail()) {
+        // do not propagate exception from here
+        // TRI_V8_THROW_EXCEPTION(cinfo.copy_result());
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+      collection = cinfo.get();
     }
-  } catch (...) {
-    // do not propagate exception from here
-    TRI_V8_RETURN(v8::Handle<v8::Value>());
+    else {
+      collection = nullptr;
+    }
+  } else {
+    collection = vocbase.lookupCollection(std::string(key));
   }
 
   if (collection == nullptr) {

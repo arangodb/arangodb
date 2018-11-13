@@ -466,10 +466,10 @@ SECTION("test_defaults") {
     CHECK((TRI_ERROR_BAD_PARAMETER == res.errorNumber()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((true == !logicalView));
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
   }
 
   // new view definition with links (collection not authorized)
@@ -502,10 +502,10 @@ SECTION("test_defaults") {
     CHECK((TRI_ERROR_FORBIDDEN == res.errorNumber()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((true == !logicalView));
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
   }
 
   // new view definition with links
@@ -519,12 +519,12 @@ SECTION("test_defaults") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
 
     // simulate heartbeat thread (create index in current)
     {
-      auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+      auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
       auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       CHECK((arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful()));
     }
@@ -533,10 +533,10 @@ SECTION("test_defaults") {
     CHECK((arangodb::iresearch::IResearchViewCoordinator::factory().create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
-    CHECK((false == logicalCollection->getIndexes().empty()));
+    CHECK((false == logicalCollection.get()->getIndexes().empty()));
     CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
@@ -727,36 +727,36 @@ SECTION("test_drop_with_link") {
   CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
   CHECK((error.empty()));
   auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-  REQUIRE((false == !logicalCollection));
+  CHECK((logicalCollection.ok()));
   error.clear();
   CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
   CHECK((error.empty()));
   auto logicalView = ci->getView(vocbase->name(), viewId);
   REQUIRE((false == !logicalView));
 
-  CHECK((true == logicalCollection->getIndexes().empty()));
+  CHECK((true == logicalCollection.get()->getIndexes().empty()));
   CHECK((false == !ci->getView(vocbase->name(), viewId)));
 
   // initial link creation
   {
     // simulate heartbeat thread (create index in current)
     {
-      auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+      auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
       auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
 
     CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
-    CHECK((false == logicalCollection->getIndexes().empty()));
+    CHECK((false == logicalCollection.get()->getIndexes().empty()));
     CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // simulate heartbeat thread (remove index from current)
     {
-      auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id()) + "/shard-id-does-not-matter/indexes";
+      auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id()) + "/shard-id-does-not-matter/indexes";
       CHECK(arangodb::AgencyComm().removeValues(path, false).successful());
     }
   }
@@ -782,8 +782,8 @@ SECTION("test_drop_with_link") {
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->drop().errorNumber()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((logicalCollection.ok()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == !ci->getView(vocbase->name(), viewId)));
     }
 
@@ -796,8 +796,8 @@ SECTION("test_drop_with_link") {
 
       CHECK((true == logicalView->drop().ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
-      CHECK((true == logicalCollection->getIndexes().empty()));
+      CHECK((logicalCollection.ok()));
+      CHECK((true == logicalCollection.get()->getIndexes().empty()));
       CHECK((true == !ci->getView(vocbase->name(), viewId)));
     }
   }
@@ -1006,8 +1006,9 @@ SECTION("test_update_links_partial_remove") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection1);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection1 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
@@ -1022,8 +1023,9 @@ SECTION("test_update_links_partial_remove") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection2);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection2 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -1038,8 +1040,9 @@ SECTION("test_update_links_partial_remove") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection3);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection3 = cInfo.get();
   }
 
   auto const currentCollection1Path =
@@ -1175,14 +1178,14 @@ SECTION("test_update_links_partial_remove") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1221,14 +1224,14 @@ SECTION("test_update_links_partial_remove") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1267,14 +1270,14 @@ SECTION("test_update_links_partial_remove") {
   // test index in testCollection3
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1400,14 +1403,14 @@ SECTION("test_update_links_partial_remove") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1447,14 +1450,14 @@ SECTION("test_update_links_partial_remove") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1510,24 +1513,24 @@ SECTION("test_update_links_partial_remove") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 }
@@ -1571,8 +1574,9 @@ SECTION("test_update_links_partial_add") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection1);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection1 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
@@ -1587,8 +1591,9 @@ SECTION("test_update_links_partial_add") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection2);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection2 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -1603,8 +1608,9 @@ SECTION("test_update_links_partial_add") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection3);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection3 = cInfo.get();
   }
 
   auto const currentCollection1Path =
@@ -1720,14 +1726,14 @@ SECTION("test_update_links_partial_add") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1766,14 +1772,14 @@ SECTION("test_update_links_partial_add") {
   // test index in testCollection3
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1914,14 +1920,14 @@ SECTION("test_update_links_partial_add") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -1961,14 +1967,14 @@ SECTION("test_update_links_partial_add") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2008,14 +2014,14 @@ SECTION("test_update_links_partial_add") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2082,37 +2088,38 @@ SECTION("test_update_links_partial_add") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   // add link (collection not authorized)
   {
     auto const collectionId = "1";
-    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection1));
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection1 = cInfo.get();
     arangodb::LogicalView::ptr logicalView;
     REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
     REQUIRE((false == !logicalView));
 
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
@@ -2131,11 +2138,12 @@ SECTION("test_update_links_partial_add") {
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
     CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(linksJson->slice(), true).errorNumber()));
-    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection1));
+    auto cInfo2 = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo2.ok()));
+    logicalCollection1 = cInfo2.get();
     logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
     REQUIRE((false == !logicalView));
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
@@ -2179,8 +2187,9 @@ SECTION("test_update_links_replace") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection1);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection1 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
@@ -2195,8 +2204,9 @@ SECTION("test_update_links_replace") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection2);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection2 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -2211,8 +2221,9 @@ SECTION("test_update_links_replace") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection3);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection3 = cInfo.get();
   }
 
   auto const currentCollection1Path =
@@ -2328,14 +2339,14 @@ SECTION("test_update_links_replace") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2374,14 +2385,14 @@ SECTION("test_update_links_replace") {
   // test index in testCollection3
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2504,14 +2515,14 @@ SECTION("test_update_links_replace") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2626,14 +2637,14 @@ SECTION("test_update_links_replace") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2686,24 +2697,24 @@ SECTION("test_update_links_replace") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 }
@@ -2747,8 +2758,9 @@ SECTION("test_update_links_clear") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection1);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection1 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
@@ -2763,8 +2775,9 @@ SECTION("test_update_links_clear") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection2);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection2 = cInfo.get();
   }
 
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -2779,8 +2792,9 @@ SECTION("test_update_links_clear") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE(nullptr != logicalCollection3);
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection3 = cInfo.get();
   }
 
   auto const currentCollection1Path =
@@ -2916,14 +2930,14 @@ SECTION("test_update_links_clear") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -2963,14 +2977,14 @@ SECTION("test_update_links_clear") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -3009,14 +3023,14 @@ SECTION("test_update_links_clear") {
   // test index in testCollection3
   {
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -3114,8 +3128,8 @@ SECTION("test_update_links_clear") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
@@ -3123,8 +3137,8 @@ SECTION("test_update_links_clear") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
@@ -3132,8 +3146,8 @@ SECTION("test_update_links_clear") {
   {
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
     CHECK(!link);
   }
 
@@ -3184,8 +3198,9 @@ SECTION("test_drop_link") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((nullptr != logicalCollection));
+    auto cInfo = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((cInfo.ok()));
+    logicalCollection = cInfo.get();
   }
 
   ci->loadCurrent();
@@ -3276,15 +3291,15 @@ SECTION("test_drop_link") {
     {
       // get new version from plan
       auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-      REQUIRE(updatedCollection);
-      auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+      CHECK((updatedCollection.ok()));
+      auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
       CHECK(link);
       linkId = link->id();
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       REQUIRE((false == !index));
       CHECK((true == index->canBeDropped()));
-      CHECK((updatedCollection.get() == index->collection()));
+      CHECK((updatedCollection.get().get() == index->collection()));
       CHECK((index->fieldNames().empty()));
       CHECK((index->fields().empty()));
       CHECK((true == index->hasBatchInsert()));
@@ -3369,8 +3384,8 @@ SECTION("test_drop_link") {
     {
       // get new version from plan
       auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-      REQUIRE(updatedCollection);
-      auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+      CHECK((updatedCollection.ok()));
+      auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *view);
       CHECK(!link);
     }
 
@@ -3394,7 +3409,7 @@ SECTION("test_drop_link") {
     REQUIRE((false == !logicalView));
     auto const viewId = std::to_string(logicalView->planId());
 
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
@@ -3501,7 +3516,7 @@ SECTION("test_update_overwrite") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -3535,7 +3550,7 @@ SECTION("test_update_overwrite") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -3544,14 +3559,14 @@ SECTION("test_update_overwrite") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
       }
@@ -3559,10 +3574,10 @@ SECTION("test_update_overwrite") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -3641,7 +3656,7 @@ SECTION("test_update_overwrite") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -3650,7 +3665,7 @@ SECTION("test_update_overwrite") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
@@ -3668,10 +3683,10 @@ SECTION("test_update_overwrite") {
 
     CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 
@@ -3688,7 +3703,7 @@ SECTION("test_update_overwrite") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -3697,14 +3712,14 @@ SECTION("test_update_overwrite") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
       }
@@ -3712,15 +3727,15 @@ SECTION("test_update_overwrite") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
       // simulate heartbeat thread (update index in current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
       }
@@ -3746,10 +3761,10 @@ SECTION("test_update_overwrite") {
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -3762,10 +3777,10 @@ SECTION("test_update_overwrite") {
 
       CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((true == logicalCollection->getIndexes().empty()));
+      CHECK((true == logicalCollection.get()->getIndexes().empty()));
       CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
   }
@@ -3785,13 +3800,13 @@ SECTION("test_update_overwrite") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, false, collection0Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-    REQUIRE((false == !logicalCollection0));
+    CHECK((logicalCollection0.ok()));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId0, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, false, collection1Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-    REQUIRE((false == !logicalCollection1));
+    CHECK((logicalCollection1.ok()));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId1, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -3800,16 +3815,16 @@ SECTION("test_update_overwrite") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection0->getIndexes().empty()));
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection0.get()->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0->id());
-        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0.get()->id());
+        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1.get()->id());
         auto const value0 = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
         auto const value1 = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"4\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path0, value0->slice(), 0.0).successful());
@@ -3819,13 +3834,13 @@ SECTION("test_update_overwrite") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((true == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -3849,14 +3864,15 @@ SECTION("test_update_overwrite") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
-      logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      auto cInfo0 = ci->getCollection(vocbase->name(), collectionId0);
+      CHECK((cInfo0.ok()));
+      logicalCollection0 = cInfo0.get();
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((true == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -3869,14 +3885,16 @@ SECTION("test_update_overwrite") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
-      logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
-      logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      auto cInfo0= ci->getCollection(vocbase->name(), collectionId0);
+      CHECK((cInfo0.ok()));
+      logicalCollection0 = cInfo0.get();
+      auto cInfo1 = ci->getCollection(vocbase->name(), collectionId1);
+      CHECK((cInfo1.ok()));
+      logicalCollection1 = cInfo1.get();
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((false == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
   }
@@ -3896,13 +3914,13 @@ SECTION("test_update_overwrite") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, false, collection0Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-    REQUIRE((false == !logicalCollection0));
+    CHECK((logicalCollection0.ok()));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId0, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, false, collection1Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-    REQUIRE((false == !logicalCollection1));
+    CHECK((logicalCollection1.ok()));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId1, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -3911,16 +3929,16 @@ SECTION("test_update_overwrite") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection0->getIndexes().empty()));
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection0.get()->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0->id());
-        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0.get()->id());
+        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1.get()->id());
         auto const value0 = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"5\" } ] } }");
         auto const value1 = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"6\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path0, value0->slice(), 0.0).successful());
@@ -3930,18 +3948,18 @@ SECTION("test_update_overwrite") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((false == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
       // simulate heartbeat thread (remove index from current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id()) + "/shard-id-does-not-matter/indexes";
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1.get()->id()) + "/shard-id-does-not-matter/indexes";
         CHECK(arangodb::AgencyComm().removeValues(path, false).successful());
       }
     }
@@ -3966,14 +3984,16 @@ SECTION("test_update_overwrite") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
-      logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
-      logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      auto cInfo0 = ci->getCollection(vocbase->name(), collectionId0);
+      CHECK((cInfo0.ok()));
+      logicalCollection0 = cInfo0.get();
+      auto cInfo1 = ci->getCollection(vocbase->name(), collectionId1);
+      CHECK((cInfo1.ok()));
+      logicalCollection1 = cInfo1.get();
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((false == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -3986,14 +4006,16 @@ SECTION("test_update_overwrite") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
-      logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
-      logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      auto cInfo0 = ci->getCollection(vocbase->name(), collectionId0);
+      CHECK((cInfo0.ok()));
+      logicalCollection0 = cInfo0.get();
+      auto cInfo1 = ci->getCollection(vocbase->name(), collectionId1);
+      CHECK((cInfo1.ok()));
+      logicalCollection1 = cInfo1.get();
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((true == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
   }
@@ -4069,7 +4091,7 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -4078,7 +4100,7 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -4112,7 +4134,7 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -4121,14 +4143,14 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
       }
@@ -4136,10 +4158,10 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -4218,7 +4240,7 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -4227,7 +4249,7 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
@@ -4245,11 +4267,11 @@ SECTION("test_update_partial") {
 
     CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     logicalView = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView));
-    CHECK((true == logicalCollection->getIndexes().empty()));
-    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
+    CHECK((true == logicalView.get()->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 
   // drop link (collection not authorized)
@@ -4265,7 +4287,7 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    CHECK((logicalCollection.ok()));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -4274,14 +4296,14 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalCollection.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
       }
@@ -4289,15 +4311,15 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
       // simulate heartbeat thread (remove index from current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id()) + "/shard-id-does-not-matter/indexes";
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection.get()->id()) + "/shard-id-does-not-matter/indexes";
         CHECK(arangodb::AgencyComm().removeValues(path, false).successful());
       }
     }
@@ -4322,10 +4344,10 @@ SECTION("test_update_partial") {
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalCollection.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -4338,10 +4360,10 @@ SECTION("test_update_partial") {
 
       CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-      REQUIRE((false == !logicalCollection));
+      CHECK((logicalCollection.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((true == logicalCollection->getIndexes().empty()));
+      CHECK((true == logicalCollection.get()->getIndexes().empty()));
       CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
   }
@@ -4361,13 +4383,13 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, false, collection0Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-    REQUIRE((false == !logicalCollection0));
+    CHECK((logicalCollection0.ok()));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId0, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, false, collection1Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-    REQUIRE((false == !logicalCollection1));
+    CHECK((logicalCollection1.ok()));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId1, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -4376,15 +4398,15 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection0->getIndexes().empty()));
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection0.get()->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0->id());
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
       }
@@ -4392,19 +4414,19 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((true == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
       // simulate heartbeat thread (update index in current)
       {
-        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0->id());
-        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0.get()->id());
+        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1.get()->id());
         auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"4\" } ] } }");
         CHECK(arangodb::AgencyComm().removeValues(path0, false).successful());
         CHECK(arangodb::AgencyComm().setValue(path1, value->slice(), 0.0).successful());
@@ -4432,13 +4454,13 @@ SECTION("test_update_partial") {
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((true == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -4452,13 +4474,13 @@ SECTION("test_update_partial") {
 
       CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((false == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
   }
@@ -4478,13 +4500,13 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, false, collection0Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-    REQUIRE((false == !logicalCollection0));
+    CHECK((logicalCollection0.ok()));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId0, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, false, collection1Json->slice(), error, 0.0)));
     CHECK((error.empty()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-    REQUIRE((false == !logicalCollection1));
+    CHECK((logicalCollection1.ok()));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropCollectionCoordinator(vocbase->name(), collectionId1, error, 0); });
     error.clear();
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice(), error)));
@@ -4493,16 +4515,16 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto dropLogicalView = std::shared_ptr<arangodb::ClusterInfo>(ci, [vocbase, &viewId](arangodb::ClusterInfo* ci)->void { std::string error; ci->dropViewCoordinator(vocbase->name(), viewId, error); });
 
-    CHECK((true == logicalCollection0->getIndexes().empty()));
-    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalCollection0.get()->getIndexes().empty()));
+    CHECK((true == logicalCollection1.get()->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // initial link creation
     {
       // simulate heartbeat thread (create index in current)
       {
-        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0->id());
-        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+        auto const path0 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection0.get()->id());
+        auto const path1 = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1.get()->id());
         auto const value0 = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"5\" } ] } }");
         auto const value1 = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"6\" } ] } }");
         CHECK(arangodb::AgencyComm().setValue(path0, value0->slice(), 0.0).successful());
@@ -4512,18 +4534,18 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
       CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((false == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
       // simulate heartbeat thread (remove index from current)
       {
-        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id()) + "/shard-id-does-not-matter/indexes";
+        auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1.get()->id()) + "/shard-id-does-not-matter/indexes";
         CHECK(arangodb::AgencyComm().removeValues(path, false).successful());
       }
     }
@@ -4549,13 +4571,13 @@ SECTION("test_update_partial") {
 
       CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((false == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
 
@@ -4569,13 +4591,13 @@ SECTION("test_update_partial") {
 
       CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
-      REQUIRE((false == !logicalCollection0));
+      CHECK((logicalCollection0.ok()));
       logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
-      REQUIRE((false == !logicalCollection1));
+      CHECK((logicalCollection1.ok()));
       logicalView = ci->getView(vocbase->name(), viewId);
       REQUIRE((false == !logicalView));
-      CHECK((false == logicalCollection0->getIndexes().empty()));
-      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalCollection0.get()->getIndexes().empty()));
+      CHECK((true == logicalCollection1.get()->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
   }

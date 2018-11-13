@@ -1014,8 +1014,8 @@ void ClusterInfo::loadCurrent() {
 /// If it is not found in the cache, the cache is reloaded once
 /// if the collection is not found afterwards, this method will throw an exception
 
-std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
-    DatabaseID const& databaseID, CollectionID const& collectionID) {
+ResultT<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollection(DatabaseID const& databaseID,
+                                                              CollectionID const& collectionID) {
   int tries = 0;
 
   if (!_planProt.isValid) {
@@ -1046,9 +1046,8 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     // must load collections outside the lock
     loadPlan();
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "Collection not found: " + collectionID + " in database " + databaseID);
+  return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                "Collection not found: " + collectionID + " in database " + databaseID);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1723,7 +1722,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   if (distSLSlice.isString()) {
     auto const otherCidString = distSLSlice.copyString();
     if (!otherCidString.empty()) {
-      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+      auto ci = getCollection(databaseName, otherCidString);
+      if (ci.fail()) {
+        THROW_ARANGO_EXCEPTION(ci.copy_result());
+      }      
+      otherCidShardMap = ci.get()->shardIds();
+      
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(
@@ -1883,10 +1887,13 @@ int ClusterInfo::dropCollectionCoordinator(
   // First check that no other collection has a distributeShardsLike
   // entry pointing to us:
   auto coll = getCollection(dbName, collectionID);
+  if (coll.fail()) {
+    THROW_ARANGO_EXCEPTION(coll.copy_result());
+  }
   auto colls = getCollections(dbName); // reloads plan
   std::vector<std::string> clones;
   for (std::shared_ptr<LogicalCollection> const& p : colls) {
-    if (p->distributeShardsLike() == coll->name() ||
+    if (p->distributeShardsLike() == coll.get()->name() ||
         p->distributeShardsLike() == collectionID) {
       clones.push_back(p->name());
     }
@@ -2453,7 +2460,6 @@ int ClusterInfo::ensureIndexCoordinator(
 
   std::shared_ptr<VPackBuilder> planValue;
   std::shared_ptr<VPackBuilder> oldPlanIndexes;
-  std::shared_ptr<LogicalCollection> c;
 
   size_t tries = 0;
   do {
@@ -2462,8 +2468,11 @@ int ClusterInfo::ensureIndexCoordinator(
     planValue = nullptr;
     oldPlanIndexes.reset(new VPackBuilder());
 
-    c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::makeFlags(Index::Serialize::Basics));
+    auto c = getCollection(databaseName, collectionID);
+    if (c.fail()) {
+        THROW_ARANGO_EXCEPTION(c.copy_result());
+    }
+    c.get()->getIndexesVPack(*(oldPlanIndexes.get()), Index::makeFlags(Index::Serialize::Basics));
     VPackSlice const planIndexes = oldPlanIndexes->slice();
 
     if (planIndexes.isArray()) {

@@ -167,8 +167,9 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
     
-    try {
-      _collection = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
+    auto cinfo = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
+    if (cinfo.ok()) {
+      _collection = cinfo.get();
       if (_collection) {
         if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
             !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
@@ -177,7 +178,7 @@ int ClusterTransactionCollection::use(int nestingLevel) {
           _usageLocked = true;
         }
       }
-    } catch(...) {}
+    }
     
     if (_collection == nullptr) {
       int res = TRI_errno();

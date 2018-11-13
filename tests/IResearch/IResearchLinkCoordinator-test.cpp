@@ -284,8 +284,9 @@ SECTION("test_create_drop") {
       vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
     ));
 
-    logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((nullptr != logicalCollection));
+    auto col = ci->getCollection(vocbase->name(), collectionId);
+    CHECK((col.ok()));
+    logicalCollection = col.get();
   }
 
   ci->loadCurrent();
@@ -335,14 +336,14 @@ SECTION("test_create_drop") {
 
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *logicalView);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));
@@ -387,8 +388,8 @@ SECTION("test_create_drop") {
 
     // get new version from plan
     updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView));
+    CHECK((updatedCollection.ok()));
+    CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *logicalView));
 
     // drop view
     CHECK(logicalView->drop().ok());
@@ -445,13 +446,13 @@ SECTION("test_create_drop") {
 
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
-    REQUIRE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView);
+    CHECK((updatedCollection.ok()));
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection.get(), *logicalView);
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     CHECK((true == index->canBeDropped()));
-    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((updatedCollection.get().get() == index->collection()));
     CHECK((index->fieldNames().empty()));
     CHECK((index->fields().empty()));
     CHECK((true == index->hasBatchInsert()));

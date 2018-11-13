@@ -4045,8 +4045,11 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       auto ci = ClusterInfo::instance();
       auto collInfo =
           ci->getCollection(collection->vocbase()->name(), collection->name());
+      if (collInfo.fail()) {
+        THROW_ARANGO_EXCEPTION(collInfo.copy_result());
+      }
       // Throws if collection is not found!
-      if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
+      if (collInfo.get()->isSmart() && collInfo.get()->type() == TRI_COL_TYPE_EDGE) {
         node = distributeInClusterRuleSmartEdgeCollection(
             plan.get(), snode, node, originalParent, wasModified);
         continue;

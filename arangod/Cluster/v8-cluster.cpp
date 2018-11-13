@@ -653,10 +653,11 @@ static void JS_GetCollectionInfoClusterInfo(
         "getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
+  auto ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
-  TRI_ASSERT(ci != nullptr);
-
+  if (ci.fail()) {
+    TRI_V8_THROW_EXCEPTION(ci.copy_result());
+  }
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
                                              "avoidServers",
                                              "cid",
@@ -670,7 +671,7 @@ static void JS_GetCollectionInfoClusterInfo(
                                              "planId",
                                              "version",
                                              "objectId"};
-  VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false, false);
+  VPackBuilder infoBuilder = ci.get()->toVelocyPackIgnore(ignoreKeys, false, false);
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());
@@ -720,14 +721,15 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
+  auto ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
-  TRI_ASSERT(ci != nullptr);
-
+  if (ci.fail()) {
+    TRI_V8_THROW_EXCEPTION(ci.copy_result());
+  }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  auto cid = std::to_string(ci->id());
-  std::string const& name = ci->name();
+  auto cid = std::to_string(ci.get()->id());
+  std::string const& name = ci.get()->name();
   result->Set(TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cid));
   result->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name));
 
@@ -738,7 +740,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   result->Set(TRI_V8_ASCII_STRING(isolate, "currentVersion"),
               v8::Number::New(isolate, (double) cic->getCurrentVersion()));
   result->Set(TRI_V8_ASCII_STRING(isolate, "type"),
-              v8::Number::New(isolate, (int)ci->type()));
+              v8::Number::New(isolate, (int)ci.get()->type()));
 
   VPackSlice slice = cic->getIndexes(shardID);
   v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, slice);
@@ -842,9 +844,12 @@ static void JS_GetResponsibleShardClusterInfo(
   auto& vocbase = GetContextVocBase(isolate);
   auto ci = ClusterInfo::instance();
   auto collInfo = ci->getCollection(vocbase.name(), collectionId);
+  if (collInfo.fail()) {
+    TRI_V8_THROW_EXCEPTION(collInfo.copy_result());
+  }
   bool usesDefaultShardingAttributes;
 
-  res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete, shardId, usesDefaultShardingAttributes);
+  res = collInfo.get()->getResponsibleShard(builder.slice(), documentIsComplete, shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

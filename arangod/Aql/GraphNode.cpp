@@ -105,13 +105,16 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         }
         std::string n = col->getString();
         auto c = ci->getCollection(_vocbase->name(), n);
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
+        if (c.fail()) {
+          THROW_ARANGO_EXCEPTION(c.copy_result());
+        }
+        if (!c.get()->isSmart() || c.get()->distributeShardsLike().empty()) {
           _isSmart = false;
           break;
         }
         if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
+          distributeShardsLike = c.get()->distributeShardsLike();
+        } else if (distributeShardsLike != c.get()->distributeShardsLike()) {
           _isSmart = false;
           break;
         }
@@ -162,14 +165,17 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci->getCollection(_vocbase->name(), eColName);
-        if (!c->isSmart()) {
+        if (c.fail()) {
+          THROW_ARANGO_EXCEPTION(c.copy_result());
+        }
+        if (!c.get()->isSmart()) {
           addEdgeCollection(eColName, dir);
         } else {
           std::vector<std::string> names;
           if (_isSmart) {
-            names = c->realNames();
+            names = c.get()->realNames();
           } else {
-            names = c->realNamesForRead();
+            names = c.get()->realNamesForRead();
           }
           for (auto const& name : names) {
             addEdgeCollection(name, dir);
@@ -205,13 +211,16 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
           std::string distributeShardsLike;
           for (auto const& n : eColls) {
             auto c = ci->getCollection(_vocbase->name(), n);
-            if (!c->isSmart() || c->distributeShardsLike().empty()) {
+            if (c.fail()) {
+              THROW_ARANGO_EXCEPTION(c.copy_result());
+            }
+            if (!c.get()->isSmart() || c.get()->distributeShardsLike().empty()) {
               _isSmart = false;
               break;
             }
             if (distributeShardsLike.empty()) {
-              distributeShardsLike = c->distributeShardsLike();
-            } else if (distributeShardsLike != c->distributeShardsLike()) {
+              distributeShardsLike = c.get()->distributeShardsLike();
+            } else if (distributeShardsLike != c.get()->distributeShardsLike()) {
               _isSmart = false;
               break;
             }
@@ -221,14 +230,17 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         for (const auto& n : eColls) {
           if (ServerState::instance()->isRunningInCluster()) {
             auto c = ci->getCollection(_vocbase->name(), n);
-            if (!c->isSmart()) {
+            if (c.fail()) {
+              THROW_ARANGO_EXCEPTION(c.copy_result());
+            }
+            if (!c.get()->isSmart()) {
               addEdgeCollection(n, baseDirection);
             } else {
               std::vector<std::string> names;
               if (_isSmart) {
-                names = c->realNames();
+                names = c.get()->realNames();
               } else {
-                names = c->realNamesForRead();
+                names = c.get()->realNamesForRead();
               }
               for (auto const& name : names) {
                 addEdgeCollection(name, baseDirection);

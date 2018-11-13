@@ -592,22 +592,23 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   TRI_ASSERT(col);
   auto other = ci->getCollection(col->vocbase().name(), cidString);
 
-  // The function guarantees that no nullptr is returned
-  TRI_ASSERT(other != nullptr);
+  if (other.fail()) {
+    THROW_ARANGO_EXCEPTION(other.copy_result());
+  }
 
-  if (!other->distributeShardsLike().empty()) {
-    std::string const errorMessage = "Cannot distribute shards like '" + other->name() + "' it is already distributed like '" + other->distributeShardsLike() + "'.";
+  if (!other.get()->distributeShardsLike().empty()) {
+    std::string const errorMessage = "Cannot distribute shards like '" + other.get()->name() + "' it is already distributed like '" + other.get()->distributeShardsLike() + "'.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
   }
 
   // We need to replace the distribute with the cid.
-  col->distributeShardsLike(cidString, other->shardingInfo());
+  col->distributeShardsLike(cidString, other.get()->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
   }
 
-  auto shards = other->shardIds();
+  auto shards = other.get()->shardIds();
   auto shardList = ci->getShardList(cidString);
 
   auto numberOfShards = static_cast<uint64_t>(col->numberOfShards());
@@ -725,19 +726,16 @@ int revisionOnCoordinator(std::string const& dbname,
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   rid = 0;
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  auto shards = collinfo.get()->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -798,17 +796,14 @@ int warmupOnCoordinator(std::string const& dbname,
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, cid);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, cid);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  auto shards = collinfo.get()->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -845,17 +840,14 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  auto shards = collinfo->shardIds();
+  auto shards = collinfo.get()->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
   std::unordered_map<std::string, std::string> headers;
@@ -916,15 +908,12 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
   result.clear();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, cname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, cname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
-  auto shards = collinfo->shardIds();
+  auto shards = collinfo.get()->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
@@ -981,15 +970,12 @@ int selectivityEstimatesOnCoordinator(
   result.clear();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
-  auto shards = collinfo->shardIds();
+  auto shards = collinfo.get()->shardIds();
   std::vector<ClusterCommRequest> requests;
   std::string requestsUrl;
   auto body = std::make_shared<std::string>();
@@ -1106,14 +1092,11 @@ Result createDocumentOnCoordinator(
   TRI_ASSERT(ci != nullptr);
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
-  auto collid = std::to_string(collinfo->id());
+  auto collid = std::to_string(collinfo.get()->id());
 
 
   // create vars used in this function
@@ -1126,7 +1109,7 @@ Result createDocumentOnCoordinator(
     int res = TRI_ERROR_NO_ERROR;
     if (useMultiple) {
       for (VPackSlice value : VPackArrayIterator(slice)) {
-        res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
+        res = distributeBabyOnShards(shardMap, ci, collid, collinfo.get(),
                                      reverseMapping, value,
                                      options.isRestore);
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1134,7 +1117,7 @@ Result createDocumentOnCoordinator(
         }
       }
     } else {
-      res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
+      res = distributeBabyOnShards(shardMap, ci, collid, collinfo.get(), reverseMapping,
                                    slice, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -1252,15 +1235,13 @@ int deleteDocumentOnCoordinator(
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
-  bool useDefaultSharding = collinfo->usesDefaultShardKeys();
-  auto collid = std::to_string(collinfo->id());
+
+  bool useDefaultSharding = collinfo.get()->usesDefaultShardKeys();
+  auto collid = std::to_string(collinfo.get()->id());
   bool useMultiple = slice.isArray();
 
   std::string const baseUrl =
@@ -1298,7 +1279,7 @@ int deleteDocumentOnCoordinator(
       } else {
         // Now find the responsible shard:
         bool usesDefaultShardingAttributes;
-        int error = collinfo->getResponsibleShard(
+        int error = collinfo.get()->getResponsibleShard(
             arangodb::velocypack::Slice::emptyObjectSlice(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
@@ -1485,17 +1466,14 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
-  auto shards = collinfo->shardIds();
+  auto shards = collinfo.get()->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
@@ -1544,15 +1522,12 @@ int getDocumentOnCoordinator(
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
 
-  auto collid = std::to_string(collinfo->id());
+  auto collid = std::to_string(collinfo.get()->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -1570,7 +1545,7 @@ int getDocumentOnCoordinator(
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
+      res = distributeBabyOnShards(shardMap, ci, collid, collinfo.get(),
                                    reverseMapping, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
@@ -1580,7 +1555,7 @@ int getDocumentOnCoordinator(
       }
     }
   } else {
-    res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
+    res = distributeBabyOnShards(shardMap, ci, collid, collinfo.get(), reverseMapping,
                                  slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
@@ -2112,22 +2087,27 @@ int getFilteredEdgesOnCoordinator(
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
+    THROW_ARANGO_EXCEPTION(collinfo.copy_result());
+  }
 
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards;
-  if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
-    auto names = collinfo->realNamesForRead();
+  if (collinfo.get()->isSmart() && collinfo.get()->type() == TRI_COL_TYPE_EDGE) {
+    auto names = collinfo.get()->realNamesForRead();
     shards = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
     for (auto const& n : names) {
       collinfo = ci->getCollection(dbname, n);
-      auto smap = collinfo->shardIds();
+      if (collinfo.fail()) {
+        THROW_ARANGO_EXCEPTION(collinfo.copy_result());
+      }
+      auto smap = collinfo.get()->shardIds();
       for (auto const& x : *smap) {
         shards->insert(x);
       }
     }
   } else {
-    shards = collinfo->shardIds();
+    shards = collinfo.get()->shardIds();
   }
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
@@ -2237,9 +2217,11 @@ int modifyDocumentOnCoordinator(
   }
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-  auto collid = std::to_string(collinfo->id());
+  auto collinfo = ci->getCollection(dbname, collname);
+  if (collinfo.fail()) {
+    THROW_ARANGO_EXCEPTION(collinfo.copy_result());
+  }
+  auto collid = std::to_string(collinfo.get()->id());
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
@@ -2273,7 +2255,7 @@ int modifyDocumentOnCoordinator(
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
+      res = distributeBabyOnShards(shardMap, ci, collid, collinfo.get(),
                                    reverseMapping, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) {
@@ -2286,7 +2268,7 @@ int modifyDocumentOnCoordinator(
       }
     }
   } else {
-    res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping, slice);
+    res = distributeBabyOnShards(shardMap, ci, collid, collinfo.get(), reverseMapping, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) {
         return res;
@@ -2679,7 +2661,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   // collection does not exist. Also, the create collection should have
   // failed before.
   TRI_ASSERT(c.get() != nullptr);
-  return c;
+  return c.get();
 }
 
 /// @brief fetch edges from TraverserEngines

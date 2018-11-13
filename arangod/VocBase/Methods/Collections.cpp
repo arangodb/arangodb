@@ -141,17 +141,20 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
+      if (coll.fail()) {
+        return Result(coll.copy_result());
+       }
 
       // check authentication after ensuring the collection exists
       if (exec != nullptr &&
-          !exec->canUseCollection(vocbase->name(), coll->name(),
+          !exec->canUseCollection(vocbase->name(), coll.get()->name(),
                                   auth::Level::RO)) {
         return Result(TRI_ERROR_FORBIDDEN,
                       "No access to collection '" + name + "'");
       }
 
-      if (coll) {
-        func(coll);
+      if (coll.get()) {
+        func(coll.get());
 
         return Result();
       }
@@ -403,7 +406,10 @@ Result Collections::updateProperties(
       collection.vocbase().name(), std::to_string(collection.id())
     );
 
-    return info->properties(props, partialUpdate);
+    if (info.fail()) {
+      THROW_ARANGO_EXCEPTION(info.copy_result());
+    }
+    return info.get()->properties(props, partialUpdate);
   } else {
     auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);

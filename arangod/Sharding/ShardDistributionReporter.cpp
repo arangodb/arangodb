@@ -443,14 +443,16 @@ void ShardDistributionReporter::getCollectionDistributionForDatabase(
 
   auto aliases = _ci->getServerAliases();
   auto col = _ci->getCollection(dbName, colName);
-
+  if(col.fail()) {
+    THROW_ARANGO_EXCEPTION(col.copy_result());
+  }
   std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
 
-  auto allShards = col->shardIds();
-  if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
-    ReportInSync(col.get(), allShards.get(), aliases, result);
+  auto allShards = col.get()->shardIds();
+  if (testAllShardsInSync(dbName, col.get().get(), allShards.get())) {
+    ReportInSync(col.get().get(), allShards.get(), aliases, result);
   } else {
-    todoSyncStateCheck.push(col);
+    todoSyncStateCheck.push(col.get());
   }
 
   const bool progress = true;

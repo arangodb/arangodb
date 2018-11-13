@@ -995,13 +995,16 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   try {
     // in a cluster, we only look up by name:
-    std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
+    auto col = ci->getCollection(dbName, name);
+    if (col.fail()) {
+      return col;
+    }
 
     // drop an existing collection if it exists
     if (dropExisting) {
       std::string errorMsg;
       int res = ci->dropCollectionCoordinator(
-        dbName, std::to_string(col->id()), errorMsg, 0.0
+                dbName, std::to_string(col.get()->id()), errorMsg, 0.0
       );
 
       if (res == TRI_ERROR_FORBIDDEN ||
@@ -1724,16 +1727,11 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col;
 
-  try {
-    col = ci->getCollection(dbName, name);
-  } catch (...) {
-    std::string errorMsg = "could not find collection '" + name + "'";
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg};
+  auto col = ci->getCollection(dbName, name);
+  if (col.fail()) {
+    return col;
   }
-
-  TRI_ASSERT(col != nullptr);
 
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
@@ -1750,7 +1748,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
     std::string errorMsg;
     res = ci->ensureIndexCoordinator( //returns int that gets converted to result
       dbName,
-      std::to_string(col->id()),
+      std::to_string(col.get()->id()),
       idxDef,
       true,
       tmp,

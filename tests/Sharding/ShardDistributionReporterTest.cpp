@@ -174,12 +174,12 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
     for (auto const& c : allCollections) {
       if (c->name() == colId) {
-        return c;
+        return ResultT<std::shared_ptr<LogicalCollection>>(c);
       }
     }
 
     REQUIRE(false);
-    return std::shared_ptr<LogicalCollection>(nullptr);
+    return ResultT<std::shared_ptr<LogicalCollection>>(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "fail"));
   });
   fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
   fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))

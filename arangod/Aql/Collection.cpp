@@ -113,9 +113,12 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     auto names = coll->realNamesForRead();
     auto res = std::make_shared<std::vector<std::string>>();
     for (auto const& n : names) {
-      auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), n);
+      auto ci = clusterInfo->getCollection(_vocbase->name(), n);
+      if (ci.fail()) {
+        THROW_ARANGO_EXCEPTION(ci.copy_result());
+      }
       auto list = clusterInfo->getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->id()));
+          arangodb::basics::StringUtils::itoa(ci.get()->id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }
@@ -179,7 +182,13 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (_collection == nullptr) {
     TRI_ASSERT(ServerState::instance()->isRunningInCluster());
     auto clusterInfo = arangodb::ClusterInfo::instance();
-    return clusterInfo->getCollection(_vocbase->name(), _name);
+    auto ci = clusterInfo->getCollection(_vocbase->name(), _name);
+    if (ci.fail()) {
+      THROW_ARANGO_EXCEPTION(ci.copy_result());
+    }
+    else {
+      return ci.get();
+    }
   }
   std::shared_ptr<LogicalCollection> dummy;   // intentionally empty
   // Use the aliasing constructor:

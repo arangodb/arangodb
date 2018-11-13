@@ -654,21 +654,23 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(
   }
 
   clusterInfo->loadPlan();
-  std::shared_ptr<LogicalCollection> const collection =
-      clusterInfo->getCollection(databaseId, collectionId);
-  std::shared_ptr<ShardMap> const shardMap = collection->shardIds();
+  auto collection = clusterInfo->getCollection(databaseId, collectionId);
+  if (collection.fail()) {
+    return (collection.copy_result(), false);
+  }
+  std::shared_ptr<ShardMap> const shardMap = collection.get()->shardIds();
 
   for (auto const& it : *shardMap) {
     auto const& shardId = it.first;
     auto const& dbServers = it.second;
 
     if (dbServers.size() !=
-        static_cast<size_t>(collection->replicationFactor())) {
+        static_cast<size_t>(collection.get()->replicationFactor())) {
       LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::checkReplicationFactor: "
           << "replicationFactor doesn't match in shard " << shardId
           << " of collection " << databaseId << "/" << collectionId << ": "
-          << "replicationFactor is " << collection->replicationFactor()
+          << "replicationFactor is " << collection.get()->replicationFactor()
           << ", but the shard has " << dbServers.size() << " DBServers.";
 
       return false;

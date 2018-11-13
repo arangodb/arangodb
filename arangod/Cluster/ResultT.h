@@ -128,7 +128,10 @@ class ResultT : public arangodb::Result {
 
   T const& get() const { return _val.get(); }
 
-  T& get() { return _val.get(); }
+  T& get() {
+    TRI_ASSERT(ok());
+    return _val.get();
+  }
 
   ResultT map(ResultT<T> (*fun)(T const& val)) const {
     if (ok()) {
