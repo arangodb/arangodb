@@ -39,6 +39,7 @@ function restoreDefaults (testee) {
     trackBindVars: true,
     maxSlowQueries: 64,
     slowQueryThreshold: 10,
+    slowStreamingQueryThreshold: 10,
     maxQueryStringLength: 8192
   });
 }
@@ -76,6 +77,7 @@ describe('AQL query analyzer', function () {
       trackBindVars: false,
       maxSlowQueries: 42,
       slowQueryThreshold: 2.5,
+      slowStreamingQueryThreshold: 2.5,
       maxQueryStringLength: 117
     });
     expect(testee.properties().enabled).to.be.ok;
@@ -83,6 +85,7 @@ describe('AQL query analyzer', function () {
     expect(testee.properties().trackBindVars).not.to.be.ok;
     expect(testee.properties().maxSlowQueries).to.equal(42);
     expect(testee.properties().slowQueryThreshold).to.equal(2.5);
+    expect(testee.properties().slowStreamingQueryThreshold).to.equal(2.5);
     expect(testee.properties().maxQueryStringLength).to.equal(117);
   });
 
@@ -93,7 +96,8 @@ describe('AQL query analyzer', function () {
       }
       testee.properties({
         enabled: true,
-        slowQueryThreshold: 20
+        slowQueryThreshold: 20,
+        slowStreamingQueryThreshold: 20
       });
       testee.clearSlow();
     });
@@ -199,7 +203,8 @@ describe('AQL query analyzer', function () {
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
 
       testee.properties({
-        slowQueryThreshold: 2
+        slowQueryThreshold: 2,
+        slowStreamingQueryThreshold: 2
       });
 
       sendQuery(1, false);
@@ -218,7 +223,8 @@ describe('AQL query analyzer', function () {
 
     it('should be able to clear the list of slow queries', function () {
       testee.properties({
-        slowQueryThreshold: 2
+        slowQueryThreshold: 2,
+        slowStreamingQueryThreshold: 2
       });
       sendQuery(1, false);
       expect(testee.slow().filter(filterQueries).length).to.equal(1);
@@ -230,6 +236,7 @@ describe('AQL query analyzer', function () {
       const max = 2;
       testee.properties({
         slowQueryThreshold: 2,
+        slowStreamingQueryThreshold: 2,
         maxSlowQueries: max
       });
       sendQuery(3, false);
@@ -242,7 +249,8 @@ describe('AQL query analyzer', function () {
         internal.debugSetFailAt('QueryList::remove');
 
         testee.properties({
-          slowQueryThreshold: 2
+          slowQueryThreshold: 2,
+          slowStreamingQueryThreshold: 2
         });
         sendQuery(3, false);
 
@@ -254,6 +262,7 @@ describe('AQL query analyzer', function () {
     it('should not track slow queries if turned off', function () {
       testee.properties({
         slowQueryThreshold: 2,
+        slowStreamingQueryThreshold: 2,
         trackSlowQueries: false
       });
       sendQuery(1, false);
@@ -264,6 +273,7 @@ describe('AQL query analyzer', function () {
     it('should not track slow queries if turned off but bind vars tracking is on', function () {
       testee.properties({
         slowQueryThreshold: 2,
+        slowStreamingQueryThreshold: 2,
         trackSlowQueries: false,
         trackBindVars: false
       });
@@ -275,6 +285,7 @@ describe('AQL query analyzer', function () {
     it('should track slow queries if only bind vars tracking is turned off', function () {
       testee.properties({
         slowQueryThreshold: 2,
+        slowStreamingQueryThreshold: 2,
         trackSlowQueries: true,
         trackBindVars: false
       });
