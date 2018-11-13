@@ -4911,10 +4911,10 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
                              VPackFunctionParameters const& parameters) {
   static char const* AFN = "DISTANCE";
 
-  AqlValue lat1 = extractFunctionParameterValue(parameters, 0);
-  AqlValue lon1 = extractFunctionParameterValue(parameters, 1);
-  AqlValue lat2 = extractFunctionParameterValue(parameters, 2);
-  AqlValue lon2 = extractFunctionParameterValue(parameters, 3);
+  AqlValue const& lat1 = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& lon1 = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& lat2 = extractFunctionParameterValue(parameters, 2);
+  AqlValue const& lon2 = extractFunctionParameterValue(parameters, 3);
 
   // non-numeric input...
   if (!lat1.isNumber() || !lon1.isNumber() || !lat2.isNumber() ||
