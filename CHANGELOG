@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed Foxx complaining about valid `$schema` value in manifest.json
+
 * do not create `_modules` collection for new databases/installations
 
   `_modules` is only needed for custom modules, and in case a custom
