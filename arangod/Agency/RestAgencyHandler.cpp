@@ -472,7 +472,7 @@ RestStatus RestAgencyHandler::handleInquire() {
       generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
     } else {
       if (failed) { // Some/all requests failed
-        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+        generateResult(rest::ResponseCode::NOT_FOUND, body.slice());
       } else {          // All good (or indeed unknown in case 1)
         generateResult(rest::ResponseCode::OK, body.slice());
       }
