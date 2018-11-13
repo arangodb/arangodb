@@ -535,7 +535,8 @@ void Scheduler::shutdown() {
   while (true) {
     uint64_t const counters = _counters.load();
 
-    if (numRunning(counters) == 0 && numWorking(counters) == 0) {
+    if (numRunning(counters) == 0 && numWorking(counters) == 0
+        && numQueued(counters) == 0) {
       break;
     }
 
