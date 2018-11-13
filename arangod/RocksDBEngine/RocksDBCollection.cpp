@@ -653,6 +653,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     // add the assertion again here, so we are sure we can use RangeDeletes
     TRI_ASSERT(engine->canUseRangeDeleteInWal());
+    rocksdb::DB* db = engine->db()->GetRootDB();
     
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
       engine->settingsManager()->sync(false);
@@ -667,7 +668,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     _meta.placeBlocker(state->id(), seq);
 
     rocksdb::WriteBatch batch;
-    
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
     rocksdb::Status s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
@@ -696,13 +696,13 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
-    rocksdb::DB* db = engine->db()->GetBaseDB();
     rocksdb::WriteOptions wo;
+    wo.sync = true; // make sure recovery works
     s = db->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    seq += 3; // post commit sequence
+    seq = db->GetLatestSequenceNumber(); // post commit sequence
     
     uint64_t numDocs = _numberDocuments.exchange(0);
     _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));
