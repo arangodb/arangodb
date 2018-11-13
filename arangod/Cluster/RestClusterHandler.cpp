@@ -132,9 +132,19 @@ void RestClusterHandler::handleCommandPutAdvEndpoint() {
   std::string sid = ServerState::instance()->getId();
   std::string agencyPath = "Current/ServersRegistered/" + sid + "/advertisedEndpoint";
 
-  // update endpoint in agency
+
+
+  // update advertised endpoint in agency
   AgencyComm agency;
-  auto const& result = agency.setValue(agencyPath, endpoint, 0.0);
+  AgencyWriteTransaction trx({
+    { "Current/ServersRegistered/" + sid + "/advertisedEndpoint",
+      AgencyValueOperationType::SET, endpointSlice },
+    { "Current/ServersRegistered/Version",
+      AgencySimpleOperationType::INCREMENT_OP },
+  });
+
+
+  auto const& result = agency.sendTransactionWithFailover(trx);
 
   if (result.successful()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
