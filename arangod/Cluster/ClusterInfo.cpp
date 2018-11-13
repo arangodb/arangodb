@@ -1992,7 +1992,7 @@ int ClusterInfo::dropCollectionCoordinator(
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
     }
-    return TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION_IN_PLAN;
+    return TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION;
   }
 
   // Update our own cache:
