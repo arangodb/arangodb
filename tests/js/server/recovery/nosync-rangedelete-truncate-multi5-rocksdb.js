@@ -100,7 +100,7 @@ function recoverySuite () {
         switch (i.type) {
           case 'primary':
           case 'hash':
-            assertEqual(i.selectivityEstimate, 1, JSON.stringify(i));
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
             break;
           default:
             fail();

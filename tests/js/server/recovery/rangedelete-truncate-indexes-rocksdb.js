@@ -90,7 +90,7 @@ function recoverySuite () {
           case 'primary':
           case 'hash':
           case 'edge':
-            assertEqual(i.selectivityEstimate, 1, JSON.stringify(i));
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
             break;
             default:
             fail();
