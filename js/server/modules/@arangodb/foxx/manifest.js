@@ -160,7 +160,7 @@ const manifestSchema = {
   )
 };
 
-function checkManifest (filename, inputManifest, mount, complainAboutVersionMismatches) {
+function checkManifest (inputManifest, mount, complainAboutVersionMismatches) {
   const serverVersion = arangodb.plainServerVersion();
   const errors = [];
   const manifest = {};
@@ -380,7 +380,7 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
     );
   }
   try {
-    mf = checkManifest(filename, mf, mount, complainAboutVersionMismatches);
+    mf = checkManifest(mf, mount, complainAboutVersionMismatches);
   } catch (e) {
     throw Object.assign(
       new ArangoError({
