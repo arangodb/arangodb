@@ -849,7 +849,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
               << " was already renamed; moving on";
               break;
             }
-            vocbase->dropView(other->id(), true);
+            other->drop();
           }
 
           auto res = view->rename(std::string(name));
@@ -1375,9 +1375,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // ignore any potential error returned by this call
         std::shared_ptr<arangodb::LogicalView> view =
             vocbase->lookupView(viewId);
-
         if (view != nullptr) {
-          vocbase->dropView(view->id(), true);
+          view->drop();
         }
 
         break;
