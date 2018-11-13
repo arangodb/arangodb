@@ -2540,15 +2540,6 @@ int ClusterInfo::ensureIndexCoordinator(
 
   }
 
-  /*
- auto idPlanSlice = index.get(StaticStrings::IndexId);
-        if (idPlanSlice.isString() && idPlanSlice.isEqualString(idString)) {
-          planValue.reset(new VPackBuilder());
-          planValue->add(index);
-          break;
-        }
-  */
-  
   // Index creation failed roll back plan entry
   AgencyWriteTransaction trx(
     std::vector<AgencyOperation>
