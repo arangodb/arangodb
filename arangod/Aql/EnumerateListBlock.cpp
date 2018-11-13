@@ -113,7 +113,7 @@ EnumerateListBlock::getSome(size_t atMost) {
       // special handling here. calculate docvec length only once
       if (_index == 0) {
         // we require the total number of items
-        _docVecSize = inVarReg.docvecSize();
+        _docVecSize = inVarReg.length();
       }
       sizeInVar = _docVecSize;
     }
@@ -134,7 +134,7 @@ EnumerateListBlock::getSome(size_t atMost) {
       for (size_t j = 0; j < toSend; j++) {
         // add the new register value . . .
         bool mustDestroy;
-        AqlValue a = getAqlValue(inVarReg, mustDestroy);
+        AqlValue a = getAqlValue(inVarReg, sizeInVar, mustDestroy);
         AqlValueGuard guard(a, mustDestroy);
 
         // deep copy of the inVariable.at(_pos) with correct memory
@@ -240,12 +240,12 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index
-AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
+AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, size_t n, bool& mustDestroy) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return inVarReg.at(_trx, _index++, mustDestroy, true);
+  return inVarReg.at(_trx, _index++, n, mustDestroy, true);
 }
 
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {

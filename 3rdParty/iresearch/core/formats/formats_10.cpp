@@ -3518,84 +3518,92 @@ class dense_block : util::noncopyable {
   doc_id_t base_{ };
 }; // dense_block
 
-class dense_fixed_length_block : util::noncopyable {
+class dense_fixed_offset_block : util::noncopyable {
  public:
   class iterator {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
-      if (doc < value_) {
-        doc = value_;
+      if (doc < value_next_) {
+        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+          return next();
+        }
+
+        // don't seek backwards
+        return true;
       }
 
-      // FIXME refactor
-      begin_ = avg_length_*(doc-base_);
-
+      value_next_ = doc;
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+    const doc_id_t& value() const NOEXCEPT {
+      return value_;
+    }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
+    const bytes_ref& value_payload() const NOEXCEPT {
       return value_payload_;
     }
 
     bool next() NOEXCEPT {
-      if (begin_ >= end_) {
+      if (value_next_ >= value_end_) {
+        seal();
         return false;
       }
 
-      value_ = base_ + begin_ / avg_length_;
-      next_value();
+      value_ = value_next_++;
+      const auto offset = (value_ - value_min_)*avg_length_;
+
+      value_payload_ = bytes_ref(
+        data_.c_str() + offset,
+        value_ == value_back_ ? data_.size() - offset : avg_length_
+      );
 
       return true;
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
-      begin_ = end_ = 0;
-    }
-
-    void reset(const dense_fixed_length_block& block) NOEXCEPT {
-      value_ = block.base_key_;
+      value_ = type_limits<type_t::doc_id_t>::eof();
+      value_next_ = type_limits<type_t::doc_id_t>::eof();
+      value_min_ = type_limits<type_t::doc_id_t>::eof();
+      value_end_ = type_limits<type_t::doc_id_t>::eof();
       value_payload_ = bytes_ref::NIL;
-      begin_ = 0;
-      end_ = block.avg_length_*block.size_;
+    }
+
+    void reset(const dense_fixed_offset_block& block) NOEXCEPT {
       avg_length_ = block.avg_length_;
-      base_ = block.base_key_;
-      data_ = &block.data_;
+      data_ = block.data_;
+      value_payload_ = bytes_ref::NIL;
+      value_ = type_limits<type_t::doc_id_t>::invalid();
+      value_next_ = block.base_key_;
+      value_min_ = block.base_key_;
+      value_end_ = value_min_ + block.size_;
+      value_back_ = value_end_ - 1;
     }
 
-    bool operator==(const dense_fixed_length_block& rhs) const NOEXCEPT {
-      return data_ == &rhs.data_;
+    bool operator==(const dense_fixed_offset_block& rhs) const NOEXCEPT {
+      return data_.c_str() == rhs.data_.c_str();
     }
 
-    bool operator!=(const dense_fixed_length_block& rhs) const NOEXCEPT {
+    bool operator!=(const dense_fixed_offset_block& rhs) const NOEXCEPT {
       return !(*this == rhs);
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-
-    // note that function increases 'begin_' value
-    void next_value() NOEXCEPT {
-      value_payload_ = bytes_ref(data_->c_str() + begin_, avg_length_);
-      begin_ += avg_length_;
-    }
-
-    uint64_t begin_{}; // start offset
-    uint64_t end_{}; // end offset
     uint64_t avg_length_{}; // average value length
-    doc_id_t base_{}; // base doc_id
-    const bstring* data_{};
+    bytes_ref data_;
+    bytes_ref value_payload_;
+    doc_id_t value_ { type_limits<type_t::doc_id_t>::invalid() }; // current value
+    doc_id_t value_next_{ type_limits<type_t::doc_id_t>::invalid() }; // next value
+    doc_id_t value_min_{}; // min doc_id
+    doc_id_t value_end_{}; // after the last valid doc id
+    doc_id_t value_back_{}; // last valid doc id
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
-      IR_FRMT_ERROR("Empty 'dense_fixed_length_block' found in columnstore");
+      IR_FRMT_ERROR("Empty 'dense_fixed_offset_block' found in columnstore");
       return false;
     }
 
@@ -3670,7 +3678,7 @@ class dense_fixed_length_block : util::noncopyable {
   uint32_t avg_length_{}; // entry length
   doc_id_t size_{}; // total number of entries
   bstring data_;
-}; // dense_fixed_length_block
+}; // dense_fixed_offset_block
 
 class sparse_mask_block : util::noncopyable {
  public:
@@ -3910,7 +3918,7 @@ template<typename Allocator = std::allocator<sparse_block>>
 class read_context
   : public block_cache_traits<sparse_block, Allocator>::cache_t,
     public block_cache_traits<dense_block, Allocator>::cache_t,
-    public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t,
+    public block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t,
     public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
     public block_cache_traits<dense_mask_block, Allocator>::cache_t {
  public:
@@ -3931,7 +3939,7 @@ class read_context
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
     : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_length_block, Allocator>::allocator_t(alloc)),
+      block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_offset_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
@@ -3999,7 +4007,6 @@ class context_provider: private util::noncopyable {
 }; // context_provider
 
 // in case of success caches block pointed
-// by 'ref' and retuns a pointer to cached
 // instance, nullptr otherwise
 template<typename BlockRef>
 const typename BlockRef::block_t* load_block(
@@ -4439,19 +4446,19 @@ class sparse_column final : public column {
 }; // sparse_column
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class dense_fixed_length_column
+/// @class dense_fixed_offset_column
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Block>
-class dense_fixed_length_column final : public column {
+class dense_fixed_offset_column final : public column {
  public:
-  typedef dense_fixed_length_column column_t;
+  typedef dense_fixed_offset_column column_t;
   typedef Block block_t;
 
   static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
     return memory::make_unique<column_t>(ctxs, props);
   }
 
-  dense_fixed_length_column(const context_provider& ctxs, ColumnProperty prop)
+  dense_fixed_offset_column(const context_provider& ctxs, ColumnProperty prop)
     : column(prop), ctxs_(&ctxs) {
   }
 
@@ -4627,18 +4634,18 @@ class dense_fixed_length_column final : public column {
   const context_provider* ctxs_;
   refs_t refs_;
   doc_id_t min_{}; // min key
-}; // dense_fixed_length_column
+}; // dense_fixed_offset_column
 
 template<>
-class dense_fixed_length_column<dense_mask_block> final : public column {
+class dense_fixed_offset_column<dense_mask_block> final : public column {
  public:
-  typedef dense_fixed_length_column column_t;
+  typedef dense_fixed_offset_column column_t;
 
   static column::ptr make(const context_provider&, ColumnProperty props) {
     return memory::make_unique<column_t>(props);
   }
 
-  explicit dense_fixed_length_column(ColumnProperty prop) NOEXCEPT
+  explicit dense_fixed_offset_column(ColumnProperty prop) NOEXCEPT
     : column(prop) {
   }
 
@@ -4767,9 +4774,9 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   }; // column_iterator
 
   doc_id_t min_{}; // min key (less than any key in column)
-}; // dense_fixed_length_column
+}; // dense_fixed_offset_column
 
-irs::doc_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
+irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
   return empty()
     ? irs::doc_iterator::empty()
     : irs::doc_iterator::make<column_iterator>(*this);
@@ -4787,7 +4794,7 @@ const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_
   &sparse_column<sparse_block>::make,                          //    0     |    0        0        0
   &sparse_column<dense_block>::make,                           //    0     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    0     |    0        1        0
-  &sparse_column<dense_fixed_length_block>::make,              //    0     |    0        1        1
+  &sparse_column<dense_fixed_offset_block>::make,              //    0     |    0        1        1
   nullptr, /* invalid properties, should never happen */       //    0     |    1        0        0
   nullptr, /* invalid properties, should never happen */       //    0     |    1        0        1
   &sparse_column<sparse_mask_block>::make,                     //    0     |    1        1        0
@@ -4796,11 +4803,11 @@ const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_
   &sparse_column<sparse_block>::make,                          //    1     |    0        0        0
   &sparse_column<dense_block>::make,                           //    1     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    1     |    0        1        0
-  &dense_fixed_length_column<dense_fixed_length_block>::make,  //    1     |    0        1        1
+  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //    1     |    0        1        1
   nullptr, /* invalid properties, should never happen */       //    1     |    1        0        0
   nullptr, /* invalid properties, should never happen */       //    1     |    1        0        1
   &sparse_column<sparse_mask_block>::make,                     //    1     |    1        1        0
-  &dense_fixed_length_column<dense_mask_block>::make           //    1     |    1        1        1
+  &dense_fixed_offset_column<dense_mask_block>::make           //    1     |    1        1        1
 };
 
 //////////////////////////////////////////////////////////////////////////////
