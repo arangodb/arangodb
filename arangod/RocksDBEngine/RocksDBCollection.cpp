@@ -360,6 +360,7 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
   bool isLocked =
     trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE);
@@ -368,18 +369,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   {
     WRITE_LOCKER(guard, _indexesLock);
-
     idx = findIndex(info, _indexes);
-
     if (idx) {
-      created = false;
-
-      // We already have this index.
+      created = false; // We already have this index.
       return idx;
     }
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
@@ -391,9 +388,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
   }
 
-  int res = saveIndex(trx, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  // we cannot persist primary or edge indexes
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
+  
+  Result res = fillIndexes(trx, idx);
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -410,9 +410,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, /*forPersistence*/ true);
   VPackBuilder indexInfo;
-
   idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-  res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+  res = engine->writeCreateCollectionMarker(
     _logicalCollection.vocbase().id(),
     _logicalCollection.id(),
     builder.slice(),
@@ -423,7 +422,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     )
   );
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     // We could not persist the index creation. Better abort
     // Remove the Index in the local list again.
     size_t i = 0;
@@ -435,9 +434,18 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       }
       ++i;
     }
+    idx->drop();
     THROW_ARANGO_EXCEPTION(res);
   }
   created = true;
+  
+  // we need to sync the selectivity estimates
+  res = engine->settingsManager()->sync(false);
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+      << res.errorMessage();
+  }
+  
   return idx;
 }
 
@@ -452,14 +460,13 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   if (!info.isObject()) {
     return TRI_ERROR_INTERNAL;
   }
-
+  
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
-
   try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
     newIdx = engine->indexFactory().prepareIndexFromSlice(
       info, false, _logicalCollection, false
     );
@@ -490,7 +497,6 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
              Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
   Result res = fillIndexes(trx, newIdx);
-
   if (!res.ok()) {
     return res.errorNumber();
   }
@@ -502,9 +508,6 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     VPackBuilder indexInfo;
 
     newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-
-    RocksDBEngine* engine =
-        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     TRI_ASSERT(engine != nullptr);
     int res = engine->writeCreateCollectionMarker(
       _logicalCollection.vocbase().id(),
@@ -529,12 +532,19 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         }
         ++i;
       }
+      newIdx->drop();
       return res;
     }
   }
 
   idx = newIdx;
-  // We need to write the IndexMarker
+  
+  // we need to sync the selectivity estimates
+  res = engine->settingsManager()->sync(false);
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+    << res.errorMessage();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1315,22 +1325,6 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
     TRI_ASSERT(idx->id() == 0);
     _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
   }
-}
-
-int RocksDBCollection::saveIndex(transaction::Methods* trx,
-                                 std::shared_ptr<arangodb::Index> idx) {
-  // LOCKED from the outside
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // we cannot persist primary or edge indexes
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
-
-  Result res = fillIndexes(trx, idx);
-  if (!res.ok()) {
-    return res.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 template<typename WriteBatchType, typename MethodsType>
