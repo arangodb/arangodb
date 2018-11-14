@@ -1,6 +1,8 @@
 v3.3.20 (XXXX-XX-XX)
 --------------------
 
+* Updated joi library (Web UI), improved foxx mount path validation
+
 * fixed Foxx queues not retrying jobs with infinite `maxFailures`
 
 * Fixed a race condition in a coordinator, it could happen in rare cases and
