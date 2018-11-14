@@ -2521,15 +2521,10 @@ int ClusterInfo::ensureIndexCoordinator(
           AgencyOperation(
             "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
-      VPackBuilder tmp;
-      trx.toVelocyPack(tmp);
-      
       while (true) {
         AgencyCommResult update =
           _agency.sendTransactionWithFailover(trx, 0.0);
         if (update.successful()) {
-          loadPlan();
-          LOG_TOPIC(ERR, Logger::FIXME) << tmp.toJson();
           return TRI_ERROR_NO_ERROR;
         }
       }
