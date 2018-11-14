@@ -1076,6 +1076,9 @@ void Supervision::readyOrphanedIndexCreations() {
             { VPackArrayBuilder trx(envelope.get());
               { VPackObjectBuilder operation(envelope.get());
                 Job::addIncreasePlanVersion(*envelope);
+                envelope->add(VPackValue(_agencyPrefix + PLAN_VERSION));
+                { VPackObjectBuilder o(envelope.get());
+                  envelope->add("op", VPackValue("increment")); }
                 envelope->add(
                   VPackValue(
                     _agencyPrefix + planColPrefix + colPath + "indexes"));
@@ -1102,6 +1105,7 @@ void Supervision::readyOrphanedIndexCreations() {
                     _agencyPrefix + planColPrefix + colPath + "indexes")); 
                 envelope->add(indexes.first); }
             }}
+          LOG_TOPIC(ERR, Logger::FIXME) << envelope->toJson();
           write_ret_t res = _agent->write(envelope);
           if (!res.successful()) {
             LOG_TOPIC(DEBUG, Logger::SUPERVISION)

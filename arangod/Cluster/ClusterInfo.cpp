@@ -2529,8 +2529,7 @@ int ClusterInfo::ensureIndexCoordinator(
           _agency.sendTransactionWithFailover(trx, 0.0);
         if (update.successful()) {
           loadPlan();
-          resultBuilder.clear();
-          resultBuilder.add(newPlanIndex.slice());
+          LOG_TOPIC(ERR, Logger::FIXME) << tmp.toJson();
           return TRI_ERROR_NO_ERROR;
         }
       }

@@ -185,7 +185,8 @@ describe ArangoDB do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
-  
+        puts doc
+        
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
@@ -210,6 +211,7 @@ describe ArangoDB do
 
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
+        puts doc
 
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
