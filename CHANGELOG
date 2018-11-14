@@ -1,6 +1,10 @@
 devel
 -----
 
+* Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using
+  a unix socket endpoint. URLs generated when using a unix socket follow the format
+  http://unix:<socket-path>:<url-path> used by other JS tooling.
+
 * do not create `_routing` collection for new installations/new databases, 
   as it is not needed anymore. Redirects to the web interface's login screen, which 
   were previously handled by entries in the `_routing` collection are now handled
