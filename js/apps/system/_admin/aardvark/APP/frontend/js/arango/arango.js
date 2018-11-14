@@ -1234,8 +1234,8 @@
           validateInput: function () {
             return [
               {
-                rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-\/]+))+$/i),
-                msg: 'May not contain /APP'
+                rule: Joi.string().regex(/^(.(?!APP(\/|$)/i, {invert: true}),
+                msg: 'May not contain APP'
               },
               {
                 rule: Joi.string().regex(/^([a-zA-Z0-9_\-\/]+)+$/),
