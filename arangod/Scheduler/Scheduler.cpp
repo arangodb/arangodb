@@ -519,7 +519,26 @@ void Scheduler::beginShutdown() {
   }
 
   stopRebalancer();
-#if 0
+
+#if 1
+  setStopping();
+
+  while (true) {
+    uint64_t const counters = _counters.load();
+
+    if (numRunning(counters) == 0 && numWorking(counters) == 0
+        && numQueued(counters) == 0) {
+      break;
+    }
+
+    std::this_thread::yield();
+    // we can be quite generous here with waiting...
+    // as we are in the shutdown already, we do not care if we need to wait
+    // for a bit longer
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+  }
+
+#endif
   _threadManager.reset();
 
   _managerGuard.reset();
@@ -527,9 +546,10 @@ void Scheduler::beginShutdown() {
 
   _serviceGuard.reset();
   _ioContext->stop();
-#endif
+#if 0
   // set the flag AFTER stopping the threads
   setStopping();
+#endif
 }
 
 void Scheduler::shutdown() {
@@ -555,15 +575,6 @@ void Scheduler::shutdown() {
   // One has to clean up the ioContext here, because there could a lambda
   // in its queue, that requires for it finalization some object (for example vocbase)
   // that would already be destroyed
-  _threadManager.reset();
-
-  _managerGuard.reset();
-  _managerContext->stop();
-
-  _serviceGuard.reset();
-  _ioContext->stop();
-
-
   _managerContext.reset();
   _ioContext.reset();
 }
