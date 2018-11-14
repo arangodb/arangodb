@@ -1233,7 +1233,7 @@
           validateInput: function () {
             return [
               {
-                rule: Joi.string().regex(/^(.(?!APP(\/|$)/i, {invert: true}),
+                rule: Joi.string().regex(/(\/|^)APP(\/|$)/i, {invert: true}),
                 msg: 'May not contain APP'
               },
               {
