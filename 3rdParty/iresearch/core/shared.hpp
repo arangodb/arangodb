@@ -215,7 +215,8 @@
         || _MSC_VER == 1912 \
         || _MSC_VER == 1913 \
         || _MSC_VER == 1914 \
-        || _MSC_VER == 1915)
+        || _MSC_VER == 1915 \
+        || _MSC_VER == 1916)
   #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2017_ONLY(...)
