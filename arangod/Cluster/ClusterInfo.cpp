@@ -1385,7 +1385,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       loadPlan();
     }
     break;   // Leave loop, since we are done
-    }
   }
 
   bool isSmart = false;
