@@ -519,6 +519,7 @@ void Scheduler::beginShutdown() {
   }
 
   stopRebalancer();
+#if 0
   _threadManager.reset();
 
   _managerGuard.reset();
@@ -526,7 +527,7 @@ void Scheduler::beginShutdown() {
 
   _serviceGuard.reset();
   _ioContext->stop();
-
+#endif
   // set the flag AFTER stopping the threads
   setStopping();
 }
@@ -554,6 +555,15 @@ void Scheduler::shutdown() {
   // One has to clean up the ioContext here, because there could a lambda
   // in its queue, that requires for it finalization some object (for example vocbase)
   // that would already be destroyed
+  _threadManager.reset();
+
+  _managerGuard.reset();
+  _managerContext->stop();
+
+  _serviceGuard.reset();
+  _ioContext->stop();
+
+
   _managerContext.reset();
   _ioContext.reset();
 }
