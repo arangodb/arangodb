@@ -224,6 +224,9 @@ bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
     _state->_rocksTransaction->DisableIndexing();
     _indexingDisabled = true;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _indexingWasDisabled = true;
+#endif
     return true;
   }
   return false;
@@ -256,6 +259,9 @@ arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
+//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//  TRI_ASSERT(! _indexingWasDisabled);
+//#endif
   rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
   if (!s.ok()) {
     rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
@@ -270,6 +276,9 @@ arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
+//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//  TRI_ASSERT(! _indexingWasDisabled);
+//#endif
   rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
   if (!s.ok()) {
     rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");

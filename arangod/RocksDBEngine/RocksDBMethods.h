@@ -80,7 +80,7 @@ class RocksDBMethods {
   /// @brief returns true if indexing was disabled by this call
   /// the default implementation is to do nothing
   virtual bool DisableIndexing() { return false; }
-  
+
   // the default implementation is to do nothing
   virtual void EnableIndexing() {}
 
@@ -92,7 +92,7 @@ class RocksDBMethods {
   virtual arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const&, rocksdb::Slice const&,
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
-  
+
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
   /// contrary to Delete, a SingleDelete may only be used
@@ -106,7 +106,7 @@ class RocksDBMethods {
   virtual void SetSavePoint() = 0;
   virtual arangodb::Result RollbackToSavePoint() = 0;
   virtual void PopSavePoint() = 0;
-  
+
   // convenience and compatibility method
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
                        std::string*);
@@ -116,9 +116,12 @@ class RocksDBMethods {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
 #endif
-  
+
  protected:
   RocksDBTransactionState* _state;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _indexingWasDisabled = false;
+#endif
 };
 
 // only implements GET and NewIterator
@@ -155,10 +158,10 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
 class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
-  
+
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() override;
-  
+
   void EnableIndexing() override;
 
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
@@ -189,7 +192,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
 class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
  public:
   explicit RocksDBTrxUntrackedMethods(RocksDBTransactionState* state);
-  
+
   arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
       rocksdb::Slice const& val,
@@ -219,7 +222,7 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
                           RocksDBKey const& key) override;
   arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
                                 RocksDBKey const&) override;
-  
+
   std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
 
@@ -230,6 +233,25 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
  private:
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
+};
+
+struct DisableIndexingOnRocksDBTrxGuard {
+  // will only be active if condition is true
+  DisableIndexingOnRocksDBTrxGuard(RocksDBMethods* meth, bool condition = true) : _meth(nullptr) {
+    if (condition) {
+      bool disabledHere = meth->DisableIndexing();
+      if (disabledHere) { _meth = meth; }
+    }
+  }
+
+  ~DisableIndexingOnRocksDBTrxGuard(){
+    if (_meth) { _meth->EnableIndexing(); }
+  }
+
+  void discard() { _meth = nullptr; }
+
+private:
+  RocksDBMethods* _meth;
 };
 
 }  // namespace arangodb
