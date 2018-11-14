@@ -128,6 +128,7 @@ function fulltextCreateSuite () {
     testCreateIndexSimple : function () {
       var idx = c.ensureFulltextIndex("text");
 
+      wait(1.0)
       // don't inspect the result of the following query but make sure it does not fail
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'text', 'foo')").toArray()[0];
       assertEqual(0, result.length);

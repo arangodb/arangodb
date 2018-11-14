@@ -2525,6 +2525,7 @@ int ClusterInfo::ensureIndexCoordinator(
         AgencyCommResult update =
           _agency.sendTransactionWithFailover(trx, 0.0);
         if (update.successful()) {
+          loadPlan();
           return TRI_ERROR_NO_ERROR;
         }
       }
