@@ -52,7 +52,7 @@
 
 namespace {
 
-typedef std::vector<arangodb::iresearch::DocumentPrimaryKey> pks_t;
+typedef std::vector<arangodb::iresearch::DocumentPrimaryKey::type> pks_t;
 
 pks_t::iterator readPKs(
     irs::doc_iterator& it,
@@ -67,7 +67,7 @@ pks_t::iterator readPKs(
   auto end = keys.end();
 
   for (irs::bytes_ref key; begin != end && it.next(); ) {
-    if (values(it.value(), key) && begin->read(key)) {
+    if (values(it.value(), key) && arangodb::iresearch::DocumentPrimaryKey::read(*begin, key)) {
       ++begin;
     }
   }
@@ -217,21 +217,21 @@ void IResearchViewBlockBase::reset() {
 }
 
 bool IResearchViewBlockBase::readDocument(
-    DocumentPrimaryKey const& docPk,
+    DocumentPrimaryKey::type const& docPk,
     IndexIterator::DocumentCallback const& callback
 ) {
   TRI_ASSERT(_trx->state());
 
   // this is necessary for MMFiles
-  _trx->pinData(docPk.cid());
+  _trx->pinData(docPk.first);
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
+  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.cid()
-      << "', rid '" << docPk.rid() << "'";
+      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
+      << "', rid '" << docPk.second << "'";
 
     return false; // not a valid collection reference
   }
@@ -239,7 +239,7 @@ bool IResearchViewBlockBase::readDocument(
   TRI_ASSERT(collection->collection());
 
   return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.rid()), callback
+    _trx, arangodb::LocalDocumentId(docPk.second), callback
   );
 }
 
@@ -250,10 +250,10 @@ bool IResearchViewBlockBase::readDocument(
 ) {
   TRI_ASSERT(pkValues);
 
-  arangodb::iresearch::DocumentPrimaryKey docPk;
+  arangodb::iresearch::DocumentPrimaryKey::type docPk;
   irs::bytes_ref tmpRef;
 
-  if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
+  if (!pkValues(docId, tmpRef) || !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to read document primary key while reading document from arangosearch view, doc_id '" << docId << "'";
 
@@ -263,15 +263,15 @@ bool IResearchViewBlockBase::readDocument(
   TRI_ASSERT(_trx->state());
 
   // this is necessary for MMFiles
-  _trx->pinData(docPk.cid());
+  _trx->pinData(docPk.first);
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
-  auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
+  auto* collection = _trx->state()->collection(docPk.first, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.cid()
-      << "', rid '" << docPk.rid() << "'";
+      << "failed to find collection while reading document from arangosearch view, cid '" << docPk.first
+      << "', rid '" << docPk.second << "'";
 
     return false; // not a valid collection reference
   }
@@ -279,7 +279,7 @@ bool IResearchViewBlockBase::readDocument(
   TRI_ASSERT(collection->collection());
 
   return collection->collection()->readDocumentWithCallback(
-    _trx, arangodb::LocalDocumentId(docPk.rid()), callback
+    _trx, arangodb::LocalDocumentId(docPk.second), callback
   );
 }
 
