@@ -215,6 +215,7 @@ ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replic
 ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in distributeShardsLike parameter."
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
+ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION,1499,"could not drop collection in plan","Will be raised when a coordinator in a cluster cannot drop a collection entry in the Plan hierarchy in the agency."
 
 ################################################################################
 ## ArangoDB query errors
