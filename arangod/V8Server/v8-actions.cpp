@@ -397,7 +397,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(PortTypeKey);
   req->ForceSet(
       PortTypeKey, TRI_V8_STD_STRING(isolate, info.portType()),
-      static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+      static_cast<v8::PropertyAttribute>(v8::ReadOnly));
 
   v8::Handle<v8::Object> clientArray = v8::Object::New(isolate);
   clientArray->ForceSet(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
