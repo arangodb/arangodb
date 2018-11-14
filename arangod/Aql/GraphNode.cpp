@@ -188,7 +188,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
         if (_graphObj == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+          THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_NOT_FOUND,
+                                        "graph '%s' not found", graphName.c_str());
         }
 
         auto eColls = _graphObj->edgeCollections();
@@ -297,7 +298,8 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
       if (_graphObj == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_NOT_FOUND,
+                                      "graph '%s' not found", graphName.c_str());
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,

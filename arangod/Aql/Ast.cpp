@@ -3854,7 +3854,8 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
     std::string graphName = graphNode->getString();
     auto graph = _query->lookupGraphByName(graphName);
     if (graph == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_NOT_FOUND,
+                                    "graph '%s' not found", graphName.c_str());
     }
     TRI_ASSERT(graph != nullptr);
 
