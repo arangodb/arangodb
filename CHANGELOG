@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated joi library (Web UI), improved foxx mount path validation
+
 * do not create `_routing` collection for new installations/new databases, 
   as it is not needed anymore. Redirects to the web interface's login screen, which 
   were previously handled by entries in the `_routing` collection are now handled
