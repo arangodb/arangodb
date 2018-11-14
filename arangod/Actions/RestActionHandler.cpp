@@ -91,7 +91,7 @@ void RestActionHandler::executeAction() {
   if (type == rest::RequestType::GET) {
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if (suffixes.empty() ||
-        (suffixes.size() == 2 && suffixes[0] == "/_admin" && suffixes[1] == "html")) {
+        (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
       // request to just /
       _response->setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
       _response->setHeaderNC(StaticStrings::Location, "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) + "/_admin/aardvark/index.html");
