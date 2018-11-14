@@ -53,11 +53,11 @@ ParseResult<Collection> Collection::parse(VPackSlice const& def) {
 
   CollectionSelection selection = CollectionSelection::FULL;
 
-  if (type != "full") {
+  if (type == "full") {
     selection = CollectionSelection::FULL;
-  } else if (type != "ignore") {
+  } else if (type == "ignore") {
     selection = CollectionSelection::IGNORE;
-  } else if (type != "structure") {
+  } else if (type == "structure") {
     selection = CollectionSelection::STRUCTURE;
   } else {
     return ParseResult<Collection>{

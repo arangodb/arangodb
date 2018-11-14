@@ -55,7 +55,13 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     std::shared_ptr<VPackBuilder> parsed =
         velocypack::Parser::fromJson(definition);
 
-    return maskings->parse(parsed->slice());
+    ParseResult<Maskings> res = maskings->parse(parsed->slice());
+
+    if (res.status != ParseResult<Maskings>::VALID) {
+      return MaskingsResult(MaskingsResult::ILLEGAL_DEFINITION, res.message);
+    }
+
+    return MaskingsResult(std::move(maskings));
   } catch (velocypack::Exception const& e) {
     std::string msg =
         "cannot parse maskings file '" + filename + "': " + e.what();
@@ -65,10 +71,11 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   }
 }
 
-MaskingsResult Maskings::parse(VPackSlice const& def) {
+ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
   if (!def.isObject()) {
-    return MaskingsResult(MaskingsResult::DUPLICATE_COLLECTION,
-                          "expecting an object for masking definition");
+    return ParseResult<Maskings>{ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                 "expecting an object for masking definition",
+                                 Maskings()};
   }
 
   for (auto const& entry : VPackObjectIterator(def, false)) {
@@ -76,16 +83,57 @@ MaskingsResult Maskings::parse(VPackSlice const& def) {
     LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
     if (_collections.find(key) != _collections.end()) {
-      return MaskingsResult(MaskingsResult::DUPLICATE_COLLECTION,
-                            "duplicate collection entry '" + key + "'");
+      return ParseResult<Maskings>{ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                   "duplicate collection entry '" + key + "'",
+                                   Maskings()};
     }
 
     ParseResult<Collection> c = Collection::parse(entry.value);
 
     if (c.status != ParseResult<Collection>::VALID) {
-      return MaskingsResult(MaskingsResult::ILLEGAL_DEFINITION, c.message);
+      return ParseResult<Maskings>{
+          (ParseResult<Maskings>::StatusCode)(int)c.status, c.message,
+          Maskings()};
     }
 
     _collections[key] = c.result;
+  }
+
+  return ParseResult<Maskings>{ParseResult<Maskings>::VALID, "", Maskings()};
+}
+
+bool Maskings::shouldDumpStructure(std::string const& name) {
+  auto const itr = _collections.find(name);
+
+  if (itr == _collections.end()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
+    return false;
+  }
+
+  switch (itr->second.selection()) {
+    case CollectionSelection::FULL:
+      return true;
+    case CollectionSelection::IGNORE:
+      return false;
+    case CollectionSelection::STRUCTURE:
+      return true;
+  }
+}
+
+bool Maskings::shouldDumpData(std::string const& name) {
+  auto const itr = _collections.find(name);
+
+  if (itr == _collections.end()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
+    return false;
+  }
+
+  switch (itr->second.selection()) {
+    case CollectionSelection::FULL:
+      return true;
+    case CollectionSelection::IGNORE:
+      return false;
+    case CollectionSelection::STRUCTURE:
+      return false;
   }
 }

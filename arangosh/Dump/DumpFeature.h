@@ -92,13 +92,15 @@ class DumpFeature : public application_features::ApplicationFeature {
 
   /// @brief Stores all necessary data to dump a single collection or shard
   struct JobData {
-    JobData(ManagedDirectory&, DumpFeature&, Options const&, Stats&,
-            VPackSlice const&, uint64_t const, std::string const&,
-            std::string const&, std::string const&);
+    JobData(ManagedDirectory&, DumpFeature&, Options const&,
+            maskings::Maskings * maskings, Stats&,VPackSlice const&,
+            uint64_t const, std::string const&, std::string const&,
+            std::string const&);
 
     ManagedDirectory& directory;
     DumpFeature& feature;
     Options const& options;
+    maskings::Maskings* maskings;
     Stats& stats;
 
     VPackSlice const collectionInfo;

@@ -393,6 +393,21 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   arangodb::Result result{TRI_ERROR_NO_ERROR};
 
+  bool dumpStructure = true;
+
+  if (dumpStructure && jobData.maskings != nullptr) {
+    dumpStructure = jobData.maskings->shouldDumpStructure(jobData.name);
+  }
+
+  if (!dumpStructure) {
+    if (jobData.options.progress) {
+      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+          << "# Dumping collection '" << jobData.name << "'...";
+    }
+
+    return result;
+  }
+
   // prep hex string of collection name
   std::string const hexString(
       arangodb::rest::SslInterface::sslMD5(jobData.name));
@@ -437,18 +452,26 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     }
   }
 
-  if (result.ok() && jobData.options.dumpData) {
-    // save the actual data
-    auto file = jobData.directory.writableFile(
-        jobData.name + "_" + hexString + ".data.json", true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
+  if (result.ok()) {
+    bool dumpData = jobData.options.dumpData;
+
+    if (dumpData && jobData.maskings != nullptr) {
+      dumpData = jobData.maskings->shouldDumpData(jobData.name);
     }
 
-    if (jobData.options.clusterMode) {
-      result = ::handleCollectionCluster(client, jobData, *file);
-    } else {
-      result = ::handleCollection(client, jobData, *file);
+    if (dumpData) {
+      // save the actual data
+      auto file = jobData.directory.writableFile(
+          jobData.name + "_" + hexString + ".data.json", true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+
+      if (jobData.options.clusterMode) {
+        result = ::handleCollectionCluster(client, jobData, *file);
+      } else {
+        result = ::handleCollection(client, jobData, *file);
+      }
     }
   }
 
@@ -468,13 +491,14 @@ void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
 namespace arangodb {
 
 DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
-                              Options const& opts, Stats& stat,
-                              VPackSlice const& info, uint64_t const batch,
+                              Options const& opts, maskings::Maskings* maskings,
+                              Stats& stat, VPackSlice const& info, uint64_t const batch,
                               std::string const& c, std::string const& n,
                               std::string const& t)
     : directory{dir},
       feature{feat},
       options{opts},
+      maskings{maskings},
       stats{stat},
       collectionInfo{info},
       batchId{batch},
@@ -718,7 +742,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection, batchId,
+        *_directory, *this, _options, _maskings.get(), _stats, collection, batchId,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
@@ -857,7 +881,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection, 0 /* batchId */,
+        *_directory, *this, _options, _maskings.get(), _stats, collection, 0 /* batchId */,
         std::to_string(cid), name, "" /* collectionType */);
     _clientTaskQueue.queueJob(std::move(jobData));
   }

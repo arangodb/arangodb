@@ -27,7 +27,7 @@
 
 template <typename T>
 struct ParseResult {
-  enum StatusCode : int { VALID, PARSE_FAILED };
+  enum StatusCode : int { VALID, PARSE_FAILED, DUPLICATE_COLLECTION };
   StatusCode status;
   std::string message;
   T result;

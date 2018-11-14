@@ -43,14 +43,13 @@ struct MaskingsResult {
     VALID,
     CANNOT_PARSE_FILE,
     CANNOT_READ_FILE,
-    DUPLICATE_COLLECTION,
     ILLEGAL_DEFINITION
   };
 
   MaskingsResult(StatusCode s, std::string m)
       : status(s), message(m), maskings(nullptr){};
-  MaskingsResult(StatusCode s, std::unique_ptr<Maskings>&& m)
-      : status(s), maskings(std::move(m)){};
+  MaskingsResult(std::unique_ptr<Maskings>&& m)
+      : status(StatusCode::VALID), maskings(std::move(m)){};
 
   StatusCode status;
   std::string message;
@@ -62,7 +61,11 @@ class Maskings {
   static MaskingsResult fromFile(std::string const&);
 
  public:
-  MaskingsResult parse(VPackSlice const&);
+  bool shouldDumpStructure(std::string const& name);
+  bool shouldDumpData(std::string const& name);
+
+ private:
+  ParseResult<Maskings> parse(VPackSlice const&);
 
  private:
   std::map<std::string, Collection> _collections;
