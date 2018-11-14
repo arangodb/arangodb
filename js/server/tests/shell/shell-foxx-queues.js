@@ -35,7 +35,7 @@ var db = require("internal").db;
 var queues = require('@arangodb/foxx/queues');
 var FoxxManager = require('org/arangodb/foxx/manager');
 var fs = require('fs');
-var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
+var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
 
 function foxxQueuesSuite () {
   var cn = "UnitTestsFoxx";
