@@ -389,6 +389,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   serverArray->ForceSet(AddressKey, TRI_V8_STD_STRING(isolate, info.serverAddress));
   TRI_GET_GLOBAL_STRING(PortKey);
   serverArray->ForceSet(PortKey, v8::Number::New(isolate, info.serverPort));
+  TRI_GET_GLOBAL_STRING(EndpointKey);
+  serverArray->ForceSet(EndpointKey, TRI_V8_STD_STRING(isolate, Endpoint::uriForm(info.endpoint)));
   TRI_GET_GLOBAL_STRING(ServerKey);
   req->ForceSet(ServerKey, serverArray);
 
