@@ -220,6 +220,7 @@ ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
 ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create view in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new view in the Plan hierarchy in the agency."
 ERROR_CLUSTER_VIEW_ID_EXISTS,1498,"view ID already exists","Will be raised when a coordinator in a cluster tries to create a view and the view ID already exists."
+ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION,1499,"could not drop collection in plan","Will be raised when a coordinator in a cluster cannot drop a collection entry in the Plan hierarchy in the agency."
 
 ################################################################################
 ## ArangoDB query errors
