@@ -1,6 +1,10 @@
 v3.4.1 (XXXX-XX-XX)
 -------------------
 
+* Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using
+  a unix socket endpoint. URLs generated when using a unix socket follow the format
+  http://unix:<socket-path>:<url-path> used by other JS tooling.
+
 * make AQL REMOVE operations use less memory with the RocksDB storage engine
 
   the previous implementation of batch removals read everything to remove into
