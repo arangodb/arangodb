@@ -47,6 +47,8 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -84,8 +86,16 @@ void V8ClientConnection::createConnection() {
   req->timeout(std::chrono::seconds(30));
   try {
     auto res = newConnection->sendRequest(std::move(req));
-    
+
     _lastHttpReturnCode = res->statusCode();
+    if (_lastHttpReturnCode >= 400) {
+      auto const& headers = res->messageHeader().meta;
+      auto it = headers.find("http/1.1");
+      if (it != headers.end()) {
+        _lastErrorMessage = (*it).second;
+      }
+    }
+    
     if (_lastHttpReturnCode == 200) {
       _connection = std::move(newConnection);
       
