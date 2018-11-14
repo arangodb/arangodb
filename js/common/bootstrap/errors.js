@@ -182,6 +182,7 @@
     "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN" : { "code" : 1497, "message" : "could not create view in plan" },
     "ERROR_CLUSTER_VIEW_ID_EXISTS" : { "code" : 1498, "message" : "view ID already exists" },
+    "ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION" : { "code" : 1499, "message" : "could not drop collection in plan" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
