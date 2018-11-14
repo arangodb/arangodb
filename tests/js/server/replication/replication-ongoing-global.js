@@ -494,8 +494,13 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).all().toArray().length, 0);
+          const c = db._collection(cn);
+          let x = 10;
+          while (c.count() > 0 && x-- > 0) {
+            internal.sleep(1);
+          }
+          assertEqual(c.count(), 0);
+          assertEqual(c.all().toArray().length, 0);
         }
       );
     },
