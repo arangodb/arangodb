@@ -121,11 +121,11 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
   if (hard) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
+        << "starting syncCollectionFinalize: " << collectionName << ", fromTick "
         << fromTick;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "starting syncCollectionCatchup:" << collectionName << ", fromTick "
+        << "starting syncCollectionCatchup: " << collectionName << ", fromTick "
         << fromTick;
   }
 
@@ -231,7 +231,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
     // If this is non-hard, we employ some heuristics to stop early:
     if (!hard) {
-      if (clock.now() - startTime > std::chrono::seconds(1) && _ongoingTransactions.empty()) {
+      if (clock.now() - startTime > std::chrono::hours(1) && _ongoingTransactions.empty()) {
         checkMore = false;
       } else {
         TRI_voc_tick_t lastTick = 0;
