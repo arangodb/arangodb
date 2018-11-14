@@ -25,7 +25,14 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Maskings/Collection.h"
+#include "Maskings/ParseResult.h"
 
 namespace arangodb {
 namespace maskings {
@@ -35,16 +42,27 @@ struct MaskingsResult {
   enum StatusCode : int {
     VALID,
     CANNOT_PARSE_FILE,
-    CANNOT_READ_FILE
+    CANNOT_READ_FILE,
+    DUPLICATE_COLLECTION,
+    ILLEGAL_DEFINITION
   };
 
+  MaskingsResult(StatusCode s, std::string m)
+      : status(s), message(m), maskings(nullptr){};
+  MaskingsResult(StatusCode s, std::unique_ptr<Maskings>&& m)
+      : status(s), maskings(std::move(m)){};
+
   StatusCode status;
+  std::string message;
   std::unique_ptr<Maskings> maskings;
 };
 
 class Maskings {
  public:
   static MaskingsResult fromFile(std::string const&);
+
+ public:
+  MaskingsResult parse(VPackSlice const&);
 
  private:
   std::map<std::string, Collection> _collections;

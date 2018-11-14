@@ -40,6 +40,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -554,6 +555,9 @@ void DumpFeature::collectOptions(
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_options.tickEnd));
+
+  options->addOption("--maskings", "file with maskings definition",
+                     new StringParameter(&_options.maskingsFile));
 }
 
 void DumpFeature::validateOptions(
@@ -951,8 +955,18 @@ void DumpFeature::reportError(Result const& error) {
   }
 }
 
-/// @brief main method to run dump
 void DumpFeature::start() {
+  if (!_options.maskingsFile.empty()) {
+    maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      FATAL_ERROR_EXIT();
+    }
+
+    _maskings = std::move(m.maskings);
+  }
+
   _exitCode = EXIT_SUCCESS;
 
   // generate a fake client id that we sent to the server

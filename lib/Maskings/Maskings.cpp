@@ -22,12 +22,6 @@
 
 #include "Maskings.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 
@@ -40,32 +34,58 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   try {
     definition = basics::FileUtils::slurp(filename);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::CONFIG)
-        << "cannot read maskings file '" << filename << "': " << e.what();
+    std::string msg =
+        "cannot read maskings file '" + filename + "': " + e.what();
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
 
-    return MaskingsResult{MaskingsResult::CANNOT_READ_FILE, nullptr};
+    return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
   LOG_TOPIC(DEBUG, Logger::CONFIG) << "found maskings file '" << filename;
 
   if (definition.empty()) {
-    LOG_TOPIC(ERR, Logger::CONFIG)
-        << "maskings file '" << filename << "' is empty";
-    return MaskingsResult{MaskingsResult::CANNOT_READ_FILE, nullptr};
+    std::string msg = "maskings file '" + filename + "' is empty";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
+    return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
+
+  std::unique_ptr<Maskings> maskings(new Maskings{});
 
   try {
     std::shared_ptr<VPackBuilder> parsed =
         velocypack::Parser::fromJson(definition);
-  } catch (velocypack::Exception const& e) {
-    LOG_TOPIC(ERR, Logger::CONFIG)
-        << "cannot parse maskings file '" << filename << "': " << e.what()
-        << ". file content: " << definition;
 
-    return MaskingsResult{MaskingsResult::CANNOT_PARSE_FILE, nullptr};
+    return maskings->parse(parsed->slice());
+  } catch (velocypack::Exception const& e) {
+    std::string msg =
+        "cannot parse maskings file '" + filename + "': " + e.what();
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
+
+    return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, msg);
+  }
+}
+
+MaskingsResult Maskings::parse(VPackSlice const& def) {
+  if (!def.isObject()) {
+    return MaskingsResult(MaskingsResult::DUPLICATE_COLLECTION,
+                          "expecting an object for masking definition");
   }
 
-  std::unique_ptr<Maskings> maskings;
+  for (auto const& entry : VPackObjectIterator(def, false)) {
+    std::string key = entry.key.copyString();
+    LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
-  return MaskingsResult{MaskingsResult::VALID, std::move(maskings)};
+    if (_collections.find(key) != _collections.end()) {
+      return MaskingsResult(MaskingsResult::DUPLICATE_COLLECTION,
+                            "duplicate collection entry '" + key + "'");
+    }
+
+    ParseResult<Collection> c = Collection::parse(entry.value);
+
+    if (c.status != ParseResult<Collection>::VALID) {
+      return MaskingsResult(MaskingsResult::ILLEGAL_DEFINITION, c.message);
+    }
+
+    _collections[key] = c.result;
+  }
 }

@@ -20,41 +20,17 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_COLLECTION_H
-#define ARANGODB_MASKINGS_COLLECTION_H 1
+#ifndef ARANGODB_MASKINGS_PARSE_RESULT_H
+#define ARANGODB_MASKINGS_PARSE_RESULT_H
 
 #include "Basics/Common.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Maskings/AttributeMasking.h"
-#include "Maskings/CollectionFilter.h"
-#include "Maskings/CollectionSelection.h"
-#include "Maskings/ParseResult.h"
-
-namespace arangodb {
-namespace maskings {
-class Collection {
- public:
-  static ParseResult<Collection> parse(VPackSlice const&);
-
- public:
-  Collection() {}
-
-  Collection(CollectionSelection selection,
-             std::vector<AttributeMasking> const& maskings)
-      : _selection(selection), _maskings(maskings) {}
-
- private:
-  CollectionSelection _selection;
-  CollectionFilter _filter;
-  std::vector<AttributeMasking> _maskings;
+template <typename T>
+struct ParseResult {
+  enum StatusCode : int { VALID, PARSE_FAILED };
+  StatusCode status;
+  std::string message;
+  T result;
 };
-}  // namespace maskings
-}  // namespace arangodb
 
 #endif

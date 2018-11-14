@@ -232,6 +232,7 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Maskings/Collection.cpp
   Maskings/Maskings.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp
