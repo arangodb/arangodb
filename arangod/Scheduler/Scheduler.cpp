@@ -232,6 +232,10 @@ void Scheduler::post(std::function<void()> const callback) {
     // no exception happened, cancel guard
     guardQueue.cancel();
   } else {
+    // increase number of working (must precede decQueue() to keep shutdown looping)
+    JobGuard jobGuard(this);
+    jobGuard.work();
+
     // reduce number of queued now
     decQueued();
 
