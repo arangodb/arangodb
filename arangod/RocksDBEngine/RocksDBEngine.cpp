@@ -1228,7 +1228,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
-  rocksdb::WriteOptions wo;
+  rocksdb::DB* db = _db->GetRootDB();
 
   // If we get here the collection is safe to drop.
   //
@@ -1260,7 +1260,9 @@ arangodb::Result RocksDBEngine::dropCollection(
   key.constructCollection(vocbase.id(), collection.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
-  rocksdb::Status s = _db->Write(wo, &batch);
+  rocksdb::WriteOptions wo;
+  wo.sync = true;
+  rocksdb::Status s = db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
   if (!s.ok()) {
@@ -1272,7 +1274,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // Cleanup data-mess
 
   // Unregister collection metadata
-  Result res = RocksDBCollectionMeta::deleteCollectionMeta(_db, coll->objectId());
+  Result res = RocksDBCollectionMeta::deleteCollectionMeta(db, coll->objectId());
   if (res.fail()) {
     LOG_TOPIC(ERR, Logger::ENGINES) << "error removing collection meta-data: "
       << res.errorMessage(); // continue regardless
@@ -1289,7 +1291,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   TRI_ASSERT(!vecShardIndex.empty());
   for (auto& index : vecShardIndex) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
-    res = RocksDBCollectionMeta::deleteIndexEstimate(_db, ridx->objectId());
+    res = RocksDBCollectionMeta::deleteIndexEstimate(db, ridx->objectId());
     if (res.fail()) {
       LOG_TOPIC(WARN, Logger::ENGINES) << "could not delete index estimate: "
       << res.errorMessage();
@@ -1309,7 +1311,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // delete documents
   RocksDBKeyBounds bounds =
       RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  auto result = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
+  auto result = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
 
   if (result.fail()) {
     // We try to remove all documents.
@@ -1454,13 +1456,12 @@ arangodb::Result RocksDBEngine::dropView(
   key.constructView(vocbase.id(), view.id());
 
   rocksdb::WriteBatch batch;
-  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-  auto db = rocksutils::globalRocksDB();
-
   batch.PutLogData(logValue.slice());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
-  auto res = db->Write(wo, &batch);
+  rocksdb::WriteOptions wo;
+  wo.sync = true;
+  auto res = _db->GetRootDB()->Write(wo, &batch);
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
   return rocksutils::convertStatus(res);

@@ -300,13 +300,11 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
 
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
-  if (commitSeq != 0) { // is '0' for filling new indexes
-    if (hasOperations()) {
-      TRI_ASSERT(_revision != 0);
-      RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
-      coll->adjustNumberDocuments(_revision, adjustment); // update online count
-      coll->meta().adjustNumberDocuments(commitSeq, _revision, adjustment); // buffer for recovery
-    }
+  if (hasOperations()) {
+    TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->adjustNumberDocuments(_revision, adjustment); // update online count
+    coll->meta().adjustNumberDocuments(commitSeq, _revision, adjustment); // buffer for recovery
   }
 
   // Update the index estimates.

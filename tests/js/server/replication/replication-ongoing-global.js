@@ -853,7 +853,13 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view === null);
+          let x = 10;
+          while (view && x-- > 0) {
+            internal.sleep(1);
+            db._flushCache();
+            view = db._view('UnitTestsSyncView');
+          }
+          assertNull(view);
         },
         {}
       );

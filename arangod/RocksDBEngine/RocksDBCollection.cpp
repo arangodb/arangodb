@@ -697,12 +697,12 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
 
     rocksdb::WriteOptions wo;
-    wo.sync = true; // make sure recovery works
+    wo.sync = true;
     s = db->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    seq = db->GetLatestSequenceNumber(); // post commit sequence
+    seq = db->GetLatestSequenceNumber() - 1; // post commit sequence
     
     uint64_t numDocs = _numberDocuments.exchange(0);
     _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));

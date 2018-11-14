@@ -85,7 +85,7 @@ std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db,
+Result removeLargeRange(rocksdb::DB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart,
                         bool useRangeDelete);
