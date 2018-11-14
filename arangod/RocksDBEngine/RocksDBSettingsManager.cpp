@@ -55,7 +55,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
+arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b,
                                uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
@@ -82,9 +82,7 @@ arangodb::Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
-  rocksdb::Status s =
-      rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
-
+  rocksdb::Status s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value);
   if (!s.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
@@ -101,7 +99,7 @@ namespace arangodb {
 RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
     : _lastSync(0), 
       _syncing(false), 
-      _db(db), 
+      _db(db->GetRootDB()),
       _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database
@@ -157,12 +155,15 @@ Result RocksDBSettingsManager::sync(bool force) {
   LOG_DEVEL << "starting sync with latestSeqNr: " << maxSeqNr;
 
   rocksdb::TransactionOptions opts;
+  opts.lock_timeout = 0.05; // do not wait for locking keys
+  
   rocksdb::WriteOptions wo;
-  if (!_trx) {
-    _trx.reset(_db->BeginTransaction(wo, opts));
-  } else {
-    _db->BeginTransaction(wo, opts, _trx.get()); // recycle trx
-  }
+  rocksdb::WriteBatch batch;
+//  if (!_trx) {
+//    _trx.reset(_db->BeginTransaction(wo, opts));
+//  } else {
+//    _db->BeginTransaction(wo, opts, _trx.get()); // recycle trx
+//  }
   _tmpBuilder.clear(); // recycle our builder
   
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
@@ -176,24 +177,27 @@ Result RocksDBSettingsManager::sync(bool force) {
     if (!vocbase) {
       continue;
     }
+    TRI_ASSERT(!vocbase->isDangling());
     TRI_DEFER(vocbase->release());
 
     // intentionally do not `useCollection`, tends to break CI tests
-    std::shared_ptr<LogicalCollection> coll = vocbase->lookupCollection(cid);
+    TRI_vocbase_col_status_e status;
+    std::shared_ptr<LogicalCollection> coll = vocbase->useCollection(cid, status);
     if (!coll) {
       continue;
     }
+    TRI_DEFER(vocbase->releaseCollection(coll.get()));
     
     RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = minSeqNr;
-    Result res = rcoll->meta().serializeMeta(_trx.get(), *coll, force, _tmpBuilder, appliedSeq);
+    Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
   
-  if (_trx->GetNumKeys() == 0) {
+  if (batch.Count() == 0) {
     LOG_DEVEL << "nothing happened skipping settings up to " << minSeqNr;
     WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;
@@ -201,15 +205,14 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
   
   _tmpBuilder.clear();
-  Result res = writeSettings(_trx.get(), _tmpBuilder, minSeqNr);
+  Result res = writeSettings(batch, _tmpBuilder, minSeqNr);
   if (res.fail()) {
     return res;
   }
 
   LOG_DEVEL << "commiting settings up to " << minSeqNr;
   // we have to commit all counters in one batch
-  auto s = _trx->Commit();
-  
+  auto s = _db->Write(wo, &batch);
   if (s.ok()) {
     WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;

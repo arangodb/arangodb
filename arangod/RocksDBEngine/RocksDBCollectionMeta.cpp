@@ -194,7 +194,7 @@ void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 }
 
 /// @brief serialize the collection metadata
-Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCollection& coll,
+Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalCollection& coll,
                                             bool force, VPackBuilder& tmp,
                                             rocksdb::SequenceNumber& appliedSeq) {
   Result res;
@@ -214,18 +214,21 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
   
   // Step 1. store the document count
   tmp.clear();
-  
   if (didWork || force) {
     _count.toVelocyPack(tmp);
     key.constructCounterValue(rcoll->objectId());
     rocksdb::Slice value((char*)tmp.start(), tmp.size());
-    rocksdb::Status s = trx->Put(cf, key.string(), value);
+    rocksdb::Status s = batch.Put(cf, key.string(), value);
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
       << "writing counter for collection with objectId '" << rcoll->objectId()
       << "' failed: " << s.ToString();
       return res.reset(rocksutils::convertStatus(s));
     }
+  }
+  
+  if (coll.deleted()) {
+    return Result();
   }
 
   // Step 2. store the key generator
@@ -240,13 +243,17 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
     tmp.close();
     
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
-    rocksdb::Status s = trx->Put(cf, key.string(), value.string());
+    rocksdb::Status s = batch.Put(cf, key.string(), value.string());
     LOG_DEVEL << "writing key generator coll " << coll.name();
 
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
       return res.reset(rocksutils::convertStatus(s));
     }
+  }
+  
+  if (coll.deleted()) {
+    return Result();
   }
   
   // Step 3. store the index estimates
@@ -257,6 +264,9 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
     if (est == nullptr) { // does not have an estimator
       continue;
+    }
+    if (coll.deleted()) {
+      return Result();
     }
     
     if (est->needToPersist() || force) {
@@ -275,7 +285,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::Transaction* trx, LogicalCo
       
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
-      rocksdb::Status s = trx->Put(cf, key.string(), value);
+      rocksdb::Status s = batch.Put(cf, key.string(), value);
       if (!s.ok()) {
         LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
         return res.reset(rocksutils::convertStatus(s));

@@ -728,10 +728,6 @@ void RocksDBEngine::stop() {
     }
     _backgroundThread.reset();
   }
-  
-  if (_settingsManager) {
-    _settingsManager->releaseResources();
-  }
 
   if (_syncThread) {
     // _syncThread may be a nullptr, in case automatic syncing is turned off

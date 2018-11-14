@@ -36,7 +36,7 @@
 
 namespace rocksdb {
   class DB;
-  class Transaction;
+  class WriteBatch;
 }
 
 namespace arangodb {
@@ -112,7 +112,7 @@ struct RocksDBCollectionMeta final {
                              TRI_voc_rid_t revId, int64_t adj);
 
   /// @brief serialize the collection metadata
-  arangodb::Result serializeMeta(rocksdb::Transaction* trx, LogicalCollection&,
+  arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
                                  bool force, arangodb::velocypack::Builder&,
                                  rocksdb::SequenceNumber& appliedSeq);
   
