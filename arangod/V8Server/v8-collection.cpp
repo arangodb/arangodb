@@ -2225,7 +2225,7 @@ static void JS_CollectionVocbase(
   v8::Handle<v8::Value> val = args[0];
   auto collection = GetCollectionFromArgument(vocbase, val);
 
-  if (collection.get() == nullptr) {
+  if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
   }
 

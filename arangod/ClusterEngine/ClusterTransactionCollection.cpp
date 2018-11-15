@@ -171,13 +171,12 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     if (_collection == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
-    else {
-      if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-          !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-        // use and usage-lock
-        LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-        _usageLocked = true;
-      }
+
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+      // use and usage-lock
+      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+      _usageLocked = true;
     }
   }
 

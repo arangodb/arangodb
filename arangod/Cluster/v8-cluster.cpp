@@ -653,12 +653,12 @@ static void JS_GetCollectionInfoClusterInfo(
         "getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  auto collectionID = TRI_ObjectToString(args[0]);
-  auto databaseID = TRI_ObjectToString(args[1]);
-  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollectionNT(collectionID, databaseID);
+  auto databaseID = TRI_ObjectToString(args[0]);
+  auto collectionID = TRI_ObjectToString(args[1]);
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollectionNT(databaseID, collectionID);
   if (ci == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   ClusterInfo::getCollectionNotFoundMsg(collectionID, databaseID));
+                                   ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
   }
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
@@ -724,12 +724,12 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  auto collectionID = TRI_ObjectToString(args[0]);
-  auto databaseID = TRI_ObjectToString(args[1]);
-  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollectionNT(collectionID, databaseID);
+  auto databaseID = TRI_ObjectToString(args[0]);
+  auto collectionID = TRI_ObjectToString(args[1]);
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollectionNT(databaseID, collectionID);
   if (ci == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   ClusterInfo::getCollectionNotFoundMsg(collectionID, databaseID));
+                                   ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

@@ -1398,15 +1398,11 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   if (ServerState::instance()->isCoordinator()) {
     auto* ci = arangodb::ClusterInfo::instance();
-
-    collection = ci
-        ? ci->getCollectionNT(vocbase.name(), std::string(key)) : nullptr;
-    if (collection != nullptr) {
-      // do not propagate exception from here
-      TRI_V8_RETURN(v8::Handle<v8::Value>());
-    } else {
-      collection = vocbase.lookupCollection(std::string(key));
+    if (ci) {
+      collection = ci->getCollectionNT(vocbase.name(), std::string(key));
     }
+  } else {
+    collection = vocbase.lookupCollection(std::string(key));
   }
 
   if (collection == nullptr) {

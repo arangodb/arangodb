@@ -118,7 +118,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     // We have to look up the collection info:
     auto* ci = ClusterInfo::instance();
 
-    auto const cinfo = ci->getCollectionNT(_vocbase.name(), name);
+    auto const cinfo = (ci) ? ci->getCollectionNT(_vocbase.name(), name) : nullptr;
 
     if (cinfo != nullptr) {
       return cinfo->id();
@@ -143,9 +143,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCl
 
   // We have to look up the collection info:
   ClusterInfo* ci = ClusterInfo::instance();
-  auto cinfo = ci->getCollectionNT(_vocbase.name(), name);
-
-  return cinfo;
+  return (ci) ? ci->getCollectionNT(_vocbase.name(), name) : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -300,17 +298,17 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
 
   // DBserver case of a shard:
   if (collection && collection->planId() != collection->id()) {
-    collection = ClusterInfo::instance()->getCollectionNT(
-        collection->vocbase().name(), std::to_string(collection->planId())
-      );
-    if (collection != nullptr) {
-      return UNKNOWN;
-    }
+    collection = ClusterInfo::instance()->getCollectionNT(collection->vocbase().name(),
+                                                          std::to_string(collection->planId()));
   }
 
   // can be empty, if collection unknown
-  return collection && !collection->name().empty()
-    ? collection->name() : UNKNOWN;
+  if ((collection == nullptr) || (collection->name().empty())) {
+    return UNKNOWN;
+  }
+  else {
+    return collection->name();
+  }
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
@@ -357,7 +355,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
     }
 
     try {
-      ptr = ci->getCollectionNT(_vocbase.name(), nameOrId);
+      ptr = (ci) ? ci->getCollectionNT(_vocbase.name(), nameOrId) : nullptr;
 
       if (ptr == nullptr) {
         ptr = ci->getView(_vocbase.name(), nameOrId);
