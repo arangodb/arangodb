@@ -48,6 +48,12 @@ class AttributeMasking {
     _func.reset(func);
   }
 
+  bool match(std::vector<std::string> const&) const;
+
+  MaskingFunction* func() const {
+    return _func.get();
+  }
+
  private:
   Path _path;
   std::shared_ptr<MaskingFunction> _func;

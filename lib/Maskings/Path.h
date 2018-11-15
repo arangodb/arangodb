@@ -39,6 +39,8 @@ class Path {
   Path(bool wildcard, std::vector<std::string> const& components)
       : _wildcard(wildcard), _components(components) {}
 
+  bool match(std::vector<std::string> const& path) const;
+
  private:
   bool _wildcard;
   std::vector<std::string> _components;

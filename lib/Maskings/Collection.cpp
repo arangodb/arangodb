@@ -84,3 +84,13 @@ ParseResult<Collection> Collection::parse(VPackSlice const& def) {
 
   return ParseResult<Collection>(Collection(selection, attributes));
 }
+
+MaskingFunction* Collection::masking(std::vector<std::string> const& path) {
+  for (auto const& m : _maskings) {
+    if (m.match(path)) {
+      return m.func();
+    }
+  }
+
+  return nullptr;
+}

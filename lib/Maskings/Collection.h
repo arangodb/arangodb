@@ -53,6 +53,8 @@ class Collection {
     return _selection;
   }
 
+  MaskingFunction* masking(std::vector<std::string> const& path);
+
  private:
   CollectionSelection _selection;
   CollectionFilter _filter;

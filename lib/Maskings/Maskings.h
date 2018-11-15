@@ -69,6 +69,16 @@ class Maskings {
 
  private:
   ParseResult<Maskings> parse(VPackSlice const&);
+  VPackValue maskedItem(Collection& collection, std::vector<std::string>& path,
+                        std::string& buffer, VPackSlice const& data);
+  void addMaskedArray(Collection& collection, VPackBuilder& builder,
+                      std::vector<std::string>& path, VPackSlice const& data);
+  void addMaskedObject(Collection& collection, VPackBuilder& builder,
+                       std::vector<std::string>& path, VPackSlice const& data);
+  void addMasked(Collection& collection, VPackBuilder& builder,
+                 VPackSlice const& data);
+  void addMasked(Collection& collection, basics::StringBuffer&,
+                 VPackSlice const& data);
 
  private:
   std::map<std::string, Collection> _collections;

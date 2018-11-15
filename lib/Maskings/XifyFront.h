@@ -31,6 +31,11 @@ class XifyFront : public MaskingFunction {
  public:
   XifyFront(int64_t length) : _length((uint64_t)length){};
 
+  VPackValue mask(bool) const override;
+  VPackValue mask(std::string const&, std::string& buffer) const override;
+  VPackValue mask(int64_t) const override;
+  VPackValue mask(double) const override;
+
  private:
   uint64_t _length;
 };
