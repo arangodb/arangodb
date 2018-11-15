@@ -867,7 +867,7 @@ bool SynchronizeShard::first() {
 
       ResultT<TRI_voc_tick_t> tickResult = catchupWithReadLock(ep, database, *collection, clientId,
           shard, leader, lastTick, builder);
-      if (!res.ok()) {
+      if (!tickResult.ok()) {
         LOG_TOPIC(INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(tickResult);
         return false;
