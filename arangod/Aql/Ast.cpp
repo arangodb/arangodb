@@ -2144,6 +2144,10 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
+  auto preVisitor = [&result](AstNode const* node) -> bool {
+    return !node->isConstant();
+  };
+  
   auto visitor = [&result](AstNode const* node) {
     if (node == nullptr) {
       return;
@@ -2163,7 +2167,7 @@ void Ast::getReferencedVariables(AstNode const* node,
     }
   };
 
-  traverseReadOnly(node, visitor);
+  traverseReadOnly(node, preVisitor, visitor);
 }
 
 /// @brief count how many times a variable is referenced in an expression

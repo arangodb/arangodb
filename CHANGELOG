@@ -1,6 +1,25 @@
 devel
 -----
 
+* fix for supervision, which started failing servers using old transient store
+
+* do not create `_routing` collection for new installations/new databases, 
+  as it is not needed anymore. Redirects to the web interface's login screen, which 
+  were previously handled by entries in the `_routing` collection are now handled
+  from the responsible REST action handler directly
+
+  Existing `_routing` collections will not be touched as they may contain other
+  entries as well, and will continue to work.
+
+* do not create `_modules` collection for new databases/installations
+
+  `_modules` is only needed for custom modules, and in case a custom
+  module is defined via `defineModule`, the _modules collection will
+  be created lazily automatically.
+
+  Existing modules in existing `_modules` collections will remain
+  functional even after this change
+
 * fixed Foxx queues not retrying jobs with infinite `maxFailures`
 
 * force connection timeout to be 7 seconds to allow libcurl time to retry lost DNS

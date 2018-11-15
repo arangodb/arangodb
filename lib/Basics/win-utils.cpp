@@ -95,9 +95,9 @@ static void InvalidParameterHandler(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   char buf[1024] = "";
   snprintf(buf, 1023,
-           " Expression: %ls Function: %ls File: %ls Line: %ld",
-           expression, function, file, line);
-  buf[1024] = '\0';
+           "Expression: %ls Function: %ls File: %ls Line: %d",
+           expression, function, file, (int) line);
+  buf[1023] = '\0';
 #endif
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
