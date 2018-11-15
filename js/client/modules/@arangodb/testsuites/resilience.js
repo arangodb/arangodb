@@ -51,6 +51,7 @@ function resilience (options) {
   options.cluster = true;
   options.propagateInstanceInfo = true;
   if (options.test !== undefined) {
+    // remove non ascii characters from our working directory:
     //                                       < A                           > Z && < a                   > z
     suiteName += '_' + options.test.replace(/[\x00-\x40]/g, "_").replace(/[\x5B-\x60]/g, "_").replace(/[\x7B-\xFF]/g, "_");
   }
