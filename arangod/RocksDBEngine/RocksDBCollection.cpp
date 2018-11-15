@@ -714,10 +714,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
     
     guard.fire(); // remove blocker
-
-    TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine->settingsManager()->sync(false);
-    }
     
     if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
