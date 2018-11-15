@@ -47,15 +47,22 @@ For example:
         "type": "full",
         "maskings": [
           {
-            "path": "person.name",
+            "path": "name",
+            "type": "xify_front",
+            "length": 2
+          },
+          {
+            "path": "security_id",
             "type": "xify_front",
             "length": 2
           }
         ]
-        }
+      }
     }
 
 In the example the collection "private" is completely ignored. Only the
 structure of the collection "log" is dump, but not the data itself.
-The collection "person" is dumped completed but masking the "name" field.
+The collection "person" is dumped completed but masking the "name" field when
+it occurs on the to-level. It masks the field "security_id" anywhere in the
+document.
 
