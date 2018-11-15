@@ -497,6 +497,10 @@ ExecutionPlan* Query::preparePlan() {
 
     _ast->validateAndOptimize();
 
+    if(!trx->transactionContextPtr()->getParentTransaction()){
+      trx->addHint(transaction::Hints::Hint::FROM_AQL);
+    }
+
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
     Result res = _trx->begin();

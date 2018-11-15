@@ -277,7 +277,7 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
 
   // Indexing can only be disabled for non-unique indexes as they
   // do not require an internal get after the removal
-  auto guard = DisableIndexingOnRocksDBTrxGuard(mthd, !_unique);
+  auto guard = DisableIndexingOnRocksDBTrxGuard(mthd, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_AQL));
 
   Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
