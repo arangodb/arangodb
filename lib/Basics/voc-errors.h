@@ -435,6 +435,9 @@
 ///   the result is still unknown.
 /// - 1496: @LIT{not a leader}
 ///   Will be raised when an operation is sent to a non-leading server.
+/// - 1499: @LIT{could not drop collection in plan}
+///   Will be raised when a coordinator in a cluster cannot drop a collection
+///   entry in the Plan hierarchy in the agency.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2591,6 +2594,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_NOT_LEADER                                      (1496)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1499: ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION
+///
+/// could not drop collection in plan
+///
+/// Will be raised when a coordinator in a cluster cannot drop a collection
+/// entry in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION                       (1499)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
