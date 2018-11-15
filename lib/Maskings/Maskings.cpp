@@ -103,7 +103,6 @@ bool Maskings::shouldDumpStructure(std::string const& name) {
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
     return false;
   }
 
@@ -121,7 +120,6 @@ bool Maskings::shouldDumpData(std::string const& name) {
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
     return false;
   }
 
@@ -133,4 +131,18 @@ bool Maskings::shouldDumpData(std::string const& name) {
     case CollectionSelection::STRUCTURE:
       return false;
   }
+}
+
+void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
+                    basics::StringBuffer& result) {
+  result.clear();
+
+  auto const itr = _collections.find(name);
+
+  if (itr == _collections.end()) {
+    result.copy(data);
+    return;
+  }
+
+  result.reserve(data.length());
 }

@@ -227,13 +227,21 @@ bool isIgnoredHiddenEnterpriseCollection(
 arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
                                  arangodb::ManagedDirectory::File& file,
                                  arangodb::basics::StringBuffer const& body) {
-  file.write(body.c_str(), body.length());
+  arangodb::basics::StringBuffer masked(1, false);
+  arangodb::basics::StringBuffer const* result = &body;
+
+  if (jobData.maskings != nullptr) {
+    jobData.maskings->mask(jobData.name, body, masked);
+    result = &masked;
+  }
+  
+  file.write(result->c_str(), result->length());
 
   if (file.status().fail()) {
     return {TRI_ERROR_CANNOT_WRITE_FILE};
   } 
 
-  jobData.stats.totalWritten += static_cast<uint64_t>(body.length());
+  jobData.stats.totalWritten += static_cast<uint64_t>(result->length());
 
   return {TRI_ERROR_NO_ERROR};
 }

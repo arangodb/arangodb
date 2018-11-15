@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/StringBuffer.h"
 #include "Maskings/Collection.h"
 #include "Maskings/ParseResult.h"
 
@@ -63,6 +64,8 @@ class Maskings {
  public:
   bool shouldDumpStructure(std::string const& name);
   bool shouldDumpData(std::string const& name);
+  void mask(std::string const& name, basics::StringBuffer const& data,
+            basics::StringBuffer& result);
 
  private:
   ParseResult<Maskings> parse(VPackSlice const&);
