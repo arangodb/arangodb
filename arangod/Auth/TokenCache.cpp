@@ -173,31 +173,28 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
 
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     std::string const& jwt) {
-  try {
-    // note that we need the write lock here because it is an LRU
-    // cache. reading from it will move the read entry to the start of
-    // the cache's linked list. so acquiring just a read-lock is
-    // insufficient!!
+  // note that we need the write lock here because it is an LRU
+  // cache. reading from it will move the read entry to the start of
+  // the cache's linked list. so acquiring just a read-lock is
+  // insufficient!!
+  {
     WRITE_LOCKER(writeLocker, _jwtLock);
     // intentionally copy the entry from the cache
-    auth::TokenCache::Entry const& entry = _jwtCache.get(jwt);
-    if (entry.expired()) {
-      try {
+    auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
+    if (entry != nullptr) {
+      // would have thrown if not found
+      if (entry->expired()) {
         _jwtCache.remove(jwt);
-      } catch (std::range_error const&) {
+        LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        return auth::TokenCache::Entry::Unauthenticated();
       }
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
-      return auth::TokenCache::Entry::Unauthenticated();
+      if (_userManager != nullptr) {
+        // LDAP rights might need to be refreshed
+        _userManager->refreshUser(entry->username());
+      }
+      return *entry;
     }
-    if (_userManager != nullptr) {
-      // LDAP rights might need to be refreshed
-      _userManager->refreshUser(entry.username());
-    }
-    return entry;
-  } catch (std::range_error const&) {
-    // mop: not found
   }
-
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
@@ -215,13 +212,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  auth::TokenCache::Entry entry = validateJwtBody(body);
-  if (!entry._authenticated) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt body " << body;
-    return auth::TokenCache::Entry::Unauthenticated();
-  }
-
   std::string const message = header + "." + body;
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
@@ -229,10 +219,17 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
         << _jwtSecret;
     return auth::TokenCache::Entry::Unauthenticated();
   }
+  
+  auth::TokenCache::Entry newEntry = validateJwtBody(body);
+  if (!newEntry._authenticated) {
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    << "Couldn't validate jwt body " << body;
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
 
   WRITE_LOCKER(writeLocker, _jwtLock);
-  _jwtCache.put(jwt, entry);
-  return entry;
+  _jwtCache.put(jwt, newEntry);
+  return newEntry;
 }
 
 std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(

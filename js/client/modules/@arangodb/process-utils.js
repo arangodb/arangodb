@@ -375,8 +375,13 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 }
 
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether process does bad on the wintendo
+// //////////////////////////////////////////////////////////////////////////////
+
 function runProcdump (options, instanceInfo, rootDir, pid) {
   let procdumpArgs = [ ];
+  let dumpFile = fs.join(rootDir, 'core_' + pid + '.dmp');
   if (options.exceptionFilter != null) {
     procdumpArgs = [
       '-accepteula',
@@ -391,14 +396,14 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
     }
     procdumpArgs.push('-ma');
     procdumpArgs.push(pid);
-    procdumpArgs.push(fs.join(rootDir, 'core.dmp'));
+    procdumpArgs.push(dumpFile);
   } else {
     procdumpArgs = [
       '-accepteula',
       '-e',
       '-ma',
       pid,
-      fs.join(rootDir, 'core.dmp')
+      dumpFile
     ];
   }
   try {
@@ -406,11 +411,11 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
       print("Starting procdump: " + JSON.stringify(procdumpArgs));
     }
     instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    instanceInfo.coreFilePattern = dumpFile;
   } catch (x) {
     print('failed to start procdump - is it installed?');
     // throw x;
   }
-
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -470,7 +475,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   };
 
   let res = {};
-  if (platform.substr(0, 3) === 'win') {
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     res = executeExternal(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
@@ -494,11 +499,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    let instanceInfo = {
-      rootDir: rootDir,
-      pid: res.pid,
-      exitStatus: res
-    };
     print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,

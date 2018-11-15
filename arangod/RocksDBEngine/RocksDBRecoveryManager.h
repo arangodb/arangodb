@@ -49,7 +49,9 @@ class RocksDBRecoveryManager final
   void start() override;
 
   void runRecovery();
-  bool inRecovery() const;
+  bool inRecovery() const {
+    return _inRecovery.load(std::memory_order_acquire);
+  }
 
  private:
   Result parseRocksWAL();

@@ -111,6 +111,10 @@ struct Options {
   // with a Dumper (creates \uxxxx sequences)
   bool escapeUnicode = false;
 
+  // dump Object attributes in index order (true) or in "undefined"
+  // order (false). undefined order may be faster but not deterministic
+  bool dumpAttributesInIndexOrder = true;
+
   // disallow using type External (to prevent injection of arbitrary pointer
   // values as a security precaution)
   bool disallowExternals = false;

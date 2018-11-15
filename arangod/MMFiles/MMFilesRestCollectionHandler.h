@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,16 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NotifyCallback.h"
+#ifndef ARANGOD_MMFILES_MMFILES_REST_COLLECTION_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_COLLECTION_HANDLER_H 1
 
-using namespace arangodb::consensus;
+#include "RestHandler/RestCollectionHandler.h"
 
-NotifyCallback::NotifyCallback(std::function<void(bool)> const& cb) : _cb(cb) {}
+namespace arangodb {
 
-bool NotifyCallback::operator()(arangodb::ClusterCommResult* res) {
-  _cb(res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200);
-  return true;
+class MMFilesRestCollectionHandler : public arangodb::RestCollectionHandler {
+ public:
+  MMFilesRestCollectionHandler(GeneralRequest*, GeneralResponse*);
+protected:
+  Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                               velocypack::Builder& builder) override final;
+};
+
 }
+
+#endif

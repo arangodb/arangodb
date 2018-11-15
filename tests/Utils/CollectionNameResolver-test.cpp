@@ -36,51 +36,40 @@
 
 namespace {
 
-std::shared_ptr<arangodb::LogicalView> makeTestView(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool /*isNew*/,
-    uint64_t planVersion,
-    arangodb::LogicalView::PreCommitCallback const& preCommit
-  ) {
-  struct Impl: public arangodb::LogicalViewStorageEngine {
-    Impl(
-        TRI_vocbase_t& vocbase,
-        arangodb::velocypack::Slice const& info,
-        uint64_t planVersion
-    ): arangodb::LogicalViewStorageEngine(vocbase, info, planVersion) {
-    }
-    virtual arangodb::Result appendVelocyPackDetailed(
-      arangodb::velocypack::Builder&,
-      bool
-    ) const override {
-      return arangodb::Result();
-    }
-    arangodb::Result create() {
-      return LogicalViewStorageEngine::create(*this);
-    }
-    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
-    virtual void open() override {}
-    virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const&,
-      bool
-    ) override {
-      return arangodb::Result();
-    }
-    virtual bool visitCollections(
-      std::function<bool(TRI_voc_cid_t)> const&
-    ) const override {
-      return true;
-    }
-  };
+struct TestView: public arangodb::LogicalView {
+  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
+    : arangodb::LogicalView(vocbase, definition, planVersion) {
+  }
+  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder&, bool , bool) const override { return arangodb::Result(); }
+  virtual arangodb::Result drop() override { deleted(true); return vocbase().dropView(id(), true); }
+  virtual void open() override {}
+  virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const&, bool) override { return arangodb::Result(); }
+  virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+};
 
-  auto view = std::make_shared<Impl>(vocbase, info, planVersion);
+struct ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    view = vocbase.createView(definition);
 
-  return
-    (!preCommit || preCommit(std::static_pointer_cast<arangodb::LogicalView>(view)))
-    && view->create().ok()
-    ? view : nullptr;
-}
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+
+    return arangodb::Result();
+  }
+};
 
 }
 
@@ -92,6 +81,7 @@ struct CollectionNameResolverSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  ViewFactory viewFactory;
 
   CollectionNameResolverSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -123,7 +113,7 @@ struct CollectionNameResolverSetup {
       arangodb::LogicalDataSource::Type::emplace(
         arangodb::velocypack::StringRef("testViewType")
       ),
-      makeTestView
+      viewFactory
     );
   }
 
@@ -241,7 +231,7 @@ SECTION("test_getDataSource") {
   }
 
   CHECK((true == vocbase.dropCollection(collection->id(), true, 0).ok()));
-  CHECK((true == vocbase.dropView(view->id(), true).ok()));
+  CHECK((true == view->drop().ok()));
   CHECK((true == collection->deleted()));
   CHECK((true == view->deleted()));
 

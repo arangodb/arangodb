@@ -12,9 +12,9 @@ ArangoSearch is a sophisticated, integrated full-text search solution over
 a user-defined set of attributes and collections. It is the first type of
 view in ArangoDB.
 
-[ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
-[ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
+- [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
+- [ArangoSearch overview](../Views/ArangoSearch/README.md)
+- [ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation
@@ -954,6 +954,10 @@ However, streaming cursors are enabled automatically for the following parts of 
 
 * when exporting data from collections using the arangoexport binary
 * when using `db.<collection>.toArray()` from the Arango shell
+
+Please note that AQL queries consumed in a streaming fashion have their own, adjustable
+"slow query" threshold. That means the "slow query" threshold can be configured seperately for 
+regular queries and streaming queries.
 
 Native implementations
 ----------------------

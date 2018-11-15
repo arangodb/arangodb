@@ -46,6 +46,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 )
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
       _maxTotalWalSize(80 << 20),
@@ -118,6 +119,10 @@ void RocksDBOptionFeature::collectOptions(
                      " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
+  
+  options->addOption("--rocksdb.total-write-buffer-size",
+                     "maximum total size of in-memory write buffers (0 = unbounded)",
+                     new UInt64Parameter(&_totalWriteBufferSize));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -279,6 +284,11 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
+  if (_totalWriteBufferSize > 0 && _totalWriteBufferSize < 64 * 1024 * 1024) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "invalid value for '--rocksdb.total-write-buffer-size'";
+    FATAL_ERROR_EXIT();
+  }
   if (_maxBytesForLevelMultiplier <= 0.0) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
@@ -332,6 +342,7 @@ void RocksDBOptionFeature::start() {
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
                                     << " wal_dir: '" << _walDirectory << "'"
                                     << ", write_buffer_size: " << _writeBufferSize
+                                    << ", total_write_buffer_size: " << _totalWriteBufferSize
                                     << ", max_write_buffer_number: " << _maxWriteBufferNumber
                                     << ", max_total_wal_size: " << _maxTotalWalSize
                                     << ", delayed_write_rate: " << _delayedWriteRate

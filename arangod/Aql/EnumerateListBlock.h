@@ -49,7 +49,7 @@ class EnumerateListBlock final : public ExecutionBlock {
 
  private:
   // cppcheck-suppress *
-  AqlValue getAqlValue(AqlValue const&, bool& mustDestroy);
+  AqlValue getAqlValue(AqlValue const& inVarReg, size_t n, bool& mustDestroy);
 
   // cppcheck-suppress *
   void throwArrayExpectedException(AqlValue const& value);

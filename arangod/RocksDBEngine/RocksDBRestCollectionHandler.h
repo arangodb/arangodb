@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,32 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H
-#define ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_COLLECTION_HANDLER_H
+#define ARANGOD_ROCKSDB_ROCKSDB_REST_COLLECTION_HANDLER_H 1
 
-#include "Agency/AgencyCommon.h"
-#include "Cluster/ClusterComm.h"
-
-#include <velocypack/velocypack-aliases.h>
+#include "RestHandler/RestCollectionHandler.h"
 
 namespace arangodb {
-namespace consensus {
 
-class NotifyCallback : public arangodb::ClusterCommCallback {
+class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  explicit NotifyCallback(std::function<void(bool)> const&);
-
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
-  void shutdown();
-
- private:
-  std::function<void(bool)> _cb;
+  RocksDBRestCollectionHandler(GeneralRequest*, GeneralResponse*);
+protected:
+  Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                               velocypack::Builder& builder) override final;
 };
+
 }
-}  // namespace
 
 #endif

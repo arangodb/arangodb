@@ -26,6 +26,8 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Value.h"
+#include "velocypack/ValueType.h"
 #include "asm-functions.h"
 
 #include <cstdlib>

@@ -841,9 +841,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
                                  nullptr, arangodb::aql::PART_DEPENDENT);
       query.setTransactionContext(context);
 
-      auto queryResult =
-          query.executeSync(QueryRegistryFeature::QUERY_REGISTRY.load());
-
+      auto queryResult = query.executeSync(QueryRegistryFeature::registry());
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
         return OperationResult(queryResult.code);
       }

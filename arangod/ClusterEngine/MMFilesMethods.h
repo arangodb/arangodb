@@ -17,26 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
-#define ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
+#ifndef ARANGOD_CLUSTER_ENGINE_MMFILES_METHODS_H
+#define ARANGOD_CLUSTER_ENGINE_MMFILES_METHODS_H 1
 
-#include "Basics/Common.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <string>
 
 namespace arangodb {
-
-class EngineEqualityCheckFeature final : public application_features::ApplicationFeature {
- public:
-  explicit EngineEqualityCheckFeature(
-    application_features::ApplicationServer& server
-  );
-
-  void start() override final;
-};
-
-}
+namespace mmfiles {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief rotate the active journals for the collection on all DBServers
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  int rotateActiveJournalOnAllDBServers(std::string const& dbname,
+                                        std::string const& collname);
+}}
 
 #endif

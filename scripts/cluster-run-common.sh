@@ -21,6 +21,8 @@ function help() {
   echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
   echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
   echo "  --rr                    Run arangod with rr (true|false       default: false)"
+  echo "  --cluster-init          Use cluster-init dir (default: false)"
+  echo "  --auto-upgrade          Use for upgrade      (default: false)"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -119,6 +121,13 @@ while [[ -n "$1" ]]; do
       ;;
     -O|--ongoing-ports)
       ONGOING_PORTS=${2}
+      shift
+      ;;
+    --cluster-init)
+      shift
+      ;;
+    --auto-upgrade)
+      AUTOUPGRADE=${2}
       shift
       ;;
     --rr)

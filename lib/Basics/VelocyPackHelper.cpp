@@ -24,7 +24,6 @@
 #include "VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
@@ -165,9 +164,12 @@ void VelocyPackHelper::initialize() {
   CustomTypeHandler.reset(new DefaultCustomTypeHandler);
 
   VPackOptions::Defaults.customTypeHandler = CustomTypeHandler.get();
-  VPackOptions::Defaults.escapeUnicode = false;  // false here, but will be set
-                                                 // when converting to JSON for
-                                                 // HTTP xfer
+
+  // false here, but will be set when converting to JSON for HTTP xfer
+  VPackOptions::Defaults.escapeUnicode = false;  
+  
+  // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted order)
+  VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(
@@ -693,7 +695,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_TRACKED_CREATE_FILE(tmp.c_str(),
+  int fd = TRI_CREATE(tmp.c_str(),
                       O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
@@ -705,7 +707,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   }
 
   if (!PrintVelocyPack(fd, slice, true)) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write to json file '" << tmp
              << "': " << TRI_LAST_ERROR_STR;
@@ -717,7 +719,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot sync saved json '" << tmp
                << "': " << TRI_LAST_ERROR_STR;
@@ -726,7 +728,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_TRACKED_CLOSE_FILE(fd);
+  int res = TRI_CLOSE(fd);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);

@@ -28,7 +28,7 @@ using namespace arangodb::application_features;
 namespace arangodb {
 
 std::atomic<traverser::TraverserEngineRegistry*>
-    TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY{nullptr};
+  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY{nullptr};
 
 TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
     application_features::ApplicationServer& server
@@ -49,13 +49,13 @@ void TraverserEngineRegistryFeature::validateOptions(
 void TraverserEngineRegistryFeature::prepare() {
   // create the engine registery
   _engineRegistry.reset(new traverser::TraverserEngineRegistry());
-  TRAVERSER_ENGINE_REGISTRY.store(_engineRegistry.get());
+  TRAVERSER_ENGINE_REGISTRY.store(_engineRegistry.get(), std::memory_order_release);
 }
 void TraverserEngineRegistryFeature::start() {
 }
 
 void TraverserEngineRegistryFeature::unprepare() {
-  TRAVERSER_ENGINE_REGISTRY.store(nullptr);
+  TRAVERSER_ENGINE_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
 } // arangodb

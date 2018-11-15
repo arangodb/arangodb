@@ -4,6 +4,13 @@
 
 @RESTHEADER{POST /_api/traversal,executes a traversal}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+It is considered as deprecated from version 3.4.0 on.
+It is superseded by AQL graph traversal.
+{% endhint %}
+
 @RESTDESCRIPTION
 Starts a traversal starting from a given vertex and following.
 edges contained in a given edgeCollection. The request must

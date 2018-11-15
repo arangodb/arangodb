@@ -134,9 +134,9 @@ class V8ClientConnection {
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
   
+  std::mutex _lock;
   int _lastHttpReturnCode;
   std::string _lastErrorMessage;
-
   std::string _version;
   std::string _mode;
   

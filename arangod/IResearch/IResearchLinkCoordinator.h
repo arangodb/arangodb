@@ -25,7 +25,8 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
 #include "Indexes/Index.h"
-#include "IResearchLinkMeta.h"
+#include "ClusterEngine/ClusterIndex.h"
+#include "IResearch/IResearchLinkMeta.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -36,7 +37,7 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final: public arangodb::Index {
+class IResearchLinkCoordinator final: public arangodb::ClusterIndex {
  public:
   DECLARE_SHARED_PTR(Index);
 
@@ -63,8 +64,6 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   bool operator!=(IResearchLinkMeta const& meta) const noexcept {
     return !(*this == meta);
   }
-
-  virtual void afterTruncate() override {}
 
   virtual void batchInsert(
     transaction::Methods* trx,

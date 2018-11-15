@@ -1311,9 +1311,9 @@ compound_value:
 array:
     T_ARRAY_OPEN {
       auto node = parser->ast()->createNodeArray();
-      parser->pushStack(node);
+      parser->pushArray(node);
     } optional_array_elements T_ARRAY_CLOSE {
-      $$ = static_cast<AstNode*>(parser->popStack());
+      $$ = parser->popArray();
     }
   ;
 

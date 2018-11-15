@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategy.h"
+#include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -40,22 +41,22 @@ using namespace arangodb;
 
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<size_t>(info, "numberOfShards", 1)),
+      _numberOfShards(basics::VelocyPackHelper::readNumericValue<size_t>(info, StaticStrings::NumberOfShards, 1)),
       _replicationFactor(1),
-      _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, "distributeShardsLike", "")),
+      _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike, "")),
       _avoidServers(),
       _shardKeys(),
       _shardIds(new ShardMap()),
       _shardingStrategy() {
 
-  bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, "isSmart", false);
+  bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
 
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
     _numberOfShards = 0;
   }
 
-  VPackSlice shardKeysSlice = info.get("shardKeys");
+  VPackSlice shardKeysSlice = info.get(StaticStrings::ShardKeys);
   if (ServerState::instance()->isCoordinator()) {
     if ((_numberOfShards == 0 && !isSmart) || _numberOfShards > 1000) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -63,7 +64,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
       
-  VPackSlice v = info.get("numberOfShards");
+  VPackSlice v = info.get(StaticStrings::NumberOfShards);
   if (!v.isNone() && !v.isNumber() && !v.isNull()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid number of shards");
@@ -86,7 +87,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
 
-  auto replicationFactorSlice = info.get("replicationFactor");
+  auto replicationFactorSlice = info.get(StaticStrings::ReplicationFactor);
   if (!replicationFactorSlice.isNone()) {
     bool isError = true;
     if (replicationFactorSlice.isNumber()) {
@@ -175,9 +176,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       }
     }
   }
-
+  
   // set the sharding strategy
-  _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->fromVelocyPack(info, this);
+  if (!ServerState::instance()->isRunningInCluster()) {
+    // shortcut, so we do not need to set up the whole application server for testing
+    _shardingStrategy = std::make_unique<ShardingStrategyNone>();
+  } else {
+    _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->fromVelocyPack(info, this);
+  }
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
@@ -214,7 +220,7 @@ LogicalCollection* ShardingInfo::collection() const {
 }
 
 void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
-  result.add("numberOfShards", VPackValue(_numberOfShards));
+  result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
   result.add(VPackValue("shards"));
   result.openObject();
@@ -234,9 +240,9 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
   result.close();  // shards
 
   if (isSatellite()) {
-    result.add("replicationFactor", VPackValue("satellite"));
+    result.add(StaticStrings::ReplicationFactor, VPackValue("satellite"));
   } else {
-    result.add("replicationFactor", VPackValue(_replicationFactor));
+    result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }
 
   if (!_distributeShardsLike.empty() &&
@@ -245,16 +251,16 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
     if (translateCids) {
       CollectionNameResolver resolver(_collection->vocbase());
 
-      result.add("distributeShardsLike",
+      result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
                          distributeShardsLike())))));
     } else {
-      result.add("distributeShardsLike", VPackValue(distributeShardsLike()));
+      result.add(StaticStrings::DistributeShardsLike, VPackValue(distributeShardsLike()));
     }
   }
 
-  result.add(VPackValue("shardKeys"));
+  result.add(VPackValue(StaticStrings::ShardKeys));
   result.openArray();
 
   for (auto const& key : _shardKeys) {
@@ -281,7 +287,8 @@ std::string ShardingInfo::distributeShardsLike() const {
 
 void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo const* other) {
   if (_shardKeys.size() != other->shardKeys().size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot distribute shards like a collection with a different number of shard key attributes");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot distribute shards like "
+                                   "a collection with a different number of shard key attributes");
   }
 
   if (!usesSameShardingStrategy(other)) {

@@ -51,6 +51,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -685,8 +686,6 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
-  auto views = _vocbase.views(); // ci does not store links in the view objects
-
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
@@ -714,12 +713,18 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
   resultBuilder.close();  // collections
   resultBuilder.add("views", VPackValue(VPackValueType::Array));
-  for (auto const& view : views) {
-    resultBuilder.openObject();
-    view->toVelocyPack(resultBuilder, /*details*/true, /*forPersistence*/false);
-    resultBuilder.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
-    resultBuilder.close();
-  }
+    LogicalView::enumerate(
+      _vocbase,
+      [&resultBuilder](LogicalView::ptr const& view)->bool {
+        if (view) {
+          resultBuilder.openObject();
+            view->properties(resultBuilder, true, false); // details, !forPersistence because on restore any datasource ids will differ, so need an end-user representation
+          resultBuilder.close();
+        }
+
+        return true;
+      }
+    );
   resultBuilder.close();  // views
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
@@ -1218,13 +1223,7 @@ Result RestReplicationHandler::parseBatch(
 
         // Put into array of all parsed markers:
         allMarkers.add(builder.slice());
-        auto it = latest.find(key);
-        if (it != latest.end()) {
-          // Already found, overwrite:
-          it->second = currentPos;
-        } else {
-          latest.emplace(std::make_pair(key, currentPos));
-        }
+        latest[key] = currentPos;
         ++currentPos;
       }
 
@@ -1302,7 +1301,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
@@ -1366,16 +1365,35 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     OperationResult opRes =
         trx.remove(collectionName, oldBuilder.slice(), options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not delete " << oldBuilder.slice().length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/deleted "
+        << oldBuilder.slice().length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not delete documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1430,15 +1448,34 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.isRestore = true;
     options.waitForSync = false;
     options.overwrite = true;
+    double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not insert " << requestSlice.length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/inserted "
+        << requestSlice.length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1484,15 +1521,34 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    double startTime = TRI_microtime();
     opRes = trx.replace(collectionName, builder.slice(), options);
+    double duration = TRI_microtime() - startTime;
     if (opRes.fail()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER)
+        << "Could not replace " << builder.slice().length()
+        << " documents for restore: "
+        << opRes.result.errorMessage();
       return opRes.result;
     }
+    if (duration > 30) {
+      LOG_TOPIC(INFO, Logger::PERFORMANCE) << "Restored/replaced "
+        << builder.slice().length() << " documents in time: " << duration
+        << " seconds.";
+    }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception: "
+      << ex.what();
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception: "
+      << ex.what();
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC(WARN, Logger::CLUSTER)
+      << "Could not replace documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -1697,7 +1753,6 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       std::to_string(col->id()),
       idxDef,
       true,
-      arangodb::Index::Compare,
       tmp,
       errorMsg,
       cluster->indexCreationTimeout()
@@ -1729,7 +1784,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
     return;
   }
 
-  bool force = _request->parsedValue<bool>("force", false);
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
   auto nameSlice = slice.get(StaticStrings::DataSourceName);
   auto typeSlice = slice.get(StaticStrings::DataSourceType);
@@ -1741,36 +1795,50 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
     << nameSlice.copyString();
-  auto view = _vocbase.lookupView(nameSlice.copyString());
 
-  if (view) {
-    if (overwrite) {
-      Result res = _vocbase.dropView(view->id(), /*dropSytem*/force);
+  try {
+    CollectionNameResolver resolver(_vocbase);
+    auto view = resolver.getView(nameSlice.toString());
 
-      if (res.fail()) {
+    if (view) {
+      if (!overwrite) {
+        generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
+        return;
+      }
+
+      auto res = view->drop();
+
+      if (!res.ok()) {
         generateError(res);
 
         return;
       }
-    } else {
-      generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    }
+
+    auto res = LogicalView::create(view, _vocbase, slice); // must create() since view was drop()ed
+
+    if (!res.ok()) {
+      generateError(res);
 
       return;
     }
-  }
 
-  try {
-    view = _vocbase.createView(slice);
     if (view == nullptr) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "problem creating view");
+
       return;
     }
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+
+    return;
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
+
+    return;
   }
 
   VPackBuilder result;

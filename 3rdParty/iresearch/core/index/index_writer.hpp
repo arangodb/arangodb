@@ -461,7 +461,6 @@ class IRESEARCH_API index_writer:
   ////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
     std::set<const segment_meta*>& candidates,
-    const directory& dir, // FIXME remove
     const index_meta& meta,
     const consolidating_segments_t& consolidating_segments
   )> consolidation_policy_t;
@@ -494,13 +493,17 @@ class IRESEARCH_API index_writer:
   /// @param policy the speicified defragmentation policy
   /// @param codec desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///                 callback returns false then consolidation is aborted
   /// @note for deffered policies during the commit stage each policy will be
   ///       given the exact same index_meta containing all segments in the
   ///       commit, however, the resulting acceptor will only be segments not
   ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
   bool consolidate(
-    const consolidation_policy_t& policy, format::ptr codec = nullptr
+    const consolidation_policy_t& policy,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -517,9 +520,15 @@ class IRESEARCH_API index_writer:
   /// @param reader the index reader to import 
   /// @param desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///        callback returns false then consolidation is aborted
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
-  bool import(const index_reader& reader, format::ptr codec = nullptr);
+  bool import(
+    const index_reader& reader,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
+  );
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer
@@ -721,7 +730,7 @@ class IRESEARCH_API index_writer:
     size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
-    segment_meta writer_meta_; // the segment_meta this writer was initialized with
+    index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
     DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator)
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator);

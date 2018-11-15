@@ -278,6 +278,82 @@ AqlValue AqlValue::at(transaction::Methods* trx,
   return AqlValue(AqlValueHintNull());
 }
 
+/// @brief get the (array) element at position 
+AqlValue AqlValue::at(transaction::Methods* trx,
+                      int64_t position, size_t n, bool& mustDestroy, 
+                      bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+      doCopy = false;
+    // intentionally falls through
+    case VPACK_INLINE:
+    // intentionally falls through
+    case VPACK_MANAGED_SLICE:
+    // intentionally falls through
+    case VPACK_MANAGED_BUFFER: {
+      VPackSlice s(slice());
+      if (s.isArray()) {
+        if (position < 0) {
+          // a negative position is allowed
+          position = static_cast<int64_t>(n) + position;
+        }
+        if (position >= 0 && position < static_cast<int64_t>(n)) {
+          if (doCopy) {
+            mustDestroy = true;
+            return AqlValue(s.at(position));
+          }
+          // return a reference to an existing slice
+          return AqlValue(s.at(position).begin());
+        }
+      }
+      // intentionally falls through
+      break;
+    }
+    case DOCVEC: {
+      if (position < 0) {
+        // a negative position is allowed
+        position = static_cast<int64_t>(n) + position;
+      }
+      if (position >= 0 && position < static_cast<int64_t>(n)) {
+        // only look up the value if it is within array bounds
+        size_t total = 0;
+        for (auto const& it : *_data.docvec) {
+          if (position < static_cast<int64_t>(total + it->size())) {
+            // found the correct vector
+            if (doCopy) {
+              mustDestroy = true;
+              return it
+                  ->getValueReference(static_cast<size_t>(position - total), 0)
+                  .clone();
+            }
+            return it->getValue(static_cast<size_t>(position - total), 0);
+          }
+          total += it->size();
+        }
+      }
+      // intentionally falls through
+      break;
+    }
+    case RANGE: {
+      if (position < 0) {
+        // a negative position is allowed
+        position = static_cast<int64_t>(n) + position;
+      }
+
+      if (position >= 0 && position < static_cast<int64_t>(n)) {
+        // only look up the value if it is within array bounds
+        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
+      }
+      // intentionally falls through
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(AqlValueHintNull());
+}
+
 /// @brief get the _key attribute from an object/document
 AqlValue AqlValue::getKeyAttribute(transaction::Methods* /*trx*/,
                                    bool& mustDestroy, bool doCopy) const {
@@ -416,6 +492,51 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* /*trx*/,
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractToFromDocument(s);
+        if (!found.isNone()) {
+          if (doCopy) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // intentionally falls through
+      break;
+    }
+    case DOCVEC:
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief get the (object) element by name
+AqlValue AqlValue::get(transaction::Methods* trx,
+                       arangodb::velocypack::StringRef const& name, bool& mustDestroy,
+                       bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+      doCopy = false;
+    // intentionally falls through
+    case VPACK_INLINE:
+    // intentionally falls through
+    case VPACK_MANAGED_SLICE:
+    // intentionally falls through
+    case VPACK_MANAGED_BUFFER: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found(s.get(name));
+        if (found.isCustom()) {
+          // _id needs special treatment
+          mustDestroy = true;
+          return AqlValue(trx->extractIdString(s));
+        }
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
@@ -724,57 +845,6 @@ size_t AqlValue::docvecSize() const {
     s += it->size();
   }
   return s;
-}
-
-/// @brief construct a V8 value as input for the expression execution in V8
-/// only construct those attributes that are needed in the expression
-v8::Handle<v8::Value> AqlValue::toV8Partial(
-    v8::Isolate* isolate, transaction::Methods* trx,
-    std::unordered_set<std::string> const& attributes) const {
-  AqlValueType t = type();
-
-  if (t == DOCVEC || t == RANGE) {
-    // cannot make use of these types
-    return v8::Null(isolate);
-  }
-
-  VPackOptions* options = trx->transactionContext()->getVPackOptions();
-  VPackSlice s(slice());
-
-  if (s.isObject()) {
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-    // only construct those attributes needed
-    size_t left = attributes.size();
-
-    // we can only have got here if we had attributes
-    TRI_ASSERT(left > 0);
-
-    // iterate over all the object's attributes
-    for (auto const& it : VPackObjectIterator(s, false)) {
-      // check if we need to render this attribute
-      auto it2 = attributes.find(it.key.copyString());
-
-      if (it2 == attributes.end()) {
-        // we can skip the attribute
-        continue;
-      }
-
-      result->ForceSet(TRI_V8_STD_STRING(isolate, (*it2)),
-                       TRI_VPackToV8(isolate, it.value, options, &s));
-
-      if (--left == 0) {
-        // we have rendered all required attributes
-        break;
-      }
-    }
-
-    // return partial object
-    return result;
-  }
-
-  // fallback
-  return TRI_VPackToV8(isolate, s, options);
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8

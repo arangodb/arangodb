@@ -125,7 +125,7 @@ bool resolveRequestContext(GeneralRequest& req) {
   if (!guard) {
     return false;
   }
-  
+
   // the vocbase context is now responsible for releasing the vocbase
   req.setRequestContext(guard.get(), true);
   guard.release();
@@ -138,7 +138,6 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -214,7 +213,11 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
-        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        if (_auth->userManager() != nullptr) {
+          lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        } else {
+          lvl = auth::Level::RW;
+        }
       }
       if (lvl == auth::Level::NONE) {
         addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
@@ -231,7 +234,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
-  const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
+  rest::ResponseCode const code = GeneralCommTask::canAccessPath(req);
   if (code == rest::ResponseCode::UNAUTHORIZED) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                      req.contentTypeResponse(), req.messageId(),
@@ -354,19 +357,17 @@ void GeneralCommTask::executeRequest(
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
   MUTEX_LOCKER(locker, _statisticsMutex);
 
-  auto iter = _statisticsMap.find(id);
-
-  if (iter == _statisticsMap.end()) {
-    if (stat != nullptr) {
-      _statisticsMap.emplace(std::make_pair(id, stat));
+  if (stat == nullptr) {
+    auto it = _statisticsMap.find(id);
+    if (it != _statisticsMap.end()) {
+      it->second->release();
+      _statisticsMap.erase(it);
     }
   } else {
-    iter->second->release();
-
-    if (stat != nullptr) {
-      iter->second = stat;
-    } else {
-      _statisticsMap.erase(iter);
+    auto result = _statisticsMap.insert({id, stat});
+    if (!result.second) {
+      result.first->second->release();
+      result.first->second = stat;
     }
   }
 }
@@ -435,10 +436,10 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  auto const lane = handler->lane();
+  auto const prio = handler->priority();
   auto self = shared_from_this();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(PriorityRequestLane(lane), [self, this, handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(prio, [self, this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock,
                           std::move(handler));
   });
@@ -460,7 +461,7 @@ void GeneralCommTask::handleRequestDirectly(
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   auto self = shared_from_this();
-  handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
+  handler->runHandler([self, this](rest::RestHandler* handler) {
 
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
@@ -483,7 +484,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(
-        PriorityRequestLane(handler->lane()), [self, handler] {
+          handler->priority(), [self, handler] {
           handler->runHandler([](RestHandler* h) {
             GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
           });
@@ -491,7 +492,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(
-      PriorityRequestLane(handler->lane()),
+        handler->priority(),
         [self, handler] { handler->runHandler([](RestHandler*) {}); });
   }
 }

@@ -289,6 +289,12 @@ void RocksDBEngine::validateOptions(
         << " supported on this platform";
   }
 #endif
+  
+  if (_pruneWaitTimeInitial < 10) {
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    << "consider increasing the value for --rocksdb.wal-file-timeout-initial. "
+    << "Replication clients might have trouble to get in sync";
+  }
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -494,6 +500,10 @@ void RocksDBEngine::start() {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
+  
+  if (opts->_totalWriteBufferSize > 0) {
+    _options.db_write_buffer_size = opts->_totalWriteBufferSize;
+  }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -602,6 +612,7 @@ void RocksDBEngine::start() {
       }
     }
   }
+  
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
@@ -1393,17 +1404,22 @@ Result RocksDBEngine::createView(
   RocksDBLogValue logValue = RocksDBLogValue::ViewCreate(vocbase.id(), id);
 
   VPackBuilder props;
+
   props.openObject();
-  view.toVelocyPack(props, true, true);
+    view.properties(props, true, true);
   props.close();
+
   RocksDBValue const value = RocksDBValue::View(props.slice());
 
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+
   auto res = _db->Write(wo, &batch);
+
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
+
   return rocksutils::convertStatus(res);
 }
 
@@ -1417,7 +1433,7 @@ arangodb::Result RocksDBEngine::dropView(
   VPackBuilder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   auto logValue =
@@ -1463,11 +1479,13 @@ Result RocksDBEngine::changeView(
   }
 
   RocksDBKey key;
+
   key.constructView(vocbase.id(), view.id());
 
   VPackBuilder infoBuilder;
+
   infoBuilder.openObject();
-  view.toVelocyPack(infoBuilder, true, true);
+    view.properties(infoBuilder, true, true);
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1476,14 +1494,18 @@ Result RocksDBEngine::changeView(
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   rocksdb::Status s;
+
   s = batch.PutLogData(log.slice());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
+
   s = batch.Put(RocksDBColumnFamily::definitions(),
             key.string(), value.string());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
@@ -1889,9 +1911,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      auto const view = LogicalView::create(*vocbase, it, false);
+      LogicalView::ptr view;
+      auto res = LogicalView::instantiate(view, *vocbase, it);
 
-      if (!view) {
+      if (!res.ok() || !view) {
         auto const message = "failed to instantiate view '" + name + "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);

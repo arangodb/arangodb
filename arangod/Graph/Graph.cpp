@@ -242,12 +242,11 @@ Result Graph::removeOrphanCollection(std::string&& name) {
 }
 
 Result Graph::addOrphanCollection(std::string&& name) {
-  if (_vertexColls.find(name) != _vertexColls.end()) {
+  if (!_vertexColls.insert(name).second) {
     return TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF;
   }
   TRI_ASSERT(_orphanColls.find(name) == _orphanColls.end());
-  _vertexColls.emplace(name);
-  _orphanColls.emplace(std::move(name));
+  _orphanColls.insert(std::move(name));
   return TRI_ERROR_NO_ERROR;
 }
 

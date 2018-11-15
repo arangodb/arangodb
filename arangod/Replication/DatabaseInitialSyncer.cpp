@@ -193,8 +193,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       if (r.fail()) {
         return r;
       }
+      
+      // enable patching of collection count for ShardSynchronization Job
+      std::string patchCount = StaticStrings::Empty;
+      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+      if (incremental && engineName == "rocksdb" && _config.applier._skipCreateDrop &&
+          _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
+          _config.applier._restrictCollections.size() == 1) {
+        patchCount = *_config.applier._restrictCollections.begin();
+      }
 
-      r = _config.batch.start(_config.connection, _config.progress);
+      r = _config.batch.start(_config.connection, _config.progress, patchCount);
       if (r.fail()) {
         return r;
       }
@@ -1027,12 +1036,8 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
   arangodb::CollectionGuard guard(&vocbase(), col->id());
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync);
+  return guard.collection()->properties(slice, false); // always a full-update
 }
 
 /// @brief determine the number of documents in a collection

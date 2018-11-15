@@ -804,7 +804,7 @@ void Agent::load() {
   >();
   arangodb::SystemDatabaseFeature::ptr vocbase =
     sysDbFeature ? sysDbFeature->use() : nullptr;
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
@@ -1397,6 +1397,12 @@ bool Agent::prepareLead() {
     // AppendEntriesRPC when we become a leader.
     MUTEX_LOCKER(tiLocker, _tiLock);
     _earliestPackage.clear();
+  }
+
+  {
+    // Clear transient for supervision start
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    _transient.clear();
   }
 
   // Key value stores

@@ -92,11 +92,11 @@
   delete global.ArangoDatabase;
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief ShapedJson stub object - only here for compatibility with 2.8
+  // / @brief ArangoQueryStreamCursor
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.ShapedJson = function () {};
-  delete global.ShapedJson;
+  exports.ArangoQueryStreamCursor = global.ArangoQueryStreamCursor;
+  delete global.ArangoQueryStreamCursor;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief dispatcherThreads
@@ -175,12 +175,20 @@
   // autoload specific modules
   exports.autoloadModules = function () {
     console.debug('autoloading actions');
-    var modules = exports.db._collection('_modules');
 
-    if (modules !== null) {
+    try {
+      let modules = exports.db._collection('_modules');
+
+      if (modules === null) {
+        // _modules is an optional collection. if it does not exist,
+        // we can simply go on and ignore it
+        console.debug('autoloading actions finished, no _modules collection found');
+        return;
+      }
+
       modules = modules.byExample({ autoload: true }).toArray();
+        
       modules.forEach(function (module) {
-
         // this module is only meant to be executed in one thread
         if (exports.threadNumber !== 0 && !module.perThread) {
           return;
@@ -189,7 +197,6 @@
         console.debug('autoloading module: %s', module.path);
 
         try {
-
           // require a module
           if (module.path !== undefined) {
             require(module.path);
@@ -206,6 +213,8 @@
           console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
         }
       });
+    } catch (err) {
+      console.error('error while loading startup modules: %s', String(err));
     }
 
     console.debug('autoloading actions finished');

@@ -175,7 +175,7 @@ SECTION("construct") {
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no options
@@ -343,7 +343,7 @@ SECTION("constructFromVPackSingleServer") {
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // missing 'viewId'
@@ -520,7 +520,7 @@ SECTION("clone") {
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
   arangodb::aql::Variable const outVariable("variable", 0);
 
   // no filter condition, no sort condition, no shards, no options
@@ -567,7 +567,7 @@ SECTION("clone") {
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
-      otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
         *node.clone(otherQuery.plan(), true, true)
@@ -596,7 +596,7 @@ SECTION("clone") {
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
-      otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -672,7 +672,7 @@ SECTION("clone") {
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
-      otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
         *node.clone(otherQuery.plan(), true, true)
@@ -701,7 +701,7 @@ SECTION("clone") {
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
-      otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -773,7 +773,7 @@ SECTION("clone") {
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
-      otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
         *node.clone(otherQuery.plan(), true, true)
@@ -805,7 +805,7 @@ SECTION("clone") {
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
-      otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -843,7 +843,7 @@ SECTION("serialize") {
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1052,7 +1052,7 @@ SECTION("collections") {
       "\"testCollection2\": { \"includeAllFields\": true }"
     "}}"
   );
-  CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+  CHECK((logicalView->properties(updateJson->slice(), true).ok()));
 
   // dummy query
   arangodb::aql::Query query(
@@ -1066,7 +1066,7 @@ SECTION("collections") {
   query.addCollection(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ);
 
   // prepare query
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
 
   arangodb::aql::Variable const outVariable("variable", 0);
 
@@ -1113,7 +1113,7 @@ SECTION("createBlockSingleServer") {
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(&query);
@@ -1188,7 +1188,7 @@ SECTION("createBlockCoordinator") {
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
-  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(&query);

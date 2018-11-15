@@ -32,6 +32,7 @@ module.isSystem = true;
 
 var ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
 var GeneralArrayCursor = require('@arangodb/arango-cursor').GeneralArrayCursor;
+const ArangoQueryStreamCursor = require('internal').ArangoQueryStreamCursor;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief parse a query and return the results
@@ -75,8 +76,10 @@ ArangoStatement.prototype.execute = function () {
     if (this._cache !== undefined) {
       opts.cache = this._cache;
     }
+    if (opts.stream) {
+      return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
+    }
   }
-
   // {json:[docs], stats:{}, profile:{}, warnings:{}, cached:true}
   var result = AQL_EXECUTE(this._query, this._bindVars, opts);
   return new GeneralArrayCursor(result.json, 0, null, result);

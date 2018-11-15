@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,6 +39,9 @@ var db = arangodb.db;
 
 function ClusterCollectionSuite () {
   'use strict';
+  
+  const cn = "UnitTestsClusterCrudRepl";
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +49,11 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      db._drop(cn);
+      // number of shards is one so the estimates behave like in the single server
+      // if the shard number is higher we could just ensure that the estimate
+      // should be between 0 and 1
+      db._create(cn, { numberOfShards: 1, replicationFactor: 1});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,44 +61,47 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop(cn);
     },
 
     testIndexEstimates : function () {
-      // index estimate only availalbe with rocksdb for skiplist
-      if (db._engine().name === 'rocksdb') {
-        var cn = "UnitTestsClusterCrudRepl";
-        // numer of shards is one so the estimages behave like in the single server
-        // if the shard number is higher we could just ensure theat the estimate
-        // should be between 0 and 1
-        var c = db._create(cn, { numberOfShards: 1, replicationFactor: 1});
+      let c = db._collection(cn);
+      
+      c.ensureIndex({type:"skiplist", fields:["foo"]});
 
-        c.ensureIndex({type:"skiplist", fields:["foo"]});
-
-        var i;
-        var indexes;
-
-        for(i=0; i < 10; ++i){
-          c.save({foo: i});
-        }
-        internal.waitForEstimatorSync(); // make sure estimates are consistent
+      for (let i = 0; i < 10; ++i) {
+        c.save({foo: i});
+      }
+      // waitForEstimatorSync does nothing in the cluster but waiting...
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes;
+      let tries = 0;
+      while (++tries < 60) {
         indexes = c.getIndexes(true);
         // if this fails, increase wait-time in ClusterEngine::waitForEstimatorSync
-        assertEqual(indexes[1].selectivityEstimate, 1);
-
-        for(i=0; i < 10; ++i){
-          c.save({foo: i});
+        if (indexes[1].selectivityEstimate >= 0.999) {
+          break;
         }
-        internal.waitForEstimatorSync(); // make sure estimates are consistent
-        indexes = c.getIndexes(true);
-        assertEqual(indexes[1].selectivityEstimate, 0.5);
-
-        db._drop(cn);
+        internal.wait(0.5, false);
       }
+
+      assertEqual(indexes[1].selectivityEstimate, 1);
+
+      for (let i = 0; i < 10; ++i) {
+        c.save({foo: i});
+      }
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+     
+      tries = 0; 
+      while (++tries < 60) {
+        indexes = c.getIndexes(true);
+        // if this fails, increase wait-time in ClusterEngine::waitForEstimatorSync
+        if (indexes[1].selectivityEstimate <= 0.501) {
+          break;
+        }
+        internal.wait(0.5, false);
+      }
+      assertEqual(indexes[1].selectivityEstimate, 0.5);
     }
 
   };

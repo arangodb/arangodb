@@ -244,13 +244,14 @@ class IRESEARCH_API numeric_token_stream final
 
    private:
     enum NumericType { NT_LONG = 0, NT_DBL, NT_INT, NT_FLOAT };
+    union value_t {
+      uint64_t i64;
+      uint32_t i32;
+    };
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     bstring data_;
-    union {
-      uint64_t i64;
-      uint32_t i32;
-    } val_;
+    value_t val_;
     NumericType type_;
     uint32_t step_;
     uint32_t shift_;
@@ -259,7 +260,7 @@ class IRESEARCH_API numeric_token_stream final
     static irs::bytes_ref value(
       bstring& buf,
       NumericType type,
-      decltype(val_) val,
+      value_t val,
       uint32_t shift
     );
   }; // numeric_term

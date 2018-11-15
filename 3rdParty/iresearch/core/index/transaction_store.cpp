@@ -24,6 +24,7 @@
 #include "composite_reader_impl.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "store/store_utils.hpp"
+#include "utils/string_utils.hpp"
 
 #include "transaction_store.hpp"
 
@@ -154,32 +155,6 @@ struct empty_seek_term_iterator: public irs::seek_term_iterator {
   }
 };
 
-class single_reader_iterator_impl final
-    : public irs::index_reader::reader_iterator_impl {
- public:
-  explicit single_reader_iterator_impl(
-      const irs::sub_reader* reader = nullptr
-  ) NOEXCEPT: reader_(reader) {
-  }
-
-  virtual void operator++() override { reader_ = nullptr; }
-
-  virtual reference operator*() override {
-    return *const_cast<irs::sub_reader*>(reader_);
-  }
-
-  virtual const_reference operator*() const override { return *reader_; }
-
-  virtual bool operator==(
-    const irs::index_reader::reader_iterator_impl& rhs
-  ) override {
-    return reader_ == static_cast<const single_reader_iterator_impl&>(rhs).reader_;
-  }
-
- private:
-  const iresearch::sub_reader* reader_;
-};
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                      store_reader implementation
 // ----------------------------------------------------------------------------
@@ -249,17 +224,19 @@ class store_reader_impl final: public irs::sub_reader {
 
   typedef std::map<irs::string_ref, term_reader_t> fields_t;
 
-  virtual index_reader::reader_iterator begin() const override;
   virtual const irs::column_meta* column(const irs::string_ref& name) const override;
   virtual irs::column_iterator::ptr columns() const override;
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override;
   using irs::sub_reader::docs_count;
   virtual uint64_t docs_count() const override { return documents_.size(); } // +1 for invalid doc if non empty
   virtual irs::doc_iterator::ptr docs_iterator() const override;
-  virtual index_reader::reader_iterator end() const override;
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;
   virtual irs::field_iterator::ptr fields() const override;
   virtual uint64_t live_docs_count() const override { return documents_.count(); }
+  virtual const sub_reader& operator[](size_t i) const override {
+    assert(!i);
+    return *this;
+  }
   virtual size_t size() const override { return 1; } // only 1 segment
 
  private:
@@ -848,14 +825,6 @@ store_reader_impl::store_reader_impl(
   }
 }
 
-irs::index_reader::reader_iterator store_reader_impl::begin() const {
-  auto itr = irs::memory::make_unique<single_reader_iterator_impl>(
-    this
-  );
-
-  return index_reader::reader_iterator(itr.release());
-}
-
 const irs::column_meta* store_reader_impl::column(
     const irs::string_ref& name
 ) const {
@@ -880,12 +849,6 @@ const irs::columnstore_reader::column_reader* store_reader_impl::column_reader(
 
 irs::doc_iterator::ptr store_reader_impl::docs_iterator() const {
   return irs::memory::make_shared<irs::bitset_doc_iterator>(documents_);
-}
-
-irs::index_reader::reader_iterator store_reader_impl::end() const {
-  auto itr = irs::memory::make_unique<single_reader_iterator_impl>();
-
-  return index_reader::reader_iterator(itr.release());
 }
 
 const irs::term_reader* store_reader_impl::field(
@@ -1066,7 +1029,7 @@ store_reader store_reader::reopen() const {
 
 void store_writer::bstring_output::ensure(size_t pos) {
   if (pos >= buf_.size()) {
-    oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
+    irs::string_utils::oversize(buf_, irs::math::roundup_power2(pos + 1)); // 2*size growth policy, +1 for offset->size
   }
 }
 

@@ -24,12 +24,16 @@
 #include "ShortStringStorage.h"
 #include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/tri-strings.h"
 
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
 ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
-    : _resourceMonitor(resourceMonitor), _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
+    : _resourceMonitor(resourceMonitor), 
+      _blockSize(blockSize), 
+      _current(nullptr), 
+      _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
 
@@ -59,6 +63,28 @@ char* ShortStringStorage::registerString(char const* p, size_t length) {
   // add NUL byte at the end
   _current[length] = '\0';
   _current += length + 1;
+
+  return position;
+}
+
+/// @brief register a short string, unescaping it
+char* ShortStringStorage::unescape(char const* p, size_t length, size_t* outLength) {
+  TRI_ASSERT(length <= maxStringLength);
+
+  if (_current == nullptr || (_current + length + 1 > _end)) {
+    allocateBlock();
+  }
+
+  TRI_ASSERT(!_blocks.empty());
+  TRI_ASSERT(_current != nullptr);
+  TRI_ASSERT(_end != nullptr);
+  TRI_ASSERT(_current + length + 1 <= _end);
+  
+  char* position = _current;
+  *outLength = TRI_UnescapeUtf8StringInPlace(_current, p, length);
+  // add NUL byte at the end
+  _current[*outLength] = '\0';
+  _current += *outLength + 1;
 
   return position;
 }

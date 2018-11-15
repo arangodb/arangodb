@@ -23,6 +23,7 @@
 #include "ClusterRestHandlers.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
+#include "ClusterEngine/ClusterRestCollectionHandler.h"
 #include "ClusterEngine/ClusterRestExportHandler.h"
 #include "ClusterEngine/ClusterRestReplicationHandler.h"
 #include "ClusterEngine/ClusterRestWalHandler.h"
@@ -31,13 +32,11 @@ using namespace arangodb;
 
 void ClusterRestHandlers::registerResources(
     rest::RestHandlerFactory* handlerFactory) {
-  
-  handlerFactory->addPrefixHandler( "/_api/export",
+  handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
+                                   RestHandlerCreator<ClusterRestCollectionHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_api/export",
                                    RestHandlerCreator<ClusterRestExportHandler>::createNoData);
-
-  handlerFactory->addPrefixHandler(
-      "/_api/replication",
+  handlerFactory->addPrefixHandler("/_api/replication",
       RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
-  
   handlerFactory->addPrefixHandler("/_admin/wal", RestHandlerCreator<ClusterRestWalHandler>::createNoData);
 }

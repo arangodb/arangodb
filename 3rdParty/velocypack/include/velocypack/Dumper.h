@@ -46,12 +46,12 @@ class Dumper {
   Dumper(Dumper const&) = delete;
   Dumper& operator=(Dumper const&) = delete;
 
-  Dumper(Sink* sink, Options const* options = &Options::Defaults)
+  explicit Dumper(Sink* sink, Options const* options = &Options::Defaults)
       : options(options), _sink(sink), _indentation(0) {
-    if (sink == nullptr) {
+    if (VELOCYPACK_UNLIKELY(sink == nullptr)) {
       throw Exception(Exception::InternalError, "Sink cannot be a nullptr");
     }
-    if (options == nullptr) {
+    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }

@@ -27,13 +27,6 @@
 #include "Basics/Endian.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
-#undef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-#ifdef TRI_UNALIGNED_ACCESS
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-#endif
-#endif
-
 namespace arangodb {
   
 namespace rocksutils {
@@ -65,71 +58,32 @@ inline double intToDouble(uint64_t i) {
 template<typename T> 
 inline T uintFromPersistentLittleEndian(char const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-  static_assert(basics::isLittleEndian(), "");
-  return *reinterpret_cast<T const*>(p);
-#else
-  T value = 0;
-  T x = 0;
-  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
-  uint8_t const* end = ptr + sizeof(T);
-  do {
-    value += static_cast<T>(*ptr++) << x;
-    x += 8;
-  } while (ptr < end);
-  return value;
-#endif 
+  T value;
+  memcpy(&value, p, sizeof(T));
+  return basics::littleToHost<T>(value);
 }
 
 template<typename T>
 inline T uintFromPersistentBigEndian(char const* p) {
-  //return basics::bigToHost(uintFromPersistentLittleEndian<T>(p));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-  return basics::bigToHost(*reinterpret_cast<T const*>(p));
-#else
-  T value = 0;
-  T x = sizeof(T) * 8;
-  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
-  uint8_t const* end = ptr + sizeof(T);
-  do {
-    x -= 8;
-    value += static_cast<T>(*ptr++) << x;
-  } while (ptr < end);
-  TRI_ASSERT(x == 0);
-  return value;
-#endif
+  T value;
+  memcpy(&value, p, sizeof(T));
+  return basics::bigToHost<T>(value);
 }
   
 template<typename T>
 inline void uintToPersistentLittleEndian(std::string& p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-  static_assert(basics::isLittleEndian(), "");
+  value = basics::hostToLittle(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));
-#else
-  size_t len = 0;
-  do {
-    p.push_back(static_cast<char>(value & 0xffU));
-    value >>= 8;
-  } while (++len < sizeof(T));
-#endif
 }
 
 template<typename T>
 inline void uintToPersistentBigEndian(std::string& p, T value) {
   //uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
   value = basics::hostToBig(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));
-#else
-  size_t len = sizeof(T) * 8;
-  do {
-    len -= 8;
-    p.push_back(static_cast<char>((value >> len) & 0xFF));
-  } while (len != 0);
-#endif
 }
 
 }  // namespace rocksutils

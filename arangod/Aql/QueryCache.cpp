@@ -243,30 +243,20 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 
   // insert entry into the cache
   uint64_t hash = e->_hash;
-  if (!_entriesByHash.emplace(hash, entry).second) {
+  auto result = _entriesByHash.insert({hash, entry});
+  if (!result.second) {
     // remove previous entry
-    auto it = _entriesByHash.find(hash);
-    TRI_ASSERT(it != _entriesByHash.end());
-    auto previous = (*it).second;
+    auto& previous = result.first->second;
     removeDatasources(previous.get());
     unlink(previous.get());
-    _entriesByHash.erase(it);
-
-    // and insert again
-    _entriesByHash.emplace(hash, entry);
+    
+    // update with the new entry
+    result.first->second = std::move(entry);
   }
 
   try {
     for (auto const& it : e->_dataSources) {
-      auto it2 = _entriesByDataSource.find(it);
-
-      if (it2 == _entriesByDataSource.end()) {
-        // no entry found for data source. now create it
-        _entriesByDataSource.emplace(it, std::unordered_set<uint64_t>{hash});
-      } else {
-        // there already was an entry for this data source
-        (*it2).second.emplace(hash);
-      }
+      _entriesByDataSource[it].emplace(hash);
     }
   } catch (...) {
     // rollback
@@ -514,16 +504,28 @@ void QueryCache::properties(VPackSlice const& properties) {
 
   v = properties.get("maxResults");
   if (v.isNumber()) {
+    int64_t value = v.getNumericValue<int64_t>();
+    if (value <= 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for maxResults");
+    }
     maxResultsCount = v.getNumericValue<size_t>();
   }
   
   v = properties.get("maxResultsSize");
   if (v.isNumber()) {
+    int64_t value = v.getNumericValue<int64_t>();
+    if (value <= 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for maxResultsSize");
+    }
     maxResultsSize = v.getNumericValue<size_t>();
   }
 
   v = properties.get("maxEntrySize");
   if (v.isNumber()) {
+    int64_t value = v.getNumericValue<int64_t>();
+    if (value <= 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for maxEntrySize");
+    }
     maxEntrySize = v.getNumericValue<size_t>();
   }
 

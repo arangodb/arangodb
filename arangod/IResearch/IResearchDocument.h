@@ -30,6 +30,7 @@
 #include "VelocyPackHelper.h"
 
 #include "search/filter.hpp"
+#include "store/data_output.hpp"
 
 NS_BEGIN(iresearch)
 
@@ -59,27 +60,26 @@ NS_END // arangodb
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-// FIXME move constants to proper place
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the delimiter used to separate jSON nesting levels when generating
 ///        flat iResearch field names
 ////////////////////////////////////////////////////////////////////////////////
-char const NESTING_LEVEL_DELIMITER = '.';
+constexpr char const NESTING_LEVEL_DELIMITER = '.';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the prefix used to denote start of jSON list offset when generating
 ///        flat iResearch field names
 ////////////////////////////////////////////////////////////////////////////////
-char const NESTING_LIST_OFFSET_PREFIX = '[';
+constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the suffix used to denote end of jSON list offset when generating
 ///        flat iResearch field names
 ////////////////////////////////////////////////////////////////////////////////
-char const NESTING_LIST_OFFSET_SUFFIX = ']';
+constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
 
 struct IResearchViewMeta; // forward declaration
+struct DocumentPrimaryKey; // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
@@ -87,10 +87,10 @@ struct IResearchViewMeta; // forward declaration
 struct Field {
   struct init_stream_t{}; // initialize stream
 
-  static void setCidValue(Field& field, TRI_voc_cid_t& cid);
-  static void setCidValue(Field& field, TRI_voc_cid_t& cid, init_stream_t);
-  static void setRidValue(Field& field, TRI_voc_rid_t& rid);
-  static void setRidValue(Field& field, TRI_voc_rid_t& rid, init_stream_t);
+  static void setCidValue(Field& field, TRI_voc_cid_t const& cid);
+  static void setCidValue(Field& field, TRI_voc_cid_t const& cid, init_stream_t);
+  static void setPkValue(Field& field, DocumentPrimaryKey const& pk);
+  static void setPkValue(Field& field, DocumentPrimaryKey const& pk, init_stream_t);
 
   Field() = default;
   Field(Field&& rhs);
@@ -110,13 +110,18 @@ struct Field {
     return *_analyzer;
   }
 
-  bool write(irs::data_output&) const noexcept {
+  bool write(irs::data_output& out) const noexcept {
+    if (!_value.null()) {
+      out.write_bytes(_value.c_str(), _value.size());
+    }
+
     return true;
   }
 
   irs::flags const* _features{ &irs::flags::empty_instance() };
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
+  irs::bytes_ref _value;
   ValueStorage _storeValues;
 }; // Field
 
@@ -235,41 +240,43 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
-class DocumentPrimaryKey {
- public:
-  static irs::string_ref const& PK(); // stored primary key column
-  static irs::string_ref const& CID(); // stored collection id column
-  static irs::string_ref const& RID(); // stored revision id column
+struct DocumentPrimaryKey : std::pair<TRI_voc_cid_t, TRI_voc_rid_t> {
+  typedef std::pair<TRI_voc_cid_t, TRI_voc_rid_t> type; // underlying PK type
+
+  static irs::string_ref const& PK() noexcept; // stored primary key column
+  static irs::string_ref const& CID() noexcept; // stored collection id column
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief decodes the specified value in a proper way into 'buf'
-  /// @return success
+  /// @brief creates a filter matching 'cid'
   ////////////////////////////////////////////////////////////////////////////////
-  static bool decode(uint64_t& buf, const irs::bytes_ref& value);
+  static irs::filter::ptr filter(TRI_voc_cid_t cid);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief encodes the specified value in a proper way
-  /// @return retuns corresponding encoded representation
-  /// @note the provided value may be modified
+  /// @brief creates a filter matching 'cid' + 'rid' pair
   ////////////////////////////////////////////////////////////////////////////////
-  static irs::bytes_ref encode(uint64_t& value);
+  static irs::filter::ptr filter(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
 
-  DocumentPrimaryKey() = default;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief reads and decodes PK from a specified buffer
+  /// @returns 'true' on success, 'false' otherwise
+  /// @note PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool read(type& value, irs::bytes_ref const& in) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates PK with properly encoded cid & rid
+  ////////////////////////////////////////////////////////////////////////////////
   DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept;
 
-  irs::string_ref const& name() const noexcept { return PK(); }
-  bool read(irs::bytes_ref const& in) noexcept;
-  bool write(irs::data_output& out) const;
-
-  TRI_voc_cid_t cid() const noexcept { return _keys[0]; }
-  void cid(TRI_voc_cid_t cid) noexcept { _keys[0] = cid; }
-
-  TRI_voc_rid_t rid() const noexcept { return _keys[1]; }
-  void rid(TRI_voc_rid_t rid) noexcept { _keys[1] = rid; }
-
- private:
-  // FIXME: define storage format (LE or BE)
-  uint64_t _keys[2]{}; // TRI_voc_cid_t + TRI_voc_rid_t
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief coverts a PK to corresponding irs::bytes_ref
+  ////////////////////////////////////////////////////////////////////////////////
+  explicit operator irs::bytes_ref() const noexcept {
+    return irs::bytes_ref(
+      reinterpret_cast<irs::byte_type const*>(this),
+      sizeof(*this)
+    );
+  }
 }; // DocumentPrimaryKey
 
 bool appendKnownCollections(

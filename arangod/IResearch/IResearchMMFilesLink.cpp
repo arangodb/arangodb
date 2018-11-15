@@ -24,7 +24,10 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/LogicalCollection.h"
 
+#include "IResearchCommon.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchLinkHelper.h"
 
@@ -59,6 +62,18 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
     #else
       auto* link = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
     #endif
+
+    // ensure loaded so that we have valid data in next check
+    if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
+      collection.load();
+    }
+    if (!collection.getPhysical()->hasAllPersistentLocalIds()) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "mmfiles collection uses pre-3.4 format and cannot be linked to an "
+          << "arangosearch view; try recreating collection and moving the "
+          << "contents to the new collection";
+      return nullptr;
+    }
 
     return link && link->init(definition) ? ptr : nullptr;
   } catch (arangodb::basics::Exception& e) {

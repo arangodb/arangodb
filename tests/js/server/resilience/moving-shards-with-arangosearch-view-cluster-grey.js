@@ -36,6 +36,7 @@ const wait = internal.wait;
 const request = require("@arangodb/request");
 const cluster = require("@arangodb/cluster");
 const supervisionState = cluster.supervisionState;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -428,7 +429,6 @@ function MovingShardsWithViewSuite (options) {
   function GETAndParseOrThrow (url) {
     let res;
     try {
-      console.warn(`GET ${url}`);
       const envelope = { method: "GET", url };
       res = request(envelope);
     } catch (err) {
@@ -448,8 +448,6 @@ function MovingShardsWithViewSuite (options) {
       error.errorMessage = `GET ${url} returned error: ${error.errorMessage}`;
       throw new arangodb.ArangoError(error);
     }
-
-    console.info(parsedBody);
 
     return parsedBody;
   }
@@ -489,7 +487,7 @@ function MovingShardsWithViewSuite (options) {
           // server.
 
           if (e instanceof arangodb.ArangoError
-            && e.errorNum === internal.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+            && e.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
             console.info(`Exception during getViewServersPerShard(): ${e}`);
 
             return;
@@ -533,9 +531,10 @@ function MovingShardsWithViewSuite (options) {
       // actual servers that have the corresponding view index
       const serversPerShard = getViewServersPerShard();
       for(const [shard, leader] of Object.entries(leadersPerShard)) {
-        assertTrue(serversPerShard[shard].has(leader),
+        assertTrue(serversPerShard.hasOwnProperty(shard)
+          && serversPerShard[shard].has(leader),
           `Expected shard ${shard} to be available on ${leader}, but it's not. `
-          + `${{leadersPerShard, serversPerShard}}`);
+          + `${JSON.stringify({ leadersPerShard, serversPerShard })}`);
       }
     });
   }
@@ -564,6 +563,8 @@ function MovingShardsWithViewSuite (options) {
             db._view(vname).drop();
           } catch (ignored) {}
           var view = db._createView(vname, "arangosearch", {});
+          assertTrue(view !== undefined, "_createView failed");
+          assertTrue(view instanceof internal.ArangoView, "_createView didn't return an ArangoView object");
           view.properties(
             {links:
               {[name]:
@@ -763,10 +764,8 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      for (var i = 0; i < c.length; ++i) {
-        v[i].drop();
-        c[i].drop();
-      }
+      v.forEach(v => v.drop());
+      c.forEach(c => c.drop());
       c = [];
       v = [];
       resetCleanedOutServers();
@@ -1041,11 +1040,15 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function MovingShardsWithViewSuite_nodata() {
-  return MovingShardsWithViewSuite({ useData: false });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsWithViewSuite({ useData: false }), derivedSuite, "_nodata");
+  return derivedSuite;
 });
 
 jsunity.run(function MovingShardsWithViewSuite_data() {
-  return MovingShardsWithViewSuite({ useData: true });
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsWithViewSuite({ useData: true }), derivedSuite, "_data");
+  return derivedSuite;
 });
 
 return jsunity.done();

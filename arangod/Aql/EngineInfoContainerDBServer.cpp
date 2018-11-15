@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -890,12 +890,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
-          auto it =
-              entry.second.vertexCollections.find(collection.second->name());
-          if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicity creates the map entry in case it does not exist
+          entry.second.vertexCollections[collection.second->name()];
         }
       }
     } else {
@@ -921,11 +917,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->name());
-          if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicitly creates the map entry in case it does not exist.
+          entry.second.vertexCollections[it->name()];
         }
       }
     }
@@ -966,7 +959,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
 
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
     ttl = registry->defaultTTL();
   }

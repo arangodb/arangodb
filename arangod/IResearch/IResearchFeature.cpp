@@ -1,4 +1,3 @@
-
 //////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -118,31 +117,72 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 }; // IResearchLogTopic
 
-arangodb::aql::AqlValue filter(
-    arangodb::aql::ExpressionContext*,
-    arangodb::transaction::Methods* ,
-    arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-    TRI_ERROR_NOT_IMPLEMENTED,
-    "Filter function is designed to be used with ArangoSearch view only"
-  );
-}
+struct Filter {
+  explicit Filter(
+      irs::string_ref const& name,
+      irs::string_ref const& args
+  ) noexcept
+    : name(name), args(args) {
+  }
 
-arangodb::aql::AqlValue scorer(
-    arangodb::aql::ExpressionContext*,
-    arangodb::transaction::Methods* ,
-    arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-    TRI_ERROR_NOT_IMPLEMENTED,
-    "Scorer function is designed to be used with ArangoSearch view only"
-  );
-}
+  arangodb::aql::AqlValue operator()(
+      arangodb::aql::ExpressionContext*,
+      arangodb::transaction::Methods* ,
+      arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+    THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "ArangoSearch filter function '%s(%s)' is designed to be used only within a corresponding SEARCH statement of ArangoSearch view."
+      " Please ensure function signature is correct.",
+      name.c_str(),
+      args.c_str()
+    );
+  }
 
-typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
-  arangodb::aql::ExpressionContext*,
-  arangodb::transaction::Methods* ,
-  arangodb::SmallVector<arangodb::aql::AqlValue> const&
-);
+  irs::string_ref name;
+  irs::string_ref args;
+}; // Filter
+
+struct Scorer {
+  explicit Scorer(
+      irs::string_ref const& name,
+      irs::string_ref const& args
+  ) noexcept
+    : name(name), args(args) {
+  }
+
+  arangodb::aql::AqlValue operator()(
+      arangodb::aql::ExpressionContext*,
+      arangodb::transaction::Methods* ,
+      arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+    THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "ArangoSearch scorer function '%s(%s)' is designed to be used only outside SEARCH statement within a context of ArangoSearch view."
+      " Please ensure function signature is correct.",
+      name.c_str(),
+      args.c_str()
+    );
+  }
+
+  irs::string_ref name;
+  irs::string_ref args;
+}; // Scorer
+
+inline void registerFilter(
+    arangodb::aql::AqlFunctionFeature& functions,
+    irs::string_ref const& name,
+    irs::string_ref const& args
+) {
+  arangodb::iresearch::addFunction(functions, {
+    name,
+    args.c_str(),
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic,
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ),
+    Filter(name, args) // function implementation (use function name as placeholder)
+  });
+}
 
 size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
   static const size_t MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
@@ -169,80 +209,26 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     ),
     [](arangodb::aql::ExpressionContext*,
        arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
-      auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
-      auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
-      return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
+      if (args.empty()) {
+        // no such input parameter. return NaN
+        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
+      } else {
+        // unsafe
+        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().begin());
+        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+      }
     }
   });
 }
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
-  arangodb::iresearch::addFunction(functions, {
-    "EXISTS",      // name
-    ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    &filter        // function implementation (use function name as placeholder)
-  });
-
-  arangodb::iresearch::addFunction(functions, {
-    "STARTS_WITH", // name
-    ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    &filter        // function implementation (use function name as placeholder)
-  });
-
-  arangodb::iresearch::addFunction(functions, {
-    "PHRASE",      // name
-    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    &filter        // function implementation (use function name as placeholder)
-  });
-
-  arangodb::iresearch::addFunction(functions, {
-    "MIN_MATCH",   // name
-    ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    &filter        // function implementation (use function name as placeholder)
-  });
-
-  arangodb::iresearch::addFunction(functions, {
-    "BOOST",       // name
-    ".,.",         // positional arguments (filter expression, boost)
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    &filter        // function implementation (use function name as placeholder)
-  });
-
-  arangodb::iresearch::addFunction(functions, {
-    "ANALYZER",    // name
-    ".,.",         // positional arguments (filter expression, analyzer)
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    &filter        // function implementation (use function name as placeholder)
-  });
+  registerFilter(functions, "EXISTS", ".|.,.");      // (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
+  registerFilter(functions, "STARTS_WITH", ".,.|."); // (attribute, prefix, scoring-limit)
+  registerFilter(functions, "PHRASE", ".,.|.+");     // (attribute, input [, offset, input... ] [, analyzer])
+  registerFilter(functions, "MIN_MATCH", ".,.|.+");  // (filter expression [, filter expression, ... ], min match count)
+  registerFilter(functions, "BOOST", ".,.");         // (filter expression, boost)
+  registerFilter(functions, "ANALYZER", ".,.");      // (filter expression, analyzer)
 }
 
 void registerIndexFactory() {
@@ -292,7 +278,9 @@ void registerIndexFactory() {
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
-  irs::scorers::visit([&functions](
+  irs::string_ref const args(".|+"); // positional arguments (attribute [, <scorer-specific properties>...]);
+
+  irs::scorers::visit([&functions, &args](
      irs::string_ref const& name, irs::text_format::type_id const& args_format
   )->bool {
     // ArangoDB, for API consistency, only supports scorers configurable via jSON
@@ -307,13 +295,13 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
 
     arangodb::iresearch::addFunction(functions, {
       std::move(upperName),
-      ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
+      args.c_str(),
       arangodb::aql::Function::makeFlags(
         arangodb::aql::Function::Flags::Deterministic,
         arangodb::aql::Function::Flags::Cacheable,
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      &scorer // function implementation (use function name as placeholder)
+      Scorer(name, args) // function implementation (use function name as placeholder)
     });
 
     return true;
@@ -345,11 +333,11 @@ void registerViewFactory() {
 
   // DB server in custer or single-server
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_FAILED,
@@ -412,13 +400,11 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
-  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
-  return pimpl && *pimpl == &filter;
+  return nullptr != func.implementation.target<Filter>();
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {
-  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
-  return pimpl && *pimpl == &scorer;
+  return nullptr != func.implementation.target<Scorer>();
 }
 
 class IResearchFeature::Async {

@@ -4,6 +4,12 @@
 
 @RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+It is considered as deprecated from version 3.4.0 on.
+{% endhint %}
+
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{from,number,optional}

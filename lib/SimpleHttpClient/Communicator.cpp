@@ -285,16 +285,26 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
       newRequest._destination, newRequest._callbacks, newRequest._ticketId,
       newRequest._options, std::move(newRequest._request));
 
-  auto handleInProgress = std::make_unique<CurlHandle>(rip);
+  auto handleInProgress = std::make_shared<CurlHandle>(rip);
 
   auto request = (HttpRequest*)handleInProgress->_rip->_request.get();
 
   CURL* handle = handleInProgress->_handle;
   struct curl_slist* requestHeaders = nullptr;
-  if (request->body().length() > 0) {
+
+  // CURLOPT_POSTFIELDS has to be set for CURLOPT_POST, even if the body is
+  // empty.
+  // Otherwise, curl uses CURLOPT_READFUNCTION on CURLOPT_READDATA, which
+  // default to fread and stdin, respectively: this can cause curl to wait
+  // indefinitely.
+  if (request->body().length() > 0 ||
+      request->requestType() == RequestType::POST) {
     curl_easy_setopt(handle, CURLOPT_POSTFIELDS, request->body().data());
     curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE, request->body().length());
+  }
 
+  // We still omit the content type on empty bodies.
+  if (request->body().length() > 0) {
     switch (request->contentType()) {
       case ContentType::UNSET:
       case ContentType::CUSTOM:
@@ -372,8 +382,11 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   // in doubt change the timeout to _MS below and hardcode it to 999 and see if
   // the requests immediately fail
   // if not this hack can go away
-  if (connectTimeout <= 0) {
-    connectTimeout = 5;
+  if (connectTimeout <= 7) {
+    // matthewv: previously arangod default was 1.  libcurl flushes its DNS cache
+    //  every 60 seconds.  Tests showed DNS packets lost under high load.  libcurl
+    //  retries DNS after 5 seconds.  7 seconds allows for one retry plus a little padding.
+    connectTimeout = 7;
   }
 
   curl_easy_setopt(
@@ -430,8 +443,8 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_multi_add_handle(_curl, handle);
 }
 
+/// new code using lambda and Scheduler
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
-  double connectTime = 0.0;
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
@@ -440,80 +453,110 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     return;
   }
 
+  // unclear if this would be safe on another thread.  Leaving here.
   if (rip->_options._curlRcFn) {
     (*rip->_options._curlRcFn)(rc);
   }
 
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
-      << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+  std::shared_ptr<CurlHandle> curlHandle;
 
-  if (CURLE_OPERATION_TIMEDOUT == rc) {
-    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << ::buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
-  } // if
-
-  if (strlen(rip->_errorBuffer) != 0) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-        << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
-  }
-
-  MUTEX_LOCKER(guard, _handlesLock);
-  switch (rc) {
-    case CURLE_OK: {
-      long httpStatusCode = 200;
-      curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
-
-      std::unique_ptr<GeneralResponse> response(
-          new HttpResponse(static_cast<ResponseCode>(httpStatusCode)));
-
-      transformResult(handle, std::move(rip->_responseHeaders),
-                      std::move(rip->_responseBody),
-                      dynamic_cast<HttpResponse*>(response.get()));
-
-      if (httpStatusCode < 400) {
-        callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));
-      } else {
-        callErrorFn(rip, httpStatusCode, std::move(response));
-      }
-      break;
+  {
+    MUTEX_LOCKER(guard, _handlesLock);
+    auto inProgress = _handlesInProgress.find(rip->_ticketId);
+    if (_handlesInProgress.end() != inProgress) {
+      curlHandle = (*inProgress).second->getSharedPtr();
+      _handlesInProgress.erase(rip->_ticketId);
     }
-    case CURLE_COULDNT_CONNECT:
-    case CURLE_SSL_CONNECT_ERROR:
-    case CURLE_COULDNT_RESOLVE_HOST:
-    case CURLE_URL_MALFORMAT:
-    case CURLE_SEND_ERROR:
-      callErrorFn(rip, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
-      break;
-    case CURLE_OPERATION_TIMEDOUT:
-    case CURLE_RECV_ERROR:
-    case CURLE_GOT_NOTHING:
-      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0 == connectTime)) {
-        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
-      } else {
-        callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
-      }
-      break;
-    case CURLE_WRITE_ERROR:
-      if (rip->_aborted) {
-        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
-      } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got a write error from curl but request was not aborted";
-        callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
-      }
-      break;
-    case CURLE_ABORTED_BY_CALLBACK:
-      TRI_ASSERT(rip->_aborted);
-      callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
-      break;
-    default:
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "curl return " << rc;
-      callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
-      break;
   }
 
-  _handlesInProgress.erase(rip->_ticketId);
+  if (curlHandle) {
+    // defensive code:  intentionally not passing "this".  There is a
+    //   possibility that Scheduler will execute the code after Communicator
+    //   object destroyed.  use shared_from_this() if ever essential.
+    rip->_callbacks._scheduleMe([curlHandle, handle, rc, rip]
+    {// lamda rewrite starts
+      double connectTime = 0.0;
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+        << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
+        << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+
+      if (CURLE_OPERATION_TIMEDOUT == rc) {
+        curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << ::buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
+      } // if
+
+      if (strlen(rip->_errorBuffer) != 0) {
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
+      }
+
+      double namelookup;
+      curl_easy_getinfo(handle, CURLINFO_NAMELOOKUP_TIME, &namelookup);
+
+      if (5.0 <= namelookup) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "libcurl DNS lookup took "
+                                                 << namelookup << " seconds.  Consider using static IP addresses.";
+      }
+
+      switch (rc) {
+        case CURLE_OK: {
+          long httpStatusCode = 200;
+          curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
+
+          std::unique_ptr<GeneralResponse> response(
+            new HttpResponse(static_cast<ResponseCode>(httpStatusCode)));
+
+          transformResult(handle, std::move(rip->_responseHeaders),
+                          std::move(rip->_responseBody),
+                          static_cast<HttpResponse*>(response.get()));
+
+          if (httpStatusCode < 400) {
+            callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));
+          } else {
+            callErrorFn(rip, httpStatusCode, std::move(response));
+          }
+          break;
+        }
+        case CURLE_COULDNT_CONNECT:
+        case CURLE_SSL_CONNECT_ERROR:
+        case CURLE_COULDNT_RESOLVE_HOST:
+        case CURLE_URL_MALFORMAT:
+        case CURLE_SEND_ERROR:
+          callErrorFn(rip, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
+          break;
+        case CURLE_OPERATION_TIMEDOUT:
+        case CURLE_RECV_ERROR:
+        case CURLE_GOT_NOTHING:
+          if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0 == connectTime)) {
+            callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          } else {
+            callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
+          }
+          break;
+        case CURLE_WRITE_ERROR:
+          if (rip->_aborted) {
+            callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          } else {
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got a write error from curl but request was not aborted";
+            callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
+          }
+          break;
+        case CURLE_ABORTED_BY_CALLBACK:
+          TRI_ASSERT(rip->_aborted);
+          callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          break;
+        default:
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "curl return " << rc;
+          callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
+          break;
+      }
+
+    }); //lambda rewrite ends
+  } else {
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "In progress id not found via _handlesInProgress.find("
+                                          << rip->_ticketId << ")";
+  }
 }
 
 void Communicator::transformResult(CURL* handle,

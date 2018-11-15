@@ -39,12 +39,8 @@ More details can be found in [issue 6399](https://github.com/arangodb/arangodb/i
 ArangoSearch
 ------------
 
+* ArangoSearch index format in 3.4RC3 is incompatible to earlier issued release candidates
 * ArangoSearch ignores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported (internal #316)
 * Using a loop variable in expressions within a corresponding SEARCH condition is not supported (internal #318)
-* Data of "NONE" collection could be accessed via a view for a used regardless of rights check (internal #453)
-* "NONE" read permission is not checked for a single link in a view with multiple links where others are "RW" for a user in cluster (internal #452)
-* ArangoSearch doesn't support joins with satellite collections (internal #440)
 * RocksDB recovery fails sometimes after renaming a view (internal #469)
-* View directory remains in FS after a view was deleted (internal #485)
-* Segmentation fault happens when trying to delete a link in a view that has improper (via internal #486) state (internal #487)
