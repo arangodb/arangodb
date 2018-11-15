@@ -967,6 +967,12 @@ constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   
 /// the view ID already exists.
 constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
+/// 1499: ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION
+/// "could not drop collection in plan"
+/// Will be raised when a coordinator in a cluster cannot drop a collection
+/// entry in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION                       = 1499;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
