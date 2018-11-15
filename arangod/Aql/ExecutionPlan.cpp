@@ -1252,67 +1252,58 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
 
   SortElementVector elements;
-  std::vector<ExecutionNode*> temp;
 
-  try {
-    size_t const n = list->numMembers();
-    elements.reserve(n);
+  size_t const n = list->numMembers();
+  elements.reserve(n);
 
-    for (size_t i = 0; i < n; ++i) {
-      auto element = list->getMember(i);
-      TRI_ASSERT(element != nullptr);
-      TRI_ASSERT(element->type == NODE_TYPE_SORT_ELEMENT);
-      TRI_ASSERT(element->numMembers() == 2);
+  for (size_t i = 0; i < n; ++i) {
+    auto element = list->getMember(i);
+    TRI_ASSERT(element != nullptr);
+    TRI_ASSERT(element->type == NODE_TYPE_SORT_ELEMENT);
+    TRI_ASSERT(element->numMembers() == 2);
 
-      auto expression = element->getMember(0);
-      auto ascending = element->getMember(1);
+    auto expression = element->getMember(0);
+    auto ascending = element->getMember(1);
 
-      // get sort order
-      bool isAscending;
-      bool handled = false;
-      if (ascending->type == NODE_TYPE_VALUE) {
-        if (ascending->value.type == VALUE_TYPE_STRING) {
-          // special treatment for string values ASC/DESC
-          if (ascending->stringEquals("ASC", true)) {
-            isAscending = true;
-            handled = true;
-          } else if (ascending->stringEquals("DESC", true)) {
-            isAscending = false;
-            handled = true;
-          }
-        }
-      }
-
-      if (!handled) {
-        // if no sort order is set, ensure we have one
-        AstNode const* ascendingNode = ascending->castToBool(_ast);
-        if (ascendingNode->type == NODE_TYPE_VALUE &&
-            ascendingNode->value.type == VALUE_TYPE_BOOL) {
-          isAscending = ascendingNode->value.value._bool;
-        } else {
-          // must have an order
+    // get sort order
+    bool isAscending;
+    bool handled = false;
+    if (ascending->type == NODE_TYPE_VALUE) {
+      if (ascending->value.type == VALUE_TYPE_STRING) {
+        // special treatment for string values ASC/DESC
+        if (ascending->stringEquals("ASC", true)) {
           isAscending = true;
+          handled = true;
+        } else if (ascending->stringEquals("DESC", true)) {
+          isAscending = false;
+          handled = true;
         }
       }
+    }
 
-      if (expression->type == NODE_TYPE_REFERENCE) {
-        // sort operand is a variable
-        auto v = static_cast<Variable*>(expression->getData());
-        TRI_ASSERT(v != nullptr);
-        elements.emplace_back(v, isAscending);
+    if (!handled) {
+      // if no sort order is set, ensure we have one
+      AstNode const* ascendingNode = ascending->castToBool(_ast);
+      if (ascendingNode->type == NODE_TYPE_VALUE &&
+          ascendingNode->value.type == VALUE_TYPE_BOOL) {
+        isAscending = ascendingNode->value.value._bool;
       } else {
-        // sort operand is some misc expression
-        auto calc = createTemporaryCalculation(expression, nullptr);
-        temp.emplace_back(calc);
-        elements.emplace_back(getOutVariable(calc), isAscending);
+        // must have an order
+        isAscending = true;
       }
     }
-  } catch (...) {
-    // prevent memleak
-    for (auto& it : temp) {
-      delete it;
+
+    if (expression->type == NODE_TYPE_REFERENCE) {
+      // sort operand is a variable
+      auto v = static_cast<Variable*>(expression->getData());
+      TRI_ASSERT(v != nullptr);
+      elements.emplace_back(v, isAscending);
+    } else {
+      // sort operand is some misc expression
+      auto calc = createTemporaryCalculation(expression, previous);
+      elements.emplace_back(getOutVariable(calc), isAscending);
+      previous = calc;
     }
-    throw;
   }
 
   if (elements.empty()) {
@@ -1322,15 +1313,6 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   }
 
   // at least one sort criterion remained
-  TRI_ASSERT(!elements.empty());
-
-  // properly link the temporary calculations in the plan
-  for (auto it = temp.begin(); it != temp.end(); ++it) {
-    TRI_ASSERT(previous != nullptr);
-    (*it)->addDependency(previous);
-    previous = (*it);
-  }
-
   auto en = registerNode(new SortNode(this, nextId(), elements, false));
 
   return addDependency(previous, en);
@@ -1994,7 +1976,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member == nullptr || member->type == NODE_TYPE_NOP) {
       continue;
