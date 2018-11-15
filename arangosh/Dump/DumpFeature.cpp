@@ -36,6 +36,7 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Endpoint/Endpoint.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -135,6 +136,9 @@ void DumpFeature::collectOptions(
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_tickEnd));
+
+  options->addOption("--maskings", "file with maskings definition",
+                     new StringParameter(&_maskingsFile));
 }
 
 void DumpFeature::validateOptions(
@@ -699,6 +703,18 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   return TRI_ERROR_NO_ERROR;
 }
 
+bool DumpFeature::toDisk(int fd, std::string const& name, StringBuffer const& body, maskings::Maskings* maskings) {
+  arangodb::basics::StringBuffer masked(1, false);
+  arangodb::basics::StringBuffer const* result = &body;
+
+  if (maskings != nullptr) {
+    maskings->mask(name, body, masked);
+    result = &masked;
+  }
+
+  return writeData(fd, result->c_str(), result->length());
+}
+
 /// @brief dump a single shard, that is a collection on a DBserver
 int DumpFeature::dumpShard(int fd, std::string const& DBserver,
                            std::string const& name, std::string& errorMsg) {
@@ -774,7 +790,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
-      bool result = writeData(fd, body.c_str(), body.length());
+      bool result = toDisk(fd, name, body, _maskings.get());
 
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -1075,6 +1091,18 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 }
 
 void DumpFeature::start() {
+  if (!_maskingsFile.empty()) {
+    maskings::MaskingsResult m = maskings::Maskings::fromFile(_maskingsFile);
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      FATAL_ERROR_EXIT();
+    }
+
+    _maskings = std::move(m.maskings);
+  }
+
+
 #ifdef USE_ENTERPRISE
   _encryption =
       application_features::ApplicationServer::getFeature<EncryptionFeature>(

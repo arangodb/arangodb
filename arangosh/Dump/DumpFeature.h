@@ -25,8 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"
+#include "lib/Basics/StringBuffer.h"
 
 namespace arangodb {
+namespace maskings {
+class Maskings;
+}
+
 namespace httpclient {
 class SimpleHttpResult;
 }
@@ -56,6 +61,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
   bool _ignoreDistributeShardsLikeErrors;
   bool _includeSystemCollections;
   std::string _outputDirectory;
+  std::string _maskingsFile;
   bool _overwrite;
   bool _progress;
   uint64_t _tickStart;
@@ -74,6 +80,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
                 std::string& errorMsg);
   int runClusterDump(std::string& errorMsg);
 
+  bool toDisk(int fd, std::string const& name, arangodb::basics::StringBuffer const& body, maskings::Maskings* maskings);
   bool writeData(int fd, char const* data, size_t len);
   void beginEncryption(int fd);
   void endEncryption(int fd);
@@ -87,6 +94,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
 #ifdef USE_ENTERPRISE
   EncryptionFeature* _encryption;
 #endif
+  std::unique_ptr<maskings::Maskings> _maskings;
 
   struct {
     uint64_t _totalBatches;
