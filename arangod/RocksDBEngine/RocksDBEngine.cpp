@@ -1127,16 +1127,20 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t cid,
                                                VPackSlice const& slice,
                                                RocksDBLogValue&& logValue) {
+  
+  rocksdb::DB* db = _db->GetRootDB();
+  
   RocksDBKey key;
   key.constructCollection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions wo;
+  
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = _db->Write(wo, &batch);
-
+  rocksdb::Status res = db->Write(wo, &batch);
+  
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
 }

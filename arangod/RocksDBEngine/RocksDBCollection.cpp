@@ -502,39 +502,38 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   }
 
   addIndex(newIdx);
-  {
-    auto builder = _logicalCollection.toVelocyPackIgnore(
-        {"path", "statusString"}, true, /*forPersistence*/ true);
-    VPackBuilder indexInfo;
-
-    newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-    TRI_ASSERT(engine != nullptr);
-    int res = engine->writeCreateCollectionMarker(
+  
+  auto builder = _logicalCollection.toVelocyPackIgnore(
+      {"path", "statusString"}, true, /*forPersistence*/ true);
+  
+  VPackBuilder indexInfo;
+  newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
+  TRI_ASSERT(engine != nullptr);
+  res = engine->writeCreateCollectionMarker(
+    _logicalCollection.vocbase().id(),
+    _logicalCollection.id(),
+    builder.slice(),
+    RocksDBLogValue::IndexCreate(
       _logicalCollection.vocbase().id(),
       _logicalCollection.id(),
-      builder.slice(),
-      RocksDBLogValue::IndexCreate(
-        _logicalCollection.vocbase().id(),
-        _logicalCollection.id(),
-        indexInfo.slice()
-      )
-    );
+      indexInfo.slice()
+    )
+  );
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      // We could not persist the index creation. Better abort
-      // Remove the Index in the local list again.
-      size_t i = 0;
-      WRITE_LOCKER(guard, _indexesLock);
-      for (auto index : _indexes) {
-        if (index == newIdx) {
-          _indexes.erase(_indexes.begin() + i);
-          break;
-        }
-        ++i;
+  if (res.fail()) {
+    // We could not persist the index creation. Better abort
+    // Remove the Index in the local list again.
+    size_t i = 0;
+    WRITE_LOCKER(guard, _indexesLock);
+    for (auto index : _indexes) {
+      if (index == newIdx) {
+        _indexes.erase(_indexes.begin() + i);
+        break;
       }
-      newIdx->drop();
-      return res;
+      ++i;
     }
+    newIdx->drop();
+    return res.errorNumber();
   }
 
   idx = newIdx;
@@ -1336,7 +1335,7 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   
   // fillindex can be non transactional, we just need to clean up
-  rocksdb::DB* db = rocksutils::globalRocksDB()->GetBaseDB();
+  rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
   TRI_ASSERT(db != nullptr);
 
   uint64_t numDocsWritten = 0;
@@ -1355,11 +1354,13 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
   };
 
   rocksdb::WriteOptions wo;
-  wo.disableWAL = true;
-  bool hasMore = true;
-
+  bool hasMore = false;
+  
+  uint64_t numBatches = (rcol->numberDocuments() + 199) / 200;
+  wo.disableWAL = numBatches > 0; // breaks tests
+  
   while (hasMore && res.ok()) {
-    hasMore = it->nextDocument(cb, 250);
+    hasMore = it->nextDocument(cb, 200);
 
     if (TRI_VOC_COL_STATUS_DELETED == it->collection()->status()
         || it->collection()->deleted()) {
@@ -1376,6 +1377,10 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
         break;
       }
     }
+    
+    if (--numBatches == 0) {
+      wo.disableWAL = false; // disable for subsequenr runs
+    }
     batch.Clear();
   }
 
@@ -1389,15 +1394,15 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
       return res2;
     }
   } else {
+    
     // flushing is necessary because we were not writing index data into WAL
     rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
     if (!status.ok()) {
       LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
       << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
     }
-    db->FlushWAL(false);    
   }
-
+  
   return res;
 }
 

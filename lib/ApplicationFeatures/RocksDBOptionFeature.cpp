@@ -69,7 +69,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _tableBlockSize(std::max(rocksDBTableOptionsDefaults.block_size, static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(2 * 1024 * 1024),//rocksDBDefaults.compaction_readahead_size
-      _level0CompactionTrigger(2),
+      _level0CompactionTrigger(rocksDBDefaults.level0_file_num_compaction_trigger),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
