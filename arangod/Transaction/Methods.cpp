@@ -3415,7 +3415,8 @@ Result Methods::replicateOperations(
     count++;
   }
 
-  if (count <= 0) {
+  if (count == 0) {
+    // nothing to do
     return Result{};
   }
 
@@ -3429,10 +3430,11 @@ Result Methods::replicateOperations(
   for (auto const& f : *followers) {
     requests.emplace_back("server:" + f, requestType, path, body);
   }
+
+  double const timeout = chooseTimeout(count, body->size() * followers->size());
+
   size_t nrDone = 0;
-  cc->performRequests(requests,
-                      chooseTimeout(count, body->size() * followers->size()),
-                      nrDone, Logger::REPLICATION, false);
+  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
   // If any would-be-follower refused to follow there must be a
   // new leader in the meantime, in this case we must not allow
   // this operation to succeed, we simply return with a refusal
