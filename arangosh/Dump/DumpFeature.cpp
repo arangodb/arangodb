@@ -224,6 +224,20 @@ bool isIgnoredHiddenEnterpriseCollection(
   return false;
 }
 
+arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
+                                 arangodb::ManagedDirectory::File& file,
+                                 arangodb::basics::StringBuffer const& body) {
+  file.write(body.c_str(), body.length());
+
+  if (file.status().fail()) {
+    return {TRI_ERROR_CANNOT_WRITE_FILE};
+  } 
+
+  jobData.stats.totalWritten += static_cast<uint64_t>(body.length());
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
 /// @brief dump the actual data from an individual collection
 arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::DumpFeature::JobData& jobData,
@@ -297,11 +311,11 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    file.write(body.c_str(), body.length());
-    if (file.status().fail()) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE};
-    } 
-    jobData.stats.totalWritten += static_cast<uint64_t>(body.length());
+    arangodb::Result result = dumpJsonObjects(jobData, file, body);
+
+    if (result.fail()) {
+      return result;
+    }
 
     if (!checkMore || fromTick == 0) {
       // all done, return successful

@@ -25,15 +25,32 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Maskings/MaskingFunction.h"
+#include "Maskings/ParseResult.h"
 #include "Maskings/Path.h"
-#include "Maskings/MaskingType.h"
 
 namespace arangodb {
 namespace maskings {
 class AttributeMasking {
+ public:
+  static ParseResult<AttributeMasking> parse(VPackSlice const&);
+
+ public:
+  AttributeMasking() = default;
+
+  AttributeMasking(Path path, MaskingFunction* func) : _path(path) {
+    _func.reset(func);
+  };
+
  private:
   Path _path;
-  MaskingType _type;
+  std::shared_ptr<MaskingFunction> _func;
 };
 }  // namespace maskings
 }  // namespace arangodb

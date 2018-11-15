@@ -73,9 +73,8 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
 
 ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
   if (!def.isObject()) {
-    return ParseResult<Maskings>{ParseResult<Maskings>::DUPLICATE_COLLECTION,
-                                 "expecting an object for masking definition",
-                                 Maskings()};
+    return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                 "expecting an object for masking definition");
   }
 
   for (auto const& entry : VPackObjectIterator(def, false)) {
@@ -83,30 +82,28 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
     LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
     if (_collections.find(key) != _collections.end()) {
-      return ParseResult<Maskings>{ParseResult<Maskings>::DUPLICATE_COLLECTION,
-                                   "duplicate collection entry '" + key + "'",
-                                   Maskings()};
+      return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                   "duplicate collection entry '" + key + "'");
     }
 
     ParseResult<Collection> c = Collection::parse(entry.value);
 
     if (c.status != ParseResult<Collection>::VALID) {
-      return ParseResult<Maskings>{
-          (ParseResult<Maskings>::StatusCode)(int)c.status, c.message,
-          Maskings()};
+      return ParseResult<Maskings>(
+          (ParseResult<Maskings>::StatusCode)(int)c.status, c.message);
     }
 
     _collections[key] = c.result;
   }
 
-  return ParseResult<Maskings>{ParseResult<Maskings>::VALID, "", Maskings()};
+  return ParseResult<Maskings>(ParseResult<Maskings>::VALID);
 }
 
 bool Maskings::shouldDumpStructure(std::string const& name) {
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
     return false;
   }
 
@@ -124,7 +121,7 @@ bool Maskings::shouldDumpData(std::string const& name) {
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "not found";
     return false;
   }
 

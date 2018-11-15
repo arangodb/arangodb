@@ -20,14 +20,20 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_MASKING_TYPE_H
-#define ARANGODB_MASKINGS_MASKING_TYPE_H 1
+#ifndef ARANGODB_MASKINGS_ATTRIBUTE_XIFY_FRONT_H
+#define ARANGODB_MASKINGS_ATTRIBUTE_XIFY_FRONT_H 1
 
-#include "Basics/Common.h"
+#include "Maskings/MaskingFunction.h"
 
 namespace arangodb {
 namespace maskings {
-enum class MaskingType { XIFY };
+class XifyFront : public MaskingFunction {
+ public:
+  XifyFront(int64_t length) : _length((uint64_t)length){};
+
+ private:
+  uint64_t _length;
+};
 }  // namespace maskings
 }  // namespace arangodb
 

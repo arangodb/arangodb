@@ -25,9 +25,14 @@
 
 #include "Basics/Common.h"
 
+#include "Maskings/ParseResult.h"
+
 namespace arangodb {
 namespace maskings {
 class Path {
+ public:
+  static ParseResult<Path> parse(std::string const&);
+
  private:
   bool _wildcard;
   std::vector<std::string> _components;
