@@ -384,57 +384,67 @@ std::string Scheduler::infoStatus() {
 }
 
 bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
-  auto counters = getCounters();
-  auto nrWorking = numWorking(counters);
-  auto nrQueued = numQueued(counters);
+  if (!isStopping()) {
+    auto counters = getCounters();
+    auto nrWorking = numWorking(counters);
+    auto nrQueued = numQueued(counters);
 
-  switch (prio) {
-    case RequestPriority::HIGH:
-      return nrWorking + nrQueued < _maxThreads;
+    switch (prio) {
+      case RequestPriority::HIGH:
+        return nrWorking + nrQueued < _maxThreads;
 
-    // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
-    //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
-    case RequestPriority::MED:
-    case RequestPriority::LOW:
-      return nrWorking + nrQueued < _maxThreads / 2;
-  }
+        // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
+        //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
+      case RequestPriority::MED:
+      case RequestPriority::LOW:
+        return nrWorking + nrQueued < _maxThreads / 2;
+    }
 
-  return false;
+    return false;
+  } else {
+    // during shutdown, finesse is no longer needed.  post everything.
+    return true;
+  } // else
 }
 
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "Push element on fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
-  size_t p = static_cast<size_t>(fifo);
-  auto job = std::make_unique<FifoJob>(callback);
+  if (!isStopping()) {
+    size_t p = static_cast<size_t>(fifo);
+    auto job = std::make_unique<FifoJob>(callback);
 
-  try {
-    if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
+    try {
+      if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
+        return false;
+      }
+
+      if (!_fifos[p]->push(job.get())) {
+        return false;
+      }
+
+      job.release();
+      ++_fifoSize[p];
+
+      // then check, otherwise we might miss to wake up a thread
+      auto counters = getCounters();
+      auto nrWorking = numRunning(counters);
+      auto nrQueued = numQueued(counters);
+
+      if (0 == nrWorking + nrQueued) {
+        post([] {
+            LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
+            /*wakeup call for scheduler thread*/
+          });
+      }
+    } catch (...) {
       return false;
     }
-
-    if (!_fifos[p]->push(job.get())) {
-      return false;
-    }
-
-    job.release();
-    ++_fifoSize[p];
-
-    // then check, otherwise we might miss to wake up a thread
-    auto counters = getCounters();
-    auto nrWorking = numRunning(counters);
-    auto nrQueued = numQueued(counters);
-
-    if (0 == nrWorking + nrQueued) {
-      post([] {
-          LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
-          /*wakeup call for scheduler thread*/
-      });
-    }
-  } catch (...) {
-    return false;
-  }
+  } else {
+    // hand this directly to post() so it can route it quickly
+    post(callback);
+  } // else
 
   return true;
 }
@@ -518,25 +528,26 @@ void Scheduler::beginShutdown() {
     return;
   }
 
-#if 1
+  // Scheduler::post() assumes atomic _counters is manipulated in a
+  //  sequentially-consistent manner so that state of _ioContext can be implied
+  //  via _counters.
   setStopping();
+
+  // push anything within fifo queues onto context queue
+  drain();
 
   while (true) {
     uint64_t const counters = _counters.load();
 
-    if (/*numRunning(counters) == 0 && */numWorking(counters) == 0
-        && numQueued(counters) == 0) {
+    if (numWorking(counters) == 0 && numQueued(counters) == 0) {
       break;
     }
 
     std::this_thread::yield();
-    // we can be quite generous here with waiting...
-    // as we are in the shutdown already, we do not care if we need to wait
-    // for a bit longer
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::microseconds(2000));
   }
 
-#endif
+  // shutdown worker threads and control mechanisms
   stopRebalancer();
 
   _threadManager.reset();
@@ -546,17 +557,10 @@ void Scheduler::beginShutdown() {
 
   _serviceGuard.reset();
   _ioContext->stop();
-#if 0
-  // set the flag AFTER stopping the threads
-  setStopping();
-#endif
 }
 
 void Scheduler::shutdown() {
 
-  // Scheduler::post() assumes atomic _counters is manipulated in a
-  //  sequentially-consistent manner so that state of _ioContext can be implied
-  //  via _counters.
   while (true) {
     uint64_t const counters = _counters.load();
 
