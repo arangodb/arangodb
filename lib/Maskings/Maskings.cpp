@@ -169,6 +169,8 @@ VPackValue Maskings::maskedItem(Collection& collection,
       return VPackValue(data.getInt());
     } else if (data.isDouble()) {
       return VPackValue(data.getDouble());
+    } else {
+      return VPackValue(VPackValueType::Null);
     }
   } else {
     if (data.isBool()) {
@@ -177,10 +179,12 @@ VPackValue Maskings::maskedItem(Collection& collection,
       velocypack::ValueLength length;
       char const* c = data.getString(length);
       return func->mask(std::string(c, length), buffer);
-    } else if (data.isInteger()){
+    } else if (data.isInteger()) {
       return func->mask(data.getInt());
     } else if (data.isDouble()) {
       return func->mask(data.getDouble());
+    } else {
+      return VPackValue(VPackValueType::Null);
     }
   }
 
