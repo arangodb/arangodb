@@ -1400,6 +1400,12 @@ bool Agent::prepareLead() {
     _earliestPackage.clear();
   }
 
+  {
+    // Clear transient for supervision start
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    _transient.clear();
+  }
+
   // Key value stores
   try {
     rebuildDBs();

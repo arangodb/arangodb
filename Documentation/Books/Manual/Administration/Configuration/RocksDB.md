@@ -33,6 +33,13 @@ The maximum number of write buffers that built up in memory. If this number is
 reached before the buffers can be flushed, writes will be slowed or stalled.
 Default: 2.
 
+`--rocksdb.total-write-buffer-size` (Hidden)
+
+The total amount of data to build up in all in-memory buffers (backed by log
+files). This option, together with the block cache size configuration option,
+can be used to limit memory usage. If set to 0, the memory usage is not limited.
+Default: 0 (disabled).
+
 `--rocksdb.min-write-buffer-number-to-merge`
 
 Minimum number of write buffers that will be merged together when flushing to

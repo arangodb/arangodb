@@ -255,12 +255,12 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 uint32_t RestCursorHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
-    return false;
+    return 0;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return false;
+    return 0;
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);

@@ -215,6 +215,7 @@ ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replic
 ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in distributeShardsLike parameter."
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
+ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION,1499,"could not drop collection in plan","Will be raised when a coordinator in a cluster cannot drop a collection entry in the Plan hierarchy in the agency."
 
 ################################################################################
 ## ArangoDB query errors
@@ -229,7 +230,7 @@ ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1521,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
-ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."
+ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections/shards","Will be raised when the number of collections or shards in a query is beyond the allowed value."
 ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1530,"document attribute '%s' is assigned multiple times","Will be raised when a document attribute is re-assigned."
 ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1540,"usage of unknown function '%s()'","Will be raised when an undefined function is called."
 ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,1541,"invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d","Will be raised when the number of arguments used in a function call does not match the expected number of arguments for the function."
