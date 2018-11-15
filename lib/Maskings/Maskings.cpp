@@ -155,8 +155,6 @@ VPackValue Maskings::maskedItem(Collection& collection,
 
   MaskingFunction* func = collection.masking(path);
 
-  std::cout << "maskedItem " << path << " " << func << std::endl;
-
   if (func == nullptr) {
     if (data.isBool()) {
       return VPackValue(data.getBool());

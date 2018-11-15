@@ -388,7 +388,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
-      bool result = writeData(fd, body.c_str(), body.length());
+      bool result = toDisk(fd, name, body, _maskings.get());
 
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -609,6 +609,10 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       continue;
     }
 
+    if (_maskings.get() != nullptr && !_maskings->shouldDumpStructure(name)) {
+      continue;
+    }
+
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
@@ -660,7 +664,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_TRACKED_CLOSE_FILE(fd);
     }
 
-    if (_dumpData) {
+    bool dumpData = _dumpData;
+
+    if (dumpData && _maskings.get() != nullptr) {
+      dumpData = _maskings->shouldDumpData(name);
+    }
+
+    if (dumpData) {
       // save the actual data
       std::string fileName;
       fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
@@ -924,6 +934,10 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       continue;
     }
 
+    if (_maskings.get() != nullptr && !_maskings->shouldDumpStructure(name)) {
+      continue;
+    }
+
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection =
           arangodb::basics::VelocyPackHelper::getStringValue(
@@ -1005,7 +1019,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       TRI_TRACKED_CLOSE_FILE(fd);
     }
 
-    if (_dumpData) {
+    bool dumpData = _dumpData;
+
+    if (dumpData && _maskings.get() != nullptr) {
+      dumpData = _maskings->shouldDumpData(name);
+    }
+
+    if (dumpData) {
       // save the actual data
 
       // Now set up the output file:
