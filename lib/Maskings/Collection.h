@@ -57,7 +57,7 @@ class Collection {
 
  private:
   CollectionSelection _selection;
-  CollectionFilter _filter;
+  // LATER: CollectionFilter _filter;
   std::vector<AttributeMasking> _maskings;
 };
 }  // namespace maskings

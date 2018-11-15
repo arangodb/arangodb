@@ -31,8 +31,42 @@ VPackValue XifyFront::mask(bool) const {
   return VPackValue(xxxx);
 }
 
-VPackValue XifyFront::mask(std::string const&, std::string& buffer) const {
-  return VPackValue(xxxx);
+VPackValue XifyFront::mask(std::string const& data, std::string& buffer) const {
+  char const* p = data.c_str();
+  char const* q = p;
+  char const* e = p + data.size();
+  
+  buffer.clear();
+  buffer.reserve(data.size());
+
+  while (p < e) {
+    while (p < e && isNameChar(*p)) {
+      ++p;
+    }
+
+    if (p != q) {
+      char const* w = p - _length;
+
+      while (q < w) {
+        buffer.push_back('x');
+        ++q;
+      }
+
+      while (q < p) {
+        buffer.push_back(*q);
+        ++q;
+      }
+    }
+
+    while (p < e && !isNameChar(*p)) {
+      buffer.push_back(' ');
+      ++p;
+    }
+
+    q = p;
+  }
+
+  return VPackValue(buffer);
 }
 
 VPackValue XifyFront::mask(int64_t) const {

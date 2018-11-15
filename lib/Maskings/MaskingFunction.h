@@ -35,6 +35,12 @@ namespace arangodb {
 namespace maskings {
 class MaskingFunction {
  public:
+  static bool isNameChar(char c) {
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+           ('0' <= c && c <= '9') || c == '_' || c == '-';
+  }
+
+ public:
   virtual ~MaskingFunction() {}
 
  public:
