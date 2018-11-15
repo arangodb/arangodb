@@ -265,7 +265,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       }
     }
   } else {
-    result.errorMessage = "Report from phase 1 and 2 was not closed."
+    result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
   
   auto took = duration<double>(clock::now() - start).count();
