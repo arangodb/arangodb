@@ -112,7 +112,7 @@ class arangodb::SchedulerThread : public Thread {
     size_t counter = 0;
     bool doDecrement = true;
 
-    while (!_scheduler->isStopping()) {
+    while (!_scheduler->isStopping() || 0 != _scheduler->numQueued()) {
       try {
         _service->run_one();
       } catch (std::exception const& ex) {
@@ -518,8 +518,6 @@ void Scheduler::beginShutdown() {
     return;
   }
 
-  stopRebalancer();
-
 #if 1
   setStopping();
 
@@ -539,6 +537,8 @@ void Scheduler::beginShutdown() {
   }
 
 #endif
+  stopRebalancer();
+
   _threadManager.reset();
 
   _managerGuard.reset();

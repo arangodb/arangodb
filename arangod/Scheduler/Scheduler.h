@@ -105,8 +105,9 @@ class Scheduler {
 
   bool isRunning() const { return numRunning(_counters) > 0; }
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
+  size_t numQueued() const { return (_counters >> 32) & 0xFFFFULL; }
 
- private:
+private:
   void post(std::function<void()> const callback);
   void drain();
 
