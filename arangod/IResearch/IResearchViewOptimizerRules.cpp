@@ -410,7 +410,7 @@ void scatterViewInClusterRule(
     }
 
     auto const& parents = node->getParents();
-    auto const& deps = node->getDependencies();
+    auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     // don't do this if we are already distributing!

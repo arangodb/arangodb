@@ -3813,7 +3813,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     // found a node we need to replace in the plan
 
     auto const& parents = node->getParents();
-    auto const& deps = node->getDependencies();
+    auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     // don't do this if we are already distributing!
@@ -4066,7 +4066,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // In the INSERT and REPLACE cases we use a DistributeNode...
 
       TRI_ASSERT(node->hasDependency());
-      auto const& deps = node->getDependencies();
+      auto const deps = node->getDependencies();
 
       bool haveAdjusted = false;
       if (originalParent != nullptr) {
@@ -4214,7 +4214,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     // found a node we need to replace in the plan
 
-    auto const& deps = node->getDependencies();
+    auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     auto collectNode = ExecutionNode::castTo<CollectNode*>(node);
@@ -4550,6 +4550,8 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
+    
+  std::unordered_set<Variable const*> varsSetHere;
 
   for (auto& n : nodes) {
     auto const& remoteNodeList = n->getDependencies();
@@ -4562,7 +4564,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
 
     bool allowOnlyFilterAndCalculation = false;
 
-    std::unordered_set<Variable const*> varsSetHere;
+    varsSetHere.clear();
     auto parents = n->getParents();
     TRI_ASSERT(!parents.empty());
         
@@ -4703,7 +4705,7 @@ void arangodb::aql::distributeSortToClusterRule(
   bool modified = false;
 
   for (auto& n : nodes) {
-    auto const& remoteNodeList = n->getDependencies();
+    auto const remoteNodeList = n->getDependencies();
     auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
     TRI_ASSERT(remoteNodeList.size() > 0);
     auto rn = remoteNodeList[0];
