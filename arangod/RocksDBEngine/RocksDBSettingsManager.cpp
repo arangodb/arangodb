@@ -152,25 +152,21 @@ Result RocksDBSettingsManager::sync(bool force) {
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
-  LOG_DEVEL << "starting sync with latestSeqNr: " << maxSeqNr;
 
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 0.05; // do not wait for locking keys
   
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;
-//  if (!_trx) {
-//    _trx.reset(_db->BeginTransaction(wo, opts));
-//  } else {
-//    _db->BeginTransaction(wo, opts, _trx.get()); // recycle trx
-//  }
   _tmpBuilder.clear(); // recycle our builder
   
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
   
+  bool didWork = false;
   auto mappings = engine->collectionMappings();
   for (auto const& pair : mappings) {
+    
     TRI_voc_tick_t dbid = pair.first;
     TRI_voc_cid_t cid = pair.second;
     TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
@@ -188,17 +184,29 @@ Result RocksDBSettingsManager::sync(bool force) {
     }
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
     
-    RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
+    auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = minSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
+    
+    const std::string err = "could not sync metadata for collection '";
     if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+      LOG_TOPIC(WARN, Logger::ENGINES) << err << coll->name() << "'";
+      return res;
     }
+    
+    if (batch.Count() > 0) {
+      auto s = _db->Write(wo, &batch);
+      if (!s.ok()) {
+        LOG_TOPIC(WARN, Logger::ENGINES) << err << coll->name() << "'";
+        return rocksutils::convertStatus(s);
+      }
+      didWork = true;
+    }
+    batch.Clear();
   }
   
-  if (batch.Count() == 0) {
-    LOG_DEVEL << "nothing happened skipping settings up to " << minSeqNr;
+  if (!didWork) {
     WRITE_LOCKER(guard, _rwLock);
     _lastSync = minSeqNr;
     return Result(); // nothing was written
@@ -207,10 +215,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   _tmpBuilder.clear();
   Result res = writeSettings(batch, _tmpBuilder, minSeqNr);
   if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not store metadata settings "
+      << res.errorMessage();
     return res;
   }
 
-  LOG_DEVEL << "commiting settings up to " << minSeqNr;
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {

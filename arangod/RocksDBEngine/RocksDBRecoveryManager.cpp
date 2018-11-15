@@ -92,7 +92,6 @@ void RocksDBRecoveryManager::start() {
     return;
   }
 
-  LOG_DEVEL << "running recovery";
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
   // synchronizes with acquire inRecovery()
@@ -216,7 +215,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
         TRI_ASSERT(rcoll->meta().countRefUnsafe()._added >= rcoll->meta().countRefUnsafe()._removed);
         rcoll->loadInitialNumberDocuments();
-        LOG_DEVEL << collection->name() << " now has " << rcoll->numberDocuments();
         
         auto const& it = _generators.find(rcoll->objectId());
         if (it != _generators.end()) {
@@ -317,17 +315,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return false;
     }
     
-    LOG_DEVEL << "truncating indexes on " << coll->name() << " at " << _currentSequence;
     for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-      LOG_DEVEL << "index " << idx->typeName() << " objectID: " << ridx->objectId();
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
       if (est && est->committedSeq() < _currentSequence) {
-        LOG_DEVEL << "truncating index " << ridx->typeName() << " with  " << est->committedSeq();
         est->clear();
-      } else if (est) {
-        LOG_DEVEL << "skipping index " << ridx->typeName() << " with  " << est->committedSeq()
-        << " and selectivity " << est->computeEstimate();
       }
     }
 
@@ -576,7 +568,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         break;
       case RocksDBLogType::CollectionTruncate: {
         uint64_t objectId = RocksDBLogValue::objectId(blob);
-        LOG_DEVEL << "seeing truncate marker for objectID: " << objectId;
         Operations* ops = nullptr;
         if (shouldHandleCollection(objectId, &ops)) {
           TRI_ASSERT(ops != nullptr);
@@ -584,7 +575,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           ops->removed = 0;
           ops->added = 0;
           ops->mustTruncate = true;
-          LOG_DEVEL << "truncating collection counts objectID:" << objectId;
         }
         // index estimates have their own commitSeq
         if (!truncateIndexes(objectId)) {
@@ -628,7 +618,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       vocbase.processCollections([&](LogicalCollection* coll) {
         RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
         rocksdb::SequenceNumber seq = rcoll->meta().currentCount()._committedSeq;
-        LOG_DEVEL << "starting scanning " << coll->name() <<  " at " << seq;
         startSeqs.emplace(rcoll->objectId(), seq);
       }, /*includeDeleted*/false);
     });
@@ -636,9 +625,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     // Tell the WriteBatch reader the transaction markers to look for
     WBReader handler(startSeqs);
     rocksdb::SequenceNumber earliest = engine->settingsManager()->earliestSeqNeeded();
-    LOG_DEVEL << "earliest seq needed " << earliest;
     auto minTick = std::min(earliest, engine->releasedTick());
-    LOG_DEVEL << "restoring from tick " << minTick;
     
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s = _db->GetUpdatesSince(

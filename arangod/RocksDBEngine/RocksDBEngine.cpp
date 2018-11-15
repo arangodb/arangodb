@@ -1665,7 +1665,6 @@ void RocksDBEngine::waitForEstimatorSync(
     std::chrono::milliseconds maxWaitTime) {
   auto start = std::chrono::high_resolution_clock::now();
   auto beginSeq = _db->GetLatestSequenceNumber();
-  LOG_DEVEL << "waitForEstimatorSync to reach " << beginSeq;
   
   while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
     if (_settingsManager->earliestSeqNeeded() >= beginSeq) {

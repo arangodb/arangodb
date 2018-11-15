@@ -661,7 +661,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     
     // pre commit sequence needed to place a blocker
     rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
-    LOG_DEVEL << "truncate lastestSeq: " << seq;
     auto guard = scopeGuard([&] { // remove blocker afterwards
       _meta.removeBlocker(state->id());
     });

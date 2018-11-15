@@ -349,7 +349,6 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     if (idx->estimator() == nullptr) {
-      LOG_DEVEL << "skipping estimator " << idx->typeName();
       continue;
     }
     
