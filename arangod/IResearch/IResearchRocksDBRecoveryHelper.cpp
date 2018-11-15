@@ -236,33 +236,36 @@ void dropCollectionFromAllViews(
     TRI_voc_cid_t collectionId
 ) {
   auto* vocbase = db.useDatabase(dbId);
+  if (!vocbase) {
+    return;
+  }
+  TRI_DEFER(vocbase->release());
 
-  if (vocbase) {
-    // iterate over vocbase views
-    for (auto logicalView : vocbase->views()) {
-      if (arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        continue;
-      }
+  // iterate over vocbase views
+  arangodb::LogicalView::enumerate(
+    *vocbase,
+    [collectionId](arangodb::LogicalView::ptr const& view)->bool {
+      #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
+      #else
+        auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view.get());
+      #endif
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-#else
-      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-#endif
-
-      if (!view) {
+      if (!impl) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-            << "error finding view: '" << view->id() << "': not an arangosearch view";
-        return;
+            << "error finding view: '" << view->name() << "': not an arangosearch view";
+
+        return true;
       }
 
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-          << "Removing all documents belonging to view " << view->id()
-          << " sourced from collection " << collectionId;
+        << "Removing all documents belonging to view '" << view->name() << "' sourced from collection " << collectionId;
 
-      view->drop(collectionId);
+      impl->drop(collectionId);
+
+      return true;
     }
-  }
+  );
 }
 
 void dropCollectionFromView(

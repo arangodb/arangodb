@@ -613,7 +613,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
       TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token.id()).second) {
+        if (!_alreadyReturned.insert(token.id()).second) {
           // Document already in list. Skip this
           return;
         }

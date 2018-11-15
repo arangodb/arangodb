@@ -1911,6 +1911,8 @@ RocksDBCollection::serializeIndexEstimates(
     rocksdb::Transaction* rtrx, rocksdb::SequenceNumber inputSeq) const {
   auto outputSeq = inputSeq;
   std::string output;
+  RocksDBKey key;
+  
   for (auto index : getIndexes()) {
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
@@ -1926,7 +1928,6 @@ RocksDBCollection::serializeIndexEstimates(
         << "serialized estimate for index '" << cindex->objectId()
         << "' valid through seq " << outputSeq;
       if (output.size() > sizeof(uint64_t)) {
-        RocksDBKey key;
         key.constructIndexEstimateValue(cindex->objectId());
         rocksdb::Slice value(output);
         rocksdb::Status s =

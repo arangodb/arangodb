@@ -102,11 +102,9 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     if (messages.size() > 0 && shouldListen) {
       // listen to our neighbours
       uint64_t newCommunity = mostFrequent(messages);
-      auto it = val->memory.find(newCommunity);
-      if (it == val->memory.end()) {
-        val->memory.emplace(newCommunity, 1);
-      } else {
-        it->second++;
+      auto it = val->memory.insert({newCommunity, 1});
+      if (!it.second) {
+        it.first->second++;
       }
       val->numCommunities++;
     }

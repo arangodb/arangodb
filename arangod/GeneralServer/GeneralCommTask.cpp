@@ -138,7 +138,6 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -235,7 +234,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
-  const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
+  rest::ResponseCode const code = GeneralCommTask::canAccessPath(req);
   if (code == rest::ResponseCode::UNAUTHORIZED) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                      req.contentTypeResponse(), req.messageId(),
@@ -358,19 +357,17 @@ void GeneralCommTask::executeRequest(
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
   MUTEX_LOCKER(locker, _statisticsMutex);
 
-  auto iter = _statisticsMap.find(id);
-
-  if (iter == _statisticsMap.end()) {
-    if (stat != nullptr) {
-      _statisticsMap.emplace(std::make_pair(id, stat));
+  if (stat == nullptr) {
+    auto it = _statisticsMap.find(id);
+    if (it != _statisticsMap.end()) {
+      it->second->release();
+      _statisticsMap.erase(it);
     }
   } else {
-    iter->second->release();
-
-    if (stat != nullptr) {
-      iter->second = stat;
-    } else {
-      _statisticsMap.erase(iter);
+    auto result = _statisticsMap.insert({id, stat});
+    if (!result.second) {
+      result.first->second->release();
+      result.first->second = stat;
     }
   }
 }

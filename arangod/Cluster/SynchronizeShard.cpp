@@ -468,7 +468,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     auto r = cc->syncRequest(
       TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
-    if (r->result == nullptr && r->result->getHttpReturnCode() != 200) {
+    if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "startReadLockOnLeader: cancelation error for shard - " << collection
         << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
@@ -806,7 +806,7 @@ bool SynchronizeShard::first() {
       VPackBuilder config;
       { VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL, VPackValue(true));
+        config.add(INCREMENTAL, VPackValue(docCount > 0)); // use dump if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));

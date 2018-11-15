@@ -66,6 +66,18 @@ struct IResearchLinkHelper {
   static std::string const& type() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief validate the link specifications for:
+  ///        * valid link meta
+  ///        * collection existence
+  ///        * collection permissions
+  ///        * valid link meta
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result validateLinks(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& links
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief updates the collections in 'vocbase' to match the specified
   ///        IResearchLink definitions
   /// @param modified set of modified collection IDs

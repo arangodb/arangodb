@@ -158,7 +158,17 @@ using namespace iresearch;
 class features {
  public:
   enum Mask : uint32_t {
-    POS = 3, POS_OFFS = 7, POS_PAY = 11, POS_OFFS_PAY = 15
+    DOCS = 0,
+    FREQ = 1,
+    POS = 2,
+    OFFS = 4,
+    PAY = 8,
+    // MSVC2013 requires compile-time constant values for enum combinations
+    // used by switch-case statements
+    FREQ_POS = 3, // FREQ | POS
+    FREQ_POS_OFFS = 7, // FREQ | POS | OFFS
+    FREQ_POS_PAY = 11, // FREQ | POS | PAY
+    FREQ_POS_OFFS_PAY = 15, // FREQ | POS | OFFS | PAY
   };
 
   features() = default;
@@ -188,9 +198,19 @@ class features {
   bool payload() const NOEXCEPT { return irs::check_bit<3>(mask_); }
   operator Mask() const NOEXCEPT { return static_cast<Mask>(mask_); }
 
+  bool any(Mask mask) const NOEXCEPT {
+    return Mask(0) != (mask_ & mask);
+  }
+
+  bool all(Mask mask) const NOEXCEPT {
+    return mask != (mask_ & mask);
+  }
+
  private:
   irs::byte_type mask_{};
 }; // features
+
+ENABLE_BITMASK_ENUM(features::Mask);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             forward declarations
@@ -492,7 +512,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
     std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
-  if (features.check< position >()) {
+  if (features.check<position>()) {
     // prepare proximity stream
     if (!pos_) {
       pos_ = memory::make_unique< pos_stream >();
@@ -501,7 +521,7 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
     pos_->reset();
     prepare_output(name, pos_->out, state, POS_EXT, POS_FORMAT_NAME, FORMAT_MAX);
 
-    if (features.check< payload >() || features.check< offset >()) {
+    if (features.check<payload>() || features.check<offset>()) {
       // prepare payload stream
       if (!pay_) {
         pay_ = memory::make_unique<pay_stream>();
@@ -629,11 +649,11 @@ void postings_writer::begin_term() {
   doc.start = doc.out->file_pointer();
   std::fill_n(doc.skip_ptr, MAX_SKIP_LEVELS, doc.start);
   if (features_.position()) {
-    assert(pos_);
+    assert(pos_ && pos_->out);
     pos_->start = pos_->out->file_pointer();
     std::fill_n(pos_->skip_ptr, MAX_SKIP_LEVELS, pos_->start);
-    if (features_.payload() || features_.offset()) {
-      assert(pay_);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_->out);
       pay_->start = pay_->out->file_pointer();
       std::fill_n(pay_->skip_ptr, MAX_SKIP_LEVELS, pay_->start);
     }
@@ -674,7 +694,7 @@ void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
 
 void postings_writer::add_position(uint32_t pos, const offset* offs, const payload* pay) {
   assert(!offs || offs->start <= offs->end);
-  assert(pos_); /* at least positions stream should be created */
+  assert(features_.position() && pos_ && pos_->out); /* at least positions stream should be created */
 
   pos_->pos(pos - pos_->last);
   if (pay) pay_->payload(pos_->size, pay->value);
@@ -686,26 +706,29 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
     pos_->flush(buf);
 
     if (pay) {
+      assert(features_.payload() && pay_ && pay_->out);
       pay_->flush_payload(buf);
     }
 
     if (offs) {
+      assert(features_.offset() && pay_ && pay_->out);
       pay_->flush_offsets(buf);
     }
   }
 }
 
 void postings_writer::end_doc() {
-  if ( doc.full() ) {
+  if (doc.full()) {
     doc.block_last = doc.last;
     doc.end = doc.out->file_pointer();
-    if ( pos_ ) {
-      assert( pos_ );
+    if (features_.position()) {
+      assert(pos_ && pos_->out);
       pos_->end = pos_->out->file_pointer();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_->block_last = pos_->size;
-      if ( pay_ ) {
+      if (features_.any(features::OFFS | features::PAY)) {
+        assert(pay_ && pay_->out);
         pay_->end = pay_->out->file_pointer();
         pay_->block_last = pay_->pay_buf_.size();
       }
@@ -751,6 +774,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
   /* write remaining position using
    * variable length encoding */
   if (features_.position()) {
+    assert(pos_ && pos_->out);
+
     if (meta.freq > BLOCK_SIZE) {
       meta.pos_end = pos_->out->file_pointer() - pos_->start;
     }
@@ -763,6 +788,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
         if (features_.payload()) {
+          assert(pay_ && pay_->out);
+
           const uint32_t size = pay_->pay_sizes[i];
           if (last_pay_size != size) {
             last_pay_size = size;
@@ -781,6 +808,8 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
         }
 
         if (features_.offset()) {
+          assert(pay_ && pay_->out);
+
           const uint32_t pay_offs_delta = pay_->offs_start_buf[i];
           const uint32_t len = pay_->offs_len_buf[i];
           if (len == last_offs_len) {
@@ -794,6 +823,7 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
       }
 
       if (features_.payload()) {
+        assert(pay_ && pay_->out);
         pay_->pay_buf_.clear();
       }
     }
@@ -850,8 +880,8 @@ void postings_writer::write_skip(size_t level, index_output& out) {
 
     pos_->skip_ptr[level] = pos_ptr;
 
-    if (features_.payload() || features_.offset()) {
-      assert(pay_);
+    if (features_.any(features::OFFS | features::PAY)) {
+      assert(pay_ && pay_->out);
 
       if (features_.payload()) {
         out.write_vint(static_cast<uint32_t>(pay_->block_last));
@@ -886,7 +916,7 @@ void postings_writer::encode(
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (features_.payload() || features_.offset()) {
+    if (features_.any(features::OFFS | features::PAY)) {
       out.write_vlong(meta.pay_start - last_state.pay_start);
     }
   }
@@ -3488,84 +3518,92 @@ class dense_block : util::noncopyable {
   doc_id_t base_{ };
 }; // dense_block
 
-class dense_fixed_length_block : util::noncopyable {
+class dense_fixed_offset_block : util::noncopyable {
  public:
   class iterator {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
-      if (doc < value_) {
-        doc = value_;
+      if (doc < value_next_) {
+        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+          return next();
+        }
+
+        // don't seek backwards
+        return true;
       }
 
-      // FIXME refactor
-      begin_ = avg_length_*(doc-base_);
-
+      value_next_ = doc;
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+    const doc_id_t& value() const NOEXCEPT {
+      return value_;
+    }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
+    const bytes_ref& value_payload() const NOEXCEPT {
       return value_payload_;
     }
 
     bool next() NOEXCEPT {
-      if (begin_ >= end_) {
+      if (value_next_ >= value_end_) {
+        seal();
         return false;
       }
 
-      value_ = base_ + begin_ / avg_length_;
-      next_value();
+      value_ = value_next_++;
+      const auto offset = (value_ - value_min_)*avg_length_;
+
+      value_payload_ = bytes_ref(
+        data_.c_str() + offset,
+        value_ == value_back_ ? data_.size() - offset : avg_length_
+      );
 
       return true;
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
-      begin_ = end_ = 0;
-    }
-
-    void reset(const dense_fixed_length_block& block) NOEXCEPT {
-      value_ = block.base_key_;
+      value_ = type_limits<type_t::doc_id_t>::eof();
+      value_next_ = type_limits<type_t::doc_id_t>::eof();
+      value_min_ = type_limits<type_t::doc_id_t>::eof();
+      value_end_ = type_limits<type_t::doc_id_t>::eof();
       value_payload_ = bytes_ref::NIL;
-      begin_ = 0;
-      end_ = block.avg_length_*block.size_;
+    }
+
+    void reset(const dense_fixed_offset_block& block) NOEXCEPT {
       avg_length_ = block.avg_length_;
-      base_ = block.base_key_;
-      data_ = &block.data_;
+      data_ = block.data_;
+      value_payload_ = bytes_ref::NIL;
+      value_ = type_limits<type_t::doc_id_t>::invalid();
+      value_next_ = block.base_key_;
+      value_min_ = block.base_key_;
+      value_end_ = value_min_ + block.size_;
+      value_back_ = value_end_ - 1;
     }
 
-    bool operator==(const dense_fixed_length_block& rhs) const NOEXCEPT {
-      return data_ == &rhs.data_;
+    bool operator==(const dense_fixed_offset_block& rhs) const NOEXCEPT {
+      return data_.c_str() == rhs.data_.c_str();
     }
 
-    bool operator!=(const dense_fixed_length_block& rhs) const NOEXCEPT {
+    bool operator!=(const dense_fixed_offset_block& rhs) const NOEXCEPT {
       return !(*this == rhs);
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-
-    // note that function increases 'begin_' value
-    void next_value() NOEXCEPT {
-      value_payload_ = bytes_ref(data_->c_str() + begin_, avg_length_);
-      begin_ += avg_length_;
-    }
-
-    uint64_t begin_{}; // start offset
-    uint64_t end_{}; // end offset
     uint64_t avg_length_{}; // average value length
-    doc_id_t base_{}; // base doc_id
-    const bstring* data_{};
+    bytes_ref data_;
+    bytes_ref value_payload_;
+    doc_id_t value_ { type_limits<type_t::doc_id_t>::invalid() }; // current value
+    doc_id_t value_next_{ type_limits<type_t::doc_id_t>::invalid() }; // next value
+    doc_id_t value_min_{}; // min doc_id
+    doc_id_t value_end_{}; // after the last valid doc id
+    doc_id_t value_back_{}; // last valid doc id
   }; // iterator
 
   bool load(index_input& in, decompressor& decomp, bstring& buf) {
     size_ = in.read_vint(); // total number of entries in a block
 
     if (!size_) {
-      IR_FRMT_ERROR("Empty 'dense_fixed_length_block' found in columnstore");
+      IR_FRMT_ERROR("Empty 'dense_fixed_offset_block' found in columnstore");
       return false;
     }
 
@@ -3640,7 +3678,7 @@ class dense_fixed_length_block : util::noncopyable {
   uint32_t avg_length_{}; // entry length
   doc_id_t size_{}; // total number of entries
   bstring data_;
-}; // dense_fixed_length_block
+}; // dense_fixed_offset_block
 
 class sparse_mask_block : util::noncopyable {
  public:
@@ -3880,7 +3918,7 @@ template<typename Allocator = std::allocator<sparse_block>>
 class read_context
   : public block_cache_traits<sparse_block, Allocator>::cache_t,
     public block_cache_traits<dense_block, Allocator>::cache_t,
-    public block_cache_traits<dense_fixed_length_block, Allocator>::cache_t,
+    public block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t,
     public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
     public block_cache_traits<dense_mask_block, Allocator>::cache_t {
  public:
@@ -3901,7 +3939,7 @@ class read_context
   read_context(index_input::ptr&& in = index_input::ptr(), const Allocator& alloc = Allocator())
     : block_cache_traits<sparse_block, Allocator>::cache_t(typename block_cache_traits<sparse_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_block, Allocator>::cache_t(typename block_cache_traits<dense_block, Allocator>::allocator_t(alloc)),
-      block_cache_traits<dense_fixed_length_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_length_block, Allocator>::allocator_t(alloc)),
+      block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(typename block_cache_traits<dense_fixed_offset_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<sparse_mask_block, Allocator>::cache_t(typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(alloc)),
       block_cache_traits<dense_mask_block, Allocator>::cache_t(typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(alloc)),
       buf_(INDEX_BLOCK_SIZE*sizeof(uint32_t), 0),
@@ -3969,7 +4007,6 @@ class context_provider: private util::noncopyable {
 }; // context_provider
 
 // in case of success caches block pointed
-// by 'ref' and retuns a pointer to cached
 // instance, nullptr otherwise
 template<typename BlockRef>
 const typename BlockRef::block_t* load_block(
@@ -4409,19 +4446,19 @@ class sparse_column final : public column {
 }; // sparse_column
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class dense_fixed_length_column
+/// @class dense_fixed_offset_column
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Block>
-class dense_fixed_length_column final : public column {
+class dense_fixed_offset_column final : public column {
  public:
-  typedef dense_fixed_length_column column_t;
+  typedef dense_fixed_offset_column column_t;
   typedef Block block_t;
 
   static column::ptr make(const context_provider& ctxs, ColumnProperty props) {
     return memory::make_unique<column_t>(ctxs, props);
   }
 
-  dense_fixed_length_column(const context_provider& ctxs, ColumnProperty prop)
+  dense_fixed_offset_column(const context_provider& ctxs, ColumnProperty prop)
     : column(prop), ctxs_(&ctxs) {
   }
 
@@ -4597,18 +4634,18 @@ class dense_fixed_length_column final : public column {
   const context_provider* ctxs_;
   refs_t refs_;
   doc_id_t min_{}; // min key
-}; // dense_fixed_length_column
+}; // dense_fixed_offset_column
 
 template<>
-class dense_fixed_length_column<dense_mask_block> final : public column {
+class dense_fixed_offset_column<dense_mask_block> final : public column {
  public:
-  typedef dense_fixed_length_column column_t;
+  typedef dense_fixed_offset_column column_t;
 
   static column::ptr make(const context_provider&, ColumnProperty props) {
     return memory::make_unique<column_t>(props);
   }
 
-  explicit dense_fixed_length_column(ColumnProperty prop) NOEXCEPT
+  explicit dense_fixed_offset_column(ColumnProperty prop) NOEXCEPT
     : column(prop) {
   }
 
@@ -4737,9 +4774,9 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   }; // column_iterator
 
   doc_id_t min_{}; // min key (less than any key in column)
-}; // dense_fixed_length_column
+}; // dense_fixed_offset_column
 
-irs::doc_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
+irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
   return empty()
     ? irs::doc_iterator::empty()
     : irs::doc_iterator::make<column_iterator>(*this);
@@ -4757,7 +4794,7 @@ const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_
   &sparse_column<sparse_block>::make,                          //    0     |    0        0        0
   &sparse_column<dense_block>::make,                           //    0     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    0     |    0        1        0
-  &sparse_column<dense_fixed_length_block>::make,              //    0     |    0        1        1
+  &sparse_column<dense_fixed_offset_block>::make,              //    0     |    0        1        1
   nullptr, /* invalid properties, should never happen */       //    0     |    1        0        0
   nullptr, /* invalid properties, should never happen */       //    0     |    1        0        1
   &sparse_column<sparse_mask_block>::make,                     //    0     |    1        1        0
@@ -4766,11 +4803,11 @@ const column_factory_f g_column_factories[] {                  // CP_DENSE | CP_
   &sparse_column<sparse_block>::make,                          //    1     |    0        0        0
   &sparse_column<dense_block>::make,                           //    1     |    0        0        1
   &sparse_column<sparse_block>::make,                          //    1     |    0        1        0
-  &dense_fixed_length_column<dense_fixed_length_block>::make,  //    1     |    0        1        1
+  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //    1     |    0        1        1
   nullptr, /* invalid properties, should never happen */       //    1     |    1        0        0
   nullptr, /* invalid properties, should never happen */       //    1     |    1        0        1
   &sparse_column<sparse_mask_block>::make,                     //    1     |    1        1        0
-  &dense_fixed_length_column<dense_mask_block>::make           //    1     |    1        1        1
+  &dense_fixed_offset_column<dense_mask_block>::make           //    1     |    1        1        1
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -5053,6 +5090,12 @@ void postings_reader::decode(
   }
 }
 
+#if defined(_MSC_VER)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wswitch"
+#endif
+
 irs::doc_iterator::ptr postings_reader::iterator(
     const flags& field,
     const attribute_view& attrs,
@@ -5064,17 +5107,19 @@ irs::doc_iterator::ptr postings_reader::iterator(
   const auto enabled = features & req;
   doc_iterator::ptr it;
 
-  switch(enabled) {
-   case features::POS_OFFS_PAY:
+  // MSVC 2013 doesn't support constexpr, can't use
+  // 'operator|' in the following switch statement
+  switch (enabled) {
+   case features::FREQ_POS_OFFS_PAY:
     it = doc_iterator::make<pos_doc_iterator<offs_pay_iterator>>();
     break;
-   case features::POS_OFFS:
+   case features::FREQ_POS_OFFS:
     it = doc_iterator::make<pos_doc_iterator<offs_iterator>>();
     break;
-   case features::POS_PAY:
+   case features::FREQ_POS_PAY:
     it = doc_iterator::make<pos_doc_iterator<pay_iterator>>();
     break;
-   case features::POS:
+   case features::FREQ_POS:
     it = doc_iterator::make<pos_doc_iterator<pos_iterator>>();
     break;
    default:
@@ -5088,6 +5133,11 @@ irs::doc_iterator::ptr postings_reader::iterator(
 
   return IMPLICIT_MOVE_WORKAROUND(it);
 }
+
+#if defined(_MSC_VER)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 // actual implementation
 class format : public irs::version10::format {

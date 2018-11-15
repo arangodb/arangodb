@@ -194,7 +194,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -246,7 +246,7 @@ void RocksDBTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
 
@@ -312,7 +312,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 
 void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
                                                 uint64_t commitSeq) {
-    TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
@@ -331,6 +331,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
+
     if (idx == nullptr) {
       TRI_ASSERT(false); // Index reported estimates, but does not exist
       continue;
@@ -389,10 +390,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(!isLocked());
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -472,10 +470,9 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
     return TRI_ERROR_INTERNAL;
   }
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(_collection);
 
-  auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;

@@ -44,7 +44,7 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAgencyCallbacksHandler"; }
-  RequestLane lane() const override final { return RequestLane::AGENCY_CLUSTER; }
+  RequestLane lane() const override final { return RequestLane::AGENCY_INTERNAL; }
   RestStatus execute() override;
 
  private:

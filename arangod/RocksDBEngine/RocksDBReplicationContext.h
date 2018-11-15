@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H
@@ -27,46 +28,92 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBIterators.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
-#include "Utils/DatabaseGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/vocbase.h"
+
+#include <rocksdb/options.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+namespace rocksdb {
+  class Comparator;
+  class Iterator;
+  class Snapshot;
+}
+
 namespace arangodb {
-class DatabaseGuard;
 
 class RocksDBReplicationContext {
  private:
   typedef std::function<void(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
 
+  /// collection abstraction
   struct CollectionIterator {
-    CollectionIterator(LogicalCollection&, transaction::Methods&, bool);
-    LogicalCollection& logical;
+    
+    CollectionIterator(TRI_vocbase_t&,
+                       std::shared_ptr<LogicalCollection> const&,
+                       bool sorted, rocksdb::Snapshot const*);
+    ~CollectionIterator();
+    
+    TRI_vocbase_t& vocbase;
+    std::shared_ptr<LogicalCollection> logical;
 
     /// Iterator over primary index or documents
-    std::unique_ptr<RocksDBGenericIterator> iter;
-
+    std::unique_ptr<rocksdb::Iterator> iter;
+    /// bounds used by the iterator
+    RocksDBKeyBounds bounds;
+    /// some incrementing number
     uint64_t currentTick;
-    std::atomic<bool> isUsed;
-    bool hasMore;
+    /// @brief offset in the collection used with the incremental sync
+    uint64_t lastSortedIteratorOffset;
 
-    /// @brief type handler used to render documents
-    std::shared_ptr<arangodb::velocypack::CustomTypeHandler> customTypeHandler;
     arangodb::velocypack::Options vpackOptions;
+    
+    /// @brief number of documents in this collection
+    /// only set in a very specific use-case
+    uint64_t numberDocuments;
+    /// @brief snapshot and number documents were fetched exclusively
+    bool isNumberDocumentsExclusive;
 
+    rocksdb::ReadOptions const& readOptions() const { return _readOptions; }
     bool sorted() const { return _sortedIterator; }
-    void setSorted(bool, transaction::Methods*);
+    void setSorted(bool);
+    
+    void use() noexcept {
+      TRI_ASSERT(!isUsed());
+      _isUsed.store(true, std::memory_order_release);
+    }
+    bool isUsed() const {
+      return _isUsed.load(std::memory_order_acquire);
+    }
+    void release() noexcept {
+      _isUsed.store(false, std::memory_order_release);
+    }
 
-    void release();
+    // iterator convenience functions
+    bool hasMore() const;
+    bool outOfRange() const;
+    uint64_t skipKeys(uint64_t toSkip);
+    void resetToStart();
 
   private:
+    CollectionNameResolver _resolver;
+    /// @brief type handler used to render documents
+    std::unique_ptr<arangodb::velocypack::CustomTypeHandler> _cTypeHandler;
+    /// @brief read options for iterators
+    rocksdb::ReadOptions _readOptions;
+    /// @brief upper limit for iterate_upper_bound
+    rocksdb::Slice _upperLimit;
+    rocksdb::Comparator const* _cmp;
+    /// no one is allowed to use this concurrently
+    std::atomic<bool> _isUsed;
     /// primary-index sorted iterator
     bool _sortedIterator;
   };
@@ -75,56 +122,61 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
-  uint64_t lastTick() const;
-  uint64_t count() const;
-
-  TRI_vocbase_t* vocbase() const;
-
-  // creates new transaction/snapshot
-  void bind(TRI_vocbase_t& vocbase);
-
-  /// Bind collection for incremental sync
-  int bindCollectionIncremental(
-    TRI_vocbase_t& vocbase,
-    std::string const& collectionIdentifier
-  );
-  int chooseDatabase(TRI_vocbase_t& vocbase);
+  uint64_t snapshotTick();
+  
+  /// invalidate all iterators with that vocbase
+  void removeVocbase(TRI_vocbase_t&);
+  
+  /// remove matching iterator
+  void releaseIterators(TRI_vocbase_t&, TRI_voc_cid_t);
+  
+  std::tuple<Result, TRI_voc_cid_t, uint64_t>
+   bindCollectionIncremental(TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
-  Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
+  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
                       bool global, velocypack::Builder&);
 
   // ========================= Dump API =============================
+  
+  struct DumpResult : arangodb::Result {
+    DumpResult(int res)
+      : Result(res), hasMore(false), includedTick(0) {}
+    DumpResult(int res, bool hm, uint64_t tick)
+      : Result(res), hasMore(hm), includedTick(tick) {}
+    bool hasMore;
+    uint64_t includedTick; // tick increases for each fetch
+  };
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dumpJson(TRI_vocbase_t* vocbase, std::string const& cname,
-                                    basics::StringBuffer&, uint64_t chunkSize);
+  DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
+                      basics::StringBuffer&, uint64_t chunkSize);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dumpVPack(TRI_vocbase_t* vocbase, std::string const& cname,
-                                     velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize);
-
-  bool moreForDump(std::string const& collectionIdentifier);
+  DumpResult dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
+                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize);
 
   // ==================== Incremental Sync ===========================
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(velocypack::Builder& outBuilder,
+  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                                 velocypack::Builder& outBuilder,
                                  uint64_t chunkSize);
-
   /// dump all keys from collection
-  arangodb::Result dumpKeys(velocypack::Builder& outBuilder, size_t chunk,
+  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                            velocypack::Builder& outBuilder, size_t chunk,
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
-  arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
+  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                                 velocypack::Builder& b, size_t chunk,
                                  size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                                  std::string const& lowKey, velocypack::Slice const& ids);
 
@@ -134,7 +186,7 @@ class RocksDBReplicationContext {
   void setDeleted();
   bool isUsed() const;
   /// set use flag and extend lifetime
-  bool use(double ttl, bool exclusive);
+  void use(double ttl);
   /// remove use flag
   void release();
   /// extend lifetime without using the context
@@ -147,33 +199,31 @@ class RocksDBReplicationContext {
 
  private:
   
-  void releaseDumpingResources();
-  CollectionIterator* getCollectionIterator(TRI_voc_cid_t cid, bool sorted);
-  void internalBind(TRI_vocbase_t& vocbase, bool allowChange = true);
-
+  void lazyCreateSnapshot();
+  
+  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase,
+                                            TRI_voc_cid_t cid,
+                                            bool sorted,
+                                            bool allowCreate);
+  
+  void releaseDumpIterator(CollectionIterator*);
+  
+ private:
+  
   mutable Mutex _contextLock;
-  TRI_vocbase_t* _vocbase;
   TRI_server_id_t const _serverId;
   TRI_voc_tick_t const _id; // batch id
   
-  uint64_t _lastTick; // the time at which the snapshot was taken
-  std::unique_ptr<DatabaseGuard> _guard;
-  std::unique_ptr<transaction::Methods> _trx;
-  std::unordered_map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
+  uint64_t _snapshotTick; // tick in WAL from _snapshot
+  rocksdb::Snapshot const* _snapshot;
+  std::map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
 
-  /// @brief bound collection iterator for single-threaded methods
-  CollectionIterator* _collection;
-
-  /// @brief offset in the collection used with the incremental sync
-  uint64_t _lastIteratorOffset;
   double const _ttl;
   /// @brief expiration time, updated under lock by ReplicationManager
   double _expires;
   
   /// @brief true if context is deleted, updated under lock by ReplicationManager
   bool _isDeleted;
-  /// @brief true if context cannot be used concurrently, updated under lock by ReplicationManager
-  bool _exclusive;
   /// @brief number of concurrent users, updated under lock by ReplicationManager
   size_t _users;
 };

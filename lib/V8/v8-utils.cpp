@@ -102,9 +102,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(v8::Handle<v8::Value> const obj)
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
-  if (_str != nullptr) {
-    TRI_Free(_str);
-  }
+  TRI_Free(_str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,13 +171,16 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(filename, &length);
 
   if (content == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load JavaScript file '"
                                             << filename
                                             << "': " << TRI_last_error();
     return false;
   }
 
-  // detect shebang
+  auto guard = scopeGuard([&content] {
+    TRI_FreeString(content);
+  });
+  
   size_t bangOffset = 0;
   if (stripShebang) {
     if (strncmp(content, "#!", 2) == 0) {
@@ -194,13 +195,14 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (useGlobalContext) {
-    char const* prologue = "(function() { ";
-    char const* epilogue = "/* end-of-file */ })()";
+    constexpr char const* prologue = "(function() { ";
+    constexpr char const* epilogue = "/* end-of-file */ })()";
 
     char* contentWrapper = TRI_Concatenate3String(
         prologue, content + bangOffset, epilogue);
 
     TRI_FreeString(content);
+    content = nullptr;
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
@@ -211,7 +213,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   if (content == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot load java script file '" << filename
+        << "cannot load JavaScript file '" << filename
         << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
@@ -219,8 +221,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
   v8::Handle<v8::String> source =
       TRI_V8_PAIR_STRING(isolate, content + bangOffset, (int)length);
-
-  TRI_FreeString(content);
 
   v8::TryCatch tryCatch;
 
@@ -233,7 +233,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load JavaScript file '"
                                             << filename
                                             << "': compilation failed.";
     return false;
@@ -253,7 +253,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     }
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded java script file: '"
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded JavaScript file: '"
                                             << filename << "'";
   return true;
 }

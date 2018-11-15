@@ -253,7 +253,7 @@ ExecutionPlan::~ExecutionPlan() {
 }
 
 /// @brief create an execution plan from an AST
-ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
@@ -277,7 +277,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   plan->findVarUsage();
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief whether or not the plan contains at least one node of this type
@@ -358,7 +358,10 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
                                                           bool verbose) const {
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackOptions options;
+  options.checkAttributeUniqueness = false;
+  options.buildUnindexedArrays = true;
+  auto builder = std::make_shared<VPackBuilder>(&options);
 
   toVelocyPack(*builder, ast, verbose);
   return builder;
@@ -1249,7 +1252,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
 
   SortElementVector elements;
-  std::vector<ExecutionNode*> temp;
+//  std::vector<ExecutionNode*> temp;
 
   try {
     size_t const n = list->numMembers();
@@ -1299,16 +1302,17 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
         elements.emplace_back(v, isAscending);
       } else {
         // sort operand is some misc expression
-        auto calc = createTemporaryCalculation(expression, nullptr);
-        temp.emplace_back(calc);
+        auto calc = createTemporaryCalculation(expression, previous);
+//        temp.emplace_back(calc);
         elements.emplace_back(getOutVariable(calc), isAscending);
+        previous = calc;
       }
     }
   } catch (...) {
     // prevent memleak
-    for (auto& it : temp) {
-      delete it;
-    }
+//    for (auto& it : temp) {
+//      delete it;
+//    }
     throw;
   }
 
@@ -1319,15 +1323,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   }
 
   // at least one sort criterion remained
-  TRI_ASSERT(!elements.empty());
-
+/*
   // properly link the temporary calculations in the plan
-  for (auto it = temp.begin(); it != temp.end(); ++it) {
+  for (auto const& it : temp) {
     TRI_ASSERT(previous != nullptr);
-    (*it)->addDependency(previous);
-    previous = (*it);
+    it->addDependency(previous);
+    previous = it;
   }
-
+*/
   auto en = registerNode(new SortNode(this, nextId(), elements, false));
 
   return addDependency(previous, en);
@@ -1991,7 +1994,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    auto member = node->getMemberUnchecked(i);
 
     if (member == nullptr || member->type == NODE_TYPE_NOP) {
       continue;
@@ -2177,8 +2180,8 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   void after(ExecutionNode* en) override final {
     // Add variables set here to _valid:
     for (auto const& v : en->getVariablesSetHere()) {
-      _valid.emplace(v);
-      _varSetBy->emplace(v->id, en);
+      _valid.insert(v);
+      _varSetBy->insert({v->id, en});
     }
 
     en->setVarsValid(_valid);

@@ -254,9 +254,7 @@ bool transaction::Methods::addStatusChangeCallback(
 ) {
   if (!callback || !*callback) {
     return true; // nothing to call back
-  }
-
-  if (!_state) {
+  } else if (!_state) {
     return false; // nothing to add to
   }
 
@@ -269,6 +267,27 @@ bool transaction::Methods::addStatusChangeCallback(
 
   return true;
 }
+
+bool transaction::Methods::removeStatusChangeCallback(
+    StatusChangeCallback const* callback
+) {
+  if (!callback || !*callback) {
+    return true; // nothing to call back
+  } else if (!_state) {
+    return false; // nothing to add to
+  }
+  
+  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, false);
+  if (statusChangeCallbacks) {
+    auto it = std::find(statusChangeCallbacks->begin(), statusChangeCallbacks->end(), callback);
+    TRI_ASSERT(it != statusChangeCallbacks->end());
+    if (ADB_LIKELY(it != statusChangeCallbacks->end())) {
+      statusChangeCallbacks->erase(it);
+    }
+  }
+  return true;
+}
+
 
 /*static*/ void transaction::Methods::clearDataSourceRegistrationCallbacks() {
   getDataSourceRegistrationCallbacks().clear();
@@ -1607,13 +1626,13 @@ OperationResult transaction::Methods::insertLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
       
-      auto const& followerInfo = collection->followers();
       // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
@@ -1877,13 +1896,13 @@ OperationResult transaction::Methods::modifyLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
       
-      auto const& followerInfo = collection->followers();
       // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
@@ -2091,14 +2110,14 @@ OperationResult transaction::Methods::removeLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
   
-      auto const& followerInfo = collection->followers();
-      // fetch followers 
+      // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
         replicationType = ReplicationType::LEADER;
@@ -2325,14 +2344,14 @@ OperationResult transaction::Methods::truncateLocal(
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
-    std::string theLeader = collection->followers()->getLeader();
+    auto const& followerInfo = collection->followers();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
       
-      auto const& followerInfo = collection->followers();
-      // fetch followers 
+      // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
         replicationType = ReplicationType::LEADER;

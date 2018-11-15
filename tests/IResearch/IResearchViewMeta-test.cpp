@@ -74,6 +74,9 @@ SECTION("test_defaults") {
   CHECK((false == !meta._consolidationPolicy.policy()));
   CHECK((0.1f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
+  CHECK((0 == meta._writebufferActive));
+  CHECK((64 == meta._writebufferIdle));
+  CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
 }
 
 SECTION("test_inheritDefaults") {
@@ -89,9 +92,12 @@ SECTION("test_inheritDefaults") {
   defaults._consolidationIntervalMsec = 456;
   defaults._consolidationPolicy = ConsolidationPolicy(
     irs::index_writer::consolidation_policy_t(),
-    std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"bytes\", \"threshold\": 0.11 }"))
+    std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"tier\", \"threshold\": 0.11 }"))
   );
   defaults._locale = irs::locale_utils::locale("C");
+  defaults._writebufferActive = 10;
+  defaults._writebufferIdle = 11;
+  defaults._writebufferSizeMax = 12;
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -101,10 +107,13 @@ SECTION("test_inheritDefaults") {
     CHECK((42 == *(metaState._collections.begin())));
     CHECK(654 == meta._cleanupIntervalStep);
     CHECK(456 == meta._consolidationIntervalMsec);
-    CHECK((std::string("bytes") == meta._consolidationPolicy.properties().get("type").copyString()));
+    CHECK((std::string("tier") == meta._consolidationPolicy.properties().get("type").copyString()));
     CHECK((true == !meta._consolidationPolicy.policy()));
     CHECK((.11f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
+    CHECK((10 == meta._writebufferActive));
+    CHECK((11 == meta._writebufferIdle));
+    CHECK((12 == meta._writebufferSizeMax));
   }
 }
 
@@ -125,11 +134,13 @@ SECTION("test_readDefaults") {
     CHECK((false == !meta._consolidationPolicy.policy()));
     CHECK((0.1f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
+    CHECK((0 == meta._writebufferActive));
+    CHECK((64 == meta._writebufferIdle));
+    CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
   }
 }
 
 SECTION("test_readCustomizedValues") {
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42 };
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMetaState metaState;
@@ -179,7 +190,7 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": -0.5 } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": -0.5 } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK((std::string("consolidationPolicy=>threshold") == errorField));
@@ -187,7 +198,7 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": 1.5 } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": 1.5 } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK((std::string("consolidationPolicy=>threshold") == errorField));
@@ -211,8 +222,11 @@ SECTION("test_readCustomizedValues") {
         \"collections\": [ 42 ], \
         \"consolidationIntervalMsec\": 456, \
         \"cleanupIntervalStep\": 654, \
-        \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": 0.11 }, \
-        \"locale\": \"ru_RU.KOI8-R\" \
+        \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": 0.11 }, \
+        \"locale\": \"ru_RU.KOI8-R\", \
+        \"writebufferActive\": 10, \
+        \"writebufferIdle\": 11, \
+        \"writebufferSizeMax\": 12 \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
   CHECK((true == metaState.init(json->slice(), errorField)));
@@ -226,10 +240,13 @@ SECTION("test_readCustomizedValues") {
   CHECK((42 == *(metaState._collections.begin())));
   CHECK(654 == meta._cleanupIntervalStep);
   CHECK(456 == meta._consolidationIntervalMsec);
-  CHECK((std::string("bytes") == meta._consolidationPolicy.properties().get("type").copyString()));
+  CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
   CHECK((false == !meta._consolidationPolicy.policy()));
   CHECK((.11f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
   CHECK(std::string("C") == iresearch::locale_utils::name(meta._locale));
+  CHECK((10 == meta._writebufferActive));
+  CHECK((11 == meta._writebufferIdle));
+  CHECK((12 == meta._writebufferSizeMax));
 }
 
 SECTION("test_writeDefaults") {
@@ -246,7 +263,7 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((7U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("cleanupIntervalStep");
@@ -259,6 +276,12 @@ SECTION("test_writeDefaults") {
   CHECK((tmpSlice2.isNumber<float>() && .1f == tmpSlice2.getNumber<float>()));
   tmpSlice2 = tmpSlice.get("type");
   CHECK((tmpSlice2.isString() && std::string("bytes_accum") == tmpSlice2.copyString()));
+  tmpSlice = slice.get("writebufferActive");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("writebufferIdle");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("writebufferSizeMax");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 32*(size_t(1)<<20) == tmpSlice.getNumber<size_t>()));
 }
 
 SECTION("test_writeCustomizedValues") {
@@ -269,7 +292,7 @@ SECTION("test_writeCustomizedValues") {
     meta._consolidationIntervalMsec = 0;
     meta._consolidationPolicy = ConsolidationPolicy(
       irs::index_writer::consolidation_policy_t(),
-      std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"fill\", \"threshold\": 0.2 }"))
+      std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"bytes_accum\", \"threshold\": 0.2 }"))
     );
 
     arangodb::velocypack::Builder builder;
@@ -287,7 +310,7 @@ SECTION("test_writeCustomizedValues") {
     tmpSlice2 = tmpSlice.get("threshold");
     CHECK((tmpSlice2.isNumber<float>() && .2f == tmpSlice2.getNumber<float>()));
     tmpSlice2 = tmpSlice.get("type");
-    CHECK((tmpSlice2.isString() && std::string("fill") == tmpSlice2.copyString()));
+    CHECK((tmpSlice2.isString() && std::string("bytes_accum") == tmpSlice2.copyString()));
   }
 
   arangodb::iresearch::IResearchViewMeta meta;
@@ -301,9 +324,12 @@ SECTION("test_writeCustomizedValues") {
   meta._consolidationIntervalMsec = 456;
   meta._consolidationPolicy = ConsolidationPolicy(
     irs::index_writer::consolidation_policy_t(),
-    std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"bytes\", \"threshold\": 0.11 }"))
+    std::move(*arangodb::velocypack::Parser::fromJson("{ \"type\": \"tier\", \"threshold\": 0.11 }"))
   );
   meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
+  meta._writebufferActive = 10;
+  meta._writebufferIdle = 11;
+  meta._writebufferSizeMax = 12;
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
   arangodb::velocypack::Builder builder;
@@ -317,7 +343,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((7U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -336,7 +362,13 @@ SECTION("test_writeCustomizedValues") {
   tmpSlice2 = tmpSlice.get("threshold");
   CHECK((tmpSlice2.isNumber<float>() && .11f == tmpSlice2.getNumber<float>()));
   tmpSlice2 = tmpSlice.get("type");
-  CHECK((tmpSlice2.isString() && std::string("bytes") == tmpSlice2.copyString()));
+  CHECK((tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString()));
+  tmpSlice = slice.get("writebufferActive");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 10 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("writebufferIdle");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 11 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("writebufferSizeMax");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 12 == tmpSlice.getNumber<size_t>()));
 }
 
 SECTION("test_readMaskAll") {
@@ -351,8 +383,11 @@ SECTION("test_readMaskAll") {
     \"collections\": [ 42 ], \
     \"consolidationIntervalMsec\": 654, \
     \"cleanupIntervalStep\": 456, \
-    \"consolidationPolicy\": { \"type\": \"bytes\", \"threshold\": 0.1 }, \
-    \"locale\": \"ru_RU.KOI8-R\" \
+    \"consolidationPolicy\": { \"type\": \"tier\", \"threshold\": 0.1 }, \
+    \"locale\": \"ru_RU.KOI8-R\", \
+    \"writebufferActive\": 10, \
+    \"writebufferIdle\": 11, \
+    \"writebufferSizeMax\": 12 \
   }");
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
@@ -361,6 +396,9 @@ SECTION("test_readMaskAll") {
   CHECK(true == mask._cleanupIntervalStep);
   CHECK((true == mask._consolidationPolicy));
   CHECK((false == mask._locale));
+  CHECK((true == mask._writebufferActive));
+  CHECK((true == mask._writebufferIdle));
+  CHECK((true == mask._writebufferSizeMax));
 }
 
 SECTION("test_readMaskNone") {
@@ -379,6 +417,9 @@ SECTION("test_readMaskNone") {
   CHECK(false == mask._cleanupIntervalStep);
   CHECK((false == mask._consolidationPolicy));
   CHECK(false == mask._locale);
+  CHECK((false == mask._writebufferActive));
+  CHECK((false == mask._writebufferIdle));
+  CHECK((false == mask._writebufferSizeMax));
 }
 
 SECTION("test_writeMaskAll") {
@@ -396,12 +437,15 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((7U == slice.length()));
   CHECK(true == slice.hasKey("collections"));
   CHECK(true == slice.hasKey("cleanupIntervalStep"));
   CHECK(true == slice.hasKey("consolidationIntervalMsec"));
   CHECK(true == slice.hasKey("consolidationPolicy"));
   CHECK((false == slice.hasKey("locale")));
+  CHECK((true == slice.hasKey("writebufferActive")));
+  CHECK((true == slice.hasKey("writebufferIdle")));
+  CHECK((true == slice.hasKey("writebufferSizeMax")));
 }
 
 SECTION("test_writeMaskNone") {

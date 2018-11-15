@@ -237,6 +237,10 @@ function main (argv) {
     options.singleresilient = false;
   }
 
+  if (options.hasOwnProperty('blacklist')) {
+    UnitTest.loadBlacklist(options.blacklist);
+  }
+
   // run the test and store the result
   let res = {}; // result
   try {

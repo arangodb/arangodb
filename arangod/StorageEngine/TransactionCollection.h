@@ -50,7 +50,7 @@ class TransactionCollection {
   inline TRI_voc_cid_t id() const { return _cid; }
   
   LogicalCollection* collection() const {
-    return _collection;  // vocbase collection pointer
+    return _collection.get();  // vocbase collection pointer
   }
   
   std::string collectionName() const;
@@ -91,10 +91,10 @@ class TransactionCollection {
   virtual void release() = 0;
 
  protected:
-  TransactionState* _transaction;  // the transaction state
-  TRI_voc_cid_t const _cid;        // collection id
-  LogicalCollection* _collection;  // vocbase collection pointer
-  AccessMode::Type _accessType;  // access type (read|write)
+  TransactionState* _transaction;                 // the transaction state
+  TRI_voc_cid_t const _cid;                       // collection id
+  std::shared_ptr<LogicalCollection> _collection; // vocbase collection pointer
+  AccessMode::Type _accessType;                   // access type (read|write)
 };
 
 }

@@ -46,7 +46,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-constexpr double MIN_SECONDS = 60.0;
+constexpr double MIN_SECONDS = 30.0;
 }
 
 // -----------------------------------------------------------------------------
@@ -389,7 +389,7 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
 }
 
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "Push element on fifo: " << fifo;
+  LOG_TOPIC(TRACE, Logger::THREADS) << "Push element on fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
   size_t p = static_cast<size_t>(fifo);
@@ -426,7 +426,7 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) 
 }
 
 bool Scheduler::popFifo(int64_t fifo) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "Popping a job from fifo: " << fifo;
+  LOG_TOPIC(TRACE, Logger::THREADS) << "Popping a job from fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
   size_t p = static_cast<size_t>(fifo);

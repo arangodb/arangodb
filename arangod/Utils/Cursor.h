@@ -77,7 +77,7 @@ class Cursor {
 
   inline bool isDeleted() const { return _isDeleted; }
 
-  void deleted() { _isDeleted = true; }
+  void setDeleted() { _isDeleted = true; }
 
   void use() {
     TRI_ASSERT(!_isDeleted);

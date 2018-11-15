@@ -47,6 +47,7 @@ QueryRegistryFeature::QueryRegistryFeature(
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
+      _slowStreamingQueryThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
@@ -85,6 +86,9 @@ void QueryRegistryFeature::collectOptions(
 
   options->addOption("--query.slow-threshold", "threshold for slow AQL queries (in seconds)",
                      new DoubleParameter(&_slowQueryThreshold));
+  
+  options->addOption("--query.slow-streaming-threshold", "threshold for slow streaming AQL queries (in seconds)",
+                     new DoubleParameter(&_slowStreamingQueryThreshold));
 
   options->addOption("--query.cache-mode",
                      "mode for the AQL query result cache (on, off, demand)",

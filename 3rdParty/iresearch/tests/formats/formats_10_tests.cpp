@@ -27,6 +27,7 @@
 #include "store/memory_directory.hpp"
 #include "store/fs_directory.hpp"
 #include "utils/bit_packing.hpp"
+#include "utils/type_limits.hpp"
 #include "formats/formats_10.hpp"
 #include "formats/formats_10_attributes.hpp"
 #include "formats_test_case_base.hpp"
@@ -320,6 +321,176 @@ class format_10_test_case : public tests::format_test_case_base {
           ASSERT_EQ(docs1[i++], it->value());
         }
       }
+    }
+  }
+
+  void postings_writer_reuse() {
+    auto codec = std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+    ASSERT_NE(nullptr, codec);
+    auto writer = codec->get_postings_writer(false);
+    ASSERT_NE(nullptr, writer);
+
+    std::vector<irs::doc_id_t> docs0;
+    irs::doc_id_t i = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+    for (; i < 1000; ++i) {
+      docs0.push_back(i);
+    }
+
+    // gap
+
+    for (i += 1000; i < 10000; ++i) {
+      docs0.push_back(i);
+    }
+
+    // write docs 'segment0' with all possible streams
+    {
+      const irs::field_meta field(
+        "field", irs::flags{ irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() }
+      );
+
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = 10000;
+      state.fields_count = 1;
+      state.name = "0";
+      state.features = &field.features; // all possible features in segment
+      state.ver = IRESEARCH_VERSION;
+
+      auto out = dir().create(std::string("postings") + state.name.c_str());
+      ASSERT_FALSE(!out);
+
+      postings docs(docs0.begin(), docs0.end());
+
+      writer->prepare(*out, state);
+      writer->begin_field(*state.features);
+      writer->write(docs);
+      writer->end();
+    }
+
+    // write docs 'segment1' with position & offset
+    {
+      const irs::field_meta field(
+        "field", irs::flags{ irs::frequency::type(), irs::position::type(), irs::offset::type() }
+      );
+
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = 10000;
+      state.fields_count = 1;
+      state.name = "1";
+      state.features = &field.features; // all possible features in segment
+      state.ver = IRESEARCH_VERSION;
+
+      auto out = dir().create(std::string("postings") + state.name.c_str());
+      ASSERT_FALSE(!out);
+
+      postings docs(docs0.begin(), docs0.end());
+
+      writer->prepare(*out, state);
+      writer->begin_field(*state.features);
+      writer->write(docs);
+      writer->end();
+    }
+
+    // write docs 'segment2' with position & payload 
+    {
+      const irs::field_meta field(
+        "field", irs::flags{ irs::frequency::type(), irs::position::type(), irs::payload::type() }
+      );
+
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = 10000;
+      state.fields_count = 1;
+      state.name = "2";
+      state.features = &field.features; // all possible features in segment
+      state.ver = IRESEARCH_VERSION;
+
+      auto out = dir().create(std::string("postings") + state.name.c_str());
+      ASSERT_FALSE(!out);
+
+      postings docs(docs0.begin(), docs0.end());
+
+      writer->prepare(*out, state);
+      writer->begin_field(*state.features);
+      writer->write(docs);
+      writer->end();
+    }
+
+    // write docs 'segment3' with position
+    {
+      const irs::field_meta field(
+        "field", irs::flags{ irs::frequency::type(), irs::position::type() }
+      );
+
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = 10000;
+      state.fields_count = 1;
+      state.name = "3";
+      state.features = &field.features; // all possible features in segment
+      state.ver = IRESEARCH_VERSION;
+
+      auto out = dir().create(std::string("postings") + state.name.c_str());
+      ASSERT_FALSE(!out);
+
+      postings docs(docs0.begin(), docs0.end());
+
+      writer->prepare(*out, state);
+      writer->begin_field(*state.features);
+      writer->write(docs);
+      writer->end();
+    }
+
+    // write docs 'segment3' with frequency
+    {
+      const irs::field_meta field(
+        "field", irs::flags{ irs::frequency::type() }
+      );
+
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = 10000;
+      state.fields_count = 1;
+      state.name = "4";
+      state.features = &field.features; // all possible features in segment
+      state.ver = IRESEARCH_VERSION;
+
+      auto out = dir().create(std::string("postings") + state.name.c_str());
+      ASSERT_FALSE(!out);
+
+      postings docs(docs0.begin(), docs0.end());
+
+      writer->prepare(*out, state);
+      writer->begin_field(*state.features);
+      writer->write(docs);
+      writer->end();
+    }
+
+
+    // writer segment without any attributes
+    {
+      const irs::field_meta field_no_features(
+        "field", irs::flags{}
+      );
+
+      irs::flush_state state;
+      state.dir = &dir();
+      state.doc_count = 10000;
+      state.fields_count = 1;
+      state.name = "5";
+      state.features = &field_no_features.features; // all possible features in segment
+      state.ver = IRESEARCH_VERSION;
+
+      auto out = dir().create(std::string("postings") + state.name.c_str());
+      ASSERT_FALSE(!out);
+
+      postings docs(docs0.begin(), docs0.end());
+
+      writer->prepare(*out, state);
+      writer->begin_field(*state.features);
+      writer->write(docs);
+      writer->end();
     }
   }
 
@@ -797,6 +968,10 @@ TEST_F(memory_format_10_test_case, columns_rw_typed) {
   columns_read_write_typed();
 }
 
+TEST_F(memory_format_10_test_case, columns_rw_sparse_dense_offset_column_border_case) {
+  dense_or_sparse_fixed_offset_border_case();
+}
+
 TEST_F(memory_format_10_test_case, columns_rw) {
   columns_read_write();
 }
@@ -807,6 +982,10 @@ TEST_F(memory_format_10_test_case, columns_meta_rw) {
 
 TEST_F(memory_format_10_test_case, document_mask_rw) {
   document_mask_read_write();
+}
+
+TEST_F(memory_format_10_test_case, reuse_postings_writer) {
+  postings_writer_reuse();
 }
 
 // ----------------------------------------------------------------------------
@@ -862,6 +1041,10 @@ TEST_F(fs_format_10_test_case, columns_rw_dense_mask) {
 
 TEST_F(fs_format_10_test_case, columns_rw_bit_mask) {
   columns_bit_mask();
+}
+
+TEST_F(fs_format_10_test_case, columns_rw_sparse_dense_offset_column_border_case) {
+  dense_or_sparse_fixed_offset_border_case();
 }
 
 TEST_F(fs_format_10_test_case, columns_rw) {
