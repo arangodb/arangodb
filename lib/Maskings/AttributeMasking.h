@@ -46,7 +46,7 @@ class AttributeMasking {
 
   AttributeMasking(Path path, MaskingFunction* func) : _path(path) {
     _func.reset(func);
-  };
+  }
 
  private:
   Path _path;

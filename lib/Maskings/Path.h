@@ -33,6 +33,12 @@ class Path {
  public:
   static ParseResult<Path> parse(std::string const&);
 
+ public:
+  Path() : _wildcard(false) {}
+
+  Path(bool wildcard, std::vector<std::string> const& components)
+      : _wildcard(wildcard), _components(components) {}
+
  private:
   bool _wildcard;
   std::vector<std::string> _components;
