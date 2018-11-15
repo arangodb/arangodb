@@ -2144,7 +2144,7 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
-  auto preVisitor = [&result](AstNode const* node) -> bool {
+  auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
   };
   

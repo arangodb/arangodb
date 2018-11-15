@@ -1257,7 +1257,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
-  wo.sync = true;
+//  wo.sync = true;
   rocksdb::Status s = db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
@@ -1456,7 +1456,7 @@ arangodb::Result RocksDBEngine::dropView(
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
-  wo.sync = true;
+//  wo.sync = true;
   auto res = _db->GetRootDB()->Write(wo, &batch);
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
@@ -1699,7 +1699,9 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
-    return;  // TODO: error here?
+    LOG_TOPIC(INFO, Logger::ENGINES) << "could not get WAL files "
+      << status.ToString();
+    return;
   }
 
   size_t lastLess = files.size();
@@ -1760,18 +1762,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   arangodb::Result res;
   rocksdb::WriteOptions wo;
+  rocksdb::DB* db = _db->GetRootDB();
 
   // remove view definitions
-  iterateBounds(RocksDBKeyBounds::DatabaseViews(id),
-                [&](rocksdb::Iterator* it) {
-    RocksDBKey key(it->key());
-    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                              key.string(), wo);
-    if (res.fail()) {
-      return;
-    }
-  });
-
+  res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
+                                     true, /*rangeDel*/false);
   if (res.fail()) {
     return res;
   }
@@ -1781,8 +1776,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
 
   // remove collections
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(id);
-  iterateBounds(bounds, [&](rocksdb::Iterator* it) {
+  auto dbBounds = RocksDBKeyBounds::DatabaseCollections(id);
+  iterateBounds(dbBounds, [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
 
@@ -1800,7 +1795,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        res = RocksDBCollectionMeta::deleteIndexEstimate(_db, objectId);
+        res = RocksDBCollectionMeta::deleteIndexEstimate(db, objectId);
         if (res.fail()) {
           return;
         }
@@ -1815,37 +1810,44 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
         bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-        res = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
+        res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
         if (res.fail()) {
           return;
         }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
-        numDocsLeft += rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                                 bounds, prefixSameAsStart);
+        numDocsLeft += rocksutils::countKeyRange(db, bounds, prefixSameAsStart);
 #endif
       }
     }
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
-    res = rocksutils::removeLargeRange(_db, bounds, true, useRangeDelete);
+    res = rocksutils::removeLargeRange(db, bounds, true, useRangeDelete);
     if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting collection documents: '"
+        << res.errorMessage() << "'";
       return;
     }
     // delete collection meta-data
-    RocksDBCollectionMeta::deleteCollectionMeta(_db, objectId);
-    // remove collection entry
-    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(), value.string(), wo);
+    res = RocksDBCollectionMeta::deleteCollectionMeta(db, objectId);
     if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting collection metadata: '"
+      << res.errorMessage() << "'";
+      return;
+    }
+    // remove collection entry
+    rocksdb::Status s = db->Delete(wo, RocksDBColumnFamily::definitions(), value.string());
+    if (!s.ok()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting collection definition: " << s.ToString();
       return;
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // check if documents have been deleted
     numDocsLeft +=
-        rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
+        rocksutils::countKeyRange(db, bounds, true);
 #endif
   });
 
@@ -1853,12 +1855,13 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     return res;
   }
 
-
   // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);
-  res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                                        key.string(), wo);
+  rocksdb::Status s = db->Delete(wo, RocksDBColumnFamily::definitions(), key.string());
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting database definition: " << s.ToString();
+  }
 
   // remove VERSION file for database. it's not a problem when this fails
   // because it will simply remain there and be ignored on subsequent starts
