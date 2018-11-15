@@ -3813,6 +3813,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     // found a node we need to replace in the plan
 
     auto const& parents = node->getParents();
+    // intentional copy of the dependencies, as we will be modifying 
+    // dependencies later on
     auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
@@ -4066,6 +4068,8 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // In the INSERT and REPLACE cases we use a DistributeNode...
 
       TRI_ASSERT(node->hasDependency());
+      // intentional copy of the dependencies, as we will be modifying 
+      // dependencies later on
       auto const deps = node->getDependencies();
 
       bool haveAdjusted = false;
@@ -4705,6 +4709,8 @@ void arangodb::aql::distributeSortToClusterRule(
   bool modified = false;
 
   for (auto& n : nodes) {
+    // intentional copy of the dependencies, as we will be modifying 
+    // dependencies later on
     auto const remoteNodeList = n->getDependencies();
     auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
     TRI_ASSERT(remoteNodeList.size() > 0);
