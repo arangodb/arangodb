@@ -4217,9 +4217,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
     auto used = node->getVariablesUsedHere();
 
     // found a node we need to replace in the plan
-
-    auto const deps = node->getDependencies();
-    TRI_ASSERT(deps.size() == 1);
+    TRI_ASSERT(node->getDependencies().size() == 1);
 
     auto collectNode = ExecutionNode::castTo<CollectNode*>(node);
     // look for next remote node
@@ -4709,16 +4707,15 @@ void arangodb::aql::distributeSortToClusterRule(
   bool modified = false;
 
   for (auto& n : nodes) {
-    // intentional copy of the dependencies, as we will be modifying 
-    // dependencies later on
     auto const remoteNodeList = n->getDependencies();
-    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
     TRI_ASSERT(remoteNodeList.size() > 0);
     auto rn = remoteNodeList[0];
 
     if (!n->hasParent()) {
       continue;
     }
+    
+    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
 
     auto parents = n->getParents();
 
