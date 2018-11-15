@@ -673,10 +673,8 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci;
-    try {   // ci->getCollection can throw
-      ci = clusterInfo->getCollection(database, planId);
-    } catch(...) {
+    std::shared_ptr<LogicalCollection> ci = clusterInfo->getCollectionNT(database, planId);
+    if (ci == nullptr) {
       auto const endTime = system_clock::now();
       std::stringstream msg;
       msg << "exception in getCollection, " << database << "/"

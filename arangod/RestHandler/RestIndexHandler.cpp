@@ -61,12 +61,8 @@ LogicalCollection* RestIndexHandler::collection(
     std::string const& cName, std::shared_ptr<LogicalCollection>& coll) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      try {
-        coll = ClusterInfo::instance()->getCollection(_vocbase.name(), cName);
-
-        return coll.get();
-      } catch (...) {
-      }
+      coll = ClusterInfo::instance()->getCollectionNT(_vocbase.name(), cName);
+      return coll.get();
     } else {
       return _vocbase.lookupCollection(cName).get();
     }

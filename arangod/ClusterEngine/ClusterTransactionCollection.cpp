@@ -167,28 +167,19 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
     
-    try {
-      _collection = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
-      if (_collection) {
-        if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-            !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-          // use and usage-lock
-          LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-          _usageLocked = true;
-        }
-      }
-    } catch(...) {}
-    
+    _collection = ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     if (_collection == nullptr) {
-      int res = TRI_errno();
-      if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
-        return res;
-      }
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
+    else {
+      if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+          !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+        // use and usage-lock
+        LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+        _usageLocked = true;
+      }
+    }
   }
-
-  TRI_ASSERT(_collection != nullptr);
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
