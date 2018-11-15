@@ -61,6 +61,7 @@ class CollectionInfoCurrent {
   friend class ClusterInfo;
 
  public:
+
   explicit CollectionInfoCurrent(uint64_t currentVersion);
 
   CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
@@ -102,7 +103,7 @@ class CollectionInfoCurrent {
   /// @brief returns if a specific index exists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasIndex(std::string const& indexId) const {
+  arangodb::Result hasIndex(std::string const& indexId) const {
 
     for (auto const& shard : _vpacks) {
       VPackSlice indexes = getIndexes(shard.first);
@@ -111,18 +112,22 @@ class CollectionInfoCurrent {
         for (auto const& index : VPackArrayIterator(indexes)) {
           if (index.get("id").isEqualString(indexId)) {
             found = true;
+            if (index.hasKey("error") && index.get("error").getBoolean()) {
+              return Result( // Some shard has errored while creating the index
+                index.get("errorNum").getNumber<unsigned>(),
+                index.get("errorMessage").copyString());
+            }
             break;
           }
         }
         if (!found) { // Some shard has no index with this id
-          return false;
+          return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
         }
-      } else {
-        return false; // Some shard has no indexes at all
+      } else { // Some shard has no indexes at all
+        return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND); 
       }
     }
-    return true;
-    
+    return Result(); // Good
   }
 
   //////////////////////////////////////////////////////////////////////////////
