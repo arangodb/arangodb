@@ -253,7 +253,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       // fails, the result is ok() based upon phaseTwo()'s execution?
       if (tmp.ok()) {
         result = DBServerAgencySyncResult(
-          tmp.ok(),
+          true,
           report.hasKey("Plan") ?
           report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
           report.hasKey("Current") ?
