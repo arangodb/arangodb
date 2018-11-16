@@ -385,13 +385,22 @@ arangodb::Result cancelBarrier(
     DB + database + REPL_BARRIER_API + std::to_string(barrierId), std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
+  // I'm sure that syncRequest cannot return null. But the check doesn't hurt
+  // and is preferable over a segfault.
+  TRI_ASSERT(comres != nullptr);
+  if (comres == nullptr) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "CancelBarrier: error: syncRequest returned null";
+    return arangodb::Result{TRI_ERROR_INTERNAL};
+  }
+
   if (comres->status == CL_COMM_SENT) {
     auto result = comres->result;
-    if (result != nullptr && result->getHttpReturnCode() != 200 &&
-        result->getHttpReturnCode() != 204) {
-      auto errorMessage = comres->stringifyErrorMessage();
+    if (result == nullptr || (result->getHttpReturnCode() != 200 &&
+                              result->getHttpReturnCode() != 204)) {
+      std::string errorMessage = comres->stringifyErrorMessage();
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "CancelBarrier: error" << errorMessage;
+          << "CancelBarrier: error" << errorMessage;
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
   } else {
