@@ -449,22 +449,22 @@ describe('Global Replication on a fresh boot', function () {
         let oIdx = c.getIndexes();
 
         c.truncate();
-        c.ensureHashIndex("value2");
 
         let docs = [];
         for(let i = 1; i <= 10000; i++) {
           docs.push({value2 : i});
-          if (i % 1000 == 0) {
+          if (i % 1000 === 0) {
             c.save(docs);
             docs = [];
           }
         }
 
+        c.ensureHashIndex("value2");
+
         let mIdx = db._collection(docColName).getIndexes();
 
         waitForReplication();
         connectToSlave();
-        db._useDatabase(dbName);
 
         let sIdx = db._collection(docColName).getIndexes();
         expect(db._collection(docColName).count()).to.eq(10000);
@@ -721,6 +721,7 @@ describe('Global Replication on a fresh boot', function () {
             docs = [];
           }
         }
+
         c.ensureHashIndex("value2");
 
         let mIdx = db._collection(docColName).getIndexes();

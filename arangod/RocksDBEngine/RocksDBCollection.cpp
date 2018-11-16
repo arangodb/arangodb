@@ -396,6 +396,13 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  // we need to sync the selectivity estimates
+  res = engine->settingsManager()->sync(false);
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+    << res.errorMessage();
+  }
 
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(
@@ -438,14 +445,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
   created = true;
-  
-  // we need to sync the selectivity estimates
-  res = engine->settingsManager()->sync(false);
-  if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
-      << res.errorMessage();
-  }
-  
+
   return idx;
 }
 
@@ -500,6 +500,13 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   if (!res.ok()) {
     return res.errorNumber();
   }
+  
+  // we need to sync the selectivity estimates
+  res = engine->settingsManager()->sync(false);
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+    << res.errorMessage();
+  }
 
   addIndex(newIdx);
   
@@ -537,13 +544,6 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   }
 
   idx = newIdx;
-  
-  // we need to sync the selectivity estimates
-  res = engine->settingsManager()->sync(false);
-  if (res.fail()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
-    << res.errorMessage();
-  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1354,13 +1354,11 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
   };
 
   rocksdb::WriteOptions wo;
-  bool hasMore = false;
+  bool hasMore = true;
   
-  uint64_t numBatches = (rcol->numberDocuments() + 199) / 200;
-  wo.disableWAL = numBatches > 0; // breaks tests
-  
+//  wo.disableWAL = true; // breaks tests
   while (hasMore && res.ok()) {
-    hasMore = it->nextDocument(cb, 200);
+    hasMore = it->nextDocument(cb, 250);
 
     if (TRI_VOC_COL_STATUS_DELETED == it->collection()->status()
         || it->collection()->deleted()) {
@@ -1371,35 +1369,31 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
 
     if (res.ok()) {
       rocksdb::Status s = db->Write(wo, batch.GetWriteBatch());
-
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         break;
       }
     }
     
-    if (--numBatches == 0) {
-      wo.disableWAL = false; // disable for subsequenr runs
-    }
     batch.Clear();
   }
 
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional
-  if (!res.ok()) {
-    RocksDBKeyBounds bounds = ridx->getBounds();
-    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
-                                                         true, /*useRangeDel*/numDocsWritten > 25000);
-    if (res2.fail()) {
-      return res2;
-    }
-  } else {
-    
+  if (res.ok()) {
     // flushing is necessary because we were not writing index data into WAL
     rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
     if (!status.ok()) {
       LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
       << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
+    }
+  } else {
+    RocksDBKeyBounds bounds = ridx->getBounds();
+    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
+                                                         true, /*useRangeDel*/numDocsWritten > 25000);
+    if (res2.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "was not able to roll-back "
+      << "index creation: " << res2.errorMessage();
     }
   }
   
@@ -1424,13 +1418,16 @@ arangodb::Result RocksDBCollection::fillIndexes(
     // unique index. we need to keep track of all our changes because we need to avoid
     // duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(), 32 * 1024 * 1024);
-    return fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(trx, ridx, std::move(it), batch, this);
+    return fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
+            trx, ridx, std::move(it), batch, this);
   } else {
     // non-unique index. all index keys will be unique anyway because they contain the document id
     // we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    return fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(trx, ridx, std::move(it), batch, this);
+    return fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(
+            trx, ridx, std::move(it), batch, this);
   }
+  return Result();
 }
 
 Result RocksDBCollection::insertDocument(

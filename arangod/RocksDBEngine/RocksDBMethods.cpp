@@ -217,7 +217,7 @@ RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
 bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  std::string val;
+  rocksdb::PinnableSlice val; // do not care about value
   rocksdb::Status s = _state->_rocksTransaction->Get(_state->_rocksReadOptions,
                                                      cf, key.string(), &val);
   return !s.IsNotFound();
@@ -351,7 +351,7 @@ bool RocksDBBatchedWithIndexMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                             RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
-  std::string val;  // do not care about value
+  rocksdb::PinnableSlice val; // do not care about value
   rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key.string(), &val);
   return !s.IsNotFound();
 }
