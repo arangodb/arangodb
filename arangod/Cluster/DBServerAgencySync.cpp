@@ -251,7 +251,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
  
       if (tmp.ok()) {
         result = DBServerAgencySyncResult(
-          tmp.ok(),
+          true,
           report.hasKey("Plan") ?
           report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
           report.hasKey("Current") ?
