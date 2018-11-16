@@ -359,7 +359,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 ////////////////////////////////////////////////////////////////////////////////
 
 rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const {
-  LOG_TOPIC(ERR, Logger::FIXME) << "canAccessPath";
+
   if (!_authentication->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
@@ -371,14 +371,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   bool userAuthorized = request->authorized();
   rest::ResponseCode result = userAuthorized ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
-
   AuthLevel dbLevel = AuthLevel::NONE;
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "userAuthorized: " << userAuthorized
-    << ", path: " << path;
-
   if (userAuthorized && path == "/_api/cluster/endpoints") {
-    LOG_TOPIC(ERR, Logger::FIXME) << "cluster endpoints ok";
     return rest::ResponseCode::OK;
   }
 
@@ -439,8 +434,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
       }
     }
   }
-
-
 
   if (result != rest::ResponseCode::OK) {
     return result;
