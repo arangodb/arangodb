@@ -511,7 +511,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
 
   std::string const& path = req.requestPath();
   std::string const& username = req.user();
-  rest::ResponseCode result = req.authenticated()
+  bool userAuthenticated = req.authenticated();
+
+  rest::ResponseCode result = userAuthenticated
                                 ? rest::ResponseCode::OK
                                 : rest::ResponseCode::UNAUTHORIZED;
 
@@ -523,7 +525,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
-    if (req.authenticated()) {
+    if (userAuthenticated) {
       req.setAuthenticated(false);
     }
   }
@@ -570,6 +572,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
+      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+        // allow authenticated users to access cluster/endpoints
+        result = rest::ResponseCode::OK;
+        //vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
