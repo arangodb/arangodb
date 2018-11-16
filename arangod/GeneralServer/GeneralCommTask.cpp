@@ -49,11 +49,11 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-// some static URL path prefixes 
+// some static URL path prefixes
 static std::string const AdminAardvark("/_admin/aardvark/");
 static std::string const ApiUser("/_api/user/");
 static std::string const Open("/_open/");
-} 
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -189,7 +189,7 @@ void GeneralCommTask::executeRequest(
 
 void GeneralCommTask::processResponse(GeneralResponse* response) {
   _lock.assertLockedByCurrentThread();
-  
+
   if (response == nullptr) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "processResponse received a nullptr, closing connection";
@@ -271,7 +271,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 
   if (isPrio) {
     SchedulerFeature::SCHEDULER->post(
-        [self, this, handler]() { 
+        [self, this, handler]() {
           handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
         });
     return true;
@@ -291,7 +291,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
-    
+
     handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, *(handler->request()), TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
@@ -308,7 +308,7 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
   handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
     RequestStatistics* stat = h->stealStatistics();
 
-    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock); 
+    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
     _lock.assertLockedByCurrentThread();
 
     addResponse(h->response(), stat);
@@ -359,22 +359,32 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 ////////////////////////////////////////////////////////////////////////////////
 
 rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const {
+  LOG_TOPIC(ERR, Logger::FIXME) << "canAccessPath";
   if (!_authentication->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
-  
+
   std::string const& path = request->requestPath();
   std::string const& dbname = request->databaseName();
   std::string const& username = request->user();
-  rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
+  bool userAuthorized = request->authorized();
+  rest::ResponseCode result = userAuthorized ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
-  
+
   AuthLevel dbLevel = AuthLevel::NONE;
 
+  LOG_TOPIC(ERR, Logger::FIXME) << "userAuthorized: " << userAuthorized
+    << ", path: " << path;
+
+  if (userAuthorized && path == "/_api/cluster/endpoints") {
+    LOG_TOPIC(ERR, Logger::FIXME) << "cluster endpoints ok";
+    return rest::ResponseCode::OK;
+  }
+
   // mop: inside authenticateRequest() request->user will be populated
-  bool forceOpen = false;  
-  if (request->authorized() && !username.empty()) {
+  bool forceOpen = false;
+  if (userAuthorized && !username.empty()) {
     AuthLevel sysLevel = _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
     if (dbname == StaticStrings::SystemDatabase) {
       // the request is made in the system database, and we have already queried our
@@ -388,14 +398,14 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     request->setExecContext(new ExecContext(username, dbname,
                                             sysLevel, dbLevel));
   }
-  
+
   if (!request->authorized()) {
-    
+
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
     ConnectionInfo const& ci = request->connectionInfo();
-    
+
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_authentication->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
@@ -403,11 +413,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
       result = rest::ResponseCode::OK;
     }
 #endif
-    
+
     if (result != rest::ResponseCode::OK &&
         _authentication->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
-      
+
       if (!path.empty()) {
         // check if path starts with /_
         // or path begins with /
@@ -417,7 +427,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         }
       }
     }
- 
+
     if (result != rest::ResponseCode::OK) {
       if (path == "/" ||
           StringUtils::isPrefix(path, Open) ||
@@ -429,19 +439,20 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
       }
     }
   }
-  
-  
+
+
+
   if (result != rest::ResponseCode::OK) {
     return result;
   }
-  
+
   // mop: internal request => no username present
   if (username.empty()) {
     // mop: set user to root so that the foxx stuff
     // knows about us
     return rest::ResponseCode::OK;
   }
-  
+
   // check that we are allowed to see the database
   if (!forceOpen) {
     if (!request->authorized()) {
@@ -453,13 +464,13 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         return rest::ResponseCode::OK;
       }
     }
-    
+
     if (dbLevel == AuthLevel::NONE &&
         !StringUtils::isPrefix(path, ApiUser)) {
       events::NotAuthorized(request);
       result = rest::ResponseCode::UNAUTHORIZED;
     }
   }
-  
+
   return result;
 }
