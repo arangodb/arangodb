@@ -181,6 +181,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
   REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION, "could not drop collection in plan");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");

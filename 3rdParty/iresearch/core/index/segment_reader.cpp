@@ -37,27 +37,6 @@
 
 NS_LOCAL
 
-class iterator_impl final : public iresearch::index_reader::reader_iterator_impl {
- public:
-  explicit iterator_impl(const iresearch::sub_reader* rdr = nullptr) NOEXCEPT
-    : rdr_(rdr) {
-  }
-
-  virtual void operator++() override { rdr_ = nullptr; }
-  virtual reference operator*() override {
-    return *const_cast<iresearch::sub_reader*>(rdr_);
-  }
-  virtual const_reference operator*() const override { return *rdr_; }
-  virtual bool operator==(
-    const iresearch::index_reader::reader_iterator_impl& rhs
-  ) override {
-    return rdr_ == static_cast<const iterator_impl&>(rhs).rdr_;
-  }
-
- private:
-  const iresearch::sub_reader* rdr_;
-};
-
 class all_iterator final : public irs::doc_iterator {
  public:
   explicit all_iterator(irs::doc_id_t docs_count) NOEXCEPT
@@ -260,9 +239,6 @@ class segment_reader_impl : public sub_reader {
     return dir_;
   }
 
-  virtual index_reader::reader_iterator begin() const override;
-  virtual index_reader::reader_iterator end() const override;
-
   virtual const column_meta* column(const string_ref& name) const override;
 
   virtual column_iterator::ptr columns() const override;
@@ -298,6 +274,11 @@ class segment_reader_impl : public sub_reader {
 
   uint64_t meta_version() const NOEXCEPT {
     return meta_version_;
+  }
+
+  virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
+    assert(!i);
+    return *this;
   }
 
   virtual size_t size() const NOEXCEPT override {
@@ -347,10 +328,6 @@ segment_reader& segment_reader::operator=(
   return *this;
 }
 
-index_reader::reader_iterator segment_reader::begin() const {
-  return index_reader::reader_iterator(new iterator_impl(this));
-}
-
 template<>
 /*static*/ bool segment_reader::has<columnstore_reader>(
     const segment_meta& meta) NOEXCEPT {
@@ -397,14 +374,6 @@ segment_reader_impl::segment_reader_impl(
   : dir_(dir),
     docs_count_(docs_count),
     meta_version_(meta_version) {
-}
-
-index_reader::reader_iterator segment_reader_impl::begin() const {
-  return index_reader::reader_iterator(new iterator_impl(this));
-}
-
-index_reader::reader_iterator segment_reader_impl::end() const {
-  return index_reader::reader_iterator(new iterator_impl());
 }
 
 const column_meta* segment_reader_impl::column(

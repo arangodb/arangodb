@@ -1735,86 +1735,106 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   });
 
-  std::vector<AgencyOperation> opers (
-    { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
-                      AgencyValueOperationType::SET, json),
-      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
+  // We run a loop here to send the agency transaction, since there might
+  // be a precondition failed, in which case we want to retry for some time:
+  while (true) { 
+    if (TRI_microtime() > endTime) {
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "Timeout in _create collection"
+          << ": database: " << databaseName << ", collId:" << collectionID
+          << "\njson: " << json.toString()
+          << "\ncould not send transaction to agency.";
+      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+    }
+    std::vector<AgencyOperation> opers (
+      { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
+                        AgencyValueOperationType::SET, json),
+        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
-  std::vector<AgencyPrecondition> precs;
+    std::vector<AgencyPrecondition> precs;
 
-  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
-  VPackSlice distSLSlice = json.get(StaticStrings::DistributeShardsLike);
-  if (distSLSlice.isString()) {
-    auto const otherCidString = distSLSlice.copyString();
-    if (!otherCidString.empty()) {
-      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
-      // Any of the shards locked?
-      for (auto const& shard : *otherCidShardMap) {
-        precs.emplace_back(
-          AgencyPrecondition("Supervision/Shards/" + shard.first,
-                             AgencyPrecondition::Type::EMPTY, true));
+    std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
+    VPackSlice distSLSlice = json.get(StaticStrings::DistributeShardsLike);
+    if (distSLSlice.isString()) {
+      auto const otherCidString = distSLSlice.copyString();
+      if (!otherCidString.empty()) {
+        otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+        // Any of the shards locked?
+        for (auto const& shard : *otherCidShardMap) {
+          precs.emplace_back(
+            AgencyPrecondition("Supervision/Shards/" + shard.first,
+                               AgencyPrecondition::Type::EMPTY, true));
+        }
       }
     }
-  }
 
-  AgencyWriteTransaction transaction(opers,precs);
+    AgencyWriteTransaction transaction(opers, precs);
 
-  { // we hold this mutex from now on until we have updated our cache
-    // using loadPlan, this is necessary for the callback closure to
-    // see the new planned state for this collection. Otherwise it cannot
-    // recognize completion of the create collection operation properly:
-    RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+    { // we hold this mutex from now on until we have updated our cache
+      // using loadPlan, this is necessary for the callback closure to
+      // see the new planned state for this collection. Otherwise it cannot
+      // recognize completion of the create collection operation properly:
+      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
 
-    auto res = ac.sendTransactionWithFailover(transaction);
+      auto res = ac.sendTransactionWithFailover(transaction);
 
-    // Only if not precondition failed
-    if (!res.successful()) {
-      if (res.httpCode() ==
-          (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-        auto result = res.slice();
-        AgencyCommResult ag = ac.getValues("/");
+      // Only if not precondition failed
+      if (!res.successful()) {
+        if (res.httpCode() ==
+            (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+          auto result = res.slice();
+          AgencyCommResult ag = ac.getValues("/");
 
-        if (result.isArray() && result.length() > 0) {
-          if (result[0].isObject()) {
-            auto tres = result[0];
-            if (tres.hasKey(
-                std::vector<std::string>(
-                  {AgencyCommManager::path(), "Supervision"}))) {
-              for (const auto& s :
-                     VPackObjectIterator(
-                       tres.get(
-                         std::vector<std::string>(
-                           {AgencyCommManager::path(), "Supervision","Shards"})))) {
-                errorMsg += std::string("Shard ") + s.key.copyString();
-                errorMsg += " of prototype collection is blocked by supervision job ";
-                errorMsg += s.value.copyString();
+          if (result.isArray() && result.length() > 0) {
+            if (result[0].isObject()) {
+              auto tres = result[0];
+              if (tres.hasKey(
+                  std::vector<std::string>(
+                    {AgencyCommManager::path(), "Supervision"}))) {
+                for (const auto& s :
+                       VPackObjectIterator(
+                         tres.get(
+                           std::vector<std::string>(
+                             {AgencyCommManager::path(), "Supervision","Shards"})))) {
+                  errorMsg += std::string("Shard ") + s.key.copyString();
+                  errorMsg += " of prototype collection is blocked by supervision job ";
+                  errorMsg += s.value.copyString();
+                }
               }
+              return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
             }
-            return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
           }
-        }
 
-        if (ag.successful()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                          << ag.slice().toJson();
+          LOG_TOPIC(ERR, Logger::CLUSTER)
+            << "Precondition failed for this agency transaction: "
+            << transaction.toJson() << ", return code: "
+            << res.httpCode();
+          if (ag.successful()) {
+            LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                            << ag.slice().toJson();
+          } else {
+            LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+          }
+          // Agency is currently unhappy, try again in a few seconds:
+          std::this_thread::sleep_for(std::chrono::seconds(5));
+          continue;
         } else {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+          errorMsg += std::string("file: ") + __FILE__ +
+                      " line: " + std::to_string(__LINE__);
+          errorMsg += " HTTP code: " + std::to_string(res.httpCode());
+          errorMsg += " error message: " + res.errorMessage();
+          errorMsg += " error details: " + res.errorDetails();
+          errorMsg += " body: " + res.body();
+          events::CreateCollection(
+            name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
+          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
         }
-      } else {
-        errorMsg += std::string("file: ") + __FILE__ +
-                    " line: " + std::to_string(__LINE__);
-        errorMsg += " HTTP code: " + std::to_string(res.httpCode());
-        errorMsg += " error message: " + res.errorMessage();
-        errorMsg += " error details: " + res.errorDetails();
-        errorMsg += " body: " + res.body();
-        events::CreateCollection(
-          name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-        return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       }
-    }
 
-    // Update our cache:
-    loadPlan();
+      // Update our cache:
+      loadPlan();
+    }
+    break;   // Leave loop, since we are done
   }
 
   bool isSmart = false;
@@ -1847,8 +1867,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         LOG_TOPIC(ERR, Logger::CLUSTER)
             << "Timeout in _create collection"
             << ": database: " << databaseName << ", collId:" << collectionID
-            << "\njson: " << json.toString()
-            << "\ntransaction sent to agency: " << transaction.toJson();
+            << "\njson: " << json.toString();
         AgencyCommResult ag = ac.getValues("");
         if (ag.successful()) {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
@@ -1984,6 +2003,12 @@ int ClusterInfo::dropCollectionCoordinator(
   res = ac.sendTransactionWithFailover(trans);
 
   if (!res.successful()) {
+    if (res.httpCode() ==
+        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "Precondition failed for this agency transaction: "
+        << trans.toJson() << ", return code: " << res.httpCode();
+    }
     AgencyCommResult ag = ac.getValues("");
     if (ag.successful()) {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
@@ -1991,6 +2016,7 @@ int ClusterInfo::dropCollectionCoordinator(
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
     }
+    return TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION;
   }
 
   // Update our own cache:

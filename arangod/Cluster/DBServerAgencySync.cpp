@@ -147,6 +147,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no vocbase";
+    result.errorMessage = "DBServerAgencySync::execute no vocbase";
     return result;
   }
 
@@ -164,6 +165,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // that is going to eat bad results in few lines later. Again, is
     // that the correct action? If so, how about supporting comments in
     // the code for both.
+    result.errorMessage = "Could not do getLocalCollections for phase 1.";
     return result;
   }
 
@@ -186,6 +188,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // phases are sufficiently independent that this is OK.
     LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
+      result.errorMessage = "Could not do getLocalCollections for phase 2.";
       return result;
     }
 
@@ -248,14 +251,21 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
       // FIXMEMAINTENANCE: If comm.sendTransactionWithFailover()
       // fails, the result is ok() based upon phaseTwo()'s execution?
-      result = DBServerAgencySyncResult(
-        tmp.ok(),
-        report.hasKey("Plan") ?
-        report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-        report.hasKey("Current") ?
-        report.get("Current").get("Version").getNumber<uint64_t>() : 0);
-
+      if (tmp.ok()) {
+        result = DBServerAgencySyncResult(
+          true,
+          report.hasKey("Plan") ?
+          report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+          report.hasKey("Current") ?
+          report.get("Current").get("Version").getNumber<uint64_t>() : 0);
+      } else {
+        // Report an error:
+        result = DBServerAgencySyncResult(
+          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
+      }
     }
+  } else {
+    result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
   
   auto took = duration<double>(clock::now() - start).count();
