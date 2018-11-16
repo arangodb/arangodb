@@ -1811,6 +1811,7 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
 
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -2159,6 +2160,7 @@ OperationResult transaction::Methods::modifyLocal(
       followers = collection->followers()->get();
     }
 
+    TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
 
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -2414,6 +2416,8 @@ OperationResult transaction::Methods::removeLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(followers != nullptr);
     // Now replicate the same operation on all followers:
 
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -3329,7 +3333,6 @@ Result Methods::replicateOperations(
     std::shared_ptr<const std::vector<std::string>> const& followers,
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation, VPackBuilder& resultBuilder) {
-  TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(followers != nullptr);
 
   if (followers->empty()) {
