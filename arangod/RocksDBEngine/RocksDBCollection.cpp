@@ -403,6 +403,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
     << res.errorMessage();
   }
+  
+  rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
+    << s.ToString();
+  }
 
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(
@@ -507,6 +513,13 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
     << res.errorMessage();
   }
+  
+  rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
+    << s.ToString();
+  }
+  
 
   addIndex(newIdx);
   
@@ -1354,9 +1367,9 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
   };
 
   rocksdb::WriteOptions wo;
+  //wo.disableWAL = true; // breaks tests
+
   bool hasMore = true;
-  
-//  wo.disableWAL = true; // breaks tests
   while (hasMore && res.ok()) {
     hasMore = it->nextDocument(cb, 250);
 
@@ -1377,17 +1390,19 @@ static arangodb::Result fillIndex(transaction::Methods* trx,
     
     batch.Clear();
   }
+  
+//  if (res.ok()) {
+//    // flushing is necessary because we were not writing index data into WAL
+//    rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
+//    if (!status.ok()) {
+//      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+//      << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
+//    }
+//  }
 
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional
-  if (res.ok()) {
-    // flushing is necessary because we were not writing index data into WAL
-    rocksdb::Status status = db->Flush(rocksdb::FlushOptions(), ridx->columnFamily());
-    if (!status.ok()) {
-      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-      << "flushing column family " << ridx->columnFamily()->GetName() << " failed: " << status.ToString();
-    }
-  } else {
+  if (res.fail()) {
     RocksDBKeyBounds bounds = ridx->getBounds();
     arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
                                                          true, /*useRangeDel*/numDocsWritten > 25000);
