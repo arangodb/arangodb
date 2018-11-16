@@ -244,7 +244,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
     
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
     rocksdb::Status s = batch.Put(cf, key.string(), value.string());
-    LOG_DEVEL << "writing key generator coll " << coll.name();
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "writing key generator coll " << coll.name();
 
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
@@ -270,7 +270,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
     }
     
     if (est->needToPersist() || force) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC(TRACE, Logger::ENGINES)
       << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
@@ -279,7 +279,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch, LogicalC
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
       
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC(TRACE, Logger::ENGINES)
       << "serialized estimate for index '" << idx->objectId()
       << "' valid through seq " << seq;
       
