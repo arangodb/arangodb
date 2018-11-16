@@ -119,9 +119,6 @@ class RocksDBMethods {
 
  protected:
   RocksDBTransactionState* _state;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _indexingWasDisabled = false;
-#endif
 };
 
 // only implements GET and NewIterator
