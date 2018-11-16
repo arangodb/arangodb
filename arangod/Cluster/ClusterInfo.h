@@ -61,6 +61,7 @@ class CollectionInfoCurrent {
   friend class ClusterInfo;
 
  public:
+
   explicit CollectionInfoCurrent(uint64_t currentVersion);
 
   CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
@@ -99,6 +100,37 @@ class CollectionInfoCurrent {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns if a specific index exists
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::Result hasIndex(std::string const& indexId) const {
+
+    for (auto const& shard : _vpacks) {
+      VPackSlice indexes = getIndexes(shard.first);
+      if (indexes != VPackSlice::noneSlice() && indexes.length() > 0) {
+        bool found = false;
+        for (auto const& index : VPackArrayIterator(indexes)) {
+          if (index.get("id").isEqualString(indexId)) {
+            found = true;
+            if (index.hasKey("error") && index.get("error").getBoolean()) {
+              return Result( // Some shard has errored while creating the index
+                index.get("errorNum").getNumber<unsigned>(),
+                index.get("errorMessage").copyString());
+            }
+            break;
+          }
+        }
+        if (!found) { // Some shard has no index with this id
+          return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+        }
+      } else { // Some shard has no indexes at all
+        return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND); 
+      }
+    }
+    return Result(); // Good
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the error flag for a shardID
   //////////////////////////////////////////////////////////////////////////////
 
@@ -118,8 +150,8 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice,
-                                                                "errorNum", 0);
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        slice, "errorNum", 0);
     }
     return 0;
   }
@@ -132,7 +164,8 @@ class CollectionInfoCurrent {
     std::unordered_map<ShardID, int> m;
 
     for (auto const& it: _vpacks) {
-      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
+      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -449,7 +482,8 @@ class ClusterInfo {
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
       arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg,
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -642,8 +676,9 @@ class ClusterInfo {
 
   int ensureIndexCoordinatorWithoutRollback(
       std::string const& databaseName, std::string const& collectionID,
-      std::string const& idSlice, arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
+      std::string const& idSlice, arangodb::velocypack::Slice const& slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder,
+      std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
