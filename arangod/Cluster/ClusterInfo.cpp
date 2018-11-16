@@ -2489,6 +2489,14 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   loadPlan();
 
+  // Smart collection, we're done.
+  auto const resultSlice = resultBuilder.slice();
+  if (resultSlice.hasKey("isSmart") &&
+      resultSlice.get("isSmart").isBoolean() &&
+      resultSlice.get("isSmart").getBoolean()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
   std::string const indexPath =
     "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
 
@@ -2499,7 +2507,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
   VPackBuilder oldPlanIndex;
   { VPackObjectBuilder b(&oldPlanIndex);
-    for (auto const& entry : VPackObjectIterator(resultBuilder.slice())) {
+    for (auto const& entry : VPackObjectIterator(resultSlice)) {
       auto const key = entry.key.copyString();
       if (key != "isNewlyCreated") {
         oldPlanIndex.add(entry.key.copyString(), entry.value);
@@ -2508,15 +2516,15 @@ int ClusterInfo::ensureIndexCoordinator(
   if (errorCode == TRI_ERROR_NO_ERROR) {
 
     std::string idStr;
-    if (resultBuilder.slice().hasKey("id")) {
-      idStr = resultBuilder.slice().get("id").copyString();
+    if (resultSlice.hasKey("id")) {
+      idStr = resultSlice.get("id").copyString();
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER)
         << "Missing 'id' field in index creation result";
       return TRI_ERROR_INTERNAL;
     }
 
-    if (resultBuilder.slice().hasKey("isBuilding")) {
+    if (resultSlice.hasKey("isBuilding")) {
       VPackBuilder newPlanIndex;
       
       std::uint64_t sleepFor = 50;
@@ -2528,7 +2536,7 @@ int ClusterInfo::ensureIndexCoordinator(
         
         if (current.ok()) {
           { VPackObjectBuilder o(&newPlanIndex);
-            for (auto const& entry : VPackObjectIterator(resultBuilder.slice())) {
+            for (auto const& entry : VPackObjectIterator(resultSlice)) {
               auto const key = entry.key.copyString();
               if (key != "isBuilding" && key != "isNewlyCreated") {
                 newPlanIndex.add(entry.key.copyString(), entry.value);
@@ -2737,7 +2745,8 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
         ob->add(e.value);
       }
     }
-    if (!slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
+    if (numberOfShards > 0 &&
+        !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
       ob->add("isBuilding", VPackValue(true));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
@@ -2785,6 +2794,11 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
   if (numberOfShards == 0) { // smart "dummy" collection has no shards
     TRI_ASSERT(collection.get(StaticStrings::IsSmart).getBool());
+    {
+      // Copy over all elements in slice.
+      VPackObjectBuilder b(&resultBuilder);
+      resultBuilder.add("isSmart", VPackValue(true));
+    }
     loadCurrent();
     return TRI_ERROR_NO_ERROR;
   }
