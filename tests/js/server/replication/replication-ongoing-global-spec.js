@@ -112,6 +112,7 @@ const waitForReplication = function() {
   if (wasOnMaster) {
     connectToMaster();
   } else {
+    internal.wait(1.0, false);
     connectToSlave();
   }
 };
