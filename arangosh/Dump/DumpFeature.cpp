@@ -727,7 +727,8 @@ bool DumpFeature::toDisk(int fd, std::string const& name, StringBuffer const& bo
 
 /// @brief dump a single shard, that is a collection on a DBserver
 int DumpFeature::dumpShard(int fd, std::string const& DBserver,
-                           std::string const& name, std::string& errorMsg) {
+                           std::string const& name, std::string& errorMsg,
+                           std::string const& collectionName) {
   uint64_t chunkSize = _chunkSize;
 
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
@@ -800,7 +801,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
-      bool result = toDisk(fd, name, body, _maskings.get());
+      bool result = toDisk(fd, collectionName, body, _maskings.get());
 
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -1083,7 +1084,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
           return res;
         }
 
-        res = dumpShard(fd, DBserver, shardName, errorMsg);
+        res = dumpShard(fd, DBserver, shardName, errorMsg, name);
 
         if (res != TRI_ERROR_NO_ERROR) {
           endEncryption(fd);

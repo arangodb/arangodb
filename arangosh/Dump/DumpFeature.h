@@ -77,7 +77,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
   void flushWal();
   int runDump(std::string& dbName, std::string& errorMsg);
   int dumpShard(int fd, std::string const& DBserver, std::string const& name,
-                std::string& errorMsg);
+                std::string& errorMsg, std::string const& collectionName);
   int runClusterDump(std::string& errorMsg);
 
   bool toDisk(int fd, std::string const& name, arangodb::basics::StringBuffer const& body, maskings::Maskings* maskings);
