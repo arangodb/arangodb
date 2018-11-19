@@ -97,16 +97,37 @@ struct MMFilesPrimaryIndexHelper {
 typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper>
     MMFilesPrimaryIndexImpl;
 
-class MMFilesPrimaryIndexIterator final : public IndexIterator {
+class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
  public:
-  MMFilesPrimaryIndexIterator(LogicalCollection* collection,
-                              transaction::Methods* trx,
-                              MMFilesPrimaryIndex const* index,
-                              std::unique_ptr<VPackBuilder> keys);
+  MMFilesPrimaryIndexEqIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
 
-  ~MMFilesPrimaryIndexIterator();
+  ~MMFilesPrimaryIndexEqIterator();
 
-  char const* typeName() const override { return "primary-index-iterator"; }
+  char const* typeName() const override { return "primary-index-eq-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex const* _index;
+  std::unique_ptr<VPackBuilder> _key;
+  bool _done;
+};
+
+class MMFilesPrimaryIndexInIterator final : public IndexIterator {
+ public:
+  MMFilesPrimaryIndexInIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
+
+  ~MMFilesPrimaryIndexInIterator();
+
+  char const* typeName() const override { return "primary-index-in-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
