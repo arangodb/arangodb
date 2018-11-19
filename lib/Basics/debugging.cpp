@@ -24,6 +24,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
@@ -46,7 +47,7 @@ using namespace arangodb;
 
 namespace {
 /// @brief a global set containing the currently registered failure points
-std::unordered_set<std::string> failurePoints;
+std::unordered_set<StringRef> failurePoints;
 
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
@@ -73,7 +74,7 @@ void TRI_SegfaultDebugging(char const* message) {
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
 
-  return ::failurePoints.find(value) != ::failurePoints.end();
+  return ::failurePoints.find(StringRef(value)) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
@@ -89,7 +90,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 void TRI_RemoveFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  ::failurePoints.erase(value);
+  ::failurePoints.erase(StringRef(value));
 }
 
 /// @brief clear all failure points
@@ -204,7 +205,7 @@ void TRI_PrintBacktrace() {
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];
-  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  snprintf(buf, sizeof(buf), "/usr/bin/pstack %i", getpid());
   system(buf);
 #endif
 #endif
