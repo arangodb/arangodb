@@ -3131,9 +3131,6 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 }
 
 bool MMFilesCollection::hasAllPersistentLocalIds() const {
-  TRI_ASSERT(_hasAllPersistentLocalIds.load() !=
-             (_logicalCollection.version() <
-              LogicalCollection::CollectionVersions::VERSION_34));
   return _hasAllPersistentLocalIds.load();
 }
 
