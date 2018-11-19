@@ -27,7 +27,8 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<Collection> Collection::parse(VPackSlice const& def) {
+ParseResult<Collection> Collection::parse(Maskings* maskings,
+                                          VPackSlice const& def) {
   if (!def.isObject()) {
     return ParseResult<Collection>(
         ParseResult<Collection>::PARSE_FAILED,
@@ -43,7 +44,7 @@ ParseResult<Collection> Collection::parse(VPackSlice const& def) {
     if (key == "type") {
       if (!entry.value.isString()) {
         return ParseResult<Collection>(
-            ParseResult<Collection>::PARSE_FAILED,
+            ParseResult<Collection>::ILLEGAL_PARAMETER,
             "expecting a string for collection type");
       }
 
@@ -51,12 +52,13 @@ ParseResult<Collection> Collection::parse(VPackSlice const& def) {
     } else if (key == "maskings") {
       if (!entry.value.isArray()) {
         return ParseResult<Collection>(
-            ParseResult<Collection>::PARSE_FAILED,
+            ParseResult<Collection>::ILLEGAL_PARAMETER,
             "expecting an array for collection maskings");
       }
 
       for (auto const& mask : VPackArrayIterator(entry.value)) {
-        ParseResult<AttributeMasking> am = AttributeMasking::parse(mask);
+        ParseResult<AttributeMasking> am =
+            AttributeMasking::parse(maskings, mask);
 
         if (am.status != ParseResult<AttributeMasking>::VALID) {
           return ParseResult<Collection>(
@@ -72,14 +74,16 @@ ParseResult<Collection> Collection::parse(VPackSlice const& def) {
 
   if (type == "full") {
     selection = CollectionSelection::FULL;
-  } else if (type == "ignore") {
-    selection = CollectionSelection::IGNORE;
+  } else if (type == "exclude") {
+    selection = CollectionSelection::EXCLUDE;
+  } else if (type == "masked") {
+    selection = CollectionSelection::MASKED;
   } else if (type == "structure") {
     selection = CollectionSelection::STRUCTURE;
   } else {
     return ParseResult<Collection>(
         ParseResult<Collection>::UNKNOWN_TYPE,
-        "expecting unknown collection type '" + type + "'");
+        "found unknown collection type '" + type + "'");
   }
 
   return ParseResult<Collection>(Collection(selection, attributes));

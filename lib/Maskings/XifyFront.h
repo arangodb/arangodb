@@ -29,7 +29,11 @@ namespace arangodb {
 namespace maskings {
 class XifyFront : public MaskingFunction {
  public:
-  XifyFront(int64_t length) : _length((uint64_t)length){};
+  XifyFront(Maskings* maskings, int64_t length, bool hash, uint64_t seed)
+      : MaskingFunction(maskings),
+        _length((uint64_t)length),
+        _randomSeed(seed),
+        _hash(hash) {}
 
   VPackValue mask(bool) const override;
   VPackValue mask(std::string const&, std::string& buffer) const override;
@@ -38,6 +42,8 @@ class XifyFront : public MaskingFunction {
 
  private:
   uint64_t _length;
+  uint64_t _randomSeed;
+  bool _hash;
 };
 }  // namespace maskings
 }  // namespace arangodb

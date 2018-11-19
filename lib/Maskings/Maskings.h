@@ -67,6 +67,8 @@ class Maskings {
   void mask(std::string const& name, basics::StringBuffer const& data,
             basics::StringBuffer& result);
 
+  uint64_t randomSeed() const noexcept { return _randomSeed; }
+
  private:
   ParseResult<Maskings> parse(VPackSlice const&);
   VPackValue maskedItem(Collection& collection, std::vector<std::string>& path,
@@ -82,6 +84,7 @@ class Maskings {
 
  private:
   std::map<std::string, Collection> _collections;
+  uint64_t _randomSeed = 0;
 };
 
 }  // namespace maskings

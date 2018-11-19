@@ -27,7 +27,7 @@
 
 namespace arangodb {
 namespace maskings {
-enum class CollectionSelection { FULL, IGNORE, STRUCTURE };
+enum class CollectionSelection { FULL, MASKED, EXCLUDE, STRUCTURE };
 }  // namespace maskings
 }  // namespace arangodb
 
