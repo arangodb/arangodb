@@ -2536,8 +2536,14 @@ int ClusterInfo::ensureIndexCoordinator(
       Result current;
       
       while(true) { // Wait for index to appear in current shards
-        current =
-          getCollectionCurrent(databaseName, collectionID)->hasIndex(idStr);
+
+        auto curCollection = getCollectionCurrent(databaseName, collectionID);
+        if (getCurrentVersion() == 0) {
+          // Collection has disappeared.
+          current.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                        "Collection has been deleted from the cluster.");
+        }
+        current = curCollection->hasIndex(idStr);
 
         bool overTime = steady_clock::now() > endTime;
         
@@ -2587,12 +2593,19 @@ int ClusterInfo::ensureIndexCoordinator(
           "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
       AgencyWriteTransaction trx(opers);
       while (true) {
-        AgencyCommResult update =
-          _agency.sendTransactionWithFailover(trx, 0.0);
-        if (update.successful()) {
+        if (_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
           loadPlan();
           return current.errorNumber();
         }
+        if (steady_clock::now() > endTime) {
+          current.reset(
+            TRI_ERROR_CLUSTER_TIMEOUT,
+            "Timed out while waiting for indexes to get ready on db servers");
+        }
+        if (sleepFor <= 2500) {
+          sleepFor*=2;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds());
       }
 
     } else {
@@ -3115,7 +3128,9 @@ void ClusterInfo::loadServers() {
     << " errorCode: " << result.errorCode()
     << " errorMessage: " << result.errorMessage()
     << " body: " << result.body();
-}////////////////////////////////////////////////////////////////////////
+}
+
+////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
