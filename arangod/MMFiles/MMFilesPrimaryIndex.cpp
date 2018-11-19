@@ -487,17 +487,16 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, attrNode, valNode);
-  } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  } 
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
-    if (!valNode->isArray()) {
-      // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx);
+    if (valNode->isArray()) {
+      // a.b IN array
+      return createInIterator(trx, attrNode, valNode);
     }
-
-    return createInIterator(trx, attrNode, valNode);
   }
 
-  // operator type unsupported
+  // operator type unsupported or IN used on non-array
   return new EmptyIndexIterator(&_collection, trx);
 }
 
