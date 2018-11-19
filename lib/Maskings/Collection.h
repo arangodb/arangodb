@@ -40,7 +40,7 @@ namespace arangodb {
 namespace maskings {
 class Collection {
  public:
-  static ParseResult<Collection> parse(VPackSlice const&);
+  static ParseResult<Collection> parse(Maskings* maskings, VPackSlice const&);
 
  public:
   Collection() {}
@@ -49,9 +49,7 @@ class Collection {
              std::vector<AttributeMasking> const& maskings)
       : _selection(selection), _maskings(maskings) {}
 
-  CollectionSelection selection() const noexcept {
-    return _selection;
-  }
+  CollectionSelection selection() const noexcept { return _selection; }
 
   MaskingFunction* masking(std::vector<std::string> const& path);
 

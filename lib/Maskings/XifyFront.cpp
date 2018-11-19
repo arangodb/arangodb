@@ -22,20 +22,22 @@
 
 #include "XifyFront.h"
 
-static std::string xxxx("xxxx");
+#include "Basics/StringUtils.h"
+#include "Basics/fasthash.h"
+#include "Maskings/Maskings.h"
+
+static std::string const xxxx("xxxx");
 
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-VPackValue XifyFront::mask(bool) const {
-  return VPackValue(xxxx);
-}
+VPackValue XifyFront::mask(bool) const { return VPackValue(xxxx); }
 
 VPackValue XifyFront::mask(std::string const& data, std::string& buffer) const {
   char const* p = data.c_str();
   char const* q = p;
   char const* e = p + data.size();
-  
+
   buffer.clear();
   buffer.reserve(data.size());
 
@@ -66,13 +68,25 @@ VPackValue XifyFront::mask(std::string const& data, std::string& buffer) const {
     q = p;
   }
 
+  if (_hash) {
+    uint64_t hash;
+
+    if (_randomSeed == 0) {
+      hash = fasthash64(data.c_str(), data.size(), _maskings->randomSeed());
+    } else {
+      hash = fasthash64(data.c_str(), data.size(), _randomSeed);
+    }
+
+    std::string hash64 =
+        basics::StringUtils::encodeBase64(std::string((char const*)&hash, 8));
+
+    buffer.push_back(' ');
+    buffer.append(hash64);
+  }
+
   return VPackValue(buffer);
 }
 
-VPackValue XifyFront::mask(int64_t) const {
-  return VPackValue(xxxx);
-}
+VPackValue XifyFront::mask(int64_t) const { return VPackValue(xxxx); }
 
-VPackValue XifyFront::mask(double) const {
-  return VPackValue(xxxx);
-}
+VPackValue XifyFront::mask(double) const { return VPackValue(xxxx); }

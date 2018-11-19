@@ -29,7 +29,8 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<AttributeMasking> AttributeMasking::parse(VPackSlice const& def) {
+ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
+                                                      VPackSlice const& def) {
   if (!def.isObject()) {
     return ParseResult<AttributeMasking>(
         ParseResult<AttributeMasking>::PARSE_FAILED,
@@ -39,16 +40,52 @@ ParseResult<AttributeMasking> AttributeMasking::parse(VPackSlice const& def) {
   std::string path = "";
   std::string type = "";
   uint64_t length = 2;
+  uint64_t seed = 0;
+  bool hash = false;
 
   for (auto const& entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
 
     if (key == "type") {
+      if (!entry.value.isString()) {
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "type must be a string");
+      }
+
       type = entry.value.copyString();
     } else if (key == "path") {
+      if (!entry.value.isString()) {
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "path must be a string");
+      }
+
       path = entry.value.copyString();
     } else if (key == "length") {
+      if (!entry.value.isInteger()) {
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "length must be an integer");
+      }
+
       length = entry.value.getInt();
+    } else if (key == "hash") {
+      if (!entry.value.isBool()) {
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "hash must be an integer");
+      }
+
+      hash = entry.value.getBool();
+    } else if (key == "seed") {
+      if (!entry.value.isInteger()) {
+        return ParseResult<AttributeMasking>(
+            ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
+            "seed must be an integer");
+      }
+
+      seed = entry.value.getInt();
     }
   }
 
@@ -72,8 +109,8 @@ ParseResult<AttributeMasking> AttributeMasking::parse(VPackSlice const& def) {
           "expecting length to be at least for xify_front");
     }
 
-    return ParseResult<AttributeMasking>(
-        AttributeMasking(ap.result, new XifyFront(length)));
+    return ParseResult<AttributeMasking>(AttributeMasking(
+        ap.result, new XifyFront(maskings, length, hash, seed)));
   }
 
   return ParseResult<AttributeMasking>(

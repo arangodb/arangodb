@@ -40,15 +40,86 @@ ParseResult<Path> Path::parse(std::string const& def) {
     wildcard = true;
   }
 
-  std::vector<std::string> components =
-      basics::StringUtils::split(def.substr(wildcard ? 1 : 0), '.');
+  char const* p = def.c_str();
+  char const* e = p + def.size();
 
-  for (auto itr : components) {
-    if (itr.empty()) {
-      return ParseResult<Path>(
-          ParseResult<Path>::ILLEGAL_PARAMETER,
-          "path '" + def + "' contains an empty component");
+  if (wildcard) {
+    ++p;
+  }
+
+  std::vector<std::string> components;
+  std::string buffer;
+
+  while (p < e) {
+    if (*p == '.') {
+      if (buffer.size() == 0) {
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            "path '" + def + "' contains an empty component");
+      }
+
+      ++p;
+      components.push_back(buffer);
+      buffer.clear();
+    } else if (*p == 96) {  // backtick `
+      ++p;
+
+      while (p < e && *p != 96) {
+        buffer.push_back(*p++);
+      }
+
+      if (p == e) {
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            "path '" + def + "' contains an unbalanced quote");
+      }
+
+      ++p;
+    } else if (p[0] == -62 &&
+               p[1] == -76) {  // there is also a 0 at *e, so p[1] is ok
+      p += 2;
+
+      while (p < e - 1 && (p[0] != -62 || p[1] != -76)) {
+        buffer.push_back(*p++);
+      }
+
+      if (p == e) {
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            "path '" + def + "' contains an unbalanced quote");
+      }
+
+      p += 2;
+    } else if (p[0] == -76 &&
+               p[1] == -62) {  // there is also a 0 at *e, so p[1] is ok
+      p += 2;
+
+      while (p < e - 1 && (p[0] != -76 || p[1] != -62)) {
+        buffer.push_back(*p++);
+      }
+
+      if (p == e) {
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            "path '" + def + "' contains an unbalanced quote");
+      }
+
+      p += 2;
+    } else {
+      buffer.push_back(*p++);
     }
+  }
+
+  if (buffer.size() == 0) {
+    return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                             "path '" + def + "' contains an empty component");
+  }
+
+  components.push_back(buffer);
+
+  if (components.empty()) {
+    return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                             "path '" + def + "' contains no component");
   }
 
   return ParseResult<Path>(Path(wildcard, components));

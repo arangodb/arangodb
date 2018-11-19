@@ -26,6 +26,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::maskings;
@@ -52,6 +53,8 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   }
 
   std::unique_ptr<Maskings> maskings(new Maskings{});
+
+  maskings.get()->_randomSeed = RandomGenerator::interval(UINT64_MAX);
 
   try {
     std::shared_ptr<VPackBuilder> parsed =
@@ -88,7 +91,7 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
                                    "duplicate collection entry '" + key + "'");
     }
 
-    ParseResult<Collection> c = Collection::parse(entry.value);
+    ParseResult<Collection> c = Collection::parse(this, entry.value);
 
     if (c.status != ParseResult<Collection>::VALID) {
       return ParseResult<Maskings>(
@@ -111,7 +114,9 @@ bool Maskings::shouldDumpStructure(std::string const& name) {
   switch (itr->second.selection()) {
     case CollectionSelection::FULL:
       return true;
-    case CollectionSelection::IGNORE:
+    case CollectionSelection::MASKED:
+      return true;
+    case CollectionSelection::EXCLUDE:
       return false;
     case CollectionSelection::STRUCTURE:
       return true;
@@ -128,7 +133,9 @@ bool Maskings::shouldDumpData(std::string const& name) {
   switch (itr->second.selection()) {
     case CollectionSelection::FULL:
       return true;
-    case CollectionSelection::IGNORE:
+    case CollectionSelection::MASKED:
+      return true;
+    case CollectionSelection::EXCLUDE:
       return false;
     case CollectionSelection::STRUCTURE:
       return false;
@@ -249,7 +256,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
     return;
   }
 
-  std::string dataStr("data");
+  std::string dataStrRef("data");
 
   VPackBuilder builder;
 
@@ -259,7 +266,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
     for (auto const& entry : VPackObjectIterator(slice, false)) {
       std::string key = entry.key.copyString();
 
-      if (key == dataStr) {
+      if (key == dataStrRef) {
         addMasked(collection, builder, entry.value);
       } else {
         builder.add(key, entry.value);
@@ -279,6 +286,11 @@ void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
+    result.copy(data);
+    return;
+  }
+
+  if (itr->second.selection() == CollectionSelection::FULL) {
     result.copy(data);
     return;
   }

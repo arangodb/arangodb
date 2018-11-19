@@ -35,12 +35,13 @@ struct ParseResult {
     ILLEGAL_PARAMETER
   };
 
-  ParseResult(StatusCode status) : status(status){};
+  ParseResult(StatusCode status) : status(status) {}
 
   ParseResult(StatusCode status, std::string message)
-      : status(status), message(message), result(T()){};
+      : status(status), message(message), result(T()) {}
 
-  ParseResult(T result) : status(StatusCode::VALID), result(result){};
+  ParseResult(T&& result)
+      : status(StatusCode::VALID), result(std::move(result)) {}
 
   StatusCode status;
   std::string message;

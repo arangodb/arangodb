@@ -33,6 +33,8 @@
 
 namespace arangodb {
 namespace maskings {
+class Maskings;
+
 class MaskingFunction {
  public:
   static bool isNameChar(char c) {
@@ -40,7 +42,22 @@ class MaskingFunction {
            ('0' <= c && c <= '9') || c == '_' || c == '-';
   }
 
+  static bool utf8Length(uint8_t c) {
+    if ((c & 0x80) == 0) {
+      return 1;
+    } else if ((c & 0xE0) == 0xC0) {
+      return 2;
+    } else if ((c & 0xF0) == 0xE0) {
+      return 3;
+    } else if ((c & 0xF8) == 0xF0) {
+      return 4;
+    }
+
+    return 1;
+  }
+
  public:
+  explicit MaskingFunction(Maskings* maskings) : _maskings(maskings) {}
   virtual ~MaskingFunction() {}
 
  public:
@@ -48,6 +65,9 @@ class MaskingFunction {
   virtual VPackValue mask(std::string const&, std::string& buffer) const = 0;
   virtual VPackValue mask(int64_t) const = 0;
   virtual VPackValue mask(double) const = 0;
+
+ protected:
+  Maskings* _maskings;
 };
 }  // namespace maskings
 }  // namespace arangodb
