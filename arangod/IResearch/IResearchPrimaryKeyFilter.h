@@ -44,7 +44,8 @@ class PrimaryKeyFilter final
   DECLARE_FILTER_TYPE();
 
   PrimaryKeyFilter(TRI_voc_cid_t cid, TRI_voc_rid_t id) noexcept
-    : irs::filter(PrimaryKeyFilter::type()), _pk(cid, id) {
+    : irs::filter(PrimaryKeyFilter::type()),
+      _pk(cid, id) { // ensure proper endianness
   }
 
 // ----------------------------------------------------------------------------

@@ -495,10 +495,12 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
-  bool hasAllPersistentLocalIds() const { return _hasAllPersistentLocalIds.load(); }
+  bool hasAllPersistentLocalIds() const override;
 
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);
+
+  void setCurrentVersion();
 
  private:
   mutable arangodb::MMFilesDitches _ditches;

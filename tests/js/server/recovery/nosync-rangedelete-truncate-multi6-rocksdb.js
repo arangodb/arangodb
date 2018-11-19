@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertFalse, assertNull, assertNotNull */
+/* global assertEqual, assertFalse, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -33,12 +33,16 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-
+  
   db._drop('UnitTestsRecovery1');
+  db._drop('UnitTestsRecovery2');
+
   let c = db._create('UnitTestsRecovery1');
+  c.ensureIndex({ type: "hash", fields: ["value"] });
+
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ value: i });
+    docs.push({ _key: "test" + i, value: i % 1000 });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
@@ -49,7 +53,7 @@ function runSetup () {
   c.truncate();
   
   for (let i = 0; i < 90000; i++) {
-    docs.push({ value: i });
+    docs.push({ _key: "test" + i, value: i % 1000 });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
@@ -57,8 +61,12 @@ function runSetup () {
   }
   
   c.truncate();
-  c.insert({}, { waitForSync: true });
 
+  // turn off syncing of counters etc.  
+  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+
+  c = db._create('UnitTestsRecovery2');
+  c.insert({}, { waitForSync: true });
   internal.debugSegfault('crashing server');
 }
 
@@ -74,9 +82,30 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testRangeDeleteTruncateMulti2: function () {
+    testNosyncRangeDeleteTruncateMulti6: function () {
+
       let c = db._collection('UnitTestsRecovery1');
-      assertEqual(1, c.count());
+      assertEqual(0, c.count());
+      assertNotNull(db._collection('UnitTestsRecovery2'));
+  
+      let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
+      for (let i = 0; i < 100000; i += 1000) {
+        assertFalse(c.exists("key" + i));
+        assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
+      }
+
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+          case 'hash':
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
+            break;
+          default:
+            fail();
+        }
+      }
     }
 
   };

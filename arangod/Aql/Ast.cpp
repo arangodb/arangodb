@@ -2144,6 +2144,10 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
+  auto preVisitor = [](AstNode const* node) -> bool {
+    return !node->isConstant();
+  };
+  
   auto visitor = [&result](AstNode const* node) {
     if (node == nullptr) {
       return;
@@ -2163,7 +2167,7 @@ void Ast::getReferencedVariables(AstNode const* node,
     }
   };
 
-  traverseReadOnly(node, visitor);
+  traverseReadOnly(node, preVisitor, visitor);
 }
 
 /// @brief count how many times a variable is referenced in an expression
@@ -3802,13 +3806,8 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   auto node = new AstNode(type);
 
-  try {
-    // register the node so it gets freed automatically later
-    _query->addNode(node);
-  } catch (...) {
-    delete node;
-    throw;
-  }
+  // register the node so it gets freed automatically later
+  _query->addNode(node);
 
   return node;
 }
@@ -3859,7 +3858,7 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
     std::string graphName = graphNode->getString();
     auto graph = _query->lookupGraphByName(graphName);
     if (graph == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
     }
     TRI_ASSERT(graph != nullptr);
 

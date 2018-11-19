@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertFalse, assertNull, assertNotNull */
+/* global assertEqual, assertFalse, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -81,6 +81,20 @@ function recoverySuite () {
         assertFalse(c.exists("key" + i));
         assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
         assertEqual([], c.edges("test/" + i));
+      }
+
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+          case 'hash':
+          case 'edge':
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
+            break;
+            default:
+            fail();
+        }
       }
     }
 

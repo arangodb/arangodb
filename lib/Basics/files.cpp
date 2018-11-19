@@ -2095,7 +2095,10 @@ std::string TRI_GetTempPath() {
       // directory could not be created
       // this may be a race, a permissions problem or something else
       if (++tries >= 10) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "UserTempPath: " << UserTempPath << ", system: " << system << ", user temp path exists: " << TRI_IsDirectory(UserTempPath.c_str()) << ", res: " << res << ", SystemTempPath: " << SystemTempPath.get();
+#endif
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up!";
         FATAL_ERROR_ABORT();
       }
       // sleep for a random amout of time and try again soon

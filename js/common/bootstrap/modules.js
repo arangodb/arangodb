@@ -389,7 +389,8 @@
     try {
       var dbModule = Module._dbCache[request];
 
-      if (!dbModule && internal.db !== undefined && internal.db._modules !== undefined) {
+      // _modules is an optional collection. only use it if it is present.
+      if (!dbModule && internal.db !== undefined && internal.db._modules) {
         dbModule = internal.db._modules.firstExample({path: request});
 
         if (!dbModule) {
