@@ -2517,6 +2517,7 @@ int ClusterInfo::ensureIndexCoordinator(
         oldPlanIndex.add(entry.key.copyString(), entry.value);
       }}}
   
+  std::uint64_t sleepFor = 50;
   if (errorCode == TRI_ERROR_NO_ERROR) { // Success so far
 
     std::string idStr;
@@ -2532,7 +2533,6 @@ int ClusterInfo::ensureIndexCoordinator(
     if (resultSlice.hasKey("isBuilding")) {
       
       VPackBuilder newPlanIndex;
-      std::uint64_t sleepFor = 50;
       Result current;
       
       while(true) { // Wait for index to appear in current shards
@@ -2592,6 +2592,7 @@ int ClusterInfo::ensureIndexCoordinator(
         AgencyOperation(
           "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
       AgencyWriteTransaction trx(opers);
+      sleepFor = 50;
       while (true) {
         if (_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
           loadPlan();
@@ -2600,7 +2601,7 @@ int ClusterInfo::ensureIndexCoordinator(
         if (steady_clock::now() > endTime) {
           current.reset(
             TRI_ERROR_CLUSTER_TIMEOUT,
-            "Timed out while waiting for indexes to get ready on db servers");
+            "Timed out while trying to update Plan record for the index.");
         }
         if (sleepFor <= 2500) {
           sleepFor*=2;
@@ -2627,7 +2628,8 @@ int ClusterInfo::ensureIndexCoordinator(
         "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   setErrormsg(errorCode, errorMsg);
-  
+
+  sleepFor = 50;
   while (true) {
     AgencyCommResult update =
       _agency.sendTransactionWithFailover(trx, 0.0);
@@ -2635,6 +2637,14 @@ int ClusterInfo::ensureIndexCoordinator(
       loadPlan();
       return errorCode;
     }
+    if (steady_clock::now() > endTime) {
+      errorMsg = "Timed out while trying to report index creation failure";
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+    }
+    if (sleepFor <= 2500) {
+      sleepFor*=2;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds());
   }
 
   LOG_TOPIC(ERR, Logger::CLUSTER)
