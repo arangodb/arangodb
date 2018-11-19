@@ -334,8 +334,11 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   // in doubt change the timeout to _MS below and hardcode it to 999 and see if
   // the requests immediately fail
   // if not this hack can go away
-  if (connectTimeout <= 0) {
-    connectTimeout = 1;
+  if (connectTimeout <= 7) {
+    // matthewv: previously arangod default was 1.  libcurl flushes its DNS cache
+    //  every 60 seconds.  Tests showed DNS packets lost under high load.  libcurl
+    //  retries DNS after 5 seconds.  7 seconds allows for one retry plus a little padding.
+    connectTimeout = 7;
   }
 
   curl_easy_setopt(
@@ -379,7 +382,13 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
       break;
   }
 
-  if (request->body().length() > 0) {
+  // CURLOPT_POSTFIELDS has to be set for CURLOPT_POST, even if the body is
+  // empty.
+  // Otherwise, curl uses CURLOPT_READFUNCTION on CURLOPT_READDATA, which
+  // default to fread and stdin, respectively: this can cause curl to wait
+  // indefinitely.
+  if (request->body().length() > 0 ||
+      request->requestType() == RequestType::POST) {
     curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE,
                      handleInProgress->_rip->_requestBody.length());
     curl_easy_setopt(handle, CURLOPT_POSTFIELDS,
@@ -422,6 +431,14 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << prefix << "Curl error details: " << rip->_errorBuffer;
+  }
+
+  double namelookup;
+  curl_easy_getinfo(handle, CURLINFO_NAMELOOKUP_TIME, &namelookup);
+
+  if (5.0 <= namelookup) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "libcurl DNS lookup took "
+                                             << namelookup << " seconds.  Consider static IP addresses.";
   }
 
   MUTEX_LOCKER(guard, _handlesLock);

@@ -349,10 +349,12 @@ VPackBuilder auth::UserManager::allUsers() {
   std::shared_ptr<VPackBuilder> users = QueryAllUsers(_queryRegistry);
 
   VPackBuilder result;
-  VPackArrayBuilder a(&result);
-  if (users && !users->isEmpty()) {
-    for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
-      ConvertLegacyFormat(doc, result);
+  {
+    VPackArrayBuilder a(&result);
+    if (users && !users->isEmpty()) {
+      for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
+        ConvertLegacyFormat(doc, result);
+      }
     }
   }
   return result;

@@ -122,7 +122,9 @@ describe('Shard distribution', function () {
         } else {
           expect(info).to.have.all.keys(['leader', 'followers']);
         }
-        expect(info.leader).to.match(/^DBServer/);
+        expect(info.leader).to.match(/^DBServer|_/);
+        // Note that it is possible that the leader is for a short time
+        // a resigned leader starting with an "_".
         assert.isArray(info.followers, 'The followers need to be an array');
         // We have one replica for each server, except the leader
         expect(info.followers.length).to.equal(dbServerCount - 1);
@@ -136,7 +138,7 @@ describe('Shard distribution', function () {
       _.forEach(distribution.Current, function (info, shard) {
         expect(info).to.have.all.keys(['leader', 'followers']);
 
-        expect(info.leader).to.match(/^DBServer/);
+        expect(info.leader).to.match(/^DBServer|_/);
         assert.isArray(info.followers, 'The followers need to be an array');
 
         // We have at most one replica per db server. They may not be in sync yet.

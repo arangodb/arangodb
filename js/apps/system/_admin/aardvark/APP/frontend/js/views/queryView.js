@@ -2213,7 +2213,7 @@
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
             '<span class="profileHeader">Profiling information</span>' +
-            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="pure-g pure-table pure-table-body" style="width: auto;"></div>' +
             '<div class="prof-progress"></div>' +
             '<div class="prof-progress-label"></div>' +
             '<div class="clear"></div>'
@@ -2315,8 +2315,17 @@
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
-      if (result[0]) {
-        if (result[0].vertices && result[0].edges) {
+
+      var index = 0;
+      for (var i = 0; i < result.length; i++) {
+        if (result[i]) {
+          index = i;
+          break;
+        }
+      }
+
+      if (result[index]) {
+        if (result[index].vertices && result[index].edges) {
           var hitsa = 0;
           var totala = 0;
 
@@ -2511,7 +2520,7 @@
       var headers = {}; // quick lookup cache
       var pos = 0;
       _.each(data.original, function (obj) {
-        if (first === true) {
+        if (first === true && obj) {
           tableDescription.titles = Object.keys(obj);
           tableDescription.titles.forEach(function (t) {
             headers[String(t)] = pos++;

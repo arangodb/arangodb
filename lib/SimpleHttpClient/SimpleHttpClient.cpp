@@ -401,6 +401,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
     if ( application_features::ApplicationServer::isStopping()) {
       setErrorMessage("Command locally aborted");
+      delete _result;
+      _result = nullptr;
+
       return nullptr;
     }
 

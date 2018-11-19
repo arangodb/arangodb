@@ -65,11 +65,16 @@ struct Collections {
   static Result drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
                      bool allowDropSystem, double timeout, bool updateUsers);
   
+  static Result revisionId(TRI_vocbase_t* vocbase, LogicalCollection* coll,
+                           TRI_voc_rid_t& rid);
+  
+  // TOCO move to rocksdb
   static Result warmup(TRI_vocbase_t* vocbase,
                        LogicalCollection* coll);
   
-  static Result revisionId(TRI_vocbase_t* vocbase, LogicalCollection* coll,
-                           TRI_voc_rid_t& rid);
+  // TOCO move to rocksdb only code
+  static Result recalculateCount(TRI_vocbase_t* vocbase,
+                                 LogicalCollection* coll);
 };
 #ifdef USE_ENTERPRISE
   Result ULColCoordinatorEnterprise(std::string const& databaseName,

@@ -216,8 +216,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   bool isValidRevision;
   TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
   OperationOptions options;
@@ -402,14 +401,18 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder;
   if (!isArrayCase) {
-    TRI_voc_rid_t revision = 0;
     bool isValidRevision;
-    revision = extractRevision("if-match", isValidRevision);
+    TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      revision = UINT64_MAX;  // an impossible revision, so precondition failed
+      headerRev = UINT64_MAX;  // an impossible revision, so precondition failed
     }
+    if (headerRev != 0) {
+      opOptions.ignoreRevs = false;
+    }
+    
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
-    if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
+    TRI_voc_rid_t revInBody = TRI_ExtractRevisionId(body);
+    if ((headerRev != 0 && revInBody != headerRev) ||
         keyInBody.isNone() || keyInBody.isNull() ||
         (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
@@ -418,15 +421,15 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
         VPackObjectBuilder guard(builder.get());
         TRI_SanitizeObject(body, *builder);
         builder->add(StaticStrings::KeyString, VPackValue(key));
-        if (revision != 0) {
+        if (headerRev != 0) {
           builder->add(StaticStrings::RevString,
-                       VPackValue(TRI_RidToString(revision)));
+                       VPackValue(TRI_RidToString(headerRev)));
+        } else if (!opOptions.ignoreRevs && revInBody != 0) {
+          builder->add(StaticStrings::RevString,
+                       VPackValue(TRI_RidToString(headerRev)));
         }
       }
       body = builder->slice();
-    }
-    if (revision != 0) {
-      opOptions.ignoreRevs = false;
     }
   }
 

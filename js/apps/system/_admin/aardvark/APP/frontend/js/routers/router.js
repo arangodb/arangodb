@@ -659,6 +659,9 @@
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
+          if (self.indicesView) {
+            self.indicesView.remove();
+          }
           self.indicesView = new window.IndicesView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({

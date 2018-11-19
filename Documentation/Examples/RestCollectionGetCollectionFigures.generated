@@ -38,7 +38,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-04T20:08:31Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-10-20T10:39:06Z"</span>, 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
@@ -64,7 +64,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/figures
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h3CED0815C6B6/10194"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5486C74C94E1/10194"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 

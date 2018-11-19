@@ -1400,6 +1400,12 @@ bool Agent::prepareLead() {
     _earliestPackage.clear();
   }
 
+  {
+    // Clear transient for supervision start
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    _transient.clear();
+  }
+
   // Key value stores
   try {
     rebuildDBs();
@@ -1809,17 +1815,19 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
     
   std::string err;
+  config_t::upsert_t upsert = config_t::UNCHANGED;
     
   /// Pool incomplete or the other guy is in my pool: I'll gossip.
   if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
-      
-    if (!_config.upsertPool(pslice, id)) {
+
+    upsert = _config.upsertPool(pslice, id);
+    if (upsert == config_t::WRONG) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
       FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
     }
-    auto pool = _config.pool();
       
     // Wrapped in envelope in RestAgencyPrivHandler
+    auto pool = _config.pool();
     out->add(VPackValue("pool"));
     { VPackObjectBuilder bb(out.get());
       for (auto const& i : pool) {
@@ -1894,7 +1902,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
     
   // let gossip loop know that it has new data
-  if ( _inception != nullptr && isCallback) {
+  if (_inception != nullptr && upsert == config_t::CHANGED) {
     _inception->signalConditionVar();
   }
     
