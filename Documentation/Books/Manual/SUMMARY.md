@@ -118,6 +118,7 @@
     * [Collection and View Names](DataModeling/NamingConventions/CollectionAndViewNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
+  * [Operational Factors](DataModeling/OperationalFactors.md)
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
   * [Which index to use when](Indexing/WhichIndex.md)
