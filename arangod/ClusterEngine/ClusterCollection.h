@@ -182,8 +182,6 @@ class ClusterCollection final : public PhysicalCollection {
                 bool lock, TRI_voc_rid_t& prevRev,
                 TRI_voc_rid_t& revisionId) override;
 
-  bool hasAllPersistentLocalIds() const override { return false; }
-
  protected:
   /// @brief Inject figures that are specific to StorageEngine
   void figuresSpecific(

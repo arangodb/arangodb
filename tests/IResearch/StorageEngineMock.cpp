@@ -950,8 +950,6 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection updated OK
 }
 
-bool PhysicalCollectionMock::hasAllPersistentLocalIds() const { return true; }
-
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
 
