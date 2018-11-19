@@ -352,7 +352,7 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.num_stripes = 512;
   transactionOptions.transaction_lock_timeout = opts->_transactionLockTimeout;
 
   _options.enable_pipelined_write = opts->_enablePipelinedWrite;
@@ -375,6 +375,7 @@ void RocksDBEngine::start() {
   // column families still backed by WAL files. If we would not do this, WAL
   // files may linger around forever and will not get removed
   _options.max_total_wal_size = opts->_maxTotalWalSize;
+
 
   if (opts->_walDirectory.empty()) {
     _options.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
