@@ -232,6 +232,10 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   rocksdb::WriteBatchWithIndex* _wb;
 };
 
+// INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
+// THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM
+// OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
+// VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERARIONS.
 struct DisableIndexingOnRocksDBTrxGuard {
   // will only be active if condition is true
   DisableIndexingOnRocksDBTrxGuard(RocksDBMethods* meth, bool condition = true) : _meth(nullptr) {
