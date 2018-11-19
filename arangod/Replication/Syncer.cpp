@@ -850,8 +850,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   view = vocbase.lookupView(nameSlice.copyString());
 
   if (view) { // resolve name conflict by deleting existing
-    Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
-
+    Result res = view->drop();
     if (res.fail()) {
       return res;
     }
@@ -898,9 +897,10 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
   }
 
   try {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
     auto view = vocbase->lookupView(guidSlice.copyString());
-    if (view != nullptr) { // ignore non-existing
-      return vocbase->dropView(view->id(), false);
+    if (view) { // prevent dropping of system views ?
+      return view->drop();
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());

@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Indexes/IndexLookupContext.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCollectionMeta.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -183,7 +183,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
   /// load the number of docs from storage
   void loadInitialNumberDocuments();
-
+  
   uint64_t objectId() const { return _objectId; }
 
   int lockWrite(double timeout = 0.0);
@@ -198,16 +198,9 @@ class RocksDBCollection final : public PhysicalCollection {
   void compact();
   void estimateSize(velocypack::Builder& builder);
 
-  std::pair<Result, rocksdb::SequenceNumber> serializeIndexEstimates(
-    rocksdb::Transaction*, rocksdb::SequenceNumber) const;
-  void deserializeIndexEstimates(arangodb::RocksDBSettingsManager* mgr);
-
-  void recalculateIndexEstimates();
-
-  Result serializeKeyGenerator(rocksdb::Transaction*) const;
-  void deserializeKeyGenerator(arangodb::RocksDBSettingsManager* mgr);
-
   inline bool cacheEnabled() const { return _cacheEnabled; }
+  
+  RocksDBCollectionMeta& meta() { return _meta; }
 
  private:
   /// @brief track the usage of waitForSync option in an operation
@@ -254,9 +247,6 @@ class RocksDBCollection final : public PhysicalCollection {
       LocalDocumentId const& documentId, transaction::Methods*,
       IndexIterator::DocumentCallback const& cb, bool withCache) const;
 
-  void recalculateIndexEstimates(
-      std::vector<std::shared_ptr<Index>> const& indexes);
-
   void createCache() const;
 
   void destroyCache() const;
@@ -270,15 +260,17 @@ class RocksDBCollection final : public PhysicalCollection {
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection
+  RocksDBCollectionMeta _meta; /// collection metadata
+  
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
 
-  /// cache the primary index for performance, do not delete
+  /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
-
+  /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
+  /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
-
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;

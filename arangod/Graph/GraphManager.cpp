@@ -331,7 +331,8 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
 
   if (result.fail()) {
     if (result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-      return {TRI_ERROR_GRAPH_NOT_FOUND};
+      std::string msg = basics::Exception::FillExceptionString(TRI_ERROR_GRAPH_NOT_FOUND, name.c_str());
+      return Result{TRI_ERROR_GRAPH_NOT_FOUND, std::move(msg)};
     } else {
       return Result{result.errorNumber(), "while looking up graph '" + name + "'"};
     }

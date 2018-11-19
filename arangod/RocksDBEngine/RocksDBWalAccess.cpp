@@ -132,7 +132,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
 
-    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
+    //LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
     // << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertFalse, assertNull, assertNotNull */
+/* global assertEqual, assertFalse, assertNull, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -33,32 +33,33 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-
+  
   db._drop('UnitTestsRecovery1');
-  let c = db._create('UnitTestsRecovery1');
+  db._drop('UnitTestsRecovery2');
+
+  let c = db._createEdgeCollection('UnitTestsRecovery1');
+  let c2 = db._create('UnitTestsRecovery2');
+  c2.insert({}); // make sure count is initalized
+
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ value: i });
+    docs.push({ _key: "test" + i, _from: "test/1", _to: "test/" + i, value: i });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
     }
   }
 
+  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
+ 
   // should trigger range deletion
   c.truncate();
   
-  for (let i = 0; i < 90000; i++) {
-    docs.push({ value: i });
-    if (docs.length === 10000) {
-      c.insert(docs);
-      docs = [];
-    }
-  }
-  
-  c.truncate();
-  c.insert({}, { waitForSync: true });
+  // turn off syncing of counters etc.  
+  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
+  c2.insert({}, { waitForSync: true });
   internal.debugSegfault('crashing server');
 }
 
@@ -74,10 +75,35 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testRangeDeleteTruncateMulti2: function () {
+    testNosyncRangeDeleteTruncateIndexes2: function () {
       let c = db._collection('UnitTestsRecovery1');
-      assertEqual(1, c.count());
+      assertEqual(0, c.count());
+      assertNotNull(db._collection('UnitTestsRecovery2'));
+  
+      assertEqual([], c.edges("test/1"));
+      let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
+      
+      for (let i = 0; i < 100000; i += 1000) {
+        assertFalse(c.exists("key" + i));
+        assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
+        assertEqual([], c.edges("test/" + i));
+      }
+
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+          case 'hash':
+          case 'edge':
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
+            break;
+          default:
+            fail();
+        }
+      }
     }
+
   };
 }
 

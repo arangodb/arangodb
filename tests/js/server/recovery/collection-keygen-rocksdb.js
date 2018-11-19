@@ -98,6 +98,7 @@ function recoverySuite () {
       var c, d;
 
       c = db._collection('UnitTestsRecovery1');
+      assertEqual(c.count(), 1000);
       d = c.save({ value: 1001});
       assertEqual("10010", d._key);
     }

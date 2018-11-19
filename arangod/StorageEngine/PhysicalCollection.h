@@ -107,7 +107,6 @@ class PhysicalCollection {
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
-
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
@@ -224,7 +223,7 @@ class PhysicalCollection {
     LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
   );
-
+  
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
