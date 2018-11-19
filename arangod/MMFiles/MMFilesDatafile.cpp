@@ -24,7 +24,6 @@
 #include "MMFilesDatafile.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/encoding.h"
@@ -188,7 +187,7 @@ static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid,
   int flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
 #else
   // ugly workaround if MAP_ANONYMOUS is not available
-  int fd = TRI_TRACKED_OPEN_FILE("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     return nullptr;
@@ -207,7 +206,7 @@ static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid,
 // nothing to do
 #else
   // close auxilliary file
-  TRI_TRACKED_CLOSE_FILE(fd);
+  TRI_CLOSE(fd);
   fd = -1;
 #endif
 
@@ -255,7 +254,7 @@ static MMFilesDatafile* CreatePhysicalDatafile(std::string const& filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
@@ -270,7 +269,7 @@ static MMFilesDatafile* CreatePhysicalDatafile(std::string const& filename,
   try {
     return new MMFilesDatafile(filename, fd, mmHandle, maximalSize, 0, fid, static_cast<char*>(data));
   } catch (...) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     return nullptr;
   }
 }
@@ -289,7 +288,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
 
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
@@ -298,7 +297,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
   uint64_t buffer[256];
 
   if (!TRI_ReadPointer(fd, &buffer, 256 * sizeof(uint64_t))) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
 
@@ -307,13 +306,13 @@ int MMFilesDatafile::judge(std::string const& filename) {
 
   while (ptr < end) {
     if (*ptr != 0) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
       return TRI_ERROR_NO_ERROR;
     }
     ++ptr;
   }
 
-  TRI_TRACKED_CLOSE_FILE(fd);
+  TRI_CLOSE(fd);
   return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
 }
 
@@ -714,6 +713,52 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
   return true;
 }
 
+Result TRI_IterateDatafile(MMFilesDatafile* datafile,
+                           Result (*iterator)(MMFilesMarker const*, void*,
+                                              MMFilesDatafile*),
+                           void* data) {
+  TRI_ASSERT(iterator != nullptr);
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "iterating over datafile '" << datafile->getName() << "', fid: " << datafile->fid() << ", size: " << datafile->currentSize();
+
+  char const* ptr = datafile->data();
+  char const* end = ptr + datafile->currentSize();
+
+  if (datafile->state() != TRI_DF_STATE_READ &&
+      datafile->state() != TRI_DF_STATE_WRITE) {
+    return TRI_ERROR_ARANGO_ILLEGAL_STATE;
+  }
+
+  TRI_voc_tick_t maxTick = 0;
+  TRI_DEFER(TRI_UpdateTickServer(maxTick));
+
+  while (ptr < end) {
+    auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
+
+    if (marker->getSize() == 0) {
+      return Result();
+    }
+
+    TRI_voc_tick_t tick = marker->getTick();
+
+    if (tick > maxTick) {
+      maxTick = tick;
+    }
+
+    // update the tick statistics
+    TRI_UpdateTicksDatafile(datafile, marker);
+
+    Result res = iterator(marker, data, datafile);
+    if (res.fail()) {
+      return res;
+    }
+
+    ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
+  }
+
+  return Result();
+}
+
 /// @brief iterates over a datafile
 /// also may set datafile's min/max tick values
 bool TRI_IterateDatafile(MMFilesDatafile* datafile,
@@ -1023,7 +1068,7 @@ int MMFilesDatafile::close() {
 
     if (isPhysical()) {
       TRI_ASSERT(_fd >= 0);
-      int res = TRI_TRACKED_CLOSE_FILE(_fd);
+      int res = TRI_CLOSE(_fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "unable to close datafile '" << getName() << "': " << res;
@@ -1111,7 +1156,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   std::string filename = getName() + ".new";
 
   int fd =
-      TRI_TRACKED_CREATE_FILE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+      TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
@@ -1127,7 +1172,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   if (offset == (TRI_lseek_t)-1) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
@@ -1142,7 +1187,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   if (written < 0) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
@@ -1159,7 +1204,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(res);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
@@ -1179,7 +1224,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   res = TRI_UNMMFile(_data, _initSize, _fd, &_mmHandle);
 
   if (res < 0) {
-    TRI_TRACKED_CLOSE_FILE(_fd);
+    TRI_CLOSE(_fd);
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "munmap failed with: " << res;
     return res;
   }
@@ -1191,7 +1236,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   // associated file below
   // .............................................................................................
 
-  TRI_TRACKED_CLOSE_FILE(_fd);
+  TRI_CLOSE(_fd);
 
   _data = static_cast<char*>(data);
   _next = (char*)(data) + position;
@@ -1795,7 +1840,7 @@ MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreF
 
   if (!ok) {
     TRI_UNMMFile(const_cast<char*>(datafile->data()), datafile->initSize(), datafile->fd(), &datafile->_mmHandle);
-    TRI_TRACKED_CLOSE_FILE(datafile->fd());
+    TRI_CLOSE(datafile->fd());
 
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "datafile '" << datafile->getName() << "' is corrupt";
     // must free datafile here
@@ -1828,7 +1873,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   TRI_voc_fid_t fid = GetNumericFilenamePart(filename.c_str());
 
   // attempt to open a datafile file
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
@@ -1846,7 +1891,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   if (res < 0) {
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "cannot get status of datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
@@ -1858,7 +1903,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
   if (size < sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker)) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "datafile '" << filename << "' is corrupt, size is only " << size;
 
@@ -1881,7 +1926,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   if (!ok) {
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "cannot read datafile header from '" << filename << "': " << TRI_last_error();
 
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
     return nullptr;
   }
 
@@ -1894,7 +1939,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
   if (!ok) {
     if (IsMarker28(ptr, len)) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "datafile found from older version of ArangoDB. "
                << "Please dump data from that version with arangodump "
                << "and reload it into this ArangoDB instance with arangorestore";
@@ -1908,7 +1953,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     printMarker(reinterpret_cast<MMFilesMarker const*>(ptr), len, &buffer[0], end);
 
     if (!ignoreErrors) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
       return nullptr;
     }
   }
@@ -1921,7 +1966,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "unknown datafile version '" << header->_version << "' in datafile '" << filename << "'";
 
       if (!ignoreErrors) {
-        TRI_TRACKED_CLOSE_FILE(fd);
+        TRI_CLOSE(fd);
         return nullptr;
       }
     }
@@ -1939,7 +1984,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "cannot memory map datafile '" << filename << "': " << TRI_errno_string(res);
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "The database directory might reside on a shared folder "
@@ -1952,7 +1997,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     return new MMFilesDatafile(filename, fd, mmHandle, size, size, fid, static_cast<char*>(data));
   } catch (...) {
     TRI_UNMMFile(data, size, fd, &mmHandle);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    TRI_CLOSE(fd);
 
     return nullptr;
   }

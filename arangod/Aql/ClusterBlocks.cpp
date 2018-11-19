@@ -1090,8 +1090,13 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
     }
     size_t skipped = 0;
-    if (slice.hasKey("skipped")) {
-      skipped = slice.get("skipped").getNumericValue<size_t>();
+    VPackSlice s = slice.get("skipped");
+    if (s.isNumber()) {
+      int64_t value = s.getNumericValue<int64_t>();
+      if (value < 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "skipped cannot be negative");
+      }
+      skipped = s.getNumericValue<size_t>();
     }
 
     // TODO Check if we can get better with HASMORE/DONE

@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 
 namespace {
 
-const double SETUP_TIMEOUT = 25.0;
+const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -849,11 +849,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& it : edges) {
         knownEdges.emplace(it->name());
       }
+
+      TRI_ASSERT(_query);
+      auto& resolver = _query->resolver();
+
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*>* cs =
+      std::map<std::string, Collection*> const* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
+        if (!resolver.getCollection(collection.first)) {
+          // not a collection, filter out
+          continue;
+        }
+
         if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
@@ -881,12 +890,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
-          auto it =
-              entry.second.vertexCollections.find(collection.second->name());
-          if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicity creates the map entry in case it does not exist
+          entry.second.vertexCollections[collection.second->name()];
         }
       }
     } else {
@@ -912,11 +917,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->name());
-          if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->name(),
-                                                   std::vector<ShardID>());
-          }
+          // implicitly creates the map entry in case it does not exist.
+          entry.second.vertexCollections[it->name()];
         }
       }
     }
@@ -957,7 +959,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   }
 
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
     ttl = registry->defaultTTL();
   }
@@ -1077,11 +1079,19 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // Add all Vertex Collections to the Transactions, Traversals do never write
   auto& vCols = node->vertexColls();
   if (vCols.empty()) {
+    TRI_ASSERT(_query);
+    auto& resolver = _query->resolver();
+
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*>* cs =
+    std::map<std::string, Collection*> const* cs =
         _query->collections()->collections();
     for (auto const& col : *cs) {
+      if (!resolver.getCollection(col.first)) {
+        // not a collection, filter out
+        continue;
+      }
+
       handleCollection(col.second, AccessMode::Type::READ);
     }
   } else {

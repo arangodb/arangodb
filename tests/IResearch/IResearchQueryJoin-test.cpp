@@ -372,12 +372,12 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -449,7 +449,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // using search keyword for collection is prohibited
@@ -522,12 +522,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -599,7 +599,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // deterministic filter condition in a loop
@@ -725,7 +725,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code); // can't handle self-referenced variable now
+    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code); // can't handle self-referenced variable now
 
 //    auto result = queryResult.result->slice();
 //    CHECK(result.isArray());

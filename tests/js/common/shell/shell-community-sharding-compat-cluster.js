@@ -289,7 +289,7 @@ function EdgeShardingSuite() {
       db._drop(name1);
     },
 
-    testCreateWithInvalidSharding : function () {
+    testEdgeCreateWithInvalidSharding : function () {
       try {
         db._createEdgeCollection(name1, { shardingStrategy: "peng", numberOfShards: 5 });
         fail();
@@ -298,7 +298,7 @@ function EdgeShardingSuite() {
       }
     },
 
-    testCreateWithNoneSharding : function () {
+    testEdgeCreateWithNoneSharding : function () {
       try {
         db._createEdgeCollection(name1, { shardingStrategy: "none", numberOfShards: 5 });
         fail();
@@ -307,7 +307,7 @@ function EdgeShardingSuite() {
       }
     },
 
-    testCreateWithCommunitySharding : function () {
+    testEdgeCreateWithCommunitySharding : function () {
       let c = db._createEdgeCollection(name1, { shardingStrategy: communityCompat, numberOfShards: 5 });
       assertEqual(communityCompat, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
@@ -324,7 +324,7 @@ function EdgeShardingSuite() {
       }
     },
 
-    testCreateWithEnterpriseSharding : function () {
+    testEdgeCreateWithEnterpriseSharding : function () {
       if (!isEnterprise) {
         try {
           db._createEdgeCollection(name1, { shardingStrategy: enterpriseCompat, numberOfShards: 5 });
@@ -334,7 +334,7 @@ function EdgeShardingSuite() {
       }
     },
 
-    testCreateWithNonDefaultKeysMissingValues : function () {
+    testEdgeCreateWithNonDefaultKeysMissingValues : function () {
       let c = db._createEdgeCollection(name1, { shardingStrategy: communityCompat, shardKeys: ["value"], numberOfShards: 5 });
       assertEqual(communityCompat, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
@@ -352,7 +352,7 @@ function EdgeShardingSuite() {
       });
     },
 
-    testCreateWithNonDefaultKeysNumericValues : function () {
+    testEdgeCreateWithNonDefaultKeysNumericValues : function () {
       let c = db._createEdgeCollection(name1, { shardingStrategy: communityCompat, shardKeys: ["value"], numberOfShards: 5 });
       assertEqual(communityCompat, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
@@ -370,7 +370,7 @@ function EdgeShardingSuite() {
       });
     },
 
-    testCreateWithNonDefaultKeysNullValues : function () {
+    testEdgeCreateWithNonDefaultKeysNullValues : function () {
       let c = db._createEdgeCollection(name1, { shardingStrategy: communityCompat, shardKeys: ["value"], numberOfShards: 5 });
       assertEqual(communityCompat, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
@@ -388,7 +388,7 @@ function EdgeShardingSuite() {
       });
     },
 
-    testDistributeShardsLikeWithNonDefaultKeys : function () {
+    testEdgeDistributeShardsLikeWithNonDefaultKeys : function () {
       let c1 = db._createEdgeCollection(name1, { shardingStrategy: communityCompat, shardKeys: ["value"], numberOfShards: 5 });
       let c2 = db._createEdgeCollection(name2, { distributeShardsLike: name1, shardKeys: ["value"] });
       assertEqual(communityCompat, c1.properties()["shardingStrategy"]);

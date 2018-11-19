@@ -81,6 +81,9 @@ class LocalDocumentId {
   /// @brief create a document id from an existing id
   static LocalDocumentId create(BaseType id) { return LocalDocumentId(id); }
 
+  /// @brief use to track an existing value in recovery to ensure no duplicates
+  static void track(LocalDocumentId const& id) { TRI_HybridLogicalClock(id.id()); }
+
  private:
   BaseType _id;
 };

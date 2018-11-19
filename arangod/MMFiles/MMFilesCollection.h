@@ -135,7 +135,7 @@ class MMFilesCollection final : public PhysicalCollection {
                        std::vector<MMFilesDatafile*>&& compactors);
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal() override;
+  int rotateActiveJournal();
 
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
@@ -369,6 +369,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
+  Result persistLocalDocumentIds();
+
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -493,6 +495,13 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
+  bool hasAllPersistentLocalIds() const override;
+
+  static Result persistLocalDocumentIdsForDatafile(
+      MMFilesCollection& collection, MMFilesDatafile& file);
+
+  void setCurrentVersion();
+
  private:
   mutable arangodb::MMFilesDitches _ditches;
 
@@ -536,6 +545,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool _doCompact;
   TRI_voc_tick_t _maxTick;
+
+  // whether or not all documents are stored with a persistent LocalDocumentId
+  std::atomic<bool> _hasAllPersistentLocalIds{true};
 };
 }
 

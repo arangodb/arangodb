@@ -94,6 +94,7 @@ function endpoints (options) {
         }, testName);
 
         if (instanceInfo === false) {
+          results.failed += 1;
           return {
             failed: 1,
             status: false,
@@ -101,19 +102,19 @@ function endpoints (options) {
           };
         }
 
-        let result = tu.runInArangosh(options, instanceInfo, testPaths.endpoints[0]);
+        let oneTestResult = tu.runInArangosh(options, instanceInfo, testPaths.endpoints[0]);
 
         print(CYAN + 'Shutting down...' + RESET);
         // mop: mehhh...when launched with a socket we can't use download :S
         pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
         print(CYAN + 'done.' + RESET);
 
-        if (!result.status) {
-          result.failed += 1;
+        if (!oneTestResult.status) {
+          results.failed += 1;
         } else {
           pu.cleanupLastDirectory(options);
         }
-        return result;
+        return oneTestResult;
       }
     }());
     return results;

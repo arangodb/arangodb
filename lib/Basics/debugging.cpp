@@ -121,14 +121,37 @@ void TRI_GetBacktrace(std::string& btstr) {
 
   symbol->MaxNameLen = 255;
   symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-
+  IMAGEHLP_LINE64 line;
+  line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+  char address[64];
+  std::string fn;
+  std::string err;
+  DWORD dwDisplacement;
   for (unsigned int i = 0; i < frames; i++) {
-    char address[64];
-    SymFromAddr(process, (DWORD64)stack[i], 0, symbol);
-
+    DWORD lineNumber;
+    fn.clear();
+    SymFromAddr(process, (DWORD64)stack[i], nullptr, symbol);
+    if (SymGetLineFromAddr64(process, (DWORD64)stack[i], &dwDisplacement, &line)) {
+    // SymGetLineFromAddr64 returned success
+      if (line.FileName!=nullptr) {
+        fn = line.FileName;
+      }
+      lineNumber = line.LineNumber;
+      err.clear();
+    }
+    else {
+        lineNumber = -1;
+        DWORD error = GetLastError();
+        err = std::string("SymGetLineFromAddr64 returned error: ") + std::to_string(error);
+    }
     snprintf(address, sizeof(address), "0x%0X", (unsigned int)symbol->Address);
-    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name +
-             std::string(" [") + address + std::string("]\n");
+    btstr += std::to_string(frames - i - 1) +
+      std::string(": ") + symbol->Name +
+      std::string(" [") + address +
+      std::string("] ") + fn +
+      std::string(":") + std::to_string(lineNumber) +
+      err +
+      std::string("\n");
   }
 
   TRI_Free(symbol);

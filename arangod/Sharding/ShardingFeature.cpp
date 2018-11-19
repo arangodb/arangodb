@@ -188,7 +188,7 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
   // from 3.4 onwards, the default sharding strategy for new collections is "hash"
 #ifdef USE_ENTERPRISE
   bool isSmart =
-      VelocyPackHelper::getBooleanValue(properties, "isSmart", false);
+      VelocyPackHelper::getBooleanValue(properties, StaticStrings::IsSmart, false);
   bool isEdge =
       TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
                                properties, "type", TRI_COL_TYPE_UNKNOWN);

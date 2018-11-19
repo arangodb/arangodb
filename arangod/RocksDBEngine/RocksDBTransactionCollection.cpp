@@ -194,7 +194,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -246,7 +246,7 @@ void RocksDBTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
 
@@ -277,64 +277,34 @@ void RocksDBTransactionCollection::addOperation(
   }
 }
 
-void RocksDBTransactionCollection::addTruncateOperation() {
-  TRI_ASSERT(_numInserts == 0 && _numUpdates == 0 && _numRemoves == 0);
-  if (!isLocked() || _accessType != AccessMode::Type::EXCLUSIVE) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection must be exlusively locked");
-  }
-  _numRemoves += _initialNumberDocuments + _numInserts;
-}
-
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
                                                  uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
-  for (auto const& pair : _trackedIndexOperations) {
-    auto idx = _collection->lookupIndex(pair.first);
-    if (idx == nullptr) {
-      TRI_ASSERT(false); // Index reported estimates, but does not exist
-      continue;
-    }
-    auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    auto estimator = ridx->estimator();
-    if (estimator) {
-      estimator->placeBlocker(trxId, preCommitSeq);
-    }
+  if (hasOperations() || !_trackedIndexOperations.empty()) {
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->meta().placeBlocker(trxId, preCommitSeq);
   }
 }
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
-  for (auto const& pair : _trackedIndexOperations) {
-    auto idx = _collection->lookupIndex(pair.first);
-    if (idx == nullptr) {
-      TRI_ASSERT(false); // Index reported estimates, but does not exist
-      continue;
-    }
-    auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    auto estimator = ridx->estimator();
-    if (estimator) {
-      estimator->removeBlocker(trxId);
-    }
+  if (hasOperations() || !_trackedIndexOperations.empty()) {
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->meta().removeBlocker(trxId);
   }
 }
 
 void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
                                                 uint64_t commitSeq) {
-    TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
-  if (commitSeq != 0) { // is '0' for filling new indexes
-    if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
-      RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
-      coll->adjustNumberDocuments(_revision, adjustment);
-
-      RocksDBEngine* engine = rocksutils::globalRocksEngine();
-      RocksDBSettingsManager::CounterAdjustment update(commitSeq, _numInserts, _numRemoves,
-                                                       _revision);
-      engine->settingsManager()->updateCounter(coll->objectId(), update);
-    }
+  if (hasOperations()) {
+    TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->adjustNumberDocuments(_revision, adjustment); // update online count
+    coll->meta().adjustNumberDocuments(commitSeq, _revision, adjustment); // buffer for recovery
   }
 
   // Update the index estimates.
@@ -345,12 +315,18 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
       continue;
     }
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    auto estimator = ridx->estimator();
-    if (estimator) {
-      estimator->bufferUpdates(commitSeq, std::move(pair.second.first),
-                                          std::move(pair.second.second));
-      estimator->removeBlocker(trxId);
+    auto est = ridx->estimator();
+    if (ADB_LIKELY(est != nullptr)) {
+      est->bufferUpdates(commitSeq, std::move(pair.second.inserts),
+                         std::move(pair.second.removals));
+    } else {
+      TRI_ASSERT(false);
     }
+  }
+  
+  if (hasOperations() || !_trackedIndexOperations.empty()) {
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->meta().removeBlocker(trxId);
   }
 
   _initialNumberDocuments += adjustment;
@@ -363,13 +339,13 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
 void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].first.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].inserts.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].second.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].removals.emplace_back(hash);
 }
 
 /// @brief lock a collection
@@ -398,10 +374,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(!isLocked());
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -481,10 +454,9 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
     return TRI_ERROR_INTERNAL;
   }
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(_collection);
 
-  auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;

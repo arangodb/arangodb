@@ -29,11 +29,14 @@ build
 Thumbs.db
 
 enterprise
+upgrade-data-tests
 compile_commands.json
 instanceinfo.json
 testresult.json
 testsStarted
 soc-pokec-*
+
+Documentation/man
 
 build.sh
 /build*/

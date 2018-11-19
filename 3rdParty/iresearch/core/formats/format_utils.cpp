@@ -32,21 +32,30 @@ NS_ROOT
 
 void validate_footer(iresearch::index_input& in) {
   const int64_t remain = in.length() - in.file_pointer();
+
   if (remain != format_utils::FOOTER_LEN) {
-    // invalid position
-    throw iresearch::index_error();
+    throw index_error(string_utils::to_string(
+      "while validating footer, error: invalid position '%ld'",
+      remain
+    ));
   }
 
   const int32_t magic = in.read_int();
+
   if (magic != format_utils::FOOTER_MAGIC) {
-    // invalid magic number 
-    throw iresearch::index_error();
+    throw index_error(string_utils::to_string(
+      "while validating footer, error: invalid magic number '%d'",
+      magic
+    ));
   }
 
   const int32_t alg_id = in.read_int();
+
   if (alg_id != 0) {
-    // invalid algorithm
-    throw iresearch::index_error();
+    throw index_error(string_utils::to_string(
+      "while validating footer, error: invalid algorithm '%d'",
+      alg_id
+    ));
   }
 }
 
@@ -69,25 +78,35 @@ int32_t check_header(
     const string_ref& req_format,
     int32_t min_ver, int32_t max_ver) {
   const int32_t magic = in.read_int();
+
   if (FORMAT_MAGIC != magic) {
-    // index format
-    throw index_error();
+    throw irs::index_error(string_utils::to_string(
+      "while checking header, error: invalid magic '%d'",
+      magic
+    ));
   }
 
   const auto format = read_string<std::string>(in);
+
   if (compare(req_format, format) != 0) {
-    // invalid format
-    throw index_error();
+    throw irs::index_error(string_utils::to_string(
+      "while checking header, error: format mismatch '%s' != '%s'",
+      format.c_str(), req_format.c_str()
+    ));
   }
 
   const int32_t ver = in.read_int();
+
   if (ver < min_ver || ver > max_ver) {
-    // invalid version
-    throw index_error();
+    throw irs::index_error(string_utils::to_string(
+      "while checking header, error: invalid version '%d'",
+      ver
+    ));
   }
 
   return ver;
 }
 
 NS_END
+
 NS_END

@@ -1141,25 +1141,10 @@ void Condition::storeAttributeAccess(
   auto variable = varAccess.first;
 
   if (variable != nullptr) {
-    auto it = variableUsage.find(variable);
-
-    if (it == variableUsage.end()) {
-      // nothing recorded yet for variable
-      it = variableUsage.emplace(variable, AttributeUsageType()).first;
-    }
-
     std::string attributeName;
     TRI_AttributeNamesToString(varAccess.second, attributeName, false);
 
-    auto it2 = (*it).second.find(attributeName);
-
-    if (it2 == (*it).second.end()) {
-      // nothing recorded yet for attribute name in this variable
-      it2 = (*it).second.emplace(attributeName, UsagePositionType()).first;
-    }
-
-    auto& dst = (*it2).second;
-
+    auto& dst = variableUsage[variable][attributeName];
     if (!dst.empty() && dst.back().first == position) {
       // already have this attribute for this variable. can happen in case a
       // condition refers to itself (e.g. a.x == a.x)

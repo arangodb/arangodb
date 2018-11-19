@@ -529,9 +529,6 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   // observing a specific log entry and a sequence of immediately
   // following PUT / DELETE / Log entries
   void resetTransientState() {
-    if (_state == TRANSACTION) {
-      writeCommitMarker();
-    }
     // reset all states
     _state = INVALID;
     _currentTrxId = 0;
@@ -597,11 +594,10 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         return it->second.collection();
       }
 
-      auto* collection = _vocbase->lookupCollection(cid).get();
-
-      if (collection != nullptr) {
+      auto collection = _vocbase->lookupCollection(cid);
+      if (collection) {
         _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
-        return collection;
+        return collection.get();
       }
     }
 

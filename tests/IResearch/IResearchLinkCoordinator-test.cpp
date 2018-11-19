@@ -277,7 +277,7 @@ SECTION("test_create_drop") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\", \"replicationFactor\":1 }"
+      "{ \"name\": \"testCollection\", \"replicationFactor\":1, \"shards\":{} }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -315,7 +315,8 @@ SECTION("test_create_drop") {
   {
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": 42 }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase->createView(viewJson->slice());
+    arangodb::LogicalView::ptr logicalView;
+    REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
     REQUIRE(logicalView);
     auto const viewId = std::to_string(logicalView->planId());
     CHECK("42" == viewId);
@@ -390,7 +391,7 @@ SECTION("test_create_drop") {
     CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView));
 
     // drop view
-    CHECK(vocbase->dropView(logicalView->planId(), false).ok());
+    CHECK(logicalView->drop().ok());
     CHECK(nullptr == ci->getView(vocbase->name(), viewId));
 
     // old index remains valid
@@ -421,7 +422,8 @@ SECTION("test_create_drop") {
   {
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": 42 }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase->createView(viewJson->slice());
+    arangodb::LogicalView::ptr logicalView;
+    REQUIRE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
     REQUIRE(logicalView);
     auto const viewId = std::to_string(logicalView->planId());
     CHECK("42" == viewId);

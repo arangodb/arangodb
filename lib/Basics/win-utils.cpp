@@ -50,6 +50,12 @@
 #include "Basics/directories.h"
 #include "Basics/Common.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+#include "dbghelp.h"
+#endif
+#endif
+
 using namespace arangodb::basics;
 
 // .............................................................................
@@ -58,12 +64,6 @@ using namespace arangodb::basics;
 
 _invalid_parameter_handler oldInvalidHandleHandler;
 _invalid_parameter_handler newInvalidHandleHandler;
-
-// Windows variant for unistd.h's ftruncate()
-int ftruncate(int fd, long newSize) {
-  int result = _chsize(fd, newSize);
-  return result;
-}
 
 // Windows variant for getpagesize()
 int getpagesize(void) {
@@ -93,31 +93,23 @@ static void InvalidParameterHandler(
     uintptr_t pReserved) {      // in case microsoft forget something
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::string exp;
-  std::string func;
-  std::string fileName;
-  
-  UnicodeString uStr;
-  uStr = expression;
-  uStr.toUTF8String(exp);
-  uStr = function;
-  uStr.toUTF8String(func);
-  uStr = file;
-  uStr.toUTF8String(fileName);
-  
-  std::string bt;
-  TRI_GetBacktrace(bt);
+  char buf[1024] = "";
+  snprintf(buf, 1023,
+           "Expression: %ls Function: %ls File: %ls Line: %d",
+           expression, function, file, (int) line);
+  buf[1023] = '\0';
 #endif
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
     "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
                                           <<
-    " Expression: " << exp <<
-    " Function: " << func <<
-    " File: " << fileName <<
-    " Line: " << std::to_string(line) <<
-    " Backtrace: " << bt
+           buf;
+
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+    "Invalid handle parameter Invoked from: " << bt
 #endif
   ;
 }
@@ -141,6 +133,22 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     // ...........................................................................
 
     case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+      DWORD  error;
+      HANDLE hProcess;
+
+      SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+
+      hProcess = GetCurrentProcess();
+
+      if (!SymInitialize(hProcess, NULL, true)) {
+        // SymInitialize failed
+        error = GetLastError();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "SymInitialize returned error :" << error;
+      }
+#endif
+#endif
       newInvalidHandleHandler = InvalidParameterHandler;
       oldInvalidHandleHandler =
           _set_invalid_parameter_handler(newInvalidHandleHandler);
@@ -629,7 +637,7 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
     serviceAbort(exitCode);
   }
 
-  exit(exitCode);
+  _exit(exitCode);
 }
 
 // Detect cygwin ssh / terminals

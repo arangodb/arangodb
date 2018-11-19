@@ -165,8 +165,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     } else {
       CursorRepository* cursors = _vocbase.cursorRepository();
       TRI_ASSERT(cursors != nullptr);
-      Cursor* cursor = cursors->createQueryStream(
-          querySlice.copyString(), bindVarsBuilder, _options, batchSize, ttl);
+      Cursor* cursor = cursors->createQueryStream(querySlice.copyString(),
+                                                  bindVarsBuilder, _options,
+                                                  batchSize, ttl, /*contextExt*/false);
    
       return generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }

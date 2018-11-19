@@ -38,6 +38,9 @@
 #include "VocBase/Methods/Upgrade.h"
 #include "V8Server/V8DealerFeature.h"
 
+namespace {
+static std::string const FEATURE_NAME("Bootstrap");
+}
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -47,8 +50,9 @@ static std::string const boostrapKey = "Bootstrap";
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer& server
 )
-    : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
+    : ApplicationFeature(server, ::FEATURE_NAME), _isReady(false), _bark(false) {
   startsAfter("ServerPhase");
+  startsAfter(SystemDatabaseFeature::name());
 
   // TODO: It is only in FoxxPhase because of:
   startsAfter("FoxxQueues");
@@ -63,6 +67,10 @@ BootstrapFeature::BootstrapFeature(
   */
 }
 
+/*static*/ std::string const& BootstrapFeature::name() noexcept {
+  return FEATURE_NAME;
+}
+
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("hund", "make ArangoDB bark on startup",
                            new BooleanParameter(&_bark));
@@ -70,7 +78,7 @@ void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 // Local Helper functions
 namespace {
-  
+
 /// Initialize certain agency entries, like Plan, system collections
 /// and various similar things. Only runs through on a SINGLE coordinator.
 /// must only return if we are boostrap lead or bootstrap is done
@@ -86,7 +94,7 @@ void raceForClusterBootstrap() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
-    
+
     VPackSlice value = result.slice()[0].get(
                 std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
     if (value.isString()) {
@@ -105,7 +113,7 @@ void raceForClusterBootstrap() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
-      
+
     // No value set, we try to do the bootstrap ourselves:
     VPackBuilder b;
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
@@ -186,11 +194,11 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
   while (!success) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
     << "Running server/bootstrap/coordinator.js";
-    
+
     VPackBuilder builder;
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
                                         "server/bootstrap/coordinator.js", &builder);
-    
+
     auto slice = builder.slice();
     if (slice.isArray()) {
       if (slice.length() > 0) {
@@ -239,7 +247,7 @@ void runActiveFailoverStart(std::string const& myId) {
           leader = myIdBuilder.slice();
         } // ignore for now, heartbeat thread will handle it
       }
-      
+
       if (leader.isString() && leader.getStringLength() > 0) {
         ServerState::instance()->setFoxxmaster(leader.copyString());
         if (leader == myIdBuilder.slice()) {
@@ -289,7 +297,7 @@ void BootstrapFeature::start() {
     }
   } else {
     std::string const myId = ServerState::instance()->getId(); // local cluster UUID
-    
+
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
     if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
@@ -297,7 +305,7 @@ void BootstrapFeature::start() {
     } else {
       ss->setFoxxmaster(myId); // could be empty, but set anyway
     }
-    
+
     if (v8Enabled) { // runs the single server boostrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
@@ -309,7 +317,7 @@ void BootstrapFeature::start() {
       um->createRootUser();
     }
   }
-  
+
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
     ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
@@ -317,7 +325,7 @@ void BootstrapFeature::start() {
     // Start service properly:
     ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
   }
-  
+
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
   if (_bark) {
@@ -335,7 +343,7 @@ void BootstrapFeature::unprepare() {
 
   for (auto& name : databaseFeature->getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
-    
+
     if (vocbase != nullptr) {
       vocbase->queryList()->killAll(true);
       vocbase->release();

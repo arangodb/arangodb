@@ -283,8 +283,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -321,8 +322,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>{}, alloc_t{pool}
+      std::less<size_t>{}, alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -360,8 +362,9 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::map<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -390,7 +393,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
@@ -452,8 +455,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
     
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -497,8 +501,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -530,8 +535,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-      std::less<size_t>(), alloc_t{pool}
+      std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -564,8 +570,9 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::multimap<size_t, test_data, std::less<size_t>, alloc_t> data(
-       std::less<size_t>(), alloc_t{pool}
+       std::less<size_t>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -589,7 +596,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
@@ -643,8 +650,9 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
-    
-    std::list<test_data, alloc_t> data(alloc_t{pool});
+
+    alloc_t alloc(pool);
+    std::list<test_data, alloc_t> data(alloc);
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator");
@@ -676,7 +684,8 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
-    std::list<test_data, alloc_t> data(alloc_t{pool});
+    alloc_t alloc(pool);
+    std::list<test_data, alloc_t> data(alloc);
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size)");
@@ -709,7 +718,8 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
-    std::list<test_data, alloc_t> data(alloc_t{pool});
+    alloc_t alloc(pool);
+    std::list<test_data, alloc_t> data(alloc);
 
     for (size_t i = 0; i < size; ++i) {
       SCOPED_TIMER("irs::allocator(multi-size,initial_size==128)");
@@ -733,7 +743,7 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
@@ -795,9 +805,10 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
-    
+
+    alloc_t alloc(pool);
     std::set<test_data, std::less<test_data>, alloc_t> data(
-      std::less<test_data>(), alloc_t{pool}
+      std::less<test_data>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -834,8 +845,9 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::set<test_data, std::less<test_data>, alloc_t> data(
-      std::less<test_data>(), alloc_t{pool}
+      std::less<test_data>(), alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -873,8 +885,9 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
       irs::memory::single_allocator_tag
     > alloc_t;
 
+    alloc_t alloc(pool);
     std::set<test_data, std::less<test_data>, alloc_t> data(
-      std::less<test_data>{}, alloc_t{pool}
+      std::less<test_data>{}, alloc
     );
 
     for (size_t i = 0; i < size; ++i) {
@@ -903,7 +916,7 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
 
   std::ofstream out(path.native());
 
-  flush_timers(out);
+  irs::timer_utils::flush_stats(out);
   out.close();
   std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }

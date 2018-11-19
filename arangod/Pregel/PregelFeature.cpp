@@ -287,14 +287,14 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->post([this, executionNumber] {
+  scheduler->queue(RequestPriority::LOW, [this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
 
     auto wit = _workers.find(executionNumber);
     if (wit != _workers.end()) {
       _workers.erase(executionNumber);
     }
-  }, false);
+    });
 }
 
 void PregelFeature::cleanupAll() {

@@ -1767,7 +1767,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   double const end = TRI_microtime() + maxWaitTime;
 
   while (true) {
-    if (_lastCollectedId >= logfileId) {
+    if (_lastCollectedId.load() >= logfileId) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1787,7 +1787,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
         << "still waiting for collector. logfileId: " << logfileId
-        << " lastCollected: " << _lastCollectedId << ", result: " << res;
+        << " lastCollected: " << _lastCollectedId.load() << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -2303,6 +2303,9 @@ int MMFilesLogfileManager::inspectLogfiles() {
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
       << "setting max HLC value to " << _recoverState->maxRevisionId;
   TRI_HybridLogicalClock(_recoverState->maxRevisionId);
+
+  // track maximum local document id as well
+  LocalDocumentId::track(_recoverState->maxLocalDocumentId);
 
   return TRI_ERROR_NO_ERROR;
 }

@@ -67,7 +67,6 @@ RocksDBTransactionState::RocksDBTransactionState(
       _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
-      _numCommits(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -287,24 +286,23 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       // begin transaction + commit transaction + n doc removes
       TRI_ASSERT(_numLogdata == (2 + _numRemoves));
     }
+    ++_numCommits;
 #endif
 
     // prepare for commit on each collection, e.g. place blockers for estimators
     rocksdb::SequenceNumber preCommitSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-    for (auto& trxCollection : _collections) {
-      RocksDBTransactionCollection* collection =
-          static_cast<RocksDBTransactionCollection*>(trxCollection);
-      collection->prepareCommit(id(), preCommitSeq);
+    for (auto& trxColl : _collections) {
+      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      coll->prepareCommit(id(), preCommitSeq);
     }
     bool committed = false;
     auto cleanupCollectionTransactions = scopeGuard([this, &committed]() {
       // if we didn't commit, make sure we remove blockers, etc.
       if (!committed) {
-        for (auto& trxCollection : _collections) {
-          RocksDBTransactionCollection* collection =
-              static_cast<RocksDBTransactionCollection*>(trxCollection);
-          collection->abortCommit(id());
+        for (auto& trxColl : _collections) {
+          auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+          coll->abortCommit(id());
         }
       }
     });
@@ -319,20 +317,31 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     }
 #endif
 
-    ++_numCommits;
+    // total number of sequence ID consuming records
+    uint64_t numOps = _rocksTransaction->GetNumPuts() +
+                      _rocksTransaction->GetNumDeletes() +
+                      _rocksTransaction->GetNumMerges();
+    // will invaliate all counts
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
-
+    
     if (result.ok()) {
-      rocksdb::SequenceNumber latestSeq =
-        rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-
-      for (auto& trxCollection : _collections) {
-        RocksDBTransactionCollection* collection =
-            static_cast<RocksDBTransactionCollection*>(trxCollection);
+      TRI_ASSERT(numOps > 0); // simon: should hold unless we're beeing stupid
+      rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetCommitedSeqNumber();
+      if (ADB_LIKELY(numOps > 0)) {
+        postCommitSeq += numOps - 1; // add to get to the next batch
+      }
+      TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
+      
+      for (auto& trxColl : _collections) {
+        auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
-        collection->commitCounts(id(), latestSeq);
+        TRI_IF_FAILURE("RocksDBCommitCounts") {
+          committed = true;
+          continue;
+        }
+        coll->commitCounts(id(), postCommitSeq);
         committed = true;
       }
 
@@ -357,13 +366,24 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
+    
+    rocksdb::SequenceNumber seq = 0;
+    if (_rocksTransaction) {
+      seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
+    } else {
+      TRI_ASSERT(_readSnapshot);
+      seq = _readSnapshot->GetSequenceNumber();
+    }
 
-    for (auto& trxCollection : _collections) {
-      RocksDBTransactionCollection* collection =
-          static_cast<RocksDBTransactionCollection*>(trxCollection);
+    for (auto& trxColl : _collections) {
+      TRI_IF_FAILURE("RocksDBCommitCounts") {
+        continue;
+      }
+      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      rcoll->prepareCommit(id(), seq);
       // We get here if we have filled indexes. So let us commit counts and
       // any buffered index estimator updates
-      collection->commitCounts(id(), 0);
+      rcoll->commitCounts(id(), seq+1);
     }
     // don't write anything if the transaction is empty
     result = rocksutils::convertStatus(_rocksTransaction->Rollback());
@@ -554,42 +574,9 @@ Result RocksDBTransactionState::addOperation(
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
 }
 
-// only a valid under an exlusive lock as an only operation
-void RocksDBTransactionState::addTruncateOperation(TRI_voc_cid_t cid) {
-  auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
-  if (tcoll == nullptr) {
-    std::string message = "collection '" + std::to_string(cid) +
-    "' not found in transaction state";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-  }
-  tcoll->addTruncateOperation();
-  _numRemoves += tcoll->numRemoves();
-  TRI_ASSERT(_numInserts == 0 && _numUpdates == 0);
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _numLogdata += _numRemoves; // cheat our own sanity checks
-#endif
-}
-
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
   TRI_ASSERT(_rocksMethods);
   return _rocksMethods.get();
-}
-
-void RocksDBTransactionState::donateSnapshot(rocksdb::Snapshot const* snap) {
-  TRI_ASSERT(_readSnapshot == nullptr);
-  TRI_ASSERT(isReadOnlyTransaction());
-  TRI_ASSERT(_status == transaction::Status::CREATED);
-  _readSnapshot = snap;
-}
-
-rocksdb::Snapshot const* RocksDBTransactionState::stealReadSnapshot() {
-  TRI_ASSERT(_readSnapshot != nullptr);
-  TRI_ASSERT(isReadOnlyTransaction());
-  TRI_ASSERT(_status == transaction::Status::RUNNING);
-  rocksdb::Snapshot const* snap = _readSnapshot;
-  _readSnapshot = nullptr;
-  return snap;
 }
 
 uint64_t RocksDBTransactionState::sequenceNumber() const {

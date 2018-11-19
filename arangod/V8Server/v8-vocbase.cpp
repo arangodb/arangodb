@@ -218,7 +218,7 @@ static void JS_Debug(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (console != nullptr) {
     while (true) {
       ShellBase::EofType eof;
-      std::string input = console->prompt("debug> ", "debug", eof);
+      std::string input = console->prompt("debug> ", "debug>", eof);
 
       if (eof == ShellBase::EOF_FORCE_ABORT) {
         break;
@@ -919,6 +919,10 @@ static void JS_QueriesPropertiesAql(
       queryList->slowQueryThreshold(TRI_ObjectToDouble(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "slowQueryThreshold"))));
     }
+    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "slowStreamingQueryThreshold"))) {
+      queryList->slowStreamingQueryThreshold(TRI_ObjectToDouble(
+          obj->Get(TRI_V8_ASCII_STRING(isolate, "slowStreamingQueryThreshold"))));
+    }
     if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength"))) {
       queryList->maxQueryStringLength(static_cast<size_t>(TRI_ObjectToInt64(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
@@ -940,6 +944,8 @@ static void JS_QueriesPropertiesAql(
                   isolate, static_cast<double>(queryList->maxSlowQueries())));
   result->Set(TRI_V8_ASCII_STRING(isolate, "slowQueryThreshold"),
               v8::Number::New(isolate, queryList->slowQueryThreshold()));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "slowStreamingQueryThreshold"),
+              v8::Number::New(isolate, queryList->slowStreamingQueryThreshold()));
   result->Set(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength"),
               v8::Number::New(isolate, static_cast<double>(
                                            queryList->maxQueryStringLength())));
@@ -1358,7 +1364,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED
           && cid > 0
-          && collection->isLocal()) {
+          && !ServerState::instance()->isCoordinator()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {

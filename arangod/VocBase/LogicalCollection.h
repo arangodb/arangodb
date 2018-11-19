@@ -74,7 +74,7 @@ class ChecksumResult : public Result {
   velocypack::Builder _builder;
 };
 
-class LogicalCollection: public LogicalDataSource {
+class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
@@ -89,7 +89,12 @@ class LogicalCollection: public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   virtual ~LogicalCollection();
   
-  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
+  enum CollectionVersions {
+    VERSION_30 = 5,
+    VERSION_31 = 6,
+    VERSION_33 = 7,
+    VERSION_34 = 8
+  };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -99,7 +104,7 @@ class LogicalCollection: public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr uint32_t minimumVersion() { return VERSION_30; }
   /// @brief current version for collections
-  static constexpr uint32_t currentVersion() { return VERSION_33; }
+  static constexpr uint32_t currentVersion() { return VERSION_34; }
 
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
@@ -141,7 +146,6 @@ class LogicalCollection: public LogicalDataSource {
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
-  bool isLocal() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -216,7 +220,7 @@ class LogicalCollection: public LogicalDataSource {
   void unload();
 
   virtual arangodb::Result drop() override;
-  virtual Result rename(std::string&& name, bool doSync) override;
+  virtual Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -234,7 +238,11 @@ class LogicalCollection: public LogicalDataSource {
                                                bool allInSync) const;
 
   // Update this collection.
-  virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) override;
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures() const;
@@ -375,8 +383,6 @@ class LogicalCollection: public LogicalDataSource {
   bool _isSmart;
 
   // SECTION: Properties
-  bool _isLocal;
-
   bool _waitForSync;
 
   bool const _allowUserKeys;

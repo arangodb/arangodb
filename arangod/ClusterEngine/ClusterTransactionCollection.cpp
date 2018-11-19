@@ -168,9 +168,8 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     }
     
     try {
-      _sharedCollection = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
-      if (_sharedCollection) {
-        _collection = _sharedCollection.get();
+      _collection = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
+      if (_collection) {
         if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
             !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
           // use and usage-lock
@@ -224,7 +223,7 @@ void ClusterTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
     _collection = nullptr;
@@ -257,9 +256,7 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(!isLocked());
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
+  TRI_ASSERT(_collection);
   LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
 
   _lockType = type;
@@ -310,8 +307,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type,
     return TRI_ERROR_INTERNAL;
   }
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(_collection);
 
   _lockType = AccessMode::Type::NONE;
 

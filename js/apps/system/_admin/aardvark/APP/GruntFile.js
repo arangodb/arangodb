@@ -1,6 +1,7 @@
 (function() {
   "use strict";
 
+  const sass = require('node-sass');
   var vName = Date.now();
   module.exports = function(grunt) {
 
@@ -122,6 +123,7 @@
       sass: {
         dev: {
           options: {
+            implementation: sass,
             style: 'nested'
           },
           files: {
@@ -130,7 +132,8 @@
         },
         dist: {
           options: {
-            style: 'compressed'
+            implementation: sass,
+            // style: 'compressed'
           },
           files: {
             'frontend/build/style.css': '<%= project.standalone.css %>'
@@ -191,7 +194,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js', 'frontend/build/libs.js'],
+            src: ['frontend/build/app.js', 'frontend/build/libs.min.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -272,7 +275,7 @@
         },
         libs: {
           files: {
-            'frontend/build/libs.js': [
+            'frontend/build/libs.min.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>'
             ]
@@ -349,11 +352,6 @@
             'frontend/build/app.min.js': 'frontend/build/app.js'
           }
         },
-        libs1: {
-          files: {
-            'frontend/build/libs.min.js': 'frontend/build/libs.js'
-          }
-        },
         libs2: {
           files: {
             'frontend/src/ace.min.js': 'frontend/src/ace.js'
@@ -363,7 +361,7 @@
 
       concurrent: {
         uglifyFast: ['uglify:default1'],
-        uglifyAll: ['uglify:default1', 'uglify:libs1', 'uglify:libs2']
+        uglifyAll: ['uglify:default1', 'uglify:libs2']
       },
 
       watch: {
@@ -408,6 +406,7 @@
       }
     });
 
+    grunt.loadNpmTasks("grunt-babel");
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');

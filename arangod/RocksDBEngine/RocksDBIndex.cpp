@@ -202,24 +202,6 @@ void RocksDBIndex::destroyCache() {
   _cachePresent = false;
 }
 
-rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
-    std::string&, rocksdb::SequenceNumber seq) const {
-  // All indexes that do not have an estimator do not serialize anything.
-  return seq;
-}
-
-bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
-  // All indexes that do not have an estimator do not deserialize anything.
-  // So the estimate is always recreatable.
-  // We do not advance anything here.
-  return true;
-}
-
-void RocksDBIndex::recalculateEstimates() {
-  // Nothing to do.
-  return;
-}
-
 int RocksDBIndex::drop() {
   auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefixSameAsStart = false
@@ -256,7 +238,7 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
-void RocksDBIndex::afterTruncate() {
+void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
@@ -359,6 +341,6 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
   return nullptr;
 }
 
-bool RocksDBIndex::needToPersistEstimate() const {
-  return false;
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {
+  // Nothing to do.
 }

@@ -255,8 +255,8 @@ NS_END
 // -----------------------------------------------------------------------------
 
 tracking_directory::tracking_directory(
-  directory& impl, bool track_open /*= false*/):
-  impl_(impl), track_open_(track_open) {
+    directory& impl, bool track_open /*= false*/
+) : impl_(impl), track_open_(track_open) {
 }
 
 tracking_directory::~tracking_directory() {}
@@ -343,16 +343,19 @@ index_input::ptr tracking_directory::open(
 }
 
 bool tracking_directory::remove(const std::string& name) NOEXCEPT {
-  bool result = impl_.remove(name);
+  if (!impl_.remove(name)) {
+    return false;
+  }
 
   try {
     files_.erase(name);
+    return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
-  return result;
+  return false;
 }
 
 bool tracking_directory::rename(
@@ -363,9 +366,8 @@ bool tracking_directory::rename(
   }
 
   try {
-    if (files_.emplace(dst).second) {
-      files_.erase(src);
-    }
+    files_.emplace(dst);
+    files_.erase(src);
 
     return true;
   } catch (...) {
@@ -401,15 +403,15 @@ bool tracking_directory::sync(const std::string& name) NOEXCEPT {
 // -----------------------------------------------------------------------------
 
 ref_tracking_directory::ref_tracking_directory(
-  directory& impl, bool track_open /*= false*/
-):
-  attribute_(impl.attributes().emplace<index_file_refs>()),
+    directory& impl,
+    bool track_open /*= false*/
+) : attribute_(impl.attributes().emplace<index_file_refs>()),
   impl_(impl),
   track_open_(track_open) {
 }
 
 ref_tracking_directory::ref_tracking_directory(
-  ref_tracking_directory&& other
+    ref_tracking_directory&& other
 ) NOEXCEPT
   : attribute_(other.attribute_), // references do not require std::move(...)
     impl_(other.impl_), // references do not require std::move(...)
@@ -447,7 +449,7 @@ index_output::ptr ref_tracking_directory::create(
       auto ref = attribute_->add(name);
 
       SCOPED_LOCK(mutex_);
-      refs_.emplace(*ref, std::move(ref));
+      refs_.emplace(ref);
     }
 
     return result;
@@ -498,7 +500,7 @@ index_input::ptr ref_tracking_directory::open(
       auto ref = attribute_->add(name);
       SCOPED_LOCK(mutex_);
 
-      refs_.emplace(*ref, std::move(ref));
+      refs_.emplace(ref);
     } catch (...) {
       IR_LOG_EXCEPTION();
 
@@ -510,18 +512,29 @@ index_input::ptr ref_tracking_directory::open(
 }
 
 bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
-  bool result = impl_.remove(name);
+  if (!impl_.remove(name)) {
+    return false;
+  }
 
   try {
+    attribute_->remove(name);
+
+    // aliasing ctor
+    const index_file_refs::ref_t ref(
+      index_file_refs::ref_t(),
+      &name
+    );
+
     SCOPED_LOCK(mutex_);
 
-    refs_.erase(name);
+    refs_.erase(ref);
+    return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
     // ignore failure since removal from impl_ was sucessful
   }
 
-  return result;
+  return false;
 }
 
 bool ref_tracking_directory::rename(
@@ -532,16 +545,25 @@ bool ref_tracking_directory::rename(
   }
 
   try {
-    SCOPED_LOCK(mutex_);
+    auto ref = attribute_->add(dst);
 
-    if (refs_.emplace(dst, attribute_->add(dst)).second) {
-      refs_.erase(src);
+    {
+      // aliasing ctor
+      const index_file_refs::ref_t src_ref(
+        index_file_refs::ref_t(),
+        &src
+      );
+
+      SCOPED_LOCK(mutex_);
+
+      refs_.emplace(ref);
+      refs_.erase(src_ref);
     }
 
+    attribute_->remove(src);
     return true;
   } catch (...) {
     IR_LOG_EXCEPTION();
-    impl_.rename(dst, src); // revert
   }
 
   return false;
@@ -561,7 +583,7 @@ bool ref_tracking_directory::visit_refs(
   SCOPED_LOCK(mutex_);
 
   for (const auto& ref: refs_) {
-    if (!visitor(ref.second)) {
+    if (!visitor(ref)) {
       return false;
     }
   }

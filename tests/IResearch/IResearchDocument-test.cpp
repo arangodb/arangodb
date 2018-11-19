@@ -243,30 +243,6 @@ SECTION("Field_setCid") {
     CHECK(stream->next());
     CHECK(!stream->next());
   }
-
-  // reset field
-  field._features = &features;
-  field._analyzer = nullptr;
-
-  // check RID value
-  {
-    TRI_voc_rid_t rid = 10;
-    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-    CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
-    CHECK(&irs::flags::empty_instance() == field._features);
-
-    auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
-    REQUIRE(nullptr != stream);
-    CHECK(stream->next());
-    CHECK(!stream->next());
-
-    arangodb::iresearch::Field::setRidValue(field, rid);
-    CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
-    CHECK(&irs::flags::empty_instance() == field._features);
-    CHECK(stream == field._analyzer.get());
-    CHECK(stream->next());
-    CHECK(!stream->next());
-  }
 }
 
 SECTION("FieldIterator_static_checks") {
@@ -1443,23 +1419,6 @@ SECTION("FieldIterator_nullptr_analyzer") {
   }
 }
 
-SECTION("DocumentPrimaryKey_encode_decode") {
-  uint64_t src = 42;
-  auto encoded = arangodb::iresearch::DocumentPrimaryKey::encode(src);
-
-  CHECK((sizeof(uint64_t) == encoded.size()));
-  uint64_t dst;
-
-  CHECK((arangodb::iresearch::DocumentPrimaryKey::decode(dst, encoded)));
-  CHECK((42 == dst));
-
-  // check failure on null
-  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::bytes_ref::NIL)));
-
-  // check failure on incorrect size
-  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::ref_cast<irs::byte_type>(irs::string_ref("abcdefghijklmnopqrstuvwxyz")))));
-}
-
 SECTION("test_cid_rid_encoding") {
   auto data = arangodb::velocypack::Parser::fromJson(
     "[{ \"cid\": 62, \"rid\": 1605879230128717824},"
@@ -1533,17 +1492,17 @@ SECTION("test_cid_rid_encoding") {
     cid = cidSlice.getNumber<TRI_voc_cid_t>();
     rid = ridSlice.getNumber<uint64_t>();
 
+    arangodb::iresearch::DocumentPrimaryKey const pk(cid, rid);
+
     auto& writer = store0.writer;
 
     // insert document
     {
       auto doc = writer->documents().insert();
-      arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+      arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
       CHECK((doc.insert(irs::action::index, field)));
-      arangodb::iresearch::Field::setRidValue(field, rid);
-      CHECK((doc.insert(irs::action::index, field)));
-      arangodb::iresearch::DocumentPrimaryKey const primaryKey(cid, rid);
-      CHECK(doc.insert(irs::action::store, primaryKey));
+      arangodb::iresearch::Field::setPkValue(field, pk);
+      CHECK(doc.insert(irs::action::index_store, field));
       CHECK(doc);
     }
     writer->commit();
@@ -1578,11 +1537,11 @@ SECTION("test_cid_rid_encoding") {
     CHECK(cidField);
     CHECK(size == cidField->docs_count());
 
-    auto* ridField = segment.field(arangodb::iresearch::DocumentPrimaryKey::RID());
-    CHECK(ridField);
-    CHECK(size == ridField->docs_count());
+    auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
+    CHECK(pkField);
+    CHECK(size == pkField->docs_count());
 
-    auto filter = arangodb::iresearch::FilterFactory::filter(cid, rid);
+    auto filter = arangodb::iresearch::DocumentPrimaryKey::filter(cid, rid);
     REQUIRE(filter);
 
     auto prepared = filter->prepare(*reader);
@@ -1606,10 +1565,10 @@ SECTION("test_cid_rid_encoding") {
       irs::bytes_ref pkValue;
       CHECK(values(id, pkValue));
 
-      arangodb::iresearch::DocumentPrimaryKey pk;
-      CHECK(pk.read(pkValue));
-      CHECK(cid == pk.cid());
-      CHECK(rid == pk.rid());
+      arangodb::iresearch::DocumentPrimaryKey::type pk;
+      CHECK(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+      CHECK(cid == pk.first);
+      CHECK(rid == pk.second);
     }
   }
 
@@ -1644,10 +1603,10 @@ SECTION("test_appendKnownCollections") {
     );
     REQUIRE(writer);
 
-    TRI_voc_rid_t rid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(42, 42); // ensure cid is properly encoded
     arangodb::iresearch::Field field;
 
-    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setPkValue(field, pk, arangodb::iresearch::Field::init_stream_t());
 
     {
       auto doc = writer->documents().insert();
@@ -1675,9 +1634,11 @@ SECTION("test_appendKnownCollections") {
     REQUIRE(writer);
 
     TRI_voc_cid_t cid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(cid, 0); // ensure cid is properly encoded
+
     arangodb::iresearch::Field field;
 
-    arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
@@ -1690,7 +1651,7 @@ SECTION("test_appendKnownCollections") {
     CHECK((1 == reader->size()));
     CHECK((1 == reader->docs_count()));
 
-    std::unordered_set<TRI_voc_rid_t> expected = { 42 };
+    std::unordered_set<TRI_voc_rid_t> expected = { cid };
     std::unordered_set<TRI_voc_rid_t> actual;
     CHECK((arangodb::iresearch::appendKnownCollections(actual, reader)));
 
@@ -1731,9 +1692,9 @@ SECTION("test_visitReaderCollections") {
     );
     REQUIRE(writer);
 
-    TRI_voc_rid_t rid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(42, 42);
     arangodb::iresearch::Field field;
-    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setPkValue(field, pk, arangodb::iresearch::Field::init_stream_t());
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
@@ -1761,9 +1722,10 @@ SECTION("test_visitReaderCollections") {
     REQUIRE(writer);
 
     TRI_voc_cid_t cid = 42;
+    arangodb::iresearch::DocumentPrimaryKey pk(cid, 42);
     arangodb::iresearch::Field field;
 
-    arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+    arangodb::iresearch::Field::setCidValue(field, pk.first, arangodb::iresearch::Field::init_stream_t());
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
@@ -1776,7 +1738,7 @@ SECTION("test_visitReaderCollections") {
     CHECK((1 == reader->size()));
     CHECK((1 == reader->docs_count()));
 
-    std::unordered_set<TRI_voc_rid_t> expected = { 42 };
+    std::unordered_set<TRI_voc_rid_t> expected = { cid };
     std::unordered_set<TRI_voc_rid_t> actual;
     auto visitor = [&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; };
     CHECK((arangodb::iresearch::visitReaderCollections(reader, visitor)));

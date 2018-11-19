@@ -176,14 +176,18 @@
         if (!$(element).hasClass('nav-header')) {
           if ($(element).find('input').attr('checked')) {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-circle-o');
               $(element).find('i').addClass('fa-dot-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-square-o');
               $(element).find('i').addClass('fa-check-square-o');
             }
           } else {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-dot-circle-o');
               $(element).find('i').addClass('fa-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-check-square-o');
               $(element).find('i').addClass('fa-square-o');
             }
           }
@@ -1028,8 +1032,7 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url)
-      .success(function (result, dummy, request) {
+      $.ajax(url).success(function (result, dummy, request) {
         if (callback) {
           callback(result);
           return;
@@ -1230,12 +1233,12 @@
           validateInput: function () {
             return [
               {
-                rule: Joi.string().regex(/^((APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+                rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-\/]+))+$/i),
                 msg: 'May not contain /APP'
               },
               {
-                rule: Joi.string().regex(/^([a-zA-Z0-9_\-%]+)+$/),
-                msg: 'Can only contain [a-zA-Z0-9_-%]'
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-\/]+)+$/),
+                msg: 'Can only contain [a-zA-Z0-9_-/]'
               },
               {
                 rule: Joi.string().regex(/([^_]|_open\/)/),

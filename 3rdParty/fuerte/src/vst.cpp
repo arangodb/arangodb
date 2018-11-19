@@ -368,7 +368,12 @@ std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_0(uint8_t cons
     hdrLen = maxChunkHeaderSize;
   }
 
-  size_t contentLength = header._chunkLength - hdrLen;
+  size_t contentLength = 0;
+  if (header._chunkLength >= hdrLen) { // prevent underflow
+    contentLength = header._chunkLength - hdrLen;
+  } else {
+    FUERTE_LOG_ERROR << "received invalid chunk length";
+  }
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_0: got " << contentLength
                            << " data bytes after " << hdrLen << " header bytes\n";
   return std::make_pair(std::move(header),
@@ -384,7 +389,12 @@ std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_1(uint8_t cons
   header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
   header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
   header._messageLength = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
-  size_t contentLength = header._chunkLength - maxChunkHeaderSize;
+  size_t contentLength = 0;
+  if (header._chunkLength >= maxChunkHeaderSize) { // prevent underflow
+    contentLength = header._chunkLength - maxChunkHeaderSize;
+  } else {
+    FUERTE_LOG_ERROR << "received invalid chunk length";
+  }
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_1: got " << contentLength
                            << " data bytes after " << maxChunkHeaderSize << " bytes\n";
   return std::make_pair(std::move(header),

@@ -327,8 +327,7 @@ struct TRI_vocbase_t {
   /// @brief renames a collection
   arangodb::Result renameCollection(
     TRI_voc_cid_t cid,
-    std::string const& newName,
-    bool doOverride
+    std::string const& newName
   );
 
   /// @brief renames a view
@@ -370,33 +369,43 @@ struct TRI_vocbase_t {
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  arangodb::LogicalCollection* useCollection(TRI_voc_cid_t cid,
-                                             TRI_vocbase_col_status_e&);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid,
+                                                             TRI_vocbase_col_status_e&);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  arangodb::LogicalCollection* useCollection(std::string const& name,
-                                             TRI_vocbase_col_status_e&);
+   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
+                                                              TRI_vocbase_col_status_e&);
 
   /// @brief locks a collection for usage by uuid
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  arangodb::LogicalCollection* useCollectionByUuid(std::string const& uuid,
-                                                   TRI_vocbase_col_status_e&);
+  std::shared_ptr<arangodb::LogicalCollection> useCollectionByUuid(std::string const& uuid,
+                                                                   TRI_vocbase_col_status_e&);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
+
+  /// @brief visit all DataSources registered with this vocbase
+  /// @param visitor returns if visitation should continue
+  /// @param lockWrite aquire write lock (if 'visitor' will modify vocbase)
+  /// @return visitation compleated successfully
+  typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
+  bool visitDataSources(
+    dataSourceVisitor const& visitor,
+    bool lockWrite = false
+  );
 
  private:
 
   /// @brief check some invariants on the various lists of collections
   void checkCollectionInvariants() const;
 
-  arangodb::LogicalCollection* useCollectionInternal(
-      arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status);
+  std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
+       std::shared_ptr<arangodb::LogicalCollection>, TRI_vocbase_col_status_e& status);
 
   int loadCollection(arangodb::LogicalCollection* collection,
                      TRI_vocbase_col_status_e& status, bool setStatus = true);

@@ -64,7 +64,6 @@ struct Options;
 
 }
 
-class TransactionCollection;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -92,7 +91,9 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   uint64_t numCommits() const { return _numCommits; }
+#endif
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
@@ -117,19 +118,8 @@ class RocksDBTransactionState final : public TransactionState {
       TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
       bool& hasPerformedIntermediateCommit);
   
-  /// @brief will perform _numRemoves = _initialNumberDocuments
-  /// be aware that this is only a valid operation under an
-  /// exclusive collection lock
-  void addTruncateOperation(TRI_voc_cid_t cid);
-
+  /// @brief return wrapper around rocksdb transaction
   RocksDBMethods* rocksdbMethods();
-
-  /// @brief insert a snapshot into a (not yet started) transaction.
-  ///        Only ever valid on a trx in CREATED state
-  void donateSnapshot(rocksdb::Snapshot const* snap);
-  /// @brief steal snapshot of this transaction.
-  /// Does not work on a single operation
-  rocksdb::Snapshot const* stealReadSnapshot();
 
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
@@ -202,17 +192,17 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
-  uint64_t _numCommits;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// store the number of log entries in WAL
+  uint64_t _numLogdata = 0;
+  uint64_t _numCommits = 0;
+#endif
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  /// store the number of log entries in WAL
-  uint64_t _numLogdata = 0;
-#endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
   /// @brief if true there key buffers will no longer be shared

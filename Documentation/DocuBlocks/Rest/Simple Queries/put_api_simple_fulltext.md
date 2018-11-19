@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/simple/fulltext, Fulltext index query}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.
 
@@ -39,7 +46,6 @@ This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
 to issue an AQL query using the *FULLTEXT* [AQL function](../../AQL/Functions/Fulltext.html) 
 as follows:
-
 
     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
       RETURN doc

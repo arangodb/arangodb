@@ -93,8 +93,11 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer : util::noncopyable {
-
+class IRESEARCH_API index_writer:
+    private atomic_shared_ptr_helper<std::pair<
+      std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
+    >>,
+    private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -112,7 +115,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @brief segment references given out by flush_context to allow tracking
   ///        and updating flush_context::pending_segment_context
   //////////////////////////////////////////////////////////////////////////////
-  class active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
+  class IRESEARCH_API active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
    public:
     active_segment_context() = default;
     active_segment_context(
@@ -168,7 +171,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
     }
 
     documents_context(documents_context&& other) NOEXCEPT
-      : segment_(std::move(other.segment_)), writer_(other.writer_) {
+      : segment_(std::move(other.segment_)),
+        segment_use_count_(std::move(other.segment_use_count_)),
+        writer_(other.writer_) {
+      other.segment_use_count_ = 0;
     }
 
     ~documents_context();
@@ -281,13 +287,15 @@ class IRESEARCH_API index_writer : util::noncopyable {
           auto rollback_extra = 
             writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin; // ensure reset() will be noexcept
 
-          rollback.set(writer.docs_cached());
+          rollback.reserve(writer.docs_cached() + 1); // reserve space for rollback
 
-          if (doc_limits::eof(writer.docs_cached())
+          if (integer_traits<doc_id_t>::const_max <= writer.docs_cached() + doc_limits::min()
               || doc_limits::eof(writer.begin(update, rollback_extra))) {
             break; // the segment cannot fit any more docs, must roll back
           }
 
+          assert(writer.docs_cached());
+          rollback.set(writer.docs_cached() - 1); // 0-based
           segment->buffered_docs_.store(writer.docs_cached());
 
           auto done = !func(doc);
@@ -314,7 +322,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
       for (auto i = rollback.size(); i && rollback.any();) {
         if (rollback.test(--i)) {
           rollback.unset(i); // if new doc_ids at end this allows to terminate 'for' earlier
-          writer.remove(i + type_limits<type_t::doc_id_t>::min()); // convert to doc_id
+          assert(integer_traits<doc_id_t>::const_max >= i + doc_limits::min());
+          writer.remove(doc_id_t(i + doc_limits::min())); // convert to doc_id
         }
       }
 
@@ -335,6 +344,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
    private:
     active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
+    long segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -451,7 +461,6 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   typedef std::function<void(
     std::set<const segment_meta*>& candidates,
-    const directory& dir, // FIXME remove
     const index_meta& meta,
     const consolidating_segments_t& consolidating_segments
   )> consolidation_policy_t;
@@ -484,13 +493,17 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param policy the speicified defragmentation policy
   /// @param codec desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///                 callback returns false then consolidation is aborted
   /// @note for deffered policies during the commit stage each policy will be
   ///       given the exact same index_meta containing all segments in the
   ///       commit, however, the resulting acceptor will only be segments not
   ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
   bool consolidate(
-    const consolidation_policy_t& policy, format::ptr codec = nullptr
+    const consolidation_policy_t& policy,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -507,9 +520,15 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @param reader the index reader to import 
   /// @param desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///        callback returns false then consolidation is aborted
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
-  bool import(const index_reader& reader, format::ptr codec = nullptr);
+  bool import(
+    const index_reader& reader,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
+  );
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer
@@ -687,7 +706,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   /// @note segment_writer::doc_contexts[...uncomitted_document_contexts_): generation == flush_context::generation
   /// @note segment_writer::doc_contexts[uncomitted_document_contexts_...]: generation == local generation (updated when segment_context registered once again with flush_context)
   //////////////////////////////////////////////////////////////////////////////
-  struct IRESEARCH_API segment_context {
+  struct IRESEARCH_API segment_context { // IRESEARCH_API because of make_update_context(...)/remove(...) used by documents_context::replace(...)/documents_context::remove(...)
     struct flushed_t: public index_meta::index_segment_t {
       doc_id_t docs_mask_tail_doc_id{integer_traits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
@@ -695,8 +714,8 @@ class IRESEARCH_API index_writer : util::noncopyable {
         : index_meta::index_segment_t(std::move(meta)) {}
     };
     typedef std::function<segment_meta()> segment_meta_generator_t;
-
     DECLARE_SHARED_PTR(segment_context);
+
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
     format::ptr codec_; // the codec to used for flushing a segment writer
@@ -711,7 +730,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
-    segment_meta writer_meta_; // the segment_meta this writer was initialized with
+    index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
     DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator)
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator);
@@ -761,6 +780,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
     std::pair<std::shared_ptr<index_meta>,
     file_refs_t
   >> committed_state_t;
+  typedef atomic_shared_ptr_helper<
+    committed_state_t::element_type
+  > committed_state_helper;
 
   typedef unbounded_object_pool<segment_context> segment_pool_t;
 
@@ -771,7 +793,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
   ///       'segment_context' is not used once the tracker 'flush_context' is no
   ///       longer active
   //////////////////////////////////////////////////////////////////////////////
-  struct IRESEARCH_API flush_context {
+  struct flush_context {
     typedef concurrent_stack<size_t> freelist_t; // 'value' == node offset into 'pending_segment_context_'
     struct pending_segment_context: public freelist_t::node_type {
       const size_t doc_id_begin_; // starting segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))

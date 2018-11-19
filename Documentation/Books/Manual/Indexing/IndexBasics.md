@@ -11,6 +11,9 @@ can be created by specifying the names of the index attributes.
 Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
+Learn how to use different indexes efficiently by going through the
+[ArangoDB Performance Course](https://www.arangodb.com/arangodb-performance-course/).
+
 The system attributes `_id`, `_key`, `_from` and `_to` are automatically indexed
 by ArangoDB, without the user being required to create extra indexes for them.
 `_id` and `_key` are covered by a collection's primary key, and `_from` and `_to`

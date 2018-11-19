@@ -75,6 +75,7 @@
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/LogicalView.h"
 
@@ -288,6 +289,12 @@ void RocksDBEngine::validateOptions(
         << " supported on this platform";
   }
 #endif
+  
+  if (_pruneWaitTimeInitial < 10) {
+    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    << "consider increasing the value for --rocksdb.wal-file-timeout-initial. "
+    << "Replication clients might have trouble to get in sync";
+  }
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -493,6 +500,10 @@ void RocksDBEngine::start() {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
+  
+  if (opts->_totalWriteBufferSize > 0) {
+    _options.db_write_buffer_size = opts->_totalWriteBufferSize;
+  }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -601,6 +612,7 @@ void RocksDBEngine::start() {
       }
     }
   }
+  
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
@@ -1103,7 +1115,7 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = _db->Write(wo, &batch);
+  rocksdb::Status res = _db->GetRootDB()->Write(wo, &batch);
   return rocksutils::convertStatus(res);
 }
 
@@ -1114,13 +1126,13 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   RocksDBKey key;
   key.constructCollection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
+  
   rocksdb::WriteOptions wo;
-
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = _db->Write(wo, &batch);
+  rocksdb::Status res = _db->GetRootDB()->Write(wo, &batch);
 
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
@@ -1163,9 +1175,6 @@ bool RocksDBEngine::inRecovery() {
 }
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
-  // nothing to do here
-  settingsManager()->clearIndexEstimators();
-  settingsManager()->clearKeyGenerators();
 }
 
 std::string RocksDBEngine::createCollection(
@@ -1215,7 +1224,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
-  rocksdb::WriteOptions wo;
+  rocksdb::DB* db = _db->GetRootDB();
 
   // If we get here the collection is safe to drop.
   //
@@ -1247,30 +1256,57 @@ arangodb::Result RocksDBEngine::dropCollection(
   key.constructCollection(vocbase.id(), collection.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
-  rocksdb::Status res = _db->Write(wo, &batch);
+  rocksdb::WriteOptions wo;
+  rocksdb::Status s = db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
-  if (!res.ok()) {
+  if (!s.ok()) {
     // Persisting the drop failed. Do NOT drop collection.
-    return rocksutils::convertStatus(res);
+    return rocksutils::convertStatus(s);
   }
 
   // Now Collection is gone.
   // Cleanup data-mess
 
-  // Unregister counter
-  _settingsManager->removeCounter(coll->objectId());
-
+  // Unregister collection metadata
+  Result res = RocksDBCollectionMeta::deleteCollectionMeta(db, coll->objectId());
+  if (res.fail()) {
+    LOG_TOPIC(ERR, Logger::ENGINES) << "error removing collection meta-data: "
+      << res.errorMessage(); // continue regardless
+  }
+  
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
     _collectionMap.erase(collection.id());
   }
+  
+  // delete indexes, RocksDBIndex::drop() has its own check
+  std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
+  TRI_ASSERT(!vecShardIndex.empty());
+  for (auto& index : vecShardIndex) {
+    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
+    res = RocksDBCollectionMeta::deleteIndexEstimate(db, ridx->objectId());
+    if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "could not delete index estimate: "
+      << res.errorMessage();
+    }
+    
+    int dropRes = index->drop();
+    if (dropRes != TRI_ERROR_NO_ERROR) {
+      // We try to remove all indexed values.
+      // If it does not work they cannot be accessed any more and leaked.
+      // User View remains consistent.
+      LOG_TOPIC(ERR, Logger::ENGINES) << "unable to drop index: "
+      << TRI_errno_string(dropRes);
+//      return TRI_ERROR_NO_ERROR;
+    }
+  }
 
   // delete documents
   RocksDBKeyBounds bounds =
       RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  auto result = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
+  auto result = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
 
   if (result.fail()) {
     // We try to remove all documents.
@@ -1292,22 +1328,6 @@ arangodb::Result RocksDBEngine::dropCollection(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
-
-  // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
-  TRI_ASSERT(!vecShardIndex.empty());
-  for (auto& index : vecShardIndex) {
-    int dropRes = index->drop();
-
-    if (dropRes != TRI_ERROR_NO_ERROR) {
-      // We try to remove all indexed values.
-      // If it does not work they cannot be accessed any more and leaked.
-      // User View remains consistent.
-      LOG_TOPIC(ERR, Logger::ENGINES) << "unable to drop index: "
-                                    << TRI_errno_string(dropRes);
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
 
   // run compaction for data only if collection contained a considerable
   // amount of documents. otherwise don't run compaction, because it will
@@ -1392,17 +1412,22 @@ Result RocksDBEngine::createView(
   RocksDBLogValue logValue = RocksDBLogValue::ViewCreate(vocbase.id(), id);
 
   VPackBuilder props;
+
   props.openObject();
-  view.toVelocyPack(props, true, true);
+    view.properties(props, true, true);
   props.close();
+
   RocksDBValue const value = RocksDBValue::View(props.slice());
 
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+
   auto res = _db->Write(wo, &batch);
+
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
+
   return rocksutils::convertStatus(res);
 }
 
@@ -1416,7 +1441,7 @@ arangodb::Result RocksDBEngine::dropView(
   VPackBuilder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   auto logValue =
@@ -1426,13 +1451,11 @@ arangodb::Result RocksDBEngine::dropView(
   key.constructView(vocbase.id(), view.id());
 
   rocksdb::WriteBatch batch;
-  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-  auto db = rocksutils::globalRocksDB();
-
   batch.PutLogData(logValue.slice());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
-  auto res = db->Write(wo, &batch);
+  rocksdb::WriteOptions wo;
+  auto res = _db->GetRootDB()->Write(wo, &batch);
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
   return rocksutils::convertStatus(res);
@@ -1462,11 +1485,13 @@ Result RocksDBEngine::changeView(
   }
 
   RocksDBKey key;
+
   key.constructView(vocbase.id(), view.id());
 
   VPackBuilder infoBuilder;
+
   infoBuilder.openObject();
-  view.toVelocyPack(infoBuilder, true, true);
+    view.properties(infoBuilder, true, true);
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1475,14 +1500,18 @@ Result RocksDBEngine::changeView(
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   rocksdb::Status s;
+
   s = batch.PutLogData(log.slice());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
+
   s = batch.Put(RocksDBColumnFamily::definitions(),
             key.string(), value.string());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
@@ -1532,6 +1561,15 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
 #endif
     _collectionMap[objectId] = std::make_pair(did, cid);
   }
+}
+  
+std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionMappings() const {
+  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> res;
+  READ_LOCKER(guard, _mapLock);
+  for (auto const& it : _collectionMap) {
+    res.emplace_back(it.second.first, it.second.second);
+  }
+  return res;
 }
 
 void RocksDBEngine::addIndexMapping(uint64_t objectId, TRI_voc_tick_t did,
@@ -1625,6 +1663,7 @@ void RocksDBEngine::waitForEstimatorSync(
     std::chrono::milliseconds maxWaitTime) {
   auto start = std::chrono::high_resolution_clock::now();
   auto beginSeq = _db->GetLatestSequenceNumber();
+  
   while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
     if (_settingsManager->earliestSeqNeeded() >= beginSeq) {
       // all synced up!
@@ -1658,7 +1697,9 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
-    return;  // TODO: error here?
+    LOG_TOPIC(INFO, Logger::ENGINES) << "could not get WAL files "
+      << status.ToString();
+    return;
   }
 
   size_t lastLess = files.size();
@@ -1717,20 +1758,13 @@ void RocksDBEngine::pruneWalFiles() {
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
-  Result res;
+  arangodb::Result res;
   rocksdb::WriteOptions wo;
+  rocksdb::DB* db = _db->GetRootDB();
 
   // remove view definitions
-  iterateBounds(RocksDBKeyBounds::DatabaseViews(id),
-                [&](rocksdb::Iterator* it) {
-    RocksDBKey key(it->key());
-    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                              key.string(), wo);
-    if (res.fail()) {
-      return;
-    }
-  });
-
+  res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
+                                     true, /*rangeDel*/false);
   if (res.fail()) {
     return res;
   }
@@ -1740,15 +1774,16 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
 
   // remove collections
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(id);
-  iterateBounds(bounds, [&](rocksdb::Iterator* it) {
+  auto dbBounds = RocksDBKeyBounds::DatabaseCollections(id);
+  iterateBounds(dbBounds, [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
 
     uint64_t const objectId =
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
-    auto const cnt = _settingsManager->loadCounter(objectId);
-    uint64_t const numberDocuments = cnt.added() - cnt.removed();
+    
+    auto const cnt = RocksDBCollectionMeta::loadCollectionCount(_db, objectId);
+    uint64_t const numberDocuments = cnt._added - cnt._removed;
     bool const useRangeDelete = numberDocuments >= 32 * 1024;
 
     // remove indexes
@@ -1758,6 +1793,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
+        res = RocksDBCollectionMeta::deleteIndexEstimate(db, objectId);
+        if (res.fail()) {
+          return;
+        }
+        
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
         auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
@@ -1768,37 +1808,44 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
         bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-        res = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
+        res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
         if (res.fail()) {
           return;
         }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
-        numDocsLeft += rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                                 bounds, prefixSameAsStart);
+        numDocsLeft += rocksutils::countKeyRange(db, bounds, prefixSameAsStart);
 #endif
       }
     }
 
-
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
-    res = rocksutils::removeLargeRange(_db, bounds, true, useRangeDelete);
+    res = rocksutils::removeLargeRange(db, bounds, true, useRangeDelete);
     if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting collection documents: '"
+        << res.errorMessage() << "'";
       return;
     }
     // delete collection meta-data
-    _settingsManager->removeCounter(objectId);
-    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(), value.string(), wo);
+    res = RocksDBCollectionMeta::deleteCollectionMeta(db, objectId);
     if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting collection metadata: '"
+      << res.errorMessage() << "'";
+      return;
+    }
+    // remove collection entry
+    rocksdb::Status s = db->Delete(wo, RocksDBColumnFamily::definitions(), value.string());
+    if (!s.ok()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting collection definition: " << s.ToString();
       return;
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // check if documents have been deleted
     numDocsLeft +=
-        rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
+        rocksutils::countKeyRange(db, bounds, true);
 #endif
   });
 
@@ -1806,12 +1853,13 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     return res;
   }
 
-
   // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);
-  res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                                        key.string(), wo);
+  rocksdb::Status s = db->Delete(wo, RocksDBColumnFamily::definitions(), key.string());
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "error deleting database definition: " << s.ToString();
+  }
 
   // remove VERSION file for database. it's not a problem when this fails
   // because it will simply remain there and be ignored on subsequent starts
@@ -1888,9 +1936,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      auto const view = LogicalView::create(*vocbase, it, false);
+      LogicalView::ptr view;
+      auto res = LogicalView::instantiate(view, *vocbase, it);
 
-      if (!view) {
+      if (!res.ok() || !view) {
         auto const message = "failed to instantiate view '" + name + "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
@@ -1899,15 +1948,26 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerView(*vocbase, view);
 
       view->open();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#ifdef USE_IRESEARCH
-      if (iresearch::IResearchView* v = dynamic_cast<iresearch::IResearchView*>(view.get())) {
-        LOG_TOPIC(DEBUG, Logger::VIEWS)
-            << "arangosearch view '" << v->name()
-            << "' contains " << v->count() << " documents";
-      }
+
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(USE_IRESEARCH)
+      struct DummyTransaction : transaction::Methods {
+        explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
+          : transaction::Methods(ctx) {
+        }
+      };
+
+      transaction::StandaloneContext context(view->vocbase());
+      std::shared_ptr<transaction::Context> dummy;  // intentionally empty
+      DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
+      auto& viewImpl = dynamic_cast<iresearch::IResearchView&>(*view);
+      auto reader = viewImpl.snapshot(trx, iresearch::IResearchView::Snapshot::FindOrCreate);
+      TRI_ASSERT(reader);
+
+      LOG_TOPIC(DEBUG, Logger::VIEWS)
+          << "arangosearch view '" << view->name()
+          << "' contains " << reader->docs_count() << " documents";
 #endif
-#endif
+
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
@@ -1939,13 +1999,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(*vocbase, uniqCol);
-      auto physical =
-          static_cast<RocksDBCollection*>(collection->getPhysical());
-      TRI_ASSERT(physical != nullptr);
 
-      physical->deserializeIndexEstimates(settingsManager());
-      physical->deserializeKeyGenerator(settingsManager());
+      auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
+      TRI_ASSERT(phy != nullptr);
+      phy->meta().deserializeMeta(_db, *collection);
+      
+      StorageEngine::registerCollection(*vocbase, uniqCol);
       LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
           << "added document collection '" << collection->name() << "'";
     }

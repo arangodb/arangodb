@@ -29,9 +29,16 @@ if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif()
 
-if (MSVC AND MSVC_BUILD_THREADS)
-  set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
+if (MSVC)
+  # FIXME TODO find a workaround or do not use alignas(...)
+  # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
+  # MSVC2017.8 requires the following define
+  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+
+  if (MSVC_BUILD_THREADS)
+    set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
+  endif()
 endif()
 
 ################################################################################

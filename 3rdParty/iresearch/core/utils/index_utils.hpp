@@ -29,26 +29,100 @@
 NS_ROOT
 NS_BEGIN(index_utils)
 
-IRESEARCH_API index_writer::consolidation_policy_t consolidate_all();
+////////////////////////////////////////////////////////////////////////////////
+/// @param threshold merge segment if:
+///   {threshold} > segment_bytes / (all_segment_bytes / #segments)
+////////////////////////////////////////////////////////////////////////////////
+struct consolidate_bytes {
+  float threshold = 0;
+};
 
-// merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
-IRESEARCH_API index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold = 0);
+////////////////////////////////////////////////////////////////////////////////
+/// @param threshold merge segment if:
+///   {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+////////////////////////////////////////////////////////////////////////////////
+struct consolidate_bytes_accum {
+  float threshold = 0;
+};
 
-// merge segment if: {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-IRESEARCH_API index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold = 0);
+////////////////////////////////////////////////////////////////////////////////
+/// @param threshold merge first {threshold} segments
+////////////////////////////////////////////////////////////////////////////////
+struct consolidate_count {
+  size_t threshold = integer_traits<size_t>::const_max;
+};
 
-// merge segment if: {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
-IRESEARCH_API index_writer::consolidation_policy_t consolidate_count(float docs_threshold = 0);
+////////////////////////////////////////////////////////////////////////////////
+/// @param threshold merge segment if:
+///   {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
+////////////////////////////////////////////////////////////////////////////////
+struct consolidate_docs_live {
+  float threshold = 0;
+};
 
-// merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-IRESEARCH_API index_writer::consolidation_policy_t consolidate_fill(float fill_threshold = 0);
+////////////////////////////////////////////////////////////////////////////////
+/// @param threshold merge segment if:
+///   {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+////////////////////////////////////////////////////////////////////////////////
+struct consolidate_docs_fill {
+  float threshold = 0;
+};
 
-IRESEARCH_API index_writer::consolidation_policy_t consolidate_tier(
-  size_t min_segments = 1,                              // minimum allowed number of segments to consolidate at once
-  size_t max_segments = 10,                             // maximum allowed number of segments to consolidate at once
-  size_t max_segments_bytes = size_t(5)*(1<<30),        // maxinum allowed size of all consolidated segments
-  size_t floor_segment_bytes = size_t(2)*(1<<20),       // treat all smaller segments as equal for consolidation selection
-  size_t lookahead = integer_traits<size_t>::const_max  // how many tiers have to be inspected
+////////////////////////////////////////////////////////////////////////////////
+/// @param min_segments minimum allowed number of segments to consolidate at once
+/// @param max_segments maximum allowed number of segments to consolidate at once
+/// @param max_segments_bytes maxinum allowed size of all consolidated segments
+/// @param floor_segment_bytes treat all smaller segments as equal for consolidation selection
+/// @param lookahead how many tiers have to be inspected
+////////////////////////////////////////////////////////////////////////////////
+struct consolidate_tier {
+  size_t min_segments = 1;
+  size_t max_segments = 10;
+  size_t max_segments_bytes = size_t(5)*(1<<30);
+  size_t floor_segment_bytes = size_t(2)*(1<<20);
+  size_t lookahead = integer_traits<size_t>::const_max;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a consolidation policy with the specified options
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+  const consolidate_bytes& options
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a consolidation policy with the specified options
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+  const consolidate_bytes_accum& options
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a consolidation policy with the specified options
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+  const consolidate_count& options
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a consolidation policy with the specified options
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+  const consolidate_docs_fill& options
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a consolidation policy with the specified options
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+  const consolidate_docs_live& options
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a consolidation policy with the specified options
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+  const consolidate_tier& options
 );
 
 void read_document_mask(document_mask& docs_mask, const directory& dir, const segment_meta& meta);

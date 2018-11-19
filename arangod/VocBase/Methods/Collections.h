@@ -85,11 +85,17 @@ struct Collections {
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
 
   static Result properties(Context& ctxt, velocypack::Builder&);
-  static Result updateProperties(LogicalCollection* coll,
-                                 velocypack::Slice const&);
+  static Result updateProperties(
+    LogicalCollection& collection,
+    velocypack::Slice const& props,
+    bool partialUpdate
+  );
 
-  static Result rename(LogicalCollection* coll, std::string const& newName,
-                       bool doOverride);
+  static Result rename(
+    LogicalCollection& collection,
+    std::string const& newName,
+    bool doOverride
+  );
 
   static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
                      bool allowDropSystem, double timeout);

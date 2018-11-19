@@ -32,13 +32,17 @@
 #endif
 #include <unicode/unistr.h>
 
+#include <functional>
+
 #include "Basics/Exceptions.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
+namespace {
+std::function<bool(std::string const&)> const passAllFilter = [](std::string const&) { return false; };
+}
 
 namespace arangodb {
 namespace basics {
@@ -146,13 +150,13 @@ static void fillStringBuffer(int fd, std::string const& filename,
 }
 
 std::string slurp(std::string const& filename) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   constexpr size_t chunkSize = 8192;
   StringBuffer buffer(chunkSize, false);
@@ -163,13 +167,13 @@ std::string slurp(std::string const& filename) {
 }
 
 void slurp(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -187,7 +191,7 @@ static void throwFileWriteError(std::string const& filename) {
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
+  int fd = TRI_CREATE(filename.c_str(),
                                    O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                    S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -195,7 +199,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
     throwFileWriteError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
@@ -265,17 +269,28 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool copyRecursive(std::string const& source, std::string const& target,
+/// @brief will not copy files/directories for which the filter function
+/// returns true
+bool copyRecursive(std::string const& source, 
+                   std::string const& target,
+                   std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
   if (isDirectory(source)) {
-    return copyDirectoryRecursive(source, target, error);
+    return copyDirectoryRecursive(source, target, filter, error);
   }
 
+  if (filter(source)) {
+    return TRI_ERROR_NO_ERROR;
+  }
   return TRI_CopyFile(source, target, error);
 }
 
+/// @brief will not copy files/directories for which the filter function
+/// returns true
 bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, std::string& error) {
+                            std::string const& target, 
+                            std::function<bool(std::string const&)> const& filter,
+                            std::string& error) {
   char* fn = nullptr;
   bool rc = true;
 
@@ -287,14 +302,14 @@ bool copyDirectoryRecursive(std::string const& source,
   intptr_t handle;
 
   std::string rcs;
-  std::string filter = source + "\\*";
+  std::string flt = source + "\\*";
   
-  UnicodeString f(filter.c_str());
+  UnicodeString f(flt.c_str());
 
   handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
 
   if (handle == -1) {
-    error = "directory " + source + "not found";
+    error = "directory " + source + " not found";
     return false;
   }
 
@@ -308,7 +323,7 @@ bool copyDirectoryRecursive(std::string const& source,
   DIR* filedir = opendir(source.c_str());
 
   if (filedir == nullptr) {
-    error = "directory " + source + "not found";
+    error = "directory " + source + " not found";
     return false;
   }
 
@@ -333,6 +348,10 @@ bool copyDirectoryRecursive(std::string const& source,
     std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
     std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
+    if (filter(src)) {
+      continue;
+    }
+
     // Handle subdirectories:
     if (isSubDirectory(src)) {
       long systemError;
@@ -340,7 +359,7 @@ bool copyDirectoryRecursive(std::string const& source,
       if (rc != TRI_ERROR_NO_ERROR) {
         break;
       }
-      if (!copyDirectoryRecursive(src, dst, error)) {
+      if (!copyDirectoryRecursive(src, dst, filter, error)) {
         break;
       }
       if (!TRI_CopyAttributes(src, dst, error)) {

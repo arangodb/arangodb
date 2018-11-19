@@ -40,6 +40,7 @@ const toArgv = require('internal').toArgv;
 
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
+const BLUE = require('internal').COLORS.COLOR_BLUE;
 
 const testPaths = {
   'recovery': [tu.pathForTesting('server/recovery')]
@@ -50,6 +51,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (instanceInfo, options, script, setup, count) {
+  let tmpDir;
   if (!instanceInfo.recoveryArgs) {
     let tempDir = fs.getTempPath();
     let td = fs.join(tempDir, `${count}`);
@@ -62,7 +64,7 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
 
     let appDir = fs.join(td, 'app');
     fs.makeDirectoryRecursive(appDir);
-    let tmpDir = fs.join(td, 'tmp');
+    tmpDir = fs.join(td, 'tmp');
     fs.makeDirectoryRecursive(tmpDir);
 
     let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
@@ -102,6 +104,21 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
   let binary = pu.ARANGOD_BIN;
 
   instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
+  if (!setup) {
+    let jsonFN = fs.join(tmpDir, 'testresult.json');
+    try {
+      let result = JSON.parse(fs.read(jsonFN));
+      fs.remove(jsonFN);
+      return result;
+    } catch (x) {
+      print(RED + 'failed to read ' + jsonFN + RESET);
+      return {
+        status: false,
+        message: 'failed to read ' + jsonFN + x,
+        duration: -1
+      };
+    }
+  }
 }
 
 function recovery (options) {
@@ -134,21 +151,27 @@ function recovery (options) {
     let test = recoveryTests[i];
     let filtered = {};
     let localOptions = _.cloneDeep(options);
+    let disableMonitor = localOptions.disableMonitor;
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
-      let instanceInfo = {};
+      let instanceInfo = {
+        rootDir: pu.UNITTESTS_DIR
+      };
       count += 1;
 
+      print(BLUE + "running setup of " + test + RESET);
+      localOptions.disableMonitor = true;
       runArangodRecovery(instanceInfo, localOptions, test, true, count);
+      localOptions.disableMonitor = disableMonitor;
 
-      runArangodRecovery(instanceInfo, localOptions, test, false, count);
-
-      pu.cleanupLastDirectory(localOptions);
-
-      results[test] = instanceInfo.pid;
+      print(BLUE + "running recovery of " + test + RESET);
+      results[test] = runArangodRecovery(instanceInfo, localOptions, test, false, count);
 
       if (!results[test].status) {
         status = false;
+      }
+      else {
+        pu.cleanupLastDirectory(localOptions);
       }
     } else {
       if (options.extremeVerbosity) {
@@ -167,9 +190,7 @@ function recovery (options) {
   }
   results.status = status;
 
-  return {
-    recovery: results
-  };
+  return results;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

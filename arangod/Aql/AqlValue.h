@@ -34,6 +34,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 #include <v8.h>
 
@@ -481,6 +482,7 @@ struct AqlValue final {
   
   /// @brief get the (array) element at position 
   AqlValue at(transaction::Methods* trx, int64_t position, bool& mustDestroy, bool copy) const;
+  AqlValue at(transaction::Methods* trx, int64_t position, size_t n, bool& mustDestroy, bool copy) const;
   
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(transaction::Methods* trx,
@@ -496,6 +498,8 @@ struct AqlValue final {
                           bool& mustDestroy, bool copy) const;
   
   /// @brief get the (object) element by name(s)
+  AqlValue get(transaction::Methods* trx,
+               arangodb::velocypack::StringRef const& name, bool& mustDestroy, bool copy) const;
   AqlValue get(transaction::Methods* trx,
                std::string const& name, bool& mustDestroy, bool copy) const;
   AqlValue get(transaction::Methods* trx,
@@ -525,12 +529,6 @@ struct AqlValue final {
     TRI_ASSERT(isDocvec());
     return _data.docvec->at(position).get();
   }
-  
-  /// @brief construct a V8 value as input for the expression execution in V8
-  /// only construct those attributes that are needed in the expression
-  v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    transaction::Methods*,
-                                    std::unordered_set<std::string> const&) const;
   
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
@@ -740,30 +738,38 @@ namespace std {
 
 template <>
 struct hash<arangodb::aql::AqlValue> {
-  size_t operator()(arangodb::aql::AqlValue const& x) const {
-    std::hash<uint8_t> intHash;
-    std::hash<void const*> ptrHash;
+  size_t operator()(arangodb::aql::AqlValue const& x) const noexcept {
     arangodb::aql::AqlValue::AqlValueType type = x.type();
-    size_t res = intHash(type);
+    size_t res = std::hash<uint8_t>()(type);
     if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-      return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
+      try {
+        return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
+      } catch (...) {
+        TRI_ASSERT(false);
+      }
+      // fallthrough to default hashing
     }
     // treat all other pointer types the same, because they will
     // have the same bit representations
-    return res ^ ptrHash(x._data.pointer);
+    return res ^ std::hash<void const*>()(x._data.pointer);
   }
 };
 
 template <>
 struct equal_to<arangodb::aql::AqlValue> {
   bool operator()(arangodb::aql::AqlValue const& a,
-                  arangodb::aql::AqlValue const& b) const {
+                  arangodb::aql::AqlValue const& b) const noexcept {
     arangodb::aql::AqlValue::AqlValueType type = a.type();
     if (type != b.type()) {
       return false;
     }
     if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-      return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
+      try {
+        return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
+      } catch (...) {
+        TRI_ASSERT(false);
+      }
+      // fallthrough to default comparison
     }
     // treat all other pointer types the same, because they will
     // have the same bit representations

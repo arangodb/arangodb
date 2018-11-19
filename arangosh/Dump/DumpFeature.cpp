@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -35,7 +36,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -82,9 +82,16 @@ arangodb::Result checkHttpResponse(
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: HTTP " +
-                                    itoa(response->getHttpReturnCode()) + ": " +
-                                    response->getHttpReturnMessage()};
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum, "got invalid response from server: HTTP " +
+                      itoa(response->getHttpReturnCode()) + ": " + errorMsg};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -284,7 +291,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
     if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
+              "got invalid response from server: required header is missing"};
     }
 
     // now actually write retrieved data to dump file
@@ -292,9 +299,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     file.write(body.c_str(), body.length());
     if (file.status().fail()) {
       return {TRI_ERROR_CANNOT_WRITE_FILE};
-    } else {
-      jobData.stats.totalWritten += (uint64_t)body.length();
-    }
+    } 
+    jobData.stats.totalWritten += static_cast<uint64_t>(body.length());
 
     if (!checkMore || fromTick == 0) {
       // all done, return successful
@@ -533,7 +539,7 @@ void DumpFeature::collectOptions(
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_options.includeSystemCollections));
-
+  
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_options.outputPath));
 

@@ -70,9 +70,6 @@ class PhysicalCollection {
   virtual int close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
-  
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
@@ -110,8 +107,17 @@ class PhysicalCollection {
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
-
   std::vector<std::shared_ptr<Index>> getIndexes() const;
+  template<typename F>
+  void enumerateIndexes(F&& f) {
+    _indexesLock.readLock(); // avoid including ReadLocker.h
+    try {
+      for (auto& idx : _indexes) {
+        std::forward<F>(f)(idx);
+      }
+    } catch(...) {}
+    _indexesLock.unlockRead();
+  }
                        
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
@@ -210,12 +216,16 @@ class PhysicalCollection {
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
 
+  // returns true all documents have a persistent LocalDocumentId or false if it
+  // can change after a server restart
+  virtual bool hasAllPersistentLocalIds() const = 0;
+
  protected:
   PhysicalCollection(
     LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
   );
-
+  
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 

@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -71,10 +72,18 @@ arangodb::Result checkHttpResponse(
         };
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL,
+    int errorNum = TRI_ERROR_INTERNAL;
+    std::string errorMsg = response->getHttpReturnMessage();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
+    arangodb::velocypack::Slice error = bodyBuilder->slice();
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    }
+    return {errorNum,
         "got invalid response from server: HTTP " +
         itoa(response->getHttpReturnCode()) + ": '" +
-        response->getHttpReturnMessage() +
+        errorMsg +
         "' while executing '" +
         requestAction +
         "' with this payload: '" +
@@ -289,15 +298,7 @@ arangodb::Result sendRestoreCollection(
 
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(
       arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
-                                    httpClient.getErrorMessage()};
-  }
-  if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response, "restoring collection", body);
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  return ::checkHttpResponse(httpClient, response, "restoring collection", body);
 }
 
 /// @brief Send command to restore a collection's indexes
@@ -312,15 +313,7 @@ arangodb::Result sendRestoreIndexes(
 
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(
       arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
-                                    httpClient.getErrorMessage()};
-  }
-  if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response, "restoring indices", body);
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  return ::checkHttpResponse(httpClient, response, "restoring indexes", body);
 }
 
 /// @brief Send a command to restore actual data
@@ -337,15 +330,7 @@ arangodb::Result sendRestoreData(
 
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(
       arangodb::rest::RequestType::PUT, url, buffer, bufferSize));
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
-                                    httpClient.getErrorMessage()};
-  }
-  if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response, "restoring payload", "");
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  return ::checkHttpResponse(httpClient, response, "restoring data", "");
 }
 
 /// @brief Recreate a collection given its description
@@ -540,16 +525,7 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const body = viewDefinition.toJson();
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(arangodb::rest::RequestType::PUT,
                                                                 url, body.c_str(), body.size()));
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: '" +
-        httpClient.getErrorMessage() + "' while trying to restore view: '" +
-        body.c_str() + "'"};
-  }
-  if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response, "restoring view", body);
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  return ::checkHttpResponse(httpClient, response, "restoring view", body);
 }
 
 arangodb::Result processInputDirectory(

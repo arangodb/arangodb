@@ -61,20 +61,33 @@ struct TestView: public arangodb::LogicalView {
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result drop() override { return arangodb::Result(); }
-  static std::shared_ptr<LogicalView> make(
-        TRI_vocbase_t& vocbase,
-        arangodb::velocypack::Slice const& definition,
-        bool isNew,
-        uint64_t planVersion,
-        arangodb::LogicalView::PreCommitCallback const& preCommit
-  ) {
-    auto view = std::make_shared<TestView>(vocbase, definition, planVersion);
-    return preCommit(view) ? view : nullptr;
-  }
   virtual void open() override {}
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
-  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
+  virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+};
+
+struct ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    view = vocbase.createView(definition);
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+
+    return arangodb::Result();
+  }
 };
 
 }
@@ -88,6 +101,7 @@ struct RestUsersHandlerSetup {
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  ViewFactory viewFactory;
 
   RestUsersHandlerSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -131,7 +145,7 @@ struct RestUsersHandlerSetup {
 
     viewTypesFeature->emplace(
       arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
-      TestView::make
+      viewFactory
     );
   }
 

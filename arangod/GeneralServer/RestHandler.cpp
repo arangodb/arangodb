@@ -147,14 +147,21 @@ bool RestHandler::forwardRequest() {
   }
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder payload{&builder};
-      payload->add("preferred_username", VPackValue(_request->user()));
+
+    // when in superuser mode, username is empty
+    //  in this case ClusterComm will add the default superuser token
+    std::string const& username = _request->user();
+    if (!username.empty()) {
+
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder payload{&builder};
+        payload->add("preferred_username", VPackValue(username));
+      }
+      VPackSlice slice = builder.slice();
+      headers.emplace(StaticStrings::Authorization,
+                      "bearer " + auth->tokenCache().generateJwt(slice));
     }
-    VPackSlice slice = builder.slice();
-    headers.emplace(StaticStrings::Authorization,
-                    "bearer " + auth->tokenCache().generateJwt(slice));
   }
 
   auto& values = _request->values();
@@ -309,6 +316,42 @@ void RestHandler::runHandlerStateMachine() {
         return;
     }
   }
+}
+
+RequestPriority RestHandler::priority(RequestLane l) const {
+  RequestPriority p = RequestPriority::LOW;
+
+  switch (l) {
+    case RequestLane::AGENCY_INTERNAL:
+    case RequestLane::CLIENT_FAST:
+    case RequestLane::CLUSTER_INTERNAL:
+    case RequestLane::SERVER_REPLICATION:
+      p = RequestPriority::HIGH;
+      break;
+
+    case RequestLane::CLIENT_AQL:
+    case RequestLane::CLIENT_SLOW:
+    case RequestLane::AGENCY_CLUSTER:
+    case RequestLane::CLUSTER_ADMIN:
+    case RequestLane::CLIENT_V8:
+    case RequestLane::CLUSTER_V8:
+    case RequestLane::TASK_V8:
+      p = RequestPriority::LOW;
+      break;
+  }
+
+  if (p == RequestPriority::HIGH) {
+    return p;
+  }
+
+  bool found;
+  _request->header(StaticStrings::XArangoFrontend, found);
+
+  if (!found) {
+    return p;
+  }
+
+  return RequestPriority::MED;
 }
 
 // -----------------------------------------------------------------------------
