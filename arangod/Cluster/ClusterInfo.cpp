@@ -2537,8 +2537,8 @@ int ClusterInfo::ensureIndexCoordinator(
       
       while(true) { // Wait for index to appear in current shards
 
-        auto curCollection = getCollectionCurrent(databaseName, collectionID);
-        if (getCurrentVersion() == 0) {
+        auto const curCollection = getCollectionCurrent(databaseName, collectionID);
+        if (curCollection->getCurrentVersion() == 0) {
           // Collection has disappeared.
           current.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                         "Collection has been deleted from the cluster.");
