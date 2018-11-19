@@ -2444,6 +2444,10 @@ int ClusterInfo::ensureIndexCoordinator(
     VPackSlice const& slice, bool create, VPackBuilder& resultBuilder,
     std::string& errorMsg, double timeout) {
 
+  // The timepoint at which we timeout
+  using namespace std::chrono;
+  auto const endTime = steady_clock::now() + duration<double>(timeout);
+  
   // check index id
   uint64_t iid = 0;
 
@@ -2471,7 +2475,7 @@ int ClusterInfo::ensureIndexCoordinator(
       if (errorCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto diff = std::chrono::steady_clock::now() - start;
         if (diff < std::chrono::seconds(120)) {
-          uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(5000));
+          uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(1000));
           std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
           continue;
         }
@@ -2513,7 +2517,7 @@ int ClusterInfo::ensureIndexCoordinator(
         oldPlanIndex.add(entry.key.copyString(), entry.value);
       }}}
   
-  if (errorCode == TRI_ERROR_NO_ERROR) {
+  if (errorCode == TRI_ERROR_NO_ERROR) { // Success so far
 
     std::string idStr;
     if (resultSlice.hasKey("id")) {
@@ -2524,39 +2528,47 @@ int ClusterInfo::ensureIndexCoordinator(
       return TRI_ERROR_INTERNAL;
     }
 
+    // isBuilding key to be removed, when index appears in all shards in Current
     if (resultSlice.hasKey("isBuilding")) {
+      
       VPackBuilder newPlanIndex;
-      
       std::uint64_t sleepFor = 50;
-      
       Result current;
+      
       while(true) { // Wait for index to appear in current shards
         current =
           getCollectionCurrent(databaseName, collectionID)->hasIndex(idStr);
+
+        bool overTime = steady_clock::now() > endTime;
         
         if (current.ok()) {
-          { VPackObjectBuilder o(&newPlanIndex);
-            for (auto const& entry : VPackObjectIterator(resultSlice)) {
-              auto const key = entry.key.copyString();
-              if (key != "isBuilding" && key != "isNewlyCreated") {
-                newPlanIndex.add(entry.key.copyString(), entry.value);
-              } 
-            }
+          // Index is there, replace the isBuilding key
+          VPackObjectBuilder o(&newPlanIndex);
+          for (auto const& entry : VPackObjectIterator(resultSlice)) {
+            auto const key = entry.key.copyString();
+            if (key != "isBuilding" && key != "isNewlyCreated") {
+              newPlanIndex.add(entry.key.copyString(), entry.value);
+            } 
           }
           break;
-        } else if (current.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
-          if (sleepFor <= 1000) {
+        } else if (current.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND) && !overTime) {
+          // Will wait, if we have not gone over time
+          if (sleepFor <= 2500) {
             sleepFor*=2;
           }
           std::this_thread::sleep_for(std::chrono::milliseconds());
-        } else {
-          resultBuilder.clear();
-          { VPackObjectBuilder e(&resultBuilder);
-            resultBuilder.add("error", VPackValue(true));
-            resultBuilder.add("errorNum", VPackValue(current.errorNumber()));
-            resultBuilder.add(
-              "errorMessage", VPackValue(current.errorNumber()));}
+          continue;
         }
+
+        if (overTime) {
+          current.reset(
+            TRI_ERROR_CLUSTER_TIMEOUT,
+            "Timed out while waiting for indexes to get ready on db servers");
+        }
+
+        errorCode = TRI_ERROR_CLUSTER_TIMEOUT;
+        setErrormsg(errorCode, errorMsg);
+        
       }
       
       std::vector<AgencyOperation> opers;
@@ -2574,18 +2586,17 @@ int ClusterInfo::ensureIndexCoordinator(
         AgencyOperation(
           "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
       AgencyWriteTransaction trx(opers);
-
       while (true) {
         AgencyCommResult update =
           _agency.sendTransactionWithFailover(trx, 0.0);
         if (update.successful()) {
           loadPlan();
-          return current.ok() ? TRI_ERROR_NO_ERROR : current.errorNumber();
+          return current.errorNumber();
         }
       }
 
     } else {
-      // That's odd the key has gone already. Supervision was quicker?
+      // That's odd isBuilding key has gone already. Supervision was quicker?
       loadPlan();
       return TRI_ERROR_NO_ERROR;
     }
