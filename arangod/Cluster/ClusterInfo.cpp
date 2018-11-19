@@ -2517,6 +2517,7 @@ int ClusterInfo::ensureIndexCoordinator(
         oldPlanIndex.add(entry.key.copyString(), entry.value);
       }}}
   
+  std::uint64_t sleepFor = 50;
   if (errorCode == TRI_ERROR_NO_ERROR) { // Success so far
 
     std::string idStr;
@@ -2532,12 +2533,17 @@ int ClusterInfo::ensureIndexCoordinator(
     if (resultSlice.hasKey("isBuilding")) {
       
       VPackBuilder newPlanIndex;
-      std::uint64_t sleepFor = 50;
       Result current;
       
       while(true) { // Wait for index to appear in current shards
-        current =
-          getCollectionCurrent(databaseName, collectionID)->hasIndex(idStr);
+
+        auto curCollection = getCollectionCurrent(databaseName, collectionID);
+        if (getCurrentVersion() == 0) {
+          // Collection has disappeared.
+          current.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                        "Collection has been deleted from the cluster.");
+        }
+        current = curCollection->hasIndex(idStr);
 
         bool overTime = steady_clock::now() > endTime;
         
@@ -2586,13 +2592,21 @@ int ClusterInfo::ensureIndexCoordinator(
         AgencyOperation(
           "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
       AgencyWriteTransaction trx(opers);
+      sleepFor = 50;
       while (true) {
-        AgencyCommResult update =
-          _agency.sendTransactionWithFailover(trx, 0.0);
-        if (update.successful()) {
+        if (_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
           loadPlan();
           return current.errorNumber();
         }
+        if (steady_clock::now() > endTime) {
+          current.reset(
+            TRI_ERROR_CLUSTER_TIMEOUT,
+            "Timed out while waiting for indexes to get ready on db servers");
+        }
+        if (sleepFor <= 2500) {
+          sleepFor*=2;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds());
       }
 
     } else {
@@ -2603,7 +2617,7 @@ int ClusterInfo::ensureIndexCoordinator(
     
   }
 
-  // At this time the Iindex creation has failed and we want to  roll back
+  // At this time the index creation has failed and we want to  roll back
   // the plan entry
   VPackBuilder oldPlanSlice;
   AgencyWriteTransaction trx(
@@ -2614,7 +2628,8 @@ int ClusterInfo::ensureIndexCoordinator(
         "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   setErrormsg(errorCode, errorMsg);
-  
+
+  sleepFor = 50;
   while (true) {
     AgencyCommResult update =
       _agency.sendTransactionWithFailover(trx, 0.0);
@@ -2622,6 +2637,14 @@ int ClusterInfo::ensureIndexCoordinator(
       loadPlan();
       return errorCode;
     }
+    if (steady_clock::now() > endTime) {
+      errorMsg = "Timed out while trying to report index creation failure";
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+    }
+    if (sleepFor <= 2500) {
+      sleepFor*=2;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds());
   }
 
   LOG_TOPIC(ERR, Logger::CLUSTER)
@@ -3116,7 +3139,9 @@ void ClusterInfo::loadServers() {
     << " errorCode: " << result.errorCode()
     << " errorMessage: " << result.errorMessage()
     << " body: " << result.body();
-}////////////////////////////////////////////////////////////////////////
+}
+
+////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
