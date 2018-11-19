@@ -51,17 +51,6 @@ bool TransactionCollection::isLocked(AccessMode::Type accessType,
   return isLocked();
 }
 
-bool TransactionCollection::isLocked() const {
-  if (_collection == nullptr) {
-    return false;
-  }
-  std::string const& collName{_collection->name()};
-  if (_transaction->isLockedShard(collName)) {
-    return true;
-  }
-  return _lockType > AccessMode::Type::NONE;
-}
-
 /// @brief request a main-level lock for a collection
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred

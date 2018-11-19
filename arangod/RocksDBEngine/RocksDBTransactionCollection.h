@@ -43,6 +43,9 @@ class RocksDBTransactionCollection final : public TransactionCollection {
                                AccessMode::Type accessType, int nestingLevel);
   ~RocksDBTransactionCollection();
 
+  /// @brief check whether a collection is locked at all
+  bool isLocked() const override;
+
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 

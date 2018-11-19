@@ -39,66 +39,13 @@ MMFilesTransactionCollection::MMFilesTransactionCollection(
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _operations{_arena},
-      _originalRevision(0), 
-      _nestingLevel(nestingLevel), 
-      _compactionLocked(false), 
-      _waitForSync(false),
-      _lockType(AccessMode::Type::NONE) {} 
+      _originalRevision(0),
+      _nestingLevel(nestingLevel),
+      _compactionLocked(false),
+      _waitForSync(false) {}
 
 MMFilesTransactionCollection::~MMFilesTransactionCollection() {}
 
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int MMFilesTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int MMFilesTransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                                int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int MMFilesTransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                                  int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a specific mode in a transaction
-bool MMFilesTransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return isLocked();
-}
-  
 /// @brief check whether a collection is locked at all
 bool MMFilesTransactionCollection::isLocked() const {
   if (CollectionLockState::_noLockHeaders != nullptr && _collection != nullptr) {

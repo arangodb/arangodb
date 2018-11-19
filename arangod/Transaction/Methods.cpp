@@ -39,7 +39,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -72,6 +71,10 @@ using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
 
 namespace {
+
+enum class ReplicationType {
+  NONE, LEADER, FOLLOWER
+};
 
 static void throwCollectionNotFound(char const* name) {
   if (name == nullptr) {
@@ -1377,9 +1380,6 @@ OperationResult transaction::Methods::insertLocal(
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
-  // 3.3 doesn't have overwrite for insert:
-  TRI_ASSERT(!options.overwrite);
-
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
 
@@ -1441,7 +1441,7 @@ OperationResult transaction::Methods::insertLocal(
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
-    std::string theLeader = collection->followers()->getLeader();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -1505,10 +1505,8 @@ OperationResult transaction::Methods::insertLocal(
       StringRef keyString(transaction::helpers::extractKeyFromDocument(
           VPackSlice(documentResult.vpack())));
 
-      buildDocumentIdentity(collection, resultBuilder
-                            ,cid, keyString, revisionId, 0
-                            ,showReplaced ? &previousDocumentResult : nullptr
-                            ,options.returnNew ? &documentResult : nullptr);
+      buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
+                            0, nullptr, options.returnNew ? &documentResult : nullptr);
     }
 
     return Result(TRI_ERROR_NO_ERROR);
@@ -1543,7 +1541,7 @@ OperationResult transaction::Methods::insertLocal(
                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resultBuilder);
 
     if (!res.ok()) {
-      return OperationResult{std::move(res), options};
+      return OperationResult{std::move(res)};
     }
   }
 
@@ -1735,7 +1733,7 @@ OperationResult transaction::Methods::modifyLocal(
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
-    std::string theLeader = collection->followers()->getLeader();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -1882,7 +1880,7 @@ OperationResult transaction::Methods::modifyLocal(
                           resultBuilder);
 
     if (!res.ok()) {
-      return OperationResult{std::move(res), options};
+      return OperationResult{std::move(res)};
     }
   }
 
@@ -2016,7 +2014,7 @@ OperationResult transaction::Methods::removeLocal(
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
-    std::string theLeader = collection->followers()->getLeader();
+    std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -2134,7 +2132,7 @@ OperationResult transaction::Methods::removeLocal(
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resultBuilder);
 
     if (!res.ok()) {
-      return OperationResult{std::move(res), options};
+      return OperationResult{std::move(res)};
     }
   }
 
@@ -3074,6 +3072,9 @@ Result Methods::replicateOperations(
     std::shared_ptr<const std::vector<std::string>> const& followers,
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation, VPackBuilder& resultBuilder) {
+  TRI_ASSERT(followers != nullptr);
+  TRI_ASSERT(vocbase() != nullptr);
+
   if (followers->empty()) {
     return Result{};
   }
@@ -3088,7 +3089,7 @@ Result Methods::replicateOperations(
 
   std::stringstream pathStream;
   pathStream << "/_db/"
-             << arangodb::basics::StringUtils::urlEncode(vocbase().name())
+             << arangodb::basics::StringUtils::urlEncode(vocbase()->name())
              << "/_api/document/"
              << arangodb::basics::StringUtils::urlEncode(collection.name());
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
@@ -3105,8 +3106,6 @@ Result Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::rest::RequestType::POST;
-      pathStream << "&" << StaticStrings::OverWrite << "="
-                 << (options.overwrite ? "true" : "false");
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::rest::RequestType::PATCH;

@@ -81,7 +81,7 @@ class TransactionCollection {
   bool isLocked(AccessMode::Type, int nestingLevel) const;
   
   /// @brief check whether a collection is locked at all
-  bool isLocked() const;
+  virtual bool isLocked() const = 0;
 
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;

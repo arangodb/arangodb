@@ -44,6 +44,9 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
   ~MMFilesTransactionCollection();
 
+  /// @brief check whether a collection is locked at all
+  bool isLocked() const override;
+
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 

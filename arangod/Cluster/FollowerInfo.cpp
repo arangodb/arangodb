@@ -34,7 +34,7 @@ using namespace arangodb;
 /// @brief get information about current followers of a shard.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
+std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() const {
   MUTEX_LOCKER(locker, _mutex);
   return _followers;
 }

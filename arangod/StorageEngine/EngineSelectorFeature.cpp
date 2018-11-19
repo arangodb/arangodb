@@ -155,5 +155,3 @@ bool EngineSelectorFeature::isMMFiles() {
 bool EngineSelectorFeature::isRocksDB() {
   return engineName() == RocksDBEngine::EngineName;
 }
-
-} // arangodb
