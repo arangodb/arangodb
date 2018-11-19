@@ -141,7 +141,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   if (trxCollection != nullptr) {
     static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                   AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                  AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                  AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {

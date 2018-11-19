@@ -30,7 +30,6 @@
 
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const db = arangodb.db;
 const _ = require('lodash');
 
