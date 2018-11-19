@@ -450,7 +450,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
   TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
     return TRI_ERROR_NO_ERROR;
   }
-            
+
   if (engine->isCompactionDisabled()) {
     return TRI_ERROR_NO_ERROR;
   }

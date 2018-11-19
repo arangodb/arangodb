@@ -57,10 +57,6 @@ class IRESEARCH_API store_reader final
   store_reader* operator->() NOEXCEPT { return this; }
   const store_reader* operator->() const NOEXCEPT { return this; }
 
-  virtual index_reader::reader_iterator begin() const override {
-    return impl_->begin();
-  }
-
   virtual const column_meta* column(const string_ref& name) const override {
     return impl_->column(name);
   }
@@ -73,10 +69,6 @@ class IRESEARCH_API store_reader final
       field_id field
   ) const override {
     return impl_->column_reader(field);
-  }
-
-  virtual index_reader::reader_iterator end() const override {
-    return impl_->end();
   }
 
   virtual uint64_t docs_count() const override { return impl_->docs_count(); }
@@ -103,6 +95,10 @@ class IRESEARCH_API store_reader final
   virtual store_reader reopen() const;
 
   void reset() NOEXCEPT { impl_.reset(); }
+
+  virtual const sub_reader& operator[](size_t i) const override {
+    return (*impl_)[i];
+  }
 
   virtual size_t size() const override { return impl_->size(); }
 

@@ -51,6 +51,7 @@ struct UpgradeTasks {
   static bool setupApps(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool createAppsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool setupAppBundles(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool persistLocalDocumentIds(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
 };
 
 }

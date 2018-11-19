@@ -101,19 +101,6 @@ class AsyncMeta: public IResearchViewMeta {
   WriteMutex _writeMutex; // object that can be referenced by std::unique_lock
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation with a cached primary-key reader lambda
-////////////////////////////////////////////////////////////////////////////////
-class PrimaryKeyIndexReader: public irs::index_reader {
- public:
-  virtual irs::sub_reader const& operator[](
-    size_t subReaderId
-  ) const noexcept = 0;
-  virtual irs::columnstore_reader::values_reader_f const& pkColumn(
-    size_t subReaderId
-  ) const noexcept = 0;
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
 ///////////////////////////////////////////////////////////////////////////////
@@ -266,7 +253,7 @@ class IResearchView final
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(
+  irs::index_reader const* snapshot(
     transaction::Methods& trx,
     Snapshot mode = Snapshot::Find
   ) const;
