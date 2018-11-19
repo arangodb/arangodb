@@ -1320,9 +1320,6 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
-  }
 
   return insertLocal(collectionName, value, optionsCopy);
 }
@@ -1452,7 +1449,6 @@ OperationResult transaction::Methods::insertLocal(
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
-        // TODO check that it's okay to modify options here, its passed as a ref
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1577,9 +1573,6 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
-  }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
                      TRI_VOC_DOCUMENT_OPERATION_UPDATE);
@@ -1629,9 +1622,6 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
-  }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
@@ -1740,7 +1730,6 @@ OperationResult transaction::Methods::modifyLocal(
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
       if (needsToGetFollowersUnderLock || !followers->empty()) {
-        // TODO check that it's okay to modify options here, its passed as a ref
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1911,9 +1900,6 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
-  }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
   }
 
   return removeLocal(collectionName, value, optionsCopy);
