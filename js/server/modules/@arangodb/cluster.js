@@ -372,7 +372,6 @@ function organiseLeaderResign (database, collId, shardName) {
   try {
     // we know the shard exists locally!
     var db = require('internal').db;
-    db._collection(shardName).setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
     // Note that it is likely that we will be a follower for this shard
     // with another leader in due course. However, we do not know the
     // name of the new leader yet. This setting will make us a follower
@@ -380,9 +379,10 @@ function organiseLeaderResign (database, collId, shardName) {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     db._executeTransaction(
-      { 'collections': { 'write': [shardName] },
+      { 'collections': { 'exclusive': [shardName] },
         'action': function () { }
       });
+    db._collection(shardName).setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
   } catch (x) {
     console.topic('heartbeat=error', 'exception thrown when resigning:', x);
   }
