@@ -122,7 +122,6 @@ bool RestDocumentHandler::insertDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  double trxTime = TRI_microtime();
   // find and load collection given by name or identifier
   auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
@@ -132,11 +131,6 @@ bool RestDocumentHandler::insertDocument() {
   }
 
   Result res = trx->begin();
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "got INSERT LOCK after: " << trxTime << " seconds";
-  }
-
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
@@ -145,16 +139,10 @@ bool RestDocumentHandler::insertDocument() {
   arangodb::OperationResult result =
       trx->insert(collectionName, body, opOptions);
 
-  trxTime = TRI_microtime();
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!
   res = trx->finish(result.result);
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "INSERT commited in: " << trxTime << " seconds";
-  }
-
   if (result.fail()) {
     generateTransactionError(result);
     return false;
@@ -426,7 +414,6 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   }
 
-  double trxTime = TRI_microtime();
   // find and load collection given by name or identifier
   auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
 
@@ -439,11 +426,6 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // ...........................................................................
 
   Result res = trx->begin();
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "got REPLACE LOCK after: " << trxTime << " seconds";
-  }
-
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
@@ -461,12 +443,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     result = trx->replace(collectionName, body, opOptions);
   }
 
-  trxTime = TRI_microtime();
   res = trx->finish(result.result);
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "REPLACE commited in: " << trxTime << " seconds";
-  }
 
   // ...........................................................................
   // outside write transaction

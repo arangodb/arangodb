@@ -2741,7 +2741,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
   try {
-    queryRegistry->insert(id, query.get(), ttl, true, true, access == AccessMode::Type::EXCLUSIVE);
+    queryRegistry->insert(id, query.get(), ttl, true, true);
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};

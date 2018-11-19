@@ -931,7 +931,6 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
   while (didTimeout && tries++ < 12) { // This will try to sync for at most 1 hour.
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "SoftLock attempt " << tries;
     didTimeout = false;
     // Now ask for a "soft stop" on the leader, in case of mmfiles, this
     // will be a hard stop, but for rocksdb, this is a no-op:
@@ -948,11 +947,6 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
 
-    auto start = TRI_microtime();
-    auto logGuard = arangodb::scopeGuard([&]() {
-        auto end = TRI_microtime();
-        LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "SOFTLOCK used for " << (end - start) << " seconds";
-    });
     auto readLockGuard = arangodb::scopeGuard([&]() {
       // Always cancel the read lock.
       // Reported seperately
@@ -983,7 +977,9 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       builder.add("connectTimeout", VPackValue(60.0));
     }
 
-    res = replicationSynchronizeCatchup(builder.slice(), timeout, tickReached, didTimeout);
+    // We only allow to hold this lock for 60% of the timeout time, so to avoid any issues
+    // with Locks timeouting on the Leader and the Client not recognizing it.
+    res = replicationSynchronizeCatchup(builder.slice(), timeout * 0.6, tickReached, didTimeout);
 
     if (!res.ok()) {
       std::string errorMessage(
@@ -1030,11 +1026,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(std::string const& ep,
       + res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
-  auto start = TRI_microtime();
-  auto logGuard = arangodb::scopeGuard([&]() {
-      auto end = TRI_microtime();
-      LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "HARDLOCK used for " << (end - start) << " seconds";
-  });
   auto readLockGuard = arangodb::scopeGuard([&]() {
     // Always cancel the read lock.
     // Reported seperately

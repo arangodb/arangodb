@@ -847,12 +847,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
-  double trxTime = TRI_microtime();
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 4.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "lookup primary index in: " << trxTime << " seconds";
-  }
   if (documentId.isSet()) {
     return lookupDocumentVPack(documentId, trx, result, true);
   }
@@ -1595,14 +1590,9 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   bool lockTimeout = false;
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    double trxTime = TRI_microtime();
     // check cache first for fast path
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
-    trxTime = TRI_microtime() - trxTime;
-    if ((trxTime) >= 4.0) {
-      LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "lookup local document cache in: " << trxTime << " seconds";
-    }
     if (f.found()) {
       std::string* value = mdr.prepareStringUsage();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
@@ -1610,7 +1600,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       mdr.setManagedAfterStringUsage(documentId);
       return TRI_ERROR_NO_ERROR;
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-      LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "lock timeout in local cache";
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
@@ -1619,12 +1608,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   std::string* value = mdr.prepareStringUsage();
-  double trxTime = TRI_microtime();
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 4.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "rocksdb document get in: " << trxTime << " seconds";
-  }
 
   if (res.ok()) {
     if (withCache && useCache() && !lockTimeout) {
@@ -1634,33 +1618,17 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
           key->string().data(), static_cast<uint32_t>(key->string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
 
-      double cacheHunde = TRI_microtime();
       if (entry) {
-        trxTime = TRI_microtime();
         Result status = _cache->insert(entry);
-        trxTime = TRI_microtime() - trxTime;
-        if ((trxTime) >= 4.0) {
-          LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "first insert into cache: " << trxTime << " seconds";
-        }
-
         if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
           // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();
-          trxTime = TRI_microtime();
           status = _cache->insert(entry);
-          trxTime = TRI_microtime() - trxTime;
-          if ((trxTime) >= 4.0) {
-            LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "second insert into cache: " << trxTime << " seconds";
-          }
         }
 
         if (status.fail()) {
           delete entry;
         }
-      }
-      cacheHunde = TRI_microtime() - cacheHunde;
-      if ((cacheHunde) >= 4.0) {
-        LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "total insertion into cache: " << trxTime << " seconds";
       }
     }
 

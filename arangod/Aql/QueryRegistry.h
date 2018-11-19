@@ -52,7 +52,7 @@ public:
   /// With keepLease == true the query will be kept open and it is guaranteed
   /// that the caller can continue to use it exclusively.
   /// This is identical to an atomic sequence of insert();open();
-  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease, bool doLog = false);
+  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -107,7 +107,7 @@ public:
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
-    QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared, bool doLog = false);
+    QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared);
     ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase
@@ -118,8 +118,6 @@ public:
     bool _isPrepared;
     double _timeToLive;       // in seconds
     double _expires;          // UNIX UTC timestamp of expiration
-    bool _doLog;
-    double _startTime;
   };
 
   /// @brief _queries, the actual map of maps for the registry

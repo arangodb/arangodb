@@ -1618,15 +1618,8 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 OperationResult transaction::Methods::insertLocal(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
-  double trxTime = TRI_microtime();
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "insert addAtRuntime after: " << trxTime << " seconds";
-  }
-
-
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
@@ -1815,12 +1808,7 @@ OperationResult transaction::Methods::insertLocal(
     // With babies the reporting is handled in the body of the result
     res = Result(TRI_ERROR_NO_ERROR);
   } else {
-    trxTime = TRI_microtime();
     res = workForOneDocument(value);
-    trxTime = TRI_microtime() - trxTime;
-    if ((trxTime) >= 1.0) {
-      LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "insert work for one after: " << trxTime << " seconds";
-    }
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1977,13 +1965,8 @@ OperationResult transaction::Methods::replaceCoordinator(
 OperationResult transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice const newValue,
     OperationOptions& options, TRI_voc_document_operation_e operation) {
-  double trxTime = TRI_microtime();
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "replace addAtRuntime after: " << trxTime << " seconds";
-  }
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
@@ -2075,14 +2058,9 @@ OperationResult transaction::Methods::modifyLocal(
     pinData(cid);  // will throw when it fails
   }
 
-  trxTime = TRI_microtime();
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
-  trxTime = TRI_microtime() - trxTime;
-  if ((trxTime) >= 1.0) {
-    LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "replace internal lockRecursive after: " << trxTime << " seconds";
-  }
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
@@ -2170,12 +2148,7 @@ OperationResult transaction::Methods::modifyLocal(
     }
     res.reset();
   } else {
-    trxTime = TRI_microtime();
     res = workForOneDocument(newValue, false);
-    trxTime = TRI_microtime() - trxTime;
-    if ((trxTime) >= 1.0) {
-      LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "replace workForOne after: " << trxTime << " seconds";
-    }
   }
 
   // Now see whether or not we have to do synchronous replication:
