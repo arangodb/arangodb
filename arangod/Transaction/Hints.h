@@ -50,7 +50,7 @@ class Hints {
     NO_INDEXING = 2048, // use DisableIndexing for RocksDB
     INTERMEDIATE_COMMITS = 4096, // enable intermediate commits in rdb
     ALLOW_RANGE_DELETE = 8192, // enable range-delete in rdb
-    FROM_AQL = 16384 // transcation is started by an AQL query that is not in a sub-transaction
+    FROM_TOPLEVEL_AQL = 16384 // transaction is started by an AQL query that is not in a sub-transaction
   };
 
   Hints() : _value(0) {}

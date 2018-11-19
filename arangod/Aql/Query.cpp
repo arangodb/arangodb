@@ -385,6 +385,10 @@ void Query::prepare(QueryRegistry* registry) {
 
       int res = trx->addCollections(*_collections.collections());
 
+      if(!trx->transactionContextPtr()->getParentTransaction()){
+        trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+      }
+
       if (res == TRI_ERROR_NO_ERROR) {
         res = _trx->begin();
       }
@@ -488,6 +492,10 @@ ExecutionPlan* Query::preparePlan() {
   // create the transaction object, but do not start it yet
   _trx = trx.get();
 
+  if(!trx->transactionContextPtr()->getParentTransaction()){
+    trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  }
+
   // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr
   if (!_queryString.empty()) {
@@ -496,10 +504,6 @@ ExecutionPlan* Query::preparePlan() {
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
     _ast->validateAndOptimize();
-
-    if(!trx->transactionContextPtr()->getParentTransaction()){
-      trx->addHint(transaction::Hints::Hint::FROM_AQL);
-    }
 
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
