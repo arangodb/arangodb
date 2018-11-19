@@ -1034,35 +1034,41 @@ void Supervision::readyOrphanedIndexCreations() {
         auto const& colname = col.first;
         std::string const& colPath = dbname + "/" + colname + "/";
         auto const& collection = *(col.second);
-        auto indexes = collection.hasAsArray("indexes");
-        std::unordered_set<std::string> built;
-        if (indexes.second) {
-          for (auto const& planIndex : VPackArrayIterator(indexes.first)) {
-            if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
-              auto const& planId = planIndex.get("id");
-              auto const& shards = collection("shards");
-              auto const& nshards = collection.hasAsUInt("numberOfShards");
-              if (!nshards.second) {
-                continue;
-              }
-              size_t nIndexes = 0;
-              for (auto const& sh : shards.children()) {
+        if (collection.has("indexes")) {
+          
+          auto indexes = collection.getArray("indexes");
+          std::unordered_set<std::string> built;
+          if (indexes) {
+            for (auto const& planIndex : VPackArrayIterator(indexes.first)) {
+              if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
+                auto const& planId = planIndex.get("id");
+                auto const& shards = collection("shards");
+                if (collection.has("numberOfShards") &&
+                    collection("numberOfShards").isUInt()) {
+                  auto const& nshards = collection.getUInt("numberOfShards");
+                  if (!nshards.second) {
+                    continue;
+                  }
+                  size_t nIndexes = 0;
+                  for (auto const& sh : shards.children()) {
 
-                auto const& shname = sh.first;
+                    auto const& shname = sh.first;
                   
-                if (currentDBs.has(colPath + shname + "/indexes")) {
-                  auto const& curIndexes =
-                    currentDBs(colPath + shname + "/indexes").slice();
-                  for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
-                    auto const& curId = curIndex.get("id");
-                    if (planId == curId) {
-                      ++nIndexes;
+                    if (currentDBs.has(colPath + shname + "/indexes")) {
+                      auto const& curIndexes =
+                        currentDBs(colPath + shname + "/indexes").slice();
+                      for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
+                        auto const& curId = curIndex.get("id");
+                        if (planId == curId) {
+                          ++nIndexes;
+                        }
+                      }
                     }
                   }
                 }
-              }
-              if (nIndexes == nshards.first) {
-                built.emplace(planId.copyString());
+                if (nIndexes == nshards.first) {
+                  built.emplace(planId.copyString());
+                }
               }
             }
           }
