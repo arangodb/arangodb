@@ -84,7 +84,8 @@ enum class AgencyReadOperationType { READ };
 // --SECTION--                                          AgencyValueOperationType
 // -----------------------------------------------------------------------------
 
-enum class AgencyValueOperationType { ERASE, SET, OBSERVE, UNOBSERVE, PUSH, PREPEND };
+enum class AgencyValueOperationType {
+  ERASE, SET, OBSERVE, UNOBSERVE, PUSH, PREPEND, REPLACE };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AgencySimpleOperationType
@@ -132,6 +133,8 @@ class AgencyOperationType {
             return "prepend";
           case AgencyValueOperationType::ERASE:
             return "erase";
+          case AgencyValueOperationType::REPLACE:
+            return "replace";
           default:
             return "unknown_operation_type";
         }
@@ -198,6 +201,9 @@ class AgencyOperation {
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   VPackSlice const value);
 
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+                  VPackSlice const newValue, VPackSlice const oldValue);
+
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
@@ -211,6 +217,7 @@ class AgencyOperation {
   std::string const _key;
   AgencyOperationType _opType;
   VPackSlice _value;
+  VPackSlice _value2;
 };
 
 // -----------------------------------------------------------------------------
