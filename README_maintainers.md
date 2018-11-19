@@ -533,7 +533,7 @@ It will keep on running and monitor arangod until eventually a crash happens. Yo
 Debugging symbols
 -----------------
 Releases are supported by a public symbol server so you will be able to debug cores.
-Releases starting with **2.5.6, 2.6.3** onwards are supported; Note that you should run the latest version of a release series before reporting bugs.
+Please replace XX with the Major & Minor release number. Note that you should run the latest version of a release series before reporting bugs.
 Either [WinDbg](http://go.microsoft.com/fwlink/p/?linkid=84137) or Visual studio support setting the symbol path
 via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cach* we add the arangodb symbolserver like this:
 
