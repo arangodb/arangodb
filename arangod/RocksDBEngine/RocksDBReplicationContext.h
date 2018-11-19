@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,23 +19,35 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBIterators.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/options.h>
+
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+
+namespace rocksdb {
+  class Comparator;
+  class Iterator;
+  class Snapshot;
+}
 
 namespace arangodb {
 class DatabaseGuard;
@@ -45,93 +57,172 @@ class RocksDBReplicationContext {
   typedef std::function<void(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
 
+  /// collection abstraction
+  struct CollectionIterator {
+    
+    CollectionIterator(TRI_vocbase_t&,
+                       LogicalCollection&,
+                       bool sorted, rocksdb::Snapshot const*);
+    
+    arangodb::DatabaseGuard dbGuard;
+    arangodb::CollectionGuard collGuard;
+
+    /// Iterator over primary index or documents
+    std::unique_ptr<rocksdb::Iterator> iter;
+    /// bounds used by the iterator
+    RocksDBKeyBounds bounds;
+    /// some incrementing number
+    uint64_t currentTick;
+    /// @brief offset in the collection used with the incremental sync
+    uint64_t lastSortedIteratorOffset;
+
+    arangodb::velocypack::Options vpackOptions;
+    
+    /// @brief number of documents in this collection
+    /// only set in a very specific use-case
+    uint64_t numberDocuments;
+    /// @brief snapshot and number documents were fetched exclusively
+    bool isNumberDocumentsExclusive;
+
+    rocksdb::ReadOptions const& readOptions() const { return _readOptions; }
+    bool sorted() const { return _sortedIterator; }
+    void setSorted(bool);
+    
+    void use() noexcept {
+      TRI_ASSERT(!isUsed());
+      _isUsed.store(true, std::memory_order_release);
+    }
+    bool isUsed() const {
+      return _isUsed.load(std::memory_order_acquire);
+    }
+    void release() noexcept {
+      _isUsed.store(false, std::memory_order_release);
+    }
+
+    // iterator convenience functions
+    bool hasMore() const;
+    bool outOfRange() const;
+    uint64_t skipKeys(uint64_t toSkip);
+    void resetToStart();
+
+  private:
+    CollectionNameResolver _resolver;
+    /// @brief type handler used to render documents
+    std::unique_ptr<arangodb::velocypack::CustomTypeHandler> _cTypeHandler;
+    /// @brief read options for iterators
+    rocksdb::ReadOptions _readOptions;
+    /// @brief upper limit for iterate_upper_bound
+    rocksdb::Slice _upperLimit;
+    rocksdb::Comparator const* _cmp;
+    /// no one is allowed to use this concurrently
+    std::atomic<bool> _isUsed;
+    /// primary-index sorted iterator
+    bool _sortedIterator;
+  };
+
  public:
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
-  uint64_t lastTick() const;
-  uint64_t count() const;
-
-  TRI_vocbase_t* vocbase() const {
-    if (!_guard) {
-      return nullptr;
-    }
-    return _guard->database();
-  }
-
-  // creates new transaction/snapshot
-  void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier, bool sorted);
+  uint64_t snapshotTick();
+  
+  /// invalidate all iterators with that vocbase
+  void removeVocbase(TRI_vocbase_t&);
+  
+  /// remove matching iterator
+  void releaseIterators(TRI_vocbase_t&, TRI_voc_cid_t);
+  
+  std::tuple<Result, TRI_voc_cid_t, uint64_t>
+   bindCollectionIncremental(TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
+  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                      bool global, velocypack::Builder&);
+
+  // ========================= Dump API =============================
+  
+  struct DumpResult : arangodb::Result {
+    DumpResult(int res)
+      : Result(res), hasMore(false), includedTick(0) {}
+    DumpResult(int res, bool hm, uint64_t tick)
+      : Result(res), hasMore(hm), includedTick(tick) {}
+    bool hasMore;
+    uint64_t includedTick; // tick increases for each fetch
+  };
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
-                                std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize);
+  DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
+                      basics::StringBuffer&, uint64_t chunkSize);
+
+  // ==================== Incremental Sync ===========================
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(velocypack::Builder& outBuilder,
+  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                                 velocypack::Builder& outBuilder,
                                  uint64_t chunkSize);
-
   /// dump all keys from collection
-  arangodb::Result dumpKeys(velocypack::Builder& outBuilder, size_t chunk,
+  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                            velocypack::Builder& outBuilder, size_t chunk,
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
-  arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
+  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                                 velocypack::Builder& b, size_t chunk,
+                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                                  std::string const& lowKey, velocypack::Slice const& ids);
 
+  // lifetime in seconds
   double expires() const;
   bool isDeleted() const;
-  void deleted();
+  void setDeleted();
   bool isUsed() const;
+  /// set use flag and extend lifetime
   void use(double ttl);
-  bool more() const;
   /// remove use flag
   void release();
+  /// extend lifetime without using the context
+  void extendLifetime(double ttl);
+  
+  // buggy clients may not send the serverId
+  TRI_server_id_t replicationClientId() const {
+    return _serverId != 0 ? _serverId : _id;
+  }
 
  private:
-  void releaseDumpingResources();
-
+  
+  void lazyCreateSnapshot();
+  
+  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase,
+                                            TRI_voc_cid_t cid,
+                                            bool sorted,
+                                            bool allowCreate);
+  
+  void releaseDumpIterator(CollectionIterator*);
+  
  private:
-  TRI_vocbase_t* _vocbase;
+  
+  mutable Mutex _contextLock;
   TRI_server_id_t const _serverId;
-  TRI_voc_tick_t _id; // batch id
-  uint64_t _lastTick; // the time at which the snapshot was taken
-  uint64_t _currentTick; // shows how often dump was called
-  std::unique_ptr<DatabaseGuard> _guard;
-  std::unique_ptr<transaction::Methods> _trx;
+  TRI_voc_tick_t const _id; // batch id
   
-  /// @brief Collection used in dump and incremental sync
-  LogicalCollection* _collection;
-  
-  /// @brief Iterator on collection
-  std::unique_ptr<RocksDBGenericIterator> _iter;
-
-  /// @brief offset in the collection used with the incremental sync
-  uint64_t _lastIteratorOffset;
-  
-  /// @brief holds last document
-  ManagedDocumentResult _mdr;
-  /// @brief type handler used to render documents
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
-  arangodb::velocypack::Options _vpackOptions;
+  uint64_t _snapshotTick; // tick in WAL from _snapshot
+  rocksdb::Snapshot const* _snapshot;
+  std::map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
 
   double const _ttl;
+  /// @brief expiration time, updated under lock by ReplicationManager
   double _expires;
+  
+  /// @brief true if context is deleted, updated under lock by ReplicationManager
   bool _isDeleted;
-  bool _isUsed;
-  bool _hasMore; //used during dump to check if there are more documents
+  /// @brief number of concurrent users, updated under lock by ReplicationManager
+  size_t _users;
 };
 
 }  // namespace arangodb
