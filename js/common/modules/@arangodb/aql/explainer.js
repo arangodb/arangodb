@@ -23,7 +23,7 @@ const anonymize = function(doc) {
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
-  } 
+  }
   if (typeof doc === 'object') {
     let result = {};
     Object.keys(doc).forEach(function(key) {
@@ -248,8 +248,8 @@ function printStats (stats) {
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
                            header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
-                         
-  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' + 
+
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
   pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
   pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
   pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
@@ -335,7 +335,7 @@ function printIndexes (indexes) {
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else { 
+      } else {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
@@ -382,7 +382,7 @@ function printFunctions (functions) {
       maxNameLen = l;
     }
   });
-  let line = ' ' + 
+  let line = ' ' +
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
     header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
     header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
@@ -974,7 +974,7 @@ function processQuery (query, explain) {
     }
     return '';
   };
-  
+
   var iterateIndexes = function (idx, i, node, types, variable) {
     var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
     if (types.length === 0 || what !== types[types.length - 1]) {
@@ -1720,8 +1720,8 @@ function debug(query, bindVars, options) {
       if (v === null) {
         return;
       }
-      
-      result.views[collection.name] = { 
+
+      result.views[collection.name] = {
         type: v.type(),
         properties: v.properties()
       };
@@ -1730,7 +1730,7 @@ function debug(query, bindVars, options) {
       let examples;
       if (input.options.examples) {
         // include example data from collections
-        let max = 10; // default number of documents 
+        let max = 10; // default number of documents
         if (typeof input.options.examples === 'number') {
           max = input.options.examples;
         }
@@ -1744,7 +1744,7 @@ function debug(query, bindVars, options) {
           examples = examples.map(anonymize);
         }
       }
-      result.collections[collection.name] = { 
+      result.collections[collection.name] = {
         type: c.type(),
         properties: c.properties(),
         indexes: c.getIndexes(true),
@@ -1754,7 +1754,7 @@ function debug(query, bindVars, options) {
       };
     }
   });
-  
+
   result.graphs = graphs;
   return result;
 }
@@ -1809,7 +1809,7 @@ function inspectDump(filename, outfile) {
     print();
   });
   print();
-  
+
   // insert example data
   print("/* example data */");
   Object.keys(data.collections).forEach(function(collection) {
@@ -1838,12 +1838,12 @@ function inspectDump(filename, outfile) {
     print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
-  
-  print("/* explain result */"); 
+
+  print("/* explain result */");
   print(data.fancy.trim().split(/\n/).map(function(line) { return "// " + line; }).join("\n"));
   print();
- 
-  print("/* explain command */"); 
+
+  print("/* explain command */");
   if (data.query.options) {
     delete data.query.options.anonymize;
     delete data.query.options.colors;

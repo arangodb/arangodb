@@ -1089,7 +1089,8 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
         << ", Current " << result.currentVersion;
     _currentVersions = AgencyVersions(result);
   } else {
-    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed!";
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed: "
+      << result.errorMessage;
   }
 }
 
