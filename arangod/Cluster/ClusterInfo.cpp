@@ -2616,7 +2616,7 @@ int ClusterInfo::ensureIndexCoordinator(
     
   }
 
-  // At this time the Iindex creation has failed and we want to  roll back
+  // At this time the index creation has failed and we want to  roll back
   // the plan entry
   VPackBuilder oldPlanSlice;
   AgencyWriteTransaction trx(
