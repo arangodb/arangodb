@@ -2140,7 +2140,7 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
-  auto preVisitor = [&result](AstNode const* node) -> bool {
+  auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
   };
   
@@ -3852,7 +3852,7 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
     std::string graphName = graphNode->getString();
     auto graph = _query->lookupGraphByName(graphName);
     if (graph == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
     }
     TRI_ASSERT(graph != nullptr);
 

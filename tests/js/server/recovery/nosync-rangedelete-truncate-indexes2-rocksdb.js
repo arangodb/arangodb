@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertTrue, assertFalse, assertEqual */
+/* global assertEqual, assertFalse, assertNull, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -33,48 +33,33 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
-  var c, i;
-
-  // write some documents with autoincrement keys
+  
   db._drop('UnitTestsRecovery1');
-  c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'autoincrement',
-    offset: 0, increment: 10 } } );
-  for (i = 0; i < 1000; i++) {
-    c.save({ value: i });
-  }
-  var wals = db._currentWalFiles().map(function(f) {
-    // strip off leading `/` or `/archive/` if it exists
-    var p = f.split('/');
-    return p[p.length - 1];
-  });
-
-  // write to other collection until all documents from first collection are
-  // out of the wal
   db._drop('UnitTestsRecovery2');
-  c = db._create('UnitTestsRecovery2');
-  var keepWriting = true;
-  while (keepWriting) {
-    var padding = 'aaa';
-    for (i = 0; i < 10000; i++) {
-      padding = padding.concat('aaa');
-      c.save({ value: i , text: padding });
-    }
 
-    keepWriting = false;
-    var walsLeft = db._currentWalFiles().map(function(f) {
-      // strip off leading `/` or `/archive/` if it exists
-      var p = f.split('/');
-      return p[p.length - 1];
-    });
-    for (var j = 0; j < wals.length; j++) {
-      if (walsLeft.indexOf(wals[j]) !== -1) { // still have old wal file
-        keepWriting = true;
-      }
+  let c = db._createEdgeCollection('UnitTestsRecovery1');
+  let c2 = db._create('UnitTestsRecovery2');
+  c2.insert({}); // make sure count is initalized
+
+  let docs = [];
+  for (let i = 0; i < 100000; i++) {
+    docs.push({ _key: "test" + i, _from: "test/1", _to: "test/" + i, value: i });
+    if (docs.length === 10000) {
+      c.insert(docs);
+      docs = [];
     }
   }
-  c.save({ value: 0 }, { waitForSync: true });
 
+  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
+ 
+  // should trigger range deletion
+  c.truncate();
+  
+  // turn off syncing of counters etc.  
+  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+
+  c2.insert({}, { waitForSync: true });
   internal.debugSegfault('crashing server');
 }
 
@@ -90,17 +75,33 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we still pick up the right autoincrement value
-    // //////////////////////////////////////////////////////////////////////////////
+    testNosyncRangeDeleteTruncateIndexes2: function () {
+      let c = db._collection('UnitTestsRecovery1');
+      assertEqual(0, c.count());
+      assertNotNull(db._collection('UnitTestsRecovery2'));
+  
+      assertEqual([], c.edges("test/1"));
+      let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
+      
+      for (let i = 0; i < 100000; i += 1000) {
+        assertFalse(c.exists("key" + i));
+        assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
+        assertEqual([], c.edges("test/" + i));
+      }
 
-    testCollectionKeyGenRocksDB: function () {
-      var c, d;
-
-      c = db._collection('UnitTestsRecovery1');
-      assertEqual(c.count(), 1000);
-      d = c.save({ value: 1001});
-      assertEqual("10010", d._key);
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+          case 'hash':
+          case 'edge':
+            assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
+            break;
+          default:
+            fail();
+        }
+      }
     }
 
   };

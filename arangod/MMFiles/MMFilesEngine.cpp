@@ -385,7 +385,7 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
       LOG_TOPIC(DEBUG, Logger::ENGINES)
           << "processing collection '" << c->name() << "'";
       collection->open(false);
-      auto guard = scopeGuard([this, &collection]() -> void {
+      auto guard = scopeGuard([&collection]() -> void {
         collection->close();
       });
 
