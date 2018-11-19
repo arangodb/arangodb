@@ -52,17 +52,11 @@ inline void TRI_SegfaultDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
-/// note that the char const* value must remain valid throughout the
-/// entire run of the program, as TRI_ShouldFailDebugging function
-/// will not take any ownership for the passed string value
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 bool TRI_ShouldFailDebugging(char const* value);
 #else
 inline constexpr bool TRI_ShouldFailDebugging(char const*) { return false; }
 #endif
-/// explicitly forbid passing an std::string
-bool TRI_ShouldFailDebugging(std::string&& value) = delete;
-bool TRI_ShouldFailDebugging(std::string const& value) = delete;
 
 /// @brief add a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
