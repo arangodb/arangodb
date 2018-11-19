@@ -2066,24 +2066,6 @@ namespace iresearch {
 // --SECTION--                                      FilerFactory implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ irs::filter::ptr FilterFactory::filter(TRI_voc_cid_t cid) {
-  auto filter = irs::by_term::make();
-
-  // filter matching on cid
-  static_cast<irs::by_term&>(*filter)
-    .field(DocumentPrimaryKey::CID()) // set field
-    .term(DocumentPrimaryKey::encode(cid)); // set value
-
-  return filter;
-}
-
-/*static*/ irs::filter::ptr FilterFactory::filter(
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid
-) {
-  return std::make_unique<PrimaryKeyFilter>(cid, rid);
-}
-
 /*static*/ bool FilterFactory::filter(
     irs::boolean_filter* filter,
     QueryContext const& ctx,

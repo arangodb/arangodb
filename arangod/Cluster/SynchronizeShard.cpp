@@ -337,7 +337,7 @@ static arangodb::Result cancelBarrier(
   double timeout = 120.0) {
 
   if (barrierId <= 0) {
-    return Result();;
+    return Result();
   }
 
   auto cc = arangodb::ClusterComm::instance();
