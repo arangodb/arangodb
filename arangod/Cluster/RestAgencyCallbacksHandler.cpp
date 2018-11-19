@@ -64,16 +64,13 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     return RestStatus::DONE;
   }
   
-  std::shared_ptr<AgencyCallback> cb;
-  try {
-    uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
-    cb = _agencyCallbackRegistry->getCallback(index);
-  } catch (arangodb::basics::Exception const&) {
-    // mop: not found...expected
+  uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
+  auto cb = _agencyCallbackRegistry->getCallback(index);
+  if (cb.get() == nullptr) {
+    // no entry by this id!
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   }
-  
-  if (cb) {
+  else {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Agency callback has been triggered. refetching!";
     
