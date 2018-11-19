@@ -1604,7 +1604,7 @@ bool AstNode::isConstant() const {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
 
       if (!member->isConstant()) {
         setFlag(DETERMINED_CONSTANT);
@@ -1620,7 +1620,7 @@ bool AstNode::isConstant() const {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
+      auto member = getMemberUnchecked(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto value = member->getMember(0);
 
