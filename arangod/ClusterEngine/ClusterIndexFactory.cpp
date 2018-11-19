@@ -218,6 +218,12 @@ void ClusterIndexFactory::prepareIndexes(
       continue;
     }
 
+    if (basics::VelocyPackHelper::getBooleanValue(v, "isBuilding", false)) {
+      // We have an error here.
+      // Do not add index.
+      continue;
+    }
+
     auto idx = prepareIndexFromSlice(v, false, col, true);
 
     if (!idx) {
