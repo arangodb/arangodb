@@ -138,7 +138,7 @@ describe('Shard distribution', function () {
       _.forEach(distribution.Current, function (info, shard) {
         expect(info).to.have.all.keys(['leader', 'followers']);
 
-        expect(info.leader).to.match(/^DBServer/);
+        expect(info.leader).to.match(/^DBServer|_/);
         assert.isArray(info.followers, 'The followers need to be an array');
 
         // We have at most one replica per db server. They may not be in sync yet.

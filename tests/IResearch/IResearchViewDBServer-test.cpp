@@ -521,7 +521,7 @@ SECTION("test_query") {
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       EMPTY,
       arangodb::transaction::Options()
@@ -554,7 +554,7 @@ SECTION("test_query") {
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
-        EMPTY,
+        std::vector<std::string>{logicalCollection->name()},
         EMPTY,
         arangodb::transaction::Options()
       );
@@ -570,7 +570,7 @@ SECTION("test_query") {
 
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       EMPTY,
       arangodb::transaction::Options()
@@ -727,7 +727,7 @@ SECTION("test_query") {
         arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
           EMPTY,
-          EMPTY,
+          std::vector<std::string>{logicalCollection->name()},
           EMPTY,
           options
         );
@@ -741,7 +741,7 @@ SECTION("test_query") {
       {
         arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          EMPTY,
+          std::vector<std::string>{logicalCollection->name()},
           EMPTY,
           EMPTY,
           arangodb::transaction::Options{}
@@ -948,7 +948,7 @@ SECTION("test_transaction_snapshot") {
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       arangodb::transaction::Options()
     );
@@ -961,7 +961,7 @@ SECTION("test_transaction_snapshot") {
   {
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       EMPTY,
       arangodb::transaction::Options()
@@ -976,7 +976,7 @@ SECTION("test_transaction_snapshot") {
   {
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       EMPTY,
       arangodb::transaction::Options()
@@ -995,7 +995,7 @@ SECTION("test_transaction_snapshot") {
     opts.waitForSync = true;
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       EMPTY,
       opts
@@ -1011,7 +1011,7 @@ SECTION("test_transaction_snapshot") {
     arangodb::transaction::Options opts;
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      EMPTY,
+      std::vector<std::string>{logicalCollection->name()},
       EMPTY,
       EMPTY,
       opts
