@@ -1480,12 +1480,17 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
                                    AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanViews(
+    "Plan/Views/" + name, AgencySimpleOperationType::DELETE_OP
+  );
   AgencyOperation incrementVersion("Plan/Version",
                                    AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
   AgencyWriteTransaction trans(
-      {delPlanDatabases, delPlanCollections, incrementVersion}, databaseExists);
+    { delPlanDatabases, delPlanCollections, delPlanViews, incrementVersion },
+    databaseExists
+  );
 
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
