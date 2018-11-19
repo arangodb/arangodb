@@ -42,6 +42,20 @@ class MaskingFunction {
            ('0' <= c && c <= '9') || c == '_' || c == '-';
   }
 
+  static bool utf8Length(uint8_t c) {
+    if ((c & 0x80) == 0) {
+      return 1;
+    } else if ((c & 0xE0) == 0xC0) {
+      return 2;
+    } else if ((c & 0xF0) == 0xE0) {
+      return 3;
+    } else if ((c & 0xF8) == 0xF0) {
+      return 4;
+    }
+
+    return 1;
+  }
+
  public:
   explicit MaskingFunction(Maskings* maskings) : _maskings(maskings) {}
   virtual ~MaskingFunction() {}

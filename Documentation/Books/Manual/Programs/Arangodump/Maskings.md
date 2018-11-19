@@ -71,6 +71,23 @@ it occurs on the top-level. It masks the field "security_id" anywhere in the
 document. See below for a complete description of the parameters of
 "xify_front".
 
+Path
+----
+
+If the path starts with a `.` then it is considered to be a wildcard match.
+For example, `.name` will match the attribute name `name` everywhere in the
+document. `name` will only match at top level. `person.name` will match
+the attribute `name` in the top-level object `person`.
+
+If you have a attribute name that contains a dot, you need to quote the
+name with either a tick or a backtick. For example
+
+    "path": "´name.with.dots´"
+
+or
+
+    "path": "`name.with.dots`"
+
 xify_front
 ----------
 
