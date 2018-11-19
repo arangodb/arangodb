@@ -22,6 +22,7 @@ v3.4.0-rc.5 (XXXX-XX-XX)
   In summary, the recommendation for the `overcommit_memory` setting is now to set it
   to 0 or 1 (0 is kernel default) and not use 2.
 
+* fix for supervision, which started failing servers using old transient store
 
 v3.4.0-rc.4 (2018-11-04)
 ------------------------
