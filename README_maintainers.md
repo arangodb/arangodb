@@ -537,16 +537,16 @@ Releases starting with **2.5.6, 2.6.3** onwards are supported; Note that you sho
 Either [WinDbg](http://go.microsoft.com/fwlink/p/?linkid=84137) or Visual studio support setting the symbol path
 via the environment variable or in the menu. Given we want to store the symbols on *e:\symbol_cach* we add the arangodb symbolserver like this:
 
-    set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://www.arangodb.com/repositories/symsrv/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
+    set _NT_SYMBOL_PATH=cache*e:\symbol_cache\cache;srv*e:\symbol_cache\arango*https://download.arangodb.com/repositories/symsrv_arangodbXX/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
 
 You then will be able to see stack traces in the debugger.
 
 You may also try to download the symbols manually using: 
 
-    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://www.arangodb.com/repositories/symsrv/
+    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
 
 
-The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
+The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
 
   - arango - the basic arangodb library needed by all components
   - arango_v8 - the basic V8 wrappers needed by all components
@@ -564,7 +564,7 @@ In these directories you will find subdirectories with the hash corosponding to 
 
 This means i.e. for ArangoDB 3.1.11: 
 
- https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
+ https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
 
 This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
 
