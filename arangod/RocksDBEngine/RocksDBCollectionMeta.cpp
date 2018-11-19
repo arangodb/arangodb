@@ -412,7 +412,6 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
-//  wo.sync = true;
   
   // Step 1. delete the document count
   RocksDBKey key;
@@ -438,7 +437,6 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
-//  wo.sync = true;
   
   RocksDBKey key;
   key.constructIndexEstimateValue(objectId);

@@ -696,7 +696,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
 
     rocksdb::WriteOptions wo;
-//    wo.sync = true;
     s = db->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);

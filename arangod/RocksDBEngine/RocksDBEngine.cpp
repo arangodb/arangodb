@@ -1257,7 +1257,6 @@ arangodb::Result RocksDBEngine::dropCollection(
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
-//  wo.sync = true;
   rocksdb::Status s = db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
@@ -1456,7 +1455,6 @@ arangodb::Result RocksDBEngine::dropView(
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
-//  wo.sync = true;
   auto res = _db->GetRootDB()->Write(wo, &batch);
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
