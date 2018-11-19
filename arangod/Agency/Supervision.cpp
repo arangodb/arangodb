@@ -1034,19 +1034,19 @@ void Supervision::readyOrphanedIndexCreations() {
         auto const& colname = col.first;
         std::string const& colPath = dbname + "/" + colname + "/";
         auto const& collection = *(col.second);
+        std::unordered_set<std::string> built;
+        Slice indexes;
         if (collection.has("indexes")) {
-          
-          auto indexes = collection.getArray("indexes");
-          std::unordered_set<std::string> built;
-          if (indexes) {
-            for (auto const& planIndex : VPackArrayIterator(indexes.first)) {
+          indexes = collection("indexes").getArray();
+          if (indexes.length() > 0) {
+            for (auto const& planIndex : VPackArrayIterator(indexes)) {
               if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
                 auto const& shards = collection("shards");
                 if (collection.has("numberOfShards") &&
                     collection("numberOfShards").isUInt()) {
-                  auto const& nshards = collection.getUInt("numberOfShards");
-                  if (!nshards.second) {
+                  auto const& nshards = collection("numberOfShards").getUInt();
+                  if (nshards == 0) {
                     continue;
                   }
                   size_t nIndexes = 0;
@@ -1065,9 +1065,9 @@ void Supervision::readyOrphanedIndexCreations() {
                       }
                     }
                   }
-                }
-                if (nIndexes == nshards.first) {
-                  built.emplace(planId.copyString());
+                  if (nIndexes == nshards) {
+                    built.emplace(planId.copyString());
+                  }
                 }
               }
             }
@@ -1090,7 +1090,7 @@ void Supervision::readyOrphanedIndexCreations() {
                     _agencyPrefix + planColPrefix + colPath + "indexes"));
                 VPackArrayBuilder value(envelope.get());
                 for (auto const& planIndex :
-                       VPackArrayIterator(indexes.first)) {
+                       VPackArrayIterator(indexes)) {
                   if (built.find(
                         planIndex.get("id").copyString()) != built.end()) {
                     { VPackObjectBuilder props(envelope.get());
@@ -1109,7 +1109,7 @@ void Supervision::readyOrphanedIndexCreations() {
                 envelope->add(
                   VPackValue(
                     _agencyPrefix + planColPrefix + colPath + "indexes")); 
-                envelope->add(indexes.first); }
+                envelope->add(indexes); }
             }}
 
           write_ret_t res = _agent->write(envelope);
