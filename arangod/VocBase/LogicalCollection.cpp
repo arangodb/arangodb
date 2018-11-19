@@ -923,28 +923,26 @@ Result LogicalCollection::truncate(transaction::Methods* trx,
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result LogicalCollection::insert(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_tick_t& revisionId) {
+Result LogicalCollection::insert(
+    transaction::Methods* trx, VPackSlice const slice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId,
+    std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
-                               lock, revisionId);
+                               lock, revisionId, std::move(callbackDuringLock));
 }
 
 /// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx,
-                                 VPackSlice const newSlice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous) {
+Result LogicalCollection::update(
+    transaction::Methods* trx, VPackSlice const newSlice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -961,17 +959,17 @@ Result LogicalCollection::update(transaction::Methods* trx,
   }
 
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick,
-                               lock, prevRev, previous, key);
+                               lock, prevRev, previous, key,
+                               std::move(callbackDuringLock));
 }
 
 /// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx,
-                                  VPackSlice const newSlice,
-                                  ManagedDocumentResult& result,
-                                  OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous) {
+Result LogicalCollection::replace(
+    transaction::Methods* trx, VPackSlice const newSlice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -982,22 +980,24 @@ Result LogicalCollection::replace(transaction::Methods* trx,
 
   prevRev = 0;
   return getPhysical()->replace(trx, newSlice, result, options,
-                                resultMarkerTick, lock, prevRev, previous);
+                                resultMarkerTick, lock, prevRev, previous,
+                                std::move(callbackDuringLock));
 }
 
 /// @brief removes a document or edge
-Result LogicalCollection::remove(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous) {
+Result LogicalCollection::remove(
+    transaction::Methods* trx, VPackSlice const slice,
+    OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock,
+    TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+    std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
   resultMarkerTick = 0;
   TRI_voc_rid_t revisionId = 0;
-  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev, revisionId);
+  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
+                               lock, prevRev, revisionId,
+                               std::move(callbackDuringLock));
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,
