@@ -360,7 +360,6 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
   bool isLocked =
     trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE);

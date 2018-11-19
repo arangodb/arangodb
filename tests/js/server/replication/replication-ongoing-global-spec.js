@@ -106,7 +106,7 @@ const waitForReplication = function() {
     }
     internal.sleep(1.0);
   }
-  //internal.print(state);
+  //internafl.print(state);
   //internal.print("lastLogTick: " + lastLogTick);
 
   if (wasOnMaster) {
@@ -438,6 +438,7 @@ describe('Global Replication on a fresh boot', function () {
         waitForReplication();
         connectToSlave();
 
+        internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
         compareIndexes(sIdx, mIdx, true);
         compareIndexes(sIdx, oIdx, false);
@@ -699,6 +700,7 @@ describe('Global Replication on a fresh boot', function () {
         connectToSlave();
         db._useDatabase(dbName);
 
+        internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
         
         compareIndexes(sIdx, mIdx, true);
