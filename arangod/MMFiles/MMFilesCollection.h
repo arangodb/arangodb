@@ -500,6 +500,8 @@ class MMFilesCollection final : public PhysicalCollection {
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);
 
+  void setCurrentVersion();
+
  private:
   mutable arangodb::MMFilesDitches _ditches;
 
