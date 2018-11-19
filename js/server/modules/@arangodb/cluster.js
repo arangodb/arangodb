@@ -541,7 +541,8 @@ function synchronizeOneShard (database, shard, planId, leader) {
   var db = require("internal").db;
   var ep = ArangoClusterInfo.getServerEndpoint(leader);
 
-  if (db._collection(shard).count() === 0) {
+  const docCount = db._collection(shard).count();
+  if (docCount === 0) {
     // We try a short cut:
     console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
     try {
@@ -572,7 +573,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
 
     let startTime = new Date();
     sy = rep.syncCollection(shard,
-      { endpoint: ep, incremental: true, keepBarrier: true,
+      { endpoint: ep, incremental: docCount > 0, keepBarrier: true,
         leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
