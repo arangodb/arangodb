@@ -210,7 +210,6 @@ describe ArangoDB do
 
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
-        puts doc
 
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
