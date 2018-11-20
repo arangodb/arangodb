@@ -1823,22 +1823,10 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   loadPlan();
 
-  // Smart collection, we're done.
-  auto const resultSlice = resultBuilder.slice();
-  if (resultSlice.hasKey("isSmart") &&
-      resultSlice.get("isSmart").isBoolean() &&
-      resultSlice.get("isSmart").getBoolean()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
   std::string const indexPath =
     "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
 
-  if (slice.get(
-        "type").isEqualString("arangosearch")) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
+  auto const resultSlice = resultBuilder.slice();
   VPackBuilder oldPlanIndex;
   { VPackObjectBuilder b(&oldPlanIndex);
     for (auto const& entry : VPackObjectIterator(resultSlice)) {
@@ -1849,6 +1837,20 @@ int ClusterInfo::ensureIndexCoordinator(
   
   std::uint64_t sleepFor = 50;
   if (errorCode == TRI_ERROR_NO_ERROR) { // Success so far
+
+    // Smart collection, we're done.
+    auto const resultSlice = resultBuilder.slice();
+    if (resultSlice.hasKey("isSmart") &&
+        resultSlice.get("isSmart").isBoolean() &&
+        resultSlice.get("isSmart").getBoolean()) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    // Arangosearch we're done
+    if (slice.get(
+          arangodb::StaticStrings::IndexType).isEqualString("arangosearch")) {
+      return TRI_ERROR_NO_ERROR;
+    }
 
     std::string idStr;
     if (resultSlice.hasKey("id")) {
@@ -1863,82 +1865,40 @@ int ClusterInfo::ensureIndexCoordinator(
     if (resultSlice.hasKey("isBuilding")) {
       
       VPackBuilder newPlanIndex;
-      Result current;
-      
-      while(true) { // Wait for index to appear in current shards
-
-        auto curCollection = getCollectionCurrent(databaseName, collectionID);
-        if (curCollection->getCurrentVersion() == 0) {
-          // Collection has disappeared.
-          current.reset(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                        "Collection has been deleted from the cluster.");
+      { VPackObjectBuilder o(&newPlanIndex);
+        for (auto const& entry : VPackObjectIterator(resultSlice)) {
+          auto const key = entry.key.copyString();
+          if (key != "isBuilding" && key != "isNewlyCreated") {
+            newPlanIndex.add(entry.key.copyString(), entry.value);
+          } 
         }
-        current = curCollection->hasIndex(idStr);
-
-        bool overTime = steady_clock::now() > endTime;
-        
-        if (current.ok()) {
-          // Index is there, replace the isBuilding key
-          VPackObjectBuilder o(&newPlanIndex);
-          for (auto const& entry : VPackObjectIterator(resultSlice)) {
-            auto const key = entry.key.copyString();
-            if (key != "isBuilding" && key != "isNewlyCreated") {
-              newPlanIndex.add(entry.key.copyString(), entry.value);
-            } 
-          }
-          break;
-        } else if (current.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND) && !overTime) {
-          // Will wait, if we have not gone over time
-          if (sleepFor <= 2500) {
-            sleepFor*=2;
-          }
-          std::this_thread::sleep_for(std::chrono::milliseconds());
-          continue;
-        }
-
-        if (overTime) {
-          current.reset(
-            TRI_ERROR_CLUSTER_TIMEOUT,
-            "Timed out while waiting for indexes to get ready on db servers");
-        }
-
-        errorCode = TRI_ERROR_CLUSTER_TIMEOUT;
-        setErrormsg(errorCode, errorMsg);
-        
       }
       
-      std::vector<AgencyOperation> opers;
-      if (current.ok()) {
-        opers.push_back(
+      // Remove isBuilding from Plan
+      AgencyWriteTransaction trx({
           AgencyOperation(
             indexPath, AgencyValueOperationType::REPLACE,
-            newPlanIndex.slice(), oldPlanIndex.slice()));
-      } else {
-        opers.push_back(
+            newPlanIndex.slice(), oldPlanIndex.slice()),
           AgencyOperation(
-            indexPath, AgencyValueOperationType::ERASE, oldPlanIndex.slice()));
-      }
-      opers.push_back(
-        AgencyOperation(
-          "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
-      AgencyWriteTransaction trx(opers);
+            "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
       sleepFor = 50;
       while (true) {
         if (_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
           loadPlan();
-          return current.errorNumber();
+          return TRI_ERROR_NO_ERROR;
         }
         if (steady_clock::now() > endTime) {
-          current.reset(
-            TRI_ERROR_CLUSTER_TIMEOUT,
-            "Timed out while trying to update Plan record for the index.");
+           errorMsg = "Timed out while trying to update Plan record for the index.";
+          // It's fine to leave here in hopes that
+          // the supervision will handle this.
+          return TRI_ERROR_CLUSTER_TIMEOUT;
         }
         if (sleepFor <= 2500) {
           sleepFor*=2;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds());
       }
-
+      
     } else {
       // That's odd isBuilding key has gone already. Supervision was quicker?
       loadPlan();
