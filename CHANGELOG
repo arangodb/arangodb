@@ -1,8 +1,11 @@
 devel
 -----
 
-
 * fixed Foxx complaining about valid `$schema` value in manifest.json
+
+* Foxx `req.makeAbsolute` now will return meaningful values when ArangoDB is using
+  a unix socket endpoint. URLs generated when using a unix socket follow the format
+  http://unix:<socket-path>:<url-path> used by other JS tooling.
 
 * Updated joi library (Web UI), improved foxx mount path validation
 
