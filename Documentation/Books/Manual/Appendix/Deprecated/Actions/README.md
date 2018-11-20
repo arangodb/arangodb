@@ -1,3 +1,7 @@
+---
+page-toc:
+  disable: true
+---
 ArangoDB's Actions
 ==================
 
