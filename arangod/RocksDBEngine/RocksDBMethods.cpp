@@ -376,10 +376,7 @@ arangodb::Result RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle*,
 arangodb::Result RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val) {
-  TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions ro;
-  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
-  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBBatchedMethods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "BatchedMethods does not provide Get");
 }
 
 arangodb::Result RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
@@ -436,6 +433,15 @@ arangodb::Result RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBBatchedWithIndexMethods");
 }
 
+arangodb::Result RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                                     rocksdb::Slice const& key,
+                                                     rocksdb::PinnableSlice* val) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions ro;
+  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBBatchedWithIndexMethods");
+}
+
 arangodb::Result RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                                      RocksDBKey const& key,
                                                      rocksdb::Slice const& val,
@@ -449,6 +455,13 @@ arangodb::Result RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHan
                                                         RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   _wb->Delete(cf, key.string());
+  return arangodb::Result();
+}
+
+arangodb::Result RocksDBBatchedWithIndexMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                              RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  _wb->SingleDelete(cf, key.string());
   return arangodb::Result();
 }
 

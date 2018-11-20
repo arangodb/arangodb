@@ -210,12 +210,16 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                       rocksdb::PinnableSlice* val) override;
   arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
       rocksdb::Slice const& val,
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                           RocksDBKey const& key) override;
+  arangodb::Result SingleDelete(rocksdb::ColumnFamilyHandle*,
+                                RocksDBKey const&) override;
   std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
 
