@@ -113,6 +113,10 @@ class MMFilesCollectorThread final : public Thread {
 
   void broadcastCollectorResult(int res);
 
+  /// @brief clean up empty elements from the queue, and make the queue available
+  /// for others again
+  void cleanupQueue();
+
  private:
   /// @brief the logfile manager
   MMFilesLogfileManager* _logfileManager;
