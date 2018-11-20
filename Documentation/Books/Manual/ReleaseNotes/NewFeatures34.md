@@ -1113,8 +1113,10 @@ logging is set to a very verbose level (e.g. log levels debug or trace).
 
 The _Active Failover_ mode is now officially supported for multiple slaves.
 
-Additionally you can now send read-only requests to followers, so you can use them for read scaling. 
-To make sure only requests that are intended for this use-case are served by the follower you need
-to add the X-Arango-Allow-Dirty-Read: true` header. 
+Additionally you can now send read-only requests to followers, so you can
+use them for read scaling. To make sure only requests that are intended for
+this use-case are served by the follower you need to add a
+`X-Arango-Allow-Dirty-Read: true` header to HTTP requests.
 
-For more information see the [active failover](../Manual/Architecture/DeploymentModes/ActiveFailover/Architecture.md) page.
+For more information see
+[Active Failover Architecture](../Manual/Architecture/DeploymentModes/ActiveFailover/Architecture.md).
