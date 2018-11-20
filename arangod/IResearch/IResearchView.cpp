@@ -182,7 +182,7 @@ inline void insertDocument(
   doc.insert(irs::action::index_store, field);
 
   // Indexed: CID
-  Field::setCidValue(field, primaryKey.cid());
+  Field::setCidValue(field, primaryKey.first);
   doc.insert(irs::action::index, field);
 }
 
@@ -1050,7 +1050,7 @@ arangodb::Result IResearchView::drop(
     TRI_voc_cid_t cid,
     bool unlink /*= true*/
 ) {
-  auto filter = iresearch::FilterFactory::filter(cid);
+  auto filter = iresearch::DocumentPrimaryKey::filter(cid);
 
   ReadMutex rmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   WriteMutex wmutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated

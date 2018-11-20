@@ -2345,14 +2345,14 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
   newNode->addDependency(previous);
 }
 
-/// @brief insert note directly before current
+/// @brief insert node directly before current
 void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode) {
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(current->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(!newNode->hasParent());
 
-  for (auto* dep : current->getDependencies()){
+  for (auto* dep : current->getDependencies()) {
     newNode->addDependency(dep);
   }
   current->removeDependencies();
