@@ -30,7 +30,6 @@
 #include "RocksDBEngine/RocksDBCollectionMeta.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
 class Transaction;
@@ -209,8 +208,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-  int saveIndex(transaction::Methods* trx,
-                std::shared_ptr<arangodb::Index> idx);
 
   arangodb::Result fillIndexes(transaction::Methods*,
                                std::shared_ptr<arangodb::Index>);

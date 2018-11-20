@@ -73,7 +73,62 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
     IndexAttributes{{arangodb::basics::AttributeName("_id", false)},
                     {arangodb::basics::AttributeName("_key", false)}};
 
-RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
+RocksDBPrimaryIndexEqIterator::RocksDBPrimaryIndexEqIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    RocksDBPrimaryIndex* index,
+    std::unique_ptr<VPackBuilder> key,
+    bool allowCoveringIndexOptimization)
+    : IndexIterator(collection, trx),
+      _index(index),
+      _key(std::move(key)),
+      _done(false),
+      _allowCoveringIndexOptimization(allowCoveringIndexOptimization) {
+  TRI_ASSERT(_key->slice().isString());
+}
+
+RocksDBPrimaryIndexEqIterator::~RocksDBPrimaryIndexEqIterator() {
+  if (_key != nullptr) {
+    // return the VPackBuilder to the transaction context
+    _trx->transactionContextPtr()->returnBuilder(_key.release());
+  }
+}
+
+bool RocksDBPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+  if (limit == 0 || _done) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  _done = true;
+  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  if (documentId.isSet()) {
+    cb(documentId);
+  }
+  return false;
+}
+
+bool RocksDBPrimaryIndexEqIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_allowCoveringIndexOptimization);
+  if (limit == 0 || _done) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  _done = true;
+  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  if (documentId.isSet()) {
+    cb(documentId, _key->slice());
+  }
+  return false;
+}
+
+void RocksDBPrimaryIndexEqIterator::reset() { _done = false; }
+
+RocksDBPrimaryIndexInIterator::RocksDBPrimaryIndexInIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     RocksDBPrimaryIndex* index,
     std::unique_ptr<VPackBuilder> keys,
@@ -86,14 +141,14 @@ RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
   TRI_ASSERT(_keys->slice().isArray());
 }
 
-RocksDBPrimaryIndexIterator::~RocksDBPrimaryIndexIterator() {
+RocksDBPrimaryIndexInIterator::~RocksDBPrimaryIndexInIterator() {
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_keys.release());
   }
 }
 
-bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -102,7 +157,6 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
   }
   
   while (limit > 0) {
-    // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
@@ -117,7 +171,8 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
   return true;
 }
 
-bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_allowCoveringIndexOptimization);
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -141,7 +196,7 @@ bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_
   return true;
 }
 
-void RocksDBPrimaryIndexIterator::reset() { _iterator.reset(); }
+void RocksDBPrimaryIndexInIterator::reset() { _iterator.reset(); }
 
 // ================ PrimaryIndex ================
 
@@ -387,17 +442,17 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, attrNode, valNode);
-  } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+  } 
+  
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
-    if (!valNode->isArray()) {
-      // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx);
+    if (valNode->isArray()) {
+      // a.b IN array
+      return createInIterator(trx, attrNode, valNode);
     }
-
-    return createInIterator(trx, attrNode, valNode);
   }
 
-  // operator type unsupported
+  // operator type unsupported or IN used on non-array
   return new EmptyIndexIterator(&_collection, trx);
 }
 
@@ -440,7 +495,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
 
   keys->close();
 
-  return new RocksDBPrimaryIndexIterator(
+  return new RocksDBPrimaryIndexInIterator(
     &_collection, trx, this, std::move(keys), !isId
   );
 }
@@ -455,21 +510,22 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
 
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->openArray();
+  std::unique_ptr<VPackBuilder> key(builder.steal());
 
   // handle the sole element
-  handleValNode(trx, keys.get(), valNode, isId);
+  handleValNode(trx, key.get(), valNode, isId);
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  keys->close();
-
-  return new RocksDBPrimaryIndexIterator(
-    &_collection, trx, this, std::move(keys), !isId
-  );
+  
+  if (!key->isEmpty()) {
+    return new RocksDBPrimaryIndexEqIterator(
+      &_collection, trx, this, std::move(key), !isId
+    );
+  }
+      
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief add a single value node to the iterator's keys
