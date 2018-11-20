@@ -102,7 +102,7 @@ void string_field::value(const irs::string_ref& str) {
   const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
-  value_ = std::string(begin, end);
+  value_.assign(begin, end);
 }
 
 bool string_field::write(irs::data_output& out) const {
@@ -5961,6 +5961,475 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
+  void read_write_doc_attributes_sparse_column_dense_fixed_offset() {
+    // sparse_column<dense_fixed_length_block>
+
+    // border case for sparse fixed offset columns, e.g.
+    // |--------------|------------|
+    // |doc           | value_size |
+    // |--------------|------------|
+    // | 1            | 0          |
+    // | .            | 0          |
+    // | .            | 0          |
+    // | .            | 0          |
+    // | BLOCK_SIZE-1 | 1          | <-- end of column block
+    // | BLOCK_SIZE+1 | 0          |
+    // | .            | 0          |
+    // | .            | 0          |
+    // | MAX_DOCS     | 1          |
+    // |--------------|------------|
+
+    static const irs::doc_id_t BLOCK_SIZE = 1024;
+    static const irs::doc_id_t MAX_DOCS = 1500;
+    static const irs::string_ref column_name = "id";
+    size_t inserted = 0;
+
+    // write documents
+    {
+      struct stored {
+        explicit stored(const irs::string_ref& name) NOEXCEPT
+          : column_name(name) {
+        }
+
+        const irs::string_ref& name() NOEXCEPT { return column_name; }
+
+        bool write(irs::data_output& out) {
+          if (value == BLOCK_SIZE-1) {
+            out.write_byte(0);
+          } else if (value == MAX_DOCS) {
+            out.write_byte(1);
+          }
+
+          return true;
+        }
+
+        uint32_t value{};
+        const irs::string_ref column_name;
+      } field(column_name), gap("gap");
+
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto ctx = writer->documents();
+
+      do {
+        ctx.insert().insert(irs::action::store, field);
+        ++inserted;
+      } while (++field.value < BLOCK_SIZE); // insert BLOCK_SIZE documents
+
+      ctx.insert().insert(irs::action::store, gap); // gap
+      ++field.value;
+
+      do {
+        ctx.insert().insert(irs::action::store, field);
+        ++inserted;
+      } while (++field.value < (1+MAX_DOCS)); // insert BLOCK_SIZE documents
+
+      { irs::index_writer::documents_context(std::move(ctx)); } // force flush of documents()
+      writer->commit();
+    }
+
+    // check inserted values:
+    // - visit (not cached)
+    // - random read (not cached)
+    // - random read (cached)
+    // - visit (cached)
+    // - iterate (cached)
+    {
+      auto reader = irs::directory_reader::open(this->dir(), this->codec());
+      ASSERT_EQ(1, reader.size());
+
+      auto& segment = *(reader.begin());
+      ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
+
+      auto* meta = segment.column(column_name);
+      ASSERT_NE(nullptr, meta);
+
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS, column->size());
+      }
+
+      // visit values (not cached)
+      {
+        size_t count = 0;
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        auto visitor = [&count, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          ++expected_doc;
+
+          if (++count == BLOCK_SIZE) {
+            ++expected_doc; // gap
+          }
+
+          if (count == BLOCK_SIZE) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) != actual_data) {
+              return false;
+            }
+          } else if (count == MAX_DOCS) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
+              return false;
+            }
+          } else if (!actual_data.empty()) {
+            return false;
+          }
+
+          return true;
+        };
+
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
+      }
+
+      // read values
+      {
+        irs::bytes_ref actual_value;
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+
+        // not cached
+        {
+          irs::doc_id_t i = 0;
+          for (; i < BLOCK_SIZE-1; ++i) {
+            const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+            ASSERT_TRUE(values(doc, actual_value));
+            ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+          }
+
+          ASSERT_TRUE(values(i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)), actual_value);
+          ASSERT_FALSE(values(++i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+
+          for (++i; i <= MAX_DOCS-1; ++i) {
+            const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+            ASSERT_TRUE(values(doc, actual_value));
+            ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+          }
+
+          ASSERT_TRUE(values(i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)), actual_value);
+        }
+
+        // cached
+        {
+          irs::doc_id_t i = 0;
+          for (; i < BLOCK_SIZE-1; ++i) {
+            const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+            ASSERT_TRUE(values(doc, actual_value));
+            ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+          }
+
+          ASSERT_TRUE(values(i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)), actual_value);
+          ASSERT_FALSE(values(++i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+
+          for (++i; i <= MAX_DOCS-1; ++i) {
+            const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+            ASSERT_TRUE(values(doc, actual_value));
+            ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+          }
+
+          ASSERT_TRUE(values(i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)), actual_value);
+        }
+      }
+
+      // visit values (cached)
+      {
+        size_t count = 0;
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        auto visitor = [&count, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          ++expected_doc;
+
+          if (++count == BLOCK_SIZE) {
+            ++expected_doc; // gap
+          }
+
+          if (count == BLOCK_SIZE) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) != actual_data) {
+              return false;
+            }
+          } else if (count == MAX_DOCS) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
+              return false;
+            }
+          } else if (!actual_data.empty()) {
+            return false;
+          }
+
+          return true;
+        };
+
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
+      }
+
+      // iterate over column (cached)
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
+        ASSERT_NE(nullptr, it);
+
+        auto& payload = it->attributes().get<irs::payload_iterator>();
+        ASSERT_FALSE(!payload);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+
+        size_t count = 0;
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        for (; it->next(); ) {
+          ASSERT_TRUE(payload->next());
+          const auto actual_data = payload->value();
+
+          ASSERT_EQ(expected_doc, it->value());
+
+          ++expected_doc;
+
+          if (++count == BLOCK_SIZE) {
+            ++expected_doc; // gap
+          }
+
+          if (count == BLOCK_SIZE) {
+            ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)), actual_data);
+          } else if (count == MAX_DOCS) {
+            ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)), actual_data);
+          } else {
+            ASSERT_EQ(irs::bytes_ref::NIL, actual_data);
+          }
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(MAX_DOCS, count);
+      }
+    }
+  }
+
+  void read_write_doc_attributes_dense_column_dense_fixed_offset() {
+    // dense_fixed_length_column<dense_fixed_length_block>
+
+    // border case for dense fixed offset columns, e.g.
+    // |--------------|------------|
+    // |doc           | value_size |
+    // |--------------|------------|
+    // | 1            | 0          |
+    // | .            | 0          |
+    // | .            | 0          |
+    // | .            | 0          |
+    // | BLOCK_SIZE-1 | 1          | <-- end of column block
+    // | BLOCK_SIZE   | 0          |
+    // | .            | 0          |
+    // | .            | 0          |
+    // | MAX_DOCS     | 1          |
+    // |--------------|------------|
+
+    static const irs::doc_id_t MAX_DOCS = 1500;
+    static const irs::doc_id_t BLOCK_SIZE = 1024;
+    static const iresearch::string_ref column_name = "id";
+
+    // write documents
+    {
+      struct stored {
+        const irs::string_ref& name() { return column_name; }
+
+        bool write(irs::data_output& out) {
+          if (value == BLOCK_SIZE-1) {
+            out.write_byte(0);
+          } else if (value == MAX_DOCS-1) {
+            out.write_byte(1);
+          }
+          return true;
+        }
+
+        uint64_t value{};
+      } field;
+
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto ctx = writer->documents();
+
+      do {
+        ctx.insert().insert(irs::action::store, field);
+      } while (++field.value < MAX_DOCS); // insert MAX_DOCS documents
+
+      { irs::index_writer::documents_context(std::move(ctx)); } // force flush of documents()
+      writer->commit();
+    }
+
+    // check inserted values:
+    // - visit (not cached)
+    // - random read (not cached)
+    // - random read (cached)
+    // - visit (cached)
+    // - iterate (cached)
+    {
+      auto reader = irs::directory_reader::open(this->dir(), this->codec());
+      ASSERT_EQ(1, reader.size());
+
+      auto& segment = *(reader.begin());
+      ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
+
+      auto* meta = segment.column(column_name);
+      ASSERT_NE(nullptr, meta);
+
+      // check number of documents in the column
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_EQ(MAX_DOCS, column->size());
+      }
+
+      // visit values (not cached)
+      {
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        size_t count = 0;
+        auto visitor = [&count, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          ++expected_doc;
+          ++count;
+
+          if (count == BLOCK_SIZE) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) != actual_data) {
+              return false;
+            }
+          } else if (count == MAX_DOCS) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
+              return false;
+            }
+          } else if (!actual_data.empty()) {
+            return false;
+          }
+
+          return true;
+        };
+
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
+      }
+
+      // read values
+      {
+        irs::bytes_ref actual_value;
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+
+        irs::doc_id_t i = 0;
+        for (; i < BLOCK_SIZE-1; ++i) {
+          const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+          ASSERT_TRUE(values(doc, actual_value));
+          ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+        }
+
+        ASSERT_TRUE(values(i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)), actual_value);
+
+        for (++i; i < MAX_DOCS-1; ++i) {
+          const irs::doc_id_t doc = i + (irs::type_limits<irs::type_t::doc_id_t>::min)();
+          ASSERT_TRUE(values(doc, actual_value));
+          ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+        }
+
+        ASSERT_TRUE(values(i + (irs::type_limits<irs::type_t::doc_id_t>::min)(), actual_value));
+        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)), actual_value);
+      }
+
+
+      // visit values (cached)
+      {
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        size_t count = 0;
+        auto visitor = [&count, &expected_doc](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_data) {
+          if (expected_doc != actual_doc) {
+            return false;
+          }
+
+          ++expected_doc;
+          ++count;
+
+          if (count == BLOCK_SIZE) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) != actual_data) {
+              return false;
+            }
+          } else if (count == MAX_DOCS) {
+            if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) != actual_data) {
+              return false;
+            }
+          } else if (!actual_data.empty()) {
+            return false;
+          }
+
+          return true;
+        };
+
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column, segment.column_reader(meta->id));
+        ASSERT_TRUE(column->visit(visitor));
+      }
+
+      // iterate over column (cached)
+      {
+        auto column = segment.column_reader(column_name);
+        ASSERT_NE(nullptr, column);
+        auto it = column->iterator();
+        ASSERT_NE(nullptr, it);
+
+        auto& payload = it->attributes().get<irs::payload_iterator>();
+        ASSERT_FALSE(!payload);
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+
+        size_t count = 0;
+        irs::doc_id_t expected_doc = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        for (; it->next(); ) {
+          ASSERT_TRUE(payload->next());
+          const auto actual_data = payload->value();
+
+          ASSERT_EQ(expected_doc, it->value());
+
+          ++expected_doc;
+          ++count;
+
+          if (count == BLOCK_SIZE) {
+            ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)), actual_data);
+          } else if (count == MAX_DOCS) {
+            ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)), actual_data);
+          } else {
+            ASSERT_EQ(irs::bytes_ref::NIL, actual_data);
+          }
+        }
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(payload->next());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
+        ASSERT_EQ(MAX_DOCS, count);
+      }
+    }
+  }
+
   void read_write_doc_attributes_sparse_column_dense_fixed_length() {
     // sparse_column<dense_fixed_length_block>
 
@@ -10907,10 +11376,12 @@ TEST_F(memory_index_test, read_write_doc_attributes) {
   read_write_doc_attributes_sparse_column_sparse_variable_length();
   read_write_doc_attributes_sparse_column_dense_variable_length();
   read_write_doc_attributes_sparse_column_dense_fixed_length();
+  read_write_doc_attributes_sparse_column_dense_fixed_offset();
   read_write_doc_attributes_sparse_column_sparse_mask();
   read_write_doc_attributes_sparse_column_dense_mask();
   read_write_doc_attributes_dense_column_dense_variable_length();
   read_write_doc_attributes_dense_column_dense_fixed_length();
+  read_write_doc_attributes_dense_column_dense_fixed_offset();
   read_write_doc_attributes_dense_column_dense_mask();
   read_write_doc_attributes_big();
   read_write_doc_attributes();
@@ -11094,6 +11565,132 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
     }
 
     ASSERT_TRUE(expected.empty());
+  }
+}
+
+TEST_F(memory_index_test, concurrent_add_remove_overlap_commit_mt) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (data.is_string()) {
+      doc.insert(std::make_shared<tests::templates::string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  // remove added docs, add same docs again commit separate thread before end of add
+  {
+    std::condition_variable cond;
+    std::mutex mutex;
+    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto writer = open_writer();
+    SCOPED_LOCK_NAMED(mutex, lock);
+    std::atomic<bool> stop(false);
+    std::thread thread([&cond, &mutex, &writer, &stop]()->void {
+      SCOPED_LOCK(mutex);
+      writer->commit();
+      stop = true;
+      cond.notify_all();
+    });
+
+    // initial add docs
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // remove docs
+    writer->documents().remove(*(query_doc1_doc2.filter.get()));
+
+    // re-add docs into a single segment
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+        doc.insert(irs::action::store, doc1->indexed.begin(), doc1->indexed.end());
+      }
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->indexed.begin(), doc2->indexed.end());
+      }
+
+      // commit from a separate thread before end of add
+      lock.unlock();
+      std::mutex cond_mutex;
+      SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
+      auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
+
+      // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+      MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+
+      // FIXME TODO add once segment_context will not block flush_all()
+      //ASSERT_TRUE(stop);
+    }
+
+    thread.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.docs_count());
+    ASSERT_EQ(2, reader.live_docs_count());
+  }
+
+  // remove added docs, add same docs again commit separate thread after end of add
+  {
+    auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
+    auto writer = open_writer();
+
+    // initial add docs
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // remove docs
+    writer->documents().remove(*(query_doc1_doc2.filter.get()));
+
+    // re-add docs into a single segment
+    {
+      auto ctx = writer->documents();
+
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+        doc.insert(irs::action::store, doc1->indexed.begin(), doc1->indexed.end());
+      }
+      {
+        auto doc = ctx.insert();
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->indexed.begin(), doc2->indexed.end());
+      }
+    }
+
+    std::thread thread([&writer]()->void {
+      writer->commit();
+    });
+    thread.join();
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(2, reader.docs_count());
+    ASSERT_EQ(2, reader.live_docs_count());
   }
 }
 
@@ -17981,28 +18578,36 @@ TEST_F(memory_index_test, consolidate_progress) {
 
   size_t progress_call_count = 0;
 
+  const size_t MAX_DOCS = 32768;
+
   // test always-true progress
   {
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    ASSERT_TRUE(insert(
-      *writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+    }
     writer->commit(); // create segment0
-    ASSERT_TRUE(insert(
-      *writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+    }
     writer->commit(); // create segment1
 
     auto reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
 
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
@@ -18013,7 +18618,7 @@ TEST_F(memory_index_test, consolidate_progress) {
     reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(2, reader[0].docs_count());
+    ASSERT_EQ(2*MAX_DOCS, reader[0].docs_count());
   }
 
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
@@ -18023,24 +18628,29 @@ TEST_F(memory_index_test, consolidate_progress) {
     size_t call_count = i;
     irs::memory_directory dir;
     auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
-    ASSERT_TRUE(insert(
-      *writer,
-      doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+    }
     writer->commit(); // create segment0
-    ASSERT_TRUE(insert(
-      *writer,
-      doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+
+    for (auto size = 0; size < MAX_DOCS; ++size) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc2->indexed.begin(), doc2->indexed.end(),
+        doc2->stored.begin(), doc2->stored.end()
+      ));
+    }
     writer->commit(); // create segment1
 
     auto reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
 
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
@@ -18051,8 +18661,8 @@ TEST_F(memory_index_test, consolidate_progress) {
     reader = irs::directory_reader::open(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
-    ASSERT_EQ(1, reader[0].docs_count());
-    ASSERT_EQ(1, reader[1].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
+    ASSERT_EQ(MAX_DOCS, reader[1].docs_count());
   }
 }
 
@@ -19512,10 +20122,12 @@ TEST_F(fs_index_test, read_write_doc_attributes) {
   read_write_doc_attributes_sparse_column_sparse_variable_length();
   read_write_doc_attributes_sparse_column_dense_variable_length();
   read_write_doc_attributes_sparse_column_dense_fixed_length();
+  read_write_doc_attributes_sparse_column_dense_fixed_offset();
   read_write_doc_attributes_sparse_column_sparse_mask();
   read_write_doc_attributes_sparse_column_dense_mask();
   read_write_doc_attributes_dense_column_dense_variable_length();
   read_write_doc_attributes_dense_column_dense_fixed_length();
+  read_write_doc_attributes_dense_column_dense_fixed_offset();
   read_write_doc_attributes_dense_column_dense_mask();
   read_write_doc_attributes_big();
   read_write_doc_attributes();
@@ -19630,10 +20242,12 @@ TEST_F(mmap_index_test, read_write_doc_attributes) {
   read_write_doc_attributes_sparse_column_sparse_variable_length();
   read_write_doc_attributes_sparse_column_dense_variable_length();
   read_write_doc_attributes_sparse_column_dense_fixed_length();
+  read_write_doc_attributes_sparse_column_dense_fixed_offset();
   read_write_doc_attributes_sparse_column_sparse_mask();
   read_write_doc_attributes_sparse_column_dense_mask();
   read_write_doc_attributes_dense_column_dense_variable_length();
   read_write_doc_attributes_dense_column_dense_fixed_length();
+  read_write_doc_attributes_dense_column_dense_fixed_offset();
   read_write_doc_attributes_dense_column_dense_mask();
   read_write_doc_attributes_big();
   read_write_doc_attributes();

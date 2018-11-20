@@ -562,7 +562,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
                                                      TRI_COL_TYPE_DOCUMENT));
 
   // resolve collection by uuid, name, cid (in that order of preference)
-  auto* col = resolveCollection(vocbase, slice).get();
+  auto col = resolveCollection(vocbase, slice);
 
   if (col != nullptr && col->type() == type &&
       (!_state.master.simulate32Client() || col->name() == name)) {
@@ -579,7 +579,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   }
 
   // conflicting collections need to be dropped from 3.3 onwards
-  col = vocbase.lookupCollection(name).get();
+  col = vocbase.lookupCollection(name);
 
   if (col != nullptr) {
     if (col->system()) {
@@ -651,7 +651,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!uuid.isString() || uuid.compareString(col->guid()) == 0);
 
   if (dst != nullptr) {
-    *dst = col;
+    *dst = col.get();
   }
 
   return Result();
@@ -766,9 +766,9 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    auto* col = resolveCollection(*vocbase, slice).get();
+    auto col = resolveCollection(*vocbase, slice);
 
-    if (col == nullptr) {
+    if (!col) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
@@ -811,44 +811,54 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   }
 
   VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
   if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no name specified for view");
   }
+
   VPackSlice guidSlice = slice.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   VPackSlice typeSlice = slice.get(StaticStrings::DataSourceType);
+
   if (!typeSlice.isString() || typeSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no type specified for view");
   }
 
   auto view = vocbase.lookupView(guidSlice.copyString());
+
   if (view) { // identical view already exists
     VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
     if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-      int res = vocbase.renameView(view, nameSlice.copyString());
-      if (res != TRI_ERROR_NO_ERROR) {
+      auto res = view->rename(nameSlice.copyString());
+
+      if (!res.ok()) {
         return res;
       }
     }
 
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    return view->updateProperties(slice, false, doSync);
+    return view->properties(slice, false); // always a full-update
   }
 
   view = vocbase.lookupView(nameSlice.copyString());
+
   if (view) { // resolve name conflict by deleting existing
     Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
+
     if (res.fail()) {
       return res;
     }
   }
 
   VPackBuilder s;
+
   s.openObject();
   s.add("id", VPackSlice::nullSlice());
   s.close();

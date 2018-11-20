@@ -343,12 +343,19 @@ void ClusterComm::startBackgroundThreads() {
 }
 
 void ClusterComm::stopBackgroundThreads() {
+  // pass 1:  tell all background threads to stop
   for (ClusterCommThread * thread: _backgroundThreads) {
     thread->beginShutdown();
+  } // for
+
+  // pass 2:  verify each thread is stopped, wait if necessary
+  //          (happens in destructor)
+  for (ClusterCommThread * thread: _backgroundThreads) {
     delete thread;
   }
 
   _backgroundThreads.clear();
+
 }
 
 
@@ -854,28 +861,6 @@ void ClusterComm::cleanupAllQueues() {
   }
 }
 
-ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
-  _cc = ClusterComm::instance().get();
-}
-
-ClusterCommThread::~ClusterCommThread() { shutdown(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin shutdown sequence
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterCommThread::beginShutdown() {
-  // Note that this is called from the destructor of the ClusterComm singleton
-  // object. This means that our pointer _cc is still valid and the condition
-  // variable in it is still OK. However, this method is called from a
-  // different thread than the ClusterCommThread. Therefore we can still
-  // use the condition variable to wake up the ClusterCommThread.
-  Thread::beginShutdown();
-
-  CONDITION_LOCKER(guard, _cc->somethingToSend);
-  guard.signal();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this method performs the given requests described by the vector
 /// of ClusterCommRequest structs in the following way: all requests are
@@ -1243,6 +1228,29 @@ void ClusterComm::scheduleMe(std::function<void()> task) {
   arangodb::SchedulerFeature::SCHEDULER->queue(RequestPriority::HIGH, task);
 }
 
+ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
+  _cc = ClusterComm::instance().get();
+  _communicator = std::make_shared<communicator::Communicator>();
+}
+
+ClusterCommThread::~ClusterCommThread() { shutdown(); }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin shutdown sequence
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a
+  // different thread than the ClusterCommThread. Therefore we can still
+  // use the condition variable to wake up the ClusterCommThread.
+  Thread::beginShutdown();
+
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
 ////////////////////////////////////////////////////////////////////////////////
@@ -1259,9 +1267,8 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 }
 
 void ClusterCommThread::run() {
+  TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
-  _communicator = std::make_shared<communicator::Communicator>();
-
   auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
     try {

@@ -147,7 +147,7 @@ namespace arangodb {
   std::lock_guard<std::mutex> lock(mutex);
   auto itr = types.emplace(name, Type());
 
-  if (itr.second) {
+  if (itr.second && name.data()) {
     const_cast<std::string&>(itr.first->second._name) = name.toString(); // update '_name'
     const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =
       itr.first->second.name(); // point key at value stored in '_name'
@@ -209,7 +209,7 @@ LogicalDataSource::LogicalDataSource(
   TRI_ASSERT(!_guid.empty());
 }
 
-Result LogicalDataSource::toVelocyPack(
+Result LogicalDataSource::properties(
     velocypack::Builder& builder,
     bool detailed,
     bool forPersistence
@@ -221,6 +221,7 @@ Result LogicalDataSource::toVelocyPack(
     );
   }
 
+  builder.add(StaticStrings::DataSourceGuid, toValuePair(guid())); // required for dump/restore
   builder.add(
     StaticStrings::DataSourceId,
     velocypack::Value(std::to_string(id()))
@@ -232,7 +233,6 @@ Result LogicalDataSource::toVelocyPack(
   // includeSystem if we are persisting the properties
   if (forPersistence) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
-    builder.add(StaticStrings::DataSourceGuid, toValuePair(guid()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
     // FIXME not sure if the following is relevant

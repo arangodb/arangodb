@@ -381,7 +381,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 
 function runProcdump (options, instanceInfo, rootDir, pid) {
   let procdumpArgs = [ ];
-  let dumpFile = fs.join(rootDir, 'core_'+pid + '.dmp');
+  let dumpFile = fs.join(rootDir, 'core_' + pid + '.dmp');
   if (options.exceptionFilter != null) {
     procdumpArgs = [
       '-accepteula',
@@ -499,11 +499,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    let instanceInfo = {
-      rootDir: rootDir,
-      pid: res.pid,
-      exitStatus: res
-    };
     print("executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
@@ -1366,12 +1361,12 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      let rc = {
-        endpoint: options.server,
-        rootDir: options.serverRoot,
-        url: options.server.replace('tcp', 'http'),
-        arangods: []
-      };
+      let rc = { 
+                 endpoint: options.server,
+                 rootDir: options.serverRoot,
+                 url: options.server.replace('tcp', 'http'),
+                 arangods: []
+               };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
     } else if (options.cluster || options.activefailover) {

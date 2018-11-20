@@ -124,7 +124,7 @@ bool resolveRequestContext(GeneralRequest& req) {
   if (!guard) {
     return false;
   }
-  
+
   // the vocbase context is now responsible for releasing the vocbase
   req.setRequestContext(guard.get(), true);
   guard.release();
@@ -137,21 +137,21 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-  
+
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
     addResponse(*res, nullptr);
     return RequestFlow::Abort;
   }
-  
+
   bool found;
   std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
   if (found) { // log request source in cluster for debugging
     LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
     << "\",\"" << source << "\"";
   }
-  
+
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
   ServerState::Mode mode = ServerState::mode();
@@ -205,14 +205,18 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // no special handling required
       break;
   }
-  
+
   // Step 3: Try to resolve vocbase and use
   if (!::resolveRequestContext(req)) { // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
-        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        if (_auth->userManager() != nullptr) {
+          lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+        } else {
+          lvl = auth::Level::RW;
+        }
       }
       if (lvl == auth::Level::NONE) {
         addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
@@ -512,7 +516,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
 
   std::string const& path = req.requestPath();
   std::string const& username = req.user();
-  rest::ResponseCode result = req.authenticated()
+  bool userAuthenticated = req.authenticated();
+
+  rest::ResponseCode result = userAuthenticated
                                 ? rest::ResponseCode::OK
                                 : rest::ResponseCode::UNAUTHORIZED;
 
@@ -524,7 +530,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
-    if (req.authenticated()) {
+    if (userAuthenticated) {
       req.setAuthenticated(false);
     }
   }
@@ -571,6 +577,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
+      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+        // allow authenticated users to access cluster/endpoints
+        result = rest::ResponseCode::OK;
+        //vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {

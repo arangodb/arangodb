@@ -46,7 +46,7 @@ struct MMFilesWalRecoverState {
 
   /// @brief destroys the recover state
   ~MMFilesWalRecoverState();
-  
+
   /// @brief checks if there will be a drop marker for the database or collection
   bool willBeDropped(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const {
     if (totalDroppedDatabases.find(databaseId) != totalDroppedDatabases.end()) {
@@ -59,12 +59,12 @@ struct MMFilesWalRecoverState {
   bool willBeDropped(TRI_voc_cid_t collectionId) const {
     return (totalDroppedCollections.find(collectionId) != totalDroppedCollections.end());
   }
-  
+
   /// @brief checks if there will be a drop marker for the view
   bool willViewBeDropped(TRI_voc_cid_t viewId) const {
     return (totalDroppedViews.find(viewId) != totalDroppedViews.end());
   }
-  
+
   /// @brief checks if there will be a drop marker for the database or database
   bool willViewBeDropped(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const {
     if (totalDroppedDatabases.find(databaseId) != totalDroppedDatabases.end()) {
@@ -108,7 +108,7 @@ struct MMFilesWalRecoverState {
   void resetCollection() {
     resetCollection(0, 0);
   }
-  
+
   void resetCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
     lastDatabaseId = databaseId;
     lastCollectionId = collectionId;
@@ -125,11 +125,11 @@ struct MMFilesWalRecoverState {
   TRI_vocbase_t* releaseDatabase(TRI_voc_tick_t);
 
   /// @brief release a collection (so it can be dropped)
-  arangodb::LogicalCollection* releaseCollection(TRI_voc_cid_t);
+  std::shared_ptr<arangodb::LogicalCollection> releaseCollection(TRI_voc_cid_t);
 
   /// @brief gets a collection (and inserts it into the cache if not in it)
   arangodb::LogicalCollection* useCollection(TRI_vocbase_t*, TRI_voc_cid_t, int&);
-  
+
   arangodb::LogicalView* releaseView(TRI_voc_cid_t);
 
   /// @brief looks up a collection
@@ -178,13 +178,15 @@ struct MMFilesWalRecoverState {
 
   TRI_voc_tick_t lastTick;
   std::vector<MMFilesWalLogfile*> logfilesToProcess;
-  std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> openedCollections;
+  std::unordered_map<TRI_voc_cid_t,
+    std::shared_ptr<arangodb::LogicalCollection>> openedCollections;
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
 
   bool ignoreRecoveryErrors;
   int64_t errorCount;
   TRI_voc_rid_t maxRevisionId;
+  LocalDocumentId maxLocalDocumentId;
 
  private:
   TRI_voc_tick_t lastDatabaseId;

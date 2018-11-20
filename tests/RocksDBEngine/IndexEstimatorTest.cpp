@@ -30,6 +30,8 @@
 #include "catch.hpp"
 
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 
 using namespace arangodb;
 
@@ -41,6 +43,7 @@ using namespace arangodb;
 
 TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
   // @brief Test insert unique correctness
+  rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
 
   SECTION("test_unique_values") {
     std::vector<uint64_t> toInsert(100);

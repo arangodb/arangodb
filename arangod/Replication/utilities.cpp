@@ -368,8 +368,12 @@ Result BarrierInfo::remove(Connection& connection) noexcept {
   
 constexpr double BatchInfo::DefaultTimeout;
 
+/// @brief send a "start batch" command
+/// @param patchCount try to patch count of this collection
+///        only effective with the incremental sync (optional)
 Result BatchInfo::start(replutils::Connection& connection,
-                        replutils::ProgressInfo& progress) {
+                        replutils::ProgressInfo& progress,
+                        std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
@@ -377,11 +381,21 @@ Result BatchInfo::start(replutils::Connection& connection,
 
   double const now = TRI_microtime();
   id = 0;
+  
+  // SimpleHttpClient automatically add database prefix
   std::string const url =
       ReplicationUrl + "/batch" + "?serverId=" + connection.localServerId();
-  std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
-  progress.set("sending batch start command to url " + url);
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b, true);
+    guard->add("ttl", VPackValue(ttl));
+    if (!patchCount.empty()) {
+      guard->add("patchCount", VPackValue(patchCount));
+    }
+  }
+  std::string const body = b.toJson();
   
+  progress.set("sending batch start command to url " + url);  
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   connection.lease([&](httpclient::SimpleHttpClient* client) {

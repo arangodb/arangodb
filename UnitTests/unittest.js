@@ -220,6 +220,13 @@ function main (argv) {
   try {
     fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', "false", true);
     fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', "true", true);
+    let testFailureText = 'testfailures.txt';
+    if (options.hasOwnProperty('testFailureText')) {
+      testFailureText = options.testFailureText;
+    }
+    fs.write(fs.join(testOutputDirectory, testFailureText),
+             "Incomplete testrun with these testsuites: '" + testSuits +
+             "'\nand these options: " + JSON.stringify(options) + "\n");
   } catch (x) {
     print('failed to write default test result: ' + x.message);
     throw(x);
@@ -228,6 +235,10 @@ function main (argv) {
   if (options.hasOwnProperty('cluster') && options.cluster) {
     // cluster beats resilient single server
     options.singleresilient = false;
+  }
+
+  if (options.hasOwnProperty('blacklist')) {
+    UnitTest.loadBlacklist(options.blacklist);
   }
 
   // run the test and store the result

@@ -54,7 +54,7 @@ transaction::V8Context::orderCustomTypeHandler() {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
       _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(
-        &_vocbase, &resolver()
+        _vocbase, resolver()
       ));
     }
 
@@ -78,7 +78,7 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
       _resolver = &(main->resolver());
     } else {
       TRI_ASSERT(_resolver == nullptr);
-      _resolver = createResolver();
+      createResolver(); // sets _resolver
     }
   }
 

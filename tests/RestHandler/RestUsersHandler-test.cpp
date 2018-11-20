@@ -61,20 +61,33 @@ struct TestView: public arangodb::LogicalView {
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result drop() override { return arangodb::Result(); }
-  static std::shared_ptr<LogicalView> make(
-        TRI_vocbase_t& vocbase,
-        arangodb::velocypack::Slice const& definition,
-        bool isNew,
-        uint64_t planVersion,
-        arangodb::LogicalView::PreCommitCallback const& preCommit
-  ) {
-    auto view = std::make_shared<TestView>(vocbase, definition, planVersion);
-    return preCommit(view) ? view : nullptr;
-  }
   virtual void open() override {}
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
-  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
+  virtual arangodb::Result rename(std::string&& newName) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+};
+
+struct ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    view = vocbase.createView(definition);
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+
+    return arangodb::Result();
+  }
 };
 
 }
@@ -88,6 +101,7 @@ struct RestUsersHandlerSetup {
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  ViewFactory viewFactory;
 
   RestUsersHandlerSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -131,7 +145,7 @@ struct RestUsersHandlerSetup {
 
     viewTypesFeature->emplace(
       arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
-      TestView::make
+      viewFactory
     );
   }
 
@@ -237,7 +251,7 @@ SECTION("test_collection_auth") {
 
   // test auth missing (grant)
   {
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
@@ -259,7 +273,7 @@ SECTION("test_collection_auth") {
 
   // test auth missing (revoke)
   {
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
@@ -283,14 +297,14 @@ SECTION("test_collection_auth") {
   // test auth collection (grant)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty, true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
     REQUIRE((nullptr != userPtr));
-    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()).get(), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
     REQUIRE((false == !logicalCollection));
 
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -306,7 +320,7 @@ SECTION("test_collection_auth") {
   // test auth collection (revoke)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
@@ -314,7 +328,7 @@ SECTION("test_collection_auth") {
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
     REQUIRE((nullptr != userPtr));
     userPtr->grantCollection(vocbase->name(), "testDataSource", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
-    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()).get(), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
     REQUIRE((false == !logicalCollection));
 
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -331,7 +345,7 @@ SECTION("test_collection_auth") {
   // test auth view (grant)
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
@@ -356,7 +370,7 @@ SECTION("test_collection_auth") {
   // test auth view (revoke)
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
@@ -382,14 +396,14 @@ SECTION("test_collection_auth") {
   // test auth wildcard (grant)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty, true, arangodb::velocypack::Slice());
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
     REQUIRE((nullptr != userPtr));
-    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()).get(), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
     REQUIRE((false == !logicalCollection));
 
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -405,7 +419,7 @@ SECTION("test_collection_auth") {
   // test auth wildcard (revoke)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()).get(), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
@@ -413,7 +427,7 @@ SECTION("test_collection_auth") {
     userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
     REQUIRE((nullptr != userPtr));
     userPtr->grantCollection(vocbase->name(), "testDataSource", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
-    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()).get(), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
     REQUIRE((false == !logicalCollection));
 
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));

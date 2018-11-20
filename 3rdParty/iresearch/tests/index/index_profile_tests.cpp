@@ -44,21 +44,26 @@ class index_test_case_base: public index_test_base {
       std::atomic<size_t>* commit_count = nullptr
   ) {
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
+      std::vector<std::shared_ptr<tests::templates::string_field>> fields;
+
+      csv_doc_template_t() {
+        fields.emplace_back(std::make_shared<tests::templates::string_field>("id"));
+        fields.emplace_back(std::make_shared<tests::templates::string_field>("label"));
+        reserve(fields.size());
+      }
+
       virtual void init() {
         clear();
-        reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id"));
-        insert(std::make_shared<tests::templates::string_field>("label"));
+
+        for (auto& field: fields) {
+          field->value(irs::string_ref::EMPTY);
+          insert(field);
+        }
       }
 
       virtual void value(size_t idx, const irs::string_ref& value) {
-        switch(idx) {
-         case 0:
-          indexed.get<tests::templates::string_field>("id")->value(value);
-          break;
-         case 1:
-          indexed.get<tests::templates::string_field>("label")->value(value);
-        }
+        assert(idx < fields.size());
+        fields[idx]->value(value);
       }
     };
 
@@ -128,7 +133,7 @@ class index_test_case_base: public index_test_base {
           for(size_t count = 0;; ++count) {
             // assume docs generated in same order and skip docs not meant for this thread
             if (gen_skip--) {
-              if (!gen.next()) {
+              if (!gen.skip()) {
                 break;
               }
 
@@ -224,7 +229,7 @@ class index_test_case_base: public index_test_base {
           for(size_t count = 0;; ++count) {
             // assume docs generated in same order and skip docs not meant for this thread
             if (gen_skip--) {
-              if (!gen.next()) {
+              if (!gen.skip()) {
                 break;
               }
 
@@ -308,7 +313,7 @@ class index_test_case_base: public index_test_base {
 
     std::ofstream out(path.native());
 
-    flush_timers(out);
+    irs::timer_utils::flush_stats(out);
 
     out.close();
     std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;

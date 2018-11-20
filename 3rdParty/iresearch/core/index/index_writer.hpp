@@ -520,9 +520,15 @@ class IRESEARCH_API index_writer:
   /// @param reader the index reader to import 
   /// @param desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
+  /// @param progress callback triggered for consolidation steps, if the
+  ///        callback returns false then consolidation is aborted
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
-  bool import(const index_reader& reader, format::ptr codec = nullptr);
+  bool import(
+    const index_reader& reader,
+    format::ptr codec = nullptr,
+    const merge_writer::flush_progress_t& progress = {}
+  );
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer

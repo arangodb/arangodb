@@ -150,6 +150,13 @@ class StaticStrings {
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
+  
+  // collection attributes
+  static std::string const NumberOfShards;
+  static std::string const IsSmart;
+  static std::string const DistributeShardsLike;
+  static std::string const ReplicationFactor;
+  static std::string const ShardKeys;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -158,9 +165,6 @@ class StaticStrings {
   static std::string const GraphTo;
   static std::string const GraphOptions;
   static std::string const GraphSmartGraphAttribute;
-  static std::string const NumberOfShards;
-  static std::string const DistributeShardsLike;
-  static std::string const ReplicationFactor;
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
   static std::string const GraphCreateCollections;
@@ -170,6 +174,9 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+
+  // Replication
+  static std::string const ReplicationSoftLockOnly;
 
   // misc strings
   static std::string const LastValue;

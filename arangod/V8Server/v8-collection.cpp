@@ -72,22 +72,43 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieves a collection from a V8 argument
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
+    TRI_vocbase_t& vocbase,
+    v8::Handle<v8::Value> const val
+) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    try {
+      auto* ci = arangodb::ClusterInfo::instance();
+
+      return ci
+        ? ci->getCollection(vocbase.name(), TRI_ObjectToString(val)) : nullptr;
+    } catch (...) {
+      // NOOP
+    }
+
+    return nullptr; // not found
+  }
+
+  // number
+  if (val->IsNumber() || val->IsNumberObject()) {
+    uint64_t cid = TRI_ObjectToUInt64(val, true);
+
+    return vocbase.lookupCollection(cid);
+  }
+
+  return vocbase.lookupCollection(TRI_ObjectToString(val));
+}
+
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-struct LocalCollectionGuard {
-  explicit LocalCollectionGuard(LogicalCollection* collection)
-      : _collection(collection) {}
-
-  ~LocalCollectionGuard() {
-    if (_collection != nullptr && !_collection->isLocal()) {
-      delete _collection;
-    }
-  }
-
-  LogicalCollection* _collection;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a boolean flag from the arguments
@@ -149,14 +170,15 @@ static std::string ExtractIdString(v8::Isolate* isolate,
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
-                                         TRI_vocbase_t* vocbase,
-                                         CollectionNameResolver const* resolver,
-                                         LogicalCollection const*& collection,
-                                         std::string& collectionName,
-                                         VPackBuilder& builder,
-                                         bool includeRev,
-                                         v8::Handle<v8::Value> const val) {
+static int ParseDocumentOrDocumentHandle(
+    v8::Isolate* isolate,
+    CollectionNameResolver const* resolver,
+    std::shared_ptr<arangodb::LogicalCollection>& collection,
+    std::string& collectionName,
+    VPackBuilder& builder,
+    bool includeRev,
+    v8::Handle<v8::Value> const val
+) {
   v8::HandleScope scope(isolate);
 
   // try to extract the collection name, key, and revision from the object
@@ -177,7 +199,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
     // we read a collection name from the document id
     // check cross-collection requests
     if (collection != nullptr) {
-      if (!EqualCollection(resolver, collectionName, collection)) {
+      if (!EqualCollection(resolver, collectionName, collection.get())) {
         return TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST;
       }
     }
@@ -188,19 +210,8 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
   if (collection == nullptr) {
     // no collection object was passed, now check the user-supplied collection
     // name
-    if (ServerState::instance()->isCoordinator()) {
-      ClusterInfo* ci = ClusterInfo::instance();
-      try {
-        std::shared_ptr<LogicalCollection> col =
-            ci->getCollection(vocbase->name(), collectionName);
-        auto colCopy = col->clone();
-        collection = colCopy.release();
-      } catch (...) {
-        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-      }
-    } else {
-      collection = resolver->getCollectionStruct(collectionName);
-    }
+    collection = resolver->getCollection(collectionName);
+
     if (collection == nullptr) {
       // collection not found
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -247,20 +258,19 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate,
 /// @brief get all cluster collections cloned, caller needs to cleanupb
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<LogicalCollection*> GetCollectionsCluster(
-    TRI_vocbase_t* vocbase) {
-  std::vector<LogicalCollection*> result;
+std::vector<std::shared_ptr<LogicalCollection>> GetCollections(
+    TRI_vocbase_t& vocbase
+) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto* ci = ClusterInfo::instance();
 
-  std::vector<std::shared_ptr<LogicalCollection>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->name());
-
-  for (auto& collection : collections) {
-    std::unique_ptr<LogicalCollection> c(collection->clone());
-    result.emplace_back(c.get());
-    c.release();
+    return ci
+      ? ci->getCollections(vocbase.name())
+      : std::vector<std::shared_ptr<LogicalCollection>>()
+      ;
   }
 
-  return result;
+  return vocbase.collections(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,14 +307,13 @@ static void ExistsVocbaseVPack(
   }
 
   TRI_vocbase_t* vocbase;
-  LogicalCollection const* col = nullptr;
+  arangodb::LogicalCollection* col = nullptr;
 
   if (useCollection) {
     // called as db.collection.exists()
-    col =
-        TRI_UnwrapClass<LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+    col = UnwrapCollection(args.Holder());
 
-    if (col == nullptr) {
+    if (!col) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
@@ -317,25 +326,29 @@ static void ExistsVocbaseVPack(
   auto transactionContext =
     std::make_shared<transaction::V8Context>(*vocbase, true);
   VPackBuilder builder;
+  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
   std::string collectionName;
   Result res;
 
   {
     VPackObjectBuilder guard(&builder);
-    res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, &(transactionContext->resolver()), col,
-      collectionName, builder, true, args[0]);
-  }
 
-  LocalCollectionGuard g(
-      useCollection ? nullptr : const_cast<LogicalCollection*>(col));
+    res = ParseDocumentOrDocumentHandle(
+      isolate,
+      &(transactionContext->resolver()),
+      collection,
+      collectionName,
+      builder,
+      true,
+      args[0]
+    );
+  }
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_ASSERT(col != nullptr);
-
+  TRI_ASSERT(collection);
   TRI_ASSERT(!collectionName.empty());
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
@@ -391,15 +404,13 @@ static void DocumentVocbaseCol(
   options.ignoreRevs = false;
 
   // Find collection and vocbase
-  std::string collectionName;
-  arangodb::LogicalCollection const* col
-      = TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (col == nullptr) {
+  auto* col = UnwrapCollection(args.Holder());
+
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  collectionName = col->name();
-
+  auto& collectionName = col->name();
   VPackBuilder searchBuilder;
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
@@ -474,7 +485,6 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle>)");
   }
 
-  LogicalCollection const* col = nullptr;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -484,15 +494,15 @@ static void DocumentVocbase(
   auto transactionContext =
     std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
 
   {
     VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
       isolate,
-      &vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       builder,
       true,
@@ -504,9 +514,7 @@ static void DocumentVocbase(
     }
   }
 
-  LocalCollectionGuard g(const_cast<LogicalCollection*>(col));
-
-  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(collection);
   TRI_ASSERT(!collectionName.empty());
 
   VPackSlice search = builder.slice();
@@ -598,13 +606,13 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // Find collection and vocbase
-  arangodb::LogicalCollection const* col
-      = TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (col == nullptr) {
+  auto* col = UnwrapCollection(args.Holder());
+
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string collectionName = col->name();
+  auto& collectionName = col->name();
   VPackBuilder searchBuilder;
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
@@ -714,7 +722,6 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LogicalCollection const* col = nullptr;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -724,15 +731,15 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto transactionContext =
     std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
 
   {
     VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
       isolate,
-      &vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       builder,
       !options.ignoreRevs,
@@ -744,9 +751,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LocalCollectionGuard g(const_cast<LogicalCollection*>(col));
-
-  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(collection);
   TRI_ASSERT(!collectionName.empty());
 
   VPackSlice toRemove = builder.slice();
@@ -809,18 +814,15 @@ static void JS_BinaryDocumentVocbaseCol(
   options.ignoreRevs = false;
 
   // Find collection and vocbase
-  std::string collectionName;
-  arangodb::LogicalCollection const* col =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* col = UnwrapCollection(args.Holder());
 
-  if (col == nullptr) {
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   VPackBuilder searchBuilder;
   v8::Local<v8::Value> const searchValue = args[0];
-  collectionName = col->name();
+  auto& collectionName = col->name();
 
   {
     VPackObjectBuilder guard(&searchBuilder);
@@ -838,7 +840,7 @@ static void JS_BinaryDocumentVocbaseCol(
 
   VPackSlice search = searchBuilder.slice();
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(col->vocbase(), true);
+    std::make_shared<transaction::V8Context>(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
 
@@ -917,10 +919,9 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  arangodb::LogicalCollection* collection =
-  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -947,8 +948,9 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto res =
-    methods::Collections::drop(&vocbase, collection, allowDropSystem, timeout);
+  auto res = methods::Collections::drop(
+    &vocbase, collection, allowDropSystem, timeout
+  );
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -980,11 +982,9 @@ static void JS_FiguresVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -999,192 +999,13 @@ static void JS_FiguresVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  std::shared_ptr<VPackBuilder> builder = collection->figures();
+  auto builder = collection->figures();
 
   trx.finish(TRI_ERROR_NO_ERROR);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock assumeLeadership
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (ServerState::instance()->isDBServer()) {
-    arangodb::LogicalCollection const* v8Collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                     WRP_VOCBASE_COL_TYPE);
-
-    if (v8Collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    std::string collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    std::string theLeader;
-
-    if (args.Length() >= 1 && args[0]->IsString()) {
-      TRI_Utf8ValueNFC l(args[0]);
-      theLeader = std::string(*l, l.length());
-    }
-
-    collection->followers()->setTheLeader(theLeader);
-
-    if (theLeader.empty()) {
-      collection->followers()->clear();
-    }
-    // do not reset followers when we resign at this time...we are
-    // still the only source of truth to trust, in particular, in the
-    // planned leader resignation, we will shortly after the call to
-    // this function here report the controlled resignation to the
-    // agency. This report must still contain the correct follower list
-    // or else the supervision is super angry with us.
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock getLeader
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  std::string theLeader;
-  if (ServerState::instance()->isDBServer()) {
-    arangodb::LogicalCollection const* collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                     WRP_VOCBASE_COL_TYPE);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    std::string collectionName = collection->name();
-    auto realCollection =
-      collection->vocbase().lookupCollection(collectionName);
-
-    if (realCollection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    theLeader = realCollection->followers()->getLeader();
-  }
-
-  v8::Handle<v8::String> res = TRI_V8_STD_STRING(isolate, theLeader);
-  TRI_V8_RETURN(res);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock removeFollower
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("removeFollower(<name>)");
-  }
-
-  ServerID const serverId = TRI_ObjectToString(args[0]);
-
-  if (ServerState::instance()->isDBServer()) {
-    arangodb::LogicalCollection const* v8Collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                     WRP_VOCBASE_COL_TYPE);
-
-    if (v8Collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    std::string collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    collection->followers()->remove(serverId);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock getFollowers
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  v8::Handle<v8::Array> list = v8::Array::New(isolate);
-
-  if (ServerState::instance()->isDBServer()) {
-    arangodb::LogicalCollection const* v8Collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                     WRP_VOCBASE_COL_TYPE);
-
-    if (v8Collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    std::string collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    std::unique_ptr<arangodb::FollowerInfo> const& followerInfo = collection->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    uint32_t i = 0;
-
-    for (auto const& n : *followers) {
-      list->Set(i++, TRI_V8_STD_STRING(isolate, n));
-    }
-  }
-
-  TRI_V8_RETURN(list);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1202,11 +1023,9 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -1228,15 +1047,13 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection const* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string const collectionName(collection->name());
+  auto& collectionName = collection->name();
 
   if (collectionName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -1254,15 +1071,13 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection const* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string const path(collection->getPhysical()->path());
+  std::string path(collection->getPhysical()->path());
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_V8_RETURN(result);
@@ -1278,11 +1093,9 @@ static void JS_PlanIdVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection const* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -1303,13 +1116,14 @@ static void JS_PropertiesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  LogicalCollection* consoleColl =
-  TRI_UnwrapClass<LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (consoleColl == nullptr) {
+  auto* consoleColl = UnwrapCollection(args.Holder());
+
+  if (!consoleColl) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   bool const isModification = (args.Length() != 0);
+
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
 
@@ -1321,15 +1135,22 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION(res);
         }
       }
+
       TRI_ASSERT(builder.isClosed());
-      Result res = methods::Collections::updateProperties(consoleColl, builder.slice());
+
+      auto res = methods::Collections::updateProperties(
+        *consoleColl, builder.slice(), false // always a full-update
+      );
+
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
+
       // TODO Review
       // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
+
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
@@ -1337,9 +1158,11 @@ static void JS_PropertiesVocbaseCol(
   methods::Collections::lookup(
     &(consoleColl->vocbase()),
     consoleColl->name(),
-    [&](LogicalCollection& coll)->void {
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+
     VPackObjectBuilder object(&builder, true);
-    methods::Collections::Context ctxt(coll.vocbase(), coll);
+    methods::Collections::Context ctxt(coll->vocbase(), *coll);
     Result res = methods::Collections::properties(ctxt, builder);
 
     if (res.fail()) {
@@ -1385,13 +1208,14 @@ static void JS_RenameVocbaseCol(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  arangodb::LogicalCollection* collection =
-  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (collection == nullptr) {
+  auto* collection = UnwrapCollection(args.Holder());
+
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  Result res = methods::Collections::rename(collection, name, doOverride);
+  auto res = methods::Collections::rename(*collection, name, doOverride);
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -1527,16 +1351,17 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   // Find collection and vocbase
-  arangodb::LogicalCollection const* col =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (col == nullptr) {
+  auto* col = UnwrapCollection(args.Holder());
+
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string collectionName = col->name();
+  auto& collectionName = col->name();
   VPackBuilder updateBuilder;
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
     std::string collName;
+
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
                                updateBuilder, !options.isRestore)) {
       // If this is no restore, then we must extract the _rev from the
@@ -1548,6 +1373,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
         return;
       }
     }
+
     if (!collName.empty() && collName != collectionName) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     }
@@ -1711,7 +1537,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     parseReplaceAndUpdateOptions(isolate, args, options, operation);
   }
 
-  LogicalCollection const* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
   auto transactionContext =
@@ -1728,9 +1554,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
     res = ParseDocumentOrDocumentHandle(
       isolate,
-      &vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       updateBuilder,
       !options.ignoreRevs,
@@ -1741,9 +1566,6 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-
-  // We need to free the collection object in the end
-  LocalCollectionGuard g(const_cast<LogicalCollection*>(col));
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
@@ -1969,10 +1791,9 @@ static void JS_RevisionVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  LogicalCollection* collection =
-      TRI_UnwrapClass<LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -1990,23 +1811,6 @@ static void JS_RevisionVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief retrieves a collection from a V8 argument
-////////////////////////////////////////////////////////////////////////////////
-
-static arangodb::LogicalCollection* GetCollectionFromArgument(
-    TRI_vocbase_t* vocbase, v8::Handle<v8::Value> const val) {
-  // number
-  if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t cid = TRI_ObjectToUInt64(val, true);
-
-    return vocbase->lookupCollection(cid).get();
-  }
-
-  return vocbase->lookupCollection(TRI_ObjectToString(val)).get();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document, using VPack
 ////////////////////////////////////////////////////////////////////////////////
@@ -2016,16 +1820,13 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                              std::string* attachment) {
   v8::HandleScope scope(isolate);
 
-  auto collection = TRI_UnwrapClass<arangodb::LogicalCollection>(
-      args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  bool const isEdgeCollection =
-      ((TRI_col_type_e)collection->type() == TRI_COL_TYPE_EDGE);
-
+  auto isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
   uint32_t const argLength = args.Length();
 
   // Position of <data> and <options>
@@ -2153,7 +1954,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
   // load collection
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(collection->vocbase(), true);
+    std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(
     transactionContext, *collection, AccessMode::Type::WRITE
   );
@@ -2168,8 +1969,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult result =
-      trx.insert(collection->name(), builder.slice(), options);
+  auto result = trx.insert(collection->name(), builder.slice(), options);
 
   res = trx.finish(result.result);
 
@@ -2233,10 +2033,9 @@ static void JS_GloballyUniqueIdVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2255,10 +2054,9 @@ static void JS_StatusVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2266,10 +2064,9 @@ static void JS_StatusVocbaseCol(
     auto& databaseName = collection->vocbase().name();
 
     try {
-      std::shared_ptr<LogicalCollection> const ci =
-          ClusterInfo::instance()->getCollection(
-            databaseName, std::to_string(collection->id())
-          );
+      auto ci = ClusterInfo::instance()->getCollection(
+        databaseName, std::to_string(collection->id())
+      );
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } catch (...) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
@@ -2277,7 +2074,7 @@ static void JS_StatusVocbaseCol(
   }
   // intentionally falls through
 
-  TRI_vocbase_col_status_e status = collection->status();
+  auto status = collection->status();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
   TRI_V8_TRY_CATCH_END
@@ -2296,10 +2093,9 @@ static void JS_TruncateVocbaseCol(
   opOptions.waitForSync = ExtractBooleanArgument(args, 1);
   ExtractStringArgument(args, 2, opOptions.isSynchronousReplicationFrom);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2315,7 +2111,8 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult result = trx.truncate(collection->name(), opOptions);
+  auto result = trx.truncate(collection->name(), opOptions);
+
   res = trx.finish(result.result);
 
   if (result.fail()) {
@@ -2338,10 +2135,9 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2349,18 +2145,17 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto& databaseName = collection->vocbase().name();
 
     try {
-      std::shared_ptr<LogicalCollection> const ci =
-          ClusterInfo::instance()->getCollection(
-            databaseName, std::to_string(collection->id())
-          );
+      auto ci = ClusterInfo::instance()->getCollection(
+        databaseName, std::to_string(collection->id())
+      );
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     } catch (...) {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
+      TRI_V8_RETURN(v8::Number::New(isolate, (int)(collection->type())));
     }
   }
   // intentionally falls through
 
-  TRI_col_type_e type = collection->type();
+  auto type = collection->type();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
   TRI_V8_TRY_CATCH_END
@@ -2376,10 +2171,9 @@ static void JS_UnloadVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2402,10 +2196,9 @@ static void JS_VersionVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2434,23 +2227,7 @@ static void JS_CollectionVocbase(
   }
 
   v8::Handle<v8::Value> val = args[0];
-  std::string const name = TRI_ObjectToString(val);
-  arangodb::LogicalCollection const* collection = nullptr;
-
-  if (ServerState::instance()->isCoordinator()) {
-    try {
-      std::shared_ptr<LogicalCollection> const ci =
-          ClusterInfo::instance()->getCollection(vocbase.name(), name);
-      auto colCopy = ci->clone();
-
-      collection = colCopy.release();
-    } catch (...) {
-      // not found
-      TRI_V8_RETURN_NULL();
-    }
-  } else {
-    collection = GetCollectionFromArgument(&vocbase, val);
-  }
+  auto collection = GetCollectionFromArgument(vocbase, val);
 
   if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
@@ -2459,8 +2236,10 @@ static void JS_CollectionVocbase(
   // check authentication after ensuring the collection exists
   if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RO)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("No access to collection '") + name + "'");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      std::string("No access to collection '") + TRI_ObjectToString(val) + "'"
+    );
   }
 
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
@@ -2475,7 +2254,6 @@ static void JS_CollectionVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDatabaseNameAll
 ////////////////////////////////////////////////////////////////////////////////
-
 static void JS_CollectionsVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2486,34 +2264,18 @@ static void JS_CollectionsVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  std::vector<LogicalCollection*> colls;
+  auto colls = GetCollections(vocbase);
 
-  // clean memory
-  std::function<void()> cleanup;
-
-  // if we are a coordinator, we need to fetch the collection info from the
-  // agency
-  if (ServerState::instance()->isCoordinator()) {
-    cleanup = [&colls]() {
-      for (auto& it : colls) {
-        if (it != nullptr) {
-          delete it;
-        }
-      }
-    };
-    colls = GetCollectionsCluster(&vocbase);
-  } else {
-    // no cleanup needed on single server / dbserver
-    cleanup = []() {};
-    colls = vocbase.collections(false);
-  }
-
-  // make sure memory is cleaned up
-  TRI_DEFER(cleanup());
-
-  std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
-    return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
-  });
+  std::sort(
+    colls.begin(),
+    colls.end(),
+    [](
+      std::shared_ptr<LogicalCollection> const& lhs,
+      std::shared_ptr<LogicalCollection> const& rhs
+    )->bool {
+      return arangodb::basics::StringUtils::tolower(lhs->name()) < arangodb::basics::StringUtils::tolower(rhs->name());
+    }
+  );
 
   bool error = false;
 
@@ -2538,8 +2300,7 @@ static void JS_CollectionsVocbase(
       error = true;
       break;
     }
-    // avoid duplicate deletion
-    collection = nullptr;
+
     result->Set(static_cast<uint32_t>(x++), c);
   }
 
@@ -2668,10 +2429,9 @@ static void JS_CountVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection const* col =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  auto* col = UnwrapCollection(args.Holder());
 
-  if (col == nullptr) {
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -2684,7 +2444,7 @@ static void JS_CountVocbaseCol(
     details = TRI_ObjectToBoolean(args[0]);
   }
 
-  std::string collectionName(col->name());
+  auto& collectionName = col->name();
   SingleCollectionTransaction trx(
     transaction::V8Context::Create(col->vocbase(), true),
     collectionName,
@@ -2729,15 +2489,14 @@ static void JS_WarmupVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection =UnwrapCollection(args.Holder());
 
-  if (collection == nullptr) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::warmup(collection->vocbase(), *collection);
+  auto res =
+    arangodb::methods::Collections::warmup(collection->vocbase(), *collection);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2806,14 +2565,6 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),
                        JS_BinaryInsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setTheLeader"),
-                       JS_SetTheLeader, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getLeader"),
-                       JS_GetLeader, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "removeFollower"),
-                       JS_RemoveFollower, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFollowers"),
-                       JS_GetFollowers, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "globallyUniqueId"),
                        JS_GloballyUniqueIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "load"),

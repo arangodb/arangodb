@@ -53,10 +53,6 @@ struct Functions {
  public:
    static void init();
 
-   /// @brief extract a function parameter from the arguments
-   static AqlValue ExtractFunctionParameterValue(
-       VPackFunctionParameters const& parameters, size_t position);
-
    /// @brief helper function. not callable as a "normal" AQL function
    static void Stringify(transaction::Methods* trx,
                          arangodb::basics::VPackStringBufferAdapter& buffer,

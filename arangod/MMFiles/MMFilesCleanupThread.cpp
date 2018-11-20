@@ -53,8 +53,7 @@ void MMFilesCleanupThread::signal() {
 void MMFilesCleanupThread::run() {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   uint64_t iterations = 0;
-
-  std::vector<arangodb::LogicalCollection*> collections;
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup
@@ -103,7 +102,7 @@ void MMFilesCleanupThread::run() {
 
           // we're the only ones that can unload the collection, so using
           // the collection pointer outside the lock is ok
-          cleanupCollection(collection);
+          cleanupCollection(collection.get());
         }
       }, false);
 

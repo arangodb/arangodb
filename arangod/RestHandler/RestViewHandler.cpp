@@ -23,10 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestViewHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/DatabaseFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -62,7 +65,7 @@ RestViewHandler::RestViewHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
-  auto view = _vocbase.lookupView(nameOrId);
+  auto view = CollectionNameResolver(_vocbase).getView(nameOrId);
 
   if (!view) {
     generateError(
@@ -89,7 +92,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->toVelocyPack(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, true, false);
 
     if (!res.ok()) {
       generateError(res);
@@ -106,7 +109,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res = view->toVelocyPack(builder, detailed, false);
+  auto res = view->properties(builder, detailed, false);
 
   builder.close();
 
@@ -200,32 +203,38 @@ void RestViewHandler::createView() {
   }
 
   try {
-    auto view = _vocbase.createView(body);
+    LogicalView::ptr view;
+    auto res = LogicalView::create(view, _vocbase, body);
 
-    if (view != nullptr) {
-      VPackBuilder props;
+    if (!res.ok()) {
+      generateError(res);
 
-      props.openObject();
-
-      auto res = view->toVelocyPack(props, true, false);
-
-      if (!res.ok()) {
-        generateError(res);
-
-        return;
-      }
-
-      props.close();
-      generateResult(rest::ResponseCode::CREATED, props.slice());
-    } else {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "problem creating view");
+      return;
     }
+
+    if (!view) {
+      generateError(arangodb::Result(TRI_ERROR_INTERNAL, "problem creating view"));
+
+      return;
+    }
+
+    velocypack::Builder builder;
+
+    builder.openObject();
+    res = view->properties(builder, true, false);
+
+    if (!res.ok()) {
+      generateError(res);
+
+      return;
+    }
+
+    builder.close();
+    generateResult(rest::ResponseCode::CREATED, builder.slice());
   } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+    generateError(arangodb::Result(ex.code(), ex.message()));
   } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "problem creating view");
+    generateError(arangodb::Result(TRI_errno(), "problem creating view"));
   }
 }
 
@@ -244,7 +253,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   std::string const& name = suffixes[0];
-  auto view = _vocbase.lookupView(name);
+  CollectionNameResolver resolver(_vocbase);
+  auto view = resolver.getView(name);
 
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -289,7 +299,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->toVelocyPack(viewBuilder, true, false);
+        auto res = view->properties(viewBuilder, true, false);
 
         if (!res.ok()) {
           generateError(res);
@@ -302,11 +312,10 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return; // skip view
       }
 
-      auto newNameStr = newName.copyString();
-      auto res = _vocbase.renameView(view, newNameStr);
+      auto res = view->rename(newName.copyString());
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        getView(newNameStr, false);
+      if (res.ok()) {
+        getView(view->name(), false);
       } else {
         generateError(res);
       }
@@ -331,7 +340,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent = view->toVelocyPack(builderCurrent, true, false);
+      auto resCurrent = view->properties(builderCurrent, true, false);
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -340,9 +349,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       }
     }
 
-    auto const result = view->updateProperties(
-      body, partialUpdate, true
-    );  // TODO: not force sync?
+    auto result = view->properties(body, partialUpdate);
 
     if (!result.ok()) {
       generateError(result);
@@ -350,7 +357,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
-    view = _vocbase.lookupView(view->id()); // ensure have the latest definition
+    view = resolver.getView(view->id()); // ensure have the latest definition
 
     if (!view) {
       generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
@@ -362,7 +369,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->toVelocyPack(updated, true, false);
+    auto res = view->properties(updated, true, false);
 
     updated.close();
 
@@ -395,7 +402,7 @@ void RestViewHandler::deleteView() {
 
   std::string const& name = suffixes[0];
   auto allowDropSystem = _request->parsedValue("isSystem", false);
-  auto view = _vocbase.lookupView(name);
+  auto view = CollectionNameResolver(_vocbase).getView(name);
 
   if (!view) {
     generateError(
@@ -417,13 +424,22 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  auto res = _vocbase.dropView(view->id(), allowDropSystem);
+  // prevent dropping of system views
+  if (!allowDropSystem && view->system()) {
+    generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view"));
 
-  if (res.ok()) {
-    generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
-  } else {
-    generateError(res);
+    return;
   }
+
+  auto res = view->drop();
+
+  if (!res.ok()) {
+    generateError(res);
+
+    return;
+  }
+
+  generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -462,7 +478,16 @@ void RestViewHandler::getViews() {
     return;
   }
 
-  auto views = _vocbase.views();
+  std::vector<LogicalView::ptr> views;
+
+  LogicalView::enumerate(
+    _vocbase,
+    [&views](LogicalView::ptr const& view)->bool {
+      views.emplace_back(view);
+
+      return true;
+    }
+  );
 
   std::sort(
     views.begin(),
@@ -486,7 +511,7 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+        if (!view->properties(viewBuilder, true, false).ok()) {
           continue; // skip view
         }
       } catch(...) {
@@ -498,7 +523,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->toVelocyPack(viewBuilder, false, false);
+        auto res = view->properties(viewBuilder, false, false);
 
         if (!res.ok()) {
           generateError(res);

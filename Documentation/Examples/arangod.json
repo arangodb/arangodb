@@ -968,6 +968,14 @@
     "section" : "query",
     "type" : "double"
   },
+  "query.slow-streaming-threshold" : {
+    "default" : 10,
+    "description" : "threshold for slow streaming AQL queries (in seconds)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "double"
+  },
   "query.slow-threshold" : {
     "default" : 10,
     "description" : "threshold for slow AQL queries (in seconds)",
@@ -1273,6 +1281,14 @@
     "section" : "rocksdb",
     "type" : "boolean"
   },
+  "rocksdb.total-write-buffer-size" : {
+    "default" : 0,
+    "description" : "maximum total size of in-memory write buffers (0 = unbounded)",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "uint64"
+  },
   "rocksdb.transaction-lock-timeout" : {
     "default" : 1000,
     "description" : "If positive, specifies the wait timeout in milliseconds when  a transaction attempts to lock a document. A negative value is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
@@ -1492,7 +1508,7 @@
     "type" : "uint64"
   },
   "server.minimal-threads" : {
-    "default" : 0,
+    "default" : 2,
     "description" : "minimum number of request handling threads to run",
     "enterpriseOnly" : false,
     "hidden" : true,

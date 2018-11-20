@@ -64,6 +64,8 @@ class IResearchLink {
     return !(*this == meta);
   }
 
+  void afterTruncate(); // arangodb::Index override
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using
   ///        '_meta' params
@@ -79,9 +81,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   ////////////////////////////////////////////////////////////////////////////////
-  int drop(); // arangodb::Index override
-  
-  void afterTruncate();
+  arangodb::Result drop(); // arangodb::Index override
 
   bool hasBatchInsert() const; // arangodb::Index override
   bool hasSelectivityEstimate() const; // arangodb::Index override
@@ -162,7 +162,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
   ////////////////////////////////////////////////////////////////////////////////
-  int unload(); // arangodb::Index override
+  arangodb::Result unload(); // arangodb::Index override
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////

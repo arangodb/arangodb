@@ -118,7 +118,6 @@ V8DealerFeature::V8DealerFeature(
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption(
@@ -262,10 +261,28 @@ void V8DealerFeature::prepare() {
 void V8DealerFeature::start() {
   if (_copyInstallation) {
     copyInstallationFiles(); // will exit process if it fails
+  } else {
+    // don't copy JS files on startup
+    // now check if we have a js directory inside the database directory, and if it looks good
+    auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>(DatabasePathFeature::name());
+    const std::string dbJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+    const std::string checksumFile = FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
+    const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
+    const std::string commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    if (FileUtils::isDirectory(dbJSPath) &&
+        FileUtils::exists(checksumFile) &&
+        FileUtils::isDirectory(serverPath) &&
+        FileUtils::isDirectory(commonPath)) {
+      // only load node modules from original startup path
+      _nodeModulesDirectory = _startupDirectory;
+      // js directory inside database directory looks good. now use it!
+      _startupDirectory = dbJSPath;
+    }
   }
 
-  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory <<
-                                  "', effective module-directories are " << _moduleDirectories;
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory: " << _startupDirectory <<
+                                  ", effective module-directories: " << _moduleDirectories << 
+                                  ", node-modules-directory: " << _nodeModulesDirectory;
   
   _startupLoader.setDirectory(_startupDirectory);
   ServerState::instance()->setJavaScriptPath(_startupDirectory);
@@ -283,7 +300,6 @@ void V8DealerFeature::start() {
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
-
 
       // create app directory if it does not exist 
       if (!basics::FileUtils::isDirectory(_appPath)) {
@@ -380,6 +396,7 @@ void V8DealerFeature::copyInstallationFiles() {
     // these do not need JavaScript support
     return;
   }
+
   // get base path from DatabasePathFeature
   auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>();
   const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
@@ -389,6 +406,8 @@ void V8DealerFeature::copyInstallationFiles() {
     FATAL_ERROR_EXIT();
   }
   TRI_ASSERT(!copyJSPath.empty());
+  
+  _nodeModulesDirectory = _startupDirectory;
   
   const std::string checksumFile = FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
   const std::string copyChecksumFile = FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
@@ -439,7 +458,7 @@ void V8DealerFeature::copyInstallationFiles() {
     std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
     std::string const nodeModulesPath = FileUtils::buildFilename("js", "node", "node_modules");
     std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename("js", versionAppendix, "node", "node_modules");
-    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, this](std::string const& filename) -> bool{
+    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned](std::string const& filename) -> bool{
       if (filename.size() >= nodeModulesPath.size()) {
         std::string normalized = filename;
         FileUtils::normalizePath(normalized);
@@ -447,7 +466,6 @@ void V8DealerFeature::copyInstallationFiles() {
         if (normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath ||
             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
           // filter it out!
-          _nodeModulesDirectory = _startupDirectory;
           return true;
         }
       }
@@ -1388,7 +1406,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       directories.insert(directories.end(), _moduleDirectories.begin(),
                          _moduleDirectories.end());
       directories.emplace_back(_startupDirectory);
-      if (!_nodeModulesDirectory.empty()) {
+      if (!_nodeModulesDirectory.empty() && _nodeModulesDirectory != _startupDirectory) {
         directories.emplace_back(_nodeModulesDirectory);
       }
 

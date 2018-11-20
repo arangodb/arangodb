@@ -1079,7 +1079,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             actions.emplace_back(
               ActionDescription(
                 std::map<std::string,std::string> {
-                  {NAME, "SynchronizeShard"}, {DATABASE, dbname},
+                  {NAME, SYNCHRONIZE_SHARD}, {DATABASE, dbname},
                   {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader}}));
 
           }

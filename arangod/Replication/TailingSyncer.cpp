@@ -209,7 +209,8 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     return false;
   }
 
-  if (_state.applier._restrictType.empty() && _state.applier._includeSystem) {
+  if (_state.applier._restrictType == ReplicationApplierConfiguration::RestrictType::None && 
+      _state.applier._includeSystem) {
     return false;
   }
 
@@ -233,10 +234,11 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
 
   bool found = (it != _state.applier._restrictCollections.end());
 
-  if (_state.applier._restrictType == "include" && !found) {
+  if (_state.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include && !found) {
     // collection should not be included
     return true;
-  } else if (_state.applier._restrictType == "exclude" && found) {
+  } else if (_state.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Exclude && found) {
+    // collection should be excluded
     return true;
   }
 
@@ -256,7 +258,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   VPackSlice const nameSlice = slice.get("db");
   if (!nameSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                   "create database marker did not contain name");
+                                   "create/drop database marker did not contain name");
   }
   std::string name = nameSlice.copyString();
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
@@ -640,7 +642,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
         << "Renaming system collection " << col->name();
   }
 
-  return Result(vocbase->renameCollection(col, name, true));
+  return vocbase->renameCollection(col->id(), name);
 }
 
 /// @brief changes the properties of a collection,
@@ -676,9 +678,9 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
 
-  if (col == nullptr) {
+  if (!col) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
@@ -689,9 +691,8 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
-  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 
-  return guard.collection()->updateProperties(data, doSync);
+  return guard.collection()->properties(data, false); // always a full-update
 }
 
 /// @brief truncate a collections. Assumes no trx are running
@@ -742,17 +743,19 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "view marker slice is no object");
   }
-  
+
   VPackSlice data = slice.get("data");
+
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "data slice is no object in view change marker");
   }
-  
+
   VPackSlice d = data.get("deleted");
   bool const isDeleted = (d.isBool() && d.getBool());
-  
+
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
   if (vocbase == nullptr) {
     if (isDeleted) {
       // not a problem if a view that is going to be deleted anyway
@@ -761,36 +764,42 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   VPackSlice guidSlice = data.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   auto view = vocbase->lookupView(guidSlice.copyString());
+
   if (view == nullptr) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
       return Result();
     }
+
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  
-  
+
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
+
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    int res = vocbase->renameView(view, nameSlice.copyString());
-    if (res != TRI_ERROR_NO_ERROR) {
+    auto res = view->rename(nameSlice.copyString());
+
+    if (!res.ok()) {
       return res;
     }
   }
-  
+
   VPackSlice properties = data.get("properties");
+
   if (properties.isObject()) {
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-    return view->updateProperties(properties, false, doSync);
+    return view->properties(properties, false); // always a full-update
   }
+
   return {};
 }
 
@@ -917,7 +926,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   }
   
   else if (type == REPLICATION_DATABASE_CREATE ||
-             type == REPLICATION_DATABASE_DROP) {
+           type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring database marker";
       return Result();

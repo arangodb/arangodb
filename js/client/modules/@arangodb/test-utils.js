@@ -351,6 +351,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 // //////////////////////////////////////////////////////////////////////////////
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
+  if (options.skipTest(testname, options)) {
+    whichFilter.filter = 'blacklist';
+    return false;
+  }
+
   // These filters require a proper setup, Even if we filter by testcase:
   if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
     whichFilter.filter = 'skip when running as rocksdb';
@@ -415,6 +420,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf('-nondeterministic') !== -1 && options.skipNondeterministic) {
     whichFilter.filter = 'nondeterministic';
+    return false;
+  }
+
+  if (testname.indexOf('-grey') !== -1 && options.skipGrey) {
+    whichFilter.filter = 'grey';
     return false;
   }
 
@@ -504,9 +514,11 @@ function scanTestPaths (paths) {
   }
 
   let allTestCases = [];
+
   paths.forEach(function(p) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
+
   return allTestCases;
 }
 

@@ -87,6 +87,9 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   return std::chrono::seconds(2);
 }
 
+std::string const kTypeString = "type";
+std::string const kDataString = "data";
+
 }  // namespace
 
 namespace arangodb {
@@ -190,8 +193,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       if (r.fail()) {
         return r;
       }
+      
+      // enable patching of collection count for ShardSynchronization Job
+      std::string patchCount = StaticStrings::Empty;
+      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+      if (incremental && engineName == "rocksdb" && _config.applier._skipCreateDrop &&
+          _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
+          _config.applier._restrictCollections.size() == 1) {
+        patchCount = *_config.applier._restrictCollections.begin();
+      }
 
-      r = _config.batch.start(_config.connection, _config.progress);
+      r = _config.batch.start(_config.connection, _config.progress, patchCount);
       if (r.fail()) {
         return r;
       }
@@ -237,7 +249,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "initial synchronization with master took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6)
-        << " s. status: " << r.errorMessage();
+        << " s. status: " << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
@@ -321,7 +333,7 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
   builder.add("waitForCollectorQueue", VPackValue(true));
-  builder.add("maxWaitTime", VPackValue(180.0));
+  builder.add("maxWaitTime", VPackValue(300.0));
   builder.close();
 
   VPackSlice bodySlice = builder.slice();
@@ -343,11 +355,6 @@ Result DatabaseInitialSyncer::sendFlush() {
   _config.flushed = true;
   return Result();
 }
-
-namespace {
-std::string const kTypeString = "type";
-std::string const kDataString = "data";
-}  // namespace
 
 /// @brief handle a single dump marker
 Result DatabaseInitialSyncer::parseCollectionDumpMarker(
@@ -529,8 +536,8 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 #endif
 
     _config.progress.set(std::string("fetching master collection dump for collection '") +
-                        coll->name() + "', type: " + typeString + ", id: " +
-                        leaderColl + ", batch " + itoa(batch));
+                         coll->name() + "', type: " + typeString + ", id: " +
+                         leaderColl + ", batch " + itoa(batch) + ", url: " + url);
 
     ++stats.numDumpRequests;
     double t = TRI_microtime();
@@ -1029,12 +1036,8 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
   arangodb::CollectionGuard guard(&vocbase(), col->id());
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync);
+  return guard.collection()->properties(slice, false); // always a full-update
 }
 
 /// @brief determine the number of documents in a collection
@@ -1462,14 +1465,14 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       continue;
     }
 
-    if (!_config.applier._restrictType.empty()) {
+    if (_config.applier._restrictType != ReplicationApplierConfiguration::RestrictType::None) {
       auto const it = _config.applier._restrictCollections.find(masterName);
       bool found = (it != _config.applier._restrictCollections.end());
 
-      if (_config.applier._restrictType == "include" && !found) {
+      if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include && !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType == "exclude" && found) {
+      } else if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Exclude && found) {
         // collection should be excluded
         continue;
       }

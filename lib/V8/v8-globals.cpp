@@ -24,9 +24,7 @@
 #include "v8-globals.h"
 
 TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
-    : JSCollections(),
-      JSViews(),
-
+  :
       AgencyTempl(),
       AgentTempl(),
       ClusterInfoTempl(),
@@ -43,8 +41,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
 #ifdef USE_ENTERPRISE
       SmartGraphTempl(),
 #endif
-
       BufferTempl(),
+      StreamQueryCursorTempl(),
 
       BufferConstant(),
       DeleteConstant(),
@@ -211,6 +209,40 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   _RevKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_rev"));
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_from"));
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
+}
+
+TRI_v8_global_t::DataSourcePersistent::DataSourcePersistent(
+    v8::Isolate* isolate,
+    std::shared_ptr<arangodb::LogicalDataSource> const& datasource,
+    std::function<void()>&& cleanupCallback
+): _cleanupCallback(std::move(cleanupCallback)),
+   _datasource(datasource),
+   _isolate(isolate) {
+  TRI_GET_GLOBALS();
+  _persistent.Reset(isolate, v8::External::New(isolate, datasource.get()));
+  _persistent.SetWeak(
+    this,
+    [](v8::WeakCallbackInfo<DataSourcePersistent> const& data)->void {
+      auto isolate = data.GetIsolate();
+      auto* persistent = data.GetParameter();
+
+      persistent->_cleanupCallback();
+
+      TRI_GET_GLOBALS();isolate = nullptr;
+      auto* key = persistent->_datasource.get(); // same key as was used for v8g->JSDatasources.emplace(...)
+      auto count = v8g->JSDatasources.erase(key);
+      TRI_ASSERT(count); // zero indicates that v8g was probably deallocated before calling the v8::WeakCallbackInfo::Callback
+    },
+    v8::WeakCallbackType::kFinalizer
+  );
+  v8g->increaseActiveExternals();
+}
+
+TRI_v8_global_t::DataSourcePersistent::~DataSourcePersistent() {
+  auto* isolate = _isolate;
+  TRI_GET_GLOBALS();
+  v8g->decreaseActiveExternals();
+  _persistent.Reset(); // dispose and clear the persistent handle (SIGSEGV here may indicate that v8::Isolate was already deallocated)
 }
 
 TRI_v8_global_t::~TRI_v8_global_t() {}

@@ -804,7 +804,7 @@ void Agent::load() {
   >();
   arangodb::SystemDatabaseFeature::ptr vocbase =
     sysDbFeature ? sysDbFeature->use() : nullptr;
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
@@ -1399,7 +1399,13 @@ bool Agent::prepareLead() {
     _earliestPackage.clear();
   }
 
-  // Key value stores
+  {
+    // Clear transient for supervision start
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    _transient.clear();
+  }
+
+ // Key value stores
   try {
     rebuildDBs();
   } catch (std::exception const& e) {

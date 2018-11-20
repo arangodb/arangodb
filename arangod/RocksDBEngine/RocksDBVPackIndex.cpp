@@ -1252,13 +1252,13 @@ void RocksDBVPackIndex::recalculateEstimates() {
                             });
 }
 
-void RocksDBVPackIndex::afterTruncate() {
+void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {
   if (unique()) {
     return;
   }
   TRI_ASSERT(_estimator != nullptr);
-  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
-  RocksDBIndex::afterTruncate();
+  _estimator->bufferTruncate(tick);
+  RocksDBIndex::afterTruncate(tick);
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {

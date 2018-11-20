@@ -658,7 +658,19 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes
+    // pre commit sequence needed to place a blocker
+    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
+    auto guard = scopeGuard([&] { // remove blocker afterwards
+      READ_LOCKER(guard, _indexesLock);
+      for (std::shared_ptr<Index> const& idx : _indexes) {
+        auto* est = static_cast<RocksDBIndex*>(idx.get())->estimator();
+        if (est) {
+          est->removeBlocker(state->id());
+        }
+      }
+    });
+    
+    // delete indexes, place estimator blockers
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -667,6 +679,10 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
+        }
+        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        if (est) {
+          est->placeBlocker(state->id(), seq);
         }
       }
     }
@@ -684,19 +700,19 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
+    seq = rocksutils::latestSequenceNumber(); // post commit sequence
     
-    
-    {// only truncate indexes after a successful commit
+    {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
-        idx->afterTruncate(); // clears caches / clears links (if applicable)
+        idx->afterTruncate(seq); // clears caches / clears links (if applicable)
       }
     }
+    guard.fire(); // remove blocker
     
-    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
     uint64_t numDocs = _numberDocuments.exchange(0);
     RocksDBSettingsManager::CounterAdjustment update(seq, /*numInserts*/0,
-                                                     /*numRemoves*/numDocs, /*revision*/0);
+                                                     /*numRemoves*/numDocs, /*rev*/0);
     engine->settingsManager()->updateCounter(_objectId, update);
 
     if (numDocs > 64 * 1024) {
@@ -860,12 +876,12 @@ bool RocksDBCollection::readDocumentWithCallback(
   return false;
 }
 
-Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
-                                 arangodb::ManagedDocumentResult& mdr,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& revisionId) {
+Result RocksDBCollection::insert(
+    arangodb::transaction::Methods* trx,
+    arangodb::velocypack::Slice const slice,
+    arangodb::ManagedDocumentResult& mdr, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_tick_t& revisionId,
+    std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -933,6 +949,10 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       hasPerformedIntermediateCommit
     );
 
+    if (result.ok() && callbackDuringLock != nullptr) {
+      result = callbackDuringLock();
+    }
+
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -943,14 +963,13 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   return res;
 }
 
-Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
-                                 arangodb::ManagedDocumentResult& mdr,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key) {
+Result RocksDBCollection::update(
+    arangodb::transaction::Methods* trx,
+    arangodb::velocypack::Slice const newSlice, ManagedDocumentResult& mdr,
+    OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool,
+    TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+    arangodb::velocypack::Slice const key,
+    std::function<Result(void)> callbackDuringLock) {
   resultMarkerTick = 0;
 
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -1046,6 +1065,10 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
       hasPerformedIntermediateCommit
     );
 
+    if (result.ok() && callbackDuringLock != nullptr) {
+      result = callbackDuringLock();
+    }
+
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -1056,13 +1079,12 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   return res;
 }
 
-Result RocksDBCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
-                                  ManagedDocumentResult& mdr,
-                                  OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick,
-                                  bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous) {
+Result RocksDBCollection::replace(
+    transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    ManagedDocumentResult& mdr, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous,
+    std::function<Result(void)> callbackDuringLock) {
   resultMarkerTick = 0;
 
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -1155,6 +1177,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       hasPerformedIntermediateCommit
     );
 
+    if (result.ok() && callbackDuringLock != nullptr) {
+      result = callbackDuringLock();
+    }
+
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -1165,13 +1191,11 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   return opResult;
 }
 
-Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
-                                 arangodb::ManagedDocumentResult& previous,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                 TRI_voc_rid_t& revisionId) {
+Result RocksDBCollection::remove(
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
+    arangodb::ManagedDocumentResult& previous, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
+    TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1228,6 +1252,10 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
       _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
       hasPerformedIntermediateCommit
     );
+
+    if (res.ok() && callbackDuringLock != nullptr) {
+      res = callbackDuringLock();
+    }
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1893,6 +1921,8 @@ RocksDBCollection::serializeIndexEstimates(
     rocksdb::Transaction* rtrx, rocksdb::SequenceNumber inputSeq) const {
   auto outputSeq = inputSeq;
   std::string output;
+  RocksDBKey key;
+  
   for (auto index : getIndexes()) {
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
@@ -1907,7 +1937,6 @@ RocksDBCollection::serializeIndexEstimates(
         << "serialized estimate for index '" << cindex->objectId()
         << "' valid through seq " << outputSeq;
       if (output.size() > sizeof(uint64_t)) {
-        RocksDBKey key;
         key.constructIndexEstimateValue(cindex->objectId());
         rocksdb::Slice value(output);
         rocksdb::Status s =

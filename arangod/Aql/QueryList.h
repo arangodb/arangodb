@@ -77,7 +77,7 @@ class QueryList {
   /// @brief toggle query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void enabled(bool value) { _enabled.store(value, std::memory_order_relaxed); }
+  inline void enabled(bool value) { _enabled.store(value); }
 
   /// @brief whether or not slow queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -87,7 +87,7 @@ class QueryList {
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackSlowQueries(bool value) { _trackSlowQueries.store(value, std::memory_order_relaxed); }
+  inline void trackSlowQueries(bool value) { _trackSlowQueries.store(value); }
   
   /// @brief whether or not bind vars are tracked with queries 
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -97,13 +97,13 @@ class QueryList {
   /// @brief toggle query bind vars tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackBindVars(bool value) { _trackBindVars.store(value, std::memory_order_relaxed); }
+  inline void trackBindVars(bool value) { _trackBindVars.store(value); }
 
   /// @brief threshold for slow queries (in seconds)
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline double slowQueryThreshold() const { return _slowQueryThreshold.load(std::memory_order_relaxed); }
-
+  
   /// @brief set the slow query threshold
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
@@ -112,7 +112,23 @@ class QueryList {
       // sanity checks
       value = 0.0;
     }
-    _slowQueryThreshold.store(value, std::memory_order_relaxed);
+    _slowQueryThreshold.store(value);
+  }
+  
+  /// @brief threshold for slow streaming queries (in seconds)
+  /// we're not using a lock here for performance reasons - thus concurrent
+  /// modifications of this variable are possible but are considered unharmful
+  inline double slowStreamingQueryThreshold() const { return _slowStreamingQueryThreshold.load(std::memory_order_relaxed); }
+  
+  /// @brief set the slow streaming query threshold
+  /// we're not using a lock here for performance reasons - thus concurrent
+  /// modifications of this variable are possible but are considered unharmful
+  inline void slowStreamingQueryThreshold(double value) {
+    if (value < 0.0 || value == HUGE_VAL || value != value) {
+      // sanity checks
+      value = 0.0;
+    }
+    _slowStreamingQueryThreshold.store(value);
   }
 
   /// @brief return the max number of slow queries to keep
@@ -128,7 +144,7 @@ class QueryList {
       // sanity checks
       value = 16384;
     }
-    _maxSlowQueries.store(value, std::memory_order_relaxed);
+    _maxSlowQueries.store(value);
   }
 
   /// @brief return the max length of query strings that are stored / returned
@@ -147,7 +163,7 @@ class QueryList {
       value = 8 * 1024 * 1024;
     }
 
-    _maxQueryStringLength.store(value, std::memory_order_relaxed);
+    _maxQueryStringLength.store(value);
   }
 
   /// @brief enter a query
@@ -204,6 +220,9 @@ class QueryList {
 
   /// @brief threshold for slow queries (in seconds)
   std::atomic<double> _slowQueryThreshold;
+  
+  /// @brief threshold for slow streaming queries (in seconds)
+  std::atomic<double> _slowStreamingQueryThreshold;
 
   /// @brief maximum number of slow queries to keep
   std::atomic<size_t> _maxSlowQueries;

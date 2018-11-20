@@ -38,7 +38,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
     TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
-      _lockType(AccessMode::Type::NONE),
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
@@ -47,76 +46,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _numRemoves(0),
       _usageLocked(false) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
-
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int RocksDBTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int RocksDBTransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                                int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int RocksDBTransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                                  int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a specific mode in a transaction
-bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
-                                            int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-        << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return isLocked();
-}
-
-/// @brief check whether a collection is locked at all
-bool RocksDBTransactionCollection::isLocked() const {
-  if (_collection == nullptr) {
-    return false;
-  }
-  std::string collName(_collection->name()); // WTF?!
-  if (_transaction->isLockedShard(collName)) {
-    return true;
-  }
-  return (_lockType != AccessMode::Type::NONE);
-}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
@@ -194,7 +124,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -246,7 +176,7 @@ void RocksDBTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
 
@@ -312,7 +242,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 
 void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
                                                 uint64_t commitSeq) {
-    TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
@@ -331,6 +261,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
+
     if (idx == nullptr) {
       TRI_ASSERT(false); // Index reported estimates, but does not exist
       continue;
@@ -389,10 +320,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(!isLocked());
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
-
-  auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -472,10 +400,9 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
     return TRI_ERROR_INTERNAL;
   }
 
-  LogicalCollection* collection = _collection;
-  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(_collection);
 
-  auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
+  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;

@@ -50,6 +50,7 @@ namespace arangodb {
 
 class DatabasePathFeature; // forward declaration
 class TransactionState; // forward declaration
+struct ViewFactory; // forward declaration
 class ViewIterator; // forward declaration
 
 namespace aql {
@@ -98,19 +99,6 @@ class AsyncMeta: public IResearchViewMeta {
   irs::async_utils::read_write_mutex _mutex;
   mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
   WriteMutex _writeMutex; // object that can be referenced by std::unique_lock
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation with a cached primary-key reader lambda
-////////////////////////////////////////////////////////////////////////////////
-class PrimaryKeyIndexReader: public irs::index_reader {
- public:
-  virtual irs::sub_reader const& operator[](
-    size_t subReaderId
-  ) const noexcept = 0;
-  virtual irs::columnstore_reader::values_reader_f const& pkColumn(
-    size_t subReaderId
-  ) const noexcept = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -199,6 +187,11 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   bool emplace(TRI_voc_cid_t cid);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of view
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::ViewFactory const& factory();
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a document into this IResearch View and the underlying
   ///        IResearch stores
@@ -225,18 +218,6 @@ class IResearchView final
     TRI_voc_cid_t cid,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
-  );
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief view factory
-  /// @returns initialized view object
-  ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = {}
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +253,7 @@ class IResearchView final
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(
+  irs::index_reader const* snapshot(
     transaction::Methods& trx,
     Snapshot mode = Snapshot::Find
   ) const;
@@ -280,7 +261,6 @@ class IResearchView final
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  using LogicalView::updateProperties;
   arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -317,7 +297,6 @@ class IResearchView final
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
-    irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
     irs::index_writer::ptr _writer;
 
     DataStore() = default;
@@ -334,9 +313,10 @@ class IResearchView final
     PersistedStore(irs::utf8_path&& path);
   };
 
+  struct ViewFactory; // forward declaration
   class ViewStateHelper; // forward declaration
   struct ViewStateRead; // forward declaration
-  struct ViewStateWrite; // forward declaration
+  class ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
@@ -369,7 +349,7 @@ class IResearchView final
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   IResearchViewMetaState _metaState; // the per-instance configuration state
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
-  PersistedStore _storePersisted;
+  PersistedStore _storePersisted; // protected by _asyncSelf->mutex()
   std::mutex _readerLock; // prevents query cache double invalidation
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
   FlushCallback _flushCallback; // responsible for flush callback unregistration

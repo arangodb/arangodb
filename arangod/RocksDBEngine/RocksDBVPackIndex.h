@@ -211,7 +211,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   
   void recalculateEstimates() override;
   
-  void afterTruncate() override;
+  void afterTruncate(TRI_voc_tick_t tick) override;
 
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*,

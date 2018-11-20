@@ -6,6 +6,7 @@ RETURN GEO_POLYGON([
 @R
 [
   {
+    <span class="hljs-string">"type"</span>: <span class="hljs-string">"Polygon"</span>,
     <span class="hljs-string">"coordinates"</span>: [
       [
         [
@@ -21,7 +22,6 @@ RETURN GEO_POLYGON([
           <span class="hljs-number">5</span>
         ]
       ]
-    ],
-    <span class="hljs-string">"type"</span>: <span class="hljs-string">"Polygon"</span>
+    ]
   }
 ]
