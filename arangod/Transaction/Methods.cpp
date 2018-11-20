@@ -40,6 +40,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -1622,7 +1623,69 @@ OperationResult transaction::Methods::insertLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+  // If we maybe will overwrite, we cannot do single document operations, thus:
+  // options.overwrite => !needsLock
+  TRI_ASSERT(!options.overwrite || !needsLock);
+
+  // Assert my assumption that we don't have a lock only with mmfiles single
+  // document operations.
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (!isMock) {
+      // needsLock => isMMFiles
+      // needsLock => !value.isArray()
+      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
+      // However, due to nested transactions, there are mmfiles single
+      // operations that already have a lock.
+      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock || !value.isArray());
+      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
+    }
+  }
+#endif
+
+  // If we are
+  // - not on a single server (i.e. maybe replicating),
+  // - using the MMFiles storage engine, and
+  // - doing a single document operation,
+  // we have to:
+  // - Get the list of followers during the time span we actually do hold a
+  //   collection level lock. This is to avoid races with the replication where
+  //   a follower may otherwise be added between the actual document operation
+  //   and the point where we get our copy of the followers, regardless of the
+  //   latter happens before or after the document operation.
+
+  // Note that getting the followers this way also doesn't do any harm in other
+  // cases, except for babies because it would be done multiple times. Thus this
+  // bool.
+  // I suppose alternatively we could also do it via the updateFollowers
+  // callback and set updateFollowers to nullptr afterwards, so we only do it
+  // once.
+  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
+
   std::shared_ptr<std::vector<ServerID> const> followers;
+
+  std::function<Result(void)> updateFollowers = nullptr;
+
+  if (needsToGetFollowersUnderLock) {
+    auto const& followerInfo = *collection->followers();
+
+    updateFollowers = [&followerInfo, &followers]() -> Result {
+      TRI_ASSERT(followers == nullptr);
+      followers = followerInfo.get();
+
+      return Result{};
+    };
+  } else if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+  }
+
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -1632,11 +1695,15 @@ OperationResult transaction::Methods::insertLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      
-      // fetch followers
-      followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+
+      replicationType = ReplicationType::LEADER;
+      // We cannot be silent if we may have to replicate later.
+      // If we need to get the followers under the single document operation's
+      // lock, we don't know yet if we will have followers later and thus cannot
+      // be silent.
+      // Otherwise, if we already know the followers to replicate to, we can
+      // just check if they're empty.
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1667,10 +1734,14 @@ OperationResult transaction::Methods::insertLocal(
     TRI_voc_rid_t revisionId = 0;
     documentResult.clear();
 
-    auto const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+    // insert with overwrite may NOT be a single document operation, as we
+    // possibly need to do two separate operations (insert and replace).
+    TRI_ASSERT(!(options.overwrite && needsLock));
 
+    TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
     Result res = collection->insert(this, value, documentResult, options,
-                                    resultMarkerTick, needsLock, revisionId);
+                                    resultMarkerTick, needsLock, revisionId,
+                                    updateFollowers);
 
     TRI_voc_rid_t previousRevisionId = 0;
     ManagedDocumentResult previousDocumentResult; // return OLD
@@ -1678,9 +1749,14 @@ OperationResult transaction::Methods::insertLocal(
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
       resultMarkerTick = 0;
+      // If we're overwriting, we already have a lock. Therefore we also don't
+      // need to get the followers under the lock.
+      TRI_ASSERT(!needsLock);
+      TRI_ASSERT(!needsToGetFollowersUnderLock);
+      TRI_ASSERT(updateFollowers == nullptr);
       res = collection->replace(this, value, documentResult, options,
-                                resultMarkerTick, needsLock, previousRevisionId,
-                                previousDocumentResult);
+                                resultMarkerTick, false, previousRevisionId,
+                                previousDocumentResult, nullptr);
       if (res.ok() && !options.silent) {
         // If we are silent, then revisionId will not be looked at further
         // down. In the silent case, documentResult is empty, so nobody
@@ -1735,18 +1811,19 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
-    // Now replicate the same operation on all followers:
-    Result r = replicateOperations(
-        collection, 
-        value, 
-        resultBuilder, 
-        followers, 
-        arangodb::rest::RequestType::POST, 
-        "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false")
-    );
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(followers != nullptr);
 
-    if (r.fail()) {
-      return OperationResult(r);
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
+
+    // Now replicate the good operations on all followers:
+    res = replicateOperations(*collection, followers, options, value,
+                              TRI_VOC_DOCUMENT_OPERATION_INSERT, resultBuilder);
+
+    if (!res.ok()) {
+      return OperationResult{std::move(res), options};
     }
   }
   
@@ -1891,7 +1968,60 @@ OperationResult transaction::Methods::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+  // Assert my assumption that we don't have a lock only with mmfiles single
+  // document operations.
+
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (!isMock) {
+      // needsLock => isMMFiles
+      // needsLock => !newValue.isArray()
+      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
+      // However, due to nested transactions, there are mmfiles single
+      // operations that already have a lock.
+      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock || !newValue.isArray());
+      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
+    }
+  }
+#endif
+
+  // If we are
+  // - not on a single server (i.e. maybe replicating),
+  // - using the MMFiles storage engine, and
+  // - doing a single document operation,
+  // we have to:
+  // - Get the list of followers during the time span we actually do hold a
+  //   collection level lock. This is to avoid races with the replication where
+  //   a follower may otherwise be added between the actual document operation
+  //   and the point where we get our copy of the followers, regardless of the
+  //   latter happens before or after the document operation.
+  // In update/replace we do NOT have to get document level locks as in insert
+  // or remove, as we still hold a lock during the replication in this case.
+  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
+
   std::shared_ptr<std::vector<ServerID> const> followers;
+
+  std::function<Result(void)> updateFollowers = nullptr;
+
+  if (needsToGetFollowersUnderLock) {
+    auto const& followerInfo = *collection->followers();
+
+    updateFollowers = [&followerInfo, &followers]() -> Result {
+      TRI_ASSERT(followers == nullptr);
+      followers = followerInfo.get();
+
+      return Result{};
+    };
+  } else if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -1902,11 +2032,15 @@ OperationResult transaction::Methods::modifyLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      
-      // fetch followers
-      followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+
+      replicationType = ReplicationType::LEADER;
+      // We cannot be silent if we may have to replicate later.
+      // If we need to get the followers under the single document operation's
+      // lock, we don't know yet if we will have followers later and thus cannot
+      // be silent.
+      // Otherwise, if we already know the followers to replicate to, we can
+      // just check if they're empty.
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1931,6 +2065,8 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
+  // Iff we didn't have a lock before, we got one now.
+  TRI_ASSERT(needsLock == lockResult.is(TRI_ERROR_LOCKED));
 
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
@@ -1952,14 +2088,16 @@ OperationResult transaction::Methods::modifyLocal(
     result.clear();
     previous.clear();
 
+    // replace and update are two operations each, thus this can and must not be
+    // single document operations. We need to have a lock here already.
+    TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
+
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick,
-                                !isLocked(collection, AccessMode::Type::WRITE),
-                                actualRevision, previous);
+                                false, actualRevision, previous, nullptr);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
-                               !isLocked(collection, AccessMode::Type::WRITE),
-                               actualRevision, previous);
+                               false, actualRevision, previous, nullptr);
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2013,21 +2151,31 @@ OperationResult transaction::Methods::modifyLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
-    // Now replicate the same operation on all followers:
-    Result r = replicateOperations(
-        collection, 
-        newValue, 
-        resultBuilder, 
-        followers, 
-        (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? arangodb::rest::RequestType::PUT : arangodb::rest::RequestType::PATCH),
-        ""
-    );
 
-    if (r.fail()) {
-      return OperationResult(r);
+    // We still hold a lock here, because this is update/replace and we're
+    // therefore not doing single document operations. But if we didn't hold it
+    // at the beginning of the method the followers may not be up-to-date.
+    TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
+    if (needsToGetFollowersUnderLock) {
+      followers = collection->followers()->get();
+    }
+
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(followers != nullptr);
+
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
+
+    // Now replicate the good operations on all followers:
+    res = replicateOperations(*collection, followers, options, newValue, operation,
+                          resultBuilder);
+
+    if (!res.ok()) {
+      return OperationResult{std::move(res), options};
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -2104,8 +2252,59 @@ OperationResult transaction::Methods::removeLocal(
     OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  
+
+  bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+  // Assert my assumption that we don't have a lock only with mmfiles single
+  // document operations.
+
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (!isMock) {
+      // needsLock => isMMFiles
+      // needsLock => !value.isArray()
+      // needsLock => _localHints.has(Hints::Hint::SINGLE_OPERATION))
+      // However, due to nested transactions, there are mmfiles single
+      // operations that already have a lock.
+      TRI_ASSERT(!needsLock || isMMFiles);
+      TRI_ASSERT(!needsLock || !value.isArray());
+      TRI_ASSERT(!needsLock || _localHints.has(Hints::Hint::SINGLE_OPERATION));
+    }
+  }
+#endif
+
+  // If we are
+  // - not on a single server (i.e. maybe replicating),
+  // - using the MMFiles storage engine, and
+  // - doing a single document operation,
+  // we have to:
+  // - Get the list of followers during the time span we actually do hold a
+  //   collection level lock. This is to avoid races with the replication where
+  //   a follower may otherwise be added between the actual document operation
+  //   and the point where we get our copy of the followers, regardless of the
+  //   latter happens before or after the document operation.
+  bool const needsToGetFollowersUnderLock = needsLock && _state->isDBServer();
+
   std::shared_ptr<std::vector<ServerID> const> followers;
+
+  std::function<Result(void)> updateFollowers = nullptr;
+
+  if (needsToGetFollowersUnderLock) {
+    auto const& followerInfo = *collection->followers();
+
+    updateFollowers = [&followerInfo, &followers]() -> Result {
+      TRI_ASSERT(followers == nullptr);
+      followers = followerInfo.get();
+
+      return Result{};
+    };
+  } else if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
@@ -2116,11 +2315,15 @@ OperationResult transaction::Methods::removeLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-  
-      // fetch followers
-      followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+
+      replicationType = ReplicationType::LEADER;
+      // We cannot be silent if we may have to replicate later.
+      // If we need to get the followers under the single document operation's
+      // lock, we don't know yet if we will have followers later and thus cannot
+      // be silent.
+      // Otherwise, if we already know the followers to replicate to, we can
+      // just check if they're empty.
+      if (needsToGetFollowersUnderLock || !followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2168,9 +2371,11 @@ OperationResult transaction::Methods::removeLocal(
     TRI_voc_tick_t resultMarkerTick = 0;
     previous.clear();
 
-    Result res = collection->remove(this, value, options, resultMarkerTick,
-                                 !isLocked(collection, AccessMode::Type::WRITE),
-                                 actualRevision, previous);
+    TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
+
+    Result res =
+        collection->remove(this, value, options, resultMarkerTick, needsLock,
+                           actualRevision, previous, updateFollowers);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -2211,18 +2416,20 @@ OperationResult transaction::Methods::removeLocal(
   }
 
   if (res.ok() && replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(followers != nullptr);
     // Now replicate the same operation on all followers:
-    Result r = replicateOperations(
-        collection, 
-        value, 
-        resultBuilder, 
-        followers, 
-        arangodb::rest::RequestType::DELETE_REQ,
-        ""
-    );
 
-    if (r.fail()) {
-      return OperationResult(r);
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
+
+    // Now replicate the good operations on all followers:
+    res = replicateOperations(*collection, followers, options, value,
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resultBuilder);
+
+    if (!res.ok()) {
+      return OperationResult{std::move(res), options};
     }
   }
   
@@ -3119,23 +3326,65 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Methods::replicateOperations(LogicalCollection* collection,
-                                    VPackSlice const& inputValue,
-                                    VPackBuilder const& resultBuilder,
-                                    std::shared_ptr<std::vector<std::string> const>& followers,
-                                    arangodb::rest::RequestType requestType,
-                                    std::string const& pathAppendix) {
-  TRI_ASSERT(collection != nullptr);
+// Unified replication of operations. May be inserts (with or without
+// overwrite), removes, or modifies (updates/replaces).
+Result Methods::replicateOperations(
+    LogicalCollection const& collection,
+    std::shared_ptr<const std::vector<std::string>> const& followers,
+    OperationOptions const& options, VPackSlice const value,
+    TRI_voc_document_operation_e const operation, VPackBuilder& resultBuilder) {
   TRI_ASSERT(followers != nullptr);
-  
-  // Now replicate the good operations on all followers:
-  auto cc = arangodb::ClusterComm::instance();
-  
-  if (cc == nullptr) {
-    // nullptr happens only on controlled shutdown
-    return Result();
+
+  if (followers->empty()) {
+    return Result{};
   }
-  
+
+  // nullptr only happens on controlled shutdown
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) {
+    return Result{};
+  };
+
+  // path and requestType are different for insert/remove/modify.
+
+  std::stringstream pathStream;
+  pathStream << "/_db/"
+             << arangodb::basics::StringUtils::urlEncode(vocbase().name())
+             << "/_api/document/"
+             << arangodb::basics::StringUtils::urlEncode(collection.name());
+  if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
+    TRI_ASSERT(value.isObject());
+    TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
+    pathStream << "/" << value.get(StaticStrings::KeyString).copyString();
+  }
+  pathStream << "?isRestore=true&isSynchronousReplication="
+             << ServerState::instance()->getId() << "&"
+             << StaticStrings::SilentString << "=true";
+
+  arangodb::rest::RequestType requestType = RequestType::ILLEGAL;
+
+  switch (operation) {
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      requestType = arangodb::rest::RequestType::POST;
+      pathStream << "&" << StaticStrings::OverWrite << "="
+                 << (options.overwrite ? "true" : "false");
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      requestType = arangodb::rest::RequestType::PATCH;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      requestType = arangodb::rest::RequestType::PUT;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      requestType = arangodb::rest::RequestType::DELETE_REQ;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+    default:
+      TRI_ASSERT(false);
+  }
+
+  std::string const path {pathStream.str()};
+
   transaction::BuilderLeaser payload(this);
 
   auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
@@ -3144,18 +3393,16 @@ Result Methods::replicateOperations(LogicalCollection* collection,
     payload->add(StaticStrings::KeyString, s);
     s = result.get(StaticStrings::RevString);
     payload->add(StaticStrings::RevString, s);
-
-    if (requestType != arangodb::rest::RequestType::DELETE_REQ) {
-      // no need to add document data for remove operations
+    if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       TRI_SanitizeObject(doc, *payload.get());
     }
   };
 
   VPackSlice ourResult = resultBuilder.slice();
   size_t count = 0;
-  if (inputValue.isArray()) {
+  if (value.isArray()) {
     VPackArrayBuilder guard(payload.get());
-    VPackArrayIterator itValue(inputValue);
+    VPackArrayIterator itValue(value);
     VPackArrayIterator itResult(ourResult);
     while (itValue.valid() && itResult.valid()) {
       TRI_ASSERT((*itResult).isObject());
@@ -3167,25 +3414,14 @@ Result Methods::replicateOperations(LogicalCollection* collection,
       itResult.next();
     }
   } else {
-    if (requestType == arangodb::rest::RequestType::POST) {
-      doOneDoc(inputValue, ourResult);
-    } else {
-      VPackArrayBuilder guard(payload.get());
-      doOneDoc(inputValue, ourResult);
-    }
+    doOneDoc(value, ourResult);
     count++;
   }
-    
+
   if (count == 0) {
     // nothing to do
-    return Result();
+    return Result{};
   }
-
-  std::string path =
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(collection->vocbase().name()) +
-        "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
-        "&" + StaticStrings::SilentString + "=true" + pathAppendix;
 
   auto body = std::make_shared<std::string>();
   *body = payload->slice().toJson();
@@ -3193,25 +3429,24 @@ Result Methods::replicateOperations(LogicalCollection* collection,
   // Now prepare the requests:
   std::vector<ClusterCommRequest> requests;
   requests.reserve(followers->size());
-      
+
   for (auto const& f : *followers) {
     requests.emplace_back("server:" + f, requestType, path, body);
   }
-      
+
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
   size_t nrDone = 0;
   cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
-
   // If any would-be-follower refused to follow there must be a
   // new leader in the meantime, in this case we must not allow
   // this operation to succeed, we simply return with a refusal
   // error (note that we use the follower version, since we have
   // lost leadership):
   if (findRefusal(requests)) {
-    return Result(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
   }
-          
+
   // Otherwise we drop all followers that were not successful:
   for (size_t i = 0; i < followers->size(); ++i) {
     bool replicationWorked =
@@ -3226,21 +3461,20 @@ Result Methods::replicateOperations(LogicalCollection* collection,
       replicationWorked = !found;
     }
     if (!replicationWorked) {
-      auto const& followerInfo = collection->followers();
+      auto const& followerInfo = collection.followers();
       if (followerInfo->remove((*followers)[i])) {
         LOG_TOPIC(WARN, Logger::REPLICATION)
           << "synchronous replication: dropping follower " << (*followers)[i]
-          << " for shard " << collection->name();
+          << " for shard " << collection.name();
       } else {
         LOG_TOPIC(ERR, Logger::REPLICATION)
           << "synchronous replication: could not drop follower "
-          << (*followers)[i] << " for shard " << collection->name();
+          << (*followers)[i] << " for shard " << collection.name();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
     }
   }
 
   // we return "ok" here still.
-  return Result();
+  return Result{};
 }
-                               

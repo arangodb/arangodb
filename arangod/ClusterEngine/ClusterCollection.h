@@ -156,31 +156,33 @@ class ClusterCollection final : public PhysicalCollection {
       IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+                arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous,
-                arangodb::velocypack::Slice const key) override;
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                arangodb::velocypack::Slice const key,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result replace(transaction::Methods* trx,
                  arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock) override;
 
   Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const slice,
+                arangodb::velocypack::Slice slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev,
-                TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
