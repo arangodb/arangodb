@@ -1847,8 +1847,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     // Arangosearch we're done
-    if (slice.get(
-          arangodb::StaticStrings::IndexType).isEqualString("arangosearch")) {
+    if (slice.get("type").isEqualString("arangosearch")) {
       return TRI_ERROR_NO_ERROR;
     }
 
