@@ -2612,43 +2612,6 @@ int ClusterInfo::ensureIndexCoordinator(
     << databaseName << ", Collection " << collectionID;
 
   return errorCode;
-  }
-
-  // At this time the index creation has failed and we want to  roll back
-  // the plan entry
-  VPackBuilder oldPlanSlice;
-  AgencyWriteTransaction trx(
-    std::vector<AgencyOperation>
-    { AgencyOperation(
-           indexPath, AgencyValueOperationType::ERASE, oldPlanIndex.slice()),
-        AgencyOperation(
-        "Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
-
-  setErrormsg(errorCode, errorMsg);
-
-  sleepFor = 50;
-  while (true) {
-    AgencyCommResult update =
-      _agency.sendTransactionWithFailover(trx, 0.0);
-    if (update.successful()) {
-      loadPlan();
-      return errorCode;
-    }
-    if (steady_clock::now() > endTime) {
-      errorMsg = "Timed out while trying to report index creation failure";
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (sleepFor <= 2500) {
-      sleepFor*=2;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds());
-  }
-
-  LOG_TOPIC(ERR, Logger::CLUSTER)
-    << "Couldn't roll back index creation of " << idString << ". Database: "
-    << databaseName << ", Collection " << collectionID;
-
-  return errorCode;
   
 }
 
