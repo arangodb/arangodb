@@ -10,6 +10,13 @@ or PRs.
    reliably drop the old leader as a follower from the Plan in the end.
    See https://github.com/arangodb/release-3.4/issues/125
 
+ - `./tests/js/server/resilience/moving-shards-cluster.js` and
+   `./tests/js/server/resilience/repair-distribute-shards-like-spec.js`
+   are both affected by the issue mentioned above, arangodb/release-3.4#125.
+   The failure only occurs in practice when there's data moved around, which is
+   why these tests only fail since they're run with data as well, see
+   PR arangodb/arangodb#7193.
+
  - `./tests/js/server/recovery/nosync-rangedelete-truncate-multi-rocksdb-grey.js`
    this suffers from multiple bugs in the recovery and regularly renders
    this test red. Simon is working on it:
