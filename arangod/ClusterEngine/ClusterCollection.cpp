@@ -480,7 +480,7 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(
 
 void ClusterCollection::invokeOnAllElements(
     transaction::Methods* trx,
-    std::function<bool(LocalDocumentId const&)> callback) {
+    std::function<bool(LocalDocumentId const&)> /*callback*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -532,7 +532,7 @@ Result ClusterCollection::update(
     OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool,
     TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
     arangodb::velocypack::Slice const key,
-    std::function<Result(void)> callbackDuringLock) {
+    std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -541,7 +541,7 @@ Result ClusterCollection::replace(
     ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous,
-    std::function<Result(void)> callbackDuringLock) {
+    std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -549,7 +549,7 @@ Result ClusterCollection::remove(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
     arangodb::ManagedDocumentResult& previous, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool, TRI_voc_rid_t& prevRev,
-    TRI_voc_rid_t& revisionId, std::function<Result(void)> callbackDuringLock) {
+    TRI_voc_rid_t& revisionId, std::function<Result(void)> /*callbackDuringLock*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

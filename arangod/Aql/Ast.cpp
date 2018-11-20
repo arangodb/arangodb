@@ -3554,7 +3554,16 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
   if (slice.isNumber()) {
     if (slice.isSmallInt() || slice.isInt()) {
       // integer value
-      return createNodeValueInt(slice.getInt());
+      return createNodeValueInt(slice.getIntUnchecked());
+    } 
+    if (slice.isUInt()) {
+      // check if we can safely convert the value from unsigned to signed
+      // without data loss
+      uint64_t v = slice.getUIntUnchecked();
+      if (v <= uint64_t(INT64_MAX)) {
+        return createNodeValueInt(static_cast<int64_t>(v));
+      }
+      // fall-through to floating point conversion
     }
     // floating point value
     return createNodeValueDouble(slice.getNumber<double>());
@@ -3562,7 +3571,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
   if (slice.isString()) {
     VPackValueLength length;
-    char const* p = slice.getString(length);
+    char const* p = slice.getStringUnchecked(length);
 
     if (copyStringValues) {
       // we must copy string values!
