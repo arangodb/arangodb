@@ -304,7 +304,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
     
     for (auto const& idx : coll->getIndexes()) {
-      LOG_DEVEL << "truncating index: " << idx->typeName();
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
       if (est && est->commitSeq() < currentSeqNum) {
