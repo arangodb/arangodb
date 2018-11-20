@@ -1,6 +1,11 @@
 v3.4.0-rc.5 (XXXX-XX-XX)
 ------------------------
 
+* fix internal issue #2786: improved confirmation dialog when clicking the truncate 
+  button in the web UI
+
+* Updated joi library (web UI), improved Foxx mount path validation
+
 * disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
   values of 0 or 1.
   Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
@@ -24,6 +29,7 @@ v3.4.0-rc.5 (XXXX-XX-XX)
 
 * fixed Foxx complaining about valid `$schema` value in manifest.json
 
+* fix for supervision, which started failing servers using old transient store
 
 v3.4.0-rc.4 (2018-11-04)
 ------------------------

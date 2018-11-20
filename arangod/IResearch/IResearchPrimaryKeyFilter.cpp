@@ -52,8 +52,8 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
 size_t PrimaryKeyFilter::hash() const noexcept {
   size_t seed = 0;
   irs::hash_combine(seed, filter::hash());
-  irs::hash_combine(seed, _pk.cid());
-  irs::hash_combine(seed, _pk.rid());
+  irs::hash_combine(seed, _pk.first);
+  irs::hash_combine(seed, _pk.second);
   return seed;
 }
 
@@ -95,8 +95,8 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   auto const& trhs = static_cast<PrimaryKeyFilter const&>(rhs);
 
   return filter::equals(rhs)
-    && _pk.cid() == trhs._pk.cid()
-    && _pk.rid() == trhs._pk.rid();
+    && _pk.first == trhs._pk.first
+    && _pk.second == trhs._pk.second;
 }
 
 DEFINE_FILTER_TYPE(PrimaryKeyFilter);
