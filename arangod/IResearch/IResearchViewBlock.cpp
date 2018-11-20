@@ -306,18 +306,18 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 
       if (_buffer.empty()) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        auto upstreamRes = ExecutionBlock::getBlock(toFetch);
-        if (upstreamRes.first == ExecutionState::WAITING) {
+        BufferState bufferState = getBlockIfNeeded(toFetch);
+        if (bufferState == BufferState::WAITING) {
           traceGetSomeEnd(nullptr, ExecutionState::WAITING);
-          return {upstreamRes.first, nullptr};
+          return {ExecutionState::WAITING, nullptr};
         }
-        _upstreamState = upstreamRes.first;
-        if (!upstreamRes.second) {
+        if (bufferState == BufferState::NO_MORE_BLOCKS) {
+          TRI_ASSERT(_inflight == 0);
           _done = true;
+          TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
           traceGetSomeEnd(nullptr, ExecutionState::DONE);
           return {ExecutionState::DONE, nullptr};
         }
-        _pos = 0;  // this is in the first block
         reset();
       }
 
