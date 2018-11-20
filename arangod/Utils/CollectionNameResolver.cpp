@@ -286,7 +286,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
-  return "_unknown";
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -310,7 +310,11 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
 
   // exactly as in the non-cluster case
   if (!ServerState::isDBServer(_serverRole)) {
-    return collection ? collection->name() : UNKNOWN;
+    if (collection) {
+      return collection->name();
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
   }
 
   // DBserver case of a shard:
@@ -319,15 +323,17 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
       collection = ClusterInfo::instance()->getCollection(
         collection->vocbase().name(), std::to_string(collection->planId())
       );
-    }
-    catch (...) {
-      return UNKNOWN;
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
   // can be empty, if collection unknown
-  return collection && !collection->name().empty()
-    ? collection->name() : UNKNOWN;
+  if (collection && !collection->name().empty()) {
+    return collection->name();
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
