@@ -38,9 +38,26 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::order::prepared const& /*order*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  if (&segment != _pkIterator._pkSegment) {
+  auto const pkRef = static_cast<irs::bytes_ref>(_pk);
+
+  auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
+
+  if (!pkField) {
+    // no such field
     return irs::doc_iterator::empty();
   }
+
+  auto term = pkField->iterator();
+
+  if (!term->seek(pkRef)) {
+    // no such term
+    return irs::doc_iterator::empty();
+  }
+
+  auto docs = term->postings(irs::flags::empty_instance());
+
+  docs->next();
+  _pkIterator.reset(docs->value());
 
   // aliasing constructor
   return irs::doc_iterator::ptr(
@@ -58,33 +75,14 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& index,
+    irs::index_reader const& /*index*/,
     irs::order::prepared const& /*ord*/,
     irs::boost::boost_t /*boost*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  auto const pkRef = static_cast<irs::bytes_ref>(_pk);
-
-  for (auto& segment : index) {
-    auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkField) {
-      continue;
-    }
-
-    auto term = pkField->iterator();
-
-    if (!term->seek(pkRef)) {
-      continue;
-    }
-
-    auto docs = term->postings(irs::flags::empty_instance());
-
-    if (docs->next()) {
-      _pkIterator.reset(segment, docs->value());
-    }
-
-    break;
+  if (irs::type_limits<irs::type_t::doc_id_t>::valid(_pkIterator._doc)) {
+    // aleady processed
+    return irs::filter::prepared::empty();
   }
 
   // aliasing constructor

@@ -38,6 +38,7 @@
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchKludge.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -1541,34 +1542,61 @@ SECTION("test_cid_rid_encoding") {
     CHECK(pkField);
     CHECK(size == pkField->docs_count());
 
-    auto filter = arangodb::iresearch::DocumentPrimaryKey::filter(cid, rid);
-    REQUIRE(filter);
+    arangodb::iresearch::PrimaryKeyFilterContainer filters;
+    CHECK(filters.empty());
+    auto& filter = filters.emplace(cid, rid);
+    REQUIRE(filter.type() == arangodb::iresearch::PrimaryKeyFilter::type());
+    CHECK(!filters.empty());
 
-    auto prepared = filter->prepare(*reader);
-    REQUIRE(prepared);
+    // first execution
+    {
+      auto prepared = filter.prepare(*reader);
+      REQUIRE(prepared);
+      CHECK(prepared == filter.prepare(*reader)); // same object
+      CHECK(&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(prepared.get())); // same object
+  
+      for (auto& segment : *reader) {
+        auto docs = prepared->execute(segment);
+        REQUIRE(docs);
+        CHECK(docs == prepared->execute(segment)); // same object
+  
+        CHECK(docs->next());
+        auto const id = docs->value();
+        ++found;
+        CHECK(!docs->next());
+        CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+        CHECK(!docs->next());
+        CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
 
-    for (auto& segment : *reader) {
-      auto docs = prepared->execute(segment);
-      REQUIRE(docs);
+        auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+        REQUIRE(column);
 
-      CHECK(docs->next());
-      auto const id = docs->value();
-      ++found;
-      CHECK(!docs->next());
+        auto values = column->values();
+        REQUIRE(values);
 
-      auto column = segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-      REQUIRE(column);
+        irs::bytes_ref pkValue;
+        CHECK(values(id, pkValue));
 
-      auto values = column->values();
-      REQUIRE(values);
+        arangodb::iresearch::DocumentPrimaryKey::type pk;
+        CHECK(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+        CHECK(cid == pk.first);
+        CHECK(rid == pk.second);
+      }
+    }
 
-      irs::bytes_ref pkValue;
-      CHECK(values(id, pkValue));
+    // can't prepare twice
+    {
+      auto prepared = filter.prepare(*reader);
+      REQUIRE(prepared);
+      CHECK(prepared == filter.prepare(*reader)); // same object
 
-      arangodb::iresearch::DocumentPrimaryKey::type pk;
-      CHECK(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
-      CHECK(cid == pk.first);
-      CHECK(rid == pk.second);
+      for (auto& segment : *reader) {
+        auto docs = prepared->execute(segment);
+        REQUIRE(docs);
+        CHECK(docs == prepared->execute(segment)); // same object
+        CHECK(!docs->next());
+        CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
+      }
     }
   }
 
