@@ -107,8 +107,17 @@ class PhysicalCollection {
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
-
   std::vector<std::shared_ptr<Index>> getIndexes() const;
+  template<typename F>
+  void enumerateIndexes(F&& f) {
+    _indexesLock.readLock(); // avoid including ReadLocker.h
+    try {
+      for (auto& idx : _indexes) {
+        std::forward<F>(f)(idx);
+      }
+    } catch(...) {}
+    _indexesLock.unlockRead();
+  }
                        
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
@@ -216,7 +225,7 @@ class PhysicalCollection {
     LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
   );
-
+  
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 

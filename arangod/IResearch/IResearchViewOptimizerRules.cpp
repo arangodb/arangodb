@@ -410,7 +410,9 @@ void scatterViewInClusterRule(
     }
 
     auto const& parents = node->getParents();
-    auto const& deps = node->getDependencies();
+    // intentional copy of the dependencies, as we will be modifying 
+    // dependencies later on
+    auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     // don't do this if we are already distributing!
