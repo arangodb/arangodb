@@ -69,8 +69,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   if (cb.get() == nullptr) {
     // no entry by this id!
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
-  }
-  else {
+  } else {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Agency callback has been triggered. refetching!";
     
