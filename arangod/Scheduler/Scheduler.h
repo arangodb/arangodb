@@ -107,11 +107,16 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
   bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
   size_t numQueued() const { return (_counters >> 32) & 0xFFFFULL; }
 
-private:
+ private:
   void post(std::function<void()> const callback);
   void drain();
 
-  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
+  /// @brief set the stopping bit
+  /// returns true if the stopping bit was not set before, and
+  /// false if it was already set 
+  inline bool setStopping() noexcept { 
+    return !isStopping(_counters.fetch_or(1ULL << 63));
+  }
 
   inline bool isStopping(uint64_t value) const noexcept {
     return (value & (1ULL << 63)) != 0;
