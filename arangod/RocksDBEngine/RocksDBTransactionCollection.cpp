@@ -38,7 +38,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
     TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
-      _lockType(AccessMode::Type::NONE),
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
@@ -47,76 +46,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _numRemoves(0),
       _usageLocked(false) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
-
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int RocksDBTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int RocksDBTransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                                int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int RocksDBTransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                                  int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a specific mode in a transaction
-bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
-                                            int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-        << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return isLocked();
-}
-
-/// @brief check whether a collection is locked at all
-bool RocksDBTransactionCollection::isLocked() const {
-  if (_collection == nullptr) {
-    return false;
-  }
-  std::string collName(_collection->name()); // WTF?!
-  if (_transaction->isLockedShard(collName)) {
-    return true;
-  }
-  return (_lockType != AccessMode::Type::NONE);
-}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
