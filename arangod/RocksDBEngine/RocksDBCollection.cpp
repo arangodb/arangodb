@@ -73,28 +73,6 @@
 
 using namespace arangodb;
 
-// helper class that optionally disables indexing inside the
-// RocksDB transaction if possible, and that will turn indexing
-// back on later in its dtor
-// this is just a performance optimization for small transactions
-struct IndexingDisabler {
-  IndexingDisabler(RocksDBMethods* mthd, bool disable)
-      : mthd(mthd), disableIndexing(disable) {
-    if (disable) {
-      disableIndexing = mthd->DisableIndexing();
-    }
-  }
-
-  ~IndexingDisabler() {
-    if (disableIndexing) {
-      mthd->EnableIndexing();
-    }
-  }
-
-  RocksDBMethods* mthd;
-  bool disableIndexing;
-};
-
 RocksDBCollection::RocksDBCollection(
     LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
@@ -108,7 +86,7 @@ RocksDBCollection::RocksDBCollection(
       _cachePresent(false),
       _cacheEnabled(!collection.system() &&
                     basics::VelocyPackHelper::readBooleanValue(
-                        info, "cacheEnabled", false) && 
+                        info, "cacheEnabled", false) &&
                     CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
@@ -645,20 +623,20 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
     TRI_ASSERT(!state->hasOperations()); // not allowed
-    
+
     TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
       return Result(TRI_ERROR_DEBUG);
     }
-    
+
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     // add the assertion again here, so we are sure we can use RangeDeletes
     TRI_ASSERT(engine->canUseRangeDeleteInWal());
     rocksdb::DB* db = engine->db()->GetRootDB();
-    
+
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
       engine->settingsManager()->sync(false);
     }
-    
+
     // pre commit sequence needed to place a blocker
     rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
     auto guard = scopeGuard([&] { // remove blocker afterwards
@@ -673,7 +651,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    
+
     // delete indexes, place estimator blockers
     {
       READ_LOCKER(guard, _indexesLock);
@@ -686,7 +664,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         }
       }
     }
-    
+
     // add the log entry so we can recover the correct count
     auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
                                                    _logicalCollection.id(), _objectId);
@@ -701,7 +679,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
     seq = db->GetLatestSequenceNumber() - 1; // post commit sequence
-    
+
     uint64_t numDocs = _numberDocuments.exchange(0);
     _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));
     {
@@ -710,9 +688,9 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         idx->afterTruncate(seq); // clears caches / clears links (if applicable)
       }
     }
-    
+
     guard.fire(); // remove blocker
-    
+
     if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();
@@ -1714,7 +1692,7 @@ void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId,
   if (revId != 0) {
     _revisionId = revId;
   }
-  if (adjustment < 0) {    
+  if (adjustment < 0) {
     TRI_ASSERT(_numberDocuments >= static_cast<uint64_t>(-adjustment));
     _numberDocuments -= static_cast<uint64_t>(-adjustment);
   } else if (adjustment > 0) {
@@ -1838,7 +1816,7 @@ int RocksDBCollection::unlockRead() {
 
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
-  
+
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   rocksdb::TransactionDB* db = engine->db();
   const rocksdb::Snapshot* snapshot = nullptr;
@@ -1853,7 +1831,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
     }
     vocbase.release();
   });
-  
+
   TRI_vocbase_col_status_e status;
   int res = vocbase.useCollection(&_logicalCollection, status);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1873,26 +1851,26 @@ uint64_t RocksDBCollection::recalculateCounts() {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     snapNumberOfDocuments = numberDocuments();
     snapshot = engine->db()->GetSnapshot();
     TRI_ASSERT(snapshot);
   }
-  
+
   // count documents
   auto bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Slice upper(bounds.end());
-  
+
   rocksdb::ReadOptions ro;
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
   ro.verify_checksums = false;
   ro.fill_cache = false;
-  
+
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
-  
+
   it->Seek(bounds.start());
   while (it->Valid() && it->key().compare(upper) < 0) {
     ++count;
