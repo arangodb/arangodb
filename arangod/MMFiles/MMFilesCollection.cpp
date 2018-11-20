@@ -519,15 +519,8 @@ bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker,
     if (tick > datafile->_dataMax) {
       datafile->_dataMax = tick;
     }
-
-    if (++data->_operations % 1024 == 0) {
-      data->_mmdr.reset();
-    }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, data);
-    if (++data->_operations % 1024 == 0) {
-      data->_mmdr.reset();
-    }
   } else {
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
@@ -3468,7 +3461,7 @@ Result MMFilesCollection::update(
 
   if (newSlice.length() <= 1) {
     // no need to do anything
-    result = std::move(previous);
+    result = previous;
 
     if (_logicalCollection.waitForSync()) {
       options.waitForSync = true;

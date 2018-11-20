@@ -30,7 +30,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
 class Transaction;
