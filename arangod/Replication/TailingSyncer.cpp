@@ -642,7 +642,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
         << "Renaming system collection " << col->name();
   }
 
-  return vocbase->renameCollection(col->id(), name, true);
+  return vocbase->renameCollection(col->id(), name);
 }
 
 /// @brief changes the properties of a collection,
@@ -678,9 +678,9 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
 
-  if (col == nullptr) {
+  if (!col) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
@@ -691,9 +691,8 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
-  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 
-  return guard.collection()->updateProperties(data, doSync);
+  return guard.collection()->properties(data, false); // always a full-update
 }
 
 /// @brief truncate a collections. Assumes no trx are running
@@ -788,7 +787,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
 
   if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
-    auto res = vocbase->renameView(view->id(), nameSlice.copyString());
+    auto res = view->rename(nameSlice.copyString());
 
     if (!res.ok()) {
       return res;
@@ -798,9 +797,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-
-    return view->updateProperties(properties, false, doSync);
+    return view->properties(properties, false); // always a full-update
   }
 
   return {};
@@ -813,7 +810,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "marker slice is no object");
   }
-
+  
   // fetch marker "type"
   int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
 

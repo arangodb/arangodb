@@ -158,7 +158,7 @@ static arangodb::Result getReadLockId (
   auto result = comres->result;
 
   if (result != nullptr && result->getHttpReturnCode() == 200) {
-    auto const idv = comres->result->getBodyVelocyPack();
+    auto const idv = result->getBodyVelocyPack();
     auto const& idSlice = idv->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
@@ -170,7 +170,11 @@ static arangodb::Result getReadLockId (
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    error += result->getHttpReturnMessage();
+    if (result) {
+      error.append(result->getHttpReturnMessage());
+    } else {
+      error.append(comres->stringifyErrorMessage());
+    }
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
 
@@ -340,7 +344,7 @@ static arangodb::Result cancelBarrier(
   double timeout = 120.0) {
 
   if (barrierId <= 0) {
-    return Result();;
+    return Result();
   }
 
   auto cc = arangodb::ClusterComm::instance();
@@ -440,7 +444,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     auto r = cc->syncRequest(
       clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
-    if (r->result == nullptr && r->result->getHttpReturnCode() != 200) {
+    if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "startReadLockOnLeader: cancelation error for shard - " << collection
         << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();

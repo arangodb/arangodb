@@ -73,6 +73,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
 
   VPackObjectBuilder c(&collections);
+
   for (auto const& database : Databases::list()) {
 
     try {
@@ -80,23 +81,34 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
       auto vocbase = &guard.database();
 
       collections.add(VPackValue(database));
+
       VPackObjectBuilder db(&collections);
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
         collections.add(VPackValue(collection->name()));
+
         VPackObjectBuilder col(&collections);
-        collection->toVelocyPack(collections,true,false);
+
+        collection->properties(collections,true,false);
+
         auto const& folls = collection->followers();
-        auto const theLeader = folls->getLeader();
+        std::string const theLeader = folls->getLeader();
+
         collections.add("theLeader", VPackValue(theLeader));
+
         if (theLeader.empty()) {  // we are the leader ourselves
           // In this case we report our in-sync followers here in the format
           // of the agency: [ leader, follower1, follower2, ... ]
           collections.add(VPackValue("servers"));
+
           { VPackArrayBuilder guard(&collections);
+
             collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-            for (auto const& s : *folls->get()) {
+
+            std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
+
+            for (auto const& s : *srvs) {
               collections.add(VPackValue(s));
             }
           }
@@ -107,11 +119,9 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         TRI_ERROR_INTERNAL,
         std::string("Failed to guard database ") +  database + ": " + e.what());
     }
-
   }
 
   return Result();
-
 }
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
@@ -137,6 +147,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no vocbase";
+    result.errorMessage = "DBServerAgencySync::execute no vocbase";
     return result;
   }
 
@@ -154,6 +165,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // that is going to eat bad results in few lines later. Again, is
     // that the correct action? If so, how about supporting comments in
     // the code for both.
+    result.errorMessage = "Could not do getLocalCollections for phase 1.";
     return result;
   }
 
@@ -176,6 +188,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // phases are sufficiently independent that this is OK.
     LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
+      result.errorMessage = "Could not do getLocalCollections for phase 2.";
       return result;
     }
 
@@ -238,14 +251,21 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
       // FIXMEMAINTENANCE: If comm.sendTransactionWithFailover()
       // fails, the result is ok() based upon phaseTwo()'s execution?
-      result = DBServerAgencySyncResult(
-        tmp.ok(),
-        report.hasKey("Plan") ?
-        report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-        report.hasKey("Current") ?
-        report.get("Current").get("Version").getNumber<uint64_t>() : 0);
-
+      if (tmp.ok()) {
+        result = DBServerAgencySyncResult(
+          true,
+          report.hasKey("Plan") ?
+          report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+          report.hasKey("Current") ?
+          report.get("Current").get("Version").getNumber<uint64_t>() : 0);
+      } else {
+        // Report an error:
+        result = DBServerAgencySyncResult(
+          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
+      }
     }
+  } else {
+    result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
   
   auto took = duration<double>(clock::now() - start).count();

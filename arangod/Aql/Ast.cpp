@@ -2146,6 +2146,10 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
+  auto preVisitor = [&result](AstNode const* node) -> bool {
+    return !node->isConstant();
+  };
+  
   auto visitor = [&result](AstNode const* node) {
     if (node == nullptr) {
       return;
@@ -2165,7 +2169,7 @@ void Ast::getReferencedVariables(AstNode const* node,
     }
   };
 
-  traverseReadOnly(node, visitor);
+  traverseReadOnly(node, preVisitor, visitor);
 }
 
 /// @brief count how many times a variable is referenced in an expression
@@ -3556,7 +3560,16 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
   if (slice.isNumber()) {
     if (slice.isSmallInt() || slice.isInt()) {
       // integer value
-      return createNodeValueInt(slice.getInt());
+      return createNodeValueInt(slice.getIntUnchecked());
+    } 
+    if (slice.isUInt()) {
+      // check if we can safely convert the value from unsigned to signed
+      // without data loss
+      uint64_t v = slice.getUIntUnchecked();
+      if (v <= uint64_t(INT64_MAX)) {
+        return createNodeValueInt(static_cast<int64_t>(v));
+      }
+      // fall-through to floating point conversion
     }
     // floating point value
     return createNodeValueDouble(slice.getNumber<double>());
@@ -3564,7 +3577,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
   if (slice.isString()) {
     VPackValueLength length;
-    char const* p = slice.getString(length);
+    char const* p = slice.getStringUnchecked(length);
 
     if (copyStringValues) {
       // we must copy string values!
@@ -3804,13 +3817,8 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   auto node = new AstNode(type);
 
-  try {
-    // register the node so it gets freed automatically later
-    _query->addNode(node);
-  } catch (...) {
-    delete node;
-    throw;
-  }
+  // register the node so it gets freed automatically later
+  _query->addNode(node);
 
   return node;
 }

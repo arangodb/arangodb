@@ -1010,177 +1010,6 @@ static void JS_FiguresVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock assumeLeadership
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (ServerState::instance()->isDBServer()) {
-    auto* v8Collection = UnwrapCollection(args.Holder());
-
-    if (!v8Collection) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    auto& collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    std::string theLeader;
-
-    if (args.Length() >= 1 && args[0]->IsString()) {
-      TRI_Utf8ValueNFC l(args[0]);
-      theLeader = std::string(*l, l.length());
-    }
-
-    collection->followers()->setTheLeader(theLeader);
-
-    if (theLeader.empty()) {
-      collection->followers()->clear();
-    }
-    // do not reset followers when we resign at this time...we are
-    // still the only source of truth to trust, in particular, in the
-    // planned leader resignation, we will shortly after the call to
-    // this function here report the controlled resignation to the
-    // agency. This report must still contain the correct follower list
-    // or else the supervision is super angry with us.
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock getLeader
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  std::string theLeader;
-  if (ServerState::instance()->isDBServer()) {
-    auto* collection = UnwrapCollection(args.Holder());
-
-    if (!collection) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    auto& collectionName = collection->name();
-    auto realCollection =
-      collection->vocbase().lookupCollection(collectionName);
-
-    if (realCollection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    theLeader = realCollection->followers()->getLeader();
-  }
-
-  v8::Handle<v8::String> res = TRI_V8_STD_STRING(isolate, theLeader);
-  TRI_V8_RETURN(res);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock removeFollower
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("removeFollower(<name>)");
-  }
-
-  ServerID const serverId = TRI_ObjectToString(args[0]);
-
-  if (ServerState::instance()->isDBServer()) {
-    auto* v8Collection = UnwrapCollection(args.Holder());
-
-    if (!v8Collection) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    auto& collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    collection->followers()->remove(serverId);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock getFollowers
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  v8::Handle<v8::Array> list = v8::Array::New(isolate);
-
-  if (ServerState::instance()->isDBServer()) {
-    auto* v8Collection = UnwrapCollection(args.Holder());
-
-    if (!v8Collection) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    auto& collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    std::unique_ptr<arangodb::FollowerInfo> const& followerInfo = collection->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    uint32_t i = 0;
-
-    for (auto const& n : *followers) {
-      list->Set(i++, TRI_V8_STD_STRING(isolate, n));
-    }
-  }
-
-  TRI_V8_RETURN(list);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionLoad
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1294,6 +1123,7 @@ static void JS_PropertiesVocbaseCol(
   }
 
   bool const isModification = (args.Length() != 0);
+
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
 
@@ -1305,11 +1135,13 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION(res);
         }
       }
-      
+
       TRI_ASSERT(builder.isClosed());
-      
-      Result res = methods::Collections::updateProperties(consoleColl, builder.slice());
-      
+
+      auto res = methods::Collections::updateProperties(
+        *consoleColl, builder.slice(), false // always a full-update
+      );
+
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1318,6 +1150,7 @@ static void JS_PropertiesVocbaseCol(
       // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
+
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
@@ -1381,7 +1214,7 @@ static void JS_RenameVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::rename(collection, name, doOverride);
+  auto res = methods::Collections::rename(*collection, name, doOverride);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2732,14 +2565,6 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),
                        JS_BinaryInsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setTheLeader"),
-                       JS_SetTheLeader, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getLeader"),
-                       JS_GetLeader, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "removeFollower"),
-                       JS_RemoveFollower, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFollowers"),
-                       JS_GetFollowers, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "globallyUniqueId"),
                        JS_GloballyUniqueIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "load"),

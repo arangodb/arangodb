@@ -137,7 +137,7 @@ void RestCollectionHandler::handleCommandGet() {
 
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
-          if (!coll->isLocal()) {
+          if (ServerState::instance()->isCoordinator()) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
 
@@ -299,12 +299,12 @@ void RestCollectionHandler::handleCommandPost() {
   }
 
   // for some "security" a white-list of allowed parameters
-  VPackBuilder filtered = VPackCollection::keep(
-      body,
+  VPackBuilder filtered = VPackCollection::keep(body,
       std::unordered_set<std::string>{
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
-          "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
+          StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
+          StaticStrings::DistributeShardsLike, "avoidServers",
           "isSmart", "shardingStrategy", "smartGraphAttribute", "replicationFactor", 
           "servers"});
   VPackSlice const parameters = filtered.slice();
@@ -411,9 +411,9 @@ void RestCollectionHandler::handleCommandPut() {
         }
 
         if (res.ok()) {
-          if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
-            coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
-          }
+            if (ServerState::instance()->isCoordinator()) { // ClusterInfo::loadPlan eventually updates status
+              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+            }
 
             collectionRepresentation(
               builder,
@@ -424,14 +424,15 @@ void RestCollectionHandler::handleCommandPut() {
               /*detailedCount*/ true
             );
           }
-
         } else if (sub == "properties") {
           std::vector<std::string> keep = {"doCompact",         "journalSize",
                                            "waitForSync",       "indexBuckets",
                                            "replicationFactor", "cacheEnabled"};
           VPackBuilder props = VPackCollection::keep(body, keep);
 
-          res = methods::Collections::updateProperties(coll.get(), props.slice());
+          res = methods::Collections::updateProperties(
+            *coll, props.slice(), false // always a full-update
+          );
 
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ true,
@@ -441,20 +442,21 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "rename") {
           VPackSlice const newNameSlice = body.get("name");
+
           if (!newNameSlice.isString()) {
             res = Result(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name is empty");
             return;
           }
 
           std::string const newName = newNameSlice.copyString();
-          res = methods::Collections::rename(coll.get(), newName, false);
+
+          res = methods::Collections::rename(*coll, newName, false);
 
           if (res.ok()) {
             collectionRepresentation(builder, newName, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*detailedCount*/ true);
           }
-
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, *coll);
 

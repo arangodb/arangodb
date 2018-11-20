@@ -78,7 +78,7 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
       _resolver = &(main->resolver());
     } else {
       TRI_ASSERT(_resolver == nullptr);
-      _resolver = createResolver();
+      createResolver(); // sets _resolver
     }
   }
 

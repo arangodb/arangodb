@@ -147,6 +147,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     internal.wait(0.5, false);
   }
 
+  internal.wait(1.0, false);
   db._flushCache();
   slaveFuncFinal(state);
 };
@@ -1269,13 +1270,6 @@ function ReplicationOtherDBSuite() {
     let dbs = db._databases();
     assertEqual(-1, dbs.indexOf(dbName));
 
-    // Now recreate a new database with this name
-    db._createDatabase(dbName);
-    db._useDatabase(dbName);
-
-    db._create(cn);
-    db._collection(cn).save(docs);
-
     const lastLogTick = replication.logger.state().state.lastLogTick;
 
     // Section - Slave
@@ -1297,9 +1291,17 @@ function ReplicationOtherDBSuite() {
       internal.sleep(0.5);
     }
 
-    // Now test if the Slave did replicate the new database directly...
-    assertEqual(50, collectionCount(cn),
-      "The slave inserted the new collection data into the old one, it skipped the drop.");
+    i = 60;
+    while (i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        // all good
+        return;
+      }
+      internal.sleep(0.5);
+    }
+
+    fail();
   };
 
   return suite;

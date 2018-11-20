@@ -532,9 +532,10 @@ function MovingShardsWithViewSuite (options) {
       // actual servers that have the corresponding view index
       const serversPerShard = getViewServersPerShard();
       for(const [shard, leader] of Object.entries(leadersPerShard)) {
-        assertTrue(serversPerShard[shard].has(leader),
+        assertTrue(serversPerShard.hasOwnProperty(shard)
+          && serversPerShard[shard].has(leader),
           `Expected shard ${shard} to be available on ${leader}, but it's not. `
-          + `${{leadersPerShard, serversPerShard}}`);
+          + `${JSON.stringify({ leadersPerShard, serversPerShard })}`);
       }
     });
   }
@@ -764,10 +765,8 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      for (var i = 0; i < c.length; ++i) {
-        v[i].drop();
-        c[i].drop();
-      }
+      v.forEach(v => v.drop());
+      c.forEach(c => c.drop());
       c = [];
       v = [];
       resetCleanedOutServers();

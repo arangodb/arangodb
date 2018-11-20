@@ -64,7 +64,6 @@ struct Options;
 
 }
 
-class TransactionCollection;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -74,6 +73,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBTrxMethods;
   friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
+  friend class RocksDBBatchedWithIndexMethods;
 
  public:
   RocksDBTransactionState(

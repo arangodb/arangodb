@@ -125,10 +125,10 @@ function parseOptions (options) {
 
   _.each(toReturn, function (opt) {
     if (options.ldapHost) {
-      opt.ldapHost = options.ldapHost;
+      opt.conf['ldap.server'] = options.ldapHost;
     }
     if (options.ldapPort) {
-      opt.ldapPort = options.ldapPort;
+      opt.conf['ldap.port'] = options.ldapPort;
     }
   });
   return toReturn;
@@ -232,8 +232,8 @@ function authenticationLdapRolesMode (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  // just a convenicen wrapper for the regular tests
-  testFns['ldap'] = [ 'ldaprole', 'ldaprole', 'ldapsearch', 'ldaprolesimple', 'ldapsearchsimple' ];
+  // just a convenience wrapper for the regular tests
+  testFns['ldap'] = [ 'ldaprole', 'ldapsearch', 'ldaprolesimple', 'ldapsearchsimple' ];
 
   testFns['ldaprole'] = authenticationLdapRolesMode;
   testFns['ldapsearch'] = authenticationLdapSearchMode;

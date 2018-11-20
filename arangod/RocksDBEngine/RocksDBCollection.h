@@ -30,7 +30,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
 class Transaction;
@@ -151,30 +150,33 @@ class RocksDBCollection final : public PhysicalCollection {
       IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+                arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous,
-                arangodb::velocypack::Slice const key) override;
+                arangodb::velocypack::Slice newSlice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                arangodb::velocypack::Slice key,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice const newSlice,
+                 arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock) override;
 
   Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const slice,
+                arangodb::velocypack::Slice slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   /// adjust the current number of docs
   void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
@@ -213,8 +215,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-  int saveIndex(transaction::Methods* trx,
-                std::shared_ptr<arangodb::Index> idx);
 
   arangodb::Result fillIndexes(transaction::Methods*,
                                std::shared_ptr<arangodb::Index>);
@@ -262,6 +262,8 @@ class RocksDBCollection final : public PhysicalCollection {
   inline bool useCache() const noexcept { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
+
+  bool hasAllPersistentLocalIds() const override { return true; }
 
  private:
   uint64_t const _objectId;  // rocksdb-specific object id for collection

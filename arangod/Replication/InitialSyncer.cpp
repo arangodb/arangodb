@@ -35,15 +35,18 @@ InitialSyncer::InitialSyncer(
 
 InitialSyncer::~InitialSyncer() {
   if (_batchPingTimer) {
-    _batchPingTimer->cancel();
+    try {
+      _batchPingTimer->cancel();
+    } catch (...) {
+      // cancel may throw
+    }
   }
   
   try {
     if (!_state.isChildSyncer) {
-    _batch.finish(_state.connection, _progress);
-  }
-  } catch (...) {
-  }
+      _batch.finish(_state.connection, _progress);
+    }
+  } catch (...) {}
 }
   
 /// @brief start a recurring task to extend the batch

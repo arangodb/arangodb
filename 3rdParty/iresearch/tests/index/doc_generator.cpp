@@ -346,6 +346,10 @@ void csv_doc_generator::reset() {
   doc_.reset();
 }
 
+bool csv_doc_generator::skip() {
+  return false == !getline(ifs_, line_);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class parse_json_handler
 /// @brief rapdijson campatible visitor for

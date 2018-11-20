@@ -277,7 +277,7 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, true);
+    view->properties(builder, true, true);
     builder.close();
 
     auto slice = builder.slice();
@@ -285,7 +285,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
-    CHECK((11U == slice.length()));
+    CHECK((14U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -307,7 +307,7 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -315,7 +315,8 @@ SECTION("test_defaults") {
     std::string error;
 
     CHECK((slice.isObject()));
-    CHECK((7U == slice.length()));
+    CHECK((11U == slice.length()));
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK((false == slice.hasKey("deleted")));
@@ -404,14 +405,15 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    logicalView->toVelocyPack(builder, true, false);
+    logicalView->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
     CHECK((slice.isObject()));
-    CHECK((7U == slice.length()));
+    CHECK((11U == slice.length()));
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK((slice.get("name").copyString() == "testView"));
     CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
     CHECK((false == slice.hasKey("deleted")));
@@ -553,7 +555,7 @@ SECTION("test_drop_with_link") {
     \"links\": { \"testCollection\": {} } \
   }");
 
-  arangodb::Result res = view->updateProperties(links->slice(), true, false);
+  arangodb::Result res = view->properties(links->slice(), true);
   CHECK(true == res.ok());
   CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -609,7 +611,7 @@ SECTION("test_drop_collection") {
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   REQUIRE((false == !view));
 
-  CHECK((true == logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+  CHECK((true == logicalView->properties(viewUpdateJson->slice(), true).ok()));
   CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
   CHECK((true == logicalCollection->drop().ok()));
@@ -1897,7 +1899,7 @@ SECTION("test_query") {
     CHECK((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     CHECK((false == !view));
-    arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
+    arangodb::Result res = logicalView->properties(links->slice(), true);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -1986,7 +1988,7 @@ SECTION("test_query") {
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
-    arangodb::Result res = logicalView->updateProperties(viewUpdateJson->slice(), true, false);
+    arangodb::Result res = logicalView->properties(viewUpdateJson->slice(), true);
     REQUIRE(true == res.ok());
 
     // start flush thread
@@ -2014,7 +2016,7 @@ SECTION("test_query") {
         arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           EMPTY,
-          EMPTY,
+          std::vector<std::string>{logicalCollection->name()},
           EMPTY,
           options
         );
@@ -2065,16 +2067,17 @@ SECTION("test_register_link") {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->toVelocyPack(builder, false, false);
+      view->properties(builder, false, false);
       builder.close();
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
+      CHECK((4U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("id").copyString() == "101");
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
-      CHECK(3 == slice.length());
     }
 
     {
@@ -2122,16 +2125,17 @@ SECTION("test_register_link") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, false, false);
+      view->properties(builder, false, false);
       builder.close();
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
+      CHECK((4U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("id").copyString() == "101");
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
-      CHECK(3 == slice.length());
     }
 
     {
@@ -2329,7 +2333,7 @@ SECTION("test_unregister_link") {
       \"links\": { \"testCollection\": {} } \
     }");
 
-    arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
+    arangodb::Result res = logicalView->properties(links->slice(), true);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -2428,7 +2432,7 @@ SECTION("test_unregister_link") {
       \"links\": { \"testCollection\": {} } \
     }");
 
-    arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
+    arangodb::Result res = logicalView->properties(links->slice(), true);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -2505,7 +2509,7 @@ SECTION("test_unregister_link") {
       \"links\": { \"testCollection\": {} } \
     }");
 
-    arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
+    arangodb::Result res = logicalView->properties(links->slice(), true);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
@@ -2533,7 +2537,7 @@ SECTION("test_unregister_link") {
       REQUIRE((false == !logicalView));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
       REQUIRE((nullptr != viewImpl));
-      CHECK((viewImpl->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((viewImpl->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
@@ -2624,7 +2628,7 @@ SECTION("test_tracked_cids") {
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
 
     std::set<TRI_voc_cid_t> actual;
     std::set<TRI_voc_cid_t> expected = { 100 };
@@ -2656,7 +2660,7 @@ SECTION("test_tracked_cids") {
 
     // create link
     {
-      CHECK((viewImpl->updateProperties(updateJson0->slice(), false, false).ok()));
+      CHECK((viewImpl->properties(updateJson0->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
       std::set<TRI_voc_cid_t> expected = { 100 };
@@ -2671,7 +2675,7 @@ SECTION("test_tracked_cids") {
 
     // drop link
     {
-      CHECK((viewImpl->updateProperties(updateJson1->slice(), false, false).ok()));
+      CHECK((viewImpl->properties(updateJson1->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
       viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
@@ -2741,7 +2745,7 @@ SECTION("test_tracked_cids") {
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
 
     std::set<TRI_voc_cid_t> actual;
     std::set<TRI_voc_cid_t> expected = { 100 };
@@ -2769,7 +2773,7 @@ SECTION("test_tracked_cids") {
 
     // create link
     {
-      CHECK((viewImpl->updateProperties(updateJson0->slice(), false, false).ok()));
+      CHECK((viewImpl->properties(updateJson0->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
       std::set<TRI_voc_cid_t> expected = { 100 };
@@ -2784,7 +2788,7 @@ SECTION("test_tracked_cids") {
 
     // drop link
     {
-      CHECK((viewImpl->updateProperties(updateJson1->slice(), false, false).ok()));
+      CHECK((viewImpl->properties(updateJson1->slice(), false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
       viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
@@ -2810,7 +2814,7 @@ SECTION("test_transaction_registration") {
   // link collection to view
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // read transaction (by id)
@@ -3282,14 +3286,14 @@ SECTION("test_update_overwrite") {
       }");
 
       expectedMeta._cleanupIntervalStep = 42;
-      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+      CHECK((view->properties(updateJson->slice(), false).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -3297,7 +3301,8 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -3311,7 +3316,7 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -3320,7 +3325,7 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3339,14 +3344,14 @@ SECTION("test_update_overwrite") {
       }");
 
       expectedMeta._cleanupIntervalStep = 62;
-      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+      CHECK((view->properties(updateJson->slice(), false).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -3355,7 +3360,8 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -3369,7 +3375,7 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -3378,7 +3384,7 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3401,14 +3407,14 @@ SECTION("test_update_overwrite") {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 0.123 }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->updateProperties(updateJson->slice(), false, false).errorNumber()));
+    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), false).errorNumber()));
 
     // not for persistence
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, false);
+      logicalView->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -3417,7 +3423,8 @@ SECTION("test_update_overwrite") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.get("deleted").isNone())); // no system properties
@@ -3431,7 +3438,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true);
+      logicalView->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -3440,7 +3447,7 @@ SECTION("test_update_overwrite") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3462,7 +3469,7 @@ SECTION("test_update_overwrite") {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->updateProperties(updateJson->slice(), false, false).errorNumber()));
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), false).errorNumber()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // not for persistence
@@ -3470,7 +3477,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, false);
+      logicalView->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -3479,7 +3486,8 @@ SECTION("test_update_overwrite") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.get("deleted").isNone())); // no system properties
@@ -3493,7 +3501,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true);
+      logicalView->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -3502,7 +3510,7 @@ SECTION("test_update_overwrite") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3528,7 +3536,7 @@ SECTION("test_update_overwrite") {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": 42 } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->updateProperties(updateJson->slice(), false, false).errorNumber()));
+    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), false).errorNumber()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // not for persistence
@@ -3536,7 +3544,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, false);
+      logicalView->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -3545,7 +3553,8 @@ SECTION("test_update_overwrite") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.get("deleted").isNone())); // no system properties
@@ -3559,7 +3568,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true);
+      logicalView->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -3568,7 +3577,7 @@ SECTION("test_update_overwrite") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3599,14 +3608,14 @@ SECTION("test_update_overwrite") {
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, false);
+        logicalView->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -3615,7 +3624,8 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.get("deleted").isNone())); // no system properties
@@ -3646,7 +3656,7 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, true);
+        logicalView->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -3655,7 +3665,7 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3677,14 +3687,14 @@ SECTION("test_update_overwrite") {
       }");
 
       expectedMeta._cleanupIntervalStep = 62;
-      CHECK((logicalView->updateProperties(updateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), false).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, false);
+        logicalView->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -3693,7 +3703,8 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.get("deleted").isNone())); // no system properties
@@ -3707,7 +3718,7 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, true);
+        logicalView->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -3716,7 +3727,7 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3752,14 +3763,14 @@ SECTION("test_update_overwrite") {
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -3768,7 +3779,8 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -3799,7 +3811,7 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -3808,7 +3820,7 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3832,14 +3844,14 @@ SECTION("test_update_overwrite") {
       expectedMeta._cleanupIntervalStep = 10;
       expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
-      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+      CHECK((view->properties(updateJson->slice(), false).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -3848,7 +3860,8 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -3879,7 +3892,7 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -3888,7 +3901,7 @@ SECTION("test_update_overwrite") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3918,19 +3931,20 @@ SECTION("test_update_overwrite") {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
       );
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -3947,12 +3961,12 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -3967,18 +3981,19 @@ SECTION("test_update_overwrite") {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }"
       );
-      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+      CHECK((view->properties(updateJson->slice(), false).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -3995,11 +4010,11 @@ SECTION("test_update_overwrite") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4028,7 +4043,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4054,11 +4069,11 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 10;
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4077,11 +4092,11 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 62;
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4119,7 +4134,7 @@ SECTION("test_update_overwrite") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     CHECK((true == logicalCollection->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
@@ -4142,7 +4157,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4165,7 +4180,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4177,7 +4192,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       CHECK((true == logicalCollection->getIndexes().empty()));
       CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4205,7 +4220,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4230,7 +4245,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4244,7 +4259,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4273,7 +4288,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4298,7 +4313,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4312,7 +4327,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4337,7 +4352,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4360,7 +4375,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4372,7 +4387,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       CHECK((true == logicalCollection->getIndexes().empty()));
       CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -4400,7 +4415,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4425,7 +4440,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4439,7 +4454,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4468,7 +4483,7 @@ SECTION("test_update_overwrite") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4493,7 +4508,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4507,7 +4522,7 @@ SECTION("test_update_overwrite") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), false).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -4540,14 +4555,14 @@ SECTION("test_update_partial") {
     }");
 
     expectedMeta._cleanupIntervalStep = 42;
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     // not for persistence
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -4556,7 +4571,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -4570,7 +4586,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -4579,7 +4595,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4601,14 +4617,14 @@ SECTION("test_update_partial") {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 0.123 }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true).errorNumber()));
 
     // not for persistence
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, false);
+      logicalView->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -4617,7 +4633,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.get("deleted").isNone())); // no system properties
@@ -4631,7 +4648,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true);
+      logicalView->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -4640,7 +4657,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4662,7 +4679,7 @@ SECTION("test_update_partial") {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), true).errorNumber()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // not for persistence
@@ -4670,7 +4687,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, false);
+      logicalView->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -4679,7 +4696,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.get("deleted").isNone())); // no system properties
@@ -4693,7 +4711,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true);
+      logicalView->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -4702,7 +4720,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4728,7 +4746,7 @@ SECTION("test_update_partial") {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": 42 } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    CHECK((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true).errorNumber()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     // not for persistence
@@ -4736,7 +4754,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, false);
+      logicalView->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -4745,7 +4763,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.get("deleted").isNone())); // no system properties
@@ -4759,7 +4778,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true);
+      logicalView->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -4768,7 +4787,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK((slice.isObject()));
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK((slice.get("name").copyString() == "testView"));
       CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4799,14 +4818,14 @@ SECTION("test_update_partial") {
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, false);
+        logicalView->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -4815,7 +4834,8 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.get("deleted").isNone())); // no system properties
@@ -4846,7 +4866,7 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, true);
+        logicalView->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -4855,7 +4875,7 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4880,14 +4900,14 @@ SECTION("test_update_partial") {
       expectedMeta._cleanupIntervalStep = 62;
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, false);
+        logicalView->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -4896,7 +4916,8 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.get("deleted").isNone())); // no system properties
@@ -4927,7 +4948,7 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->toVelocyPack(builder, true, true);
+        logicalView->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -4936,7 +4957,7 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK((slice.isObject()));
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK((slice.get("name").copyString() == "testView"));
         CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4968,7 +4989,7 @@ SECTION("test_update_partial") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
     CHECK((false == persisted));
 
     // not for persistence
@@ -4976,12 +4997,13 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -4998,12 +5020,12 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5034,7 +5056,7 @@ SECTION("test_update_partial") {
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
     CHECK((true == persisted)); // link addition does modify and persist view meta
 
     // not for persistence
@@ -5042,7 +5064,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -5051,7 +5073,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5082,7 +5105,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -5091,7 +5114,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5119,7 +5142,7 @@ SECTION("test_update_partial") {
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
-        EMPTY,
+        std::vector<std::string>{logicalCollection->name()},
         EMPTY,
         arangodb::transaction::Options()
       );
@@ -5141,7 +5164,7 @@ SECTION("test_update_partial") {
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
     CHECK((true == persisted)); // link addition does modify and persist view meta
 
     // not for persistence
@@ -5149,7 +5172,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -5158,7 +5181,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5189,7 +5213,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -5198,7 +5222,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5225,14 +5249,14 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->properties(updateJson->slice(), true).errorNumber()));
 
     // not for persistence
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -5241,7 +5265,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5255,7 +5280,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -5264,7 +5289,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5292,18 +5317,19 @@ SECTION("test_update_partial") {
       auto beforeRecovery = StorageEngineMock::inRecoveryResult;
       StorageEngineMock::inRecoveryResult = true;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
       CHECK((false == persisted)); // link addition does not persist view meta
 
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5323,18 +5349,19 @@ SECTION("test_update_partial") {
       StorageEngineMock::inRecoveryResult = true;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
       persisted = false;
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
       CHECK((false == persisted));
 
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5367,14 +5394,14 @@ SECTION("test_update_partial") {
           \"testCollection\": {} \
       }}");
 
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -5383,7 +5410,8 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5397,7 +5425,7 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -5406,7 +5434,7 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5424,14 +5452,14 @@ SECTION("test_update_partial") {
 
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.clear();
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
@@ -5440,7 +5468,8 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5454,7 +5483,7 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
@@ -5463,7 +5492,7 @@ SECTION("test_update_partial") {
         std::string error;
 
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5488,14 +5517,14 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->properties(updateJson->slice(), true).errorNumber()));
 
     // not for persistence
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -5504,7 +5533,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5518,7 +5548,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -5527,7 +5557,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5554,14 +5584,14 @@ SECTION("test_update_partial") {
     }}");
 
     expectedMeta._cleanupIntervalStep = 52;
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     // not for persistence
     {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, false);
+      view->properties(builder, true, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -5570,7 +5600,8 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((7U == slice.length()));
+      CHECK((11U == slice.length()));
+      CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5584,7 +5615,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->toVelocyPack(builder, true, true);
+      view->properties(builder, true, true);
       builder.close();
 
       auto slice = builder.slice();
@@ -5593,7 +5624,7 @@ SECTION("test_update_partial") {
       std::string error;
 
       CHECK(slice.isObject());
-      CHECK((11U == slice.length()));
+      CHECK((14U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5617,19 +5648,20 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {} } }"
       );
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5642,12 +5674,12 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5669,19 +5701,20 @@ SECTION("test_update_partial") {
       }
 
       CHECK((!initial.empty()));
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5694,12 +5727,12 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5732,19 +5765,20 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
       );
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5761,12 +5795,12 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5781,19 +5815,20 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }"
       );
-      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((view->properties(updateJson->slice(), true).ok()));
 
       // not for persistence
       {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, false);
+        view->properties(builder, true, false);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((7U == slice.length()));
+        CHECK((11U == slice.length()));
+        CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK(slice.get("deleted").isNone()); // no system properties
@@ -5810,12 +5845,12 @@ SECTION("test_update_partial") {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->toVelocyPack(builder, true, true);
+        view->properties(builder, true, true);
         builder.close();
 
         auto slice = builder.slice();
         CHECK(slice.isObject());
-        CHECK((11U == slice.length()));
+        CHECK((14U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
         CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5844,7 +5879,7 @@ SECTION("test_update_partial") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -5870,11 +5905,11 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 10;
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -5893,11 +5928,11 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 62;
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      logicalView->properties(builder, true, true); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -5935,7 +5970,7 @@ SECTION("test_update_partial") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
     CHECK((true == logicalCollection->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
@@ -5958,7 +5993,7 @@ SECTION("test_update_partial") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -5981,7 +6016,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -5993,7 +6028,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       CHECK((true == logicalCollection->getIndexes().empty()));
       CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
     }
@@ -6021,7 +6056,7 @@ SECTION("test_update_partial") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -6046,7 +6081,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -6060,7 +6095,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -6089,7 +6124,7 @@ SECTION("test_update_partial") {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(updateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -6114,7 +6149,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((false == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
@@ -6128,7 +6163,7 @@ SECTION("test_update_partial") {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((logicalView->properties(viewUpdateJson->slice(), true).ok()));
       CHECK((false == logicalCollection0->getIndexes().empty()));
       CHECK((true == logicalCollection1->getIndexes().empty()));
       CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));

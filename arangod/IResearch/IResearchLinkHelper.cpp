@@ -219,8 +219,17 @@ arangodb::Result modifyLinks(
     linkDefinitions.emplace_back(std::move(namedJson), std::move(linkMeta));
   }
 
+  auto trxCtx = arangodb::transaction::StandaloneContext::Create(vocbase);
+
   // add removals for any 'stale' links not found in the 'links' definition
   for (auto& id: stale) {
+    if (!trxCtx->resolver().getCollection(id)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "request for removal of a stale link to a missing collection '" << id << "', ignoring";
+
+      continue; // skip adding removal requests to stale links to non-existant collections (already dropped)
+    }
+
     linkModifications.emplace_back(collectionsToLock.size());
     linkModifications.back()._stale = true;
     collectionsToLock.emplace_back(std::to_string(id));
@@ -233,7 +242,7 @@ arangodb::Result modifyLinks(
   static std::vector<std::string> const EMPTY;
   arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
   arangodb::transaction::Methods trx(
-    arangodb::transaction::StandaloneContext::Create(vocbase),
+    trxCtx,
     EMPTY, // readCollections
     EMPTY, // writeCollections
     collectionsToLock, // exclusiveCollections
@@ -251,7 +260,10 @@ arangodb::Result modifyLinks(
   auto res = trx.begin();
 
   if (!res.ok()) {
-    return res;
+    return arangodb::Result(
+      res.errorNumber(),
+      std::string("failed to start transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
+    );
   }
 
   {
@@ -419,7 +431,15 @@ arangodb::Result modifyLinks(
   }
 
   if (error.empty()) {
-    return arangodb::Result(trx.commit());
+    auto res = trx.commit();
+
+    return res.ok()
+      ? arangodb::Result()
+      : arangodb::Result(
+          res.errorNumber(),
+          std::string("failed to commit transaction while updating arangosearch view '") + view.name() + "' error: " + res.errorMessage()
+        )
+      ;
   }
 
   return arangodb::Result(
@@ -535,7 +555,7 @@ namespace iresearch {
     if (!collection) {
       return arangodb::Result(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not a string"
+        std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not found"
       );
     }
 

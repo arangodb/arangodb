@@ -1127,17 +1127,20 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t cid,
                                                VPackSlice const& slice,
                                                RocksDBLogValue&& logValue) {
+  
+  rocksdb::DB* db = _db->GetRootDB();
+  
   RocksDBKey key;
   key.constructCollection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions wo;
-
+  
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = _db->Write(wo, &batch);
-
+  rocksdb::Status res = db->Write(wo, &batch);
+  
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
 }
@@ -1231,8 +1234,6 @@ arangodb::Result RocksDBEngine::dropCollection(
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
-  rocksdb::WriteOptions wo;
-
   // If we get here the collection is safe to drop.
   //
   // This uses the following workflow:
@@ -1263,6 +1264,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   key.constructCollection(vocbase.id(), collection.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
+  rocksdb::WriteOptions wo;
   rocksdb::Status res = _db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
@@ -1408,17 +1410,22 @@ Result RocksDBEngine::createView(
   RocksDBLogValue logValue = RocksDBLogValue::ViewCreate(vocbase.id(), id);
 
   VPackBuilder props;
+
   props.openObject();
-  view.toVelocyPack(props, true, true);
+    view.properties(props, true, true);
   props.close();
+
   RocksDBValue const value = RocksDBValue::View(props.slice());
 
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+
   auto res = _db->Write(wo, &batch);
+
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
+
   return rocksutils::convertStatus(res);
 }
 
@@ -1432,7 +1439,7 @@ arangodb::Result RocksDBEngine::dropView(
   VPackBuilder builder;
 
   builder.openObject();
-  view.toVelocyPack(builder, true, true);
+    view.properties(builder, true, true);
   builder.close();
 
   auto logValue =
@@ -1478,11 +1485,13 @@ Result RocksDBEngine::changeView(
   }
 
   RocksDBKey key;
+
   key.constructView(vocbase.id(), view.id());
 
   VPackBuilder infoBuilder;
+
   infoBuilder.openObject();
-  view.toVelocyPack(infoBuilder, true, true);
+    view.properties(infoBuilder, true, true);
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1491,14 +1500,18 @@ Result RocksDBEngine::changeView(
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   rocksdb::Status s;
+
   s = batch.PutLogData(log.slice());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
     return rocksutils::convertStatus(s);
   }
+
   s = batch.Put(RocksDBColumnFamily::definitions(),
             key.string(), value.string());
+
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
         << "failed to write change view marker " << s.ToString();
@@ -1796,7 +1809,6 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
       }
     }
-
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);

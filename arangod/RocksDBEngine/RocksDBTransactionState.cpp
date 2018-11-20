@@ -337,6 +337,10 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
+        TRI_IF_FAILURE("RocksDBCommitCounts") {
+          committed = true;
+          continue;
+        }
         collection->commitCounts(id(), postCommitSeq);
         committed = true;
       }
@@ -364,6 +368,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
                _rocksTransaction->GetNumDeletes() == 0);
 
     for (auto& trxCollection : _collections) {
+      TRI_IF_FAILURE("RocksDBCommitCounts") {
+        continue;
+      }
       RocksDBTransactionCollection* collection =
           static_cast<RocksDBTransactionCollection*>(trxCollection);
       // We get here if we have filled indexes. So let us commit counts and
