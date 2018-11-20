@@ -372,6 +372,8 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
   Result persistLocalDocumentIds();
+  
+  bool hasAllPersistentLocalIds() const;
 
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
@@ -443,7 +445,6 @@ class MMFilesCollection final : public PhysicalCollection {
                         MMFilesWalMarker const* marker,
                         OperationOptions& options, bool& waitForSync);
 
- private:
   uint8_t const* lookupDocumentVPack(LocalDocumentId const& documentId) const;
   uint8_t const* lookupDocumentVPackConditional(LocalDocumentId const& documentId,
                                                 TRI_voc_tick_t maxTick,
@@ -496,8 +497,6 @@ class MMFilesCollection final : public PhysicalCollection {
                         bool& waitForSync);
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
-
-  bool hasAllPersistentLocalIds() const override;
 
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);
