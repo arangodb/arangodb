@@ -67,7 +67,15 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
     if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
       collection.load();
     }
-    if (!static_cast<arangodb::MMFilesCollection*>(collection.getPhysical())->hasAllPersistentLocalIds()) {
+    
+    bool hasAllPersistentLocalIds = true;
+    // try casting underlying collection to an MMFilesCollection
+    // this may not succeed because we may have to deal with a PhysicalCollectionMock here 
+    auto mmfilesCollection = dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
+    if (mmfilesCollection != nullptr) {
+      hasAllPersistentLocalIds = mmfilesCollection->hasAllPersistentLocalIds();
+    }
+    if (!hasAllPersistentLocalIds) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "mmfiles collection uses pre-3.4 format and cannot be linked to an "
           << "arangosearch view; try recreating collection and moving the "
