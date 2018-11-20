@@ -74,7 +74,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     return;
   }
-
+  
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
