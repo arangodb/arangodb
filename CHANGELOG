@@ -1,6 +1,8 @@
 v3.4.0-rc.5 (XXXX-XX-XX)
 ------------------------
 
+* Updated joi library (Web UI), improved foxx mount path validation
+
 * disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
   values of 0 or 1.
   Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
