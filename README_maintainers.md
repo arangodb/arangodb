@@ -222,17 +222,16 @@ Test frameworks used
 There are several major places where unittests live: 
  - *UnitTests/HttpInterface*        - rspec tests
  - tests/*                          - catch unittests
- - *js/server/tests*                - runneable on the server
- - *js/common/tests*                - runneable on the server & via arangosh
+ - *js/server/tests*                - runnable on the server
+ - *js/common/tests*                - runnable on the server & via arangosh
  - *js/common/test-data*
- - *js/client/tests*                - runneable via arangosh
+ - *js/client/tests*                - runnable via arangosh
  - *js/apps/system/aardvark/test*
 
 
 Debugging Tests (quick intro)
 -----------------------------
-
-runnuing single rspec test
+running single rspec test
 
    ./scripts/unittest http_server --test api-import-spec.rb
 
@@ -326,8 +325,8 @@ _________________
 The first parameter chooses the facility to execute.
 Available choices include:
  - *all*:                (calls multiple) This target is utilized by most of the jenkins builds invoking unit tests.
- - *single_client*:      (see Running a single unittestsuite)
- - *single_server*:      (see Running a single unittestsuite)
+ - *single_client*:      (see Running a single unittest suite)
+ - *single_server*:      (see Running a single unittest suite)
  - many more -           call without arguments for more details.
 
 Passing Options
@@ -368,13 +367,13 @@ To debug AQL execution blocks, two steps are required:
 
 you now will get log-entries with the contents being passed between the blocks.
 
-Running a single unittestsuite
-------------------------------
+Running a single unittest suite
+-------------------------------
 Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
 
-You can also only execute a single test case in a jsunity testsuite (in this case `testTokens`:
+You can also only execute a single test case in a jsunity test suite (in this case `testTokens`):
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js --testCase testTokens
 
@@ -462,7 +461,7 @@ The non permanent way of doing this in a running system is:
 
 (you may also inspect these files to validate the current settings)
 
-More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to controll coredumps.
+More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to control coredumps.
 On most systems it will put compressed coredumps to `/var/lib/systemd/coredump`. 
 
 In order to use automatic coredump analysis with the unittests you need to configure 
@@ -546,7 +545,7 @@ You may also try to download the symbols manually using:
     symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
 
 
-The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
+The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corresponding to the components of arangodb:
 
   - arango - the basic arangodb library needed by all components
   - arango_v8 - the basic V8 wrappers needed by all components
@@ -560,7 +559,7 @@ The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is bro
     - arangosh
     - arangovpack
 
-In these directories you will find subdirectories with the hash corosponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
+In these directories you will find subdirectories with the hash corresponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
 
 This means i.e. for ArangoDB 3.1.11: 
 
