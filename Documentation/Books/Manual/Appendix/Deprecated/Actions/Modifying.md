@@ -71,51 +71,54 @@ specific names.
 
 To start, we'll define a simple action handler in a module */ownTest*:
 
-    @startDocuBlockInline MOD_01a_routingCreateOwnTest
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_01a_routingCreateOwnTest}
-    |db._modules.save({
-    |  path: "/db:/ownTest",
-    |  content:
-    |     "exports.do = function(req, res, options, next) {"+
-    |     "  res.body = 'test';" +
-    |     "  res.responseCode = 200;" +
-    |     "  res.contentType = 'text/plain';" +
-    |     "};"
-    });
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_01a_routingCreateOwnTest
+```js
+db._modules.save({
+  path: "/db:/ownTest",
+  content:
+     "exports.do = function(req, res, options, next) {"+
+     "  res.body = 'test';" +
+     "  res.responseCode = 200;" +
+     "  res.contentType = 'text/plain';" +
+     "};"
+});
+```
 
 This does nothing but register a do action handler in a module */ownTest*.  The
 action handler is not yet callable, but must be mapped to a route first.  To map
 the action to the route */ourtest*, execute the following command:
 
-    @startDocuBlockInline MOD_01b_routingEnableOwnTest
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_01b_routingEnableOwnTest}
-    |db._routing.save({
-    |  url: "/ourtest", 
-    |  action: {
-    |    controller: "db://ownTest"
-    |  }
-    });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_01b_routingEnableOwnTest
+```js
+db._routing.save({
+  url: "/ourtest", 
+  action: {
+    controller: "db://ownTest"
+  }
+});
+require("internal").reloadRouting()
+```
 
-Now use the browser or cURL and access http://localhost:8529/ourtest :
+Now use the browser or cURL and access `http://localhost:8529/ourtest`
 
-    @startDocuBlockInline MOD_01c_routingCurlOwnTest
-    @EXAMPLE_ARANGOSH_RUN{MOD_01c_routingCurlOwnTest}
-    var url = "/ourtest";
-    var response = logCurlRequest('GET', url);
-    assert(response.code === 200);
-    assert(response.body === 'test');
-    logRawResponse(response);
-    db._query("FOR route IN _routing FILTER route.url == '/ourtest' REMOVE route in _routing")
-    db._query("FOR module IN _modules FILTER module.path == '/db:/ownTest' REMOVE module in _modules")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock MOD_01c_routingCurlOwnTest
+<!--
+var url = "/ourtest";
+var response = logCurlRequest('GET', url);
+assert(response.code === 200);
+assert(response.body === 'test');
+logRawResponse(response);
+db._query("FOR route IN _routing FILTER route.url == '/ourtest' REMOVE route in _routing")
+db._query("FOR module IN _modules FILTER module.path == '/db:/ownTest' REMOVE module in _modules")
+require("internal").reloadRouting()
+-->
 
+```
+shell> curl --dump - http://localhost:8529/ourtest
+
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"test"
+```
 
 You will see that the module's do function has been executed.
 
@@ -128,11 +131,9 @@ culprit could be the routing caches:
 The routing cache stores the routing information computed from the *_routing*
 collection. Whenever you change this collection manually, you need to call
 
-    @startDocuBlockInline MOD_05_routingModifyReload
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_05_routingModifyReload}
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_05_routingModifyReload
+```js
+require("internal").reloadRouting()
+```
 
 in order to rebuild the cache.
 
@@ -146,118 +147,158 @@ For detailed information see the reference manual.
 
 Use the following for a permanent redirect:
 
-    @startDocuBlockInline MOD_06a_routingRedirect
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_06a_routingRedirect}
-    | db._routing.save({
-    |  url: "/redirectMe",
-    |  action: {
-    |    do: "@arangodb/actions/redirectRequest",
-    |    options: {
-    |      permanently: true,
-    |      destination: "/somewhere.else/"
-    |    }
-    |  }
-    });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_06a_routingRedirect
+```js
+db._routing.save({
+  url: "/redirectMe",
+  action: {
+    do: "@arangodb/actions/redirectRequest",
+    options: {
+      permanently: true,
+      destination: "/somewhere.else/"
+    }
+  }
+});
+require("internal").reloadRouting()
+```
 
-    @startDocuBlockInline MOD_06b_routingCurlRedirect
-    @EXAMPLE_ARANGOSH_RUN{MOD_06b_routingCurlRedirect}
-    var url = "/redirectMe";
-    var response = logCurlRequest('GET', url);
-    assert(response.code === 301);
-    logHtmlResponse(response);
-    db._query("FOR route IN _routing FILTER route.url == '/redirectMe' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock MOD_06b_routingCurlRedirect
+<!--
+var url = "/redirectMe";
+var response = logCurlRequest('GET', url);
+assert(response.code === 301);
+logHtmlResponse(response);
+db._query("FOR route IN _routing FILTER route.url == '/redirectMe' REMOVE route in _routing")
+require("internal").reloadRouting()
+-->
+
+```
+shell> curl --dump - http://localhost:8529/redirectMe
+
+HTTP/1.1 301 Moved Permanently
+x-content-type-options: nosniff
+content-type: text/html
+location: /somewhere.else/
+
+"<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"/somewhere.else/\">/somewhere.else/</a>.</p></body></html>"
+```
 
 ### Routing Bundles
 
 Instead of adding all routes for package separately, you can
 specify a bundle:
 
-    @startDocuBlockInline MOD_07a_routingMulti
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_07a_routingMulti}
-    | db._routing.save({
-    |  routes: [
-    |    {
-    |      url: "/url1",
-    |      content: "route 1"
-    |    },
-    |    {
-    |      url: "/url2",
-    |      content: "route 2"
-    |    },
-    |    {
-    |      url: "/url3",
-    |      content: "route 3"
-    |    }
-    |  ]
-      });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_07a_routingMulti
-
-
-    @startDocuBlockInline MOD_07b_routingCurlMulti
-    @EXAMPLE_ARANGOSH_RUN{MOD_07b_routingCurlMulti}
-    var url = ["/url1", "/url2", "/url3"];
-    var reply = ["route 1", "route 2", "route 3"]
-    for (var i = 1; i < 3; i++) {
-      var response = logCurlRequest('GET', url[i]);
-      assert(response.code === 200);
-      assert(response.body === reply[i])
-      logRawResponse(response);
+```js
+db._routing.save({
+  routes: [
+    {
+      url: "/url1",
+      content: "route 1"
+    },
+    {
+      url: "/url2",
+      content: "route 2"
+    },
+    {
+      url: "/url3",
+      content: "route 3"
     }
-    db._query("FOR route IN _routing FILTER route.routes[0].url == '/url1' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock MOD_07b_routingCurlMulti
+  ]
+});
+require("internal").reloadRouting()
+```
+
+
+<!--
+var url = ["/url1", "/url2", "/url3"];
+var reply = ["route 1", "route 2", "route 3"]
+for (var i = 1; i < 3; i++) {
+  var response = logCurlRequest('GET', url[i]);
+  assert(response.code === 200);
+  assert(response.body === reply[i])
+  logRawResponse(response);
+}
+db._query("FOR route IN _routing FILTER route.routes[0].url == '/url1' REMOVE route in _routing")
+require("internal").reloadRouting()
+-->
+
+```
+shell> curl --dump - http://localhost:8529/url2
+
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"route 2"
+shell> curl --dump - http://localhost:8529/url3
+
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"route 3"
+```
 
 The advantage is, that you can put all your routes into one document
 and use a common prefix.
 
-    @startDocuBlockInline MOD_07c_routingMulti
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_07c_routingMulti}
-    | db._routing.save({
-    |  urlPrefix: "/test",
-    |  routes: [
-    |    {
-    |      url: "/url1",
-    |      content: "route 1"
-    |    },
-    |    {
-    |      url: "/url2",
-    |      content: "route 2"
-    |    },
-    |    {
-    |      url: "/url3",
-    |      content: "route 3"
-    |    }
-    |  ]
-      });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_07c_routingMulti
+```js
+db._routing.save({
+  urlPrefix: "/test",
+  routes: [
+    {
+      url: "/url1",
+      content: "route 1"
+    },
+    {
+      url: "/url2",
+      content: "route 2"
+    },
+    {
+      url: "/url3",
+      content: "route 3"
+    }
+  ]
+});
+require("internal").reloadRouting()
+```
 
 will define the URL */test/url1*, */test/url2*, and */test/url3*:
 
-    @startDocuBlockInline MOD_07d_routingCurlMulti
-    @EXAMPLE_ARANGOSH_RUN{MOD_07d_routingCurlMulti}
-    var url = ["/test/url1", "/test/url2", "/test/url3"];
-    var reply = ["route 1", "route 2", "route 3"]
-    for (var i = 0; i < 3; i++) {
-      var response = logCurlRequest('GET', url[i]);
-      assert(response.code === 200);
-      assert(response.body === reply[i])
-      logRawResponse(response);
-    }
-    db._query("FOR route IN _routing FILTER route.routes[0].url == '/url1' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock MOD_07d_routingCurlMulti
+<!--
+var url = ["/test/url1", "/test/url2", "/test/url3"];
+var reply = ["route 1", "route 2", "route 3"]
+for (var i = 0; i < 3; i++) {
+  var response = logCurlRequest('GET', url[i]);
+  assert(response.code === 200);
+  assert(response.body === reply[i])
+  logRawResponse(response);
+}
+db._query("FOR route IN _routing FILTER route.routes[0].url == '/url1' REMOVE route in _routing")
+require("internal").reloadRouting()
+-->
+
+```
+shell> curl --dump - http://localhost:8529/test/url1
+
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"route 1"
+shell> curl --dump - http://localhost:8529/test/url2
+
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"route 2"
+shell> curl --dump - http://localhost:8529/test/url3
+
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"route 3"
+```
 
 ### Writing Middleware
 
@@ -266,41 +307,37 @@ as a daemon, this will end up in the logfile)*. In this case you can easily defi
 action for the URL */subdirectory*. This action simply logs
 the requests, calls the next in line, and logs the response:
 
-    @startDocuBlockInline MOD_08a_routingCreateOwnConsoleLog
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_08a_routingCreateOwnConsoleLog}
-    |db._modules.save({
-    |  path: "/db:/OwnMiddlewareTest",
-    |  content:
-    |     "exports.logRequest = function (req, res, options, next) {" +
-    |     "    console = require('console'); " + 
-    |     "    console.log('received request: %s', JSON.stringify(req));" +
-    |     "    next();" +
-    |     "    console.log('produced response: %s', JSON.stringify(res));" +
-    |     "};"
-    });
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_08a_routingCreateOwnConsoleLog
+```js
+db._modules.save({
+  path: "/db:/OwnMiddlewareTest",
+  content:
+     "exports.logRequest = function (req, res, options, next) {" +
+     "    console = require('console'); " + 
+     "    console.log('received request: %s', JSON.stringify(req));" +
+     "    next();" +
+     "    console.log('produced response: %s', JSON.stringify(res));" +
+     "};"
+});
+```
 
 This function will now be available as *db://OwnMiddlewareTest/logRequest*. You need to
 tell ArangoDB that it is should use a prefix match and that the shortest match
 should win in this case:
 
-    @startDocuBlockInline MOD_08b_routingCreateRouteToOwnConsoleLog
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_08b_routingCreateRouteToOwnConsoleLog}
-    |db._routing.save({
-    |  middleware: [
-    |    {
-    |      url: {
-    |        match: "/subdirectory/*"
-    |      },
-    |      action: {
-    |        do: "db://OwnMiddlewareTest/logRequest"
-    |      }
-    |    }
-    |  ]
-    });
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_08b_routingCreateRouteToOwnConsoleLog
+```js
+db._routing.save({
+  middleware: [
+    {
+      url: {
+        match: "/subdirectory/*"
+      },
+      action: {
+        do: "db://OwnMiddlewareTest/logRequest"
+      }
+    }
+  ]
+});
+```
 
 When you call *next()* in that action, the next specific routing will
 be used for the original URL. Even if you modify the URL in the request
@@ -313,50 +350,187 @@ called without modifying the URL in the request object
 
 Now we add some other simple routings to test all this:
 
-    @startDocuBlockInline MOD_08c_routingCreateRouteToOwnConsoleLog
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_08c_routingCreateRouteToOwnConsoleLog}
-    |db._routing.save({
-    |    url: "/subdirectory/ourtest/1",
-    |    action: {
-    |      do: "@arangodb/actions/echoRequest"
-    |    }
-    });
-    |db._routing.save({
-    |    url: "/subdirectory/ourtest/2",
-    |    action: {
-    |      do: "@arangodb/actions/echoRequest"
-    |    }
-    });
-    |db._routing.save({
-    |    url: "/subdirectory/ourtest/3",
-    |    action: {
-    |      do: "@arangodb/actions/echoRequest"
-    |    }
-    });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_08c_routingCreateRouteToOwnConsoleLog
+```js
+db._routing.save({
+    url: "/subdirectory/ourtest/1",
+    action: {
+      do: "@arangodb/actions/echoRequest"
+    }
+});
+db._routing.save({
+    url: "/subdirectory/ourtest/2",
+    action: {
+      do: "@arangodb/actions/echoRequest"
+    }
+});
+db._routing.save({
+    url: "/subdirectory/ourtest/3",
+    action: {
+      do: "@arangodb/actions/echoRequest"
+    }
+});
+require("internal").reloadRouting()
+```
 
 Then we send some curl requests to these sample routes:
 
-    @startDocuBlockInline MOD_08d_routingCurlToOwnConsoleLog
-    @EXAMPLE_ARANGOSH_RUN{MOD_08d_routingCurlToOwnConsoleLog}
-    var url = ["/subdirectory/ourtest/1",
-               "/subdirectory/ourtest/2",
-               "/subdirectory/ourtest/3"];
-    for (var i = 0; i < 3; i++) {
-      var response = logCurlRequest('GET', url[i]);
-      assert(response.code === 200);
-      logJsonResponse(response);
-    }
-    db._query("FOR route IN _routing FILTER route.middleware[0].url.match == '/subdirectory/*' REMOVE route in _routing");
-    db._query("FOR route IN _routing FILTER route.url == '/subdirectory/ourtest/1' REMOVE route in _routing");
-    db._query("FOR route IN _routing FILTER route.url == '/subdirectory/ourtest/2' REMOVE route in _routing");
-    db._query("FOR route IN _routing FILTER route.url == '/subdirectory/ourtest/3' REMOVE route in _routing");
-    db._query("FOR module IN _modules FILTER module.path == '/db:/OwnMiddlewareTest' REMOVE module in _modules");
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock MOD_08d_routingCurlToOwnConsoleLog
+<!--
+var url = ["/subdirectory/ourtest/1",
+           "/subdirectory/ourtest/2",
+           "/subdirectory/ourtest/3"];
+for (var i = 0; i < 3; i++) {
+  var response = logCurlRequest('GET', url[i]);
+  assert(response.code === 200);
+  logJsonResponse(response);
+}
+db._query("FOR route IN _routing FILTER route.middleware[0].url.match == '/subdirectory/*' REMOVE route in _routing");
+db._query("FOR route IN _routing FILTER route.url == '/subdirectory/ourtest/1' REMOVE route in _routing");
+db._query("FOR route IN _routing FILTER route.url == '/subdirectory/ourtest/2' REMOVE route in _routing");
+db._query("FOR route IN _routing FILTER route.url == '/subdirectory/ourtest/3' REMOVE route in _routing");
+db._query("FOR module IN _modules FILTER module.path == '/db:/OwnMiddlewareTest' REMOVE module in _modules");
+require("internal").reloadRouting()
+-->
+
+```
+shell> curl --dump - http://localhost:8529/subdirectory/ourtest/1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/subdirectory/ourtest/1", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
+
+```
+shell> curl --dump - http://localhost:8529/subdirectory/ourtest/2
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/subdirectory/ourtest/2", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
+
+```
+shell> curl --dump - http://localhost:8529/subdirectory/ourtest/3
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/subdirectory/ourtest/3", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
 
 and the console (and / or the logfile) will show requests and replies.
 *Note that logging doesn't warrant the sequence in which these lines
@@ -383,11 +557,9 @@ caching issues.
 After any modification to the routing or actions, it is thus recommended to
 make the changes "live" by calling the following functions from within arangosh:
 
-    @startDocuBlockInline MOD_09_routingReload
-    @EXAMPLE_ARANGOSH_RUN{MOD_09_routingReload}
-    require("internal").reloadRouting();
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_09_routingReload
+```js
+require("internal").reloadRouting();
+```
 
 You might also be affected by client-side caching.
 Browsers tend to cache content and also redirection URLs. You might need to
@@ -433,45 +605,207 @@ For example, this definition only allows access via *GET* and *HEAD*:
 
 whereas this definition allows HTTP *GET*, *POST*, and *PUT*:
 
-    @startDocuBlockInline MOD_09a_routingSpecifyMethods
-    @EXAMPLE_ARANGOSH_OUTPUT{MOD_09a_routingSpecifyMethods}
-    |db._routing.save({
-    |    url: {
-    |      match: "/hello/world",
-    |      methods: [ "get", "post", "put" ]
-    |    },
-    |    action: {
-    |      do: "@arangodb/actions/echoRequest"
-    |    }
-    });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock MOD_09a_routingSpecifyMethods
+```js
+db._routing.save({
+    url: {
+      match: "/hello/world",
+      methods: [ "get", "post", "put" ]
+    },
+    action: {
+      do: "@arangodb/actions/echoRequest"
+    }
+});
+require("internal").reloadRouting()
+```
 
-    @startDocuBlockInline MOD_09b_routingCurlSpecifyMethods
-    @EXAMPLE_ARANGOSH_RUN{MOD_09b_routingCurlSpecifyMethods}
-    var url = "/hello/world"
-    var postContent = "{hello: 'world'}";
-    var response = logCurlRequest('GET', url);
-    assert(response.code === 200);
-    logJsonResponse(response);
+<!--
+var url = "/hello/world"
+var postContent = "{hello: 'world'}";
+var response = logCurlRequest('GET', url);
+assert(response.code === 200);
+logJsonResponse(response);
 
-    var response = logCurlRequest('POST', url, postContent);
-    assert(response.code === 200);
-    logJsonResponse(response);
+var response = logCurlRequest('POST', url, postContent);
+assert(response.code === 200);
+logJsonResponse(response);
 
-    var response = logCurlRequest('PUT', url, postContent);
-    assert(response.code === 200);
-    logJsonResponse(response);
+var response = logCurlRequest('PUT', url, postContent);
+assert(response.code === 200);
+logJsonResponse(response);
 
-    var response = logCurlRequest('DELETE', url);
-    assert(response.code === 404);
-    logJsonResponse(response);
+var response = logCurlRequest('DELETE', url);
+assert(response.code === 404);
+logJsonResponse(response);
 
-    db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing");
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock MOD_09b_routingCurlSpecifyMethods
+db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing");
+require("internal").reloadRouting()
+-->
+
+```
+shell> curl --dump - http://localhost:8529/hello/world
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/hello/world", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
+
+```
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/hello/world <<EOF
+{hello: 'world'}
+EOF
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/hello/world", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "content-length" : "16", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "POST", 
+    "requestBody" : "{hello: 'world'}", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
+
+```
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/hello/world <<EOF
+{hello: 'world'}
+EOF
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/hello/world", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "content-length" : "16", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "PUT", 
+    "requestBody" : "{hello: 'world'}", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
+
+```
+shell> curl -X DELETE --dump - http://localhost:8529/hello/world
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+```
+
+```json
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 404, 
+  "errorMessage" : "unknown path '/hello/world'" 
+}
+```
 
 The former definition (defining *url* as an object with a *match* attribute)
 will result in the URL being accessible via all supported HTTP methods (e.g.

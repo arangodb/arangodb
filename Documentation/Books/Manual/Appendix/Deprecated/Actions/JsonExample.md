@@ -3,20 +3,18 @@ A Hello World Example for JSON
 
 If you change the example slightly, then a JSON object will be delivered.
 
-    @startDocuBlockInline JSON_01_routingCreateJsonHelloWorld
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_01_routingCreateJsonHelloWorld}
-    |db._routing.save({ 
-    |  url: "/hello/json", 
-    |  content: { 
-    |  contentType: "application/json", 
-    |    body: '{"hello" : "world"}'
-    |  }
-    });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_01_routingCreateJsonHelloWorld
+```js
+db._routing.save({ 
+  url: "/hello/json", 
+  content: { 
+  contentType: "application/json", 
+    body: '{"hello" : "world"}'
+  }
+});
+require("internal").reloadRouting()
+```
 
-Again check with your browser or cURL http://localhost:8529/hello/json
+Again check with your browser or cURL `http://localhost:8529/hello/json`
 
 Depending on your browser and installed add-ons you will either see the JSON
 object or a download dialog. If your browser wants to open an external
@@ -24,21 +22,24 @@ application to display the JSON object, you can change the *contentType* to
 *"text/plain"* for the example. This makes it easier to check the example using
 a browser. Or use *curl* to access the server.
 
-    @startDocuBlockInline JSON_02_routingCurlJsonHelloWorld
-    @EXAMPLE_ARANGOSH_RUN{JSON_02_routingCurlJsonHelloWorld}
-    var url = "/hello/json";
-    var response = logCurlRequest('GET', url);
-    assert(response.code === 200);
-    logJsonResponse(response);
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_02_routingCurlJsonHelloWorld
+<!--
+var url = "/hello/json";
+var response = logCurlRequest('GET', url);
+assert(response.code === 200);
+logJsonResponse(response);
+-->
 
-    @startDocuBlockInline JSON_03_routingCleanupJsonHelloWorld
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_03_routingCleanupJsonHelloWorld}
-    ~db._query("FOR route IN _routing FILTER route.url == '/hello/json' REMOVE route in _routing")
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_03_routingCleanupJsonHelloWorld
+```
+shell> curl --dump - http://localhost:8529/hello/json
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+
+{ 
+  "hello" : "world" 
+}
+```
 
 Delivering Content
 ------------------
@@ -51,34 +52,35 @@ starts when delivering dynamic content.
 
 You can specify a body and a content-type.
 
-    @startDocuBlockInline JSON_05a_routingCreateContentTypeHelloWorld
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_05a_routingCreateContentTypeHelloWorld}
-    |db._routing.save({
-    |  url: "/hello/contentType",
-    |  content: {
-    |    contentType: "text/html",
-    |    body: "<html><body>Hello World</body></html>"
-    |  }
-    });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_05a_routingCreateContentTypeHelloWorld
+```js
+db._routing.save({
+  url: "/hello/contentType",
+  content: {
+    contentType: "text/html",
+    body: "<html><body>Hello World</body></html>"
+  }
+});
+require("internal").reloadRouting()
+```
 
-    @startDocuBlockInline JSON_05b_routingCurlContentTypeHelloWorld
-    @EXAMPLE_ARANGOSH_RUN{JSON_05b_routingCurlContentTypeHelloWorld}
-    var url = "/hello/contentType";
-    var response = logCurlRequest('GET', url);
-    assert(response.code === 200);
-    logRawResponse(response);
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_05b_routingCurlContentTypeHelloWorld
+<!--
+var url = "/hello/contentType";
+var response = logCurlRequest('GET', url);
+assert(response.code === 200);
+logRawResponse(response);
+-->
 
-    @startDocuBlockInline JSON_05c_routingCleanupContentTypeHelloWorld
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_05c_routingCleanupContentTypeHelloWorld}
-    ~db._query("FOR route IN _routing FILTER route.url == '/hello/contentType' REMOVE route in _routing")
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_05c_routingCleanupContentTypeHelloWorld
+```
+shell> curl --dump - http://localhost:8529/hello/contentType
+
+HTTP/1.1 200 OK
+content-type: text/html
+x-content-type-options: nosniff
+
+"
+Hello World
+"
+```
 
 If the content type is *text/plain* then you can use the short-cut
 
@@ -118,34 +120,66 @@ function (req, res, options, next)
 
 *Examples*
 
-    @startDocuBlockInline JSON_06_routingCreateHelloEcho
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_06_routingCreateHelloEcho}
-    |db._routing.save({ 
-    |    url: "/hello/echo",
-    |    action: { 
-    |    do: "@arangodb/actions/echoRequest" 
-    |  } 
-    });
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_06_routingCreateHelloEcho
+```js
+db._routing.save({ 
+  url: "/hello/echo",
+  action: { 
+    do: "@arangodb/actions/echoRequest" 
+  } 
+});
+require("internal").reloadRouting()
+```
 
-Reload the routing and check http:// 127.0.0.1:8529/hello/echo
+Reload the routing and check `http://127.0.0.1:8529/hello/echo`
 
 You should see something like
 
-    @startDocuBlockInline JSON_07_fetchroutingCreateHelloEcho
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_07_fetchroutingCreateHelloEcho}
-    arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_07_fetchroutingCreateHelloEcho
+<!--
+arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
+-->
 
-    @startDocuBlockInline JSON_08_routingCleanupHelloEcho
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_08_routingCleanupHelloEcho}
-    ~db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_08_routingCleanupHelloEcho
+```js
+arango.GET("/hello/echo")
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/hello/echo", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
 
 The request might contain *path*, *prefix*, *suffix*, and *urlParameters*
 attributes.  *path* is the complete path as supplied by the user and always
@@ -183,33 +217,64 @@ called.
 
 *Examples*
 
-    @startDocuBlockInline JSON_09_routingCreateEchoController
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_09_routingCreateEchoController}
-    |db._routing.save({ 
-    |  url: "/hello/echo",
-    |  action: { 
-    |    controller: "@arangodb/actions/echoController" 
-    |  } 
-    });
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_09_routingCreateEchoController
+```js
+db._routing.save({ 
+  url: "/hello/echo",
+  action: { 
+    controller: "@arangodb/actions/echoController" 
+  } 
+});
+require("internal").reloadRouting()
+```
 
-Reload the routing and check http:// 127.0.0.1:8529/hello/echo:
+Reload the routing and check `http://127.0.0.1:8529/hello/echo`
 
-    @startDocuBlockInline JSON_10_fetchroutingCreateEchoController
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_10_fetchroutingCreateEchoController}
-    arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_10_fetchroutingCreateEchoController
+<!--
+arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
+-->
 
-    @startDocuBlockInline JSON_11_routingCleanupEchoController
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_11_routingCleanupEchoController}
-    ~db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_11_routingCleanupEchoController
+```js
+arango.GET("/hello/echo")
+```
 
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/hello/echo", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+  } 
+}
+```
 
 ### Prefix Action Controller
 
@@ -221,7 +286,7 @@ Assume that the url is a prefix match
 ```js
 { 
   url: { 
-    match: /hello/*" 
+    match: "/hello/*" 
   } 
 }
 ```
@@ -257,25 +322,19 @@ You can also store a function directly in the routing table.
 
 *Examples*
 
-    @startDocuBlockInline JSON_12a_routingCreateEchoFunction
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_12a_routingCreateEchoFunction}
-    |db._routing.save({ 
-    |  url: "/hello/echo",
-    |  action: { 
-    |    callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
-    |  } 
-    });
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_12a_routingCreateEchoFunction
+```js
+db._routing.save({ 
+  url: "/hello/echo",
+  action: { 
+    callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
+  } 
+});
+require("internal").reloadRouting()
+```
 
-    @startDocuBlockInline JSON_12b_fetchroutingEchoFunction
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_12b_fetchroutingEchoFunction}
-    arango.GET_RAW("hello/echo", { "accept" : "application/json" })
-    db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_12b_fetchroutingEchoFunction
+<!--
+arango.GET_RAW("hello/echo", { "accept" : "application/json" })
+-->
 
 ### Requests and Responses
 
@@ -299,53 +358,98 @@ function (req, res, options, next) {
 
 Install it via:
 
-    @startDocuBlockInline JSON_13_routingCreateEchoAction
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_13_routingCreateEchoAction}
-    |db._routing.save({ 
-    |  url: "/echo",
-    |  action: { 
-    |    do: "@arangodb/actions/echoRequest" 
-    |  }
-    })
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_13_routingCreateEchoAction
+```js
+db._routing.save({ 
+  url: "/echo",
+  action: { 
+    do: "@arangodb/actions/echoRequest" 
+  }
+})
+require("internal").reloadRouting()
+```
 
-Reload the routing and check http:// 127.0.0.1:8529/hello/echo
+Reload the routing and check `http://127.0.0.1:8529/hello/echo`
 
 You should see something like
 
-    @startDocuBlockInline JSON_14_fetchroutingRequestHelloEcho
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_14_fetchroutingRequestHelloEcho}
-    arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
-    db._query("FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_14_fetchroutingRequestHelloEcho
+<!--
+arango.GET_RAW("/hello/echo", { "accept" : "application/json" })
+-->
+
+```js
+arango.GET("/hello/echo")
+```
+
+```json
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 404, 
+  "errorMessage" : "unknown path '/hello/echo'" 
+}
+```
 
 You may also pass options to the called function:
 
-    @startDocuBlockInline JSON_15_routingCreateEchoRequestOptions
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_15_routingCreateEchoRequestOptions}
-    |db._routing.save({ 
-    |  url: "/echo",
-    |  action: {
-    |    do: "@arangodb/actions/echoRequest",
-    |    options: { 
-    |      "Hello": "World" 
-    |    }
-    |  } 
-    });
-    ~require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_15_routingCreateEchoRequestOptions
+```js
+db._routing.save({ 
+  url: "/echo",
+  action: {
+    do: "@arangodb/actions/echoRequest",
+    options: { 
+      "Hello": "World" 
+    }
+  } 
+});
+require("internal").reloadRouting()
+```
 
 You now see the options in the result:
 
-    @startDocuBlockInline JSON_16_fetchroutingEchoRequestOptions
-    @EXAMPLE_ARANGOSH_OUTPUT{JSON_16_fetchroutingEchoRequestOptions}
-    arango.GET_RAW("/echo", { accept: "application/json" })
-    db._query("FOR route IN _routing FILTER route.url == '/echo' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock JSON_16_fetchroutingEchoRequestOptions
+<!--
+arango.GET_RAW("/echo", { accept: "application/json" })
+-->
+
+```js
+arango.GET("/echo")
+```
+
+```json
+{ 
+  "request" : { 
+    "authorized" : true, 
+    "user" : null, 
+    "database" : "_system", 
+    "url" : "/echo", 
+    "protocol" : "http", 
+    "server" : { 
+      "address" : "127.0.0.1", 
+      "port" : 18328 
+    }, 
+    "client" : { 
+      "address" : "127.0.0.1", 
+      "port" : 36212, 
+      "id" : "154003193673621" 
+    }, 
+    "internals" : { 
+    }, 
+    "headers" : { 
+      "accept-encoding" : "deflate", 
+      "user-agent" : "ArangoDB", 
+      "host" : "127.0.0.1", 
+      "authorization" : "Basic cm9vdDo=", 
+      "connection" : "Keep-Alive" 
+    }, 
+    "requestType" : "GET", 
+    "parameters" : { 
+    }, 
+    "cookies" : { 
+    }, 
+    "urlParameters" : { 
+    } 
+  }, 
+  "options" : { 
+    "Hello" : "World" 
+  } 
+}
+```

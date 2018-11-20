@@ -2,7 +2,13 @@ ArangoDB's Actions
 ==================
 
 {% hint 'warning' %}
+ArangoDB Actions are deprecated.
 It is recommended to use [**Foxx**](../../../Foxx/README.md) instead.
+
+From v3.5.0 on, the system collections `_routing` and `_modules` are not
+created anymore when the `_system` database is first created (blank new data
+folder). They are not actively removed, they remain on upgrade or backup
+restoration from previous versions.
 {% endhint %}
 
 Introduction to User Actions

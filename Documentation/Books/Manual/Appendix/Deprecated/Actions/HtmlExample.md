@@ -29,44 +29,49 @@ describes how to deal with a particular request path.
 
 For the above example, add the following document to the _routing collection:
 
-    @startDocuBlockInline HTML_01_routingCreateHtml
-    @EXAMPLE_ARANGOSH_OUTPUT{HTML_01_routingCreateHtml}
-    |db._routing.save({ 
-    |  url: { 
-    |    match: "/hello/world" 
-    |  },
-    |  content: { 
-    |    contentType: "text/html", 
-    |    body: "<html><body>Hello World</body></html>" 
-    |  }
-    });
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_01_routingCreateHtml
+```js
+db._routing.save({ 
+  url: { 
+    match: "/hello/world" 
+  },
+  content: { 
+    contentType: "text/html", 
+    body: "<html><body>Hello World</body></html>" 
+  }
+});
+```
 
 In order to activate the new routing, you must either restart the server or call
 the internal reload function.
 
-    @startDocuBlockInline HTML_02_routingReload
-    @EXAMPLE_ARANGOSH_OUTPUT{HTML_02_routingReload}
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_02_routingReload
+```js
+require("internal").reloadRouting()
+```
 
-Now use the browser and access http:// localhost:8529/hello/world
+Now use the browser and access `http://localhost:8529/hello/world`
 
 You should see the *Hello World* in our browser:
 
-    @startDocuBlockInline HTML_03_routingCurlHtml
-    @EXAMPLE_ARANGOSH_RUN{HTML_03_routingCurlHtml}
-    var url = "/hello/world";
-    var response = logCurlRequest('GET', url);
-    assert(response.code === 200);
-    logRawResponse(response);
-    db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_03_routingCurlHtml
+<!--
+var url = "/hello/world";
+var response = logCurlRequest('GET', url);
+assert(response.code === 200);
+logRawResponse(response);
+db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing")
+require("internal").reloadRouting()
+-->
 
+```
+shell> curl --dump - http://localhost:8529/hello/world
+
+HTTP/1.1 200 OK
+content-type: text/html
+x-content-type-options: nosniff
+
+"
+Hello World
+"
+```
 
 Matching a URL
 --------------
@@ -247,52 +252,81 @@ Remember that the more specific match wins.
 
 Consider the following definitions
 
-    @startDocuBlockInline HTML_04_routingCreateMultiPath
-    @EXAMPLE_ARANGOSH_OUTPUT{HTML_04_routingCreateMultiPath}
-    |db._routing.save({ 
-    |  url: { match: "/hello/world" },
-       content: { contentType: "text/plain", body: "Match No 1"} });
-    |db._routing.save({ 
-    |  url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } },
-       content: { contentType: "text/plain", body: "Match No 2"} });
-    |db._routing.save({ 
-    |  url: { match: "/:something/world" },
-       content: { contentType: "text/plain", body: "Match No 3"} });
-    |db._routing.save({ 
-    |  url: { match: "/hi/*" },
-       content: { contentType: "text/plain", body: "Match No 4"} });
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_04_routingCreateMultiPath
+```js
+db._routing.save({ 
+  url: { match: "/hello/world" },
+  content: { contentType: "text/plain", body: "Match No 1"} });
+db._routing.save({ 
+  url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } },
+  content: { contentType: "text/plain", body: "Match No 2"} });
+db._routing.save({ 
+  url: { match: "/:something/world" },
+  content: { contentType: "text/plain", body: "Match No 3"} });
+db._routing.save({ 
+  url: { match: "/hi/*" },
+  content: { contentType: "text/plain", body: "Match No 4"} });
+require("internal").reloadRouting()
+```
 
 Then
 
-    @startDocuBlockInline HTML_05_routingGetMultiPath
-    @EXAMPLE_ARANGOSH_RUN{HTML_05_routingGetMultiPath}
-    | var url = ["/hello/world",
-    | "/hello/emil",
-    | "/your/world",
-      "/hi/you"];
-    | for (let i = 0; i < 4; i++) {
-    |   var response = logCurlRequest('GET', url[i]);
-    |   assert(response.code === 200);
-    |   assert(parseInt(response.body.substr(-1)) === (i + 1))
-    |   logRawResponse(response);
-    }
-    db._query("FOR route IN _routing FILTER route.content.contentType == 'text/plain' REMOVE route in _routing")
-    require("internal").reloadRouting()
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock HTML_05_routingGetMultiPath
+<!--
+var url = [
+  "/hello/world",
+  "/hello/emil",
+  "/your/world",
+  "/hi/you"
+];
+for (let i = 0; i < 4; i++) {
+  var response = logCurlRequest('GET', url[i]);
+  assert(response.code === 200);
+  assert(parseInt(response.body.substr(-1)) === (i + 1))
+  logRawResponse(response);
+}
+db._query("FOR route IN _routing FILTER route.content.contentType == 'text/plain' REMOVE route in _routing")
+require("internal").reloadRouting()
+-->
 
+```
+shell> curl --dump - http://localhost:8529/hello/world
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"Match No 1"
+
+shell> curl --dump - http://localhost:8529/hello/emil
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"Match No 2"
+
+shell> curl --dump - http://localhost:8529/your/world
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"Match No 3"
+
+shell> curl --dump - http://localhost:8529/hi/you
+HTTP/1.1 200 OK
+content-type: text/plain
+x-content-type-options: nosniff
+
+"Match No 4"
+```
 
 You can write the following document into the *_routing* collection
 to test the above examples.
 
-    {
-      routes: [
-    { url: { match: "/hello/world" }, content: "route 1" },
-    { url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
-    { url: { match: "/:something/world" }, content: "route 3" },
-    { url: { match: "/hello/*" }, content: "route 4" },
-      ]
-    }
+```js
+{
+  routes: [
+{ url: { match: "/hello/world" }, content: "route 1" },
+{ url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
+{ url: { match: "/:something/world" }, content: "route 3" },
+{ url: { match: "/hello/*" }, content: "route 4" },
+  ]
+}
+```
