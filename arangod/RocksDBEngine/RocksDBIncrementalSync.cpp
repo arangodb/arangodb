@@ -112,8 +112,8 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          Result r = physical->remove(&trx, builder.slice(), mdr, options,
-                                      tick, false, prevRev, revisionId);
+          Result r = physical->remove(&trx, builder.slice(), mdr, options, tick,
+                                      false, prevRev, revisionId, nullptr);
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
             THROW_ARANGO_EXCEPTION(r);
@@ -146,9 +146,9 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
         if (docKey.compare(highRef) > 0) {
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
-                                            velocypack::ValueType::String));          
-          Result r = physical->remove(&trx, builder.slice(), mdr, options,
-                                      tick, false, prevRev, revisionId);
+                                            velocypack::ValueType::String));
+          Result r = physical->remove(&trx, builder.slice(), mdr, options, tick,
+                                      false, prevRev, revisionId, nullptr);
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
             THROW_ARANGO_EXCEPTION(r);
@@ -300,9 +300,10 @@ Result syncChunkRocksDB(
         // we have a local key that is not present remotely
         keyBuilder->clear();
         keyBuilder->add(VPackValue(localKey));
-        
-        Result r = physical->remove(trx, keyBuilder->slice(), mdr, options,
-                                    resultTick, false, prevRev, revisionId);
+
+        Result r =
+            physical->remove(trx, keyBuilder->slice(), mdr, options, resultTick,
+                             false, prevRev, revisionId, nullptr);
         if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // ignore not found, we remove conflicting docs ahead of time
           return r;
@@ -353,9 +354,10 @@ Result syncChunkRocksDB(
       // we have a local key that is not present remotely
       keyBuilder->clear();
       keyBuilder->add(VPackValue(localKey));
-      
-      Result r = physical->remove(trx, keyBuilder->slice(), mdr, options,
-                                  resultTick, false, prevRev, revisionId);
+
+      Result r =
+          physical->remove(trx, keyBuilder->slice(), mdr, options, resultTick,
+                           false, prevRev, revisionId, nullptr);
       if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
         return r;
@@ -479,8 +481,9 @@ Result syncChunkRocksDB(
         keyBuilder->clear();
         keyBuilder->add(VPackValue(conflictingKey));
 
-        auto res = physical->remove(trx, keyBuilder->slice(), mdr, options,
-                                    resultTick, false, prevRev, revisionId);
+        Result res =
+            physical->remove(trx, keyBuilder->slice(), mdr, options, resultTick,
+                             false, prevRev, revisionId, nullptr);
         if (res.ok()) {
           ++stats.numDocsRemoved;
         }
@@ -492,8 +495,8 @@ Result syncChunkRocksDB(
         // INSERT
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-        Result res = physical->insert(trx, it, mdr, options,
-                                      resultTick, false, revisionId);
+        Result res = physical->insert(trx, it, mdr, options, resultTick, false,
+                                      revisionId, nullptr);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) { 
@@ -503,9 +506,9 @@ Result syncChunkRocksDB(
             if (inner.fail()) {
               return res;
             }
-            
-            res = physical->insert(trx, it, mdr, options,
-                                   resultTick, false, revisionId);
+
+            res = physical->insert(trx, it, mdr, options, resultTick, false,
+                                   revisionId, nullptr);
             if (res.fail()) {
               return res;
             }
@@ -519,9 +522,9 @@ Result syncChunkRocksDB(
       } else {
         // REPLACE
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
-        
-        Result res = physical->replace(trx, it, mdr, options, resultTick,
-                                       false, prevRev, previous);
+
+        Result res = physical->replace(trx, it, mdr, options, resultTick, false,
+                                       prevRev, previous, nullptr);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) { 
@@ -531,8 +534,8 @@ Result syncChunkRocksDB(
             if (inner.fail()) {
               return res;
             }
-            res = physical->replace(trx, it, mdr, options, resultTick,
-                                    false, prevRev, previous);
+            res = physical->replace(trx, it, mdr, options, resultTick, false,
+                                    prevRev, previous, nullptr);
             if (res.fail()) {
               return res;
             }
@@ -740,8 +743,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             ManagedDocumentResult previous;
             TRI_voc_rid_t resultMarkerTick;
             TRI_voc_rid_t prevRev, revisionId;
-            Result r = physical->remove(&trx, tempBuilder.slice(), previous, options,
-                                        resultMarkerTick, false, prevRev, revisionId);
+            Result r = physical->remove(&trx, tempBuilder.slice(), previous,
+                                        options, resultMarkerTick, false,
+                                        prevRev, revisionId, nullptr);
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time
               THROW_ARANGO_EXCEPTION(r);

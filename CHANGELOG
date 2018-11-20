@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated joi library (Web UI), improved foxx mount path validation
+
 * fix for supervision, which started failing servers using old transient store
 
 * do not create `_routing` collection for new installations/new databases, 
