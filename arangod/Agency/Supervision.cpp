@@ -1010,7 +1010,6 @@ void Supervision::readyOrphanedIndexCreations() {
           { VPackArrayBuilder trxs(envelope.get());
             { VPackArrayBuilder trx(envelope.get());
               { VPackObjectBuilder operation(envelope.get());
-                Job::addIncreasePlanVersion(*envelope);
                 envelope->add(VPackValue(_agencyPrefix + "/" + PLAN_VERSION));
                 { VPackObjectBuilder o(envelope.get());
                   envelope->add("op", VPackValue("increment")); }
