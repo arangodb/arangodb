@@ -94,7 +94,7 @@ Should you decide to create an index you should consider a few things:
 - Each index needs to add at least one index entry per document. You can use _sparse indexes_ to avoid adding _null_ index entries for rarely used attributes
 - Sparse indexes can smaller than non-sparse indexes, but they can only be used if the optimizer determines that the _null_ value cannot be in the result range
 - Collections that are more frequently read benefit the most from added indexes, provided you actually use the indexes
-- Having extra indexes on collections with a high rate of inserts or updates compared to reads, may hurt overall performance.
+- Indexes on collections with a high rate of inserts or updates compared to reads, may hurt overall performance.
 
 Generally it is best to design your indexes with your queries in mind. 
 Use the [query profiler](../../AQL/ExecutionAndPerformance/QueryProfiler.html) to understand the bottlenecks in your queries. 
