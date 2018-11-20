@@ -106,12 +106,13 @@ const waitForReplication = function() {
     }
     internal.sleep(1.0);
   }
-  //internal.print(state);
+  //internafl.print(state);
   //internal.print("lastLogTick: " + lastLogTick);
 
   if (wasOnMaster) {
     connectToMaster();
   } else {
+    internal.wait(1.0, false);
     connectToSlave();
   }
 };
@@ -437,7 +438,38 @@ describe('Global Replication on a fresh boot', function () {
         waitForReplication();
         connectToSlave();
 
+        internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
+        compareIndexes(sIdx, mIdx, true);
+        compareIndexes(sIdx, oIdx, false);
+      });
+
+      it("should replicate index creation with data", function () {
+        connectToMaster();
+
+        let c = db._collection(docColName);
+        let oIdx = c.getIndexes();
+
+        c.truncate();
+        let docs = [];
+        for(let i = 1; i <= 10000; i++) {
+          docs.push({value2 : i});
+          if (i % 1000 === 0) {
+            c.save(docs);
+            docs = [];
+          }
+        }
+
+        c.ensureHashIndex("value2");
+        let mIdx = c.getIndexes();
+
+        waitForReplication();
+        connectToSlave();
+
+        internal.sleep(5); // makes test more reliable
+        let sIdx = db._collection(docColName).getIndexes();
+        expect(db._collection(docColName).count()).to.eq(10000);
+
         compareIndexes(sIdx, mIdx, true);
         compareIndexes(sIdx, oIdx, false);
       });
@@ -668,8 +700,41 @@ describe('Global Replication on a fresh boot', function () {
         connectToSlave();
         db._useDatabase(dbName);
 
+        internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
         
+        compareIndexes(sIdx, mIdx, true);
+        compareIndexes(sIdx, oIdx, false);
+      });
+
+      it("should replicate index creation with data", function () {
+        connectToMaster();
+        db._useDatabase(dbName);
+
+        let c = db._collection(docColName);
+        let oIdx = c.getIndexes();
+
+        c.truncate();
+        let docs = [];
+        for(let i = 1; i <= 10000; i++) {
+          docs.push({value2 : i});
+          if (i % 1000 === 0) {
+            c.save(docs);
+            docs = [];
+          }
+        }
+
+        c.ensureHashIndex("value2");
+        let mIdx = c.getIndexes();
+
+        waitForReplication();
+        connectToSlave();
+        db._useDatabase(dbName);
+
+        internal.sleep(5); // makes test more reliable
+        let sIdx = db._collection(docColName).getIndexes();
+        expect(db._collection(docColName).count()).to.eq(10000);
+
         compareIndexes(sIdx, mIdx, true);
         compareIndexes(sIdx, oIdx, false);
       });
