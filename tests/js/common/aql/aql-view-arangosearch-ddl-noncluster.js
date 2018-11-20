@@ -38,6 +38,8 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     tearDownAll : function () {
+      db._useDatabase("_system");
+
       db._dropView("TestView");
       db._dropView("TestView1");
       db._dropView("TestView2");
@@ -45,6 +47,7 @@ function IResearchFeatureDDLTestSuite () {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
+      db._dropDatabase("TestDB");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -771,6 +774,29 @@ function IResearchFeatureDDLTestSuite () {
         view.properties({ links: { [colName]: { includeAllFields: true } } });
         db._dropView(viewName);
       } // forget variable `view`, it's invalid now
+      assertEqual(db[viewName], undefined);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test ensure that view is deleted within deleted database
+    /// Regression test for arangodb/release-3.4#153.
+    ////////////////////////////////////////////////////////////////////////////
+    testLeftViewInDroppedDatabase: function () {
+      const dbName = 'TestDB';
+      const viewName = 'TestView';
+
+      try { db._dropDatabase(dbName); } catch (e) {}
+
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      db._createView(viewName, 'arangosearch', {});
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      assertEqual(db._views().length, 0);
       assertEqual(db[viewName], undefined);
     },
 
