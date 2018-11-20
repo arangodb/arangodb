@@ -57,18 +57,12 @@ RestStatus RestIndexHandler::execute() {
   }
 }
 
-LogicalCollection* RestIndexHandler::collection(
-    std::string const& cName, std::shared_ptr<LogicalCollection>& coll) {
+std::shared_ptr<LogicalCollection> RestIndexHandler::collection(std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      try {
-        coll = ClusterInfo::instance()->getCollection(_vocbase.name(), cName);
-
-        return coll.get();
-      } catch (...) {
-      }
+      return ClusterInfo::instance()->getCollectionNT(_vocbase.name(), cName);
     } else {
-      return _vocbase.lookupCollection(cName).get();
+      return _vocbase.lookupCollection(cName);
     }
   }
 
@@ -80,7 +74,6 @@ LogicalCollection* RestIndexHandler::collection(
 // //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestIndexHandler::getIndexes() {
-  std::shared_ptr<LogicalCollection> tmpColl;
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
     // .............................................................................
@@ -89,7 +82,7 @@ RestStatus RestIndexHandler::getIndexes() {
 
     bool found = false;
     std::string cName = _request->value("collection", found);
-    LogicalCollection* coll = collection(cName, tmpColl);
+    auto coll = collection(cName);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -103,7 +96,7 @@ RestStatus RestIndexHandler::getIndexes() {
     bool withLinks = _request->parsedValue("withLinks", false);
     
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(coll, flags, withLinks, indexes);
+    Result res = methods::Indexes::getAll(coll.get(), flags, withLinks, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -132,7 +125,7 @@ RestStatus RestIndexHandler::getIndexes() {
     // .............................................................................
 
     std::string const& cName = suffixes[0];
-    LogicalCollection* coll = collection(cName, tmpColl);
+    auto coll = collection(cName);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -144,7 +137,7 @@ RestStatus RestIndexHandler::getIndexes() {
     b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll, b.slice(), output);
+    Result res = methods::Indexes::getIndex(coll.get(), b.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -184,8 +177,7 @@ RestStatus RestIndexHandler::createIndex() {
     return RestStatus::DONE;
   }
 
-  std::shared_ptr<LogicalCollection> tmpColl;
-  LogicalCollection* coll = collection(cName, tmpColl);
+  auto coll = collection(cName);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -202,7 +194,7 @@ RestStatus RestIndexHandler::createIndex() {
   }
 
   VPackBuilder output;
-  Result res = methods::Indexes::ensureIndex(coll, body, true, output);
+  Result res = methods::Indexes::ensureIndex(coll.get(), body, true, output);
   if (res.ok()) {
     VPackSlice created = output.slice().get("isNewlyCreated");
     auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
@@ -240,8 +232,7 @@ RestStatus RestIndexHandler::dropIndex() {
   }
 
   std::string const& cName = suffixes[0];
-  std::shared_ptr<LogicalCollection> tmpColl;
-  LogicalCollection* coll = collection(cName, tmpColl);
+  auto coll = collection(cName);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -252,7 +243,7 @@ RestStatus RestIndexHandler::dropIndex() {
   VPackBuilder idBuilder;
   idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
-  Result res = methods::Indexes::drop(coll, idBuilder.slice());
+  Result res = methods::Indexes::drop(coll.get(), idBuilder.slice());
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();
