@@ -56,7 +56,11 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
 
   auto docs = term->postings(irs::flags::empty_instance());
 
-  docs->next();
+  if (!docs->next()) {
+    // document not found
+    return irs::doc_iterator::empty();
+  }
+
   _pkIterator.reset(docs->value());
 
   // aliasing constructor
