@@ -72,7 +72,7 @@ void TRI_SegfaultDebugging(char const* message) {
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
-
+   
   return ::failurePoints.find(value) != ::failurePoints.end();
 }
 
@@ -204,7 +204,7 @@ void TRI_PrintBacktrace() {
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];
-  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  snprintf(buf, sizeof(buf), "/usr/bin/pstack %i", getpid());
   system(buf);
 #endif
 #endif
