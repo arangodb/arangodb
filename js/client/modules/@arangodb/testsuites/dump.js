@@ -52,6 +52,76 @@ const testPaths = {
   'dump_authentication': [tu.pathForTesting('server/dump')]
 };
 
+class DumpRestoreHelper {
+  constructor(instanceInfo, options, clientAuth, dumpOptions, afterServerStart) {
+    this.instanceInfo = instanceInfo;
+    this.options = options;
+    this.clientAuth = clientAuth;
+    this.dumpOptions = dumpOptions;
+    this.fn = afterServerStart(instanceInfo);
+    this.results = {failed: 1};
+    this.arangosh = tu.runInArangosh.bind(this, this.options, this.instanceInfo);
+    this.arangorestore = pu.run.arangoDumpRestore.bind(this, this.dumpOptions, this.instanceInfo, 'restore');
+    this.arangodump = pu.run.arangoDumpRestore.bind(this, this.dumpOptions, this.instanceInfo, 'dump');
+  }
+
+  isAlive() {
+    return pu.arangod.check.instanceAlive(this.instanceInfo, this.options);
+  }
+
+  validate(phaseInfo) {
+    phaseInfo.failed = (phaseInfo.status !== true || !this.isAlive() ? 1 : 0);
+    return phaseInfo.failed === 0;
+  };
+ 
+  extractResults() {
+    if (this.fn !== undefined) {
+      fs.remove(this.fn);
+    }
+    print(CYAN + 'Shutting down...' + RESET);
+    pu.shutdownInstance(this.instanceInfo, this.options);
+    print(CYAN + 'done.' + RESET);
+
+    print();
+
+    return this.results;
+  }
+
+  runSetupSuite(path) {
+    this.results.setup = this.arangosh(path, this.clientAuth);
+    return this.validate(this.results.setup);
+  }
+
+  dumpFrom(database) {
+    this.results.dump = this.arangodump(database);
+    return this.validate(this.results.dump);
+  }
+
+  restoreTo(database) {
+    this.results.restore = this.arangorestore(database);
+    return this.validate(this.results.restore);
+  }
+
+  runTests(file, database) {
+    this.results.test = this.arangosh(file, {'server.database': database});
+    return this.validate(this.results.test);
+  }
+
+  tearDown(file) {
+    this.results.tearDown = this.arangosh(file);
+    return this.validate(this.results.tearDown);
+  }
+
+  restoreOld(directory) {
+    this.results.restoreOld = this.arangorestore('_system', pu.TOP_DIR, directory);
+    return this.validate(this.results.restoreOld);
+  }
+
+  testRestoreOld(file) {
+    this.results.testRestoreOld = this.arangosh(file);
+    return this.validate(this.results.testRestoreOld);
+  }
+};
 
 function getClusterStrings(options)
 {
@@ -72,8 +142,6 @@ function getClusterStrings(options)
 // / @brief TEST: dump
 // //////////////////////////////////////////////////////////////////////////////
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, tstFiles, afterServerStart) {
-  let cluster;
-  let notCluster = getClusterStrings(options).notCluster;
   print(CYAN + which + ' tests...' + RESET);
 
   let instanceInfo = pu.startInstance('tcp', options, serverAuthInfo, which);
@@ -88,125 +156,55 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
     };
     return rc;
   }
-  let fn = afterServerStart(instanceInfo);
-  
+  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, afterServerStart);
+ 
   print(CYAN + Date() + ': Setting up' + RESET);
-  
-  let results = { failed: 1 };
-  results.setup = tu.runInArangosh(
-    options,
-    instanceInfo,
-    tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup)),
-    clientAuth);
 
-  results.setup.failed = 1;
+  const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
+  if (!helper.runSetupSuite(setupFile)) {
+    return helper.extractResults();
+  }
 
-  if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-      (results.setup.status === true)) {
-    results.setup.failed = 0;
+  print(CYAN + Date() + ': ' + which + ' and Restore - dump' + RESET);
 
-    print(CYAN + Date() + ': ' + which + ' and Restore - dump' + RESET);
+  if (!helper.dumpFrom('UnitTestsDumpSrc')) {
+    return helper.extractResults();
+  }
 
-    results.dump = pu.run.arangoDumpRestore(
-      dumpOptions,
-      instanceInfo,
-      'dump',
-      'UnitTestsDumpSrc');
+  print(CYAN + Date() + ': ' + which + ' and Restore - restore' + RESET);
 
-    results.dump.failed = 1;
-    if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-        (results.dump.status === true)) {
-      results.dump.failed = 0;
+  if (!helper.restoreTo('UnitTestsDumpDst')) {
+    return helper.extractResults();
+  }
 
-      print(CYAN + Date() + ': ' + which + ' and Restore - restore' + RESET);
+  print(CYAN + Date() + ': ' + which + ' and Restore - dump after restore' + RESET);
 
-      results.restore = pu.run.arangoDumpRestore(
-        dumpOptions,
-        instanceInfo,
-        'restore',
-        'UnitTestsDumpDst');
+  const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
+  if (!helper.runTests(testFile,'UnitTestsDumpDst')) {
+    return helper.extractResults();
+  }
 
-      results.restore.failed = 1;
-      if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-          (results.restore.status === true)) {
-        results.restore.failed = 0;
+  print(CYAN + Date() + ': ' + which + ' and Restore - teardown' + RESET);
 
-        print(CYAN + Date() + ': ' + which + ' and Restore - dump after restore' + RESET);
+  const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
+  if (!helper.tearDown(tearDownFile)) {
+    return helper.extractResults();
+  }
 
-        results.test = tu.runInArangosh(
-          options,
-          instanceInfo,
-          tu.makePathUnix(
-            fs.join(testPaths[which][0],
-                    tstFiles.dumpAgain)),
-          {
-	    'server.database': 'UnitTestsDumpDst'
-          });
-        results.test.failed = 1;
-        if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-            (results.test.status === true)) {
-          results.test.failed = 0;
+  if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
+    print(CYAN + Date() + ': Dump and Restore - restoreOld' + RESET);
+    let notCluster = getClusterStrings(options).notCluster;
+    let restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+    if (!helper.restoreOld(restoreDir)) {
+      return helper.extractResults();
+    }
 
-          print(CYAN + Date() + ': ' + which + ' and Restore - teardown' + RESET);
-
-          results.tearDown = tu.runInArangosh(
-            options,
-            instanceInfo,
-            tu.makePathUnix(
-              fs.join(testPaths[which][0],
-                      tstFiles.dumpTearDown)));
-          results.tearDown.failed = 1;
-          if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-              (results.tearDown.status === true)) {
-            results.tearDown.failed = 0;
-
-	    if (tstFiles.dumpCheckGraph === false) {
-              results.failed = 0;
-	    } else {
-              print(CYAN + Date() + ': Dump and Restore - restoreOld' + RESET);
-              let restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
-
-              results.restoreOld = pu.run.arangoDumpRestore(
-                options,
-                instanceInfo,
-                'restore',
-                '_system',
-                pu.TOP_DIR,
-                restoreDir);
-              results.restoreOld.failed = 1;
-              if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-                  (results.restoreOld.status === true)) {
-                results.restoreOld.failed = 0;
-
-                results.testRestoreOld = tu.runInArangosh(
-                  options,
-                  instanceInfo,
-                  fs.join(testPaths[which][0],
-                          tstFiles.dumpCheckGraph));
-
-                results.testRestoreOld.failed = 1;
-
-                if (results.testRestoreOld.status) {
-                  results.testRestoreOld.failed = 10;
-                  results.failed = 0;
-                }
-              }
-            }
-          }
-        }
-      }
+    const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
+    if (!helper.testRestoreOld(oldTestFile)) {
+      return helper.extractResults();
     }
   }
-  if (fn !== undefined) {
-    fs.remove(fn);
-  }
-  print(CYAN + 'Shutting down...' + RESET);
-  pu.shutdownInstance(instanceInfo, options);
-  print(CYAN + 'done.' + RESET);
-
-  print();
-
-  return results;
+  return helper.extractResults();
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -256,8 +254,7 @@ function dumpAuthentication (options) {
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
     dumpAgain: 'dump-authentication.js',
-    dumpTearDown: 'dump-teardown.js',
-    dumpCheckGraph: false
+    dumpTearDown: 'dump-teardown.js'
   };
 
   return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
@@ -298,8 +295,7 @@ function dumpEncrypted (options) {
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: false
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js'
   };
 
   return dump_backend(options, {}, {}, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
