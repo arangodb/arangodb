@@ -305,7 +305,6 @@ std::string CollectionNameResolver::getCollectionName(
 }
 
 std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
-  static const std::string UNKNOWN("_unknown");
   auto collection = _vocbase.lookupCollection(cid);
 
   // exactly as in the non-cluster case
