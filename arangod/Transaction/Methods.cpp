@@ -2757,6 +2757,13 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return false;
   }
+  if (_state->hasHint(Hints::Hint::LOCK_NEVER)) {
+    // In the lock never case we have made sure that
+    // some other process holds this lock.
+    // So we can lie here and report that it actually
+    // is locked!
+    return true;
+  }
 
   TransactionCollection* trxColl = trxCollection(document->cid(), type);
   TRI_ASSERT(trxColl != nullptr);
