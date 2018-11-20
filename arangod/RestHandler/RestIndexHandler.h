@@ -44,8 +44,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus createIndex();
   RestStatus dropIndex();
   
-  LogicalCollection* collection(std::string const& cName,
-                                std::shared_ptr<LogicalCollection>& coll);
+  std::shared_ptr<LogicalCollection> collection(std::string const& cName);
 };
 }
 

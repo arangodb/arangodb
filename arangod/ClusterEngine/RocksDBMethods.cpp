@@ -52,14 +52,10 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname,
   }
   
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  try {
-    collinfo = ci->getCollection(dbname, collname);
-  } catch (...) {
+  auto collinfo = ci->getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(collinfo != nullptr);
-  
   
   std::string const baseUrl = "/_db/" + basics::StringUtils::urlEncode(dbname)
                               + "/_api/collection/";
