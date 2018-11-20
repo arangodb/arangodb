@@ -228,9 +228,19 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
           // Check whether some collections were left behind, and if mark test as failed.
           let collectionsAfter = [];
-          db._collections().forEach(collection => {
-            collectionsAfter.push(collection._name);
-          });
+          try {
+            db._collections().forEach(collection => {
+              collectionsAfter.push(collection._name);
+            });
+          }
+          catch (x) {
+            results[te] = {
+              status: false,
+              message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+            };
+            continueTesting = false;
+            continue;
+          }
           let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
@@ -241,12 +251,33 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
               message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
-            db._collections().forEach(collection => {
-              collectionsBefore.push(collection._name);
-            });
+            try {
+              db._collections().forEach(collection => {
+                collectionsBefore.push(collection._name);
+              });
+            }
+            catch (x) {
+              results[te] = {
+                status: false,
+                message: 'failed to fetch the currently available delta collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+              };
+              continueTesting = false;
+              continue;
+            }
           }
 
-          let graphs = db._collection('_graphs');
+          let graphs;
+          try {
+            graphs = db._collection('_graphs');
+          }
+          catch (x) {
+            results[te] = {
+              status: false,
+              message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+            };
+            continueTesting = false;
+            continue;
+          }
           if (graphs && graphs.count() !== graphCount) {
             results[te] = {
               status: false,
@@ -277,9 +308,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             results.setup.message = 'custom preStop failed!';
           }
           collectionsBefore = [];
-          db._collections().forEach(collection => {
-            collectionsBefore.push(collection._name);
-          });
+          try {
+            db._collections().forEach(collection => {
+              collectionsBefore.push(collection._name);
+            });
+          }
+          catch (x) {
+            results[te] = {
+              status: false,
+              message: 'failed to fetch the currently available shutdown collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+            };
+            continueTesting = false;
+            continue;
+          }
+
         }
 
         first = false;

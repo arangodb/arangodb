@@ -320,31 +320,33 @@ class MMFilesCollection final : public PhysicalCollection {
                                ManagedDocumentResult& result);
 
   Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
+                arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result,
-                OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId) override;
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_tick_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options,
+                arangodb::velocypack::Slice newSlice,
+                ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                arangodb::velocypack::Slice const key) override;
+                arangodb::velocypack::Slice key,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice const newSlice,
+                 arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 std::function<Result(void)> callbackDuringLock) override;
 
   Result remove(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const slice,
+                arangodb::velocypack::Slice slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId,
+                std::function<Result(void)> callbackDuringLock) override;
 
   Result rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                            LocalDocumentId const& oldDocumentId,
@@ -370,6 +372,8 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
   Result persistLocalDocumentIds();
+  
+  bool hasAllPersistentLocalIds() const;
 
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
@@ -441,7 +445,6 @@ class MMFilesCollection final : public PhysicalCollection {
                         MMFilesWalMarker const* marker,
                         OperationOptions& options, bool& waitForSync);
 
- private:
   uint8_t const* lookupDocumentVPack(LocalDocumentId const& documentId) const;
   uint8_t const* lookupDocumentVPackConditional(LocalDocumentId const& documentId,
                                                 TRI_voc_tick_t maxTick,
@@ -494,8 +497,6 @@ class MMFilesCollection final : public PhysicalCollection {
                         bool& waitForSync);
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
-
-  bool hasAllPersistentLocalIds() const override;
 
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);
