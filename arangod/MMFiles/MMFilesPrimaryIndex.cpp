@@ -37,6 +37,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualCollection.h"
@@ -63,7 +64,9 @@ MMFilesPrimaryIndexEqIterator::MMFilesPrimaryIndexEqIterator(
     : IndexIterator(collection, trx),
       _index(index),
       _key(std::move(key)),
-      _done(false) {}
+      _done(false) {
+  TRI_ASSERT(_key->slice().isString());
+}
 
 MMFilesPrimaryIndexEqIterator::~MMFilesPrimaryIndexEqIterator() {
   if (_key != nullptr) {
@@ -84,6 +87,23 @@ bool MMFilesPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size
       _index->lookupKey(_trx, _key->slice());
   if (result) {
     cb(LocalDocumentId{result.localDocumentId()});
+  }
+  return false;
+}
+
+bool MMFilesPrimaryIndexEqIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(limit > 0);
+  if (_done || limit == 0) {
+    return false;
+  }
+  
+  _done = true;
+  ManagedDocumentResult mdr;
+  TRI_ASSERT(_key->slice().isString());
+  MMFilesSimpleIndexElement result =
+      _index->lookupKey(_trx, _key->slice(), mdr);
+  if (result) {
+    cb(result.localDocumentId(), VPackSlice(mdr.vpack())); 
   }
   return false;
 }
@@ -307,11 +327,8 @@ void MMFilesPrimaryIndex::unload() {
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice const& key) const {
-  ManagedDocumentResult mmdr;
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
-  TRI_ASSERT(key.isString());
-
-  return _primaryIndex->findByKey(&context, key.begin());
+  ManagedDocumentResult mdr;
+  return lookupKey(trx, key, mdr);
 }
 
 /// @brief looks up an element given a key

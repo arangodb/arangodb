@@ -109,6 +109,8 @@ class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
   char const* typeName() const override { return "primary-index-eq-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
