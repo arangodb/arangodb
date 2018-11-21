@@ -1926,6 +1926,9 @@ int ClusterInfo::ensureIndexCoordinator(
       return errorCode;
     }
     if (steady_clock::now() > endTime) {
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "Couldn't roll back index creation of " << idString << ". Database: "
+        << databaseName << ", Collection " << collectionID;
       errorMsg = "Timed out while trying to report index creation failure";
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
@@ -1934,12 +1937,6 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(sleepFor));
   }
-
-  LOG_TOPIC(ERR, Logger::CLUSTER)
-    << "Couldn't roll back index creation of " << idString << ". Database: "
-    << databaseName << ", Collection " << collectionID;
-
-  return errorCode;
   
 }
 
