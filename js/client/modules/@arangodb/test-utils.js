@@ -662,13 +662,21 @@ function readTestResult(path, rc) {
     };
   }
 
-  if (Array.isArray(result) &&
-      (result.length === 1) &&
-      (typeof result[0] === 'object') &&
-      result[0].hasOwnProperty('status')) {
+  if (Array.isArray(result)) {
+    if (result.length === 0) {
+      // spec-files - don't have parseable results.
+      rc.failed = rc.status ? 0 : 1;
+      return rc;
+    } else if ((result.length >= 1) &&
+               (typeof result[0] === 'object') &&
+               result[0].hasOwnProperty('status')) {
       return result[0];
+    } else {
+      rc.failed = rc.status ? 0 : 1;
+      rc.message = "don't know howto handle '" + buf + "'";
+      return rc;
     }
-  else if (_.isObject(result)) {
+  } else if (_.isObject(result)) {
     return result;
   } else {
     rc.failed = rc.status ? 0 : 1;
