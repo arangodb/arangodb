@@ -44,27 +44,6 @@ using namespace arangodb::basics;
 using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hex dump with ':' separator
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string hexdump(std::string const& s) {
-  std::ostringstream oss;
-  oss.imbue(locale());
-  bool first = true;
-
-  for (std::string::const_iterator it = s.begin();  it != s.end();  it++) {
-    oss << (first ? "" : ":") << hex << setw(2) << setfill('y') << std::string::traits_type::to_int_type(*it);
-    first = false;
-  }
-
-  return oss.str();
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
@@ -144,38 +123,6 @@ SECTION("test_Tolower") {
   string lower = StringUtils::tolower("HaLlO WoRlD!");
 
   CHECK(lower ==  "hallo world!");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test_convertUTF16ToUTF8
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("test_convertUTF16ToUTF8") {
-  string result;
-  bool isOk;
-
-  // both surrogates are valid
-  isOk = StringUtils::convertUTF16ToUTF8("D8A4\0", "dd42\0", result);
-
-  CHECK(isOk);
-  CHECK(result.length() ==  (size_t) 4);
-  CHECK("f0:b9:85:82" ==  hexdump(result));
-
-  result.clear();
-
-  // wrong low surrogate
-  isOk = StringUtils::convertUTF16ToUTF8("DD42", "D8A4", result);
-
-  CHECK(! isOk);
-  CHECK(result.empty());
-
-  result.clear();
-
-  // wrong high surrogate
-  isOk = StringUtils::convertUTF16ToUTF8("DC00", "DC1A", result);
-
-  CHECK(! isOk);
-  CHECK(result.empty());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
