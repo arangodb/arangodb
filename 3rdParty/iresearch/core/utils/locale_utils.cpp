@@ -3201,7 +3201,7 @@ template<typename T>
       *out++ = '+';
       ++size;
 
-      for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+      for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
         *out++ = fill;
         ++len; // subtract from 'ipad'
         ++size;
@@ -3215,7 +3215,7 @@ template<typename T>
       size += 2;
     }
 
-    for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+    for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
       *out++ = fill;
       ++size;
     }

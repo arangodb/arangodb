@@ -554,12 +554,16 @@ void ClusterInfo::loadPlan() {
       // Now the same for views:
       databasesSlice = planSlice.get("Views"); // format above
       if (databasesSlice.isObject()) {
+        swapViews = true; // mark for swap even if no databases present to ensure dangling datasources are removed
+
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& viewsSlice = databasePairSlice.value;
+
           if (!viewsSlice.isObject()) {
             continue;
           }
+
           std::string const databaseName = databasePairSlice.key.copyString();
           TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
 
@@ -630,8 +634,6 @@ void ClusterInfo::loadPlan() {
               TRI_ASSERT(false);
             }
           }
-
-          swapViews = true;
         }
       }
 
@@ -688,13 +690,18 @@ void ClusterInfo::loadPlan() {
 
       databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
+        swapCollections = true; // mark for swap even if no databases present to ensure dangling datasources are removed
+
         bool const isCoordinator = ServerState::instance()->isCoordinator();
+
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
+
           if (!collectionsSlice.isObject()) {
             continue;
           }
+
           DatabaseCollections databaseCollections;
           std::string const databaseName = databasePairSlice.key.copyString();
           TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
@@ -824,7 +831,6 @@ void ClusterInfo::loadPlan() {
 
           newCollections.emplace(
               std::make_pair(databaseName, databaseCollections));
-          swapCollections = true;
         }
       }
 
@@ -1490,19 +1496,26 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+  auto cbGuard = scopeGuard([this, &agencyCallback]()->void {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  });
 
   // Transact to agency
   AgencyOperation delPlanDatabases("Plan/Databases/" + name,
                                    AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanViews(
+    "Plan/Views/" + name, AgencySimpleOperationType::DELETE_OP
+  );
   AgencyOperation incrementVersion("Plan/Version",
                                    AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
   AgencyWriteTransaction trans(
-      {delPlanDatabases, delPlanCollections, incrementVersion}, databaseExists);
+    { delPlanDatabases, delPlanCollections, delPlanViews, incrementVersion },
+    databaseExists
+  );
 
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
@@ -1521,12 +1534,16 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   // Now wait stuff in Current to disappear and thus be complete:
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
+
     while (true) {
       if (dbServerResult->load(std::memory_order_acquire) >= 0) {
+        cbGuard.fire(); // unregister cb before calling ac.removeValues(...)
         res = ac.removeValues(where, true);
+
         if (res.successful()) {
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
+
         return setErrormsg(
             TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, errorMsg);
       }
@@ -1964,7 +1981,9 @@ int ClusterInfo::dropCollectionCoordinator(
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
+  auto cbGuard = scopeGuard([this, &agencyCallback]()->void {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  });
 
   size_t numberOfShards = 0;
   res = ac.getValues("Plan/Collections/" + dbName + "/" + collectionID + "/shards");
@@ -2028,11 +2047,13 @@ int ClusterInfo::dropCollectionCoordinator(
       errorMsg = *errMsg;
 
       if (*dbServerResult >= 0) {
+        cbGuard.fire(); // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
         ac.removeValues(
             "Current/Collections/" + dbName + "/" + collectionID, true);
         loadCurrent();
         events::DropCollection(collectionID, *dbServerResult);
+
         return *dbServerResult;
       }
 
