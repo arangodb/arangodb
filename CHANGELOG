@@ -31,6 +31,9 @@ v3.4.0-rc.5 (XXXX-XX-XX)
 
 * fix for supervision, which started failing servers using old transient store
 
+* fixed a bug where indexes are used in the cluster while still being
+  built on the db servers
+
 v3.4.0-rc.4 (2018-11-04)
 ------------------------
 
@@ -358,7 +361,6 @@ v3.4.0-rc.2 (2018-09-30)
 
 * fixed a bug in cleanOutServer which could lead to a cleaned out server
   still being a follower for some shard
-
 
 v3.4.0-rc.1 (2018-09-06)
 ------------------------
