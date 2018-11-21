@@ -100,37 +100,6 @@ class CollectionInfoCurrent {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns if a specific index exists
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::Result hasIndex(std::string const& indexId) const {
-
-    for (auto const& shard : _vpacks) {
-      VPackSlice indexes = getIndexes(shard.first);
-      if (indexes != VPackSlice::noneSlice() && indexes.length() > 0) {
-        bool found = false;
-        for (auto const& index : VPackArrayIterator(indexes)) {
-          if (index.get("id").isEqualString(indexId)) {
-            found = true;
-            if (index.hasKey("error") && index.get("error").getBoolean()) {
-              return Result( // Some shard has errored while creating the index
-                index.get("errorNum").getNumber<unsigned>(),
-                index.get("errorMessage").copyString());
-            }
-            break;
-          }
-        }
-        if (!found) { // Some shard has no index with this id
-          return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-        }
-      } else { // Some shard has no indexes at all
-        return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND); 
-      }
-    }
-    return Result(); // Good
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the error flag for a shardID
   //////////////////////////////////////////////////////////////////////////////
 

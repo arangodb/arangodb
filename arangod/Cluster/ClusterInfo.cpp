@@ -2572,7 +2572,6 @@ int ClusterInfo::ensureIndexCoordinator(
 
   // At this time the index creation has failed and we want to  roll back
   // the plan entry
-  VPackBuilder oldPlanSlice;
   AgencyWriteTransaction trx(
     std::vector<AgencyOperation>
     { AgencyOperation(
@@ -2597,7 +2596,7 @@ int ClusterInfo::ensureIndexCoordinator(
     if (sleepFor <= 2500) {
       sleepFor*=2;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds());
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleepFor));
   }
 
   LOG_TOPIC(ERR, Logger::CLUSTER)
