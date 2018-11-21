@@ -38,8 +38,6 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::order::prepared const& /*order*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  auto const pkRef = static_cast<irs::bytes_ref>(_pk);
-
   auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
 
   if (!pkField) {
@@ -49,7 +47,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
 
   auto term = pkField->iterator();
 
-  if (!term->seek(pkRef)) {
+  if (!term->seek(static_cast<irs::bytes_ref>(_pk))) {
     // no such term
     return irs::doc_iterator::empty();
   }
@@ -83,10 +81,11 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
     irs::boost::boost_t /*boost*/,
     irs::attribute_view const& /*ctx*/
 ) const {
-  if (irs::type_limits<irs::type_t::doc_id_t>::valid(_pkIterator._doc)) {
-    // aleady processed
-    return irs::filter::prepared::empty();
-  }
+//FIXME uncomment after fix
+//  if (irs::type_limits<irs::type_t::doc_id_t>::valid(_pkIterator._doc)) {
+//    // aleady processed
+//    return irs::filter::prepared::empty();
+//  }
 
   // aliasing constructor
   return irs::filter::prepared::ptr(irs::filter::prepared::ptr(), this);
