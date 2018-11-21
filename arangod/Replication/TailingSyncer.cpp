@@ -814,7 +814,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "marker slice is no object");
   }
-
+  
   // fetch marker "type"
   int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
 

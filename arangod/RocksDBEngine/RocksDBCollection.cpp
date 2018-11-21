@@ -350,18 +350,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   {
     WRITE_LOCKER(guard, _indexesLock);
-
     idx = findIndex(info, _indexes);
-
     if (idx) {
-      created = false;
-
-      // We already have this index.
+      created = false; // We already have this index.
       return idx;
     }
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
@@ -373,10 +369,26 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
   }
 
-  int res = saveIndex(trx, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  // we cannot persist primary or edge indexes
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
+  
+  Result res = fillIndexes(trx, idx);
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  // we need to sync the selectivity estimates
+  res = engine->settingsManager()->sync(false);
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+    << res.errorMessage();
+  }
+  
+  rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
+    << s.ToString();
   }
 
 #if USE_PLAN_CACHE
@@ -392,9 +404,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"}, true, /*forPersistence*/ true);
   VPackBuilder indexInfo;
-
   idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-  res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
+  res = engine->writeCreateCollectionMarker(
     _logicalCollection.vocbase().id(),
     _logicalCollection.id(),
     builder.slice(),
@@ -405,7 +416,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     )
   );
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     // We could not persist the index creation. Better abort
     // Remove the Index in the local list again.
     size_t i = 0;
@@ -417,9 +428,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       }
       ++i;
     }
+    idx->drop();
     THROW_ARANGO_EXCEPTION(res);
   }
   created = true;
+
   return idx;
 }
 
@@ -434,7 +447,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   if (!info.isObject()) {
     return TRI_ERROR_INTERNAL;
   }
-  
+    
   // check if we already have this index
   auto oldIdx = lookupIndex(info);
   if (oldIdx) {
@@ -442,13 +455,13 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     return TRI_ERROR_NO_ERROR;
   }
 
+  
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
-
   try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
     newIdx = engine->indexFactory().prepareIndexFromSlice(
       info, false, _logicalCollection, false
     );
@@ -479,51 +492,60 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
              Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
   Result res = fillIndexes(trx, newIdx);
-
   if (!res.ok()) {
     return res.errorNumber();
   }
+  
+  // we need to sync the selectivity estimates
+  res = engine->settingsManager()->sync(false);
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync settings: "
+    << res.errorMessage();
+  }
+  
+  rocksdb::Status s = engine->db()->GetRootDB()->FlushWAL(true);
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "could not flush wal: "
+    << s.ToString();
+  }
+  
 
   addIndex(newIdx);
-  {
-    auto builder = _logicalCollection.toVelocyPackIgnore(
-        {"path", "statusString"}, true, /*forPersistence*/ true);
-    VPackBuilder indexInfo;
-
-    newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
-
-    RocksDBEngine* engine =
-        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    TRI_ASSERT(engine != nullptr);
-    int res = engine->writeCreateCollectionMarker(
+  
+  auto builder = _logicalCollection.toVelocyPackIgnore(
+      {"path", "statusString"}, true, /*forPersistence*/ true);
+  
+  VPackBuilder indexInfo;
+  newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
+  TRI_ASSERT(engine != nullptr);
+  res = engine->writeCreateCollectionMarker(
+    _logicalCollection.vocbase().id(),
+    _logicalCollection.id(),
+    builder.slice(),
+    RocksDBLogValue::IndexCreate(
       _logicalCollection.vocbase().id(),
       _logicalCollection.id(),
-      builder.slice(),
-      RocksDBLogValue::IndexCreate(
-        _logicalCollection.vocbase().id(),
-        _logicalCollection.id(),
-        indexInfo.slice()
-      )
-    );
+      indexInfo.slice()
+    )
+  );
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      // We could not persist the index creation. Better abort
-      // Remove the Index in the local list again.
-      size_t i = 0;
-      WRITE_LOCKER(guard, _indexesLock);
-      for (auto index : _indexes) {
-        if (index == newIdx) {
-          _indexes.erase(_indexes.begin() + i);
-          break;
-        }
-        ++i;
+  if (res.fail()) {
+    // We could not persist the index creation. Better abort
+    // Remove the Index in the local list again.
+    size_t i = 0;
+    WRITE_LOCKER(guard, _indexesLock);
+    for (auto index : _indexes) {
+      if (index == newIdx) {
+        _indexes.erase(_indexes.begin() + i);
+        break;
       }
-      return res;
+      ++i;
     }
+    newIdx->drop();
+    return res.errorNumber();
   }
 
   idx = newIdx;
-  // We need to write the IndexMarker
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1311,46 +1333,21 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
 }
 
-int RocksDBCollection::saveIndex(transaction::Methods* trx,
-                                 std::shared_ptr<arangodb::Index> idx) {
-  // LOCKED from the outside
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // we cannot persist primary or edge indexes
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
-
-  Result res = fillIndexes(trx, idx);
-  if (!res.ok()) {
-    return res.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// non-transactional: fill index with existing documents
-/// from this collection
-arangodb::Result RocksDBCollection::fillIndexes(
-    transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  // FIXME: assert for an exclusive lock on this collection
-  TRI_ASSERT(trx->state()->collection(
-    _logicalCollection.id(), AccessMode::Type::EXCLUSIVE
-  ));
-
-  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+template<typename WriteBatchType, typename MethodsType>
+static arangodb::Result fillIndex(transaction::Methods* trx, 
+                                  RocksDBIndex* ridx, 
+                                  std::unique_ptr<IndexIterator> it,
+                                  WriteBatchType& batch, 
+                                  RocksDBCollection* rcol) {
   auto state = RocksDBTransactionState::toState(trx);
-  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
-    &_logicalCollection, trx, primaryIndex()
-  ));
-
+  
   // fillindex can be non transactional, we just need to clean up
-  rocksdb::DB* db = rocksutils::globalRocksDB()->GetBaseDB();
+  rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
   TRI_ASSERT(db != nullptr);
 
   uint64_t numDocsWritten = 0;
   // write batch will be reset every x documents
-  rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(),
-                                     32 * 1024 * 1024);
-  RocksDBBatchedMethods batched(state, &batch);
+  MethodsType batched(state, &batch);
 
   arangodb::Result res;
   auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
@@ -1363,56 +1360,74 @@ arangodb::Result RocksDBCollection::fillIndexes(
     }
   };
 
-  rocksdb::WriteOptions writeOpts;
-  bool hasMore = true;
+  rocksdb::WriteOptions wo;
+  //wo.disableWAL = true; // breaks tests
 
+  bool hasMore = true;
   while (hasMore && res.ok()) {
     hasMore = it->nextDocument(cb, 250);
 
-    if (TRI_VOC_COL_STATUS_DELETED == _logicalCollection.status()
-        || _logicalCollection.deleted()) {
+    if (TRI_VOC_COL_STATUS_DELETED == it->collection()->status()
+        || it->collection()->deleted()) {
       res = TRI_ERROR_INTERNAL;
+    } else if (application_features::ApplicationServer::isStopping()) {
+      res = TRI_ERROR_SHUTTING_DOWN;
     }
 
     if (res.ok()) {
-      rocksdb::Status s = db->Write(writeOpts, batch.GetWriteBatch());
-
+      rocksdb::Status s = db->Write(wo, batch.GetWriteBatch());
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         break;
       }
     }
+    
     batch.Clear();
   }
 
   // we will need to remove index elements created before an error
   // occurred, this needs to happen since we are non transactional
-  if (!res.ok()) {
-    it->reset();
-    batch.Clear();
-
-    arangodb::Result res2;  // do not overwrite original error
-    auto removeCb = [&](LocalDocumentId token) {
-      if (res2.ok() && numDocsWritten > 0) {
-        readDocumentWithCallback(trx, token, [&](LocalDocumentId const& documentId, VPackSlice doc) {
-          // we need to remove already inserted documents up to numDocsWritten
-          res2 = ridx->removeInternal(trx, &batched, documentId, doc, Index::OperationMode::rollback);
-          if (res2.ok()) {
-            numDocsWritten--;
-          }
-        });
-      }
-    };
-
-    hasMore = true;
-    while (hasMore && numDocsWritten > 0) {
-      hasMore = it->next(removeCb, 500);
+  if (res.fail()) {
+    RocksDBKeyBounds bounds = ridx->getBounds();
+    arangodb::Result res2 = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), bounds,
+                                                         true, /*useRangeDel*/numDocsWritten > 25000);
+    if (res2.fail()) {
+      LOG_TOPIC(WARN, Logger::ENGINES) << "was not able to roll-back "
+      << "index creation: " << res2.errorMessage();
     }
-    rocksdb::WriteOptions writeOpts;
-    db->Write(writeOpts, batch.GetWriteBatch());
   }
-
+  
   return res;
+}
+
+/// non-transactional: fill index with existing documents
+/// from this collection
+arangodb::Result RocksDBCollection::fillIndexes(
+    transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
+  TRI_ASSERT(trx->state()->collection(
+    _logicalCollection.id(), AccessMode::Type::EXCLUSIVE
+  ));
+  
+  std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
+    &_logicalCollection, trx, primaryIndex()
+  ));
+
+  RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
+
+  if (ridx->unique()) {
+    // unique index. we need to keep track of all our changes because we need to avoid
+    // duplicate index keys. must therefore use a WriteBatchWithIndex
+    rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(), 32 * 1024 * 1024);
+    return fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
+            trx, ridx, std::move(it), batch, this);
+  } else {
+    // non-unique index. all index keys will be unique anyway because they contain the document id
+    // we can therefore get away with a cheap WriteBatch
+    rocksdb::WriteBatch batch(32 * 1024 * 1024);
+    return fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(
+            trx, ridx, std::move(it), batch, this);
+  }
+  return Result();
 }
 
 Result RocksDBCollection::insertDocument(
