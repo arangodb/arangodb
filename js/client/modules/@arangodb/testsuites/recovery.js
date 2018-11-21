@@ -55,14 +55,15 @@ function runArangodRecovery (params) {
 
   if (params.setup) {
     params.options.disableMonitor = true;
-    params.td = fs.join(params.tempDir, `${params.count}`);
-    pu.cleanupDBDirectoriesAppend(params.td);
-    let dataDir = fs.join(params.td, 'data');
-    fs.makeDirectoryRecursive(params.td);
-    let appDir = fs.join(params.td, 'app');
-    fs.makeDirectoryRecursive(appDir);
-    let tmpDir = fs.join(params.td, 'tmp');
+    params.testDir = fs.join(params.tempDir, `${params.count}`);
+    pu.cleanupDBDirectoriesAppend(params.testDir);
+    let dataDir = fs.join(params.testDir, 'data');
+    let appDir = fs.join(params.testDir, 'app');
+    let tmpDir = fs.join(params.testDir, 'tmp');
+    fs.makeDirectoryRecursive(params.testDir);
+    fs.makeDirectoryRecursive(dataDir);
     fs.makeDirectoryRecursive(tmpDir);
+    fs.makeDirectoryRecursive(appDir);
 
     let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
     // enable development debugging if extremeVerbosity is set
@@ -73,13 +74,12 @@ function runArangodRecovery (params) {
     args = Object.assign(args, {
       'wal.reserve-logfiles': 1,
       'rocksdb.wal-file-timeout-initial': 10,
-      'database.directory': dataDir + '/db',
+      'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
     params.args = args;
-
 
     argv = toArgv(
       Object.assign(params.args,
@@ -109,16 +109,20 @@ function runArangodRecovery (params) {
 }
 
 function recovery (options) {
-  let results = {};
-
   if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
       global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
-    results.recovery = {
-      status: false,
-      message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
+    return {
+      recovery: {
+        status: false,
+        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
+      },
+      status: false
     };
-    return results;
   }
+
+  let results = {
+    status: true
+  };
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery);
 
@@ -134,52 +138,43 @@ function recovery (options) {
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let filtered = {};
-    let localOptions = _.cloneDeep(options);
-    let td="";
 
-    if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
-      let instanceInfo = {
-        rootDir: pu.UNITTESTS_DIR
-      };
+    if (tu.filterTestcaseByOptions(test, options, filtered)) {
       count += 1;
-
+      ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tempDir,
-        instanceInfo: instanceInfo,
-        options: localOptions,
+        instanceInfo: {
+          rootDir: pu.UNITTESTS_DIR
+        },
+        options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
-        td: td
+        testDir: ""
       };
       runArangodRecovery(params);
+
+      ////////////////////////////////////////////////////////////////////////
+      print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
-
-      print(BLUE + "running recovery of " + test + RESET);
       runArangodRecovery(params);
-      
-      let jsonFN = fs.join(params.args['temp.path'], 'testresult.json');
-      try {
-        results[test] = JSON.parse(fs.read(jsonFN));
-        fs.remove(jsonFN);
-      } catch (x) {
-        print(RED + 'failed to read ' + jsonFN + RESET);
-        results[test] = {
-          status: false,
-          message: 'failed to read ' + jsonFN + x,
-          duration: -1
-        };
-      }
 
+      results[test] = tu.readTestResult(
+        params.args['temp.path'],
+        {
+          status: false
+        }
+      );
       if (!results[test].status) {
-        print("Not cleaning up " + params.td);
+        print("Not cleaning up " + params.testDir);
         results.status = false;
       }
       else {
         options.cleanup = false;
-        pu.cleanupLastDirectory(localOptions);
+        pu.cleanupLastDirectory(params.options);
       }
     } else {
       if (options.extremeVerbosity) {
@@ -189,12 +184,14 @@ function recovery (options) {
   }
   process.env.TMPDIR = orgTmp;
   if (count === 0) {
-    results['ALLTESTS'] = {
-      status: false,
-      skipped: true
-    };
-    results.status = false;
     print(RED + 'No testcase matched the filter.' + RESET);
+    return {
+      ALLTESTS: {
+        status: false,
+        skipped: true
+      },
+      status: false
+    };
   }
 
   return results;
