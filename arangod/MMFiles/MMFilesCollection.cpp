@@ -2402,6 +2402,13 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     return TRI_ERROR_INTERNAL;
   }
 
+  // check if we already have this index
+  auto oldIdx = lookupIndex(info);
+  if (oldIdx) {
+    idx = oldIdx;
+    return TRI_ERROR_NO_ERROR;
+  }
+
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
