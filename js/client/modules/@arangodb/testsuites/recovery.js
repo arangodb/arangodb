@@ -50,75 +50,62 @@ const testPaths = {
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (instanceInfo, options, script, setup, count) {
-  let tmpDir;
-  if (!instanceInfo.recoveryArgs) {
-    let tempDir = fs.getTempPath();
-    let td = fs.join(tempDir, `${count}`);
-    if (setup) {
-      pu.cleanupDBDirectoriesAppend(td);
-    }
-    td = fs.join(td, 'data');
-    fs.makeDirectoryRecursive(td);
-    instanceInfo.tmpDataDir = td;
+function runArangodRecovery (params) {
+  let argv = [];
 
-    let appDir = fs.join(td, 'app');
+  if (params.setup) {
+    params.options.disableMonitor = true;
+    params.td = fs.join(params.tempDir, `${params.count}`);
+    pu.cleanupDBDirectoriesAppend(params.td);
+    let dataDir = fs.join(params.td, 'data');
+    fs.makeDirectoryRecursive(params.td);
+    let appDir = fs.join(params.td, 'app');
     fs.makeDirectoryRecursive(appDir);
-    tmpDir = fs.join(td, 'tmp');
+    let tmpDir = fs.join(params.td, 'tmp');
     fs.makeDirectoryRecursive(tmpDir);
 
-    let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
-    args['wal.reserve-logfiles'] = 1;
-    args['rocksdb.wal-file-timeout-initial'] = 10;
-    args['database.directory'] = instanceInfo.tmpDataDir + '/db';
-
-    args = Object.assign(args, options.extraArgs);
-
-    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false', '--replication.auto-start', 'true']);
-  }
-
-  let argv = instanceInfo.recoveryArgv;
-
-  if (setup) {
-    argv = argv.concat([
-      '--javascript.script-parameter', 'setup'
-    ]);
-  } else {
-    argv = argv.concat([
-      '--wal.ignore-logfile-errors', 'true',
-      '--javascript.script-parameter', 'recovery'
-    ]);
-  }
-
-  // enable development debugging if extremeVerbosity is set
-  if (options.extremeVerbosity === true) {
-    argv = argv.concat([
-      '--log.level', 'development=info'
-    ]);
-  }
-
-  argv = argv.concat([
-    '--javascript.script', script
-  ]);
-
-  let binary = pu.ARANGOD_BIN;
-
-  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
-  if (!setup) {
-    let jsonFN = fs.join(tmpDir, 'testresult.json');
-    try {
-      let result = JSON.parse(fs.read(jsonFN));
-      fs.remove(jsonFN);
-      return result;
-    } catch (x) {
-      print(RED + 'failed to read ' + jsonFN + RESET);
-      return {
-        status: false,
-        message: 'failed to read ' + jsonFN + x,
-        duration: -1
-      };
+    let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
+    // enable development debugging if extremeVerbosity is set
+    if (params.options.extremeVerbosity === true) {
+      args['log.level'] = 'development=info';
     }
+    args = Object.assign(args, params.options.extraArgs);
+    args = Object.assign(args, {
+      'wal.reserve-logfiles': 1,
+      'rocksdb.wal-file-timeout-initial': 10,
+      'database.directory': dataDir + '/db',
+      'server.rest-server': 'false',
+      'replication.auto-start': 'true',
+      'javascript.script': params.script
+    });
+    params.args = args;
+
+
+    argv = toArgv(
+      Object.assign(params.args,
+                    {
+                      'javascript.script-parameter': 'setup'
+                    }
+                   )
+    );
+  } else {
+    argv = toArgv(
+      Object.assign(params.args,
+                    {
+                      'wal.ignore-logfile-errors': 'true',
+                      'javascript.script-parameter': 'recovery'
+                    }
+                   )
+    );
   }
+  params.instanceInfo.pid = pu.executeAndWait(
+    pu.ARANGOD_BIN,
+    argv,
+    params.options,
+    'recovery',
+    params.instanceInfo.rootDir,
+    params.setup,
+    !params.setup && params.options.coreCheck);
 }
 
 function recovery (options) {
@@ -133,14 +120,11 @@ function recovery (options) {
     return results;
   }
 
-  let status = true;
-
   let recoveryTests = tu.scanTestPaths(testPaths.recovery);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
   let count = 0;
-
   let orgTmp = process.env.TMPDIR;
   let tempDir = fs.join(fs.getTempPath(), 'crashtmp');
   fs.makeDirectoryRecursive(tempDir);
@@ -151,7 +135,7 @@ function recovery (options) {
     let test = recoveryTests[i];
     let filtered = {};
     let localOptions = _.cloneDeep(options);
-    let disableMonitor = localOptions.disableMonitor;
+    let td="";
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       let instanceInfo = {
@@ -159,18 +143,42 @@ function recovery (options) {
       };
       count += 1;
 
-      print(BLUE + "running setup of " + test + RESET);
-      localOptions.disableMonitor = true;
-      runArangodRecovery(instanceInfo, localOptions, test, true, count);
-      localOptions.disableMonitor = disableMonitor;
+      print(BLUE + "running setup of test " + count + " - " + test + RESET);
+      let params = {
+        tempDir: tempDir,
+        instanceInfo: instanceInfo,
+        options: localOptions,
+        script: test,
+        setup: true,
+        count: count,
+        td: td
+      };
+      runArangodRecovery(params);
+      params.options.disableMonitor = options.disableMonitor;
+      params.setup = false;
 
       print(BLUE + "running recovery of " + test + RESET);
-      results[test] = runArangodRecovery(instanceInfo, localOptions, test, false, count);
+      runArangodRecovery(params);
+      
+      let jsonFN = fs.join(params.args['temp.path'], 'testresult.json');
+      try {
+        results[test] = JSON.parse(fs.read(jsonFN));
+        fs.remove(jsonFN);
+      } catch (x) {
+        print(RED + 'failed to read ' + jsonFN + RESET);
+        results[test] = {
+          status: false,
+          message: 'failed to read ' + jsonFN + x,
+          duration: -1
+        };
+      }
 
       if (!results[test].status) {
-        status = false;
+        print("Not cleaning up " + params.td);
+        results.status = false;
       }
       else {
+        options.cleanup = false;
         pu.cleanupLastDirectory(localOptions);
       }
     } else {
@@ -185,10 +193,9 @@ function recovery (options) {
       status: false,
       skipped: true
     };
-    status = false;
+    results.status = false;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
-  results.status = status;
 
   return results;
 }
