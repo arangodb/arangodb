@@ -41,6 +41,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/QueryCache.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -1007,7 +1008,29 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
           }
 
           linkBuilder.close();
-          linksBuilderWrapper->add(collectionName, linkBuilder.slice());
+
+          // need to mask out some fields
+          static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+              irs::string_ref const& key
+          )->bool {
+            return key != arangodb::StaticStrings::IndexId
+                && key != arangodb::StaticStrings::IndexType
+                && key != StaticStrings::ViewIdField; // ignored fields
+          };
+
+          arangodb::velocypack::Builder sanitizedBuilder;
+          sanitizedBuilder.openObject();
+          if (!mergeSliceSkipKeys(sanitizedBuilder, linkBuilder.slice(), acceptor)) {
+            Result result(TRI_ERROR_INTERNAL,
+                std::string("failed to generate externally visible link ")
+                .append("definition while emplacing link definition into ")
+                .append("arangosearch view '").append(name()).append("'"));
+            LOG_TOPIC(WARN, iresearch::TOPIC) << result.errorMessage();
+            return result;
+          }
+          sanitizedBuilder.close();
+
+          linksBuilderWrapper->add(collectionName, sanitizedBuilder.slice());
         }
       }
     }
