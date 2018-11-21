@@ -707,33 +707,11 @@ void ClusterInfo::loadPlan() {
 
           for (auto const& collectionPairSlice :
                VPackObjectIterator(collectionsSlice)) {
-            
             VPackSlice const& collectionSlice = collectionPairSlice.value;
             if (!collectionSlice.isObject()) {
               continue;
             }
 
-            // We'll remove indexes from plan for this collection, if still `isBuilding`
-            VPackBuilder tmp;
-            { VPackObjectBuilder o(&tmp);
-              for (auto const& kvpair : VPackObjectIterator(collectionSlice)) {
-                auto const& key = kvpair.key.copyString();
-                auto const& val = kvpair.value;
-                if (key != "indexes") {
-                  tmp.add(key, val);
-                } else {
-                  tmp.add(VPackValue("indexes"));
-                  VPackArrayBuilder a(&tmp);
-                  for (auto const& index : VPackArrayIterator(val)) {
-                    if (index.hasKey("isBuilding")) { // This index is still being built
-                      continue;
-                    }
-                    tmp.add(index);
-                  }
-                }
-              }
-            }
-              
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
 
@@ -2492,7 +2470,6 @@ int ClusterInfo::ensureIndexCoordinator(
     return errorCode;
   }
   loadPlan();
-
   
   std::string const indexPath =
     "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
