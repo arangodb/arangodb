@@ -466,6 +466,14 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   if (!info.isObject()) {
     return TRI_ERROR_INTERNAL;
   }
+
+  // check if we already have this index
+  auto oldIdx = lookupIndex(info);
+  if (oldIdx) {
+    idx = oldIdx;
+    return TRI_ERROR_NO_ERROR;
+  }
+
   
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   
@@ -663,11 +671,11 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
     TRI_ASSERT(!state->hasOperations()); // not allowed
-    
+
     TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
       return Result(TRI_ERROR_DEBUG);
     }
-    
+
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     // add the assertion again here, so we are sure we can use RangeDeletes
     TRI_ASSERT(engine->canUseRangeDeleteInWal());
@@ -691,7 +699,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    
+
     // delete indexes, place estimator blockers
     {
       READ_LOCKER(guard, _indexesLock);
@@ -718,10 +726,12 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
+
     seq = db->GetLatestSequenceNumber() - 1; // post commit sequence
     
     uint64_t numDocs = _numberDocuments.exchange(0);
     _meta.adjustNumberDocuments(seq, /*revision*/newRevisionId(), - static_cast<int64_t>(numDocs));
+
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -730,7 +740,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     }
     
     guard.fire(); // remove blocker
-    
+
     if (numDocs > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
       compact();

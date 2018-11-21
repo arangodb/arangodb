@@ -288,6 +288,12 @@ class Node {
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
 
+  /// @brief Get array value
+  Slice getArray() const;
+
+  /// @brief Get insigned value (throws if type NODE or if conversion fails)
+  uint64_t getUInt() const;
+
   //
   // The protected accessors are the "old" interface.  They throw.
   //  Please use the hasAsXXX replacements.
@@ -299,17 +305,11 @@ protected:
   /// @brief Get integer value (throws if type NODE or if conversion fails)
   int64_t getInt() const;
 
-  /// @brief Get insigned value (throws if type NODE or if conversion fails)
-  uint64_t getUInt() const;
-
   /// @brief Get bool value (throws if type NODE or if conversion fails)
   bool getBool() const;
 
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
-
-  /// @brief Get array value
-  Slice getArray() const;
 
  public:
   /// @brief Clear key value store
