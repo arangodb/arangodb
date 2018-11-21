@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Indexes/IndexLookupContext.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"

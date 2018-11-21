@@ -27,7 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -335,7 +335,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice const& key,
     ManagedDocumentResult& mmdr) const {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mmdr, 1);
   TRI_ASSERT(key.isString());
 
   return _primaryIndex->findByKey(&context, key.begin());
@@ -345,7 +345,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
     transaction::Methods* trx, VPackSlice const& key) const {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
@@ -362,7 +362,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
     transaction::Methods* trx, VPackSlice const& key,
     ManagedDocumentResult& mmdr) const {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mmdr, 1);
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
@@ -384,7 +384,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
     transaction::Methods* trx, arangodb::basics::BucketPosition& position,
     uint64_t& total) {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
 
   return _primaryIndex->findSequential(&context, position, total);
 }
@@ -414,7 +414,7 @@ IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx) const
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
     transaction::Methods* trx, arangodb::basics::BucketPosition& position) {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
 
   return _primaryIndex->findSequentialReverse(&context, position);
 }
@@ -433,10 +433,10 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mmdr,
                                       OperationMode mode) {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mmdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
-// TODO: we can pass in a special IndexLookupContext which has some more on the information
+// TODO: we can pass in a special MMFilesIndexLookupContext which has some more on the information
 // about the to-be-inserted document. this way we can spare one lookup in
 // IsEqualElementElementByKey
   int res = _primaryIndex->insert(&context, element);
@@ -467,7 +467,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mmdr,
                                       OperationMode mode) {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &mmdr, 1);
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found =
       _primaryIndex->removeByKey(&context, keySlice.begin());
@@ -482,7 +482,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
 /// @brief resizes the index
 int MMFilesPrimaryIndex::resize(transaction::Methods* trx, size_t targetSize) {
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
   return _primaryIndex->resize(&context, targetSize);
 }
 

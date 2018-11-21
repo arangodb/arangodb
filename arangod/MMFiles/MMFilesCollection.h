@@ -28,7 +28,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDitch.h"
@@ -82,7 +82,7 @@ class MMFilesCollection final : public PhysicalCollection {
     MMFilesDatafileStatisticsContainer* _dfi{nullptr};
     transaction::Methods* _trx;
     ManagedDocumentResult _mmdr;
-    IndexLookupContext _context;
+    MMFilesIndexLookupContext _context;
     uint64_t _deletions{0};
     uint64_t _documents{0};
     uint64_t _operations{0};
