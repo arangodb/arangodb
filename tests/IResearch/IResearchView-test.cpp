@@ -2016,7 +2016,7 @@ SECTION("test_query") {
         arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           EMPTY,
-          EMPTY,
+          std::vector<std::string>{logicalCollection->name()},
           EMPTY,
           options
         );
@@ -5142,7 +5142,7 @@ SECTION("test_update_partial") {
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
-        EMPTY,
+        std::vector<std::string>{logicalCollection->name()},
         EMPTY,
         arangodb::transaction::Options()
       );

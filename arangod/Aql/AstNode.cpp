@@ -1362,7 +1362,7 @@ bool AstNode::isAttributeAccessForVariable(
   }
   auto node = this;
 
-  basics::StringBuffer indexBuff(false);
+  basics::StringBuffer indexBuff;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
          node->type == NODE_TYPE_INDEXED_ACCESS ||
@@ -2601,8 +2601,9 @@ void AstNode::markFinalized(AstNode* subtreeRoot) {
   }
 
   subtreeRoot->setFlag(AstNodeFlagType::FLAG_FINALIZED);
-  for (size_t i = 0; i < subtreeRoot->numMembers(); ++i) {
-    markFinalized(subtreeRoot->getMember(i));
+  size_t const n = subtreeRoot->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    markFinalized(subtreeRoot->getMemberUnchecked(i));
   }
 }
 

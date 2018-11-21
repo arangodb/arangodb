@@ -544,7 +544,7 @@ struct AstNode {
     if (i >= members.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
     }
-    members.at(i) = node;
+    members[i] = node;
   }
 
   /// @brief remove a member from the node

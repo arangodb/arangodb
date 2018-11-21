@@ -660,8 +660,9 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                : RocksDBValue::VPackIndexValue();
 
   size_t const count = elements.size();
-  RocksDBValue existing =
-      RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
+  RocksDBValue existing = RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
     if (_unique) {
@@ -809,6 +810,9 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   SmallVector<RocksDBKey> elements{elementsArena};
   SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
   SmallVector<uint64_t> hashes{hashesArena};
+
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
   int res = TRI_ERROR_NO_ERROR;
   {
     // rethrow all types of exceptions from here...

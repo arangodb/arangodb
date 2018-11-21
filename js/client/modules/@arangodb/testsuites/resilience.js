@@ -46,13 +46,19 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function resilience (options) {
+  let suiteName = 'resilience';
   let testCases = tu.scanTestPaths(testPaths.resilience);
   options.cluster = true;
   options.propagateInstanceInfo = true;
+  if (options.test !== undefined) {
+    // remove non ascii characters from our working directory:
+    //                                       < A                           > Z && < a                   > z
+    suiteName += '_' + options.test.replace(/[\x00-\x40]/g, "_").replace(/[\x5B-\x60]/g, "_").replace(/[\x7B-\xFF]/g, "_");
+  }
   if (options.dbServers < 5) {
     options.dbServers = 5;
   }
-  return tu.performTests(options, testCases, 'resilience', tu.runThere);
+  return tu.performTests(options, testCases, suiteName, tu.runThere);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
