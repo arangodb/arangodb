@@ -677,13 +677,14 @@ function iterateTests(cases, options, jsonReply) {
       delete result.failed;
       delete result.crashed;
 
-      let status = Object.values(result).every(testCase => testCase.status === true);
+      let oneStatus = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
-      if (!status) {
+      if (!oneStatus) {
         globalStatus = false;
+        status = false;
       }
       result.failed = failed;
-      result.status = status;
+      result.status = oneStatus;
     }
 
     results[currentTest] = result;
