@@ -519,15 +519,8 @@ bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker,
     if (tick > datafile->_dataMax) {
       datafile->_dataMax = tick;
     }
-
-    if (++data->_operations % 1024 == 0) {
-      data->_mmdr.reset();
-    }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, data);
-    if (++data->_operations % 1024 == 0) {
-      data->_mmdr.reset();
-    }
   } else {
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
@@ -2358,6 +2351,13 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     return TRI_ERROR_INTERNAL;
   }
 
+  // check if we already have this index
+  auto oldIdx = lookupIndex(info);
+  if (oldIdx) {
+    idx = oldIdx;
+    return TRI_ERROR_NO_ERROR;
+  }
+
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
@@ -3468,7 +3468,7 @@ Result MMFilesCollection::update(
 
   if (newSlice.length() <= 1) {
     // no need to do anything
-    result = std::move(previous);
+    result = previous;
 
     if (_logicalCollection.waitForSync()) {
       options.waitForSync = true;

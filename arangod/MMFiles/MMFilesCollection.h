@@ -44,8 +44,6 @@ struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
-
-
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
@@ -537,7 +535,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
-  bool hasAllPersistentLocalIds() const;
+  bool hasAllPersistentLocalIds() const override;
 
   static Result persistLocalDocumentIdsForDatafile(
       MMFilesCollection& collection, MMFilesDatafile& file);

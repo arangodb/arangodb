@@ -74,7 +74,7 @@ bool createLink(
   )->bool {
     // ignored fields
     return key != arangodb::StaticStrings::IndexType
-      && key != arangodb::iresearch::StaticStrings::ViewIdField;
+        && key != arangodb::iresearch::StaticStrings::ViewIdField;
   };
   arangodb::velocypack::Builder builder;
 
@@ -181,7 +181,7 @@ arangodb::Result modifyLinks(
     )->bool {
       // ignored fields
       return key != arangodb::StaticStrings::IndexType
-        && key != arangodb::iresearch::StaticStrings::ViewIdField;
+          && key != arangodb::iresearch::StaticStrings::ViewIdField;
     };
     arangodb::velocypack::Builder namedJson;
 
