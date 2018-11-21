@@ -30,7 +30,7 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-class IndexLookupContext;
+class MMFilesIndexLookupContext;
 
 namespace velocypack {
 class Slice;
@@ -62,7 +62,7 @@ struct MMFilesIndexElementValue {
   /// if offset is non-zero, then it is an offset into the VelocyPack data in
   /// the data or WAL file. If offset is 0, then data contains the actual data
   /// in place.
-  velocypack::Slice slice(IndexLookupContext* context) const;
+  velocypack::Slice slice(MMFilesIndexLookupContext* context) const;
   
   inline bool isOffset() const noexcept {
     return !isInline();
@@ -136,7 +136,7 @@ struct MMFilesHashIndexElement {
     return reinterpret_cast<MMFilesIndexElementValue const*>(p);
   }
   
-  arangodb::velocypack::Slice slice(IndexLookupContext* context, size_t position) const;
+  arangodb::velocypack::Slice slice(MMFilesIndexLookupContext* context, size_t position) const;
   
   static uint64_t hash(arangodb::velocypack::Slice const& values);
   static uint64_t hash(std::vector<arangodb::velocypack::Slice> const& values);
@@ -191,7 +191,7 @@ struct MMFilesSkiplistIndexElement {
     return reinterpret_cast<MMFilesIndexElementValue const*>(p);
   }
   
-  arangodb::velocypack::Slice slice(IndexLookupContext* context, size_t position) const;
+  arangodb::velocypack::Slice slice(MMFilesIndexLookupContext* context, size_t position) const;
   
   /// @brief allocate a new index element from a vector of slices
   static MMFilesSkiplistIndexElement* initialize(MMFilesSkiplistIndexElement* element,
@@ -235,7 +235,7 @@ struct MMFilesSimpleIndexElement {
   
   inline uint32_t offset() const noexcept { return static_cast<uint32_t>((_hashAndOffset & 0xFFFFFFFF00000000ULL) >> 32); }
   
-  arangodb::velocypack::Slice slice(IndexLookupContext*) const;
+  arangodb::velocypack::Slice slice(MMFilesIndexLookupContext*) const;
   
   inline operator bool() const noexcept { return _localDocumentId.isSet(); }
   

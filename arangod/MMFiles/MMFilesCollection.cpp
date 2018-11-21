@@ -47,6 +47,7 @@
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
@@ -85,7 +86,7 @@ struct OpenIteratorState {
   MMFilesDatafileStatisticsContainer* _dfi{nullptr};
   transaction::Methods* _trx;
   ManagedDocumentResult _mdr;
-  IndexLookupContext _context;
+  MMFilesIndexLookupContext _context;
   uint64_t _deletions{0};
   uint64_t _documents{0};
   int64_t _initialCount{-1};
