@@ -106,7 +106,7 @@ const waitForReplication = function() {
     }
     internal.sleep(1.0);
   }
-  //internafl.print(state);
+  //internal.print(state);
   //internal.print("lastLogTick: " + lastLogTick);
 
   if (wasOnMaster) {
