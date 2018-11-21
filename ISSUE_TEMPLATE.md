@@ -1,3 +1,7 @@
+<!--
+You may remove points which do not apply, as well as the <!‐‐ examples in HTML comments ‐‐>
+-->
+
 ## My Environment
 
 * __ArangoDB Version__:        <!-- e.g. 3.3.14 or self-compiled devel branch -->
