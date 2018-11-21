@@ -368,6 +368,12 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
+  
+ protected:
+  
+  /// @brief generate error result
+  /// @param key the conflicting key
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
 
  protected:
   TRI_idx_iid_t const _iid;

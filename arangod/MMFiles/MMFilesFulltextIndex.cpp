@@ -218,27 +218,34 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 Result MMFilesFulltextIndex::insert(transaction::Methods*,
                                     LocalDocumentId const& documentId,
                                     VPackSlice const& doc, OperationMode mode) {
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
+  int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
-
   if (!words.empty()) {
-    res =
-        TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    r = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
-  return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    res.reset(r);
+    addErrorMsg(res);
+  }
+  return res;
 }
 
 Result MMFilesFulltextIndex::remove(transaction::Methods*,
                                     LocalDocumentId const& documentId,
                                     VPackSlice const& doc, OperationMode mode) {
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
+  int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res =
-        TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    r = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
-  return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    res.reset(r);
+    addErrorMsg(res);
+  }
+  return res;
 }
 
 void MMFilesFulltextIndex::unload() {

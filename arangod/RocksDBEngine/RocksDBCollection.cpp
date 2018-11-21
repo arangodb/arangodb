@@ -1424,6 +1424,7 @@ Result RocksDBCollection::insertDocument(
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
+  Result res;
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, documentId);
@@ -1434,11 +1435,11 @@ Result RocksDBCollection::insertDocument(
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  Result res = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
-                          rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
-                                         static_cast<size_t>(doc.byteSize())));
-  if (res.fail()) {
-    return res;
+  rocksdb::Status s = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
+                                 rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
+                                                static_cast<size_t>(doc.byteSize())));
+  if (!s.ok()) {
+    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   READ_LOCKER(guard, _indexesLock);
@@ -1468,6 +1469,7 @@ Result RocksDBCollection::removeDocument(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
+  Result res;
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, documentId);
@@ -1479,9 +1481,9 @@ Result RocksDBCollection::removeDocument(
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  Result res = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
-  if (res.fail()) {
-    return res;
+  rocksdb::Status s = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  if (!s.ok()) {
+    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   /*LOG_TOPIC(ERR, Logger::ENGINES)
@@ -1515,25 +1517,23 @@ Result RocksDBCollection::updateDocument(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
+  Result res;
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
 
   // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
   newKey->constructDocument(_objectId, newDocumentId);
-  // TODO: given that this should have a unique revision ID, do
-  // we really need to blacklist the new key?
-  blackListKey(newKey->string().data(),
-               static_cast<uint32_t>(newKey->string().size()));
+  // simon: we do not need to blacklist the new documentId
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
-                         rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
-                                        static_cast<size_t>(newDoc.byteSize())));
-  if (res.fail()) {
-    return res;
+  rocksdb::Status s = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
+                                rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
+                                               static_cast<size_t>(newDoc.byteSize())));
+  if (!s.ok()) {
+    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   RocksDBKeyLeaser oldKey(trx);
@@ -1541,9 +1541,9 @@ Result RocksDBCollection::updateDocument(
   blackListKey(oldKey->string().data(),
                static_cast<uint32_t>(oldKey->string().size()));
 
-  res = mthd->SingleDelete(RocksDBColumnFamily::documents(), oldKey.ref());
-  if (res.fail()) {
-    return res;
+  s = mthd->SingleDelete(RocksDBColumnFamily::documents(), oldKey.ref());
+  if (!s.ok()) {
+    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   READ_LOCKER(guard, _indexesLock);
@@ -1568,6 +1568,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     arangodb::ManagedDocumentResult& mdr, bool withCache) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
+  Result res;
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, documentId);
@@ -1582,7 +1583,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       std::string* value = mdr.setManaged(documentId);
       value->append(reinterpret_cast<char const*>(f.value()->value()),
                     f.value()->valueSize());
-      return TRI_ERROR_NO_ERROR;
+      return res;
     }
     if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
@@ -1593,9 +1594,10 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   std::string* value = mdr.setManaged(documentId);
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
+  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(),
+                                key->string(), value);
 
-  if (res.ok()) {
+  if (s.ok()) {
     if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
@@ -1623,6 +1625,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
     mdr.clear();
+    res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   return res;
@@ -1633,6 +1636,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     IndexIterator::DocumentCallback const& cb, bool withCache) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
+  Result res;
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, documentId);
@@ -1646,7 +1650,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     if (f.found()) {
       cb(documentId,
          VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
-      return TRI_ERROR_NO_ERROR;
+      return res;
     }
     if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
@@ -1655,12 +1659,11 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     }
   }
 
-  rocksdb::PinnableSlice ps;
-  auto state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthd = state->rocksdbMethods();
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), &ps);
+  rocksdb::PinnableSlice ps;  
+  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
 
-  if (res.ok()) {
+  if (s.ok()) {
     if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
@@ -1686,6 +1689,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
+    res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
   return res;
 }

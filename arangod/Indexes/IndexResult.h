@@ -49,6 +49,7 @@ class IndexResult : public Result {
       msg.append(std::to_string(index->id()));
       msg.append(" of type ");
       msg.append(index->typeName());
+      
 
       // build fields string
       VPackBuilder builder;
@@ -102,8 +103,13 @@ class IndexResult : public Result {
     return *this;
   }
   
-  IndexResult& reset(int res, std::string const& msg) {
-    Result::reset(res, msg);
+  IndexResult& reset(int code, Index const* index) {
+    IndexResult::reset(code, index, StaticStrings::Empty);
+    return *this;
+  }
+  
+  IndexResult& reset(int code, std::string const& msg) {
+    Result::reset(code, msg);
     return *this;
   }
   
