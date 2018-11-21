@@ -32,7 +32,24 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 
 const request = require('@arangodb/request');
-const MOUNT = '/test';
+const endpointToURL = (endpoint) => {
+  if (endpoint.substr(0, 6) === 'ssl://') {
+    return 'https://' + endpoint.substr(6);
+  }
+  const pos = endpoint.indexOf('://');
+  if (pos === -1) {
+    return 'http://' + endpoint;
+  }
+  return 'http' + endpoint.substr(pos);
+};
+
+const db = require("@arangodb").db;
+
+const MOUNT = "/test";
+const serviceUrl = (endpoint) => {
+  return endpointToURL(endpoint) + "/_db/" + encodeURIComponent(db._name()) + MOUNT;
+}
+const baseUrl = serviceUrl(arango.getEndpoint());
 const _ = require('lodash');
 const options = {
   json: true
@@ -41,21 +58,10 @@ const options = {
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    const pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   return instanceInfo.arangods.filter(isCoordinator)
                               .map(toEndpoint)
-                              .map(endpointToURL);
+                              .map(serviceUrl);
 }
 
 
@@ -65,21 +71,18 @@ function foxxTestSuite () {
     tearDown: () => {},
 
     testServiceIsMounted: function () {
-      const res = request.get(MOUNT, options);
+      const res = request.get(baseUrl, options);
       assertEqual(200, res.statusCode);
       assertEqual({hello: 'world'}, res.json);
     },
 
     testServiceIsPropagated: function () {
       const serversToTest = getCoordinators();
-      require("internal").print(serversToTest);
-      /*
-      if (isCluster) {
-        // TODO Test both coordinators.
-      } else {
-        assertFalse(isCluster);
-      }
-      */
+      serversToTest.forEach(m => {
+        const res = request.get(m, options);
+        assertEqual(200, res.statusCode);
+        assertEqual({hello: 'world'}, res.json);
+      });
     }
   };
 }

@@ -53,16 +53,21 @@ const testPaths = {
 };
 
 class DumpRestoreHelper {
-  constructor(instanceInfo, options, clientAuth, dumpOptions, afterServerStart) {
+  constructor(instanceInfo, options, clientAuth, dumpOptions, which, afterServerStart) {
     this.instanceInfo = instanceInfo;
     this.options = options;
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
+    this.which = which;
     this.fn = afterServerStart(instanceInfo);
     this.results = {failed: 1};
     this.arangosh = tu.runInArangosh.bind(this, this.options, this.instanceInfo);
     this.arangorestore = pu.run.arangoDumpRestore.bind(this, this.dumpOptions, this.instanceInfo, 'restore');
     this.arangodump = pu.run.arangoDumpRestore.bind(this, this.dumpOptions, this.instanceInfo, 'dump');
+  }
+
+  print (s) {
+    print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
   }
 
   isAlive() {
@@ -83,43 +88,99 @@ class DumpRestoreHelper {
     print(CYAN + 'done.' + RESET);
 
     print();
-
     return this.results;
   }
 
   runSetupSuite(path) {
+    this.print('Setting up');
     this.results.setup = this.arangosh(path, this.clientAuth);
     return this.validate(this.results.setup);
   }
 
   dumpFrom(database) {
+    this.print('dump');
     this.results.dump = this.arangodump(database);
     return this.validate(this.results.dump);
   }
 
   restoreTo(database) {
+    this.print('restore');
     this.results.restore = this.arangorestore(database);
     return this.validate(this.results.restore);
   }
 
   runTests(file, database) {
+    this.print('dump after restore');
     this.results.test = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.test);
   }
 
   tearDown(file) {
+    this.print('teardown')
     this.results.tearDown = this.arangosh(file);
     return this.validate(this.results.tearDown);
   }
 
   restoreOld(directory) {
+    this.print('restoreOld');
     this.results.restoreOld = this.arangorestore('_system', pu.TOP_DIR, directory);
     return this.validate(this.results.restoreOld);
   }
 
   testRestoreOld(file) {
+    this.print('test restoreOld')
     this.results.testRestoreOld = this.arangosh(file);
     return this.validate(this.results.testRestoreOld);
+  }
+
+  restoreFoxxComplete(database) {
+    this.print('Foxx Apps with full restore');
+    this.results.restoreFoxxComplete = this.arangorestore(database)
+    return this.validate(this.results.restoreFoxxComplete);
+  }
+
+  testFoxxComplete(file, database) {
+    this.print('Test Foxx Apps after full restore');
+    this.results.testFoxxComplete = this.arangosh(file, {'server.database': database})
+    return this.validate(this.results.testFoxxComplete);
+  }
+
+  restoreFoxxAppsBundle(database) {
+    this.print('Foxx Apps restore _apps then _appbundles');
+    // TODO Need to Add Collection _apps
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore(database);
+    if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
+      return false;
+    }
+    // TODO if cluster, switch coordinator!
+    // TODO Need to Add Collection _appbundles
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore(database)
+    return this.validate(this.results.restoreFoxxAppBundlesStep2);
+  }
+
+  testFoxxAppsBundle(file, database) {
+    this.print('Test Foxx Apps after _apps then _appbundles restore');
+    this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database})
+    return this.validate(this.results.testFoxxAppBundles);
+  }
+
+  restoreFoxxBundleApps(database) {
+    this.print('Foxx Apps restore _appbundles then _apps');
+    // TODO Need to Add Collection _appbundles
+    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore(database)
+    if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
+      return false;
+    }
+    // TODO if cluster, switch coordinator!
+    // TODO Need to Add Collection _apps
+    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore(database)
+    return this.validate(this.results.restoreFoxxAppBundlesStep2);
+  }
+
+  testFoxxBundleApps(file, database) {
+    this.print('Test Foxx Apps after _appbundles then _apps restore');
+    this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database})
+    return this.validate(this.results.testFoxxAppBundles);
   }
 };
 
@@ -156,54 +217,40 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
     };
     return rc;
   }
-  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, afterServerStart);
+  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, which, afterServerStart);
  
-  print(CYAN + Date() + ': Setting up' + RESET);
-
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
-  if (!helper.runSetupSuite(setupFile)) {
-    return helper.extractResults();
-  }
-
-  print(CYAN + Date() + ': ' + which + ' and Restore - dump' + RESET);
-
-  if (!helper.dumpFrom('UnitTestsDumpSrc')) {
-    return helper.extractResults();
-  }
-
-  print(CYAN + Date() + ': ' + which + ' and Restore - restore' + RESET);
-
-  if (!helper.restoreTo('UnitTestsDumpDst')) {
-    return helper.extractResults();
-  }
-
-  print(CYAN + Date() + ': ' + which + ' and Restore - dump after restore' + RESET);
-
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
-  if (!helper.runTests(testFile,'UnitTestsDumpDst')) {
-    return helper.extractResults();
-  }
-
-  print(CYAN + Date() + ': ' + which + ' and Restore - teardown' + RESET);
-
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
-  if (!helper.tearDown(tearDownFile)) {
+  if (
+    !helper.runSetupSuite(setupFile) ||
+    !helper.dumpFrom('UnitTestsDumpSrc') ||
+    !helper.restoreTo('UnitTestsDumpDst') ||
+    !helper.runTests(testFile,'UnitTestsDumpDst') ||
+    !helper.tearDown(tearDownFile)) {
     return helper.extractResults();
   }
 
   if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
-    print(CYAN + Date() + ': Dump and Restore - restoreOld' + RESET);
-    let notCluster = getClusterStrings(options).notCluster;
-    let restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
-    if (!helper.restoreOld(restoreDir)) {
-      return helper.extractResults();
-    }
-
+    const notCluster = getClusterStrings(options).notCluster;
+    const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-    if (!helper.testRestoreOld(oldTestFile)) {
+    if (!helper.restoreOld(restoreDir) ||
+        !helper.testRestoreOld(oldTestFile)) {
       return helper.extractResults();
     }
   }
+
+  const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+  if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+      !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+      !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+      !helper.testFoxxAppsBunlde(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+      !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+      !helper.testFoxxAppsBunlde(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+    return helper.extractResults();
+  }
+
   return helper.extractResults();
 }
 
@@ -215,7 +262,8 @@ function dump (options) {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js'
+    dumpCheckGraph: 'check-graph.js',
+    foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(options, {}, {}, options, 'dump', tstFiles, function(){});
@@ -254,11 +302,11 @@ function dumpAuthentication (options) {
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
     dumpAgain: 'dump-authentication.js',
-    dumpTearDown: 'dump-teardown.js'
+    dumpTearDown: 'dump-teardown.js',
+    foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
-
 }
 
 function dumpEncrypted (options) {
@@ -295,7 +343,8 @@ function dumpEncrypted (options) {
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js'
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    foxxTest: 'check-foxx.js'
   };
 
   return dump_backend(options, {}, {}, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
