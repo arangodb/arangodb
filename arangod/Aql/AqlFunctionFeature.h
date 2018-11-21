@@ -57,7 +57,7 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void toVelocyPack(arangodb::velocypack::Builder&);
   Function const* byName(std::string const& name);
 
-  bool exists(std::string const& name);
+  bool exists(std::string const& name) const;
 
  private:
   // Internal functions

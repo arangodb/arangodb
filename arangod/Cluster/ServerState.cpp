@@ -90,17 +90,19 @@ void ServerState::findHost(std::string const& fallback) {
 
   // Now look at the contents of the file /etc/machine-id, if it exists:
   std::string name = "/etc/machine-id";
-  if (arangodb::basics::FileUtils::exists(name)) try {
-    _host = arangodb::basics::FileUtils::slurp(name);
-    while (!_host.empty() &&
-           (_host.back() == '\r' || _host.back() == '\n' ||
-            _host.back() == ' ')) {
-      _host.erase(_host.size() - 1);
-    }
-    if (!_host.empty()) {
-      return;
-    }
-  } catch (...) { }
+  if (arangodb::basics::FileUtils::exists(name)) {
+    try {
+      _host = arangodb::basics::FileUtils::slurp(name);
+      while (!_host.empty() &&
+             (_host.back() == '\r' || _host.back() == '\n' ||
+              _host.back() == ' ')) {
+        _host.erase(_host.size() - 1);
+      }
+      if (!_host.empty()) {
+        return;
+      }
+    } catch (...) { }
+  }
 
 #ifdef __APPLE__
   static_assert(sizeof(uuid_t) == 16, "");
