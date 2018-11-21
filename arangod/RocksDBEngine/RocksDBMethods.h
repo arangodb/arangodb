@@ -243,6 +243,33 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   rocksdb::WriteBatchWithIndex* _wb;
 };
 
+// INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
+// THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM
+// OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
+// VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERATIONS.
+struct IndexingDisabler {
+  // will only be active if condition is true
+
+  IndexingDisabler() = delete;
+  IndexingDisabler(IndexingDisabler&&) = delete;
+  IndexingDisabler(IndexingDisabler const&) = delete;
+  IndexingDisabler& operator=(IndexingDisabler const&) = delete;
+  IndexingDisabler& operator=(IndexingDisabler&&) = delete;
+
+  IndexingDisabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+    if (condition) {
+      bool disabledHere = meth->DisableIndexing();
+      if (disabledHere) { _meth = meth; }
+    }
+  }
+
+  ~IndexingDisabler(){
+    if (_meth) { _meth->EnableIndexing(); }
+  }
+private:
+  RocksDBMethods* _meth;
+};
+
 }  // namespace arangodb
 
 #endif
