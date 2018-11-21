@@ -27,7 +27,7 @@
 #include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
@@ -57,7 +57,7 @@ struct MMFilesPrimaryIndexHelper {
   /// @brief determines if a key corresponds to an element
   inline bool IsEqualKeyElement(void* userData, uint8_t const* key,
                                 MMFilesSimpleIndexElement const& right) const {
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     try {
@@ -83,7 +83,7 @@ struct MMFilesPrimaryIndexHelper {
       // TODO: check if we have many collisions here
       return false;
     }
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     VPackSlice l = left.slice(context);
