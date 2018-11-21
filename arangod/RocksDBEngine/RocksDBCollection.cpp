@@ -73,28 +73,6 @@
 
 using namespace arangodb;
 
-// helper class that optionally disables indexing inside the
-// RocksDB transaction if possible, and that will turn indexing
-// back on later in its dtor
-// this is just a performance optimization for small transactions
-struct IndexingDisabler {
-  IndexingDisabler(RocksDBMethods* mthd, bool disable)
-      : mthd(mthd), disableIndexing(disable) {
-    if (disable) {
-      disableIndexing = mthd->DisableIndexing();
-    }
-  }
-
-  ~IndexingDisabler() {
-    if (disableIndexing) {
-      mthd->EnableIndexing();
-    }
-  }
-
-  RocksDBMethods* mthd;
-  bool disableIndexing;
-};
-
 RocksDBCollection::RocksDBCollection(
     LogicalCollection& collection,
     arangodb::velocypack::Slice const& info
