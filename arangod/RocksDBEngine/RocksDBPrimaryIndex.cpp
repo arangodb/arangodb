@@ -318,7 +318,6 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
-  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
@@ -328,11 +327,11 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
     return false;
   }
   
-  documentId = RocksDBValue::documentId(value);
+  documentId = RocksDBValue::documentId(val);
 
   // this call will populate revisionId if the revision id value is
   // stored in the primary index
-  revisionId = RocksDBValue::revisionId(value);
+  revisionId = RocksDBValue::revisionId(val);
   return true;
 }
 
