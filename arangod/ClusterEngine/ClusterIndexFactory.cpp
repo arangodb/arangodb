@@ -213,14 +213,12 @@ void ClusterIndexFactory::prepareIndexes(
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
-      // We have an error here.
-      // Do not add index.
+      // We have an error here. Do not add.
       continue;
     }
 
     if (basics::VelocyPackHelper::getBooleanValue(v, "isBuilding", false)) {
-      // We have an error here.
-      // Do not add index.
+      // This index is still being built. Do not add.
       continue;
     }
 
