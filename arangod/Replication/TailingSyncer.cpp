@@ -667,7 +667,10 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
 
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
-                                     TRI_voc_tick_t firstRegularTick) {
+                                     TRI_voc_tick_t firstRegularTick,
+                                     TRI_voc_tick_t& markerTick) {
+  markerTick = 0;
+
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "marker slice is no object");
   }
@@ -679,14 +682,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
-    TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
-        StringUtils::uint64(tick.c_str(), tick.size()));
-    if (newTick >= firstRegularTick) {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      if (newTick > _applier->_state._lastProcessedContinuousTick) {
-        _applier->_state._lastProcessedContinuousTick = newTick;
-      }
-    }
+    markerTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(tick.c_str(), tick.size()));
   }
 
   // handle marker type
@@ -858,12 +854,14 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
     Result res;
     bool skipped;
 
+    TRI_voc_tick_t markerTick = 0;
+
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res.reset();
       skipped = true;
     } else {
-      res = applyLogMarker(slice, firstRegularTick);
+      res = applyLogMarker(slice, firstRegularTick, markerTick);
       skipped = false;
     }
 
@@ -893,7 +891,12 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
     // update tick value
     //postApplyMarker(processedMarkers, skipped);
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-    
+
+    if (markerTick >= firstRegularTick &&
+        markerTick > _applier->_state._lastProcessedContinuousTick) {
+      _applier->_state._lastProcessedContinuousTick = markerTick;
+    }
+
     if (_applier->_state._lastProcessedContinuousTick >
         _applier->_state._lastAppliedContinuousTick) {
       _applier->_state._lastAppliedContinuousTick =
