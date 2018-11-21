@@ -656,6 +656,8 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     }
   }
   
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
@@ -663,7 +665,6 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
 
   size_t const count = elements.size();
   rocksdb::PinnableSlice existing;
-
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
     if (_unique) {
@@ -792,6 +793,7 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   SmallVector<RocksDBKey> elements{elementsArena};
   SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
   SmallVector<uint64_t> hashes{hashesArena};
+
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
@@ -801,7 +803,8 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
       return addErrorMsg(res);
     }
   }
-
+  
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 
   size_t const count = elements.size();
   if (_unique) {

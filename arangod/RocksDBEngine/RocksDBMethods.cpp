@@ -295,25 +295,19 @@ rocksdb::Status RocksDBTrxUntrackedMethods::SingleDelete(rocksdb::ColumnFamilyHa
 // =================== RocksDBBatchedMethods ====================
 
 RocksDBBatchedMethods::RocksDBBatchedMethods(RocksDBTransactionState* state,
-                                             rocksdb::WriteBatchWithIndex* wb)
-    : RocksDBMethods(state), _wb(wb) {
-  _db = rocksutils::globalRocksDB();
-}
+                                             rocksdb::WriteBatch* wb)
+    : RocksDBMethods(state), _wb(wb) {}
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            std::string* val) {
-  TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions ro;
-  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "BatchedMethods does not provide Get");
 }
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val) {
-  TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions ro;
-  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "BatchedMethods does not provide Get");
 }
 
 rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
@@ -336,6 +330,54 @@ rocksdb::Status RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle*
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
+    rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "BatchedMethods does not provide NewIterator");
+}
+
+// =================== RocksDBBatchedWithIndexMethods ====================
+
+RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(RocksDBTransactionState* state,
+                                                               rocksdb::WriteBatchWithIndex* wb)
+    : RocksDBMethods(state), _wb(wb) {
+  _db = rocksutils::globalRocksDB();
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                                     rocksdb::Slice const& key,
+                                                     std::string* val) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions ro;
+  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                                     rocksdb::Slice const& key,
+                                                     rocksdb::PinnableSlice* val) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions ro;
+  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                                     RocksDBKey const& key,
+                                                     rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->Put(cf, key.string(), val);
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                                        RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->Delete(cf, key.string());
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
+                                                              RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  return _wb->SingleDelete(cf, key.string());
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
     rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
   return std::unique_ptr<rocksdb::Iterator>(

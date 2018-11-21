@@ -149,7 +149,7 @@ arangodb::Result getReadLockId(
   auto result = comres->result;
 
   if (result != nullptr && result->getHttpReturnCode() == 200) {
-    auto const idv = comres->result->getBodyVelocyPack();
+    auto const idv = result->getBodyVelocyPack();
     auto const& idSlice = idv->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
@@ -161,7 +161,11 @@ arangodb::Result getReadLockId(
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    error += result->getHttpReturnMessage();
+    if (result) {
+      error.append(result->getHttpReturnMessage());
+    } else {
+      error.append(comres->stringifyErrorMessage());
+    }
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
 
@@ -673,10 +677,8 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::shared_ptr<LogicalCollection> ci;
-    try {   // ci->getCollection can throw
-      ci = clusterInfo->getCollection(database, planId);
-    } catch(...) {
+    auto ci = clusterInfo->getCollectionNT(database, planId);
+    if (ci == nullptr) {
       auto const endTime = system_clock::now();
       std::stringstream msg;
       msg << "exception in getCollection, " << database << "/"
@@ -688,7 +690,6 @@ bool SynchronizeShard::first() {
       _result.reset(TRI_ERROR_FAILED, msg.str());
       return false;
     }
-    TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
     std::shared_ptr<CollectionInfoCurrent> cic =

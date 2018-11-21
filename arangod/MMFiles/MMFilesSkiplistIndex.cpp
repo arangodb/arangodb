@@ -29,7 +29,7 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SkiplistIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -67,7 +67,7 @@ using namespace arangodb;
 static int CompareKeyElement(void* userData, VPackSlice const* left,
                              MMFilesSkiplistIndexElement const* right,
                              size_t rightPosition) {
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+  MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
   return arangodb::basics::VelocyPackHelper::compare(
@@ -80,7 +80,7 @@ static int CompareElementElement(void* userData,
                                  size_t leftPosition,
                                  MMFilesSkiplistIndexElement const* right,
                                  size_t rightPosition) {
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+  MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
@@ -778,7 +778,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
@@ -881,7 +881,7 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
