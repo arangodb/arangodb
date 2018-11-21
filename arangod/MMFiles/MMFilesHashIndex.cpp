@@ -285,6 +285,7 @@ bool MMFilesHashIndexIterator::nextDocument(DocumentCallback const& cb, size_t l
 
 void MMFilesHashIndexIterator::reset() {
   _buffer.clear();
+  _documentIds.clear();
   _posInBuffer = 0;
   _lookups.reset();
   _index->lookup(_trx, _lookups.lookup(), _buffer);

@@ -140,20 +140,23 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
-
-      // check authentication after ensuring the collection exists
-      if (exec != nullptr &&
-          !exec->canUseCollection(vocbase->name(), coll->name(),
-                                  auth::Level::RO)) {
-        return Result(TRI_ERROR_FORBIDDEN,
-                      "No access to collection '" + name + "'");
-      }
+      auto coll = ClusterInfo::instance()->getCollectionNT(vocbase->name(), name);
 
       if (coll) {
+        // check authentication after ensuring the collection exists
+        if (exec != nullptr &&
+            !exec->canUseCollection(vocbase->name(), coll->name(),
+                                  auth::Level::RO)) {
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "No access to collection '" + name + "'");
+        }
+
         func(coll);
 
         return Result();
+      }
+      else {
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());

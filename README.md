@@ -77,7 +77,7 @@ Other features of ArangoDB include:
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
 - It is **open source** (Apache License 2.0)
 
-For more in-depth information read the [design goals of ArangoDB](https://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
+For more in-depth information read the [design goals of ArangoDB](https://www.arangodb.com/2012/03/avocadodbs-design-objectives/)
 
 
 Latest Release
