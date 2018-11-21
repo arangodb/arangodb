@@ -234,6 +234,8 @@ class Index {
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
 
+  bool isBuilding() const;
+
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
@@ -340,7 +342,7 @@ class Index {
   std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 
   mutable bool _unique;
-
+  mutable bool _isBuilding;
   mutable bool _sparse;
 
   double _clusterSelectivity;

@@ -457,6 +457,9 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
     if (!filter(idx.get())) {
       continue;
     }
+    if (idx->isBuilding()) {
+      continue;
+    }
     idx->toVelocyPack(result, withFigures, forPersistence);
   }
   result.close();
