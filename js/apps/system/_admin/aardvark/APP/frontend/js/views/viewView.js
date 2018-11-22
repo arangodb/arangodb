@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global $, arangoHelper, frontendConfig, JSONEditor, Backbone, templateEngine, window, _ */
+/* global $, arangoHelper, frontendConfig, JSONEditor, Backbone, templateEngine, window, _, localStorage */
 
 (function () {
   'use strict';
@@ -13,10 +13,23 @@
     template: templateEngine.createTemplate('viewView.ejs'),
 
     initialize: function (options) {
+      var mode = localStorage.getItem('JSONViewEditorMode');
+      if (mode) {
+        this.defaultMode = mode;
+      }
       this.name = options.name;
     },
 
     defaultMode: 'tree',
+
+    storeMode: function (mode) {
+      var self = this;
+      if (mode !== 'view') {
+        localStorage.setItem('JSONViewEditorMode', mode);
+        self.defaultMode = mode;
+        self.editor.setMode(this.defaultMode);
+      }
+    },
 
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
@@ -134,6 +147,9 @@
         onChange: function () {
           self.jsonContentChanged();
         },
+        onModeChange: function (newMode) {
+          self.storeMode(newMode);
+        },
         search: true,
         mode: 'code',
         modes: ['tree', 'code'],
@@ -214,7 +230,7 @@
         $('.jsoneditor-modes').css('visibility', 'hidden');
       } else {
         this.enableAllButtons();
-        this.editor.setMode('tree');
+        this.editor.setMode(this.defaultMode);
         $('.buttonBarInfo').html('');
         $('#viewProcessing').hide();
         $('#viewDocumentation').show();
@@ -305,8 +321,14 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'View: ' + this.name
+          'View: ' + self.name
         );
+        window.setTimeout(function () {
+          $('#subNavigationBar .breadcrumb').html(
+            'View: ' + self.name
+          );
+          self.checkIfInProgress();
+        }, 100);
       } else {
         window.setTimeout(function () {
           self.breadcrumb();

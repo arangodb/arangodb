@@ -55,16 +55,21 @@
           if (error) {
             console.log('Could not check locked views');
           } else {
-            _.each(lockedViews, function (foundView) {
-              if ($('#' + foundView.collection)) {
-                // found view html container
-                $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-clone');
-                $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-spinner').addClass('fa-spin');
-              } else {
-                $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-clone');
-                $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-spinner').removeClass('fa-spin');
-              }
-            });
+            if (lockedViews.length > 0) {
+              _.each(lockedViews, function (foundView) {
+                if ($('#' + foundView.collection)) {
+                  // found view html container
+                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-clone');
+                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-spinner').addClass('fa-spin');
+                } else {
+                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-clone');
+                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-spinner').removeClass('fa-spin');
+                }
+              });
+            } else {
+              // if no view found at all, just reset all to default
+              $('.tile .collection-type-icon').addClass('fa-clone').removeClass('fa-spinner').removeClass('fa-spin');
+            }
 
             window.setTimeout(function () {
               self.checkIfInProgress();
