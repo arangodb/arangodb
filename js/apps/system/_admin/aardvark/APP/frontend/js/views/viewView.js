@@ -33,7 +33,7 @@
     },
 
     checkIfInProgress: function () {
-      if (window.location.hash.search('view/') > -1) {
+      if (window.location.hash.search('view/') > -1 && $('.breadcrumb').text().search(this.model.get('name')) > -1) {
         var self = this;
 
         var callback = function (error, lockedViews) {
