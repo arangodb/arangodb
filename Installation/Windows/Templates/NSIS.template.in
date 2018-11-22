@@ -217,8 +217,10 @@ Function check_previous_install
 
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
+  DetailPrint "This is a fresh install."
   return
 OldFound:
+  DetailPrint "found old installation."
   StrCpy $UpgradeInstall "1"
 FunctionEnd
 
@@ -670,7 +672,7 @@ continueUI:
   ${NSD_CreateLabel} 35% 50 40% 6% "Password (Again)"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the stogare engine to use for this ArangoDB Installation"
+  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the storage engine to use for this ArangoDB installation"
   Pop $0 ; Don't care...
 
   ${NSD_CreateDropList} 5, 110, 30% 6% ""
@@ -722,10 +724,20 @@ FunctionEnd
 Function UpgradeExisting
   ; Check whether we acutally should upgrade:
   !insertmacro StripBackslash DATADIR
-  !insertmacro StripSlash DATADIR      
+  !insertmacro StripSlash DATADIR
   DetailPrint "Checking whether an existing database needs upgrade: "
+  push ${ARANGO_EXIT_ALREADY_RUNNING}
+  pop $0
+retryDetectUpgradeNeeded:
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
+  ${If} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
+  ${OrIf} $0 == ${ARANGO_EXIT_COULD_NOT_LOCK}
+    MessageBox MB_RETRYCANCEL "Another ArangoDB is currently locking your database, please stop it, and then click retry." IDCANCEL abortUpgrade IDRETRY retryDetectUpgradeNeeded
+  abortUpgrade:
+    Abort
+  ${EndIf}
+
   ${If} $0 != 0
   ${AndIf} $0 != ${ARANGO_EXIT_UPGRADE_REQUIRED}
     !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
@@ -926,6 +938,8 @@ Section "-Core installation"
   !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
   !insertmacro AddToRegistry "APPDIR"         "$APPDIR"
 
+  !insertmacro StripBackslash APPDIR
+  !insertmacro StripSlash APPDIR
   ; Create a file containing the settings we want to be overwritten:
   ${If} $DATADIR != ""
     StrCpy $ini_DATADIR "[database]$\r$\ndirectory = $DATADIR$\r$\n"
@@ -1131,7 +1145,7 @@ Done:
   StrCmp $PURGE_DB "0" dontDeleteDatabases
   DetailPrint 'Removing database files from $DATADIR: '
   RMDir /r "$DATADIR"
-  DetailPrint 'Removing foxx services files from $APPDIR: '
+  DetailPrint 'Removing Foxx services files from $APPDIR: '
   RMDir /r "$APPDIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
