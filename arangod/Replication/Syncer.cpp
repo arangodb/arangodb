@@ -867,12 +867,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
                          /*nullMeansRemove*/ true);
 
   try {
-    LogicalView::ptr view;
-    auto res = LogicalView::create(view, vocbase, merged.slice());
-    
-    if (res.fail()) {
-      return res;
-    }
+    LogicalView::ptr view; // ignore result
+    return LogicalView::create(view, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -880,8 +876,6 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-
-  return Result();
 }
 
 /// @brief drops a view, based on the VelocyPack provided
