@@ -1013,7 +1013,7 @@ void TRI_vocbase_t::inventory(
       //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
       collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
-        // we have to exclude the primary, edge index and links
+        // we have to exclude the primary, edge index and links for dump / restore
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
                 idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
                 idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
