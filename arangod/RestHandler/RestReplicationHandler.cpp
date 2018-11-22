@@ -77,11 +77,11 @@ std::string const typeString("type");
 
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
-uint64_t const RestReplicationHandler::_tombstoneTimeout = 60 * 60 * 24; // ONE DAY
+std::chrono::hours const RestReplicationHandler::_tombstoneTimeout = std::chrono::hours(24);
 
 
 basics::ReadWriteLock RestReplicationHandler::_tombLock;
-std::unordered_map<std::string, double> RestReplicationHandler::_tombstones = {};
+std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> RestReplicationHandler::_tombstones = {};
 
 
 static aql::QueryId ExtractReadlockId(VPackSlice slice) {
@@ -2184,7 +2184,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Compare fast-path Leader: " << nr << " == Follower: " << checksumSlice.copyString();
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Compare with shortCut Leader: " << nr << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           col->followers()->add(followerId);
 
@@ -2847,7 +2847,7 @@ void RestReplicationHandler::timeoutTombstones() const {
       // Fast path
       return;
     }
-    double now = TRI_microtime();
+    auto now = std::chrono::steady_clock::now();
     for (auto const& it : RestReplicationHandler::_tombstones) {
       if (it.second < now) {
         toDelete.emplace(it.first);
@@ -2866,6 +2866,7 @@ void RestReplicationHandler::timeoutTombstones() const {
       RestReplicationHandler::_tombstones.erase(it);
     } catch (...) {
       // erase should not throw.
+      TRI_ASSERT(false);
     }
   }
 }
@@ -2885,6 +2886,7 @@ bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
       RestReplicationHandler::_tombstones.erase(key);
     } catch (...) {
       // Just ignore, tombstone will be removed by timeout, and IDs are unique anyways
+      TRI_ASSERT(false);
     }
   }
   return isDead;
@@ -2893,5 +2895,6 @@ bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
 void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-  RestReplicationHandler::_tombstones.emplace(key, TRI_microtime() + RestReplicationHandler::_tombstoneTimeout); 
+  RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout); 
+  timeoutTombstones();
 }

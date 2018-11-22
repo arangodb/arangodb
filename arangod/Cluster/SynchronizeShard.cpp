@@ -930,7 +930,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   int tries = 0;
   double timeout = 300.0;
   TRI_voc_tick_t tickReached = 0;
-  while (didTimeout && tries++ < 12) { // This will try to sync for at most 1 hour.
+  while (didTimeout && tries++ < 18) { // This will try to sync for at most 1 hour. (200 * 18 == 3600)
     didTimeout = false;
     // Now ask for a "soft stop" on the leader, in case of mmfiles, this
     // will be a hard stop, but for rocksdb, this is a no-op:
@@ -1002,6 +1002,12 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
     lastLogTick = tickReached;
+    if (didTimeout) {
+      LOG_TOPIC(INFO, Logger::MAINTENANCE) << "Renewing softLock for " << shard << " on leader: " << leader;
+    }
+  }
+  if (didTimeout) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Could not catchup under softLock for " << shard << " on leader: " << leader << " now activating hardLock. This is expected under high load.";
   }
   return ResultT<TRI_voc_tick_t>::success(tickReached);
 }

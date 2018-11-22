@@ -324,7 +324,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief timeout for tombstones
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint64_t const _tombstoneTimeout;
+  static std::chrono::hours const _tombstoneTimeout;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for the tombstone list
@@ -340,7 +340,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        before it was actually registered and therefor only seldomly
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string, double> _tombstones;
+  static std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> _tombstones;
 
  protected:
 
