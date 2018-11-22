@@ -263,18 +263,6 @@ void registerIndexFactory() {
         std::string("failure registering IResearch link factory with index factory from feature '") + entry.first + "': " + res.errorMessage()
       );
     }
-/*
-    res = indexFactory.emplaceNormalizer(
-      indexType, arangodb::iresearch::IResearchLinkHelper::normalize
-    );
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(),
-        std::string("failure registering IResearch link normalizer with index factory from feature '") + entry.first + "': " + res.errorMessage()
-      );
-    }
-    */
   }
 }
 
