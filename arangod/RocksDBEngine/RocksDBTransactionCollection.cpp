@@ -38,7 +38,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
     TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
-      _lockType(AccessMode::Type::NONE),
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
@@ -47,76 +46,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _numRemoves(0),
       _usageLocked(false) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {}
-
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int RocksDBTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int RocksDBTransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                                int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int RocksDBTransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                                  int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a specific mode in a transaction
-bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
-                                            int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-        << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return isLocked();
-}
-
-/// @brief check whether a collection is locked at all
-bool RocksDBTransactionCollection::isLocked() const {
-  if (_collection == nullptr) {
-    return false;
-  }
-  std::string collName(_collection->name()); // WTF?!
-  if (_transaction->isLockedShard(collName)) {
-    return true;
-  }
-  return (_lockType != AccessMode::Type::NONE);
-}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
@@ -280,33 +210,17 @@ void RocksDBTransactionCollection::addOperation(
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
                                                  uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
-  for (auto const& pair : _trackedIndexOperations) {
-    auto idx = _collection->lookupIndex(pair.first);
-    if (idx == nullptr) {
-      TRI_ASSERT(false); // Index reported estimates, but does not exist
-      continue;
-    }
-    auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    auto estimator = ridx->estimator();
-    if (estimator) {
-      estimator->placeBlocker(trxId, preCommitSeq);
-    }
+  if (hasOperations() || !_trackedIndexOperations.empty()) {
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->meta().placeBlocker(trxId, preCommitSeq);
   }
 }
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
-  for (auto const& pair : _trackedIndexOperations) {
-    auto idx = _collection->lookupIndex(pair.first);
-    if (idx == nullptr) {
-      TRI_ASSERT(false); // Index reported estimates, but does not exist
-      continue;
-    }
-    auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    auto estimator = ridx->estimator();
-    if (estimator) {
-      estimator->removeBlocker(trxId);
-    }
+  if (hasOperations() || !_trackedIndexOperations.empty()) {
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->meta().removeBlocker(trxId);
   }
 }
 
@@ -316,33 +230,33 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
 
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
-  if (commitSeq != 0) { // is '0' for filling new indexes
-    if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
-      RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
-      coll->adjustNumberDocuments(_revision, adjustment);
-
-      RocksDBEngine* engine = rocksutils::globalRocksEngine();
-      RocksDBSettingsManager::CounterAdjustment update(commitSeq, _numInserts, _numRemoves,
-                                                       _revision);
-      engine->settingsManager()->updateCounter(coll->objectId(), update);
-    }
+  if (hasOperations()) {
+    TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->adjustNumberDocuments(_revision, adjustment); // update online count
+    coll->meta().adjustNumberDocuments(commitSeq, _revision, adjustment); // buffer for recovery
   }
 
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
-
     if (idx == nullptr) {
       TRI_ASSERT(false); // Index reported estimates, but does not exist
       continue;
     }
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    auto estimator = ridx->estimator();
-    if (estimator) {
-      estimator->bufferUpdates(commitSeq, std::move(pair.second.inserts),
-                                          std::move(pair.second.removals));
-      estimator->removeBlocker(trxId);
+    auto est = ridx->estimator();
+    if (ADB_LIKELY(est != nullptr)) {
+      est->bufferUpdates(commitSeq, std::move(pair.second.inserts),
+                         std::move(pair.second.removals));
+    } else {
+      TRI_ASSERT(false);
     }
+  }
+  
+  if (hasOperations() || !_trackedIndexOperations.empty()) {
+    RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    coll->meta().removeBlocker(trxId);
   }
 
   _initialNumberDocuments += adjustment;

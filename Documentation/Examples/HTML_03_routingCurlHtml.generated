@@ -1,7 +1,0 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/hello/world</span>
-
-HTTP/1.1 undefined
-content-type: text/html
-x-content-type-options: nosniff
-
-"<html><body>Hello World</body></html>"

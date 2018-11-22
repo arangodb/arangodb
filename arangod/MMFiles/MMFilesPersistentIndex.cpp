@@ -28,7 +28,7 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -342,7 +342,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   auto prefix = buildPrefix(trx->vocbase().id(), _collection.id(), _iid);
   VPackBuilder builder;
@@ -523,7 +523,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, &_collection, &result, numPaths());
+  MMFilesIndexLookupContext context(trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   VPackBuilder builder;
   std::vector<std::string> values;

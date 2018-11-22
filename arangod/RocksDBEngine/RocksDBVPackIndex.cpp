@@ -660,8 +660,9 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                : RocksDBValue::VPackIndexValue();
 
   size_t const count = elements.size();
-  RocksDBValue existing =
-      RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
+  RocksDBValue existing = RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
     if (_unique) {
@@ -809,6 +810,9 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   SmallVector<RocksDBKey> elements{elementsArena};
   SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
   SmallVector<uint64_t> hashes{hashesArena};
+
+  IndexingDisabler guard(mthds, !_unique && trx->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
   int res = TRI_ERROR_NO_ERROR;
   {
     // rethrow all types of exceptions from here...
@@ -1221,54 +1225,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   return lookup(trx, searchSlice, !opts.ascending);
 }
 
-rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
-    std::string& output, rocksdb::SequenceNumber seq) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (!_unique) {
-    TRI_ASSERT(_estimator != nullptr);
-    return _estimator->serialize(output, seq);
-  }
-  return seq;
-}
-
-bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_unique) {
-    return true;
-  }
-  // We simply drop the current estimator and steal the one from recovery
-  // We are then safe for resizing issues in our _estimator format
-  // and will use the old size.
-
-  TRI_ASSERT(mgr != nullptr);
-  auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
-    // We expected to receive a stored index estimate, however we got none.
-    // We use the freshly created estimator but have to recompute it.
-    return false;
-  }
-  _estimator.swap(tmp);
-  TRI_ASSERT(_estimator != nullptr);
-  return true;
-}
-
-void RocksDBVPackIndex::recalculateEstimates() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (unique()) {
-    return;
-  }
-  TRI_ASSERT(_estimator != nullptr);
-  _estimator->clear();
-
-  RocksDBKeyBounds bounds = getBounds();
-  rocksutils::iterateBounds(bounds,
-                            [this](rocksdb::Iterator* it) {
-                              uint64_t hash =
-                                  RocksDBVPackIndex::HashForKey(it->key());
-                              _estimator->insert(hash);
-                            });
-}
-
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {
   if (unique()) {
     return;
@@ -1282,9 +1238,33 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
   return _estimator.get();
 }
 
-bool RocksDBVPackIndex::needToPersistEstimate() const {
-  if (_estimator) {
-    return _estimator->needToPersist();
+void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+  TRI_ASSERT(!_unique);
+  _estimator = std::move(est);
+}
+
+void RocksDBVPackIndex::recalculateEstimates() {
+  if (unique()) {
+    return;
   }
-  return false;
+  
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->clear();
+  
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
+  
+  auto bounds = getBounds();
+  rocksdb::Slice const end = bounds.end();
+  rocksdb::ReadOptions options;
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
+  options.prefix_same_as_start = true;  // key-prefix includes edge
+  options.verify_checksums = false;
+  options.fill_cache = false;
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
+    _estimator->insert(hash);
+  }
+  _estimator->setCommitSeq(seq);
 }
