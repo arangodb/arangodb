@@ -556,12 +556,12 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
 
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      index = arangodb::iresearch::IResearchLinkCoordinator::make(
-        _logicalCollection, info, ++lastId, false
+      arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
+        index, _logicalCollection, info, ++lastId, false
       );
     } else {
-      index = arangodb::iresearch::IResearchMMFilesLink::make(
-        _logicalCollection, info, ++lastId, false
+      arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(
+        index, _logicalCollection, info, ++lastId, false
       );
     }
 #endif
@@ -1070,7 +1070,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
   }
 
   status = TRI_ERROR_NO_ERROR;
-
+  
   std::string cname = args.get("name").copyString();
   if (arangodb::ServerState::instance()->isCoordinator()) {
     return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, id, cname);
@@ -1138,12 +1138,12 @@ arangodb::Result StorageEngineMock::createView(
   before();
   TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) == views.end()); // called after createView()
   arangodb::velocypack::Builder builder;
-
+  
   builder.openObject();
   view.properties(builder, true, true);
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
-
+  
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view persisted OK
 }
 
@@ -1424,7 +1424,7 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
 }
-
+  
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {
   return std::vector<std::string>();
 }
@@ -1589,7 +1589,6 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
 bool TransactionStateMock::hasFailedOperations() const {
   return false; // assume no failed operations
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

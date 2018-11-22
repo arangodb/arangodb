@@ -29,6 +29,8 @@
 #include "catch.hpp"
 
 #include "Cluster/Maintenance.h"
+#include "MMFiles/MMFilesEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -410,14 +412,23 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 }
 
 TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
+  std::shared_ptr<arangodb::options::ProgramOptions> po =
+    std::make_shared<arangodb::options::ProgramOptions>(
+      "test", std::string(), std::string(), "path");
+  arangodb::application_features::ApplicationServer as(po, nullptr);
 
   std::map<std::string, Node> localNodes {
     {dbsIds[shortNames[0]], createNode(dbs0Str)},
     {dbsIds[shortNames[1]], createNode(dbs1Str)},
     {dbsIds[shortNames[2]], createNode(dbs2Str)}};
 
+  arangodb::MMFilesEngine engine(as); // arbitrary implementation that has index types registered
+  auto* origStorageEngine = arangodb::EngineSelectorFeature::ENGINE;
+  arangodb::EngineSelectorFeature::ENGINE = &engine;
+  auto resetStorageEngine = std::shared_ptr<void>(&engine, [origStorageEngine](void*)->void { arangodb::EngineSelectorFeature::ENGINE = origStorageEngine; });
+
   MaintenanceFeature::errors_t errors;
-  
+
   SECTION("In sync should have 0 effects") {
 
     std::vector<ActionDescription> actions;
@@ -887,6 +898,5 @@ TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
   }*/
 
 }
-
 
 #endif
