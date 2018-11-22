@@ -184,7 +184,7 @@ you should consider a few different properties:
   your data. Having a lot of documents with identical shard keys will lead
   to unevenly distributed data.
 
-See [Sharding](../Architecture/DeploymentModes/Cluster/Architecture.md#Sharding)
+See [Sharding](../Architecture/DeploymentModes/Cluster/Architecture.md#sharding)
 for more information
 
 ### Smart Graphs

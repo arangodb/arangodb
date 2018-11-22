@@ -847,8 +847,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
     return view->properties(slice, false); // always a full-update
   }
 
+  // check for name conflicts
   view = vocbase.lookupView(nameSlice.copyString());
-
   if (view) { // resolve name conflict by deleting existing
     Result res = view->drop();
     if (res.fail()) {
@@ -867,7 +867,12 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
                          /*nullMeansRemove*/ true);
 
   try {
-    vocbase.createView(merged.slice());
+    LogicalView::ptr view;
+    auto res = LogicalView::create(view, vocbase, merged.slice());
+    
+    if (res.fail()) {
+      return res;
+    }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
