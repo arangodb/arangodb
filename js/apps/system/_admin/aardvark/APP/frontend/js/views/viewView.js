@@ -67,6 +67,7 @@
                 self.checkIfInProgress();
               }, self.refreshRate);
             } else {
+              self.getViewProperties(true);
               self.setInProgress(false);
             }
           }
