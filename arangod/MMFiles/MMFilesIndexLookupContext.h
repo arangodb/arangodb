@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H
-#define ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_INDEX_LOOKUP_CONTEXT_H
+#define ARANGOD_MMFILES_MMFILES_INDEX_LOOKUP_CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/LocalDocumentId.h"
@@ -36,22 +36,26 @@ namespace transaction {
 class Methods;
 }
 
-class IndexLookupContext {
+class MMFilesIndexLookupContext {
  public:
-  IndexLookupContext() = delete;
-  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields);
-  ~IndexLookupContext() {}
+  MMFilesIndexLookupContext() = delete;
+  MMFilesIndexLookupContext(transaction::Methods* trx, 
+                            LogicalCollection* collection, 
+                            ManagedDocumentResult* result, 
+                            size_t numFields);
 
-  uint8_t const* lookup(LocalDocumentId token);
+  ~MMFilesIndexLookupContext() {}
 
-  ManagedDocumentResult* result() { return _result; }
+  uint8_t const* lookup(LocalDocumentId token) const;
+
+  ManagedDocumentResult* result() const { return _result; }
 
   inline size_t numFields() const { return _numFields; }
 
  private:
   transaction::Methods* _trx;
   LogicalCollection* _collection;
-  ManagedDocumentResult* _result;
+  mutable ManagedDocumentResult* _result;
   size_t const _numFields;
 };
 

@@ -31,9 +31,11 @@ exports.createNativeRequest = function (opts) {
     suffix: opts.path ? opts.path.split('/').filter(Boolean) : [],
     headers: opts.headers || {},
     cookies: opts.cookies || {},
+    portType: opts.socketPath ? 'unix' : (opts.protocol || 'http'),
     server: opts.server || {
         address: '198.51.100.1',
-        port: opts.port || 8529
+        port: opts.port || 8529,
+        endpoint: opts.socketPath ? `unix://${opts.socketPath}` : null
     },
     client: opts.client || {
         address: '203.0.113.1',

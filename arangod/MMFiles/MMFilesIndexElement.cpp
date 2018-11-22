@@ -23,7 +23,7 @@
 
 #include "MMFilesIndexElement.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 
 using namespace arangodb;
 
@@ -46,7 +46,7 @@ MMFilesHashIndexElement* MMFilesHashIndexElement::initialize(MMFilesHashIndexEle
 /// if offset is non-zero, then it is an offset into the VelocyPack data in
 /// the datafile or WAL file. If offset is 0, then data contains the actual data
 /// in place.
-arangodb::velocypack::Slice MMFilesHashIndexElement::slice(IndexLookupContext* context, size_t position) const {
+arangodb::velocypack::Slice MMFilesHashIndexElement::slice(MMFilesIndexLookupContext* context, size_t position) const {
   TRI_ASSERT(context->result() != nullptr);
   MMFilesIndexElementValue const* sub = subObject(position);
   
@@ -124,7 +124,7 @@ MMFilesSkiplistIndexElement* MMFilesSkiplistIndexElement::initialize(MMFilesSkip
 /// if offset is non-zero, then it is an offset into the VelocyPack data in
 /// the datafile or WAL file. If offset is 0, then data contains the actual data
 /// in place.
-arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(IndexLookupContext* context, size_t position) const {
+arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(MMFilesIndexLookupContext* context, size_t position) const {
   TRI_ASSERT(context->result() != nullptr);
   MMFilesIndexElementValue const* sub = subObject(position);
   
@@ -152,7 +152,7 @@ uint64_t MMFilesSimpleIndexElement::hash(arangodb::velocypack::Slice const& valu
   return value.hashString() & 0x00000000FFFFFFFFULL;
 }
 
-VPackSlice MMFilesSimpleIndexElement::slice(IndexLookupContext* context) const {
+VPackSlice MMFilesSimpleIndexElement::slice(MMFilesIndexLookupContext* context) const {
   TRI_ASSERT(context->result() != nullptr);
   uint8_t const* vpack = context->lookup(_localDocumentId);
   if (vpack == nullptr) {
