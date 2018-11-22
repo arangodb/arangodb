@@ -28,7 +28,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -651,8 +650,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     transaction::BuilderLeaser leased(trx);
     int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
     if (r != TRI_ERROR_NO_ERROR) {
-      res.reset(r);
-      return addErrorMsg(res);
+      return addErrorMsg(res, r);
     }
   }
   
@@ -760,8 +758,7 @@ Result RocksDBVPackIndex::updateInternal(
       transaction::BuilderLeaser leased(trx);
       int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
       if (r != TRI_ERROR_NO_ERROR) {
-        res.reset(r);
-        return addErrorMsg(res);
+        return addErrorMsg(res, r);
       }
     }
 
@@ -799,8 +796,7 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
     transaction::BuilderLeaser leased(trx);
     int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
     if (r != TRI_ERROR_NO_ERROR) {
-      res.reset(r);
-      return addErrorMsg(res);
+      return addErrorMsg(res, r);
     }
   }
   

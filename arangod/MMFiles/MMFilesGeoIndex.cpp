@@ -32,7 +32,6 @@
 #include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"

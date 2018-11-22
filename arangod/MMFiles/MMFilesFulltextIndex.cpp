@@ -28,7 +28,6 @@
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
@@ -225,8 +224,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods*,
     r = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
   if (r != TRI_ERROR_NO_ERROR) {
-    res.reset(r);
-    addErrorMsg(res);
+    addErrorMsg(res, r);
   }
   return res;
 }
@@ -242,8 +240,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods*,
     r = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
   if (r != TRI_ERROR_NO_ERROR) {
-    res.reset(r);
-    addErrorMsg(res);
+    addErrorMsg(res, r);
   }
   return res;
 }

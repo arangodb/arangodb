@@ -310,8 +310,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
       std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
-  int insertMulti(transaction::Methods*, LocalDocumentId const& documentId,
-                  arangodb::velocypack::Slice const&, OperationMode mode);
+  Result insertMulti(transaction::Methods*, LocalDocumentId const& documentId,
+                     arangodb::velocypack::Slice const&, OperationMode mode);
 
   void batchInsertMulti(
       transaction::Methods*,

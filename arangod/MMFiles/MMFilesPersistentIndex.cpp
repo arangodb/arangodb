@@ -29,7 +29,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
-#include "Indexes/IndexResult.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -316,16 +315,17 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
-
-  int res;
+  Result res;
+  
+  int r;
   try {
-    res = fillElement(elements, documentId, doc);
+    r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    r = ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    r = TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    r = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -337,8 +337,8 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
   TRI_DEFER(cleanup());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
@@ -430,11 +430,11 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
         iterator->Seek(rocksdb::Slice(bound.first.c_str(), bound.first.size()));
 
         if (iterator->Valid()) {
-          int res = comparator->Compare(
+          int cmp = comparator->Compare(
               iterator->key(),
               rocksdb::Slice(bound.second.c_str(), bound.second.size()));
 
-          if (res <= 0) {
+          if (cmp <= 0) {
             uniqueConstraintViolated = true;
             VPackSlice slice(comparator->extractKeySlice(iterator->key()));
             uint64_t length = slice.length();
@@ -448,47 +448,47 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
       if (uniqueConstraintViolated) {
         // duplicate key
-        res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+        r = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         auto physical =
             static_cast<MMFilesCollection*>(_collection.getPhysical());
         TRI_ASSERT(physical != nullptr);
 
         if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
-          res = TRI_ERROR_NO_ERROR;
+          r = TRI_ERROR_NO_ERROR;
         }
       }
     }
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (r == TRI_ERROR_NO_ERROR) {
       auto status = rocksTransaction->Put(values[i], std::string());
 
       if (!status.ok()) {
-        res = TRI_ERROR_INTERNAL;
+        r = TRI_ERROR_INTERNAL;
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (r != TRI_ERROR_NO_ERROR) {
       for (size_t j = 0; j < i; ++j) {
         rocksTransaction->Delete(values[i]);
       }
 
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
+      if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
         // We ignore unique_constraint violated if we are not unique
-        res = TRI_ERROR_NO_ERROR;
+        r = TRI_ERROR_NO_ERROR;
       }
       break;
     }
   }
 
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingId);
+      return res.reset(r, existingId);
     }
-    return IndexResult(res, this, existingId);
+    return addErrorMsg(res, r, existingId);
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 /// @brief removes a document from the index
@@ -497,16 +497,17 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
+  Result res;
 
-  int res;
+  int r;
   try {
-    res = fillElement(elements, documentId, doc);
+    r = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    r = ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    r = TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    r = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -518,8 +519,8 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 
   TRI_DEFER(cleanup());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return IndexResult(res, this);
+  if (r != TRI_ERROR_NO_ERROR) {
+    return addErrorMsg(res, r);
   }
 
   ManagedDocumentResult result;
@@ -562,11 +563,11 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (!status.ok()) {
-      res = TRI_ERROR_INTERNAL;
+      addErrorMsg(res, TRI_ERROR_INTERNAL);
     }
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 /// @brief called when the index is dropped
