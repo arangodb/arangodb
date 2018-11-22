@@ -32,7 +32,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
-#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -578,6 +577,8 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
                                         LocalDocumentId const& documentId,
                                         VPackSlice const& doc,
                                         OperationMode mode) {
+  Result res;
+  
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
@@ -593,19 +594,18 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction
-  Result r = mthd->Put(_cf, key.ref(),
-                       value.string(), rocksutils::index);
-  if (r.ok()) {
+  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+  if (s.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(trx)->trackIndexInsert(
       _collection.id(), id(), hash
     );
-
-    return IndexResult();
   } else {
-    return IndexResult(r.errorNumber(), this);
+    res.reset(rocksutils::convertStatus(s));
+    addErrorMsg(res);
   }
+  return res;
 }
 
 Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
@@ -613,6 +613,8 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
                                         LocalDocumentId const& documentId,
                                         VPackSlice const& doc,
                                         OperationMode mode) {
+  Result res;
+  
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
@@ -628,18 +630,19 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   // blacklist key in cache
   blackListKey(fromToRef);
 
-  Result res = mthd->Delete(_cf, key.ref());
-  if (res.ok()) {
+  rocksdb::Status s = mthd->Delete(_cf, key.ref());
+  if (s.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(trx)->trackIndexRemove(
       _collection.id(), id(), hash
     );
-
-    return IndexResult();
   } else {
-    return IndexResult(res.errorNumber(), this);
+    res.reset(rocksutils::convertStatus(s));
+    addErrorMsg(res);
   }
+  
+  return res;
 }
 
 void RocksDBEdgeIndex::batchInsert(
@@ -655,10 +658,9 @@ void RocksDBEdgeIndex::batchInsert(
     key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
-    Result r = mthds->Put(_cf, key.ref(),
-                          rocksdb::Slice(), rocksutils::index);
-    if (!r.ok()) {
-      queue->setStatus(r.errorNumber());
+    rocksdb::Status s = mthds->Put(_cf, key.ref(), rocksdb::Slice());
+    if (!s.ok()) {
+      queue->setStatus(rocksutils::convertStatus(s).errorNumber());
       break;
     }
   }

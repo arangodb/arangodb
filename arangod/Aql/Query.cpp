@@ -385,7 +385,7 @@ void Query::prepare(QueryRegistry* registry) {
 
       int res = trx->addCollections(*_collections.collections());
 
-      if(!trx->transactionContextPtr()->getParentTransaction()){
+      if(!trx->transactionContextPtr()->getParentTransaction()) {
         trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
       }
 

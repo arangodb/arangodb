@@ -28,7 +28,6 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
-#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -435,22 +434,23 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       OperationMode mode) {
   MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
+  Result res;
 
 // TODO: we can pass in a special MMFilesIndexLookupContext which has some more on the information
 // about the to-be-inserted document. this way we can spare one lookup in
 // IsEqualElementElementByKey
-  int res = _primaryIndex->insert(&context, element);
+  int r = _primaryIndex->insert(&context, element);
 
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (r == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     std::string existingId(doc.get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, std::move(existingId));
+      return res.reset(r, std::move(existingId));
     }
 
-    return IndexResult(res, this, existingId);
+    return addErrorMsg(res, r, existingId);
   }
 
-  return IndexResult(res, this);
+  return addErrorMsg(res, r);
 }
 
 /// @brief removes a key/element from the index
@@ -472,11 +472,12 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
   MMFilesSimpleIndexElement found =
       _primaryIndex->removeByKey(&context, keySlice.begin());
 
+  Result res;
   if (!found) {
-    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
+    return addErrorMsg(res, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
-  return Result();
+  return res;
 }
 
 /// @brief resizes the index
