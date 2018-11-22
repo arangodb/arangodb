@@ -60,12 +60,7 @@ struct IResearchMMFilesLink::IndexFactory: public arangodb::IndexTypeFactory {
         collection.load();
       }
 
-      // try casting underlying collection to an MMFilesCollection
-      // this may not succeed because we may have to deal with a PhysicalCollectionMock here
-      auto mmfilesCollection =
-        dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
-
-      if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
+      if (!collection.getPhysical()->hasAllPersistentLocalIds()) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
           "mmfiles collection uses pre-3.4 format and cannot be linked to an arangosearch view; try recreating collection and moving the contents to the new collection"
