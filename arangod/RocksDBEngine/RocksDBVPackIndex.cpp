@@ -649,7 +649,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
-    int r = r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
     if (r != TRI_ERROR_NO_ERROR) {
       res.reset(r);
       return addErrorMsg(res);
@@ -690,7 +690,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
       state->trackIndexInsert(_collection.id(), id(), it);
     }
   } else if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    // find conflicing document
+    // find conflicting document
     LocalDocumentId docId = RocksDBValue::documentId(existing);
     std::string existingKey;
     bool success = _collection.getPhysical()->readDocumentWithCallback(trx, docId,
@@ -702,7 +702,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     if (mode == OperationMode::internal) {
       res.resetErrorMessage(std::move(existingKey));
     } else {
-      addErrorMsg(res);
+      addErrorMsg(res, existingKey);
     }
   } else if (res.fail()) {
     addErrorMsg(res);

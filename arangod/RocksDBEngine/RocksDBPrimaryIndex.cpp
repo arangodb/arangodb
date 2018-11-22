@@ -355,7 +355,7 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
       return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, std::move(existingId));
     }
     res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-    return addErrorMsg(res);
+    return addErrorMsg(res, existingId);
   }
   val.Reset(); // clear used memory
 
@@ -388,8 +388,6 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
-//  rocksdb::PinnableSlice val;
-//  TRI_ASSERT(mthd->Get(_cf, key.ref(), &val).ok());
   blackListKey(key->string().data(),
               static_cast<uint32_t>(key->string().size()));
   
