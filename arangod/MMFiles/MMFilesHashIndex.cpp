@@ -626,7 +626,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
 
   for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
-    res = work(hashElement, mode);
+    r = work(hashElement, mode);
 
     if (r != TRI_ERROR_NO_ERROR) {
       
