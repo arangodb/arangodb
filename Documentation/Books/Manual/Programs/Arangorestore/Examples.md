@@ -115,7 +115,7 @@ collections being processed before all [edge collection](../../Appendix/Glossary
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
-To restrict reloading to specific views, there is is the *--view* option.
+To restrict reloading to specific views, there is the *--view* option.
 Should you specify the *--collection* parameter views will not be restored _unless_ you explicitly
 specify them via the *--view* option.
     
